@@ -1,6 +1,15 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "engine.h"
 #include "line_of_sight.h"
 
 /**
@@ -101,7 +110,10 @@ void do_line_of_sight(struct engine *e) {
 
   /* Start by generating the random sightline positions. */
   struct line_of_sight *LOS_list = (struct line_of_sight*)malloc(LOS_params.num_tot * sizeof(struct line_of_sight));
-  generate_line_of_sights(LOS_list, &LOS_params);
+  if (e->nodeID == 0) generate_line_of_sights(LOS_list, &LOS_params);
+#ifdef WITH_MPI
+  MPI_Bcast(LOS_list, LOS_params.num_tot * sizeof(struct line_of_sight), MPI_BYTE, 0, MPI_COMM_WORLD);
+#endif
 
   double dx, dy, r2, hsml;
   size_t LOS_nmax;
@@ -223,8 +235,7 @@ void do_line_of_sight(struct engine *e) {
         } else {
           if (LOS_counts[k] > 0) {
             message("node 0 recieving %lld particles", LOS_counts[k]);
-            MPI_Recv(LOS_particles, LOS_counts[k] * sizeof(struct line_of_sight_particles),
-                        MPI_BYTE, k, 12, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(LOS_particles, LOS_counts[k], lospart_mpi_type, k, 12, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
             for (size_t kk = 0; kk < LOS_counts[k]; kk++) {
               fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0], LOS_particles[kk].pos[1], LOS_particles[kk].pos[2], LOS_particles[kk].h);
@@ -234,8 +245,7 @@ void do_line_of_sight(struct engine *e) {
       } else {
           if (k > 0 && LOS_counts[k] > 0) {
             message("node %i sending %lld particles to 0", k, LOS_counts[k]);
-            MPI_Send(LOS_particles, LOS_counts[k] * sizeof(struct line_of_sight_particles),
-                                    MPI_BYTE, 0, 12, MPI_COMM_WORLD);
+            MPI_Send(LOS_particles, LOS_counts[k], lospart_mpi_type, 0, 12, MPI_COMM_WORLD);
           }
       }
     } /* End of loop over each node. */

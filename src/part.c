@@ -31,6 +31,7 @@
 /* Local headers */
 #include "error.h"
 #include "hydro.h"
+#include "line_of_sight.h"
 #include "threadpool.h"
 
 /**
@@ -473,10 +474,11 @@ void part_create_mpi_types(void) {
       MPI_Type_commit(&bpart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for bparts.");
   }
-  //if (MPI_Type_contiguous(sizeof(struct line_of_sight_particles) / sizeof(unsigned char),
-   //                       MPI_BYTE, &lospart_mpi_type) != MPI_SUCCESS ||
-    //  MPI_Type_commit(&lospart_mpi_type) != MPI_SUCCESS) {
-    //error("Failed to create MPI type for losparts.");
+  if (MPI_Type_contiguous(sizeof(struct line_of_sight_particles) / sizeof(unsigned char),
+                         MPI_BYTE, &lospart_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&lospart_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for losparts.");
+  }
 }
 
 void part_free_mpi_types(void) {
@@ -486,6 +488,6 @@ void part_free_mpi_types(void) {
   MPI_Type_free(&gpart_mpi_type);
   MPI_Type_free(&spart_mpi_type);
   MPI_Type_free(&bpart_mpi_type);
-  //MPI_Type_free(&lospart_mpi_type);
+  MPI_Type_free(&lospart_mpi_type);
 }
 #endif

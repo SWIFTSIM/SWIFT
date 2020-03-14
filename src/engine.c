@@ -70,7 +70,7 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
-//#include "line_of_sight.h"
+#include "line_of_sight.h"
 #include "logger.h"
 #include "logger_io.h"
 #include "map.h"
@@ -2895,7 +2895,7 @@ void engine_check_for_dumps(struct engine *e) {
         break;
 
       case output_los:
-        //do_line_of_sight(e);
+        do_line_of_sight(e);
 
         break;
 
