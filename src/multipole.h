@@ -93,11 +93,6 @@ struct grav_tensor {
 #error "Missing implementation for order >5"
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Total number of gpart this field tensor interacted with */
-  long long num_interacted;
-#endif
-
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Number of gparts interacted through the tree. */
   long long num_interacted_tree;
@@ -107,6 +102,8 @@ struct grav_tensor {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Total number of gpart this field tensor interacted with */
+  long long num_interacted;
 
   /* Last time this tensor was zeroed */
   integertime_t ti_init;
