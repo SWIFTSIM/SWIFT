@@ -116,7 +116,7 @@ void do_line_of_sight(struct engine *e) {
 #endif
 
   double dx, dy, r2, hsml;
-  size_t LOS_nmax;
+  //size_t LOS_nmax;
 
   FILE *f;
 
@@ -133,7 +133,7 @@ void do_line_of_sight(struct engine *e) {
   /* Loop over each random LOS. */
   for (int j = 0; j < LOS_params.num_tot; j++) {
 
-    LOS_nmax = 0;
+    //LOS_nmax = 0;
 
     /* Loop over each gas particle to find those in LOS. */
     for (size_t i = 0; i < nr_parts; i++) {
@@ -158,32 +158,39 @@ void do_line_of_sight(struct engine *e) {
       }
     } /* End of loop over all gas particles */
 
-    message("size of particle array = %lld", sizeof(struct line_of_sight_particles));
-
 #ifdef WITH_MPI
-    size_t LOS_counts[e->nr_nodes];
+    int LOS_counts[e->nr_nodes];
+    int LOS_disps[e->nr_nodes];
 
     /* How many particles does each rank have for this LOS? */
     MPI_Allgather(&LOS_list[j].particles_in_los_local, 1, MPI_LONG_LONG_INT, 
             &LOS_counts, 1, MPI_LONG_LONG_INT, MPI_COMM_WORLD);
     
-    for (int k = 0; k < e->nr_nodes; k++) {
+    for (int k = 0, disp_count = 0; k < e->nr_nodes; k++) {
+        if (e->nodeID == 0) message("k=%i disp_count=%i LOS_counts=%i", k, disp_count, LOS_counts[k]);
         /* Total particles in this LOS. */
         LOS_list[j].particles_in_los_total += LOS_counts[k];
 
+        LOS_disps[k] = disp_count;
+
+        disp_count += LOS_counts[k];
+
+        //message("k=%i disp_count=%i LOS_counts=%lld", k, disp_count, LOS_counts[k]);
         /* Max number of LOS particles on one node. */
-        if (LOS_counts[k] > LOS_nmax) LOS_nmax = LOS_counts[k];
+        //if (LOS_counts[k] > LOS_nmax) LOS_nmax = LOS_counts[k];
     }
 #else
-    LOS_nmax = LOS_list[j].particles_in_los_local;
+    //LOS_nmax = LOS_list[j].particles_in_los_local;
     LOS_list[j].particles_in_los_total = LOS_list[j].particles_in_los_local;
 #endif 
 
     /* Setup los particles structure. */
     struct line_of_sight_particles *LOS_particles;
+    struct line_of_sight_particles *LOS_particles_total;
     if (e->nodeID == 0) {
-      LOS_particles = (struct line_of_sight_particles*)malloc(LOS_nmax * sizeof(struct line_of_sight_particles));
-    
+      //LOS_particles = (struct line_of_sight_particles*)malloc(LOS_nmax * sizeof(struct line_of_sight_particles));
+      LOS_particles_total = (struct line_of_sight_particles*)malloc(LOS_list[j].particles_in_los_total * sizeof(struct line_of_sight_particles));
+      LOS_particles = (struct line_of_sight_particles*)malloc(LOS_list[j].particles_in_los_local * sizeof(struct line_of_sight_particles));
     } else {
       LOS_particles = (struct line_of_sight_particles*)malloc(LOS_list[j].particles_in_los_local * sizeof(struct line_of_sight_particles));
     }
@@ -204,51 +211,61 @@ void do_line_of_sight(struct engine *e) {
           if (dy <= hsml) {
             r2 = dx * dx + dy * dy;
 
-              if (r2 <= hsml * hsml) {
+            if (r2 <= hsml * hsml) {
 
-                /* Store particle properties. */
-                LOS_particles[count].pos[0] = s->parts[i].x[0];
-                LOS_particles[count].pos[1] = s->parts[i].x[1];
-                LOS_particles[count].pos[2] = s->parts[i].x[2];
+              /* Store particle properties. */
+              LOS_particles[count].pos[0] = s->parts[i].x[0];
+              LOS_particles[count].pos[1] = s->parts[i].x[1];
+              LOS_particles[count].pos[2] = s->parts[i].x[2];
 
-                LOS_particles[count].h = s->parts[i].h;
+              LOS_particles[count].h = s->parts[i].h;
 
-                count++;
-              }
+              count++;
+            }
           }
         }
       }
     } /* End of loop over all gas particles. */
 
 #ifdef WITH_MPI
-    /* Loop over each rank and rank 0 saves LOS data. */
-    for (int k = 0; k < e->nr_nodes; k++) {
-      /* First dump any particles on node 0. */
-      if (e->nodeID == 0) {
-        if (k == 0) {
-          if (LOS_counts[k] > 0) {
-            message("node 0 saving %lld", LOS_counts[k]);
-            for (size_t kk = 0; kk < LOS_counts[k]; kk++) {
-              fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0], LOS_particles[kk].pos[1], LOS_particles[kk].pos[2], LOS_particles[kk].h);
-            }
-          }
-        } else {
-          if (LOS_counts[k] > 0) {
-            message("node 0 recieving %lld particles", LOS_counts[k]);
-            MPI_Recv(LOS_particles, LOS_counts[k], lospart_mpi_type, k, 12, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-            for (size_t kk = 0; kk < LOS_counts[k]; kk++) {
-              fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0], LOS_particles[kk].pos[1], LOS_particles[kk].pos[2], LOS_particles[kk].h);
-            }
-          }
-        }
-      } else {
-          if (k > 0 && LOS_counts[k] > 0) {
-            message("node %i sending %lld particles to 0", k, LOS_counts[k]);
-            MPI_Send(LOS_particles, LOS_counts[k], lospart_mpi_type, 0, 12, MPI_COMM_WORLD);
-          }
-      }
-    } /* End of loop over each node. */
+    message("rank %i about to gather for LOS %i", e->nodeID, j);
+    MPI_Gatherv(&LOS_particles, LOS_list[j].particles_in_los_local, lospart_mpi_type,
+         &LOS_particles_total, LOS_counts, LOS_disps, lospart_mpi_type, 0,
+         MPI_COMM_WORLD);
+//
+//    if (e->nodeID == 0) {
+//       for (size_t kk = 0; kk < LOS_list[j].particles_in_los_total; kk++) {
+//          fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles_total[kk].pos[0], LOS_particles_total[kk].pos[1], LOS_particles_total[kk].pos[2], LOS_particles_total[kk].h); 
+//       }
+//    }  
+//    /* Loop over each rank and rank 0 saves LOS data. */
+//    for (int k = 0; k < e->nr_nodes; k++) {
+//      /* First dump any particles on node 0. */
+//      if (e->nodeID == 0) {
+//        if (k == 0) {
+//          if (LOS_counts[k] > 0) {
+//            message("node 0 saving %lld", LOS_counts[k]);
+//            for (size_t kk = 0; kk < LOS_counts[k]; kk++) {
+//              fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0], LOS_particles[kk].pos[1], LOS_particles[kk].pos[2], LOS_particles[kk].h);
+//            }
+//          }
+//        } else {
+//          if (LOS_counts[k] > 0) {
+//            message("node 0 recieving %lld particles", LOS_counts[k]);
+//            MPI_Recv(LOS_particles, LOS_counts[k], lospart_mpi_type, k, 12, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+//
+//            for (size_t kk = 0; kk < LOS_counts[k]; kk++) {
+//              fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0], LOS_particles[kk].pos[1], LOS_particles[kk].pos[2], LOS_particles[kk].h);
+//            }
+//          }
+//        }
+//      } else {
+//          if (k > 0 && LOS_counts[k] > 0) {
+//            message("node %i sending %lld particles to 0", k, LOS_counts[k]);
+//            MPI_Send(LOS_particles, LOS_counts[k], lospart_mpi_type, 0, 12, MPI_COMM_WORLD);
+//          }
+//      }
+//    } /* End of loop over each node. */
 #else
     for (size_t kk = 0; kk < LOS_list[j].particles_in_los_local; kk++) {
       fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0], LOS_particles[kk].pos[1], LOS_particles[kk].pos[2], LOS_particles[kk].h);
