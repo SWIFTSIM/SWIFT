@@ -2363,11 +2363,11 @@ void engine_step(struct engine *e) {
         !e->force_checks_only_all_active) {
       /* Is this a snapshot timestep (and the option is selected)? */
       if ((e->force_checks_snapshot_flag &&
-        e->force_checks_only_at_snapshots) ||
-        !e->force_checks_only_at_snapshots) {
-        
-          /* Do checks */
-          gravity_exact_force_compute(e->s, e);
+           e->force_checks_only_at_snapshots) ||
+          !e->force_checks_only_at_snapshots) {
+
+        /* Do checks */
+        gravity_exact_force_compute(e->s, e);
       }
     }
   }
@@ -2396,14 +2396,14 @@ void engine_step(struct engine *e) {
         !e->force_checks_only_all_active) {
       /* Is this a snapshot timestep (and the option is selected)? */
       if ((e->force_checks_snapshot_flag &&
-        e->force_checks_only_at_snapshots) ||
-        !e->force_checks_only_at_snapshots) {
-        
-          /* Do checks */
-          gravity_exact_force_check(e->s, e, 1e-1);
+           e->force_checks_only_at_snapshots) ||
+          !e->force_checks_only_at_snapshots) {
 
-          /* Reset flag waiting for next output time */
-          e->force_checks_snapshot_flag = 0;
+        /* Do checks */
+        gravity_exact_force_check(e->s, e, 1e-1);
+
+        /* Reset flag waiting for next output time */
+        e->force_checks_snapshot_flag = 0;
       }
     }
   }
