@@ -1271,7 +1271,7 @@ at the timesteps when a snapshot is being dumped, i.e.,
     only_when_all_active:   1    # Only compute exact forces during timesteps when all gparts are active.
     only_at_snapshots:      1    # Only compute exact forces during timesteps when a snapshot is being dumped.
 
-If ``only_when_all_active:1`` and ``only_when_all_active:1`` are enabled
-together, and all the gparts are not active during the timestep of the snapshot
-dump, the exact forces computation is performed on the first timestep at which
-all the gparts are active after that snapshot output timestep.
+If ``only_when_all_active:1`` and ``only_at_snapshots:1`` are enabled together,
+and all the gparts are not active during the timestep of the snapshot dump, the
+exact forces computation is performed on the first timestep at which all the
+gparts are active after that snapshot output timestep.
