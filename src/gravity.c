@@ -70,7 +70,7 @@ float ewald_fac;
  *
  * @param boxSize The side-length (L) of the volume.
  */
-void gravity_exact_force_ewald_init(double boxSize) {
+void gravity_exact_force_ewald_init(const double boxSize) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
@@ -325,8 +325,9 @@ void gravity_exact_force_ewald_init(double boxSize) {
  * @param corr_f (return) The Ewald correction for the force.
  * @param corr_p (return) The Ewald correction for the potential.
  */
-void gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
-                                        double corr_f[3], double *corr_p) {
+void gravity_exact_force_ewald_evaluate(const double rx, const double ry,
+                                        const double rz, double corr_f[3],
+                                        double *corr_p) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
@@ -556,7 +557,15 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         a_grav[2] += f * dz;
         pot += phi;
 
-        /* Apply Ewald correction for periodic BC */
+        /* Apply Ewald correction for periodic BC
+         *
+         * We also want to check what the tree and mesh do so we want to mimic
+         * that:
+         * - a_grav_short is the total acceleration multiplied by the
+         * short-range correction.
+         * - a_grav_long is the total acceleration (including Ewald correction)
+         * minus the short-range acceleration.
+         */
         if (periodic && r > 1e-5 * hi) {
 
           /* Compute trunctation for long and short range forces */
@@ -589,10 +598,10 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
       }
 
       /* Store the exact answer */
-      for (int ii = 0; ii < 3; ii++) {
-        gpi->a_grav_exact[ii] = a_grav[ii] * const_G;
-        gpi->a_grav_exact_short[ii] = a_grav_short[ii] * const_G;
-        gpi->a_grav_exact_long[ii] = a_grav_long[ii] * const_G;
+      for (int k = 0; k < 3; k++) {
+        gpi->a_grav_exact[k] = a_grav[k] * const_G;
+        gpi->a_grav_exact_short[k] = a_grav_short[k] * const_G;
+        gpi->a_grav_exact_long[k] = a_grav_long[k] * const_G;
       }
       gpi->potential_exact = pot * const_G;
 
