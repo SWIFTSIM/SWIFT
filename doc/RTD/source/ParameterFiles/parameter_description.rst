@@ -1263,3 +1263,23 @@ Showing all the parameters for a basic cosmologica test-case, one would have:
 	 snapshots. Snapshots at a given time would always have the same set of
 	 digits irrespective of the number of snapshots produced before.
 
+Gravity Force Checks
+--------------------
+
+By default, when the code is configured with ``--enable-gravity-force-checks``,
+the "exact" forces of all active gparts are computed during each timestep.
+
+To give a bit more control over this, you can select to only perform the exact
+force computation during the timesteps that all gparts are active, and/or only
+at the timesteps when a snapshot is being dumped, i.e.,
+
+.. code:: YAML
+
+  ForceChecks:
+    only_when_all_active:   1    # Only compute exact forces during timesteps when all gparts are active.
+    only_at_snapshots:      1    # Only compute exact forces during timesteps when a snapshot is being dumped.
+
+If ``only_when_all_active:1`` and ``only_at_snapshots:1`` are enabled together,
+and all the gparts are not active during the timestep of the snapshot dump, the
+exact forces computation is performed on the first timestep at which all the
+gparts are active after that snapshot output timestep.
