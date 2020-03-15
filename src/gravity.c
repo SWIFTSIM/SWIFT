@@ -469,6 +469,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
   const struct space *s = data->s;
   const struct part *parts = s->parts;
   const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -479,13 +480,14 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
     struct gpart *gpi = &gparts[i];
 
+    /* Get the particle ID */
     long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_stars)
       id = sparts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_black_hole)
-      error("Unexisting type");
+      id = bparts[-gpi->id_or_neg_offset].id;
     else
       id = gpi->id_or_neg_offset;
 
@@ -663,6 +665,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
   const struct part *parts = s->parts;
   const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
 
   /* File name */
   char file_name_swift[100];
@@ -692,13 +695,14 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
     struct gpart *gpi = &s->gparts[i];
 
+    /* Get the particle ID */
     long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_stars)
       id = sparts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_black_hole)
-      error("Unexisting type");
+      id = bparts[-gpi->id_or_neg_offset].id;
     else
       id = gpi->id_or_neg_offset;
 
