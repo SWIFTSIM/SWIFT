@@ -325,9 +325,8 @@ void gravity_exact_force_ewald_init(const double boxSize) {
  * @param corr_f (return) The Ewald correction for the force.
  * @param corr_p (return) The Ewald correction for the potential.
  */
-void gravity_exact_force_ewald_evaluate(const double rx, const double ry,
-                                        const double rz, double corr_f[3],
-                                        double *corr_p) {
+void gravity_exact_force_ewald_evaluate(double rx, double ry, double rz,
+                                        double corr_f[3], double *corr_p) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 

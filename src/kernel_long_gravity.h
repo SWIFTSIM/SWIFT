@@ -220,7 +220,7 @@ kernel_long_grav_force_eval_double(const double u, double *const W) {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
-  const double one_over_sqrt_pi = ((double)(M_2_SQRTPI * 0.5));
+  const double one_over_sqrt_pi = M_2_SQRTPI * 0.5;
 
   const double arg1 = u * 0.5;
   const double arg2 = -arg1 * arg1;

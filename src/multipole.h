@@ -97,7 +97,7 @@ struct grav_tensor {
   /* Number of gparts interacted through the tree. */
   long long num_interacted_tree;
 
-  /* Number of gparts interacted through the grid. */
+  /* Number of gparts interacted through the FFT mesh */
   long long num_interacted_pm;
 #endif
 
