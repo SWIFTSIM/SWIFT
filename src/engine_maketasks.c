@@ -1562,6 +1562,176 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
 /**
  * @brief Creates all the task dependencies for the gravity
+ * ALEXEI: attempt at parallelisation with threadpool
+ *
+ * @param e The #engine
+ */
+void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  for (int k = 0; k < num_elements; k++) {
+
+    /* Get a pointer to the task. */
+    //struct task *t = &sched->tasks[k];
+    struct task *t = &((struct task *)map_data)[k];
+
+    if (t->type == task_type_none) continue;
+
+    /* Get the cells we act on */
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+
+    /* Pointers to the parent cells for tasks going up and down the tree
+     * In the case where we are at the super-level we don't
+     * want the parent as no tasks are defined above that level. */
+    struct cell *ci_parent, *cj_parent;
+    if (ci->parent != NULL && ci->grav.super != ci)
+      ci_parent = ci->parent;
+    else
+      ci_parent = ci;
+
+    if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
+      cj_parent = cj->parent;
+    else
+      cj_parent = cj;
+
+/* Node ID (if running with MPI) */
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Self-interaction for self-gravity? */
+    if (t_type == task_type_self && t_subtype == task_subtype_grav) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci_nodeID != nodeID) error("Non-local self task");
+#endif
+
+      /* drift ---+-> gravity --> grav_down */
+      /* init  --/    */
+      scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+      scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+      scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+    }
+
+    /* Self-interaction for external gravity ? */
+    if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci_nodeID != nodeID) error("Non-local self task");
+#endif
+
+      /* drift -----> gravity --> end_gravity_force */
+      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
+    }
+
+    /* Otherwise, pair interaction? */
+    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
+
+      if (ci_nodeID == nodeID) {
+
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+      }
+      if (cj_nodeID == nodeID) {
+
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
+          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+        }
+      }
+    }
+
+    /* Otherwise, sub-self interaction? */
+    else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
+#endif
+      /* drift ---+-> gravity --> grav_down */
+      /* init  --/    */
+      scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+      scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+      scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+    }
+
+    /* Sub-self-interaction for external gravity ? */
+    else if (t_type == task_type_sub_self &&
+             t_subtype == task_subtype_external_grav) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci_nodeID != nodeID) error("Non-local sub-self task");
+#endif
+
+      /* drift -----> gravity --> end_force */
+      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
+    }
+
+    /* Otherwise, sub-pair interaction? */
+    else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
+
+      if (ci_nodeID == nodeID) {
+
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+      }
+      if (cj_nodeID == nodeID) {
+
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
+          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+        }
+      }
+    }
+
+    /* Otherwise M-M interaction? */
+    else if (t_type == task_type_grav_mm) {
+
+      if (ci_nodeID == nodeID) {
+
+        /* init -----> gravity --> grav_down */
+        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+      }
+      if (cj_nodeID == nodeID) {
+
+        /* init -----> gravity --> grav_down */
+        if (ci_parent != cj_parent) { /* Avoid double unlock */
+          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Creates all the task dependencies for the gravity
  *
  * @param e The #engine
  */
@@ -3250,7 +3420,9 @@ void engine_maketasks(struct engine *e) {
 
   /* Add the dependencies for the gravity stuff */
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
-    engine_link_gravity_tasks(e);
+    //engine_link_gravity_tasks(e);
+    threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
+                   sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
   if (e->verbose)
     message("Linking gravity tasks took %.3f %s.",
