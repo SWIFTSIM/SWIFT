@@ -1789,7 +1789,7 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -1836,7 +1836,7 @@ esac
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, GEAR_*, EAGLE default: none@:>@
+      [chemistry function @<:@none, GEAR_*, QLA, EAGLE default: none@:>@
       For GEAR, you need to provide the number of elements (e.g. GEAR_10)]
    )],
    [with_chemistry="$withval"],
@@ -2084,7 +2084,7 @@ esac
 #  Entropy floor
 AC_ARG_WITH([entropy-floor], 
     [AS_HELP_STRING([--with-entropy-floor=<floor>],
-       [entropy floor @<:@none, EAGLE, default: none@:>@] 
+       [entropy floor @<:@none, QLA, EAGLE, default: none@:>@] 
     )],
     [with_entropy_floor="$withval"],
     [with_entropy_floor="none"]
@@ -2144,7 +2144,7 @@ esac
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
-       [star formation @<:@none, EAGLE, GEAR, default: none@:>@] 
+       [star formation @<:@none, QLA, EAGLE, GEAR, default: none@:>@] 
     )],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
