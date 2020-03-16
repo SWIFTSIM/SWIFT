@@ -6161,7 +6161,7 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
   gp->time_bin = sp->time_bin;
 
   /* Synchronize masses, positions and velocities */
-  sp->mass = p->mass;
+  sp->mass = hydro_get_mass(p);
   sp->x[0] = p->x[0];
   sp->x[1] = p->x[1];
   sp->x[2] = p->x[2];
