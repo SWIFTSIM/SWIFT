@@ -1322,8 +1322,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Get some other useful values. */
   const int count_i = ci->hydro.count;
@@ -1728,7 +1728,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
   const int count_j = cj->hydro.count;
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
   const float dxj = cj->hydro.dx_max_sort;
 
   /* Get both particle caches from the runner and re-allocate
@@ -2077,8 +2077,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Get some other useful values. */
   const int count_i = ci->hydro.count;
