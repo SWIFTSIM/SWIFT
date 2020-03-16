@@ -369,6 +369,21 @@ INLINE static int star_formation_should_convert_to_star(
 }
 
 /**
+ * @brief Decides whether a new particle should be created or if the hydro
+ * particle needs to be transformed.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param starform The properties of the star formation model.
+ *
+ * @return 1 if a new spart needs to be created.
+ */
+INLINE static int star_formation_should_spawn_spart(
+    struct part* p, struct xpart* xp, const struct star_formation* starform) {
+  return 0;
+}
+
+/**
  * @brief Update the SF properties of a particle that is not star forming.
  *
  * @param p The #part.
@@ -409,6 +424,7 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
+ * @param convert_part Did we convert a part (or spawned one)?
  */
 INLINE static void star_formation_copy_properties(
     const struct part* p, const struct xpart* xp, struct spart* sp,
@@ -417,7 +433,8 @@ INLINE static void star_formation_copy_properties(
     const struct phys_const* phys_const,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct cooling_function_data* restrict cooling,
+    const int convert_part) {
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);
@@ -751,5 +768,20 @@ star_formation_no_spart_available(const struct engine* e, const struct part* p,
                                   const struct xpart* xp) {
   /* Nothing to do, we just skip it and deal with it next step */
 }
+
+/**
+ * @brief Compute some information for the star formation model based
+ * on all the particles that were read in.
+ *
+ * This is called once on start-up of the code.
+ *
+ * Nothing to do here for EAGLE.
+ *
+ * @param star_form The #star_formation structure.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+star_formation_first_init_stats(struct star_formation* star_form,
+                                const struct engine* e) {}
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */
