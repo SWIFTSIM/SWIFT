@@ -629,7 +629,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   const float H = cosmo->H;
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
   const float dxj = cj->hydro.dx_max_sort;
 
   /* Parts are on the left? */
@@ -943,8 +943,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
@@ -1198,8 +1198,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
@@ -1276,8 +1276,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
-  struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
@@ -1790,8 +1790,8 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
