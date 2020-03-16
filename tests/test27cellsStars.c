@@ -189,10 +189,10 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   shuffle_sparticles(cell->stars.parts, cell->stars.count);
 
   cell->hydro.sorted = 0;
-  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
+  cell->hydro.sort = NULL;
 
   cell->stars.sorted = 0;
-  for (int k = 0; k < 13; k++) cell->stars.sort[k] = NULL;
+  cell->stars.sort = NULL;
 
   return cell;
 }
@@ -200,8 +200,8 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
 void clean_up(struct cell *ci) {
   free(ci->hydro.parts);
   free(ci->stars.parts);
-  for (int k = 0; k < 13; k++)
-    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
+  free(ci->hydro.sort);
+  free(ci->stars.sort);
   free(ci);
 }
 

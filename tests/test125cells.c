@@ -361,7 +361,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   // shuffle_particles(cell->hydro.parts, cell->hydro.count);
 
   cell->hydro.sorted = 0;
-  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
+  cell->hydro.sort = NULL;
 
   return cell;
 }
@@ -369,8 +369,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 void clean_up(struct cell *ci) {
   free(ci->hydro.parts);
   free(ci->hydro.xparts);
-  for (int k = 0; k < 13; k++)
-    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
+  free(ci->hydro.sort);
   free(ci);
 }
 

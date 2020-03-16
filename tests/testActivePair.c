@@ -157,7 +157,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
 
   cell->hydro.sorted = 0;
-  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
+  cell->hydro.sort = NULL;
 
   return cell;
 }
