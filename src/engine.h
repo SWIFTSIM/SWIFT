@@ -547,6 +547,8 @@ void engine_launch(struct engine *e, const char *call);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
+void engine_compute_star_formation_stats(struct engine *e,
+                                         struct star_formation *starform);
 void engine_step(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, const size_t offset_parts,

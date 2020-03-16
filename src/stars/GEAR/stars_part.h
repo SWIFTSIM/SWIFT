@@ -37,6 +37,9 @@ struct spart {
   /*! Particle ID. */
   long long id;
 
+  /*! Progenitor ID */
+  long long prog_id;
+
   /*! Pointer to corresponding gravity part. */
   struct gpart* gpart;
 

@@ -1204,6 +1204,11 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+    /* Compute some stats for the star formation */
+    if (with_star_formation) {
+      star_formation_first_init_stats(&starform, &e);
+    }
+
     /* Get some info to the user. */
     if (myrank == 0) {
       const long long N_DM = N_total[swift_type_dark_matter] +
