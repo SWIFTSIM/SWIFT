@@ -5036,6 +5036,12 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   float min_mass[swift_type_count] = {
       e->s->min_part_mass,  e->s->min_gpart_mass, FLT_MAX, FLT_MAX,
       e->s->min_spart_mass, e->s->min_bpart_mass};
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
+                MPI_COMM_WORLD);
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the minimal mass collection worked */
   float min_part_mass_check = FLT_MAX;
@@ -5044,13 +5050,8 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     min_part_mass_check =
         min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
   }
-  if (min_part_mass_check != min_mass[swift_type_gas])
+  if (min_part_mass_check < min_mass[swift_type_gas])
     error("Error collecting minimal mass of gas particles.");
-#endif
-
-#ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
-                MPI_COMM_WORLD);
 #endif
 
   /* Do the same for the velocity norm sum */

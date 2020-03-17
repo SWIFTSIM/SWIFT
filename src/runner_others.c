@@ -336,6 +336,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             if (swift_star_formation_model_creates_stars) {
               /* Check if we should create a new particle or transform one */
               if (spawn_spart) {
+                /* Spawn a new spart (+ gpart) */
                 sp = cell_spawn_new_spart_from_part(e, c, p, xp);
               } else {
                 /* Convert the gas particle to a star particle */
@@ -354,7 +355,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(
                   p, xp, sp, e, sf_props, cosmo, with_cosmology, phys_const,
-                  hydro_props, us, cooling, spawn_spart);
+                  hydro_props, us, cooling, !spawn_spart);
 
               /* Update the Star formation history */
               star_formation_logger_log_new_spart(sp, &c->stars.sfh);

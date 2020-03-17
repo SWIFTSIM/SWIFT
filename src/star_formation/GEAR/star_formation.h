@@ -235,17 +235,16 @@ INLINE static void star_formation_copy_properties(
   /* Store the current mass */
   const float mass_gas = hydro_get_mass(p);
   if (!convert_part) {
+    const float mass_star = starform->mass_stars;
+    const float new_mass_gas = mass_gas - mass_star;
+
     /* Update the spart */
-    const float min_mass =
-        starform->mass_stars * starform->min_mass_frac_plus_one;
-    const float mass_star =
-        mass_gas > min_mass ? starform->mass_stars : mass_gas;
     sp->mass = mass_star;
     sp->gpart->mass = mass_star;
 
     /* Update the part */
-    hydro_set_mass(p, mass_gas - mass_star);
-    p->gpart->mass = mass_gas - mass_star;
+    hydro_set_mass(p, new_mass_gas);
+    p->gpart->mass = new_mass_gas;
   } else {
     sp->mass = mass_gas;
   }
@@ -408,10 +407,11 @@ star_formation_first_init_stats(struct star_formation* star_form,
                 MPI_COMM_WORLD);
 #endif
 
-  star_form->mass_stars = avg_mass / e->total_nr_parts;
+  star_form->mass_stars =
+      avg_mass / (e->total_nr_parts * star_form->n_stars_per_part);
 
   if (e->nodeID == 0) {
-    message("Average hydro mass: %g", star_form->mass_stars);
+    message("Mass new stars: %g", star_form->mass_stars);
   }
 }
 
