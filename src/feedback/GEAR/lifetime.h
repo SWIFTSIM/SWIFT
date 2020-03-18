@@ -149,9 +149,6 @@ __attribute__((always_inline)) INLINE static void lifetime_read_from_tables(
     lt->constant[i] = tmp[i + 2 * dim];
   }
 
-  /* Change units from yr into Myr */
-  lt->constant[dim - 1] -= 6;
-
   /* Cleanup everything */
   free(tmp);
   h5_close_group(file_id, group_id);
@@ -196,6 +193,11 @@ __attribute__((always_inline)) INLINE static void lifetime_init(
 
   /* overwrite the parameters if found in the params */
   lifetime_read_from_params(lt, params);
+
+  /* Change units from yr into Myr */
+  const int dim = 3;
+  lt->constant[dim - 1] -= 6;
+
 }
 
 /**
