@@ -2425,6 +2425,8 @@ void engine_step(struct engine *e) {
 
   if (e->nodeID == 0) {
 
+    const ticks tic_files = getticks();
+
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
@@ -2438,6 +2440,7 @@ void engine_step(struct engine *e) {
 
     /* Write the star formation information to the file */
     if (e->policy & engine_policy_star_formation) {
+
       star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
                                               e->cosmology->a, e->cosmology->z,
                                               e->sfh, e->step);
@@ -2460,6 +2463,10 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
 #endif
+
+    if (e->verbose)
+      message("Writing step info to files took %.3f %s",
+              clocks_from_ticks(getticks() - tic_files), clocks_getunit());
   }
 
   /* We need some cells to exist but not the whole task stuff. */

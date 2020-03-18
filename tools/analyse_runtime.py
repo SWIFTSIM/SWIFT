@@ -97,6 +97,7 @@ labels = [
     ["engine_print_task_counts:", 0],
     ["engine_drift_top_multipoles:", 0],
     ["Communicating rebuild flag", 0],
+    ["Writing step info to files", 0],
     ["task_dump_all:", 0],
     ["task_dump_stats:", 0],
     ["task_dump_active:", 0],
