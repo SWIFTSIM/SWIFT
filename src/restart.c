@@ -160,6 +160,8 @@ void restart_write(struct engine *e, const char *filename) {
  */
 void restart_read(struct engine *e, const char *filename) {
 
+  const ticks tic = getticks();
+
   FILE *stream = fopen(filename, "r");
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
@@ -190,6 +192,10 @@ void restart_read(struct engine *e, const char *filename) {
 
   engine_struct_restore(e, stream);
   fclose(stream);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
