@@ -1,0 +1,108 @@
+
+
+\section{Equations}
+
+
+
+\subsection{Partition of Unity and Related Quantities}
+
+The partition of unity is defined as:
+
+\begin{align}
+	\psi_i(\x) &= \frac{1}{\omega(\x)} W(\x - \x_i, h(\x))		\label{psi} \\
+	\omega(\x) &= \sum_j W(\x - \x_j, h(\x)) 					\label{omega}
+\end{align}
+
+where $h(\x)$ is some ``kernel size'' and $\omega(\x)$ is used to normalise the volume partition at any point $\x$.
+We use the compact support radius $H$ of the kernels as $h$.
+
+
+
+
+
+It can be shown that (provided $W(\x)$ is normalized, i.e. $\int_V W(\x) \D V = 1$):
+
+\begin{align}
+	V_i &= \int_V \psi_i(\x) \de V = \frac{1}{\omega(\x_i)} \\ 					\label{psi_volume_integral}
+	V &= \sum_i V_i \\
+	\int_V f(\x) \D V &= \sum_i f(\x_i) V_i + \mathcal{O}(h^2) 					\label{vol_integral_fx}
+\end{align}
+
+Eq. (\ref{vol_integral_fx}) can be derived by Taylor-expanding $f(\x)$ around $\x_i$ and integrating the first order term by parts to show that it is zero.
+
+
+
+
+
+
+
+\subsection{Meshless Hydrodynamics \`a la Hopkins}
+
+
+
+Following \cite{hopkinsGIZMONewClass2015}, we arrive at the equation
+
+\begin{equation}
+	\frac{\D}{\D t} (V_i \U_{k,i}) + \sum_j \F_{k,ij} \cdot \Aijm = 0
+\end{equation}
+
+
+with
+
+\begin{equation}
+	\Aijm^\alpha = V_i \psitilde_j^\alpha (\x_i) - V_j\psitilde_i^\alpha (\x_j) 			\label{Hopkins}
+\end{equation}
+
+for every component $k$ of the Euler equations and every gradient component $\alpha$
+
+The $\psitilde(\x)$ come from the $\mathcal{O}(h^2)$ accurate discrete gradient expression from \cite{lansonRenormalizedMeshfreeSchemes2008}:
+
+\begin{align}
+	\frac{\del}{\del x_{\alpha}} f(\x) \big{|}_{\x_i} &= 
+	\sum_j \left( f(\x_j) - f(\x_i) \right) \psitilde_j^\alpha (\x_i) 	\\		\label{gradient}
+	\psitilde_j^\alpha (\x_i) &= \sum_{\beta = 1}^{\beta=\nu} \mathbf{B}_i^{\alpha \beta} 
+	(\x_j - \x_i)^\beta \psi_j(\x_i) 	\\
+	\mathbf{B}_i &= \mathbf{E_i} ^ {-1} \\ 
+	\mathbf{E}_i^{\alpha \beta} &= \sum_j (\x_j - \x_i)^\alpha (\x_j - \x_i)^\beta \psi_j(\x_i)
+\end{align}
+
+
+
+where $\alpha$ and $\beta$ again represent the coordinate components for $\nu$ dimensions.
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Meshless Hydrodynamics \`a la Ivanova}
+
+
+
+Following \cite{ivanovaCommonEnvelopeEvolution2013}, we arrive at the equation
+
+\begin{equation}
+    \frac{\D}{\D t} (V_i \U_{k,i}) + \sum_j \F_{k,ij} \cdot \Aijm = 0
+\end{equation}
+
+
+In the paper, no discrete expression for \Aij is given, instead:
+\begin{equation}
+    \Aijm = \int_V \left[ \psi_j(\x) \nabla \psi_i(\x) - \psi_i(\x) \nabla \psi_j(\x) \right] \D V
+\end{equation}
+
+
+By Taylor-expanding the gradients of $\psi$ the volume integral can be discretised as:
+
+\begin{equation}
+    \Aijm^\alpha = V_i \nabla^\alpha  \psi_j (\x_i) - V_j \nabla^\alpha  \psi_i (\x_j)	+ \mathcal{O}(h^2)	\label{Ivanova}
+\end{equation}
+
+This time we get analytical gradients of $\psi$ instead of $\psitilde$.
+Note that the indices $i$ and $j$ in these equations are switched compared to the one given in \cite{ivanovaCommonEnvelopeEvolution2013} so that the evolution equations for Hopkins and Ivanova versions are identical.

@@ -1,0 +1,282 @@
+%=========================================
+\section{Explicit Computations}
+%=========================================
+
+Main purpose of this section is to have the explicit computations written down clearly somewhere.
+Implicitly swallowing indices in the formulae can make programming life a nightmare, so here we go.
+
+
+
+%=========================================
+\subsection{Normalization}
+%=========================================
+
+
+To compute the normalisations \ref{omega}, we need to sum over all neighbouring particles and sum the kernels correctly.
+To evaluate the kernels, we use the \verb|kernel_deval(xij, wij, wij_dx)| function in SWIFT.
+
+If a kernel is defined as
+\begin{align*}
+	W_i(\x) = W(\x - \x_i, h(\x)) = \frac{1}{h(\x)^\nu} w\left(\frac{| \x - \x_i |}{h(\x)} \right)
+\end{align*}
+
+then \verb|kernel_deval| computes 
+
+\begin{align*}
+	\mathtt{wij} &= w(\mathtt{xij}) \\
+	\text{and \quad} \mathtt{wij\_dx} &= \frac{\del w(r)}{\del r} \big{|} _{r = \mathtt{xij}} \\ 
+	\text{with \quad} \mathtt{xij} &= \frac{| \x_i - \x_j |}{h(\x_i)}
+\end{align*}
+
+
+
+So for a specific particle position $i$, we need to compute
+\begin{align*}
+	\omega(\x_i) 	&= \sum_j W(\x_i - \x_j, h(\x_i)) \\
+					&= \sum_j \frac{1}{h(\x_i)^\nu} w\left( \frac{| \x_i - \x_j |}{h(\x_i)} \right) \\
+					&= \sum_j \frac{1}{h_i^\nu} \ \mathtt{ wij }
+\end{align*}
+
+
+with $h_i = h(\x_i)$.
+
+
+
+
+
+
+
+
+%================================================
+\subsection{Analytical gradients of $\psi(\x)$}
+%================================================
+
+For the \cite{ivanovaCommonEnvelopeEvolution2013} expression of the effective surfaces \Aij, we need analytical gradients in Cartesian coordinates of $\psi_i(\x_j)$.
+
+From eq. \ref{psi} we have that
+\begin{align*}
+	\psi_j(\x_i) &= \frac{ W(\x_i - \x_j, h(\x_i))}{\omega(\x_i)}\\
+\end{align*}
+
+Let $r_{ij} \equiv |\x_i - \x_j|$ and $q_{ij} \equiv \frac{r_{ij}}{h_i}$. Then
+
+\begin{align}
+	\deldx \psi_j(\x_i) 	&= \deldx \frac{ W(\x_i - \x_j, h(\x_i))}{\omega(\x_i)} 
+							=  \deldx \frac{ W(r_{ij}, h_i)}{\omega(\x_i)}		\nonumber \\
+%
+							&= \frac{ 
+									\DELDX{W}(r_{ij}, h_i) \  \omega(\x_i) -
+									W(r_{ij}, h_i) \DELDX{\omega}(\x_i)
+									}{\omega(\x_i)^2}		\nonumber  \\
+%
+							&= \frac{1}{\omega(\x_i)} \DELDX{W}(r_{ij}, h_i) -
+							\frac{1}{\omega(\x_i)^2} W(r_{ij}, h_i) \DELDX{}\sum_k W(r_{ik}, h_i)		\nonumber \\
+%
+							&= \frac{1}{\omega(\x_i)} \DELDX{W}(r_{ij}, h_i) -
+									\frac{1}{\omega(\x_i)^2} W(r_{ij}, h_i) \sum_k \DELDX{W}(r_{ik}, h_i)	\label{grad_psi}
+\end{align}
+
+
+
+
+
+
+If a kernel\footnote{
+Helpful way to think of the indices: $W_j(\x_i) = W(|\x_j - \x_i|, h_i)$ is the kernel value of particle $i$ at position $\x_i$ evaluated at the position $\x_j$.
+Personally I would've used the indices the other way around for simplified thinking, but I'm going to stick to this notation because Hopkins also uses it.
+}
+is defined as
+
+\begin{align*}
+	W_j(\x_i)	 = W(\x_i - \x_j, h_i))
+				 = \frac{1}{h_i^\nu} w \left(\frac{| \x_i - \x_j |}{h_i} \right)
+				 =  \frac{1}{h_i^\nu} w ( q_{ij} )
+\end{align*}
+
+
+
+
+
+and we assume that the smoothing length $h_i$ is treated as constant at this point, then the gradient of the kernel is given by
+
+\begin{align}
+	\deldx W_j (\x_i) 	&= \deldx \left( \frac{1}{h_i^\nu} w ( q_{ij} )	\right)	\nonumber \\
+						&= \frac{1}{h_i^\nu} \frac{\del w(q_{ij})}{\del q_{ij}} \frac{\del q_{ij}(r_{ij})}{\del r_{ij}} \frac{\del r_{ij}}{\del x} 	\label{grad_kernel}
+\end{align}
+
+
+
+
+We now use
+\begin{align}
+	\frac{\del q_{ij}(r_{ij})}{\del r_{ij}} 	&= \frac{\del}{\del r_{ij}} \frac{r_{ij}}{h_i} = \frac{1}{h_i}		\label{dqdr} \\
+	\DELDX{r_{ij}}		&= \deldx \sqrt{(\x_i - \x_j)^2}
+							= \frac{1}{2} \frac{1}{\sqrt{(\x_i - \x_j)^2}} \cdot 2 (\x_i - \x_j) \nonumber \\
+						&= \frac{\x_i - \x_j}{r_{ij}} 	\label{drdx}
+\end{align}
+
+
+
+
+
+
+
+
+
+
+
+To be perfectly clear, we should in fact write
+\begin{align*}
+	r_j(\x) & \equiv | \x - \x_j | \\
+\end{align*}
+
+which again leads to
+
+\begin{align*}
+	\DELDX{r_{ij}}		&= \DELDX{r_j(\x_i)} = \DELDX{r_j(\x)} \bigg{|}_{\x = \x_i} \\
+						&= \deldx \sqrt{(\x - \x_j)^2} \big{|}_{\x = \x_i}
+							= \frac{1}{2} \frac{1}{\sqrt{(\x - \x_j)^2}} \cdot 2 (\x - \x_j)  \big{|}_{\x = \x_i} \\
+						&= \frac{\x - \x_j}{r_{j}(\x)} \big{|}_{\x = \x_i} 
+							= \frac{\x_i - \x_j}{r_{ij}}
+\end{align*}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Inserting expressions \ref{dqdr} and \ref{drdx} in \ref{grad_kernel}, we obtain
+\begin{equation}
+	\deldx W_j (\x_i)  = \frac{1}{h_i^{\nu + 1}} \frac{\del w(q_{ij})}{\del q_{ij}}  \frac{\x_i - \x_j}{r_{ij}} 	\label{grad_kernel_final}
+\end{equation}
+
+
+
+$\frac{\del w(q_{ij})}{\del q_{ij}}$ is given by \verb|wij_dx| of \verb|kernel_deval|.
+
+
+
+
+
+
+
+Finally, inserting \ref{grad_kernel_final} in \ref{grad_psi} we get
+\begin{align}
+	\deldx \psi_j (\x_i) &= 
+		\frac{1}{\omega(\x_i)} \frac{1}{h_i^{\nu + 1}} \deldr{w}(r_{ij}, h_i)  \frac{\x_i - \x_j}{r_{ij}} 	 -
+		\frac{1}{\omega(\x_i)^2} W(r_{ij}, h_i) \sum_k \frac{1}{h_i^{\nu + 1}} \deldr{w}(r_{ik}, h_i)  \frac{\x_i - \x_k}{r_{ik}} \nonumber \\
+   	 &= 
+   		\frac{1}{\omega(\x_i)} \frac{1}{h_i^{\nu + 1}} \mathtt{wij\_dx}  \frac{\x_i - \x_j}{r_{ij}} 	 -
+   		\frac{1}{\omega(\x_i)^2} W(r_{ij}, h_i) \frac{1}{h_i^{\nu + 1}} \sum_k \mathtt{wik\_dx}  \frac{\x_i - \x_k}{r_{ik}}
+\end{align}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The definition of $r_{ij}$ requires a bit more discussion.
+Since kernels used in hydrodynamics (at least in those methods currently implemented in SWIFT) are usually taken to be spherically symmetric, we might as well have defined
+
+\begin{align*}
+r'_{ij} = |\x_j - \x_i |
+\end{align*}
+
+which would leave the evaluation of the kernels invariant [$r'_{ij} = r_{ij}$], but the gradients would have the opposite direction:
+
+\begin{align*}
+\DELDX{r'_{ij}}	
+=   \frac{\x_j - \x_i}{r'_{ij}} 
+= - \frac{\x_i - \x_j}{r_{ij}}
+= - \DELDX{r_{ij}}
+\end{align*}
+
+So which definition should we take? \\
+
+
+Consider a one-dimensional case where we choose two particles $i$ and $j$ such that $x_j > x_i$ and $q_{ij} = | x_j - x_i | / h_i < H$, where $H$ is the compact support radius of the kernel of choice.
+Because we're considering a one-dimensional case with $x_j > x_i$, we can now perform a simple translation such that particle $i$ is at the origin, i.e. $x'_i = 0$ and $x'_j = x_j - x_i = | x_j - x_i | = r_{ij}$.
+In this scenario, the gradient in Cartesian coordinates and in spherical coordinates must be the same:
+
+
+\begin{align}
+	\frac{\del}{\del x'} W (|x_i' - x'|, h_i)  \big{|}_{x' = x_j' } &= \frac{\del}{\del r_{ij}} W (r_{ij}, h_i) 		\nonumber\\
+%
+	\Rightarrow \quad \frac{1}{h_i^\nu} \frac{\del w(q'_{ij})}{\del q'_{ij}} \frac{\del q'_{ij}(r'_{ij})}{\del r'_{ij}} \frac{\del r'_{i}(x')}{\del x'}	  \big{|}_{x' = x_j' }  &=
+		\frac{1}{h_i^\nu} \frac{\del w(q_{ij})}{\del q_{ij}} \frac{\del q_{ij}(r_{ij})}{\del r_{ij}}				\label{spher_cart}
+\end{align}
+
+
+
+
+We have the trivial case where
+\begin{align*}
+	r'_{ij} &= |x_i' - x_j'| = | x_i - x_j | = r_{ij} \\
+	q'_{ij} &= r'_{ij}/h_i = q_{ij} \\
+	\Rightarrow \quad \frac{\del w(q'_{ij})}{\del q'_{ij}} &= \frac{\del w(q_{ij})}{\del q_{ij}}, \quad \frac{\del q'_{ij}(r'_{ij})}{\del r'_{ij}} = \frac{\del q_{ij}(r_{ij})}{\del r_{ij}}
+\end{align*}
+
+
+
+giving us the condition from \ref{spher_cart}:
+
+
+
+
+
+
+\begin{equation}
+	\frac{\del r'_{i}(x')}{\del x'}	  \big{|}_{x' = x_j' } = 1 = \frac{\del r_{i}(x)}{\del x}
+\end{equation}
+
+
+this is satisfied for
+\begin{align*}
+	r_j(\x) &= | \x - \x_j | \\ 
+	\Rightarrow r_{ij} &= | \x_i - \x_j |,\ \text{ not } \ r_{ij} = | \x_j - \x_i |
+\end{align*}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
