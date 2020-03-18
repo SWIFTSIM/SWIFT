@@ -2517,7 +2517,7 @@ void engine_step(struct engine *e) {
                        e->cosmology);
 
   if (e->verbose)
-    message("Updating global quantities took %.3f %s",
+    message("Updating general quantities took %.3f %s",
             clocks_from_ticks(getticks() - tic_updates), clocks_getunit());
 
   /* Trigger a tree-rebuild if we passed the frequency threshold */
