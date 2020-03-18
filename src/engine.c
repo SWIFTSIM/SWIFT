@@ -2496,14 +2496,16 @@ void engine_step(struct engine *e) {
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
 
+  /*****************************************************/
+  /* OK, we now know what the next end of time-step is */
+  /*****************************************************/
+
+  const ticks tic_updates = getticks();
+
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, e->s);
-
-  /*****************************************************/
-  /* OK, we now know what the next end of time-step is */
-  /*****************************************************/
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
@@ -2513,6 +2515,10 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  if (e->verbose)
+    message("Updating global quantities took %.3f %s",
+            clocks_from_ticks(getticks() - tic_updates), clocks_getunit());
 
   /* Trigger a tree-rebuild if we passed the frequency threshold */
   if ((e->policy & engine_policy_self_gravity) &&
