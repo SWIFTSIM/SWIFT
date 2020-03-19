@@ -108,6 +108,9 @@ struct scheduler {
 
   /* 'Pointer' to the seed for the random number generator */
   pthread_key_t local_seed_pointer;
+
+  /* Total ticks spent running the tasks */
+  ticks total_ticks;
 };
 
 /* Inlined functions (for speed). */
@@ -203,5 +206,7 @@ void scheduler_free_tasks(struct scheduler *s);
 void scheduler_write_dependencies(struct scheduler *s, int verbose);
 void scheduler_write_task_level(const struct scheduler *s);
 void scheduler_dump_queues(struct engine *e);
+void scheduler_report_task_times(const struct scheduler *s,
+                                 const int nr_threads);
 
 #endif /* SWIFT_SCHEDULER_H */

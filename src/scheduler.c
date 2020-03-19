@@ -1116,6 +1116,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 #endif
   t->tic = 0;
   t->toc = 0;
+  t->total_ticks = 0;
 
   if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
@@ -1317,6 +1318,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_unlocks = 0;
   s->completed_unlock_writes = 0;
   s->active_count = 0;
+  s->total_ticks = 0;
 
   /* Set the task pointers in the queues. */
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -2043,6 +2045,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
     t->toc = getticks();
+    t->total_ticks += t->toc - t->tic;
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2083,6 +2086,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
   /* Task definitely done. */
   if (!t->implicit) {
     t->toc = getticks();
+    t->total_ticks += t->toc - t->tic;
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2365,4 +2369,68 @@ void scheduler_dump_queues(struct engine *e) {
     queue_dump(engine_rank, l, file_thread, &s->queues[l]);
   }
   fclose(file_thread);
+}
+
+void scheduler_report_task_times_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  struct task *tasks = (struct task *)map_data;
+  float time_local[task_category_count] = {0};
+  float *time_global = (float *)extra_data;
+
+  /* Gather the times spent in the different task categories */
+  for (int i = 0; i < num_elements; ++i) {
+
+    const struct task *t = &tasks[i];
+    const float total_time = clocks_from_ticks(t->total_ticks);
+    const enum task_categories cat = task_get_category(t);
+    time_local[cat] += total_time;
+  }
+
+  /* Update the global counters */
+  for (int i = 0; i < task_category_count; ++i) {
+    atomic_add_f(&time_global[i], time_local[i]);
+  }
+}
+
+/**
+ * @brief Display the time spent in the different task categories.
+ *
+ * @param s The #scheduler.
+ * @param nr_threads The number of threads used in the engine.
+ */
+void scheduler_report_task_times(const struct scheduler *s,
+                                 const int nr_threads) {
+
+  const ticks tic = getticks();
+
+  /* Initialise counters */
+  float time[task_category_count] = {0};
+  threadpool_map(s->threadpool, scheduler_report_task_times_mapper, s->tasks,
+                 s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                 time);
+
+  /* Total CPU time spent in engine_launch() */
+  const float total_tasks_time = clocks_from_ticks(s->total_ticks) * nr_threads;
+
+  /* Compute the dead time */
+  float total_time = 0.;
+  for (int i = 0; i < task_category_count; ++i) {
+    total_time += time[i];
+  }
+  const float dead_time = total_tasks_time - total_time;
+
+  message("*** CPU time spent in different task categories:");
+  for (int i = 0; i < task_category_count; ++i) {
+    message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i], time[i],
+            clocks_getunit(), time[i] / total_tasks_time * 100.);
+  }
+  message("*** %20s: %8.2f %s (%.2f %%)", "dead time", dead_time,
+          clocks_getunit(), dead_time / total_tasks_time * 100.);
+  message("*** %20s: %8.2f %s (%.2f %%)", "total", total_tasks_time,
+          clocks_getunit(), total_tasks_time / total_tasks_time * 100.);
+
+  /* Done. Report the time spent doing this analysis */
+  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 }

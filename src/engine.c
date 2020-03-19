@@ -1670,6 +1670,12 @@ void engine_rebuild(struct engine *e, int repartitioned,
   e->forcerebuild = 0;
   e->restarting = 0;
 
+  /* Report the time spent in the different task categories */
+  if (e->verbose) scheduler_report_task_times(&e->sched, e->nr_threads);
+
+  /* Give some breathing space */
+  scheduler_free_tasks(&e->sched);
+
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
@@ -2113,6 +2119,9 @@ void engine_launch(struct engine *e, const char *call) {
 
   /* Sit back and wait for the runners to come home. */
   swift_barrier_wait(&e->wait_barrier);
+
+  /* Store the wallclock time */
+  e->sched.total_ticks += getticks() - tic;
 
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
