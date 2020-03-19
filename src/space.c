@@ -1201,7 +1201,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (s->e->nodeID == 0 || verbose) message("(re)building space");
   fflush(stdout);
-
+#endif
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Reset the cell counter */
   last_cell_id = 1;
 #endif
