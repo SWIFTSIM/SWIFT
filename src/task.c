@@ -112,6 +112,11 @@ const char *subtaskID_names[task_subtype_count] = {
     "bh_density", "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
     "bh_feedback"};
 
+const char *task_category_names[task_category_count] = {
+    "drift",       "sort",    "hydro",          "gravity", "feedback",
+    "black holes", "cooling", "star formation", "limiter", "time integration",
+    "mpi",         "fof",     "others"};
+
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
 MPI_Comm subtaskMPI_comms[task_subtype_count];
@@ -1252,4 +1257,102 @@ void task_dump_active(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief Return the #task_categories of a given #task.
+ *
+ * @param t The #task.
+ */
+enum task_categories task_get_category(const struct task *t) {
+
+  switch (t->type) {
+
+    case task_type_cooling:
+      return task_category_cooling;
+
+    case task_type_star_formation:
+      return task_category_star_formation;
+
+    case task_type_drift_part:
+    case task_type_drift_spart:
+    case task_type_drift_bpart:
+    case task_type_drift_gpart:
+      return task_category_drift;
+
+    case task_type_sort:
+    case task_type_stars_sort:
+    case task_type_stars_resort:
+      return task_category_sort;
+
+    case task_type_send:
+    case task_type_recv:
+      return task_category_mpi;
+
+    case task_type_kick1:
+    case task_type_kick2:
+    case task_type_timestep:
+      return task_category_time_integration;
+
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
+      return task_category_limiter;
+
+    case task_type_ghost:
+    case task_type_extra_ghost:
+    case task_type_end_hydro_force:
+      return task_category_hydro;
+
+    case task_type_stars_ghost:
+      return task_category_feedback;
+
+    case task_type_bh_density_ghost:
+    case task_type_bh_swallow_ghost2:
+      return task_category_black_holes;
+
+    case task_type_init_grav:
+    case task_type_grav_long_range:
+    case task_type_grav_mm:
+    case task_type_grav_down:
+    case task_type_grav_mesh:
+    case task_type_end_grav_force:
+      return task_category_gravity;
+
+    case task_type_self:
+    case task_type_pair:
+    case task_type_sub_self:
+    case task_type_sub_pair: {
+      switch (t->subtype) {
+
+        case task_subtype_density:
+        case task_subtype_gradient:
+        case task_subtype_force:
+          return task_category_hydro;
+
+        case task_subtype_limiter:
+          return task_category_limiter;
+
+        case task_subtype_grav:
+        case task_subtype_external_grav:
+          return task_category_gravity;
+
+        case task_subtype_stars_density:
+        case task_subtype_stars_feedback:
+          return task_category_feedback;
+
+        case task_subtype_bh_density:
+        case task_subtype_bh_swallow:
+        case task_subtype_do_gas_swallow:
+        case task_subtype_do_bh_swallow:
+        case task_subtype_bh_feedback:
+          return task_category_black_holes;
+
+        default:
+          return task_category_others;
+      }
+    }
+
+    default:
+      return task_category_others;
+  }
 }
