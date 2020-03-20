@@ -298,8 +298,13 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
     struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* cd, const struct cosmology* cosmo) {
 
+#ifdef SPHENIX_SPH
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = p->viscosity.div_v;
+#else
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->density.div_v;
+#endif
 }
 
 /**
