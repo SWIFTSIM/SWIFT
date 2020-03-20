@@ -113,15 +113,30 @@ struct supernovae_ia {
  */
 struct supernovae_ii {
 
-  /*! Integrated (over the IMF) mass fraction of metals ejected by a supernovae
-   */
-  struct interpolation_1d integrated_yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  /*! Yields not integrated */
+  struct {
+    /*! Mass fraction of metals ejected by a supernovae. */
+    struct interpolation_1d yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
+    
+    /*! Total mass fraction ejected. */
+    struct interpolation_1d ejected_mass_processed;
 
-  /*! Total mass fraction ejected (integrated over the IMF) */
-  struct interpolation_1d integrated_ejected_mass_processed;
+    /*! Mass fraction ejected and not processed (=> with the star metallicity). */
+    struct interpolation_1d ejected_mass;
+  } raw;
 
-  /*! Mass fraction ejected and not processed (=> with the star metallicity) */
-  struct interpolation_1d integrated_ejected_mass;
+  /*! Yields integrated */
+  struct {
+    /*! Integrated (over the IMF) mass fraction of metals ejected by a supernovae
+     */
+    struct interpolation_1d yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
+    
+    /*! Total mass fraction ejected (integrated over the IMF) */
+    struct interpolation_1d ejected_mass_processed;
+
+    /*! Mass fraction ejected and not processed (=> with the star metallicity) */
+    struct interpolation_1d ejected_mass;
+  } integrated;
 
   /*! Minimal mass for a SNII */
   float mass_min;

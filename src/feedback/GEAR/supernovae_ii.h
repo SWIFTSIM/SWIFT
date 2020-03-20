@@ -33,15 +33,22 @@ int supernovae_ii_can_explode(const struct supernovae_ii *snii, float m_low,
                               float m_high);
 float supernovae_ii_get_number_per_unit_mass(const struct supernovae_ii *snii, float m1,
 					     float m2);
-void supernovae_ii_get_yields(const struct supernovae_ii *snii, float log_m1,
-                              float log_m2, float *yields);
-float supernovae_ii_get_ejected_mass_fraction(const struct supernovae_ii *snii,
-                                              float log_m1, float log_m2);
+void supernovae_ii_get_yields_from_integral(const struct supernovae_ii *snii, float log_m1,
+					    float log_m2, float *yields);
+void supernovae_ii_get_yields_from_raw(const struct supernovae_ii *snii, float log_m,
+				       float *yields);
+float supernovae_ii_get_ejected_mass_fraction_from_integral(const struct supernovae_ii *snii,
+							    float log_m1, float log_m2);
+float supernovae_ii_get_ejected_mass_fraction_from_raw(const struct supernovae_ii *snii,
+						       float log_m);
 
-float supernovae_ii_get_ejected_mass_fraction_processed(
+float supernovae_ii_get_ejected_mass_fraction_processed_from_integral(
     const struct supernovae_ii *snii, float log_m1, float log_m2);
+float supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
+    const struct supernovae_ii *snii, float log_m);
 void supernovae_ii_read_yields_array(
-    struct supernovae_ii *snii, struct interpolation_1d *interp,
+    struct supernovae_ii *snii, struct interpolation_1d *interp_raw,
+    struct interpolation_1d *interp_int,
     const struct phys_const *phys_const, const struct stellar_model *sm,
     hid_t group_id, const char *hdf5_dataset_name, hsize_t *previous_count,
     int interpolation_size);

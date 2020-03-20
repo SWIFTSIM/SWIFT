@@ -193,6 +193,13 @@ float initial_mass_function_get_coefficient(
 float initial_mass_function_get_integral_xi(
     const struct initial_mass_function *imf, float m1, float m2) {
 
+  /* Ensure the masses to be withing the limits */
+  m1 = min(m1, imf->mass_max);
+  m1 = max(m1, imf->mass_min);
+
+  m2 = min(m2, imf->mass_max);
+  m2 = max(m2, imf->mass_min);
+
   int k = -1;
   /* Find the correct part */
   for (int i = 0; i < imf->n_parts; i++) {
@@ -259,16 +266,14 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
  * @return The integral of the mass fraction.
  */
 float initial_mass_function_get_integral_imf(
-    const struct initial_mass_function *imf, const float m1, const float m2) {
+    const struct initial_mass_function *imf, float m1, float m2) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (m1 > imf->mass_max || m1 < imf->mass_min)
-    error("Mass 1 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m1, imf->mass_max);
-  if (m2 > imf->mass_max || m2 < imf->mass_min)
-    error("Mass 2 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m2, imf->mass_max);
-#endif
+  /* Ensure the masses to be withing the limits */
+  m1 = min(m1, imf->mass_max);
+  m1 = max(m1, imf->mass_min);
+
+  m2 = min(m2, imf->mass_max);
+  m2 = max(m2, imf->mass_min);
 
   for (int i = 0; i < imf->n_parts; i++) {
     if (m1 <= imf->mass_limits[i + 1]) {
