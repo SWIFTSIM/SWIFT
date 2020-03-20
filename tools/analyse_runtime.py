@@ -140,6 +140,7 @@ cols = [
 ]
 
 tasks = [
+    "dead time",
     "drift",
     "sort",
     "hydro",
@@ -153,7 +154,6 @@ tasks = [
     "mpi",
     "fof",
     "others",
-    "dead time",
     "total",
 ]
 
@@ -349,7 +349,7 @@ tasks_pie, _, _ = pie(
     labeldistance=0.7,
     pctdistance=0.85,
     startangle=-15,
-    colors=cols[1:],
+    colors=cols,
 )
 
 legend(tasks_pie, tasks, title="SWIFT task categories", loc="upper left")
