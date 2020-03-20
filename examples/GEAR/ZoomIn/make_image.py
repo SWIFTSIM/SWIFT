@@ -24,9 +24,9 @@ gear = "gear/snapshot_%04i.hdf5" % snap
 
 width = 50 * kpc
 
-do_dmo = False
-do_hydro = False
-do_stars = False
+do_dmo = True
+do_hydro = True
+do_stars = True
 do_feedback = True
 do_plot = {
     # DMO
@@ -289,5 +289,6 @@ def doPlot(filename, i, name, center):
 center = None
 # center = np.array([1724.33547783, 1802.56263082, 1785.09893269])
 center = doPlot(gear, 1, "GEAR", center=center)
+center = None
 doPlot(swift, 0, "SWIFT", center=center)
 savePlot()
