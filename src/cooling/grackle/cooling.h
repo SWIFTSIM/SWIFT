@@ -105,9 +105,6 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct cosmology* restrict cosmo,
                       const struct cooling_function_data* restrict cooling,
                       const struct part* restrict p, struct xpart* restrict xp);
-void cooling_apply(struct part* restrict p, struct xpart* restrict xp,
-                   const struct cosmology* restrict cosmo, float cooling_du_dt,
-                   gr_float u_new);
 
 void cooling_cool_part(const struct phys_const* restrict phys_const,
                        const struct unit_system* restrict us,

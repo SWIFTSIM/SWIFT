@@ -59,10 +59,10 @@ INLINE static int star_formation_is_star_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor) {
 
-  /* /\* Check if collapsing particles *\/ */
-  /* if (xp->sf_data.div_v > 0) { */
-  /*   return 0; */
-  /* } */
+  /* Check if collapsing particles */
+  if (xp->sf_data.div_v > 0) {
+    return 0;
+  }
 
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);

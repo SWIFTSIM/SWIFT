@@ -21,7 +21,6 @@
 
 /**
  * @file src/chemistry/GEAR/chemistry.h
- * @brief Empty infrastructure for the cases without chemistry function
  */
 
 /* Some standard headers. */

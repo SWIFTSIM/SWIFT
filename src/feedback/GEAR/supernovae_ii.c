@@ -123,36 +123,36 @@ void supernovae_ii_get_yields_from_raw(const struct supernovae_ii *snii, float l
 };
 
 /**
- * @brief Get the ejected mass per mass unit.
+ * @brief Get the ejected mass (non processed) per mass unit.
  *
  * @param snii The #supernovae_ii model.
  * @param m1 The lower mass in log.
  * @param m2 The upper mass in log.
  *
- * @return mass_ejected_processed The mass of processsed elements.
+ * @return mass_ejected_processed The mass of non processsed elements.
  */
-float supernovae_ii_get_ejected_mass_fraction_from_integral(const struct supernovae_ii *snii,
+float supernovae_ii_get_ejected_mass_fraction_non_processed_from_integral(const struct supernovae_ii *snii,
                                               float log_m1, float log_m2) {
 
-  float mass_ejected_1 = interpolate_1d(&snii->integrated.ejected_mass, log_m1);
-  float mass_ejected_2 = interpolate_1d(&snii->integrated.ejected_mass, log_m2);
+  float mass_ejected_1 = interpolate_1d(&snii->integrated.ejected_mass_non_processed, log_m1);
+  float mass_ejected_2 = interpolate_1d(&snii->integrated.ejected_mass_non_processed, log_m2);
 
   return mass_ejected_2 - mass_ejected_1;
 };
 
 
 /**
- * @brief Get the ejected mass per mass unit.
+ * @brief Get the ejected mass (non processed) per mass unit.
  *
  * @param snii The #supernovae_ii model.
  * @param log_m The mass in log.
  *
- * @return The mass of processsed elements.
+ * @return The mass of non processsed elements.
  */
-float supernovae_ii_get_ejected_mass_fraction_from_raw(const struct supernovae_ii *snii,
+float supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(const struct supernovae_ii *snii,
 						       float log_m) {
 
-  return interpolate_1d(&snii->raw.ejected_mass, log_m);
+  return interpolate_1d(&snii->raw.ejected_mass_non_processed, log_m);
 };
 
 /**
@@ -307,8 +307,8 @@ void supernovae_ii_read_yields(struct supernovae_ii *snii,
       "Ej", &previous_count, interpolation_size);
 
   /* Read the mass ejected of non processed gas */
-  supernovae_ii_read_yields_array(snii, &snii->raw.ejected_mass, 
-				  &snii->integrated.ejected_mass,
+  supernovae_ii_read_yields_array(snii, &snii->raw.ejected_mass_non_processed,
+				  &snii->integrated.ejected_mass_non_processed,
 				  phys_const, sm, group_id, "Ejnp",
                                   &previous_count, interpolation_size);
 
@@ -449,16 +449,16 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
   }
 
   /*! Dump the non processed mass (integrated). */
-  if (snii->integrated.ejected_mass.data != NULL) {
-    restart_write_blocks((void *)snii->integrated.ejected_mass.data,
-                         sizeof(float), snii->integrated.ejected_mass.N, stream,
+  if (snii->integrated.ejected_mass_non_processed.data != NULL) {
+    restart_write_blocks((void *)snii->integrated.ejected_mass_non_processed.data,
+                         sizeof(float), snii->integrated.ejected_mass_non_processed.N, stream,
                          "non_processed_mass_int", "non_processed_mass_int");
   }
 
   /*! Dump the non processed mass (raw). */
-  if (snii->raw.ejected_mass.data != NULL) {
-    restart_write_blocks((void *)snii->raw.ejected_mass.data,
-                         sizeof(float), snii->raw.ejected_mass.N, stream,
+  if (snii->raw.ejected_mass_non_processed.data != NULL) {
+    restart_write_blocks((void *)snii->raw.ejected_mass_non_processed.data,
+                         sizeof(float), snii->raw.ejected_mass_non_processed.N, stream,
                          "non_processed_mass_raw", "non_processed_mass_raw");
   }
 
@@ -550,28 +550,28 @@ void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
   }
 
   /* Restore the non processed mass (integrated) */
-  if (snii->integrated.ejected_mass.data != NULL) {
-    snii->integrated.ejected_mass.data =
-        (float *)malloc(sizeof(float) * snii->integrated.ejected_mass.N);
-      if (snii->integrated.ejected_mass.data == NULL) {
+  if (snii->integrated.ejected_mass_non_processed.data != NULL) {
+    snii->integrated.ejected_mass_non_processed.data =
+      (float *)malloc(sizeof(float) * snii->integrated.ejected_mass_non_processed.N);
+    if (snii->integrated.ejected_mass_non_processed.data == NULL) {
 	error("Failed to allocate memory for the yields");
       }
 
-    restart_read_blocks((void *)snii->integrated.ejected_mass.data,
-                        sizeof(float), snii->integrated.ejected_mass.N, stream,
+    restart_read_blocks((void *)snii->integrated.ejected_mass_non_processed.data,
+                        sizeof(float), snii->integrated.ejected_mass_non_processed.N, stream,
                         NULL, "non_processed_mass_int");
   }
 
   /* Restore the non processed mass (raw) */
-  if (snii->raw.ejected_mass.data != NULL) {
-    snii->raw.ejected_mass.data =
-        (float *)malloc(sizeof(float) * snii->raw.ejected_mass.N);
-      if (snii->raw.ejected_mass.data == NULL) {
+  if (snii->raw.ejected_mass_non_processed.data != NULL) {
+    snii->raw.ejected_mass_non_processed.data =
+      (float *)malloc(sizeof(float) * snii->raw.ejected_mass_non_processed.N);
+    if (snii->raw.ejected_mass_non_processed.data == NULL) {
 	error("Failed to allocate memory for the yields");
       }
 
-    restart_read_blocks((void *)snii->raw.ejected_mass.data,
-                        sizeof(float), snii->raw.ejected_mass.N, stream,
+    restart_read_blocks((void *)snii->raw.ejected_mass_non_processed.data,
+                        sizeof(float), snii->raw.ejected_mass_non_processed.N, stream,
                         NULL, "non_processed_mass_raw");
   }
 
@@ -591,6 +591,6 @@ void supernovae_ii_clean(struct supernovae_ii *snii) {
 
   interpolate_1d_free(&snii->integrated.ejected_mass_processed);
   interpolate_1d_free(&snii->raw.ejected_mass_processed);
-  interpolate_1d_free(&snii->integrated.ejected_mass);
-  interpolate_1d_free(&snii->raw.ejected_mass);
+  interpolate_1d_free(&snii->integrated.ejected_mass_non_processed);
+  interpolate_1d_free(&snii->raw.ejected_mass_non_processed);
 }

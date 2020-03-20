@@ -37,9 +37,9 @@ void supernovae_ii_get_yields_from_integral(const struct supernovae_ii *snii, fl
 					    float log_m2, float *yields);
 void supernovae_ii_get_yields_from_raw(const struct supernovae_ii *snii, float log_m,
 				       float *yields);
-float supernovae_ii_get_ejected_mass_fraction_from_integral(const struct supernovae_ii *snii,
+float supernovae_ii_get_ejected_mass_fraction_non_processed_from_integral(const struct supernovae_ii *snii,
 							    float log_m1, float log_m2);
-float supernovae_ii_get_ejected_mass_fraction_from_raw(const struct supernovae_ii *snii,
+float supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(const struct supernovae_ii *snii,
 						       float log_m);
 
 float supernovae_ii_get_ejected_mass_fraction_processed_from_integral(

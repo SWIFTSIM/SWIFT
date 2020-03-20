@@ -111,7 +111,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
 
   /* SNII */
   const float mass_frac_snii = supernovae_ii_get_ejected_mass_fraction_processed_from_integral(
-          &sm->snii, log_m_end_step, log_m_beg_step); 
+          &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Sum the contributions from SNIa and SNII */
   sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass
@@ -136,7 +136,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
                            snii_yields);
 
   /* Compute the mass fraction of non processed elements */
-  const float non_processed = supernovae_ii_get_ejected_mass_fraction_from_integral(
+  const float non_processed = supernovae_ii_get_ejected_mass_fraction_non_processed_from_integral(
       &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Set the yields */
@@ -222,7 +222,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
   /* Compute the mass fraction of non processed elements */
   const float non_processed =
-    supernovae_ii_get_ejected_mass_fraction_from_raw(
+    supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(
         &sm->snii, log_m_avg);
 
   /* Set the yields */

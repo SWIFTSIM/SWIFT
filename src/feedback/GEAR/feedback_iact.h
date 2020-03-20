@@ -115,13 +115,11 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
   /* Mass received */
   const double m_ej = si->feedback_data.mass_ejected;
-  // TODO compute inverse before feedback loop
   const double weight = mj * wi * si_inv_weight;
   const double dm = m_ej * weight;
   const double new_mass = mj + dm;
 
   /* Energy received */
-  // TODO compute inverse before feedback loop
   const double du = e_sn * weight / new_mass;
 
   xpj->feedback_data.delta_mass += dm;

@@ -655,8 +655,6 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct part* restrict p,
                       struct xpart* restrict xp) {
 
-  error("TODO: use energy after adiabatic cooling");
-
   /* set current time */
   code_units units = cooling->units;
 
@@ -709,31 +707,6 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
 
   /* compute rate */
   return cooling_time;
-}
-
-/**
- * @brief Apply the cooling to a particle.
- *
- * Depending on the task order, you may wish to either
- * cool down the particle immediately or do it during the drift.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the xparticle data.
- * @param cosmo The current cosmological model.
- * @param cooling_du_dt Time derivative of the cooling.
- * @param u_new Internal energy after the cooling.
- */
-void cooling_apply(struct part* restrict p, struct xpart* restrict xp,
-                   const struct cosmology* restrict cosmo, float cooling_du_dt,
-                   gr_float u_new) {
-
-#ifdef TASK_ORDER_GEAR
-  /* Cannot use du / dt as it will be erased before being used */
-  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
-#else
-  hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
-#endif
 }
 
 /**
@@ -797,13 +770,6 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   /* Calculate the cooling rate */
   float cool_du_dt = (u_new - u_ad_before) / dt_therm;
 
-#ifdef TASK_ORDER_GEAR
-  /* Set the energy */
-  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
-#endif
-
-  
   /* Check that the energy stays above the limits if the time step increase by 2 */
   /* Hydro */
   double u_ad = u_new + hydro_du_dt * dt_therm;

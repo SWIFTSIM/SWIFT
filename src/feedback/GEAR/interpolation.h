@@ -19,6 +19,9 @@
 #ifndef SWIFT_GEAR_INTERPOLATION_H
 #define SWIFT_GEAR_INTERPOLATION_H
 
+/**
+ * @brief Type of boundary condition available.
+ */
 enum interpolate_boundary_condition {
   /* No extrapolation => raise errors */
   boundary_condition_error,
@@ -33,6 +36,9 @@ enum interpolate_boundary_condition {
   boundary_condition_const,
 };
 
+/**
+ * @brief Structure for the interpolation.
+ */
 struct interpolation_1d {
   /* Data to interpolate */
   float *data;
@@ -52,8 +58,6 @@ struct interpolation_1d {
 
 /**
  * @brief Initialize the #interpolation_1d.
- *
- * Assumes x are linear in log.
  *
  * @params interp The #interpolation_1d.
  * @params xmin Minimal value of x (in log).
