@@ -1288,7 +1288,7 @@ int cell_locktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_glocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->grav.phold || lock_trylock(&c->grav.plock) != 0) {
@@ -1348,7 +1348,9 @@ int cell_glocktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_mlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
+
+  error("aa");
 
   /* First of all, try to lock this cell. */
   if (c->grav.mhold || lock_trylock(&c->grav.mlock) != 0) {
@@ -1546,7 +1548,7 @@ void cell_unlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_gunlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->grav.plock) != 0) error("Failed to unlock cell.");
@@ -1564,7 +1566,9 @@ void cell_gunlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_munlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
+
+  error("aa");
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->grav.mlock) != 0) error("Failed to unlock cell.");

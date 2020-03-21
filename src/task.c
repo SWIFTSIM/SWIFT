@@ -456,8 +456,6 @@ void task_unlock(struct task *t) {
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
-        cell_gunlocktree(ci);
-        cell_munlocktree(ci);
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
@@ -478,10 +476,6 @@ void task_unlock(struct task *t) {
     case task_type_pair:
     case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
-        cell_gunlocktree(ci);
-        cell_gunlocktree(cj);
-        cell_munlocktree(ci);
-        cell_munlocktree(cj);
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
@@ -506,17 +500,12 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_grav_down:
-      cell_gunlocktree(ci);
-      cell_munlocktree(ci);
       break;
 
     case task_type_grav_long_range:
-      cell_munlocktree(ci);
       break;
 
     case task_type_grav_mm:
-      cell_munlocktree(ci);
-      cell_munlocktree(cj);
       break;
 
     case task_type_star_formation:
@@ -612,14 +601,7 @@ int task_lock(struct task *t) {
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
-        /* Lock the gparts and the m-pole */
-        if (ci->grav.phold || ci->grav.mhold) return 0;
-        if (cell_glocktree(ci) != 0)
-          return 0;
-        else if (cell_mlocktree(ci) != 0) {
-          cell_gunlocktree(ci);
-          return 0;
-        }
+        return 1;
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
@@ -652,22 +634,7 @@ int task_lock(struct task *t) {
     case task_type_pair:
     case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
-        /* Lock the gparts and the m-pole in both cells */
-        if (ci->grav.phold || cj->grav.phold) return 0;
-        if (cell_glocktree(ci) != 0) return 0;
-        if (cell_glocktree(cj) != 0) {
-          cell_gunlocktree(ci);
-          return 0;
-        } else if (cell_mlocktree(ci) != 0) {
-          cell_gunlocktree(ci);
-          cell_gunlocktree(cj);
-          return 0;
-        } else if (cell_mlocktree(cj) != 0) {
-          cell_gunlocktree(ci);
-          cell_gunlocktree(cj);
-          cell_munlocktree(ci);
-          return 0;
-        }
+        return 1;
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
@@ -731,30 +698,15 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_down:
-      /* Lock the gparts and the m-poles */
-      if (ci->grav.phold || ci->grav.mhold) return 0;
-      if (cell_glocktree(ci) != 0)
-        return 0;
-      else if (cell_mlocktree(ci) != 0) {
-        cell_gunlocktree(ci);
-        return 0;
-      }
+      return 1;
       break;
 
     case task_type_grav_long_range:
-      /* Lock the m-poles */
-      if (ci->grav.mhold) return 0;
-      if (cell_mlocktree(ci) != 0) return 0;
+      return 1;
       break;
 
     case task_type_grav_mm:
-      /* Lock both m-poles */
-      if (ci->grav.mhold || cj->grav.mhold) return 0;
-      if (cell_mlocktree(ci) != 0) return 0;
-      if (cell_mlocktree(cj) != 0) {
-        cell_munlocktree(ci);
-        return 0;
-      }
+      return 1;
       break;
 
     case task_type_star_formation:
