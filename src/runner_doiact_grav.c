@@ -1357,10 +1357,18 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
         cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
+  /* Lock the multipoles */
+  lock_lock(&ci->grav.mlock);
+  lock_lock(&cj->grav.mlock);
+
   /* Let's interact at this level */
   gravity_M2L_symmetric(&ci->grav.multipole->pot, &cj->grav.multipole->pot,
                         multi_i, multi_j, ci->grav.multipole->CoM,
                         cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
+
+  /* Unlock the multipoles */
+  if (lock_unlock(&ci->grav.mlock) != 0) error("Failed to unlock multipole");
+  if (lock_unlock(&cj->grav.mlock) != 0) error("Failed to unlock multipole");
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -1375,7 +1383,7 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
  */
 static INLINE void runner_dopair_grav_mm_nonsym(
     struct runner *r, struct cell *restrict ci,
-    const struct cell *restrict cj) {
+    struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1408,9 +1416,17 @@ static INLINE void runner_dopair_grav_mm_nonsym(
         cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
+  /* Lock the multipoles */
+  lock_lock(&ci->grav.mlock);
+  lock_lock(&cj->grav.mlock);
+
   /* Let's interact at this level */
   gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
                      cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
+
+  /* Unlock the multipoles */
+  if (lock_unlock(&ci->grav.mlock) != 0) error("Failed to unlock multipole");
+  if (lock_unlock(&cj->grav.mlock) != 0) error("Failed to unlock multipole");
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -1835,8 +1851,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   for (int n = 0; n < nr_cells_with_particles; ++n) {
 
     /* Handle on the top-level cell and it's gravity business*/
-    const struct cell *cj = &cells[cells_with_particles[n]];
-    const struct gravity_tensors *const multi_j = cj->grav.multipole;
+    struct cell *cj = &cells[cells_with_particles[n]];
+    struct gravity_tensors *const multi_j = cj->grav.multipole;
 
     /* Avoid self contributions */
     if (top == cj) continue;
