@@ -1357,9 +1357,15 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
         cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
-  /* Lock the multipoles */
-  lock_lock(&ci->grav.mlock);
-  lock_lock(&cj->grav.mlock);
+  /* Lock the multipoles
+   * Note we impose a hierarchy to solve the dining philosopher problem */
+  if (ci < cj) {
+    lock_lock(&ci->grav.mlock);
+    lock_lock(&cj->grav.mlock);
+  } else {
+    lock_lock(&cj->grav.mlock);
+    lock_lock(&ci->grav.mlock);
+  }
 
   /* Let's interact at this level */
   gravity_M2L_symmetric(&ci->grav.multipole->pot, &cj->grav.multipole->pot,
@@ -1381,9 +1387,9 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
  * @param ci The #cell with field tensor to interact.
  * @param cj The #cell with the multipole.
  */
-static INLINE void runner_dopair_grav_mm_nonsym(
-    struct runner *r, struct cell *restrict ci,
-    struct cell *restrict cj) {
+static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
+                                                struct cell *restrict ci,
+                                                struct cell *restrict cj) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1416,9 +1422,15 @@ static INLINE void runner_dopair_grav_mm_nonsym(
         cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
-  /* Lock the multipoles */
-  lock_lock(&ci->grav.mlock);
-  lock_lock(&cj->grav.mlock);
+  /* Lock the multipoles
+   * Note we impose a hierarchy to solve the dining philosopher problem */
+  if (ci < cj) {
+    lock_lock(&ci->grav.mlock);
+    lock_lock(&cj->grav.mlock);
+  } else {
+    lock_lock(&cj->grav.mlock);
+    lock_lock(&ci->grav.mlock);
+  }
 
   /* Let's interact at this level */
   gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
