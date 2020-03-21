@@ -2201,7 +2201,8 @@ AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
 
 # Make the documentation. Add conditional to handle disable option.
-DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
+DX_DOXYGEN_FEATURE(OFF)
+DX_INIT_DOXYGEN(SWIFT, doc/Doxyfile, doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Check if using QLA cooling
