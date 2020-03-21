@@ -335,9 +335,9 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
 
   /* Store things back */
   gravity_add_comoving_potential(gp, p);
-  gp->a_grav[0] += fac * a[0];
-  gp->a_grav[1] += fac * a[1];
-  gp->a_grav[2] += fac * a[2];
+  atomic_add_f(&gp->a_grav[0], fac * a[0]);
+  atomic_add_f(&gp->a_grav[1], fac * a[1]);
+  atomic_add_f(&gp->a_grav[2], fac * a[2]);
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = p;
   gp->a_grav_PM[0] = fac * a[0];

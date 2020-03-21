@@ -264,7 +264,7 @@ static INLINE void runner_dopair_grav_pp_full(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
       if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
-        gparts_i[pid].num_interacted++;
+        atomic_inc(&gparts_i[pid].num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -420,7 +420,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
       if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
-        gparts_i[pid].num_interacted++;
+        atomic_inc(&gparts_i[pid].num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -565,7 +565,8 @@ static INLINE void runner_dopair_grav_pm_full(
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
     if (pid < gcount_i)
-      gparts_i[pid].num_interacted += cj->grav.multipole->m_pole.num_gpart;
+      atomic_add(&gparts_i[pid].num_interacted,
+                 cj->grav.multipole->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -706,7 +707,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
 #ifdef SWIFT_DEBUG_CHECKS
     /* Update the interaction counter */
     if (pid < gcount_i)
-      gparts_i[pid].num_interacted += cj->grav.multipole->m_pole.num_gpart;
+      atomic_add(&gparts_i[pid].num_interacted,
+                 cj->grav.multipole->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -1041,7 +1043,7 @@ static INLINE void runner_doself_grav_pp_full(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
       if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
-        gparts[pid].num_interacted++;
+        atomic_inc(&gparts[pid].num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -1180,7 +1182,7 @@ static INLINE void runner_doself_grav_pp_truncated(
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
       if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
-        gparts[pid].num_interacted++;
+        atomic_inc(&gparts[pid].num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -1638,9 +1640,9 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_gravity(ci, e))
-      multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
+      atomic_add(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
     if (cell_is_active_gravity(cj, e))
-      multi_j->pot.num_interacted += multi_i->m_pole.num_gpart;
+      atomic_add(&multi_j->pot.num_interacted, multi_i->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -1854,7 +1856,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Need to account for the interactions we missed */
-        multi_i->pot.num_interacted += multi_j->m_pole.num_gpart;
+        atomic_add(&multi_i->pot.num_interacted, multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
