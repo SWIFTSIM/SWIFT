@@ -1270,6 +1270,10 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_end_grav_force:
       return task_category_gravity;
 
+    case task_type_fof_self:
+    case task_type_fof_pair:
+      return task_category_fof;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
