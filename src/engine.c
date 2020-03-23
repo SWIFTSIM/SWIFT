@@ -2575,11 +2575,13 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
-  /* Print the number of active tasks ? */
-  if (e->verbose) engine_print_task_counts(e);
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Print the number of active tasks */
+  engine_print_task_counts(e);
+#endif
 
-    /* Dump local cells and active particle counts. */
-    // dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
+  /* Dump local cells and active particle counts. */
+  // dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
