@@ -347,22 +347,19 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
           if (bp->id == BH_id) {
 
-            /* Lock the space as we are going to work directly on the bpart list
-             */
-            lock_lock(&s->lock);
+            /* Is the swallowing BH itself flagged for swallowing by
+               another BH? */
+            if (black_holes_get_bpart_swallow_id(&bp->merger_data) != -1) {
 
-            /* If bpart is inhibited, it cannot do any swallowing */
-            if (bpart_is_inhibited(bp, e)) {
-              message("BH %lld inhibited -- DOES NOT swallow BH %lld", bp->id,
-                      cell_bp->id);
-
-              /* Pretend it was found */
+              /* Pretend it was found and abort */
+              black_holes_mark_bpart_as_not_swallowed(&cell_bp->merger_data);
               found = 1;
-
-              if (lock_unlock(&s->lock) != 0)
-                error("Failed to unlock the space.");
               break;
             }
+
+            /* Lock the space as we are going to work directly on the
+             * space's bpart list */
+            lock_lock(&s->lock);
 
             /* Swallow the BH particle (i.e. update the swallowing BH
              * properties with the properties of cell_bp) */
@@ -409,6 +406,16 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
             struct bpart *bp = &bparts_foreign[i];
 
             if (bp->id == BH_id) {
+
+              /* Is the swallowing BH itself flagged for swallowing by
+                 another BH? */
+              if (black_holes_get_bpart_swallow_id(&bp->merger_data) != -1) {
+
+                /* Pretend it was found and abort */
+                black_holes_mark_bpart_as_not_swallowed(&cell_bp->merger_data);
+                found = 1;
+                break;
+              }
 
               message("BH %lld removing BH particle %lld (foreign BH case)",
                       bp->id, cell_bp->id);
