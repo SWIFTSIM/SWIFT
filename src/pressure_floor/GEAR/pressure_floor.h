@@ -75,8 +75,8 @@ pressure_floor_get_physical_pressure(const struct part* p,
   const float rho = hydro_get_physical_density(p, cosmo);
 
   /* Compute the pressure floor */
-  float floor = H_phys * H_phys * rho * pressure_floor_props.constants;// -
-  //p->pressure_floor_data.sigma2;
+  float floor = H_phys * H_phys * rho * pressure_floor_props.constants -
+    p->pressure_floor_data.sigma2;
   floor *= rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_physical, floor);
@@ -104,7 +104,7 @@ pressure_floor_get_comoving_pressure(const struct part* p,
   /* Compute the pressure floor */
   float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
                 pressure_floor_props.constants;
-  //floor -= p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
+  floor -= p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   floor *= a_coef * rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_comoving, floor);

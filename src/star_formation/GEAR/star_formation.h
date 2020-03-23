@@ -75,7 +75,7 @@ INLINE static int star_formation_is_star_forming(
   }
 
   /* Get the required variables */
-  //const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
+  const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   const float n_jeans_2_3 = starform->n_jeans_2_3;
 
   const float h = p->h * kernel_gamma * cosmo->a;
@@ -89,8 +89,8 @@ INLINE static int star_formation_is_star_forming(
       M_PI_4 / (phys_const->const_newton_G * n_jeans_2_3 * h * h);
   const float density_criterion =
       coef * (hydro_gamma * phys_const->const_boltzmann_k * temperature /
-	      (mu * phys_const->const_proton_mass));// +
-  //sigma2);
+              (mu * phys_const->const_proton_mass) +
+              sigma2);
 
   /* Check the density criterion */
   return density > density_criterion;
