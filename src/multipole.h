@@ -2467,12 +2467,12 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted == 0) error("Interacting with empty field tensor");
 
-  gp->num_interacted += lb->num_interacted;
+  atomic_add(&gp->num_interacted, lb->num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->num_interacted_m2l += lb->num_interacted_tree;
-  gp->num_interacted_pm += lb->num_interacted_pm;
+  atomic_add(&gp->num_interacted_m2l, lb->num_interacted_tree);
+  atomic_add(&gp->num_interacted_pm, lb->num_interacted_pm);
 #endif
 
   /* Local accumulator */
@@ -2595,9 +2595,9 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   gravity_add_comoving_potential(gp, pot);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->a_grav_m2l[0] += a_grav[0];
-  gp->a_grav_m2l[1] += a_grav[1];
-  gp->a_grav_m2l[2] += a_grav[2];
+  atomic_add_f(&gp->a_grav_m2l[0], a_grav[0]);
+  atomic_add_f(&gp->a_grav_m2l[1], a_grav[1]);
+  atomic_add_f(&gp->a_grav_m2l[2], a_grav[2]);
 #endif
 }
 
