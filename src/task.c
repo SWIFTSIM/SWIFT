@@ -468,7 +468,8 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
-      } else {
+      } else if (subtype == task_subtype_limiter) {
+      } else { /* hydro */
         cell_unlocktree(ci);
       }
       break;
@@ -493,7 +494,8 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
         cell_bunlocktree(cj);
-      } else {
+      } else if (subtype == task_subtype_limiter) {
+      } else { /* hydro */
         cell_unlocktree(ci);
         cell_unlocktree(cj);
       }
@@ -625,6 +627,8 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         if (ci->black_holes.hold) return 0;
         if (cell_blocktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_limiter) {
+        return 1;
       } else { /* subtype == hydro */
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
@@ -686,6 +690,8 @@ int task_lock(struct task *t) {
           cell_bunlocktree(ci);
           return 0;
         }
+      } else if (subtype == task_subtype_limiter) {
+        return 1;
       } else { /* subtype == hydro */
         /* Lock the parts in both cells */
         if (ci->hydro.hold || cj->hydro.hold) return 0;
