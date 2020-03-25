@@ -153,7 +153,10 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {
  *
  * @param xp The extended particle data.
  */
-static INLINE void tracers_after_black_holes_feedback(struct xpart *xp) {
+static INLINE void tracers_after_black_holes_feedback(struct xpart *xp,
+                                                      const int with_cosmology,
+                                                      const float scale_factor,
+                                                      const double time) {
 
   xp->tracers_data.hit_by_AGN_feedback = 1;
 }

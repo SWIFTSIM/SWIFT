@@ -43,13 +43,12 @@
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  struct bpart *bi, const struct part *pj,
-                                  const struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const struct gravity_props *grav_props,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_density(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *bi, const struct part *pj, const struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, const integertime_t ti_current,
+    const double time) {
 
   float wi, wi_dx;
 
@@ -129,10 +128,11 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
                                   const float hi, const float hj,
                                   struct bpart *bi, struct part *pj,
-                                  struct xpart *xpj,
+                                  struct xpart *xpj, const int with_cosmology,
                                   const struct cosmology *cosmo,
                                   const struct gravity_props *grav_props,
-                                  const integertime_t ti_current) {
+                                  const integertime_t ti_current,
+                                  const double time) {
 
   float wi;
 
@@ -343,18 +343,21 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param bi First particle (black hole).
  * @param pj Second particle (gas)
  * @param xpj The extended data of the second particle.
+ * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
                                    const float hi, const float hj,
                                    const struct bpart *bi, struct part *pj,
-                                   struct xpart *xpj,
+                                   struct xpart *xpj, const int with_cosmology,
                                    const struct cosmology *cosmo,
                                    const struct gravity_props *grav_props,
-                                   const integertime_t ti_current) {
+                                   const integertime_t ti_current,
+                                   const double time) {
 
   /* Get the heating probability */
   const float prob = bi->to_distribute.AGN_heating_probability;
@@ -381,7 +384,7 @@ runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
       hydro_diffusive_feedback_reset(pj);
 
       /* Mark this particle has having been heated by AGN feedback */
-      tracers_after_black_holes_feedback(xpj);
+      tracers_after_black_holes_feedback(xpj, with_cosmology, cosmo->a, time);
 
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */
