@@ -1228,7 +1228,7 @@ int cell_unpack_sf_counts(struct cell *restrict c,
  * @return 0 on success, 1 on failure
  */
 int cell_locktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->hydro.hold || lock_trylock(&c->hydro.lock) != 0) {
@@ -1350,8 +1350,6 @@ int cell_glocktree(struct cell *c) {
 int cell_mlocktree(struct cell *c) {
   TIMER_TIC;
 
-  error("aa");
-
   /* First of all, try to lock this cell. */
   if (c->grav.mhold || lock_trylock(&c->grav.mlock) != 0) {
     TIMER_TOC(timer_locktree);
@@ -1410,7 +1408,7 @@ int cell_mlocktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_slocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->stars.hold || lock_trylock(&c->stars.lock) != 0) {
@@ -1470,7 +1468,7 @@ int cell_slocktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_blocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->black_holes.hold || lock_trylock(&c->black_holes.lock) != 0) {
@@ -1530,7 +1528,7 @@ int cell_blocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_unlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->hydro.lock) != 0) error("Failed to unlock cell.");
@@ -1568,8 +1566,6 @@ void cell_gunlocktree(struct cell *c) {
 void cell_munlocktree(struct cell *c) {
   TIMER_TIC;
 
-  error("aa");
-
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->grav.mlock) != 0) error("Failed to unlock cell.");
 
@@ -1586,7 +1582,7 @@ void cell_munlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_sunlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
@@ -1604,7 +1600,7 @@ void cell_sunlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_bunlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->black_holes.lock) != 0) error("Failed to unlock cell.");
