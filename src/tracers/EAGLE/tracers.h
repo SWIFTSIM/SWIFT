@@ -134,6 +134,7 @@ static INLINE void tracers_first_init_xpart(
   xp->tracers_data.maximum_temperature_time = -1.f;
   xp->tracers_data.hit_by_SNII_feedback = 0;
   xp->tracers_data.hit_by_AGN_feedback = 0;
+  xp->tracers_data.AGN_feedback_energy = 0.f;
 }
 
 /**
@@ -152,25 +153,31 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {
  * event.
  *
  * @param xp The extended particle data.
+ * @param with_cosmology Are we running with cosmology?
+ * @param scale_factor The current scale-factor (if running with cosmo)
+ * @param time The current time (if running without cosmo)
+ * @param Amount of energy injected in the feedback event (internal physical
+ * units)
  */
-static INLINE void tracers_after_black_holes_feedback(struct xpart *xp,
-                                                      const int with_cosmology,
-                                                      const float scale_factor,
-                                                      const double time) {
+static INLINE void tracers_after_black_holes_feedback(
+    struct xpart *xp, const int with_cosmology, const float scale_factor,
+    const double time, const double delta_energy) {
 
   xp->tracers_data.hit_by_AGN_feedback = 1;
+  xp->tracers_data.AGN_feedback_energy += delta_energy;
 }
 
 /**
  * @brief Split the tracer content of a particle into n pieces
- *
- * Nothing to do here.
  *
  * @param p The #part.
  * @param xp The #xpart.
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void tracers_split_part(
-    struct part *p, struct xpart *xp, const double n) {}
+    struct part *p, struct xpart *xp, const double n) {
+
+  xp->tracers_data.AGN_feedback_energy /= n;
+}
 
 #endif /* SWIFT_TRACERS_EAGLE_H */
