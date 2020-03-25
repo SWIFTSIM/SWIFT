@@ -26,6 +26,9 @@
 #include "inline.h"
 #include "minmax.h"
 
+/* Standard includes */
+#include <stdint.h>
+
 #define atomic_add(v, i) __sync_fetch_and_add(v, i)
 #define atomic_sub(v, i) __sync_fetch_and_sub(v, i)
 #define atomic_or(v, i) __sync_fetch_and_or(v, i)
@@ -122,7 +125,7 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
 }
 
 /**
- * @brief Atomic max operation on chars.
+ * @brief Atomic max operation on int8_t.
  *
  * This is a text-book implementation based on an atomic CAS.
  *
@@ -130,9 +133,9 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_max_c(
-    volatile char *const address, const char y) {
+    volatile int8_t *const address, const int8_t y) {
 
-  char test_val, old_val, new_val;
+  int8_t test_val, old_val, new_val;
   old_val = *address;
 
   do {
