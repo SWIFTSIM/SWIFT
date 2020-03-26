@@ -212,6 +212,104 @@ size_t logger_particle_read(struct logger_particle *part,
 }
 
 /**
+ * @brief Compute the quintic hermite spline interpolation.
+ *
+ * @param t0 The time at the left of the interval.
+ * @param x0 The function at the left of the interval.
+ * @param v0 The first derivative at the left of the interval.
+ * @param a0 The second derivative at the left of the interval.
+ * @param t1 The time at the right of the interval.
+ * @param x1 The function at the right of the interval.
+ * @param v1 The first derivative at the right of the interval.
+ * @param a1 The second derivative at the right of the interval.
+ * @param t The time of the interpolation.
+ *
+ * @return The function evaluated at t.
+ */
+double logger_particle_quintic_hermite_spline(double t0, double x0, float v0,
+                                              float a0, double t1, double x1,
+                                              float v1, float a1, double t) {
+
+  /* Generates recurring variables  */
+  /* Time differences */
+  const double dt = t1 - t0;
+  const double dt2 = dt * dt;
+  const double dt3 = dt2 * dt;
+  const double dt4 = dt3 * dt;
+  const double dt5 = dt4 * dt;
+
+  const double t_t0 = t - t0;
+  const double t_t0_2 = t_t0 * t_t0;
+  const double t_t0_3 = t_t0_2 * t_t0;
+  const double t_t1 = t - t1;
+  const double t_t1_2 = t_t1 * t_t1;
+
+  /* Derivatives */
+  const double v0_dt = v0 * dt;
+  const double a0_dt2 = 0.5 * a0 * dt2;
+  const double v1_dt = v1 * dt;
+  const double a1_dt2 = 0.5 * a1 * dt2;
+
+  /* Do the first 3 terms of the hermite spline */
+  double x = x0 + v0 * t_t0 + 0.5 * a0 * t_t0_2;
+
+  /* Cubic term */
+  x += (x1 - x0 - v0_dt - a0_dt2) * t_t0_3 / dt3;
+
+  /* Quartic term */
+  x += (3. * x0 - 3. * x1 + v1_dt + 2. * v0_dt + a0_dt2) * t_t0_3 * t_t1 / dt4;
+
+  /* Quintic term */
+  x += (6. * x1 - 6. * x0 - 3. * v0_dt - 3. * v1_dt + a1_dt2 - a0_dt2) *
+       t_t0_3 * t_t1_2 / dt5;
+
+  return x;
+}
+
+/**
+ * @brief Compute the cubic hermite spline interpolation.
+ *
+ * @param t0 The time at the left of the interval.
+ * @param v0 The first derivative at the left of the interval.
+ * @param a0 The second derivative at the left of the interval.
+ * @param t1 The time at the right of the interval.
+ * @param v1 The first derivative at the right of the interval.
+ * @param a1 The second derivative at the right of the interval.
+ * @param t The time of the interpolation.
+ *
+ * @return The function evaluated at t.
+ */
+float logger_particle_cubic_hermite_spline(double t0, float v0, float a0,
+                                           double t1, float v1, float a1,
+                                           double t) {
+
+  /* Generates recurring variables  */
+  /* Time differences */
+  const float dt = t1 - t0;
+  const float dt2 = dt * dt;
+  const float dt3 = dt2 * dt;
+
+  const float t_t0 = t - t0;
+  const float t_t0_2 = t_t0 * t_t0;
+  const float t_t1 = t - t1;
+
+  /* Derivatives */
+  const float a0_dt = a0 * dt;
+  const float a1_dt = a1 * dt;
+
+  /* Do the first 2 terms of the hermite spline */
+  float x = v0 + a0 * t_t0;
+
+  /* Square term */
+  x += (v1 - v0 - a0_dt) * t_t0_2 / dt2;
+
+  /* Cubic term */
+  x += (2. * v0 - 2. * v1 + a1_dt + a0_dt) * t_t0_2 * t_t1 / dt3;
+
+  return x;
+}
+
+/**
  * @brief interpolate two particles at a given time
  *
  * @param part_curr #logger_particle In: current particle (before time), Out:
@@ -245,17 +343,22 @@ void logger_particle_interpolate(struct logger_particle *part_curr,
 
   scaling = (time - part_curr->time) / scaling;
 
-  double tmp;
   float ftmp;
 
   /* interpolate vectors. */
-  for (size_t i = 0; i < DIM; i++) {
-    tmp = (part_next->pos[i] - part_curr->pos[i]);
-    part_curr->pos[i] += tmp * scaling;
+  for (int i = 0; i < 3; i++) {
+    /* Positions */
+    part_curr->pos[i] = logger_particle_quintic_hermite_spline(
+        part_curr->time, part_curr->pos[i], part_curr->vel[i],
+        part_curr->acc[i], part_next->time, part_next->pos[i],
+        part_next->vel[i], part_next->acc[i], time);
 
-    ftmp = (part_next->vel[i] - part_curr->vel[i]);
-    part_curr->vel[i] += ftmp * scaling;
+    /* Velocities */
+    part_curr->vel[i] = logger_particle_cubic_hermite_spline(
+        part_curr->time, part_curr->vel[i], part_curr->acc[i], part_next->time,
+        part_next->vel[i], part_next->acc[i], time);
 
+    /* Accelerations */
     ftmp = (part_next->acc[i] - part_curr->acc[i]);
     part_curr->acc[i] += ftmp * scaling;
   }
@@ -263,6 +366,12 @@ void logger_particle_interpolate(struct logger_particle *part_curr,
   /* interpolate scalars. */
   ftmp = (part_next->entropy - part_curr->entropy);
   part_curr->entropy += ftmp * scaling;
+
+  ftmp = (part_next->h - part_curr->h);
+  part_curr->h += ftmp * scaling;
+
+  ftmp = (part_next->density - part_curr->density);
+  part_curr->density += ftmp * scaling;
 
   /* set time. */
   part_curr->time = time;

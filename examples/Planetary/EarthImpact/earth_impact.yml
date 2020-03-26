@@ -55,3 +55,10 @@ Scheduler:
 # Parameters related to the equation of state
 EoS:
     planetary_use_Til:  1               # Whether to initialise the Tillotson EOS
+
+# Parameters governing the logger snapshot system
+Logger:
+  delta_step:           10     # Update the particle log every this many updates
+  basename:             index  # Common part of the filenames
+  initial_buffer_size:  0.01      # (Optional) Buffer size in GB
+  buffer_scale:	        10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale

@@ -50,7 +50,7 @@ print("time: %g" % time)
 # read dump
 
 t = logger.getTimeLimits(basename)
-data = logger.loadSnapshotAtTime(basename, time)
+data = logger.loadSnapshotAtTime(basename, time, 2)
 print("The data contains the following elements:")
 print(data.dtype.names)
 
