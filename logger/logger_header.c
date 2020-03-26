@@ -184,7 +184,6 @@ void header_read(struct header *h, struct logger_logfile *log) {
 
   /* Check the logfile header's size. */
   if (map != (char *)log->log.map + h->offset_first_record) {
-    header_print(h);
     size_t offset = (char *)map - (char *)log->log.map;
     error("Wrong header size (in header %zi, current %zi).",
           h->offset_first_record, offset);
