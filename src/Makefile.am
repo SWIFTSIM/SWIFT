@@ -148,11 +148,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 hydro/PressureEnergyMorrisMonaghanAV/hydro.h hydro/PressureEnergyMorrisMonaghanAV/hydro_iact.h hydro/PressureEnergyMorrisMonaghanAV/hydro_io.h \
                  hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h \
 		 hydro/PressureEnergyMorrisMonaghanAV/hydro_parameters.h \
-		 hydro/AnarchyPU/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
-                 hydro/AnarchyPU/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
+		 hydro/AnarchyPU/hydro.h hydro/AnarchyPU/hydro_iact.h hydro/AnarchyPU/hydro_io.h \
+                 hydro/AnarchyPU/hydro_debug.h hydro/AnarchyPU/hydro_part.h \
 		 hydro/AnarchyPU/hydro_parameters.h \
-		 hydro/SPHENIX/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
-                 hydro/SPHENIX/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
+		 hydro/SPHENIX/hydro.h hydro/SPHENIX/hydro_iact.h hydro/SPHENIX/hydro_io.h \
+                 hydro/SPHENIX/hydro_debug.h hydro/SPHENIX/hydro_part.h \
 		 hydro/SPHENIX/hydro_parameters.h \
 		 hydro/Gizmo/hydro_parameters.h \
                  hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
