@@ -64,7 +64,11 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 __attribute__((always_inline)) INLINE static void
 gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
 
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+  gp->potential += pot;
+#else
   atomic_add_f(&gp->potential, pot);
+#endif
 }
 
 /**

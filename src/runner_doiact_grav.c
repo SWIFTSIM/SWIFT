@@ -1359,6 +1359,7 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
         cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Lock the multipoles
    * Note we impose a hierarchy to solve the dining philosopher problem */
   if (ci < cj) {
@@ -1368,15 +1369,18 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
     lock_lock(&cj->grav.mlock);
     lock_lock(&ci->grav.mlock);
   }
+#endif
 
   /* Let's interact at this level */
   gravity_M2L_symmetric(&ci->grav.multipole->pot, &cj->grav.multipole->pot,
                         multi_i, multi_j, ci->grav.multipole->CoM,
                         cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Unlock the multipoles */
   if (lock_unlock(&ci->grav.mlock) != 0) error("Failed to unlock multipole");
   if (lock_unlock(&cj->grav.mlock) != 0) error("Failed to unlock multipole");
+#endif
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
@@ -1424,6 +1428,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
         cj->grav.ti_old_multipole, cj->nodeID, ci->nodeID, e->ti_current);
 #endif
 
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Lock the multipoles
    * Note we impose a hierarchy to solve the dining philosopher problem */
   if (ci < cj) {
@@ -1433,14 +1438,17 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
     lock_lock(&cj->grav.mlock);
     lock_lock(&ci->grav.mlock);
   }
+#endif
 
   /* Let's interact at this level */
   gravity_M2L_nonsym(&ci->grav.multipole->pot, multi_j, ci->grav.multipole->CoM,
                      cj->grav.multipole->CoM, props, periodic, dim, r_s_inv);
 
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   /* Unlock the multipoles */
   if (lock_unlock(&ci->grav.mlock) != 0) error("Failed to unlock multipole");
   if (lock_unlock(&cj->grav.mlock) != 0) error("Failed to unlock multipole");
+#endif
 
   TIMER_TOC(timer_dopair_grav_mm);
 }
