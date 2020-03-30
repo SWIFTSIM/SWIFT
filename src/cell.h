@@ -911,7 +911,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        const int with_star_formation,
                                        const int with_timestep_sync);
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s);
+                                             struct scheduler *s,
+                                             const int with_timestep_sync);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);

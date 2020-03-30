@@ -3175,9 +3175,11 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
+ * @param with_timestep_sync Are we running with time-step synchronization on?
  */
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s) {
+                                             struct scheduler *s,
+                                             const int with_timestep_sync) {
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
@@ -3205,11 +3207,12 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_black_holes_tasks(ci->progeny[j], NULL, s);
+          cell_activate_subcell_black_holes_tasks(ci->progeny[j], NULL, s,
+                                                  with_timestep_sync);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
-              cell_activate_subcell_black_holes_tasks(ci->progeny[j],
-                                                      ci->progeny[k], s);
+              cell_activate_subcell_black_holes_tasks(
+                  ci->progeny[j], ci->progeny[k], s, with_timestep_sync);
         }
       }
     } else {
@@ -3238,8 +3241,8 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-          cell_activate_subcell_black_holes_tasks(ci->progeny[pid],
-                                                  cj->progeny[pjd], s);
+          cell_activate_subcell_black_holes_tasks(
+              ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync);
       }
     }
 
@@ -3250,10 +3253,14 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
       /* Activate the drifts if the cells are local. */
       if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
       if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+      if (cj->nodeID == engine_rank && with_timestep_sync)
+        cell_activate_sync_part(cj, s);
 
       /* Activate the drifts if the cells are local. */
       if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
       if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
+      if (ci->nodeID == engine_rank && with_timestep_sync)
+        cell_activate_sync_part(ci, s);
     }
   } /* Otherwise, pair interation */
 }
@@ -4090,6 +4097,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
+  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
@@ -4137,12 +4145,13 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
-        cell_activate_subcell_black_holes_tasks(ci, NULL, s);
+        cell_activate_subcell_black_holes_tasks(ci, NULL, s,
+                                                with_timestep_sync);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
-        cell_activate_subcell_black_holes_tasks(ci, cj, s);
+        cell_activate_subcell_black_holes_tasks(ci, cj, s, with_timestep_sync);
       }
     }
 
