@@ -11,7 +11,7 @@ struct line_of_sight {
 struct line_of_sight_particles {
   double pos[3];
   float h;
-};  
+};
 
 struct line_of_sight_params {
   int num_along_xy;
@@ -28,10 +28,9 @@ struct line_of_sight_params {
 double los_periodic(double x, double dim);
 
 void generate_line_of_sights(struct line_of_sight *Los,
-        struct line_of_sight_params *params);
+                             struct line_of_sight_params *params);
 
 void print_los_info(struct line_of_sight *Los,
-        struct line_of_sight_params *params);
+                    struct line_of_sight_params *params);
 
 void do_line_of_sight(struct engine *e);
-
