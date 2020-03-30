@@ -54,11 +54,7 @@ static inline void compute_kick_speed(struct xpart *xp, const struct feedback_pr
       //* (1. - feedback_props->vwvf_scatter - 2.*feedback_props->vwvf_scatter*random_num)  // check if this randomness is necessary
       * v_circ;
   
-  //error("kick speed %.5e v_circ %.5e galaxy mass %.5e norm exp %.5e %.5e firevel %.5e a %.5e norm %.5e exp %.5e", xp->feedback_data.v_kick, v_circ, xp->feedback_data.host_galaxy_mass_baryons, feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp, feedback_props->galsf_firevel, cosmo->a, feedback_props->scale_factor_norm, feedback_props->galsf_firevel_slope);
 
-  // ALEXEI: temporarily set to arbitrary number for testing.
-  //xp->feedback_data.v_kick = 2.4e3;
-  
 }
 
 /**
@@ -75,7 +71,6 @@ static inline void compute_mass_loading(struct xpart *xp, const struct feedback_
   // ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
   float galaxy_stellar_mass_msun = xp->feedback_data.host_galaxy_mass_stars / msun;
   float star_mass = xp->sf_data.star_mass_formed;
-  //message("galaxy stellar mass %.5e star_mass %.5e", galaxy_stellar_mass_msun, star_mass);
   if (galaxy_stellar_mass_msun < feedback_props->simba_mass_spectrum_break_msun) {
     xp->feedback_data.wind_mass = feedback_props->simba_wind_mass_eta 
         * star_mass * pow(galaxy_stellar_mass_msun/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_low_mass_power);
@@ -114,7 +109,7 @@ static inline void compute_heating(struct part *p, struct xpart *xp, const struc
 
   if (u_wind > u_SN * feedback_props->simba_wind_energy_limit) {
     // ALEXEI: comment this for debugging
-    //xp->feedback_data.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
+    xp->feedback_data.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
   }
   if (feedback_props->simba_wind_energy_limit < 1.f) {
     u_SN *= feedback_props->simba_wind_energy_limit;
@@ -288,10 +283,6 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
     const struct feedback_props* feedback_props, 
     const integertime_t ti_current) {
   
-  // ALEXEI: temporarily set host galaxy mass here
-  //xp->feedback_data.host_galaxy_mass_baryons = 100.;
-  //message("stellar mass %.5e", xp->feedback_data.host_galaxy_mass_stars);
-
   /* Calculate the velocity to kick neighbouring particles with */
   compute_kick_speed(xp, feedback_props, cosmo);
 
@@ -303,8 +294,8 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
 
   /* Launch wind */
   /* Get a unique random number between 0 and 1 for star formation */
-  const double prob_launch = (1. - exp(-xp->feedback_data.wind_mass/hydro_get_mass(p)))*0.001;
-  //message("prob %.5e wind mass %.5e particle mass %.5e", prob_launch, xp->feedback_data.wind_mass, hydro_get_mass(p));
+  // ALEXEI: seems like we're getting too much feedback, so added an extra 0.001 factor to the probability calculation
+  const double prob_launch = (1. - exp(-xp->feedback_data.wind_mass/hydro_get_mass(p)))*0.1;
   const double random_number =
       random_unit_interval(p->id, ti_current, random_number_stellar_feedback);
   if (random_number < prob_launch)
