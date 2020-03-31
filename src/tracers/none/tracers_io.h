@@ -37,7 +37,7 @@
 __attribute__((always_inline)) INLINE static void tracers_write_flavour(
     hid_t h_grp) {
 
-  io_write_attribute_s(h_grp, "Tracers", "none");
+  io_write_attribute_s(h_grp, "Tracers", "None");
 }
 #endif
 

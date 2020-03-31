@@ -65,6 +65,15 @@ The rest of this page describes all the SWIFT parameters, split by
 section. A list of all the possible parameters is kept in the file
 ``examples/parameter_examples.yml``.
 
+.. _Parameters_meta_data:
+
+Meta Data
+---------
+
+The ``MetaData`` section contains basic information about the simulation. It
+currently only contains one parameter: ``run_name``. This is a string of
+characters describing the simulation. It is written to the snapshots' headers.
+
 .. _Parameters_units:
 
 Internal Unit System
@@ -73,7 +82,7 @@ Internal Unit System
 The ``InternalUnitSystem`` section describes the units used internally by the
 code. This is the system of units in which all the equations are solved. All
 physical constants are converted to this system and if the ICs use a different
-system (see the snapshots' ref:`ICs_units_label` section of the documentation)
+system (see the snapshots' :ref:`ICs_units_label` section of the documentation)
 the particle quantities will be converted when read in.
 
 The system of units is described using the value of the 5 basic units
