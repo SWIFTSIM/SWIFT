@@ -24,6 +24,7 @@
 
 /* Local includes */
 #include "atomic.h"
+#include "minmax.h"
 
 /**
  * @file accumulate.h
@@ -141,6 +142,66 @@ __attribute__((always_inline)) INLINE static void accumulate_inc_ll(
   (*address)++;
 #else
   atomic_inc(address);
+#endif
+}
+
+/**
+ * @brief Compute the max of x and the value storedd at the location address
+ * and store the value at the address (int8_t version).
+ *
+ * When SWIFT_TASKS_WITHOUT_ATOMICS is *not* defined this function uses an
+ * atomic operation.
+ *
+ * @param address The address to update.
+ * @param x The value to max against *address.
+ */
+__attribute__((always_inline)) INLINE static void accumulate_max_c(
+    volatile int8_t *const address, const int8_t x) {
+
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+  *address = max(*address, x);
+#else
+  atomic_max_c(address, x);
+#endif
+}
+
+/**
+ * @brief Compute the max of x and the value storedd at the location address
+ * and store the value at the address (int version).
+ *
+ * When SWIFT_TASKS_WITHOUT_ATOMICS is *not* defined this function uses an
+ * atomic operation.
+ *
+ * @param address The address to update.
+ * @param x The value to max against *address.
+ */
+__attribute__((always_inline)) INLINE static void accumulate_max_i(
+    volatile int *const address, const int x) {
+
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+  *address = max(*address, x);
+#else
+  atomic_max(address, x);
+#endif
+}
+
+/**
+ * @brief Compute the max of x and the value storedd at the location address
+ * and store the value at the address (float version).
+ *
+ * When SWIFT_TASKS_WITHOUT_ATOMICS is *not* defined this function uses an
+ * atomic operation.
+ *
+ * @param address The address to update.
+ * @param x The value to max against *address.
+ */
+__attribute__((always_inline)) INLINE static void accumulate_max_f(
+    volatile float *const address, const float x) {
+
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+  *address = max(*address, x);
+#else
+  atomic_max_f(address, x);
 #endif
 }
 
