@@ -2467,12 +2467,12 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted == 0) error("Interacting with empty field tensor");
 
-  atomic_add(&gp->num_interacted, lb->num_interacted);
+  accumulate_add_ll(&gp->num_interacted, lb->num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  atomic_add(&gp->num_interacted_m2l, lb->num_interacted_tree);
-  atomic_add(&gp->num_interacted_pm, lb->num_interacted_pm);
+  accumulate_add_ll(&gp->num_interacted_m2l, lb->num_interacted_tree);
+  accumulate_add_ll(&gp->num_interacted_pm, lb->num_interacted_pm);
 #endif
 
   /* Local accumulator */
