@@ -2286,6 +2286,7 @@ void scheduler_free_tasks(struct scheduler *s) {
     s->tid_active = NULL;
   }
   s->size = 0;
+  s->nr_tasks = 0;
 }
 
 /**

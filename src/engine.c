@@ -210,6 +210,9 @@ void engine_repartition(struct engine *e) {
   /* Sorting indices. */
   if (e->s->cells_top != NULL) space_free_cells(e->s);
 
+  /* Report the time spent in the different task categories */
+  if (e->verbose) scheduler_report_task_times(&e->sched, e->nr_threads);
+
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
 
@@ -1671,7 +1674,8 @@ void engine_rebuild(struct engine *e, int repartitioned,
   e->restarting = 0;
 
   /* Report the time spent in the different task categories */
-  if (e->verbose) scheduler_report_task_times(&e->sched, e->nr_threads);
+  if (e->verbose && !repartitioned)
+    scheduler_report_task_times(&e->sched, e->nr_threads);
 
   /* Give some breathing space */
   scheduler_free_tasks(&e->sched);
