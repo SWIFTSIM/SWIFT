@@ -15,6 +15,24 @@ of the simulation volume.
 Header
 ------
 
+The header group (``/Header``) contains basic information about the simulation
+and the number of particles. For compatibility reasons, the SWIFT snapshot's
+header format is identical to the Gadget-2 one with small additions.
+
+In addition to the standard quantities, the header contains a field ``Code``
+that is always set to the string ``SWIFT``, which can be used to identify
+SWIFT-generated snapshots and hence make use of all the extensions to the file
+format described below.
+
+The most important quantity of the header is the array ``NumPart_ThisFile``
+which contains the number of particles of each type in this snapshot. This is an
+array of 6 numbers; one for each of the 5 supported types and a dummy "type 3"
+field only used for compatibility reasons but always containing a zero.
+
+The ``RunName`` field contains the name of the simulation that was specified as
+the ``run_name`` in the :ref:`Parameters_meta_data` section of the YAML
+parameter file.
+
 Meta-data about the code and run
 --------------------------------
 
@@ -105,21 +123,23 @@ Structure of the particle arrays
 There are several groups that contain 'auxiliary' information, such as
 ``Header``.  Particle data is placed in separate groups depending of the type of
 the particles. The type use the naming convention of Gadget-2 (with
-the OWLS and EAGLE extensions).
+the OWLS and EAGLE extensions). A more intuitive naming convention is
+given in the form of aliases within the file. The aliases are shown in
+the third column of the table.
 
-+---------------------+------------------------+----------------------------------------+
-| HDF5 Group Name     | Physical Particle Type | In code ``enum part_type``             |
-+=====================+========================+========================================+
-| ``/PartType0/``     | Gas                    | ``swift_type_gas``                     |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType1/``     | Dark Matter            | ``swift_type_dark_matter``             |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType2/``     | Background Dark Matter | ``swift_type_dark_matter_background``  |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType4/``     | Stars                  | ``swift_type_star``                    |
-+---------------------+------------------------+----------------------------------------+
-| ``/PartType5/``     | Black Holes            | ``swift_type_black_hole``              |
-+---------------------+------------------------+----------------------------------------+
++---------------------+------------------------+-----------------------------+----------------------------------------+
+| HDF5 Group Name     | Physical Particle Type | HDF5 alias                  | In code ``enum part_type``             |
++=====================+========================+=============================+========================================+
+| ``/PartType0/``     | Gas                    | ``/GasParticles/``          | ``swift_type_gas``                     |
++---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType1/``     | Dark Matter            | ``/DMParticles/``           | ``swift_type_dark_matter``             |
++---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType2/``     | Background Dark Matter | ``/DMBackgroundParticles/`` | ``swift_type_dark_matter_background``  |
++---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType4/``     | Stars                  | ``/StarsParticles/``        | ``swift_type_star``                    |
++---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType5/``     | Black Holes            | ``/BHParticles/``           | ``swift_type_black_hole``              |
++---------------------+------------------------+-----------------------------+----------------------------------------+
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
@@ -158,7 +178,7 @@ we encourage users to use this meta-data directly in their automated
 tools.
 
 As an example, the fluid densities (which are written in the co-moving
-frame) have the following conversion factors:
+frame) have the following (non-zero) conversion factors:
 
  * ``U_L exponent``: -3
  * ``U_M exponent``: 1
