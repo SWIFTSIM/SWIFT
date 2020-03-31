@@ -2589,21 +2589,14 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 #endif
 
   /* Update the particle */
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-  gp->a_grav[0] += a_grav[0];
-  gp->a_grav[1] += a_grav[1];
-  gp->a_grav[2] += a_grav[2];
-#else
-  atomic_add_f(&gp->a_grav[0], a_grav[0]);
-  atomic_add_f(&gp->a_grav[1], a_grav[1]);
-  atomic_add_f(&gp->a_grav[2], a_grav[2]);
-#endif
-  gravity_add_comoving_potential(gp, pot);
+  accumulate_add_f(&gp->a_grav[0], a_grav[0]);
+  accumulate_add_f(&gp->a_grav[1], a_grav[1]);
+  accumulate_add_f(&gp->a_grav[2], a_grav[2]);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  atomic_add_f(&gp->a_grav_m2l[0], a_grav[0]);
-  atomic_add_f(&gp->a_grav_m2l[1], a_grav[1]);
-  atomic_add_f(&gp->a_grav_m2l[2], a_grav[2]);
+  accumulate_add_f(&gp->a_grav_m2l[0], a_grav[0]);
+  accumulate_add_f(&gp->a_grav_m2l[1], a_grav[1]);
+  accumulate_add_f(&gp->a_grav_m2l[2], a_grav[2]);
 #endif
 }
 

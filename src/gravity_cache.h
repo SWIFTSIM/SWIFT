@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local headers */
+#include "accumulate.h"
 #include "align.h"
 #include "error.h"
 #include "gravity.h"
@@ -491,15 +492,9 @@ __attribute__((always_inline)) INLINE static void gravity_cache_write_back(
   /* Write stuff back to the particles */
   for (int i = 0; i < gcount; ++i) {
     if (active[i]) {
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      gparts[i].a_grav[0] += a_x[i];
-      gparts[i].a_grav[1] += a_y[i];
-      gparts[i].a_grav[2] += a_z[i];
-#else
-      atomic_add_f(&gparts[i].a_grav[0], a_x[i]);
-      atomic_add_f(&gparts[i].a_grav[1], a_y[i]);
-      atomic_add_f(&gparts[i].a_grav[2], a_z[i]);
-#endif
+      accumulate_add_f(&gparts[i].a_grav[0], a_x[i]);
+      accumulate_add_f(&gparts[i].a_grav[1], a_y[i]);
+      accumulate_add_f(&gparts[i].a_grav[2], a_z[i]);
       gravity_add_comoving_potential(&gparts[i], pot[i]);
     }
   }
