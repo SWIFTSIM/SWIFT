@@ -30,11 +30,14 @@
 
 /**
  * @brief Writes the current model of SPH to the file
+ *
  * @param h_grp The HDF5 group in which to write
+ * @param h_grp_columns The HDF5 group containing named columns
  * @param cooling the parameters of the cooling function.
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grp, const struct cooling_function_data* cooling) {
+    hid_t h_grp, hid_t h_grp_columns,
+    const struct cooling_function_data* cooling) {
 
   io_write_attribute_s(h_grp, "Cooling Model", "None");
 }

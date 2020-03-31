@@ -1043,7 +1043,7 @@ void write_output_serial(struct engine* e, const char* baseName,
         H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp_columns < 0) error("Error while creating named columns group");
     entropy_floor_write_flavour(h_grp);
-    cooling_write_flavour(h_grp, e->cooling_func);
+    cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
     chemistry_write_flavour(h_grp, h_grp_columns);
     tracers_write_flavour(h_grp);
     feedback_write_flavour(e->feedback_props, h_grp);
