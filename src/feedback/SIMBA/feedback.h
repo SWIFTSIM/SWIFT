@@ -39,12 +39,7 @@
 static inline void compute_kick_speed(struct xpart *xp, const struct feedback_props *feedback_props, const struct cosmology *cosmo) {
 
   /* Calculate circular velocity based on Baryonic Tully-Fisher relation*/
-  // ALEXEI: check whether this formula is correct wrt comoving coordinates
-  const float v_circ = pow(xp->feedback_data.host_galaxy_mass_baryons/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);// *
-                       //cbrt(cosmo->H);
-
-  /* checkout what this random number does and how to generate it */
-  //const float random_num = 1.;
+  const float v_circ = pow(xp->feedback_data.host_galaxy_mass_baryons/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
 
   /* Calculate wind speed */
   // ALEXEI: checkout what the numbers in this equation mean. Maybe possible future simplifications
@@ -68,7 +63,6 @@ static inline void compute_mass_loading(struct xpart *xp, const struct feedback_
   // ALEXEI: temporary definition for debugging. Move elsewhere
   const double msun = 1.e-10;
 
-  // ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
   float galaxy_stellar_mass_msun = xp->feedback_data.host_galaxy_mass_stars / msun;
   float star_mass = xp->sf_data.star_mass_formed;
   if (galaxy_stellar_mass_msun < feedback_props->simba_mass_spectrum_break_msun) {
@@ -95,7 +89,7 @@ static inline void compute_heating(struct part *p, struct xpart *xp, const struc
   float u_wind = 0.5*xp->feedback_data.v_kick*xp->feedback_data.v_kick;
 
   /* Calculate internal energy contribution from SN */
-  float u_SN = feedback_props->SN_energy * xp->sf_data.star_mass_formed 
+  float u_SN = feedback_props->SN_energy * (0.01020788/1.989e33) * xp->sf_data.star_mass_formed 
                / xp->feedback_data.wind_mass;
 
   // ALEXEI: should this be smoothed metal mass fraction?
@@ -108,7 +102,6 @@ static inline void compute_heating(struct part *p, struct xpart *xp, const struc
   }
 
   if (u_wind > u_SN * feedback_props->simba_wind_energy_limit) {
-    // ALEXEI: comment this for debugging
     xp->feedback_data.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
   }
   if (feedback_props->simba_wind_energy_limit < 1.f) {
@@ -246,31 +239,24 @@ __attribute__((always_inline)) INLINE static void launch_wind(
     v_new[1] = 0.;
     v_new[2] = 0.;
   }
-  // ALEXEI: check if we need to add the particle's existing velocity to the kick
   for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*xp->feedback_data.v_kick/v_new_norm + p->v[i]; 
 
   /* Set the velocity */
   hydro_set_velocity(p, xp, v_new);
 
   /* Heat particle */
-  // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
-  // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
-  // Reinstate random heating
-  //if (rand_heat > prob_heat) {
+  // Come up with better random number seed
+  const float prob_heat = 0.3;
+  if (random_number > prob_heat) {
     const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
     const float u_new = u_init + xp->feedback_data.u_extra;
     hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
     hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
-
-    // ALEXEI: debugging
-    //message("u init new %.5e %.5e", u_init, u_new);
-  //}
+  }
 
   /* Set delaytime before which the particle cannot interact */
   p->delay_time = feedback_props->simba_delay_time;
   p->time_bin = time_bin_decoupled;
-  // ALEXEI: debugging print statement
-  //if (p->id <= SIMBA_DEBUG_ID) message("decoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e kick %.5e delay time %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->feedback_data.v_kick, p->delay_time);
 
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_decoupled = ti_current;
@@ -294,7 +280,7 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
 
   /* Launch wind */
   /* Get a unique random number between 0 and 1 for star formation */
-  // ALEXEI: seems like we're getting too much feedback, so added an extra 0.001 factor to the probability calculation
+  // ALEXEI: seems like we're getting too much feedback, so added an extra 0.1 factor to the probability calculation
   const double prob_launch = (1. - exp(-xp->feedback_data.wind_mass/hydro_get_mass(p)))*0.1;
   const double random_number =
       random_unit_interval(p->id, ti_current, random_number_stellar_feedback);

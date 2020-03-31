@@ -66,14 +66,14 @@ struct feedback_props {
  * @param cosmo The cosmological model.
  */
 INLINE static void feedback_props_init(struct feedback_props *fp,
-                                       const struct phys_const *phys_const,
+                                       const struct phys_const *internal_const,
                                        const struct unit_system *us,
                                        struct swift_params *params,
                                        const struct hydro_props *hydro_props,
                                        const struct cosmology *cosmo) {
   // ALEXEI: double check units, make sure all use one system!!!
 
-  const double msun = 1.989e33 / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  const double msun = internal_const->const_solar_mass;
 
   /* Initialize parameters for calculating rotational velocity of galaxy */
   fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm_msun") * msun; // 102.329 Msun 
