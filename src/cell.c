@@ -5358,16 +5358,31 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   /* Only check cells that have at least one non-inhibited particle */
   if (count > 0) {
 
-    if (ti_end_min != c->hydro.ti_end_min)
-      error(
-          "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
-          "depth=%d",
-          c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+    if (count != c->hydro.count) {
+
+      /* Note that we use a < as the particle with the smallest time-bin
+         might have been swallowed. This means we will run this cell with
+         0 active particles but that's not wrong */
+      if (ti_end_min < c->hydro.ti_end_min)
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+
+    } else /* Normal case: nothing was swallowed/converted */ {
+      if (ti_end_min != c->hydro.ti_end_min)
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+    }
+
     if (ti_end_max > c->hydro.ti_end_max)
       error(
           "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
           "depth=%d",
           c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
+
     if (ti_beg_max != c->hydro.ti_beg_max)
       error(
           "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
