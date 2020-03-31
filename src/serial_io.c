@@ -1146,9 +1146,6 @@ void write_output_serial(struct engine* e, const char* baseName,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating particle group.\n");
 
-      /* Close particle group */
-      H5Gclose(h_grp);
-
       /* Add an alias name for convenience */
       char aliasName[PARTICLE_GROUP_BUFFER_SIZE];
       snprintf(aliasName, PARTICLE_GROUP_BUFFER_SIZE, "/%sParticles",
@@ -1159,6 +1156,9 @@ void write_output_serial(struct engine* e, const char* baseName,
 
       /* Write the number of particles as an attribute */
       io_write_attribute_l(h_grp, "NumberOfParticles", N_total[ptype]);
+
+      /* Close particle group */
+      H5Gclose(h_grp);
     }
 
     /* Close file */
