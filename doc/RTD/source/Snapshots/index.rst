@@ -81,6 +81,26 @@ StarsScheme
 SubgridScheme
 ~~~~~~~~~~~~~
 
+This section of the meta-data mainly contains basic information about the
+flavour of sub-grid schemes used in the simulation. This is typically a list of
+attributes describing the parameters of the model. Users willing to add
+information can edit the functions ``chemistry_write_flavour()``,
+``cooling_write_flavour()``, etc. located in the i/o header of each scheme.
+
+The other important output stored in that group is the ``NamedColumns``
+sub-group. In it, we store the names of the columns of larger particle arrays
+that are stored as large n-dimensional arrays. For instance, in the EAGLE model,
+the individual chemical element fractions of each particles are stored as a Nx9
+array, where N is the number of particles (See
+:ref:`EAGLE_chemical_tracers`). This array is labeled ``ElementMassFractions``
+and is used instead of 9 individual 1-d arrays. In the ``NamedColumns``
+sub-group we store as an array of strings the name of each of the 9 individual
+columns. In this case, the name of the 9 elements traced by the model. This
+array has the same name as the particle array it corresponds to; here
+``ElementMassFractions``. The same mechanism is used for other quantities stored
+in a similar fashion. This allows external tools reading SWIFT snapshots to give
+meaningful names to more complex entries of the particle arrays.
+
 Unit systems
 ------------
 
@@ -143,6 +163,9 @@ the third column of the table.
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
+
+Each group contains a series of arrays corresponding to each field of the
+particles stored in the snapshots.
 
 Unit information for individual fields
 --------------------------------------
