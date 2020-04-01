@@ -1591,6 +1591,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   }
   if (e->policy & engine_policy_star_formation) {
     n1 += 1;
+    // ALEXEI: add one for particle recoupling
+    n1 += 1; 
   }
   if (e->policy & engine_policy_stars) {
     /* 2 self (density, feedback), 1 sort, 26/2 density pairs
@@ -2058,6 +2060,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
         t->type == task_type_bh_out || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
+	t->type == task_type_part_recouple ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
@@ -2717,8 +2720,6 @@ void engine_step(struct engine *e) {
   // ALEXEI: Temporary attempt to recouple particles
   // Loop over all the particles in space, check delay_time counter, possibly recouple, give timebin corresponding to next timestep. (get_time_bin(ti_next) or similar)
 
-  // ALEXEI: Can't remember why we're checking that we have any sparts. This is possibly because when initially developing thought that sparts did feedback in SIMBA (they don't). remove if not necessary
-  //if (e->s->cells_top != NULL && e->s->nr_sparts > 0) {
   if (e->s->cells_top != NULL) {
     for (int i = 0; i < e->s->nr_cells; i++) {
       struct cell *c = &e->s->cells_top[i];

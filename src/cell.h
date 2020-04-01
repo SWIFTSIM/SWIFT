@@ -470,6 +470,9 @@ struct cell {
 
 #endif
 
+    /* ALEXEI: flag to indicate this cell has a decoupled particle */
+    int exist_part_decoupled;
+
   } hydro;
 
   /*! Grav variables */
@@ -794,6 +797,9 @@ struct cell {
   /*! The task to synchronize the time-step of inactive particles hit by
    * feedback */
   struct task *timestep_sync;
+
+  /*! The task to recouple particles when using kinetic feedback */
+  struct task *part_recouple;
 
 #ifdef WITH_LOGGER
   /*! The logger task */

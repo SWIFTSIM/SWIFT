@@ -913,6 +913,17 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       if (with_timestep_limiter && with_timestep_sync) {
         scheduler_addunlock(s, c->timestep_limiter, c->timestep_sync);
       }
+
+      /* Particle recoupling */
+      // ALEXEI: make sure we're only doing this for the types of star formation which actually decouple particles
+      // Make sure we're only activating this task if there actually is a decoupled particle in the cell
+      //if (with_star_formation && c->hydro.exist_part_decoupled) {
+      if (with_star_formation) {
+	c->part_recouple = scheduler_addtask(s, task_type_part_recouple,
+					     task_subtype_none, 0, 0, c, NULL);
+
+	scheduler_addunlock(s, c->kick1, c->part_recouple);
+      }
     }
   } else { /* We are above the super-cell so need to go deeper */
 

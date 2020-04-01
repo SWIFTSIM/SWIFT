@@ -476,6 +476,9 @@ void *runner_main(void *data) {
         case task_type_fof_pair:
           runner_do_fof_pair(r, t->ci, t->cj, 1);
           break;
+        case task_type_part_recouple:
+          runner_do_part_recouple(r, 1);
+          break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }

@@ -825,3 +825,15 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
   error("SWIFT was not compiled with FOF enabled!");
 #endif
 }
+
+/**
+ * @brief Recouple particles that have undergone kinetic feedback
+ *
+ * @param r runner task
+ * @param timer 1 if the time is to be recorded
+ */
+void runner_do_part_recouple(struct runner *r, int timer) {
+  TIMER_TIC;
+
+  if (timer) TIMER_TOC(timer_part_recouple);
+}

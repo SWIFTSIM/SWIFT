@@ -343,7 +343,7 @@ INLINE static int star_formation_should_convert_to_star(
 
   /* Have we been lucky and need to form a star? */
   if (prob <= random_number && dt_star > 0) {
-    /* In SIMBA feedback model we launch winds here */
+    /* In SIMBA feedback model we launch winds if we do not form a star */
     star_formation_feedback(p, xp, e->cosmology, e->feedback_props, e->ti_current);
   }
   return (prob > random_number);

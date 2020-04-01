@@ -5633,10 +5633,9 @@ void cell_recouple(struct cell *c,
         // ALEXEI: think about cosmology dt!!!
         p->delay_time -= dt_drift;
         // ALEXEI: debugging print statement
-        //if (p->id == SIMBA_DEBUG_ID) message("particle decoupled id %llu timebin %d current timebint %d new delay %.5e dt %.5e", p->id, p->time_bin, get_time_bin(e->ti_current), p->delay_time, dt_drift);
         // ALEXEI: check that this is the right place to do recoupling based on density
-        //if (p->delay_time < 0. || p->rho > e->feedback_props->recoupling_density) {
-        if (p->delay_time < 0. ) {
+        if (p->delay_time < 0. || p->rho > e->feedback_props->recoupling_density) {
+        //if (p->delay_time < 0. ) {
           // ALEXEI: Note that the choice of min_active_bin implies that the timestep might be smaller than actually required. 
           // This will likely result in slow performance as there will be some particle somewhere that is being recoupled.
           // Think of ways to choose a more apropriate time bin. 
@@ -5652,12 +5651,7 @@ void cell_recouple(struct cell *c,
 	      }
 #if SWIFT_DEBUG_CHECKS
               p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
-	      //if (p->id == SIMBA_DEBUG_ID) message("id %llu ti_current %llu half step %llu ti_kick %llu ti_drift %llu", p->id, e->ti_current, get_integer_timestep(min_active_bin)/2, p->ti_kick, p->ti_drift);
-              
-	      // ALEXEI: debugging print statement
-              //if (e->ti_current * e->time_base > 0.) message("particle %llu recoupled time elapsed %.5e ti_kick %llu ti_current %llu step/2 %llu ti_end_min %llu recouple min active bin %d timebin %d", p->id, (e->ti_current - p->ti_decoupled)*e->time_base, p->ti_kick, e->ti_current, get_integer_timestep(e->min_active_bin)/2, c->hydro.ti_end_min, e->min_active_bin, p->time_bin);
 #endif    
-              //if (e->ti_current * e->time_base > 0. && p->id <= SIMBA_DEBUG_ID) message("recoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e delay time %.5e h_dt %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->delay_time, p->force.h_dt);
 
         }
       }

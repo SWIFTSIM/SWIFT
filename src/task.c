@@ -101,7 +101,8 @@ const char *taskID_names[task_type_count] = {"none",
                                              "bh_swallow_ghost2",
                                              "bh_swallow_ghost3",
                                              "fof_self",
-                                             "fof_pair"};
+                                             "fof_pair",
+					     "part_recouple"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
