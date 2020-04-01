@@ -175,6 +175,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_extra_ghost:
     case task_type_cooling:
     case task_type_end_hydro_force:
+    // ALEXEI: Does this go here?
+    case task_type_part_recouple:
       return task_action_part;
       break;
 

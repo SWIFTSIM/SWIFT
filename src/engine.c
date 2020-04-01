@@ -2720,12 +2720,12 @@ void engine_step(struct engine *e) {
   // ALEXEI: Temporary attempt to recouple particles
   // Loop over all the particles in space, check delay_time counter, possibly recouple, give timebin corresponding to next timestep. (get_time_bin(ti_next) or similar)
 
-  if (e->s->cells_top != NULL) {
-    for (int i = 0; i < e->s->nr_cells; i++) {
-      struct cell *c = &e->s->cells_top[i];
-      cell_recouple(c, e);
-    }
-  }
+  //if (e->s->cells_top != NULL) {
+  //  for (int i = 0; i < e->s->nr_cells; i++) {
+  //    struct cell *c = &e->s->cells_top[i];
+  //    cell_recouple(c, e);
+  //  }
+  //}
 
   // ALEXEI: update total stellar mass. To be used for development in isolated galaxy test case only, remove once can update stellar mass using fof for simba
   double total_stellar_mass = 0.;

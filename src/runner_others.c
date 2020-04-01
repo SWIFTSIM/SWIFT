@@ -832,8 +832,56 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
  * @param r runner task
  * @param timer 1 if the time is to be recorded
  */
-void runner_do_part_recouple(struct runner *r, int timer) {
+void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
+
   TIMER_TIC;
+
+  struct engine *e = r->e;
+
+  if (c->split) {
+    for (int j = 0; j < 8; ++j) {
+      if (c->progeny[j] != NULL) runner_do_part_recouple(r, c->progeny[j], 0);
+    }
+  } else {
+    /* Drift from the last time the cell was drifted to the current time */
+    double dt_drift;
+    const int with_cosmology = (e->policy & engine_policy_cosmology);
+    if (with_cosmology) {
+      dt_drift = cosmology_get_drift_factor(e->cosmology, e->ti_old, e->ti_current);
+    } else {
+      dt_drift = (e->ti_current - e->ti_old) * e->time_base;
+    }
+
+    for (int k = 0; k < c->hydro.count; k++) {
+      struct part *p = &c->hydro.parts[k];
+      /* Decrement time delay for decoupled particles */
+      if (part_is_decoupled(p)) {
+        // ALEXEI: think about cosmology dt!!!
+        p->delay_time -= dt_drift;
+        // ALEXEI: debugging print statement
+        // ALEXEI: check that this is the right place to do recoupling based on density
+        if (p->delay_time < 0. || p->rho > e->feedback_props->recoupling_density) {
+          // ALEXEI: Note that the choice of min_active_bin implies that the timestep might be smaller than actually required. 
+          // This will likely result in slow performance as there will be some particle somewhere that is being recoupled.
+          // Think of ways to choose a more apropriate time bin. 
+          p->time_bin = e->min_active_bin;
+          p->gpart->time_bin = p->time_bin;
+              c->hydro.ti_end_min = min(c->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+
+              // update parents
+              struct cell *parent_cell = c->parent;
+              while (parent_cell != NULL) {
+                parent_cell->hydro.ti_end_min = min(parent_cell->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+                parent_cell = parent_cell->parent;
+              }
+#if SWIFT_DEBUG_CHECKS
+              p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
+#endif
+	   message("recouple particle %llu", p->id);
+        }
+      }
+    }
+  }
 
   if (timer) TIMER_TOC(timer_part_recouple);
 }

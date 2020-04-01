@@ -284,8 +284,10 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
   const double prob_launch = (1. - exp(-xp->feedback_data.wind_mass/hydro_get_mass(p)))*0.1;
   const double random_number =
       random_unit_interval(p->id, ti_current, random_number_stellar_feedback);
-  if (random_number < prob_launch)
+  if (random_number < prob_launch) {
     launch_wind(p, xp, feedback_props, cosmo, ti_current);
+    //message("decouple particle %llu", p->id);
+  }
 
 }
 
