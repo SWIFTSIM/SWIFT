@@ -2592,6 +2592,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   accumulate_add_f(&gp->a_grav[0], a_grav[0]);
   accumulate_add_f(&gp->a_grav[1], a_grav[1]);
   accumulate_add_f(&gp->a_grav[2], a_grav[2]);
+  gravity_add_comoving_potential(gp, pot);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   accumulate_add_f(&gp->a_grav_m2l[0], a_grav[0]);
