@@ -23,7 +23,7 @@
 #include <grackle.h>
 
 /**
- * @file src/cooling/none/cooling_struct.h
+ * @file src/cooling/grackle/cooling_struct.h
  * @brief Empty infrastructure for the cases without cooling function
  */
 

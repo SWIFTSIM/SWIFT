@@ -37,7 +37,7 @@
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
- * @param cosmo The #cosmology.
+ * @param e The #engine.
  */
 void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
                           const struct engine* restrict e) {
@@ -86,9 +86,13 @@ void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
 }
 
 /**
- * @Brief Should we do feedback for this star?
+ * @brief Should we do feedback for this star?
  *
  * @param sp The star to consider.
+ * @param feedback_props The #feedback_props.
+ * @param with_cosmology Is the cosmology switch on?
+ * @param cosmo The #cosmology.
+ * @param time The current time.
  */
 int feedback_will_do_feedback(const struct spart* sp,
                               const struct feedback_props* feedback_props,

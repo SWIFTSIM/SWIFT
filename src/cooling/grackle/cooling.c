@@ -143,9 +143,13 @@ int cooling_converged(const struct xpart* restrict xp,
 /**
  * @brief Compute equilibrium fraction
  *
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param hydro_properties The #hydro_props.
+ * @param cosmo The #cosmology
+ * @param cooling The properties of the cooling function.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param cooling The properties of the cooling function.
  */
 void cooling_compute_equilibrium(
     const struct phys_const* restrict phys_const,
@@ -198,9 +202,13 @@ void cooling_compute_equilibrium(
  * @brief Sets the cooling properties of the (x-)particles to a valid start
  * state.
  *
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param hydro_props The #hydro_props.
+ * @param cosmo The #cosmology.
+ * @param cooling The properties of the cooling function.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param cooling The properties of the cooling function.
  */
 void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct unit_system* restrict us,
@@ -292,7 +300,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
 /**
  * @brief copy a #xpart to the grackle data
  *
- * @param data The #grackle_field_data
+ * @param data The grackle_field_data structure from grackle.
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
@@ -338,7 +346,7 @@ void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
 /**
  * @brief copy a #xpart to the grackle data
  *
- * @param data The #grackle_field_data
+ * @param data The grackle_field_data structure from grackle.
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
@@ -370,7 +378,7 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
 /**
  * @brief copy a #xpart to the grackle data
  *
- * @param data The #grackle_field_data
+ * @param data The grackle_field_data structure from grackle.
  * @param p The #part
  * @param xp The #xpart
  * @param rho Particle density
@@ -402,10 +410,10 @@ void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
 /**
  * @brief copy the grackle data to a #xpart
  *
- * @param data The #grackle_field_data
- * @param p The #part
- * @param xp The #xpart
- * @param rho Particle density
+ * @param data The grackle_field_data structure from grackle.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param rho The particle density.
  */
 #if COOLING_GRACKLE_MODE > 0
 void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
@@ -435,12 +443,12 @@ void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
 #endif
 
 /**
- * @brief copy the grackle data to a #xpart
+ * @brief copy the grackle data to a #xpart.
  *
- * @param data The #grackle_field_data
- * @param p The #part
- * @param xp The #xpart
- * @param rho Particle density
+ * @param data The grackle_field_data structure from grackle.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param rho The particle density.
  */
 #if COOLING_GRACKLE_MODE > 1
 void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
@@ -460,10 +468,10 @@ void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
 /**
  * @brief copy the grackle data to a #xpart
  *
- * @param data The #grackle_field_data
- * @param p The #part
- * @param xp The #xpart
- * @param rho Particle density
+ * @param data The grackle_field_data structure from grackle.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param rho The particle density.
  */
 #if COOLING_GRACKLE_MODE > 2
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
@@ -489,10 +497,10 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
  * Warning this function creates some variable, therefore the grackle call
  * should be in a block that still has the variables.
  *
- * @param data The #grackle_field_data
- * @param p The #part
- * @param xp The #xpart
- * @param rho Particle density
+ * @param data The grackle_field_data structure from grackle.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param rho The particle density.
  */
 void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
                              struct xpart* xp, gr_float rho) {
@@ -520,10 +528,10 @@ void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
  * Warning this function creates some variable, therefore the grackle call
  * should be in a block that still has the variables.
  *
- * @param data The #grackle_field_data
- * @param p The #part
- * @param xp The #xpart
- * @param rho Particle density
+ * @param data The grackle_field_data structure from grackle.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param rho The particle density.
  */
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
                                struct xpart* xp, gr_float rho) {
@@ -539,9 +547,9 @@ void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
  * background.
  *
  * @param cooling The #cooling_function_data used in the run.
- * @param chemistry The #chemistry_data from grackle.
+ * @param chemistry The chemistry_data structure from grackle.
  * @param p Pointer to the particle data.
- *
+ * @param cosmo The #cosmology.
  */
 void cooling_apply_self_shielding(
     const struct cooling_function_data* restrict cooling,
@@ -568,6 +576,8 @@ void cooling_apply_self_shielding(
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param hydro_props The #hydro_props.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
@@ -641,6 +651,10 @@ gr_float cooling_new_energy(
 /**
  * @brief Compute the cooling time
  *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param hydro_props The #hydro_props.
+ * @param cosmo The #cosmology.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
@@ -715,6 +729,7 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
  * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
@@ -846,9 +861,11 @@ float cooling_get_temperature(
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
- * @param cosmo The current cosmological model.
+ * @param cosmo The #cosmology.
  * @param us The internal system of units.
+ * @param hydro_props The #hydro_props.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data
  */
 float cooling_timestep(const struct cooling_function_data* restrict cooling,
                        const struct phys_const* restrict phys_const,
@@ -877,6 +894,7 @@ void cooling_split_part(struct part* p, struct xpart* xp, double n) {
  * @brief Initialises the cooling unit system.
  *
  * @param us The current internal system of units.
+ * @param phys_const The #phys_const.
  * @param cooling The cooling properties to initialize
  */
 void cooling_init_units(const struct unit_system* us,

@@ -40,14 +40,15 @@
  *
  * Use the star formation criterion given by eq. 3 in Revaz & Jablonka 2018.
  *
- * @param starform the star formation law properties to use.
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
+ * @param starform the star formation law properties to use.
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
+ * @param entropy_floor The #entropy_floor_properties.
  *
  */
 INLINE static int star_formation_is_star_forming(
@@ -210,14 +211,17 @@ INLINE static void star_formation_update_part_not_SFR(
  * @brief Copies the properties of the gas particle over to the
  * star particle.
  *
- * @param e The #engine
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
  * @param sp the new created star particle with its properties.
+ * @param e The #engine
  * @param starform the star formation law properties to use.
- * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
- * @param with_cosmology if we run with cosmology.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param phys_const the physical constants in internal units.
+ * @param hydro_props The #hydro_props.
+ * @param us The #unit_system.
+ * @param cooling The #cooling_function_data.
  * @param convert_part Did we convert a part (or spawned one)?
  */
 INLINE static void star_formation_copy_properties(

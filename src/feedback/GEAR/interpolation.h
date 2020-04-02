@@ -59,16 +59,16 @@ struct interpolation_1d {
 /**
  * @brief Initialize the #interpolation_1d.
  *
- * @params interp The #interpolation_1d.
- * @params xmin Minimal value of x (in log).
- * @params xmax Maximal value of x (in log).
- * @params N Requested number of values.
- * @params log_data_xmin The minimal value of the data (in log).
- * @params step_size The size of the x steps (in log).
- * @params N_data The number of element in the data.
- * @params data The data to interpolate (y).
- * @params N The number of element in data.
- * @params boundary_condition The type of #interpolate_boundary_condition.
+ * @param interp The #interpolation_1d.
+ * @param xmin Minimal value of x (in log).
+ * @param xmax Maximal value of x (in log).
+ * @param N Requested number of values.
+ * @param log_data_xmin The minimal value of the data (in log).
+ * @param step_size The size of the x steps (in log).
+ * @param N_data The number of element in the data.
+ * @param data The data to interpolate (y).
+ * @param N The number of element in data.
+ * @param boundary_condition The type of #interpolate_boundary_condition.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_init(
     struct interpolation_1d *interp, float xmin, float xmax, int N,
@@ -138,8 +138,8 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
 /**
  * @brief Interpolate the data.
  *
- * @params interp The #interpolation_1d.
- * @params x The x value where to interpolate.
+ * @param interp The #interpolation_1d.
+ * @param x The x value where to interpolate.
  *
  * @return The interpolated value y.
  */
@@ -187,7 +187,7 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
 /**
  * @brief Print the data.
  *
- * @params interp The #interpolation_1d.
+ * @param interp The #interpolation_1d.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_print(
     const struct interpolation_1d *interp) {
@@ -208,7 +208,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_print(
 /**
  * @brief Cleanup the #interpolation_1d structure.
  *
- * @params interp The #interpolation_1d.
+ * @param interp The #interpolation_1d.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_free(
     struct interpolation_1d *interp) {

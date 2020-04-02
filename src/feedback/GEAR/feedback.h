@@ -66,7 +66,9 @@ void feedback_clean(struct feedback_props* feedback);
 
 /**
  * @brief Writes the current model of feedback to the file
- * @param h_grpsph The HDF5 group in which to write
+ *
+ * @param feedback The #feedback_props.
+ * @param h_grp The HDF5 group in which to write
  */
 INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {

@@ -91,7 +91,7 @@ io_read_string_array_attribute(hid_t grp, const char *name, void *data,
 /**
  * @brief Open a group in the yields table (#h5_close_group needs to be called).
  *
- * @param params The @swift_params.
+ * @param params The #swift_params.
  * @param group_name The name of the group to open.
  * @param file_id (output) The id of the file opened.
  * @param group_id (output) The id of the group opened.

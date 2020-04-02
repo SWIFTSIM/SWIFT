@@ -92,8 +92,8 @@ float supernovae_ii_get_number_per_unit_mass(const struct supernovae_ii *snii,
  * @brief Get the SNII yields per mass (Poirier version).
  *
  * @param snii The #supernovae_ii model.
- * @param m1 The lower mass in log.
- * @param m2 The upper mass in log.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
  * @param yields The elements ejected (needs to be allocated).
  */
 void supernovae_ii_get_yields_from_integral(const struct supernovae_ii *snii,
@@ -127,8 +127,8 @@ void supernovae_ii_get_yields_from_raw(const struct supernovae_ii *snii,
  * @brief Get the ejected mass (non processed) per mass unit.
  *
  * @param snii The #supernovae_ii model.
- * @param m1 The lower mass in log.
- * @param m2 The upper mass in log.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
  *
  * @return mass_ejected_processed The mass of non processsed elements.
  */
@@ -271,6 +271,7 @@ void supernovae_ii_read_yields_array(
  *
  * @param snii The #supernovae_ii model.
  * @param params The simulation parameters.
+ * @param phys_const The #phys_const.
  * @param sm The #stellar_model.
  */
 void supernovae_ii_read_yields(struct supernovae_ii *snii,
@@ -398,6 +399,7 @@ void supernovae_ii_init(struct supernovae_ii *snii,
  *
  * @param snii the struct
  * @param stream the file stream
+ * @param sm The #stellar_model.
  */
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
                         const struct stellar_model *sm) {
@@ -473,6 +475,7 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
  *
  * @param snii the struct
  * @param stream the file stream
+ * @param sm The #stellar_model.
  */
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
                            const struct stellar_model *sm) {

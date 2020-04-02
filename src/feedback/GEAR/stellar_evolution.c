@@ -94,6 +94,7 @@ int stellar_evolution_compute_integer_number_supernovae(
  * (solMass)
  * @param m_end_step Mass of a star ending its life at the end of the step
  * (solMass)
+ * @param m_init Birth mass of the stellar particle (solMass).
  * @param number_snia_f (Floating) Number of SNIa produced by the stellar
  * particle.
  * @param number_snii_f (Floating) Number of SNII produced by the stellar
@@ -374,6 +375,7 @@ const char* stellar_evolution_get_element_name(const struct stellar_model* sm,
  * @brief Read the name of all the elements present in the tables.
  *
  * @param sm The #stellar_model.
+ * @param params The #swift_params.
  */
 void stellar_evolution_read_elements(struct stellar_model* sm,
                                      struct swift_params* params) {
@@ -423,7 +425,6 @@ void stellar_evolution_read_elements(struct stellar_model* sm,
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.
  * @param params The parsed parameters.
- * @param hydro_props The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
  */
 void stellar_evolution_props_init(struct stellar_model* sm,

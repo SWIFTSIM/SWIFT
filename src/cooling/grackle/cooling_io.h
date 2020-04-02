@@ -54,6 +54,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
+ * @param xparts The extra particle array.
  * @param list The list of i/o properties to write.
  * @param cooling The #cooling_function_data
  *
@@ -138,6 +139,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  *
  * @param parameter_file The parser parameter file
  * @param cooling The cooling properties to initialize
+ * @param phys_const The #phys_const.
  */
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     struct swift_params* parameter_file, struct cooling_function_data* cooling,
