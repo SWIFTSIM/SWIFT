@@ -51,5 +51,4 @@ INLINE static void task_order_addunlock_star_formation_feedback(
                       c->stars.stars_in);
 }
 
-
 #endif /* SWIFT_TASK_ORDER_DEFAULT_H */
