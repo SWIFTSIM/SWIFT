@@ -39,13 +39,15 @@ Statistics:
   time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
   delta_time:          1.05 # Time between statistics output
 
-# Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025    # Constant dimensionless multiplier for time integration.
-  theta:                  0.7      # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.05 # Comoving softening length (in internal units).
-  max_physical_softening: 0.01    # Physical softening length (in internal units).
-  mesh_side_length:       16
+  eta:                    0.002    # Constant dimensionless multiplier for time integration.
+  theta:                  0.6     # Opening angle (Multipole acceptance criterion)
+  comoving_DM_softening:     0.1278 # Comoving softening length (in internal units).
+  max_physical_DM_softening: 0.03365    # Physical softening length (in internal units).
+  comoving_baryon_softening:     0.03365 # Comoving softening length (in internal units).
+  max_physical_baryon_softening: 0.00673    # Physical softening length (in internal units).
+  softening_ratio_background:    0.0285714      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
+  mesh_side_length:       128        # Number of cells along each axis for the periodic gravity mesh.
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -72,14 +74,15 @@ GrackleCooling:
   self_shielding_method: 0                # (optional) Grackle (<= 3) or Gear self shielding method
   max_steps: 10000                       # (optional) Max number of step when computing the initial composition
   convergence_limit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
-  thermal_time_Myr:  5
+  thermal_time_myr:  5
 
-GearChemistry:
+GEARChemistry:
   initial_metallicity: 0.01295
 
 GEARFeedback:
   supernovae_energy_erg: 1e50
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+  discrete_yields: 1
 
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
