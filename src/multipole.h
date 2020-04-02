@@ -1608,12 +1608,19 @@ INLINE static void gravity_M2L_apply(
     const struct potential_derivatives_M2L *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Count interactions */
-  l_b->num_interacted += m_a->num_gpart;
+  /* Count all interactions
+   * Note that despite being in a section of the code protected by locks,
+   * we must use atomics here as the long-range task may update this
+   * counter in a lock-free section of code. */
+  accumulate_add_ll(&l_b->num_interacted, m_a->num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  l_b->num_interacted_tree += m_a->num_gpart;
+  /* Count tree interactions
+   * Note that despite being in a section of the code protected by locks,
+   * we must use atomics here as the long-range task may update this
+   * counter in a lock-free section of code. */
+  accumulate_add_ll(&l_b->num_interacted_tree, m_a->num_gpart);
 #endif
 
   /* Record that this tensor has received contributions */
