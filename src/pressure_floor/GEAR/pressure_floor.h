@@ -98,7 +98,7 @@ pressure_floor_get_comoving_pressure(const struct part* p,
                                      const float pressure_comoving,
                                      const struct cosmology* cosmo) {
 
-  const float a_coef = pow_three_gamma_minus_one(cosmo->a) * cosmo->a_inv;
+  const float a_coef = pow_three_gamma_minus_one(cosmo->a);
   const float rho = hydro_get_comoving_density(p);
 
   /* Compute the pressure floor */
