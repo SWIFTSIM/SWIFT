@@ -122,6 +122,7 @@ tests/testInteractions.sh
 tests/testSymmetry
 tests/testHydroMPIrules
 tests/testMaths
+tests/testAtomic
 tests/testRandom
 tests/testRandomSpacing
 tests/testThreadpool
