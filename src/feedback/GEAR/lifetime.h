@@ -197,7 +197,6 @@ __attribute__((always_inline)) INLINE static void lifetime_init(
   /* Change units from yr into Myr */
   const int dim = 3;
   lt->constant[dim - 1] -= 6;
-
 }
 
 /**

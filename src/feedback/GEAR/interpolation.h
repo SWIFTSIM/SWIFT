@@ -161,7 +161,7 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
       case boundary_condition_zero_const:
         return 0;
       case boundary_condition_const:
-	return interp->data[0];
+        return interp->data[0];
       default:
         error("Interpolation type not implemented");
     }

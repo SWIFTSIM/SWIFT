@@ -47,9 +47,8 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_NO_UNITS, sparts, id);
   list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sparts, h);
-
-  list[5] = io_make_input_field("BirthMass", FLOAT, 1, OPTIONAL,
-                                UNIT_CONV_MASS, sparts, sf_data.birth_mass);
+  list[5] = io_make_input_field("BirthMass", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+                                sparts, sf_data.birth_mass);
 
   list[6] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sparts, birth_time);

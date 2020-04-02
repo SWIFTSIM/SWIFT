@@ -81,7 +81,8 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
  * @param step_size The distance between two points.
  */
 void initial_mass_function_integrate(const struct initial_mass_function *imf,
-                                     float *data, size_t count, float log_mass_min, float step_size) {
+                                     float *data, size_t count,
+                                     float log_mass_min, float step_size) {
 
   /* Index in the data */
   size_t j = 1;
@@ -107,7 +108,8 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
     }
 
     /* Integrate the data */
-    while ((m < imf->mass_limits[i + 1] || i == imf->n_parts - 1) && j < count) {
+    while ((m < imf->mass_limits[i + 1] || i == imf->n_parts - 1) &&
+           j < count) {
 
       /* Compute the masses */
       const float log_m1 = log_mass_min + (j - 1) * step_size;
@@ -126,9 +128,7 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
       }
 
       /* Compute the integral */
-      tmp[j] =
-          tmp[j - 1] +
-          0.5 * (imf_1 * data[j - 1] + imf_2 * data[j]) * dm;
+      tmp[j] = tmp[j - 1] + 0.5 * (imf_1 * data[j - 1] + imf_2 * data[j]) * dm;
 
       /* Update j and m */
       j += 1;

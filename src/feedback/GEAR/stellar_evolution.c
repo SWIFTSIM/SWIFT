@@ -94,8 +94,10 @@ int stellar_evolution_compute_integer_number_supernovae(
  * (solMass)
  * @param m_end_step Mass of a star ending its life at the end of the step
  * (solMass)
- * @param number_snia_f (Floating) Number of SNIa produced by the stellar particle.
- * @param number_snii_f (Floating) Number of SNII produced by the stellar particle.
+ * @param number_snia_f (Floating) Number of SNIa produced by the stellar
+ * particle.
+ * @param number_snii_f (Floating) Number of SNII produced by the stellar
+ * particle.
  *
  */
 void stellar_evolution_compute_continuous_feedback_properties(
@@ -107,15 +109,16 @@ void stellar_evolution_compute_continuous_feedback_properties(
   /* Compute the mass ejected */
   /* SNIa */
   const float mass_snia =
-    supernovae_ia_get_ejected_mass_processed(&sm->snia) * number_snia_f;
+      supernovae_ia_get_ejected_mass_processed(&sm->snia) * number_snia_f;
 
   /* SNII */
-  const float mass_frac_snii = supernovae_ii_get_ejected_mass_fraction_processed_from_integral(
+  const float mass_frac_snii =
+      supernovae_ii_get_ejected_mass_fraction_processed_from_integral(
           &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Sum the contributions from SNIa and SNII */
-  sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass
-    + mass_snia * phys_const->const_solar_mass;
+  sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass +
+                                   mass_snia * phys_const->const_solar_mass;
 
   if (sp->mass <= sp->feedback_data.mass_ejected) {
     error("Stars cannot have negative mass. (%g <= %g). Initial mass = %g",
@@ -132,21 +135,22 @@ void stellar_evolution_compute_continuous_feedback_properties(
 
   /* Compute the SNII yields */
   float snii_yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
-  supernovae_ii_get_yields_from_integral(&sm->snii, log_m_end_step, log_m_beg_step,
-                           snii_yields);
+  supernovae_ii_get_yields_from_integral(&sm->snii, log_m_end_step,
+                                         log_m_beg_step, snii_yields);
 
   /* Compute the mass fraction of non processed elements */
-  const float non_processed = supernovae_ii_get_ejected_mass_fraction_non_processed_from_integral(
-      &sm->snii, log_m_end_step, log_m_beg_step);
+  const float non_processed =
+      supernovae_ii_get_ejected_mass_fraction_non_processed_from_integral(
+          &sm->snii, log_m_end_step, log_m_beg_step);
 
   /* Set the yields */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Compute the mass fraction of metals */
     sp->feedback_data.metal_mass_ejected[i] =
-      /* Supernovae II yields */
-      snii_yields[i] +
-      /* Gas contained in stars initial metallicity */
-      chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
+        /* Supernovae II yields */
+        snii_yields[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
 
     /* Convert it to total mass */
     sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
@@ -155,8 +159,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
 
     /* Add the Supernovae Ia */
     sp->feedback_data.metal_mass_ejected[i] +=
-      snia_yields[i] * number_snia_f * phys_const->const_solar_mass;
-
+        snia_yields[i] * number_snia_f * phys_const->const_solar_mass;
   }
 }
 
@@ -186,19 +189,21 @@ void stellar_evolution_compute_discrete_feedback_properties(
     const float m_init, const int number_snia, const int number_snii) {
 
   /* Compute the average mass */
-  const float m_avg = initial_mass_function_get_integral_imf(&sm->imf, m_end_step, m_beg_step) /
-    initial_mass_function_get_integral_xi(&sm->imf, m_end_step, m_beg_step);
+  const float m_avg =
+      initial_mass_function_get_integral_imf(&sm->imf, m_end_step, m_beg_step) /
+      initial_mass_function_get_integral_xi(&sm->imf, m_end_step, m_beg_step);
   const float log_m_avg = log10(m_avg);
 
   /* Compute the mass ejected */
   /* SNIa */
   const float mass_snia =
-    supernovae_ia_get_ejected_mass_processed(&sm->snia) * number_snia;
+      supernovae_ia_get_ejected_mass_processed(&sm->snia) * number_snia;
 
   /* SNII */
   const float mass_snii =
-    supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
-      &sm->snii, log_m_avg) * m_avg * number_snii;
+      supernovae_ii_get_ejected_mass_fraction_processed_from_raw(&sm->snii,
+                                                                 log_m_avg) *
+      m_avg * number_snii;
 
   sp->feedback_data.mass_ejected = mass_snia + mass_snii;
 
@@ -222,24 +227,23 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
   /* Compute the mass fraction of non processed elements */
   const float non_processed =
-    supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(
-        &sm->snii, log_m_avg);
+      supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(&sm->snii,
+                                                                     log_m_avg);
 
   /* Set the yields */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Compute the mass fraction of metals */
     sp->feedback_data.metal_mass_ejected[i] =
-      /* Supernovae II yields */
-      snii_yields[i] +
-      /* Gas contained in stars initial metallicity */
-      chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
+        /* Supernovae II yields */
+        snii_yields[i] +
+        /* Gas contained in stars initial metallicity */
+        chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
 
     /* Convert it to total mass */
     sp->feedback_data.metal_mass_ejected[i] *= m_avg * number_snii;
 
     /* Supernovae Ia yields */
-    sp->feedback_data.metal_mass_ejected[i] +=
-      snia_yields[i] * number_snia;
+    sp->feedback_data.metal_mass_ejected[i] += snia_yields[i] * number_snia;
 
     /* Convert everything in code units */
     sp->feedback_data.metal_mass_ejected[i] *= phys_const->const_solar_mass;
@@ -306,12 +310,18 @@ void stellar_evolution_evolve_spart(
   const float m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
   /* Compute number of SNIa */
-  const float number_snia_f = can_produce_snia ?
-    supernovae_ia_get_number_per_unit_mass(&sm->snia, m_end_step, m_beg_step) * m_init : 0;
+  const float number_snia_f = can_produce_snia
+                                  ? supernovae_ia_get_number_per_unit_mass(
+                                        &sm->snia, m_end_step, m_beg_step) *
+                                        m_init
+                                  : 0;
 
   /* Compute number of SNII */
-  const float number_snii_f = can_produce_snii ?
-    supernovae_ii_get_number_per_unit_mass(&sm->snii, m_end_step, m_beg_step) * m_init : 0;
+  const float number_snii_f = can_produce_snii
+                                  ? supernovae_ii_get_number_per_unit_mass(
+                                        &sm->snii, m_end_step, m_beg_step) *
+                                        m_init
+                                  : 0;
 
   /* Does this star produce a supernovae? */
   if (number_snia_f == 0 && number_snii_f == 0) return;
@@ -320,11 +330,11 @@ void stellar_evolution_evolve_spart(
   if (sm->discrete_yields) {
     /* Get the integer number of supernovae */
     const int number_snia = stellar_evolution_compute_integer_number_supernovae(
-      sp, number_snia_f, ti_begin, random_number_stellar_feedback_1);
+        sp, number_snia_f, ti_begin, random_number_stellar_feedback_1);
 
     /* Get the integer number of supernovae */
     const int number_snii = stellar_evolution_compute_integer_number_supernovae(
-      sp, number_snii_f, ti_begin, random_number_stellar_feedback_2);
+        sp, number_snii_f, ti_begin, random_number_stellar_feedback_2);
 
     /* Do we have a supernovae? */
     if (number_snia == 0 && number_snii == 0) return;

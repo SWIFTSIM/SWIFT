@@ -86,9 +86,9 @@ INLINE static int star_formation_is_star_forming(
   /* Compute the density criterion */
   const float coef =
       M_PI_4 / (phys_const->const_newton_G * n_jeans_2_3 * h * h);
-  const float density_criterion =
-      coef * hydro_gamma * phys_const->const_boltzmann_k * temperature /
-    (mu * phys_const->const_proton_mass);
+  const float density_criterion = coef * hydro_gamma *
+                                  phys_const->const_boltzmann_k * temperature /
+                                  (mu * phys_const->const_proton_mass);
 
   /* Check the density criterion */
   return density > density_criterion;

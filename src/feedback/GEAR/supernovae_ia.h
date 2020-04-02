@@ -32,8 +32,8 @@ float supernovae_ia_get_ejected_mass_processed(
 float supernovae_ia_get_companion_fraction(const struct supernovae_ia *snia,
                                            float m1, float m2,
                                            int companion_type);
-float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia *snia, float m1,
-					     float m2);
+float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia *snia,
+                                             float m1, float m2);
 
 void supernovae_ia_read_yields(struct supernovae_ia *snia,
                                struct swift_params *params,

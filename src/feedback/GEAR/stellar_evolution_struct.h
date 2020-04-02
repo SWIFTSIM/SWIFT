@@ -121,20 +121,23 @@ struct supernovae_ii {
     /*! Total mass fraction ejected. */
     struct interpolation_1d ejected_mass_processed;
 
-    /*! Mass fraction ejected and not processed (=> with the star metallicity). */
+    /*! Mass fraction ejected and not processed (=> with the star metallicity).
+     */
     struct interpolation_1d ejected_mass_non_processed;
   } raw;
 
   /*! Yields integrated */
   struct {
-    /*! Integrated (over the IMF) mass fraction of metals ejected by a supernovae
+    /*! Integrated (over the IMF) mass fraction of metals ejected by a
+     * supernovae
      */
     struct interpolation_1d yields[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
     /*! Total mass fraction ejected (integrated over the IMF) */
     struct interpolation_1d ejected_mass_processed;
 
-    /*! Mass fraction ejected and not processed (=> with the star metallicity) */
+    /*! Mass fraction ejected and not processed (=> with the star metallicity)
+     */
     struct interpolation_1d ejected_mass_non_processed;
   } integrated;
 

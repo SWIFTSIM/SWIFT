@@ -76,7 +76,7 @@ pressure_floor_get_physical_pressure(const struct part* p,
 
   /* Compute the pressure floor */
   float floor = H_phys * H_phys * rho * pressure_floor_props.constants -
-    p->pressure_floor_data.sigma2;
+                p->pressure_floor_data.sigma2;
   floor *= rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_physical, floor);

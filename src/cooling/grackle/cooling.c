@@ -746,8 +746,8 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
   /* Energy after the adiabatic cooling */
-  float u_ad_before = u_old +
-    dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
+  float u_ad_before =
+      u_old + dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* We now need to check that we are not going to go below any of the limits */
   const double u_minimal = hydro_props->minimal_internal_energy;
@@ -770,7 +770,8 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   /* Calculate the cooling rate */
   float cool_du_dt = (u_new - u_ad_before) / dt_therm;
 
-  /* Check that the energy stays above the limits if the time step increase by 2 */
+  /* Check that the energy stays above the limits if the time step increase by 2
+   */
   /* Hydro */
   double u_ad = u_new + hydro_du_dt * dt_therm;
   if (u_ad < u_minimal) {
@@ -787,11 +788,11 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   cool_du_dt = (u_new - u_old) / dt_therm;
 
   /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo, cool_du_dt /* + hydro_du_dt */);
+  hydro_set_physical_internal_energy_dt(p, cosmo,
+                                        cool_du_dt /* + hydro_du_dt */);
 
   /* Store the radiated energy */
-  xp->cooling_data.radiated_energy -=
-      hydro_get_mass(p) * cool_du_dt * dt_therm;
+  xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cool_du_dt * dt_therm;
 }
 
 /**
