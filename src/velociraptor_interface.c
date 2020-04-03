@@ -745,7 +745,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Report timing */
   if (e->verbose)
-    message("VR Invokation of velociraptor took %.3f %s.",
+    message("VR Invocation of velociraptor took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
