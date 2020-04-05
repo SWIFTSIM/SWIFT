@@ -30,6 +30,7 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#include "part_lock.h"
 #include "pressure_floor_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
@@ -96,6 +97,9 @@ struct part {
 
   /*! Particle acceleration. */
   float a_hydro[3];
+
+  /*! Lock for the particle in parallel task sections */
+  swift_particle_lock_t lock;
 
   /*! Particle mass. */
   float mass;
