@@ -36,6 +36,16 @@ struct swift_particle_lock {};
 #define swift_particle_lock_t swift_lock_type
 #define swift_particle_lock_init(p) lock_init(&((p)->lock))
 #define swift_particle_lock_lock(p) lock_lock(&((p)->lock))
+#define swift_particle_lock_lock_both(p, q) \
+  ({                                        \
+    if ((void*)p < (void*)q) {              \
+      lock_lock(&((p)->lock));              \
+      lock_lock(&((q)->lock));              \
+    } else {                                \
+      lock_lock(&((q)->lock));              \
+      lock_lock(&((p)->lock));              \
+    }                                       \
+  })
 #ifdef SWIFT_DEBUG_CHECKS
 #define swift_particle_lock_unlock(p)                                        \
   ({                                                                         \
@@ -48,6 +58,11 @@ struct swift_particle_lock {};
       ;                                 \
   })
 #endif /* SWIFT_DEBUG_CHECKS */
+#define swift_particle_lock_unlock_both(p, q) \
+  ({                                          \
+    swift_particle_lock_unlock(p);            \
+    swift_particle_lock_unlock(q);            \
+  })
 #endif /* SWIFT_TASKS_WITHOUT_ATOMICS */
 
 #endif /* SWIFT_PART_LOCK_H */

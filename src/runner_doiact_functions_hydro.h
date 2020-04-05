@@ -1546,13 +1546,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           if (part_is_active(pj, e)) {
 
             /* Lock the particles for update */
-            if (pi < pj) {
-              swift_particle_lock_lock(pi);
-              swift_particle_lock_lock(pj);
-            } else {
-              swift_particle_lock_lock(pj);
-              swift_particle_lock_lock(pi);
-            }
+            swift_particle_lock_lock_both(pi, pj);
 
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1565,8 +1559,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 
             /* Unlock the particles now that we are done */
-            swift_particle_lock_unlock(pi);
-            swift_particle_lock_unlock(pj);
+            swift_particle_lock_unlock_both(pi, pj);
 
           } else {
 
@@ -1769,13 +1762,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           if (part_is_active(pi, e)) {
 
             /* Lock the particles for update */
-            if (pi < pj) {
-              swift_particle_lock_lock(pi);
-              swift_particle_lock_lock(pj);
-            } else {
-              swift_particle_lock_lock(pj);
-              swift_particle_lock_lock(pi);
-            }
+            swift_particle_lock_lock_both(pi, pj);
 
             IACT(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1788,8 +1775,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 
             /* Unlock the particles now that we are done */
-            swift_particle_lock_unlock(pi);
-            swift_particle_lock_unlock(pj);
+            swift_particle_lock_unlock_both(pi, pj);
 
           } else {
 
@@ -2055,13 +2041,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           if (doi && doj) {
 
             /* Lock the particles for update */
-            if (pi < pj) {
-              swift_particle_lock_lock(pi);
-              swift_particle_lock_lock(pj);
-            } else {
-              swift_particle_lock_lock(pj);
-              swift_particle_lock_lock(pi);
-            }
+            swift_particle_lock_lock_both(pi, pj);
 
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2074,8 +2054,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 
             /* Unlock the particles now that we are done */
-            swift_particle_lock_unlock(pi);
-            swift_particle_lock_unlock(pj);
+            swift_particle_lock_unlock_both(pi, pj);
 
           } else if (doi) {
 
@@ -2296,13 +2275,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           if (part_is_active(pj, e)) {
 
             /* Lock the particles for update */
-            if (pi < pj) {
-              swift_particle_lock_lock(pi);
-              swift_particle_lock_lock(pj);
-            } else {
-              swift_particle_lock_lock(pj);
-              swift_particle_lock_lock(pi);
-            }
+            swift_particle_lock_lock_both(pi, pj);
 
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2315,8 +2288,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
 
             /* Unlock the particle now that we are done */
-            swift_particle_lock_unlock(pi);
-            swift_particle_lock_unlock(pj);
+            swift_particle_lock_unlock_both(pi, pj);
 
           } else {
 
