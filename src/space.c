@@ -4486,6 +4486,11 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct stars_props *stars_properties = e->stars_properties;
   const float a_factor_vel = cosmo->a;
 
+  /* Initialise the particle-carried locks */
+  for (int k = 0; k < count; k++) {
+    swift_particle_lock_init(&sp[k]);
+  }
+
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
 

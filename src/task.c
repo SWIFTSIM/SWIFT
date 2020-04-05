@@ -461,8 +461,10 @@ void task_unlock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
+#endif
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
                  (subtype == task_subtype_bh_swallow) ||
@@ -493,10 +495,12 @@ void task_unlock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
         cell_unlocktree(ci);
         cell_unlocktree(cj);
+#endif
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
                  (subtype == task_subtype_bh_swallow) ||
@@ -651,6 +655,7 @@ int task_lock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
@@ -658,6 +663,7 @@ int task_lock(struct task *t) {
           cell_sunlocktree(ci);
           return 0;
         }
+#endif
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
                  (subtype == task_subtype_bh_swallow) ||
@@ -708,6 +714,7 @@ int task_lock(struct task *t) {
 #endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;
@@ -727,6 +734,7 @@ int task_lock(struct task *t) {
           cell_unlocktree(ci);
           return 0;
         }
+#endif
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
                  (subtype == task_subtype_bh_swallow) ||

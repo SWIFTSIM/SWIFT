@@ -27,6 +27,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "feedback.h"
+#include "part_lock.h"
 #include "runner.h"
 #include "space_getsid.h"
 #include "stars.h"

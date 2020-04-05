@@ -107,6 +107,10 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < hig2) {
+
+        /* Lock both particles for access */
+        swift_particle_lock_lock_both(si, pj);
+
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
@@ -115,6 +119,9 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           ti_current);
 #endif
+
+        /* Unlock both particles */
+        swift_particle_lock_unlock_both(si, pj);
       }
     } /* loop over the parts in ci. */
   }   /* loop over the sparts in ci. */
@@ -215,6 +222,10 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < hig2) {
+
+        /* Lock both particles for access */
+        swift_particle_lock_lock_both(si, pj);
+
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -224,6 +235,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           ti_current);
 #endif
+
+        /* Unlock both particles */
+        swift_particle_lock_unlock_both(si, pj);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -387,6 +401,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
+          /* Lock both particles for access */
+          swift_particle_lock_lock_both(spi, pj);
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -396,6 +414,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
                                             ti_current);
 #endif
+
+          /* Unlock both particles */
+          swift_particle_lock_unlock_both(spi, pj);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -515,6 +536,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
         /* Hit or miss? */
         if (r2 < hjg2) {
 
+          /* Lock both particles for access */
+          swift_particle_lock_lock_both(spj, pi);
+
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -524,6 +548,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
                                             ti_current);
 #endif
+
+          /* Unlock both particles */
+          swift_particle_lock_unlock_both(spj, pi);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
