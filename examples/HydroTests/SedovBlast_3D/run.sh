@@ -16,4 +16,4 @@ fi
 ../../swift --hydro --limiter --threads=4 sedov.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 5
+python3 plotSolution.py 5
