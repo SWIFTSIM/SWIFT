@@ -32,6 +32,8 @@ struct swift_particle_lock {};
 #define swift_particle_lock_init(p) ;
 #define swift_particle_lock_lock(p) ;
 #define swift_particle_lock_unlock(p) ;
+#define swift_particle_lock_lock_both(p, q) ;
+#define swift_particle_lock_unlock_both(p, q) ;
 #else
 #define swift_particle_lock_t swift_lock_type
 #define swift_particle_lock_init(p) lock_init(&((p)->lock))
