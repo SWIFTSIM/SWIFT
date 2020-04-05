@@ -41,7 +41,7 @@ noinst_LTLIBRARIES += libgrav_mpi.la
 endif
 
 # List required headers
-include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
+include_HEADERS = space.h runner.h queue.h task.h lock.h part_lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h partition_fixed_costs.h \
     clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \

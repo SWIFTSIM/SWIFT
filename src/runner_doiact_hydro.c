@@ -27,6 +27,7 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "engine.h"
+#include "part_lock.h"
 #include "pressure_floor_iact.h"
 #include "runner.h"
 #include "runner_doiact_hydro_vec.h"

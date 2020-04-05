@@ -443,7 +443,6 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
-    case task_type_grav_mesh:
     case task_type_end_grav_force:
       cell_gunlocktree(ci);
       break;
@@ -477,7 +476,9 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
 #endif
       } else { /* hydro */
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
+#endif
       }
       break;
 
@@ -513,8 +514,10 @@ void task_unlock(struct task *t) {
         cell_unlocktree(cj);
 #endif
       } else { /* hydro */
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
         cell_unlocktree(cj);
+#endif
       }
       break;
 
@@ -535,6 +538,12 @@ void task_unlock(struct task *t) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_munlocktree(ci);
       cell_munlocktree(cj);
+#endif
+      break;
+
+    case task_type_grav_mesh:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+      cell_gunlocktree(ci);
 #endif
       break;
 
@@ -623,7 +632,6 @@ int task_lock(struct task *t) {
 
     case task_type_drift_gpart:
     case task_type_end_grav_force:
-    case task_type_grav_mesh:
       if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
@@ -670,8 +678,10 @@ int task_lock(struct task *t) {
         if (cell_locktree(ci) != 0) return 0;
 #endif
       } else { /* subtype == hydro */
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
+#endif
       }
       break;
 
@@ -757,6 +767,7 @@ int task_lock(struct task *t) {
         }
 #endif
       } else { /* subtype == hydro */
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the parts in both cells */
         if (ci->hydro.hold || cj->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
@@ -764,6 +775,7 @@ int task_lock(struct task *t) {
           cell_unlocktree(ci);
           return 0;
         }
+#endif
       }
       break;
 
@@ -785,6 +797,14 @@ int task_lock(struct task *t) {
       /* Lock the m-poles */
       if (ci->grav.mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
+#endif
+      break;
+
+    case task_type_grav_mesh:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+      /* Lock the gparts */
+      if (ci->grav.phold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
 #endif
       break;
 

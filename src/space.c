@@ -56,6 +56,7 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "part_lock.h"
 #include "pressure_floor.h"
 #include "proxy.h"
 #include "restart.h"
@@ -4293,6 +4294,11 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct star_formation *star_formation = e->star_formation;
   const struct cooling_function_data *cool_func = e->cooling_func;
+
+  /* Initialise the particle-carried locks */
+  for (int k = 0; k < count; k++) {
+    swift_particle_lock_init(&p[k]);
+  }
 
   /* Check that the smoothing lengths are non-zero */
   for (int k = 0; k < count; k++) {

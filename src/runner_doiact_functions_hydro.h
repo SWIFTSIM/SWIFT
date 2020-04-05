@@ -1052,6 +1052,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hig2) {
 
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pi);
+
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1061,6 +1064,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pi);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1144,6 +1150,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hjg2) {
 
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pj);
+
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1153,6 +1162,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pj);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
@@ -1450,6 +1462,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
+
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pj);
+
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1459,6 +1475,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pj);
         }
       } /* loop over the active parts in cj. */
     }
@@ -1525,6 +1544,16 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e)) {
+
+            /* Lock the particles for update */
+            if (pi < pj) {
+              swift_particle_lock_lock(pi);
+              swift_particle_lock_lock(pj);
+            } else {
+              swift_particle_lock_lock(pj);
+              swift_particle_lock_lock(pi);
+            }
+
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1534,7 +1563,16 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+            /* Unlock the particles now that we are done */
+            swift_particle_lock_unlock(pi);
+            swift_particle_lock_unlock(pj);
+
           } else {
+
+            /* Lock the particle for update */
+            swift_particle_lock_lock(pi);
+
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1544,6 +1582,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+            /* Unlock the particle now that we are done */
+            swift_particle_lock_unlock(pi);
           }
         }
       } /* loop over the parts in cj. */
@@ -1642,6 +1683,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
+
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pi);
+
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1651,6 +1696,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pi);
         }
       } /* loop over the active parts in ci. */
     }
@@ -1719,6 +1767,16 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pi need to be updated too? */
           if (part_is_active(pi, e)) {
+
+            /* Lock the particles for update */
+            if (pi < pj) {
+              swift_particle_lock_lock(pi);
+              swift_particle_lock_lock(pj);
+            } else {
+              swift_particle_lock_lock(pj);
+              swift_particle_lock_lock(pi);
+            }
+
             IACT(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1728,7 +1786,16 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hj, hi, pj, pi, a, H);
 #endif
+
+            /* Unlock the particles now that we are done */
+            swift_particle_lock_unlock(pi);
+            swift_particle_lock_unlock(pj);
+
           } else {
+
+            /* Lock the particle for update */
+            swift_particle_lock_lock(pj);
+
             IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1738,6 +1805,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
 #endif
+
+            /* Unlock the particle now that we are done */
+            swift_particle_lock_unlock(pj);
           }
         }
       } /* loop over the parts in ci. */
@@ -1922,6 +1992,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hj * hj * kernel_gamma2) {
 
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pj);
+
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1931,6 +2004,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pj);
         }
       } /* loop over all other particles. */
     }
@@ -1978,6 +2054,15 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           /* Which parts need to be updated? */
           if (doi && doj) {
 
+            /* Lock the particles for update */
+            if (pi < pj) {
+              swift_particle_lock_lock(pi);
+              swift_particle_lock_lock(pj);
+            } else {
+              swift_particle_lock_lock(pj);
+              swift_particle_lock_lock(pi);
+            }
+
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1987,7 +2072,15 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+            /* Unlock the particles now that we are done */
+            swift_particle_lock_unlock(pi);
+            swift_particle_lock_unlock(pj);
+
           } else if (doi) {
+
+            /* Lock the particle for update */
+            swift_particle_lock_lock(pi);
 
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1998,7 +2091,14 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+            /* Unlock the particle now that we are done */
+            swift_particle_lock_unlock(pi);
+
           } else if (doj) {
+
+            /* Lock the particle for update */
+            swift_particle_lock_lock(pj);
 
             dx[0] = -dx[0];
             dx[1] = -dx[1];
@@ -2012,6 +2112,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
 #endif
+
+            /* Unlock the particle now that we are done */
+            swift_particle_lock_unlock(pj);
           }
         }
       } /* loop over all other particles. */
@@ -2134,6 +2237,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pj);
+
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2143,6 +2249,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pj);
         }
       } /* loop over all other particles. */
     }
@@ -2185,6 +2294,16 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
           /* Does pj need to be updated too? */
           if (part_is_active(pj, e)) {
+
+            /* Lock the particles for update */
+            if (pi < pj) {
+              swift_particle_lock_lock(pi);
+              swift_particle_lock_lock(pj);
+            } else {
+              swift_particle_lock_lock(pj);
+              swift_particle_lock_lock(pi);
+            }
+
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2194,7 +2313,16 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+            /* Unlock the particle now that we are done */
+            swift_particle_lock_unlock(pi);
+            swift_particle_lock_unlock(pj);
+
           } else {
+
+            /* Lock the particle for update */
+            swift_particle_lock_lock(pi);
+
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2204,6 +2332,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+            /* Unlock the particle now that we are done */
+            swift_particle_lock_unlock(pi);
           }
         }
       } /* loop over all other particles. */
