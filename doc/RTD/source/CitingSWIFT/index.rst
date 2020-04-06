@@ -28,7 +28,7 @@ Disclaimer
 
 We would like to emphasise that SWIFT comes without any warranty of accuracy,
 correctness or efficiency. As mentioned in the license, the software comes
-`as-is` and the omen is on the user to get meaningful results. Whilst the
+`as-is` and the onus is on the user to get meaningful results. Whilst the
 authors will endeavour to answer questions related to using the code, we
 recommend users build and maintain their own copies. This documentation contains
 the most basic information to get started. Reading it and possibly also the
