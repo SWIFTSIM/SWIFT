@@ -120,13 +120,13 @@ extern int engine_rank;
 extern int engine_rank;
 #define message(s, ...)                                                       \
   ({                                                                          \
-    printf("[%04i] %s %s():%i: " s "\n", engine_rank, clocks_get_timesincestart(), \
-           __FUNCTION__, __LINE__, ##__VA_ARGS__);                                      \
+    printf("[%04i] %s %s %s():%i: " s "\n", engine_rank, clocks_get_timesincestart(), \
+           __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);                                      \
   })
 #else
 #define message(s, ...)                                                 \
   ({                                                                    \
-    printf("%s %s():%i: " s "\n", clocks_get_timesincestart(), __FUNCTION__, \
+    printf("%s %s %s():%i: " s "\n", clocks_get_timesincestart(), __FILE__, __FUNCTION__, \
            __LINE__, ##__VA_ARGS__);                                              \
   })
 #endif

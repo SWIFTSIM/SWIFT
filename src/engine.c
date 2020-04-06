@@ -2664,7 +2664,9 @@ void engine_step(struct engine *e) {
   double start_systime = 0.0;
   clocks_get_cputimes_used(&start_usertime, &start_systime);
 #endif
-
+  // ALEXEI: activate all particle recoupling tasks for debugging
+  //for (int k = 0; k < e->sched.nr_tasks; k++)
+  //  scheduler_activate(&e->sched, &e->sched.tasks[k]);
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");

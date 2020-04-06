@@ -283,6 +283,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.ti_end_min = -1;
     c->black_holes.ti_end_max = -1;
     star_formation_logger_init(&c->stars.sfh);
+    // ALEXEI: zero decoupled particles counter initially
+    c->hydro.nparts_decoupled = 0;
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
@@ -3361,6 +3363,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
 
+  // ALEXEI: get the number of decoupled particles in this cell
+  const int nparts_decoupled = c->hydro.nparts_decoupled;
+
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer =
       (buff == NULL && gbuff == NULL && sbuff == NULL && bbuff == NULL);
@@ -3501,6 +3506,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cp->cellID = last_cell_id++;
 #endif
+      // ALEXEI: zero the decoupled particles counter
+      cp->hydro.nparts_decoupled = 0;
     }
 
     /* Split the cell's particle data. */
@@ -3847,6 +3854,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
   c->maxdepth = maxdepth;
+  // ALEXEI: set counter of decoupled particles
+  c->hydro.nparts_decoupled = nparts_decoupled;
 
   /* Set ownership according to the start of the parts array. */
   if (s->nr_parts > 0)

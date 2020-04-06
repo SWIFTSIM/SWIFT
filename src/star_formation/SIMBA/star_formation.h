@@ -332,7 +332,7 @@ INLINE static void star_formation_compute_SFR(
 INLINE static int star_formation_should_convert_to_star(
     struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct engine* e,
-    const double dt_star) {
+    struct cell* c, const double dt_star) {
 
   /* Calculate the propability of forming a star */
   const double prob = xp->sf_data.SFR * dt_star / hydro_get_mass(p);
@@ -344,7 +344,7 @@ INLINE static int star_formation_should_convert_to_star(
   /* Have we been lucky and need to form a star? */
   if (prob <= random_number && dt_star > 0) {
     /* In SIMBA feedback model we launch winds if we do not form a star */
-    star_formation_feedback(p, xp, e->cosmology, e->feedback_props, e->ti_current);
+    star_formation_feedback(p, xp, c, e->cosmology, e->feedback_props, e->ti_current);
   }
   return (prob > random_number);
 }

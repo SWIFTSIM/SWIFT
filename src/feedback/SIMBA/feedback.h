@@ -211,6 +211,7 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
  */
 __attribute__((always_inline)) INLINE static void launch_wind(
     struct part* restrict p, struct xpart* restrict xp, 
+    struct cell* c,
     const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const integertime_t ti_current){
 
@@ -258,6 +259,9 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   p->delay_time = feedback_props->simba_delay_time;
   p->time_bin = time_bin_decoupled;
 
+  /* Increment cell counter of decoupled particles */
+  c->hydro.nparts_decoupled++;
+
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_decoupled = ti_current;
 #endif
@@ -265,6 +269,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
 
 __attribute__((always_inline)) INLINE static void star_formation_feedback(
     struct part* restrict p, struct xpart* restrict xp, 
+    struct cell* c,
     const struct cosmology* cosmo,
     const struct feedback_props* feedback_props, 
     const integertime_t ti_current) {
@@ -285,8 +290,7 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
   const double random_number =
       random_unit_interval(p->id, ti_current, random_number_stellar_feedback);
   if (random_number < prob_launch) {
-    launch_wind(p, xp, feedback_props, cosmo, ti_current);
-    //message("decouple particle %llu", p->id);
+    launch_wind(p, xp, c, feedback_props, cosmo, ti_current);
   }
 
 }

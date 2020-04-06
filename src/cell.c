@@ -3777,6 +3777,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->top->hydro.star_formation != NULL) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
     }
+    // ALEXEI: check if there are any decoupled particles in this cell when activating task!
+    if (c->part_recouple != NULL) scheduler_activate(s, c->part_recouple);
   }
 
   return rebuild;
@@ -5641,17 +5643,19 @@ void cell_recouple(struct cell *c,
           // Think of ways to choose a more apropriate time bin. 
           p->time_bin = e->min_active_bin;
           p->gpart->time_bin = p->time_bin;
-	      c->hydro.ti_end_min = min(c->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+	  c->hydro.ti_end_min = min(c->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
 	  
-	      // update parents
-	      struct cell *parent_cell = c->parent;
-	      while (parent_cell != NULL) {
-	        parent_cell->hydro.ti_end_min = min(parent_cell->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
-	        parent_cell = parent_cell->parent;
-	      }
+	  // update parents
+	  struct cell *parent_cell = c->parent;
+	  while (parent_cell != NULL) {
+	    parent_cell->hydro.ti_end_min = min(parent_cell->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+	    parent_cell = parent_cell->parent;
+	  }
 #if SWIFT_DEBUG_CHECKS
-              p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
+          p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
 #endif    
+	  //p->delay_time += dt_drift;
+	  message("id %llu, cell %p, level %d", p->id, c, c->depth);
 
         }
       }

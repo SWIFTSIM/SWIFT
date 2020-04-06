@@ -471,7 +471,7 @@ struct cell {
 #endif
 
     /* ALEXEI: flag to indicate this cell has a decoupled particle */
-    int exist_part_decoupled;
+    int nparts_decoupled;
 
   } hydro;
 
