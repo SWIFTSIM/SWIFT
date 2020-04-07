@@ -15,4 +15,30 @@ EXTRA_DIST += plot_scaling_results.py \
 EXTRA_DIST += plot_gravity_checks.py
 
 # Combine ICs.
-EXTRA_DIST += combine_ics.py
+EXTRA_DIST += combine_ics.py \
+              parallel_replicate_ICs.py
+
+# Scripts to analyse the raw runtime
+EXTRA_DIST += analyse_runtime.py
+
+# Python plot style sheets
+EXTRA_DIST += stylesheets/mnras.mplstyle \
+	      stylesheets/README
+
+# Task dependencies plots
+EXTRA_DIST += plot_task_dependencies.py \
+              plot_task_level.py
+
+# Cell hierarchies
+EXTRA_DIST += make_cell_hierarchy.sh \
+              data/cell_hierarchy.html
+
+# Cell dumps
+EXTRA_DIST += analyse_dump_cells.py \
+              process_cells \
+              process_cells_helper
+
+# Checking scripts
+EXTRA_DIST += check_interactions.sh \
+	      check_ngbs.py \
+              check_mpireports.py
