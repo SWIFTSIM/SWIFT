@@ -104,6 +104,7 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
 void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N);
 void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N);
 void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N);
+void proxy_free_particle_buffers(struct proxy *p);
 void proxy_parts_exchange_first(struct proxy *p);
 void proxy_parts_exchange_second(struct proxy *p);
 void proxy_addcell_in(struct proxy *p, struct cell *c, int type);

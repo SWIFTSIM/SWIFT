@@ -113,7 +113,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
+    defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
@@ -361,7 +361,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   // shuffle_particles(cell->hydro.parts, cell->hydro.count);
 
   cell->hydro.sorted = 0;
-  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
+  cell->hydro.sort = NULL;
 
   return cell;
 }
@@ -369,8 +369,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 void clean_up(struct cell *ci) {
   free(ci->hydro.parts);
   free(ci->hydro.xparts);
-  for (int k = 0; k < 13; k++)
-    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
+  free(ci->hydro.sort);
   free(ci);
 }
 
@@ -406,7 +405,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
             0.f,
-#elif defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
 #else
             main_cell->hydro.parts[pid].density.div_v,
@@ -427,7 +426,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].force.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
-#elif defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else

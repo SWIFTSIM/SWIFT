@@ -34,6 +34,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#ifndef SWIFT_MEMUSE_STATM
+#include <sys/resource.h>
+#include <sys/time.h>
+#endif
+
 /* Local defines. */
 #include "memuse.h"
 
@@ -408,7 +413,8 @@ void memuse_log_dump_error(int rank) {
 
 /**
  * @brief parse the process /proc/self/statm file to get the process
- *        memory use (in KB). Top field in ().
+ *        memory use (in KB). Top field in (). If this file is not
+ *        available only the resident field will be returned.
  *
  * @param size     total virtual memory (VIRT/VmSize)
  * @param resident resident non-swapped memory (RES/VmRSS)
@@ -423,6 +429,8 @@ void memuse_log_dump_error(int rank) {
 void memuse_use(long *size, long *resident, long *shared, long *text,
                 long *data, long *library, long *dirty) {
 
+#ifdef SWIFT_MEMUSE_STATM
+
   /* Open the file. */
   FILE *file = fopen("/proc/self/statm", "r");
   if (file != NULL) {
@@ -432,29 +440,38 @@ void memuse_use(long *size, long *resident, long *shared, long *text,
     if (nscan == 7) {
       /* Convert pages into bytes. Usually 4096, but could be 512 on some
        * systems so take care in conversion to KB. */
-      long sz = sysconf(_SC_PAGESIZE);
-      *size *= sz;
-      *resident *= sz;
-      *shared *= sz;
-      *text *= sz;
-      *library *= sz;
-      *data *= sz;
-      *dirty *= sz;
+      uint64_t sz = sysconf(_SC_PAGESIZE);
+      *size = (*size) * sz / 1024;
+      *resident = (*resident) * sz / 1024;
+      *shared = (*shared) * sz / 1024;
+      *text = (*text) * sz / 1024;
+      *library = (*library) * sz / 1024;
+      *data = (*data) * sz / 1024;
+      *dirty = (*dirty) * sz / 1024;
 
-      *size /= 1024;
-      *resident /= 1024;
-      *shared /= 1024;
-      *text /= 1024;
-      *library /= 1024;
-      *data /= 1024;
-      *dirty /= 1024;
     } else {
       error("Failed to read sufficient fields from /proc/self/statm");
     }
     fclose(file);
+
   } else {
     error("Failed to open /proc/self/statm");
   }
+#else
+
+  /* Not a Linux compatible OS, try to use very limited POSIX call instead.
+   * Linux only claims to support ru_maxrss, and POSIX only ru_utime and
+   * ru_stime, so this may still fail. */
+  struct rusage usage;
+  getrusage(RUSAGE_SELF, &usage);
+  *size = 0;
+  *resident = usage.ru_maxrss;
+  *shared = usage.ru_ixrss;
+  *text = 0;
+  *library = 0;
+  *data = usage.ru_isrss;
+  *dirty = 0;
+#endif
 }
 
 /**
@@ -469,13 +486,8 @@ void memuse_use(long *size, long *resident, long *shared, long *text,
  */
 const char *memuse_process(int inmb) {
   static char buffer[256];
-  long size;
-  long resident;
-  long shared;
-  long text;
-  long library;
-  long data;
-  long dirty;
+
+  long size, resident, shared, text, library, data, dirty;
   memuse_use(&size, &resident, &shared, &text, &data, &library, &dirty);
 
   if (inmb) {

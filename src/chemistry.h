@@ -35,6 +35,9 @@
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/GEAR/chemistry.h"
 #include "./chemistry/GEAR/chemistry_iact.h"
+#elif defined(CHEMISTRY_QLA)
+#include "./chemistry/QLA/chemistry.h"
+#include "./chemistry/QLA/chemistry_iact.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry.h"
 #include "./chemistry/EAGLE/chemistry_iact.h"

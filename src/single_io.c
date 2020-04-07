@@ -42,8 +42,8 @@
 #include "cooling_io.h"
 #include "dimension.h"
 #include "engine.h"
-#include "entropy_floor.h"
 #include "error.h"
+#include "feedback.h"
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
@@ -827,9 +827,14 @@ void write_output_single(struct engine* e, const char* baseName,
   io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
-  time_t tm = time(NULL);
-  io_write_attribute_s(h_grp, "Snapshot date", ctime(&tm));
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+
+  /* Store the time at which the snapshot was written */
+  time_t tm = time(NULL);
+  struct tm* timeinfo = localtime(&tm);
+  char snapshot_date[64];
+  strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
+  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
@@ -863,6 +868,9 @@ void write_output_single(struct engine* e, const char* baseName,
   /* Print the run's policy */
   io_write_engine_policy(h_file, e);
 
+  /* Print the physical constants */
+  phys_const_print_snapshot(h_file, e->physical_constants);
+
   /* Print the SPH parameters */
   if (e->policy & engine_policy_hydro) {
     h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
@@ -877,10 +885,15 @@ void write_output_single(struct engine* e, const char* baseName,
   h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
                     H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating subgrid group");
+  hid_t h_grp_columns =
+      H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp_columns < 0) error("Error while creating named columns group");
   entropy_floor_write_flavour(h_grp);
-  cooling_write_flavour(h_grp, e->cooling_func);
-  chemistry_write_flavour(h_grp);
+  cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
+  chemistry_write_flavour(h_grp, h_grp_columns);
   tracers_write_flavour(h_grp);
+  feedback_write_flavour(e->feedback_props, h_grp);
+  H5Gclose(h_grp_columns);
   H5Gclose(h_grp);
 
   /* Print the gravity parameters */
@@ -994,6 +1007,17 @@ void write_output_single(struct engine* e, const char* baseName,
     h_grp = H5Gcreate(h_file, partTypeGroupName, H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating particle group.\n");
+
+    /* Add an alias name for convenience */
+    char aliasName[PARTICLE_GROUP_BUFFER_SIZE];
+    snprintf(aliasName, PARTICLE_GROUP_BUFFER_SIZE, "/%sParticles",
+             part_type_names[ptype]);
+    hid_t h_err = H5Lcreate_soft(partTypeGroupName, h_grp, aliasName,
+                                 H5P_DEFAULT, H5P_DEFAULT);
+    if (h_err < 0) error("Error while creating alias for particle group.\n");
+
+    /* Write the number of particles as an attribute */
+    io_write_attribute_l(h_grp, "NumberOfParticles", numParticles[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];

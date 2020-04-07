@@ -53,6 +53,7 @@
 #include "space.h"
 #include "space_getsid.h"
 #include "task.h"
+#include "threadpool.h"
 #include "timers.h"
 #include "version.h"
 
@@ -1059,12 +1060,14 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
   if (fof_tasks) {
     /* Call the mapper on each current task. */
     threadpool_map(s->threadpool, scheduler_splittasks_fof_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 0, s);
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   s);
 
   } else {
     /* Call the mapper on each current task. */
     threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 0, s);
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   s);
   }
 }
 
@@ -1113,6 +1116,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 #endif
   t->tic = 0;
   t->toc = 0;
+  t->total_ticks = 0;
 
   if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
@@ -1133,11 +1137,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
  */
 void scheduler_set_unlocks(struct scheduler *s) {
   /* Store the counts for each task. */
-  short int *counts;
-  if ((counts = (short int *)swift_malloc(
-           "counts", sizeof(short int) * s->nr_tasks)) == NULL)
+  int *counts;
+  if ((counts = (int *)swift_malloc("counts", sizeof(int) * s->nr_tasks)) ==
+      NULL)
     error("Failed to allocate temporary counts array.");
-  bzero(counts, sizeof(short int) * s->nr_tasks);
+  bzero(counts, sizeof(int) * s->nr_tasks);
   for (int k = 0; k < s->nr_unlocks; k++) {
     counts[s->unlock_ind[k]] += 1;
 
@@ -1151,7 +1155,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
           "the difference in task depths.",
           taskID_names[s->tasks[s->unlock_ind[k]].type],
           subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
-          (1LL << (8 * sizeof(short int) - 1)) - 1);
+          (1LL << (8 * sizeof(int) - 1)) - 1);
   }
 
   /* Compute the offset for each unlock block. */
@@ -1314,6 +1318,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_unlocks = 0;
   s->completed_unlock_writes = 0;
   s->active_count = 0;
+  s->total_ticks = 0;
 
   /* Set the task pointers in the queues. */
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -1363,21 +1368,35 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
         break;
 
+      case task_type_stars_resort:
+        cost = wscale * intrinsics_popcount(t->flags) * scount_i *
+               (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
+        break;
+
       case task_type_self:
         if (t->subtype == task_subtype_grav) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
-        else if (t->subtype == task_subtype_stars_density)
+        else if (t->subtype == task_subtype_stars_density ||
+                 t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_stars_feedback)
-          cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_bh_density)
+        else if (t->subtype == task_subtype_bh_density ||
+                 t->subtype == task_subtype_bh_swallow ||
+                 t->subtype == task_subtype_bh_feedback)
           cost = 1.f * wscale * bcount_i * count_i;
-        else if (t->subtype == task_subtype_bh_feedback)
-          cost = 1.f * wscale * bcount_i * count_i;
-        else  // hydro loops
+        else if (t->subtype == task_subtype_do_gas_swallow)
+          cost = 1.f * wscale * count_i;
+        else if (t->subtype == task_subtype_do_bh_swallow)
+          cost = 1.f * wscale * bcount_i;
+        else if (t->subtype == task_subtype_density ||
+                 t->subtype == task_subtype_gradient ||
+                 t->subtype == task_subtype_force ||
+                 t->subtype == task_subtype_limiter)
           cost = 1.f * (wscale * count_i) * count_i;
+        else
+          error("Untreated sub-type for selfs: %s",
+                subtaskID_names[t->subtype]);
         break;
 
       case task_type_pair:
@@ -1398,6 +1417,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * bcount_j * sid_scale[t->flags];
@@ -1407,11 +1427,24 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
                    sid_scale[t->flags];
 
-        } else {  // hydro loops
+        } else if (t->subtype == task_subtype_do_gas_swallow) {
+          cost = 1.f * wscale * (count_i + count_j);
+
+        } else if (t->subtype == task_subtype_do_bh_swallow) {
+          cost = 1.f * wscale * (bcount_i + bcount_j);
+
+        } else if (t->subtype == task_subtype_density ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           else
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+
+        } else {
+          error("Untreated sub-type for pairs: %s",
+                subtaskID_names[t->subtype]);
         }
         break;
 
@@ -1431,6 +1464,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           }
 
         } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * bcount_j * sid_scale[t->flags];
@@ -1441,26 +1475,48 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else {  // hydro loops
+        } else if (t->subtype == task_subtype_do_gas_swallow) {
+          cost = 1.f * wscale * (count_i + count_j);
+
+        } else if (t->subtype == task_subtype_do_bh_swallow) {
+          cost = 1.f * wscale * (bcount_i + bcount_j);
+
+        } else if (t->subtype == task_subtype_density ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           } else {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
+
+        } else {
+          error("Untreated sub-type for sub-pairs: %s",
+                subtaskID_names[t->subtype]);
         }
         break;
 
       case task_type_sub_self:
-        if (t->subtype == task_subtype_stars_density) {
+        if (t->subtype == task_subtype_stars_density ||
+            t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_stars_feedback) {
-          cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_bh_density) {
+        } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_swallow ||
+                   t->subtype == task_subtype_bh_feedback) {
           cost = 1.f * (wscale * bcount_i) * count_i;
-        } else if (t->subtype == task_subtype_bh_feedback) {
-          cost = 1.f * (wscale * bcount_i) * count_i;
-        } else {
+        } else if (t->subtype == task_subtype_do_gas_swallow) {
+          cost = 1.f * wscale * count_i;
+        } else if (t->subtype == task_subtype_do_bh_swallow) {
+          cost = 1.f * wscale * bcount_i;
+        } else if (t->subtype == task_subtype_density ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
+        } else {
+          error("Untreated sub-type for sub-selfs: %s",
+                subtaskID_names[t->subtype]);
         }
         break;
       case task_type_ghost:
@@ -1473,6 +1529,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
         break;
       case task_type_bh_density_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
+        break;
+      case task_type_bh_swallow_ghost2:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_drift_part:
@@ -1494,6 +1553,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
+        cost = wscale * gcount_i;
+        break;
+      case task_type_grav_mesh:
         cost = wscale * gcount_i;
         break;
       case task_type_grav_mm:
@@ -1519,6 +1581,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_timestep:
         cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
+        break;
+      case task_type_timestep_limiter:
+        cost = wscale * count_i;
+        break;
+      case task_type_timestep_sync:
+        cost = wscale * count_i;
         break;
       case task_type_send:
         if (count_i < 1e5)
@@ -1610,7 +1678,7 @@ void scheduler_start(struct scheduler *s) {
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 0, s);
+                   s->active_count, sizeof(int), threadpool_auto_chunk_size, s);
   } else {
     scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
@@ -1618,7 +1686,7 @@ void scheduler_start(struct scheduler *s) {
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 0, s);
+                   s->active_count, sizeof(int), threadpool_auto_chunk_size, s);
   } else {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
@@ -1741,7 +1809,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient) {
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
@@ -1857,7 +1926,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient) {
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
@@ -1975,6 +2045,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
     t->toc = getticks();
+    t->total_ticks += t->toc - t->tic;
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2015,6 +2086,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
   /* Task definitely done. */
   if (!t->implicit) {
     t->toc = getticks();
+    t->total_ticks += t->toc - t->tic;
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2214,6 +2286,7 @@ void scheduler_free_tasks(struct scheduler *s) {
     s->tid_active = NULL;
   }
   s->size = 0;
+  s->nr_tasks = 0;
 }
 
 /**
@@ -2271,4 +2344,94 @@ void scheduler_write_task_level(const struct scheduler *s) {
   /* clean up */
   fclose(f);
   free(count);
+}
+/**
+ * @brief dump all the active queues of all the known schedulers into files.
+ *
+ * @param e the #scheduler
+ */
+void scheduler_dump_queues(struct engine *e) {
+
+  struct scheduler *s = &e->sched;
+  char dumpfile[35];
+
+#ifdef WITH_MPI
+  /* Open a file per rank and write the header. Use per rank to avoid MPI
+   * calls that can interact with other blocking ones.  */
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat_%d", e->step,
+           e->nodeID);
+#else
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
+#endif
+
+  FILE *file_thread = fopen(dumpfile, "w");
+  fprintf(file_thread, "# rank queue index type subtype weight\n");
+  for (int l = 0; l < s->nr_queues; l++) {
+    queue_dump(engine_rank, l, file_thread, &s->queues[l]);
+  }
+  fclose(file_thread);
+}
+
+void scheduler_report_task_times_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+
+  struct task *tasks = (struct task *)map_data;
+  float time_local[task_category_count] = {0};
+  float *time_global = (float *)extra_data;
+
+  /* Gather the times spent in the different task categories */
+  for (int i = 0; i < num_elements; ++i) {
+
+    const struct task *t = &tasks[i];
+    const float total_time = clocks_from_ticks(t->total_ticks);
+    const enum task_categories cat = task_get_category(t);
+    time_local[cat] += total_time;
+  }
+
+  /* Update the global counters */
+  for (int i = 0; i < task_category_count; ++i) {
+    atomic_add_f(&time_global[i], time_local[i]);
+  }
+}
+
+/**
+ * @brief Display the time spent in the different task categories.
+ *
+ * @param s The #scheduler.
+ * @param nr_threads The number of threads used in the engine.
+ */
+void scheduler_report_task_times(const struct scheduler *s,
+                                 const int nr_threads) {
+
+  const ticks tic = getticks();
+
+  /* Initialise counters */
+  float time[task_category_count] = {0};
+  threadpool_map(s->threadpool, scheduler_report_task_times_mapper, s->tasks,
+                 s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                 time);
+
+  /* Total CPU time spent in engine_launch() */
+  const float total_tasks_time = clocks_from_ticks(s->total_ticks) * nr_threads;
+
+  /* Compute the dead time */
+  float total_time = 0.;
+  for (int i = 0; i < task_category_count; ++i) {
+    total_time += time[i];
+  }
+  const float dead_time = total_tasks_time - total_time;
+
+  message("*** CPU time spent in different task categories:");
+  for (int i = 0; i < task_category_count; ++i) {
+    message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i], time[i],
+            clocks_getunit(), time[i] / total_tasks_time * 100.);
+  }
+  message("*** %20s: %8.2f %s (%.2f %%)", "dead time", dead_time,
+          clocks_getunit(), dead_time / total_tasks_time * 100.);
+  message("*** %20s: %8.2f %s (%.2f %%)", "total", total_tasks_time,
+          clocks_getunit(), total_tasks_time / total_tasks_time * 100.);
+
+  /* Done. Report the time spent doing this analysis */
+  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 }

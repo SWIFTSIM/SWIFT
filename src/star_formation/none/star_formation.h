@@ -102,6 +102,21 @@ INLINE static int star_formation_should_convert_to_star(
 }
 
 /**
+ * @brief Decides whether a new particle should be created or if the hydro
+ * particle needs to be transformed.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param starform The properties of the star formation model.
+ *
+ * @return 1 if a new spart needs to be created.
+ */
+INLINE static int star_formation_should_spawn_spart(
+    struct part* p, struct xpart* xp, const struct star_formation* starform) {
+  return 0;
+}
+
+/**
  * @brief Update the SF properties of a particle that is not star forming.
  *
  * Nothing to do here.
@@ -130,6 +145,7 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param with_cosmology if we run with cosmology.
+ * @param convert_part Did we convert a part (or spawned one)?
  */
 INLINE static void star_formation_copy_properties(
     const struct part* p, const struct xpart* xp, struct spart* sp,
@@ -138,7 +154,8 @@ INLINE static void star_formation_copy_properties(
     const struct phys_const* phys_const,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {}
+    const struct cooling_function_data* restrict cooling,
+    const int convert_part) {}
 
 /**
  * @brief initialization of the star formation law
@@ -171,12 +188,13 @@ INLINE static void starformation_print_backend(
  * Nothing to do here.
  *
  * @param p The particle to act upon
+ * @param xp The extra particle to act upon
  * @param cd The global star_formation information.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, const struct star_formation* cd,
-    const struct cosmology* cosmo) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct star_formation* cd, const struct cosmology* cosmo) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -236,5 +254,33 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
  */
 __attribute__((always_inline)) INLINE static void star_formation_split_part(
     struct part* p, struct xpart* xp, const double n) {}
+
+/**
+ * @brief Deal with the case where no spart are available for star formation.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+__attribute__((always_inline)) INLINE static void
+star_formation_no_spart_available(const struct engine* e, const struct part* p,
+                                  const struct xpart* xp) {
+  /* Nothing to do, we just skip it and deal with it next step */
+}
+
+/**
+ * @brief Compute some information for the star formation model based
+ * on all the particles that were read in.
+ *
+ * This is called once on start-up of the code.
+ *
+ * Nothing to do here.
+ *
+ * @param star_form The #star_formation structure.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+star_formation_first_init_stats(struct star_formation* star_form,
+                                const struct engine* e) {}
 
 #endif /* SWIFT_NONE_STAR_FORMATION_H */

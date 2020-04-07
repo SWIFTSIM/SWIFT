@@ -30,6 +30,8 @@
 /* Import the right cooling definition */
 #if defined(STAR_FORMATION_NONE)
 #include "./star_formation/none/star_formation_io.h"
+#elif defined(STAR_FORMATION_QLA)
+#include "./star_formation/QLA/star_formation_io.h"
 #elif defined(STAR_FORMATION_EAGLE)
 #include "./star_formation/EAGLE/star_formation_io.h"
 #elif defined(STAR_FORMATION_GEAR)

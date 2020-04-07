@@ -19,7 +19,15 @@
 #ifndef SWIFT_TASK_ORDER_GEAR_H
 #define SWIFT_TASK_ORDER_GEAR_H
 
+/**
+ * Is the star-formation task running before the feedback task?
+ */
 #define task_order_star_formation_before_feedback 0
+
+/**
+ * Is the cooling task running after the time-step calculation task?
+ */
+#define task_order_cooling_after_timestep 1
 
 /**
  * @brief Place the star formation cell at the right place in the dependency

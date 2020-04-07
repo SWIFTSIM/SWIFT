@@ -32,9 +32,10 @@
 
 /* Local headers. */
 #include "align.h"
-#include "fof.h"
 #include "part_type.h"
-#include "timeline.h"
+
+/* Pre-declarations */
+struct threadpool;
 
 /* Some constants. */
 #define part_align 128
@@ -74,8 +75,8 @@
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
-#elif defined(ANARCHY_DU_SPH)
-#include "./hydro/AnarchyDU/hydro_part.h"
+#elif defined(SPHENIX_SPH)
+#include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(ANARCHY_PU_SPH)
@@ -119,21 +120,22 @@
 #error "Invalid choice of black hole particle"
 #endif
 
-void part_relink_gparts_to_parts(struct part *parts, size_t N,
-                                 ptrdiff_t offset);
-void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
-                                  ptrdiff_t offset);
-void part_relink_gparts_to_bparts(struct bpart *bparts, size_t N,
-                                  ptrdiff_t offset);
-void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
+void part_relink_gparts_to_parts(struct part *parts, const size_t N,
+                                 const ptrdiff_t offset);
+void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
+                                  const ptrdiff_t offset);
+void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
+                                  const ptrdiff_t offset);
+void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
                                  struct part *parts);
-void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
+void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
                                   struct spart *sparts);
-void part_relink_bparts_to_gparts(struct gpart *gparts, size_t N,
+void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
                                   struct bpart *bparts);
-void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
+void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct spart *sparts,
-                                     struct bpart *bparts);
+                                     struct bpart *bparts,
+                                     struct threadpool *tp);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct spart *sparts, struct bpart *bparts,
                        size_t nr_parts, size_t nr_gparts, size_t nr_sparts,

@@ -27,6 +27,20 @@
 #include "units.h"
 
 /**
+ * @brief Update the properties of a particle fue to feedback effects after
+ * the cooling was applied.
+ *
+ * Nothing to do here.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param cosmo The #cosmology.
+ */
+__attribute__((always_inline)) INLINE static void feedback_update_part(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct engine* restrict e) {}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
@@ -128,16 +142,19 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
  * @param feedback_props The #feedback_props structure.
  * @param cosmo The current cosmological model.
  * @param us The unit system.
+ * @param phys_const The #phys_const.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
  * @param dt The time-step size of this star in internal units.
  * @param time The physical time in internal units.
+ * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
-    const double star_age_beg_step, const double dt, const double time,
+    const struct phys_const* phys_const, const double star_age_beg_step,
+    const double dt, const double time, const integertime_t ti_begin,
     const int with_cosmology) {}
 
 /**
@@ -184,5 +201,17 @@ static INLINE void feedback_struct_dump(const struct feedback_props* feedback,
  */
 static INLINE void feedback_struct_restore(struct feedback_props* feedback,
                                            FILE* stream) {}
+
+#ifdef HAVE_HDF5
+/**
+ * @brief Writes the current model of feedback to the file
+ * @param h_grpsph The HDF5 group in which to write
+ */
+INLINE static void feedback_write_flavour(struct feedback_props* feedback,
+                                          hid_t h_grp) {
+
+  io_write_attribute_s(h_grp, "Feedback Model", "None");
+};
+#endif
 
 #endif /* SWIFT_FEEDBACK_NONE_H */

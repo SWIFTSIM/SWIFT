@@ -20,6 +20,7 @@
 #define SWIFT_PRESSURE_FLOOR_GEAR_H
 
 /* Forward declaration */
+struct cosmology;
 __attribute__((always_inline)) static INLINE float
 pressure_floor_get_comoving_pressure(const struct part* p, const float pressure,
                                      const struct cosmology* cosmo);
@@ -129,7 +130,7 @@ __attribute__((always_inline)) static INLINE void pressure_floor_init(
 
   /* Read the Jeans factor */
   props->n_jeans =
-      parser_get_param_float(params, "GEARPressureFloor:Jeans_factor");
+      parser_get_param_float(params, "GEARPressureFloor:jeans_factor");
 
   /* Compute the constants */
   props->constants =
@@ -160,8 +161,10 @@ __attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(
   io_write_attribute_s(h_grp, "Pressure floor", "GEAR");
 }
 
+#endif
+
 /**
- * @brief Finishes the density calculation.
+ * @brief Finishes the density calculation for the pressure floor properties.
  *
  * @param p The particle to act upon
  * @param cosmo The current cosmological model.
@@ -178,7 +181,8 @@ __attribute__((always_inline)) INLINE static void pressure_floor_end_density(
 }
 
 /**
- * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ * @brief Sets all the pressure floor fields to sensible values when the #part
+ * has 0 ngbs.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -225,5 +229,4 @@ pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
   pressure_floor_init_part(p, xp);
 }
 
-#endif
 #endif /* SWIFT_PRESSURE_FLOOR_GEAR_H */

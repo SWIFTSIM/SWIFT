@@ -65,13 +65,14 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
+ * Used for updating properties of gas particles neighbouring a star particle
  *
  * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
+ * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
- * @param si First sparticle.
- * @param pj Second particle (not updated).
+ * @param si First (star) particle (not updated).
+ * @param pj Second (gas) particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
@@ -91,4 +92,4 @@ runner_iact_nonsym_stars_feedback(const float r2, const float *dx,
 #endif
 }
 
-#endif
+#endif /* SWIFT_GEAR_STARS_IACT_H */

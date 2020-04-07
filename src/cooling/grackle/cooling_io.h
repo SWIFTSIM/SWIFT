@@ -27,10 +27,14 @@
 
 /**
  * @brief Writes the current model of cooling  to the file
+ *
  * @param h_grp The HDF5 group in which to write
+ * @param h_grp_columns The HDF5 group containing named columns
+ * @param cooling The #cooling_function_data
  */
 __attribute__((always_inline)) INLINE static void cooling_write_flavour(
-    hid_t h_grp, const struct cooling_function_data* cooling) {
+    hid_t h_grp, hid_t h_grp_columns,
+    const struct cooling_function_data* cooling) {
 
 #if COOLING_GRACKLE_MODE == 0
   io_write_attribute_s(h_grp, "Cooling Model", "Grackle");
@@ -136,34 +140,58 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  * @param cooling The cooling properties to initialize
  */
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
-    struct swift_params* parameter_file,
-    struct cooling_function_data* cooling) {
+    struct swift_params* parameter_file, struct cooling_function_data* cooling,
+    const struct phys_const* phys_const) {
 
-  parser_get_param_string(parameter_file, "GrackleCooling:CloudyTable",
+  parser_get_param_string(parameter_file, "GrackleCooling:cloudy_table",
                           cooling->cloudy_table);
+
+  cooling->primordial_chemistry = parser_get_opt_param_int(
+      parameter_file, "GrackleCooling:primordial_chemistry",
+      COOLING_GRACKLE_MODE);
+
+  if (cooling->primordial_chemistry < 0)
+    error("Primordial chemistry cannot be below 0");
+
+  if (cooling->primordial_chemistry > COOLING_GRACKLE_MODE)
+    error("Cannot run primordial chemistry %i when compiled with %i",
+          cooling->primordial_chemistry, COOLING_GRACKLE_MODE);
+
   cooling->with_uv_background =
-      parser_get_param_int(parameter_file, "GrackleCooling:WithUVbackground");
+      parser_get_param_int(parameter_file, "GrackleCooling:with_UV_background");
 
   cooling->redshift =
-      parser_get_param_double(parameter_file, "GrackleCooling:Redshift");
+      parser_get_param_double(parameter_file, "GrackleCooling:redshift");
 
   cooling->with_metal_cooling =
-      parser_get_param_int(parameter_file, "GrackleCooling:WithMetalCooling");
+      parser_get_param_int(parameter_file, "GrackleCooling:with_metal_cooling");
 
   cooling->provide_volumetric_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:ProvideVolumetricHeatingRates", 0);
+      parameter_file, "GrackleCooling:provide_volumetric_heating_rates", 0);
 
   cooling->provide_specific_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:ProvideSpecificHeatingRates", 0);
+      parameter_file, "GrackleCooling:provide_specific_heating_rates", 0);
 
+  /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:SelfShieldingMethod", 0);
+      parameter_file, "GrackleCooling:self_shielding_method", 0);
 
+  if (cooling->self_shielding_method == -1) {
+    cooling->self_shielding_threshold = parser_get_param_float(
+        parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
+  }
+
+  /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:MaxSteps", 10000);
+      parameter_file, "GrackleCooling:max_steps", 10000);
 
   cooling->convergence_limit = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:ConvergenceLimit", 1e-2);
+      parameter_file, "GrackleCooling:convergence_limit", 1e-2);
+
+  /* Thermal time */
+  cooling->thermal_time =
+      parser_get_param_float(parameter_file, "GrackleCooling:thermal_time_myr");
+  cooling->thermal_time *= phys_const->const_year * 1e6;
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_IO_H */

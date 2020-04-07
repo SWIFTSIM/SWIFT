@@ -378,6 +378,10 @@ double logger_reader_get_time_end(struct logger_reader *reader) {
 size_t logger_reader_get_next_offset_from_time(struct logger_reader *reader,
                                                double time) {
   size_t ind = time_array_get_index_from_time(&reader->log.times, time);
+  /* We do not want to have the sentiel */
+  if (reader->log.times.size - 2 == ind) {
+    ind -= 1;
+  }
   return reader->log.times.records[ind + 1].offset;
 }
 
@@ -427,7 +431,11 @@ void logger_reader_get_next_particle(struct logger_reader *reader,
     /* Are we at the end of the file? */
     if (next_offset == 0) {
       time_array_print(&reader->log.times);
-      error("End of file for offset %zi", prev_offset);
+      error(
+          "End of file for particle %lli offset %zi when requesting time %g "
+          "with offset %zi",
+          prev->id, prev_offset,
+          time_array_get_time(&reader->log.times, time_offset), time_offset);
     }
 
     next_offset += prev_offset;

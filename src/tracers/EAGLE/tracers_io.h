@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   } else {
 
     list[1] = io_make_output_field(
-        "MaximalTemperatureTimes", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+        "MaximalTemperatureTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, xparts,
         tracers_data.maximum_temperature_time,
         "Times at which the maximal temperature was reached");
   }
@@ -85,7 +85,13 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
                            "Flags the particles that have been directly hit by "
                            "an AGN feedback event at some point in the past.");
 
-  return 4;
+  list[4] = io_make_output_field("EnergiesReceivedFromAGNFeedback", FLOAT, 1,
+                                 UNIT_CONV_ENERGY, 0.f, xparts,
+                                 tracers_data.AGN_feedback_energy,
+                                 "Total amount of thermal energy from AGN "
+                                 "feedback events received by the particles.");
+
+  return 5;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
@@ -107,7 +113,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
   } else {
 
     list[1] = io_make_output_field(
-        "MaximalTemperatureTimes", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        "MaximalTemperatureTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, sparts,
         tracers_data.maximum_temperature_time,
         "Times at which the maximal temperature was reached");
   }
@@ -125,6 +131,12 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
                            "Flags the particles that have been directly hit by "
                            "an AGN feedback event at some point in the past "
                            "when the particle was still a gas particle.");
+
+  list[4] = io_make_output_field(
+      "EnergiesReceivedFromAGNFeedback", FLOAT, 1, UNIT_CONV_ENERGY, 0.f,
+      sparts, tracers_data.AGN_feedback_energy,
+      "Total amount of thermal energy from AGN feedback events received by the "
+      "particles when the particle was still a gas particle.");
 
   return 4;
 }

@@ -60,7 +60,9 @@ void logger_index_read_header(struct logger_index *index,
                               const char *filename) {
 
   /* Open the file */
-  message("Reading %s", filename);
+  if (index->reader->verbose > 1) {
+    message("Reading %s", filename);
+  }
   logger_index_map_file(index, filename, 0);
 
   /* Read times */
@@ -135,7 +137,7 @@ void logger_index_map_file(struct logger_index *index, const char *filename,
 
   /* Check if need to sort the file */
   if (sorted && !index->is_sorted) {
-    if (index->reader->verbose > 0) {
+    if (index->reader->verbose > 1) {
       message("Sorting the index file.");
     }
     /* Map the index file */
@@ -155,7 +157,7 @@ void logger_index_map_file(struct logger_index *index, const char *filename,
     /* Free the index file before opening it again in read only */
     logger_index_free(index);
 
-    if (index->reader->verbose > 0) {
+    if (index->reader->verbose > 1) {
       message("Sorting done.");
     }
   }

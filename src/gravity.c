@@ -36,6 +36,7 @@
 /* Local headers. */
 #include "active.h"
 #include "error.h"
+#include "threadpool.h"
 #include "version.h"
 
 struct exact_force_data {
@@ -70,7 +71,7 @@ float ewald_fac;
  *
  * @param boxSize The side-length (L) of the volume.
  */
-void gravity_exact_force_ewald_init(double boxSize) {
+void gravity_exact_force_ewald_init(const double boxSize) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
@@ -430,7 +431,7 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 
     char line[100];
     char dummy1[10], dummy2[10];
-    double epsilon, newton_G;
+    double newton_G;
     int N, periodic;
     /* Reads file header */
     if (fgets(line, 100, file) != line) error("Problem reading title");
@@ -438,17 +439,12 @@ int gravity_exact_force_file_exits(const struct engine *e) {
     sscanf(line, "%s %s %le", dummy1, dummy2, &newton_G);
     if (fgets(line, 100, file) != line) error("Problem reading N");
     sscanf(line, "%s %s %d", dummy1, dummy2, &N);
-    if (fgets(line, 100, file) != line) error("Problem reading epsilon");
-    sscanf(line, "%s %s %le", dummy1, dummy2, &epsilon);
     if (fgets(line, 100, file) != line) error("Problem reading BC");
     sscanf(line, "%s %s %d", dummy1, dummy2, &periodic);
     fclose(file);
 
     /* Check whether it matches the current parameters */
     if (N == SWIFT_GRAVITY_FORCE_CHECKS && periodic == e->s->periodic &&
-        (fabs(epsilon - gravity_get_softening(0, e->gravity_properties)) /
-             epsilon <
-         1e-5) &&
         (fabs(newton_G - e->physical_constants->const_newton_G) / newton_G <
          1e-5)) {
       return 1;
@@ -474,6 +470,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
   const struct space *s = data->s;
   const struct part *parts = s->parts;
   const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -484,13 +481,14 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
     struct gpart *gpi = &gparts[i];
 
+    /* Get the particle ID */
     long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_stars)
       id = sparts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_black_hole)
-      error("Unexisting type");
+      id = bparts[-gpi->id_or_neg_offset].id;
     else
       id = gpi->id_or_neg_offset;
 
@@ -505,6 +503,8 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
       /* Be ready for the calculation */
       double a_grav[3] = {0., 0., 0.};
+      double a_grav_short[3] = {0., 0., 0.};
+      double a_grav_long[3] = {0., 0., 0.};
       double pot = 0.;
 
       /* Interact it with all other particles in the space.*/
@@ -557,9 +557,32 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         a_grav[2] += f * dz;
         pot += phi;
 
-        /* Apply Ewald correction for periodic BC */
+        /* Apply Ewald correction for periodic BC
+         *
+         * We also want to check what the tree and mesh do so we want to mimic
+         * that:
+         * - a_grav_short is the total acceleration multiplied by the
+         * short-range correction.
+         * - a_grav_long is the total acceleration (including Ewald correction)
+         * minus the short-range acceleration.
+         */
         if (periodic && r > 1e-5 * hi) {
 
+          /* Compute trunctation for long and short range forces */
+          const double r_s_inv = e->mesh->r_s_inv;
+          const double u_lr = r * r_s_inv;
+          double corr_f_lr;
+          kernel_long_grav_force_eval_double(u_lr, &corr_f_lr);
+
+          a_grav_short[0] += f * dx * corr_f_lr;
+          a_grav_short[1] += f * dy * corr_f_lr;
+          a_grav_short[2] += f * dz * corr_f_lr;
+
+          a_grav_long[0] += f * dx * (1. - corr_f_lr);
+          a_grav_long[1] += f * dy * (1. - corr_f_lr);
+          a_grav_long[2] += f * dz * (1. - corr_f_lr);
+
+          /* Ewald correction. */
           double corr_f[3], corr_pot;
           gravity_exact_force_ewald_evaluate(dx, dy, dz, corr_f, &corr_pot);
 
@@ -567,13 +590,19 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
           a_grav[1] += mj * corr_f[1];
           a_grav[2] += mj * corr_f[2];
           pot += mj * corr_pot;
+
+          a_grav_long[0] += mj * corr_f[0];
+          a_grav_long[1] += mj * corr_f[1];
+          a_grav_long[2] += mj * corr_f[2];
         }
       }
 
       /* Store the exact answer */
-      gpi->a_grav_exact[0] = a_grav[0] * const_G;
-      gpi->a_grav_exact[1] = a_grav[1] * const_G;
-      gpi->a_grav_exact[2] = a_grav[2] * const_G;
+      for (int k = 0; k < 3; k++) {
+        gpi->a_grav_exact[k] = a_grav[k] * const_G;
+        gpi->a_grav_exact_short[k] = a_grav_short[k] * const_G;
+        gpi->a_grav_exact_long[k] = a_grav_long[k] * const_G;
+      }
       gpi->potential_exact = pot * const_G;
 
       counter++;
@@ -615,7 +644,8 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
   data.const_G = e->physical_constants->const_newton_G;
 
   threadpool_map(&s->e->threadpool, gravity_exact_force_compute_mapper,
-                 s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
+                 s->gparts, s->nr_gparts, sizeof(struct gpart),
+                 threadpool_auto_chunk_size, &data);
 
   message("Computed exact gravity for %d gparts (took %.3f %s). ",
           data.counter_global, clocks_from_ticks(getticks() - tic),
@@ -645,6 +675,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
   const struct part *parts = s->parts;
   const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
 
   /* File name */
   char file_name_swift[100];
@@ -652,34 +683,36 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
           SELF_GRAVITY_MULTIPOLE_ORDER);
 
   /* Creare files and write header */
-  const double epsilon = gravity_get_softening(0, e->gravity_properties);
   FILE *file_swift = fopen(file_name_swift, "w");
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-  fprintf(file_swift, "# epsilon= %16.8e\n", epsilon);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# theta= %16.8e\n", e->gravity_properties->theta_crit);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
   fprintf(file_swift,
-          "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s\n",
+          "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
+          "%16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s\n",
           "id", "pos[0]", "pos[1]", "pos[2]", "a_swift[0]", "a_swift[1]",
           "a_swift[2]", "potential", "a_PM[0]", "a_PM[1]", "a_PM[2]",
-          "potentialPM");
+          "potentialPM", "a_p2p[0]", "a_p2p[1]", "a_p2p[2]", "a_m2p[0]",
+          "a_m2p[1]", "a_m2p[2]", "a_m2l[0]", "a_m2l[1]", "a_m2l[2]", "n_p2p",
+          "n_m2p", "n_m2l", "n_PM");
 
   /* Output particle SWIFT accelerations  */
   for (size_t i = 0; i < s->nr_gparts; ++i) {
 
     struct gpart *gpi = &s->gparts[i];
 
+    /* Get the particle ID */
     long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_stars)
       id = sparts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_black_hole)
-      error("Unexisting type");
+      id = bparts[-gpi->id_or_neg_offset].id;
     else
       id = gpi->id_or_neg_offset;
 
@@ -688,11 +721,17 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
       fprintf(file_swift,
               "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-              "%16.8e %16.8e %16.8e\n",
+              "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
+              "%16.8e %16.8e %16.8e %18lld %18lld %18lld %18lld\n",
               id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0],
               gpi->a_grav[1], gpi->a_grav[2],
               gravity_get_comoving_potential(gpi), gpi->a_grav_PM[0],
-              gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM);
+              gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM,
+              gpi->a_grav_p2p[0], gpi->a_grav_p2p[1], gpi->a_grav_p2p[2],
+              gpi->a_grav_m2p[0], gpi->a_grav_m2p[1], gpi->a_grav_m2p[2],
+              gpi->a_grav_m2l[0], gpi->a_grav_m2l[1], gpi->a_grav_m2l[2],
+              gpi->num_interacted_p2p, gpi->num_interacted_m2p,
+              gpi->num_interacted_m2l, gpi->num_interacted_pm);
     }
   }
 
@@ -714,13 +753,16 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
     fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-    fprintf(file_exact, "# epsilon=%16.8e\n", epsilon);
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
     fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-    fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s %16s\n", "id",
-            "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
-            "a_exact[2]", "potential");
+    fprintf(file_exact,
+            "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
+            "%16s %16s %16s\n",
+            "id", "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
+            "a_exact[2]", "potential", "a_exact_short[0]", "a_exact_short[1]",
+            "a_exact_short[2]", "a_exact_long[0]", "a_exact_long[1]",
+            "a_exact_long[2]");
 
     /* Output particle exact accelerations  */
     for (size_t i = 0; i < s->nr_gparts; ++i) {
@@ -739,12 +781,15 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
       /* Is the particle was active and part of the subset to be tested ? */
       if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
-
         fprintf(file_exact,
-                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
-                gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
+                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
+                "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
+                id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
                 gpi->a_grav_exact[1], gpi->a_grav_exact[2],
-                gpi->potential_exact);
+                gpi->potential_exact, gpi->a_grav_exact_short[0],
+                gpi->a_grav_exact_short[1], gpi->a_grav_exact_short[2],
+                gpi->a_grav_exact_long[0], gpi->a_grav_exact_long[1],
+                gpi->a_grav_exact_long[2]);
       }
     }
 

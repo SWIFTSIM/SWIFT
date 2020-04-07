@@ -77,7 +77,11 @@ Gravity:
   dithering:                     1         # (Optional) Activate the dithering of the gravity mesh at every rebuild (this is the default value).
   dithering_ratio:               1.0       # (Optional) Magnitude of each component of the dithering vector in units of the top-level cell sizes (this is the default value).
 
-# Parameters for the Friends-Of-Friends algorithm
+# Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
+ForceChecks:
+  only_when_all_active: 1  # (Optional) Only compute exact forces during timesteps when all gparts are active (default: 0).
+  only_at_snapshots:    1  # (Optional) Only compute exact forces during timesteps when a snapshot is being dumped (default: 0).
+
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs (Unused when FoF is only run to seed BHs).
   scale_factor_first:              0.91        # Scale-factor of first FoF black hole seeding calls (needed for cosmological runs).
@@ -104,7 +108,7 @@ Scheduler:
   cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
   cell_extra_parts:          0         # (Optional) Number of spare parts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_gparts:         0         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts:         400       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts:         100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
   links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
@@ -293,6 +297,7 @@ SineWavePotential:
   timestep_limit:   1.      # Time-step dimensionless pre-factor.
   growth_time:      0.      # (Optional) Time for the potential to grow to its final size.
 
+
 # Parameters related to entropy floors    ----------------------------------------------
 
 EAGLEEntropyFloor:
@@ -304,11 +309,19 @@ EAGLEEntropyFloor:
   Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
-  
+
+# Parameters for the Quick Lyman-alpha floor
+QLAEntropyFloor:
+  density_threshold_H_p_cm3: 0.1       # Physical density above which the entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  over_density_threshold:    10.       # Overdensity above which the entropy floor can kick in.
+  temperature_norm_K:        8000      # Temperature of the entropy floor at the density threshold expressed in Kelvin.
+
+
 # Parameters related to pressure floors    ----------------------------------------------
 
 GEARPressureFloor:
-  Jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+  jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
 
 # Parameters related to cooling function  ----------------------------------------------
 
@@ -327,24 +340,36 @@ LambdaCooling:
 EAGLECooling:
   dir_name:                  ./coolingtables/  # Location of the Wiersma+08 cooling tables
   H_reion_z:                 8.5               # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:            2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
   He_reion_z_centre:         3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:          0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:           2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
-  newton_integration:        0                 # (Optional) Set to 1 to use the Newton-Raphson method to solve the xplicit cooling problem.
   Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
   S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
+
+# Quick Lyman-alpha cooling (EAGLE with fixed primoridal Z)
+QLACooling:
+  dir_name:                ./coolingtables/   # Location of the Wiersma+08 cooling tables
+  H_reion_z:               7.5                # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:          2.0                # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  He_reion_z_centre:       3.5                # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5                # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0                # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   
 # Cooling with Grackle 3.0
 GrackleCooling:
-  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  WithUVbackground: 1                   # Enable or not the UV background
-  Redshift: 0                           # Redshift to use (-1 means time based redshift)
-  WithMetalCooling: 1                   # Enable or not the metal cooling
-  ProvideVolumetricHeatingRates: 0      # (optional) User provide volumetric heating rates
-  ProvideSpecificHeatingRates: 0        # (optional) User provide specific heating rates
-  SelfShieldingMethod: 0                # (optional) Grackle (<= 3) or Gear self shielding method
-  MaxSteps: 10000                       # (optional) Max number of step when computing the initial composition
-  ConvergenceLimit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
+  cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 1                        # Enable or not the UV background
+  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                        # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
+  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+  max_steps: 10000                             # (optional) Max number of step when computing the initial composition
+  convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+  thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
+  self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
+  self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+
 
 # Parameters related to chemistry models  -----------------------------------------------
 
@@ -361,12 +386,13 @@ EAGLEChemistry:
   init_abundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
   init_abundance_Iron:      0.000        # Inital fraction of particle mass in Iron
 
-# Parameters related to star formation models  -----------------------------------------------
+# GEAR chemistry model (Revaz and Jablonka 2018)
+GEARChemistry:
+  initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
+  scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
 
-# GEAR star formation model (Revaz and Jablonka 2018)
-GEARStarFormation:
-  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+
+# Parameters related to star formation models  -----------------------------------------------
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
@@ -385,7 +411,17 @@ EAGLEStarFormation:
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
   threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
-  
+
+# Quick Lyman-alpha star formation parameters
+QLAStarFormation:
+  over_density:              1000      # The over-density above which gas particles turn into stars.
+
+# GEAR star formation model (Revaz and Jablonka 2018)
+GEARStarFormation:
+  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+
+
 # Parameters related to feedback models  -----------------------------------------------
 
 # EAGLE feedback model
@@ -428,6 +464,13 @@ EAGLEFeedback:
   SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
   SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
   SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
+
+# GEAR feedback model
+GEARFeedback:
+  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
+  discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
+
 
 # Parameters related to AGN models  -----------------------------------------------
   

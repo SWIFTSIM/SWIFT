@@ -148,6 +148,26 @@ enum task_actions {
 };
 
 /**
+ * @brief The broad categories of the tasks.
+ */
+enum task_categories {
+  task_category_drift,
+  task_category_sort,
+  task_category_hydro,
+  task_category_gravity,
+  task_category_feedback,
+  task_category_black_holes,
+  task_category_cooling,
+  task_category_star_formation,
+  task_category_limiter,
+  task_category_time_integration,
+  task_category_mpi,
+  task_category_fof,
+  task_category_others,
+  task_category_count
+};
+
+/**
  * @brief Names of the task types.
  */
 extern const char *taskID_names[];
@@ -156,6 +176,11 @@ extern const char *taskID_names[];
  * @brief Names of the task sub-types.
  */
 extern const char *subtaskID_names[];
+
+/**
+ * @brief Names of the task categories.
+ */
+extern const char *task_category_names[];
 
 /**
  *  @brief The MPI communicators for the different subtypes.
@@ -195,10 +220,10 @@ struct task {
   float weight;
 
   /*! Number of tasks unlocked by this one */
-  short int nr_unlock_tasks;
+  int nr_unlock_tasks;
 
   /*! Number of unsatisfied dependencies */
-  short int wait;
+  int wait;
 
   /*! Type of the task */
   enum task_types type;
@@ -223,6 +248,9 @@ struct task {
   /*! Start and end time of this task */
   ticks tic, toc;
 
+  /* Total time spent running this task */
+  ticks total_ticks;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
   integertime_t ti_run;
@@ -239,8 +267,10 @@ void task_print(const struct task *t);
 void task_dump_all(struct engine *e, int step);
 void task_dump_stats(const char *dumpfile, struct engine *e, int header,
                      int allranks);
+void task_dump_active(struct engine *e);
 void task_get_full_name(int type, int subtype, char *name);
 void task_get_group_name(int type, int subtype, char *cluster);
+enum task_categories task_get_category(const struct task *t);
 
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);

@@ -1,6 +1,6 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun
   UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
   UnitVelocity_in_cgs: 1e5           # 1 km/s
   UnitCurrent_in_cgs:  1             # Amperes
@@ -40,8 +40,9 @@ SPH:
 # Parameters governing the snapshots
 Snapshots:
   basename:            snap
-  delta_time:          1.02
-  scale_factor_first:  0.02
+  delta_time:          1.05
+  scale_factor_first:  0.05
+  compression:         4
   
 # Parameters governing the conserved quantities statistics
 Statistics:

@@ -37,6 +37,10 @@ struct tracers_xpart_data {
     float maximum_temperature_time;
   };
 
+  /*! Total amount of AGN feedback energy received by this particle
+   * (physical units) */
+  float AGN_feedback_energy;
+
   /*! Has this particle been hit by SNII feedback? */
   char hit_by_SNII_feedback;
 

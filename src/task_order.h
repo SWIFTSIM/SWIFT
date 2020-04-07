@@ -21,8 +21,11 @@
 
 #include "../config.h"
 
-#ifdef TASK_ORDER_NONE
-#include "task_order/none/task_order.h"
+/* Local includes */
+#include "scheduler.h"
+
+#ifdef TASK_ORDER_DEFAULT
+#include "task_order/default/task_order.h"
 #elif TASK_ORDER_GEAR
 #include "task_order/GEAR/task_order.h"
 #elif TASK_ORDER_EAGLE

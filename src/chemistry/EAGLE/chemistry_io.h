@@ -279,17 +279,37 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grp The HDF5 group in which to write
+ * @param h_grp_columns The HDF5 group containing named columns
  */
-INLINE static void chemistry_write_flavour(hid_t h_grp) {
+INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns) {
 
+  /* Write the chemistry model */
   io_write_attribute_s(h_grp, "Chemistry Model", "EAGLE");
+
+  /* Create an array of element names */
+  const int element_name_length = 32;
+  char element_names[chemistry_element_count][element_name_length];
   for (int elem = 0; elem < chemistry_element_count; ++elem) {
-    char buffer[20];
-    sprintf(buffer, "Element %d", elem);
-    io_write_attribute_s(
-        h_grp, buffer,
-        chemistry_get_element_name((enum chemistry_element)elem));
+    sprintf(element_names[elem], "%s",
+            chemistry_get_element_name((enum chemistry_element)elem));
   }
+
+  /* Add to the named columns */
+  hsize_t dims[1] = {chemistry_element_count};
+  hid_t type = H5Tcopy(H5T_C_S1);
+  H5Tset_size(type, element_name_length);
+  hid_t space = H5Screate_simple(1, dims, NULL);
+  hid_t dset = H5Dcreate(h_grp_columns, "ElementMassFractions", type, space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, element_names[0]);
+  H5Dclose(dset);
+  dset = H5Dcreate(h_grp_columns, "SmoothedElementMassFractions", type, space,
+                   H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, element_names[0]);
+  H5Dclose(dset);
+
+  H5Tclose(type);
+  H5Sclose(space);
 }
 #endif
 

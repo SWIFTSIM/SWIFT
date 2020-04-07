@@ -32,12 +32,29 @@
 #define queue_incoming_size 10240
 #define queue_struct_align 64
 
+/* Constants dealing with task de-priorization. */
+#define queue_lock_fail_reweight_factor 0.5
+/* #define queue_lock_fail_reweight_mask \
+  ((1ULL << task_type_send) | (1ULL << task_type_recv)) */
+#define queue_lock_fail_reweight_mask ((1ULL << task_type_count) - 1)
+
 /* Counters. */
 enum {
   queue_counter_swap = 0,
   queue_counter_count,
 };
 extern int queue_counter[queue_counter_count];
+
+/** Struct containing a task offset and a weight, used to build the binary heap
+ * of tasks in the queue. */
+struct queue_entry {
+  /* The offset of the task in the task list. */
+  int tid;
+
+  /* The weight of the task. This is stored in queue as well since it may well
+   * be adjusted dynamically. */
+  float weight;
+};
 
 /** The queue struct. */
 struct queue {
@@ -51,8 +68,8 @@ struct queue {
   /* The actual tasks to which the indices refer. */
   struct task *tasks;
 
-  /* The task indices. */
-  int *tid;
+  /* The task indices and weights. */
+  struct queue_entry *entries;
 
   /* DEQ for incoming tasks. */
   int *tid_incoming;
@@ -66,5 +83,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
 void queue_init(struct queue *q, struct task *tasks);
 void queue_insert(struct queue *q, struct task *t);
 void queue_clean(struct queue *q);
+
+void queue_dump(int nodeID, int index, FILE *file, struct queue *q);
 
 #endif /* SWIFT_QUEUE_H */

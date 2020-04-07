@@ -60,6 +60,12 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     feedback.h feedback_struct.h feedback_properties.h task_order.h
 
 # source files for EAGLE cooling
+QLA_COOLING_SOURCES =
+if HAVEQLACOOLING
+QLA_COOLING_SOURCES += cooling/QLA/cooling.c cooling/QLA/cooling_tables.c
+endif
+
+# source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
 if HAVEEAGLECOOLING
 EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
@@ -69,6 +75,19 @@ endif
 EAGLE_FEEDBACK_SOURCES =
 if HAVEEAGLEFEEDBACK
 EAGLE_FEEDBACK_SOURCES += feedback/EAGLE/feedback.c
+endif
+
+# source files for GRACKLE cooling
+GRACKLE_COOLING_SOURCES =
+if HAVEGRACKLECOOLING
+GRACKLE_COOLING_SOURCES += cooling/grackle/cooling.c
+endif
+
+# source files for GEAR feedback
+GEAR_FEEDBACK_SOURCES =
+if HAVEGEARFEEDBACK
+GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c \
+	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
 # Common source files
@@ -89,7 +108,9 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     outputlist.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
     hashmap.c pressure_floor.c \
-    $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
+    $(QLA_COOLING_SOURCES) \
+    $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
+    $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -127,12 +148,12 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 hydro/PressureEnergyMorrisMonaghanAV/hydro.h hydro/PressureEnergyMorrisMonaghanAV/hydro_iact.h hydro/PressureEnergyMorrisMonaghanAV/hydro_io.h \
                  hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h \
 		 hydro/PressureEnergyMorrisMonaghanAV/hydro_parameters.h \
-		 hydro/AnarchyPU/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
-                 hydro/AnarchyPU/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
+		 hydro/AnarchyPU/hydro.h hydro/AnarchyPU/hydro_iact.h hydro/AnarchyPU/hydro_io.h \
+                 hydro/AnarchyPU/hydro_debug.h hydro/AnarchyPU/hydro_part.h \
 		 hydro/AnarchyPU/hydro_parameters.h \
-		 hydro/AnarchyDU/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
-                 hydro/AnarchyDU/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
-		 hydro/AnarchyDU/hydro_parameters.h \
+		 hydro/SPHENIX/hydro.h hydro/SPHENIX/hydro_iact.h hydro/SPHENIX/hydro_io.h \
+                 hydro/SPHENIX/hydro_debug.h hydro/SPHENIX/hydro_part.h \
+		 hydro/SPHENIX/hydro_parameters.h \
 		 hydro/Gizmo/hydro_parameters.h \
                  hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
                  hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
@@ -182,11 +203,15 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 stars/Default/stars_debug.h stars/Default/stars_part.h  \
 		 stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h \
 		 stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h \
+		 stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h \
+		 stars/GEAR/stars_debug.h stars/GEAR/stars_part.h \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
 		 star_formation/none/star_formation.h star_formation/none/star_formation_struct.h \
 		 star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h \
+		 star_formation/QLA/star_formation.h star_formation/QLA/star_formation_struct.h \
+		 star_formation/QLA/star_formation_io.h star_formation/QLA/star_formation_iact.h \
 		 star_formation/EAGLE/star_formation.h star_formation/EAGLE/star_formation_struct.h \
 		 star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h \
 		 star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h \
@@ -206,6 +231,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  cooling/grackle/cooling_io.h \
 		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h \
                  cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h \
+		 cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h \
+                 cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
@@ -218,8 +245,13 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 chemistry/EAGLE/chemistry_io.h \
 		 chemistry/EAGLE/chemistry_struct.h\
 		 chemistry/EAGLE/chemistry_iact.h \
+                 chemistry/QLA/chemistry.h \
+		 chemistry/QLA/chemistry_io.h \
+		 chemistry/QLA/chemistry_struct.h\
+		 chemistry/QLA/chemistry_iact.h \
 	         entropy_floor/none/entropy_floor.h \
                  entropy_floor/EAGLE/entropy_floor.h \
+                 entropy_floor/QLA/entropy_floor.h \
 		 tracers/none/tracers.h tracers/none/tracers_struct.h \
                  tracers/none/tracers_io.h \
 		 tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h \
@@ -229,6 +261,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	         feedback/EAGLE/feedback.h feedback/EAGLE/feedback_struct.h feedback/EAGLE/feedback_iact.h \
                  feedback/EAGLE/feedback_properties.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h \
                  feedback/EAGLE/yield_tables.h \
+		 feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h \
+		 feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h \
+		 feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h \
+                 feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h \
+                 feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h \
                  black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h \
 		 black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h \
                  black_holes/Default/black_holes_properties.h \
@@ -240,12 +277,12 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h \
 		 pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h \
 		 pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h \
-	         task_order/GEAR/task_order.h task_order/EAGLE/task_order.h task_order/none/task_order.h
+	         task_order/GEAR/task_order.h task_order/EAGLE/task_order.h task_order/default/task_order.h
 
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c
-libgrav_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS) 
+libgrav_la_CFLAGS = $(AM_CFLAGS) $(GRAVITY_CFLAGS)
 libgrav_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS)
 
 # Sources and special flags for the gravity MPI library

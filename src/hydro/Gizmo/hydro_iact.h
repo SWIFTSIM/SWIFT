@@ -85,7 +85,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     for (int l = 0; l < 3; l++)
       pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
 
-  hydro_velocities_update_centroid_right(pi, dx, wi);
+  hydro_velocities_update_centroid_right(pj, dx, wj);
 }
 
 /**

@@ -54,6 +54,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "stars_io.h"
+#include "threadpool.h"
 #include "tracers_io.h"
 #include "units.h"
 #include "version.h"
@@ -128,7 +129,7 @@ void writeIndexArray(const struct engine* e, FILE* f, struct io_props* props,
 
   /* Copy the whole thing into a buffer */
   threadpool_map((struct threadpool*)&e->threadpool, logger_io_copy_mapper,
-                 temp, N, typeSize, 0, props);
+                 temp, N, typeSize, threadpool_auto_chunk_size, props);
 
   /* Write data to file */
   fwrite(temp, typeSize, num_elements, f);
@@ -189,8 +190,8 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%.100s_%04i.index",
-           e->logger->base_name, outputCount);
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%.100s_%04i_%04i.index",
+           e->logger->base_name, engine_rank, outputCount);
 
   /* Open file */
   FILE* f = NULL;
@@ -365,6 +366,10 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
  * @params e The #engine.
  */
 void logger_write_description(struct logger_writer* log, struct engine* e) {
+  /* Only the master writes the description */
+  if (engine_rank != 0) {
+    return;
+  }
   /* const struct unit_system *internal_units = e->internal_units; */
   /* const struct unit_system *snapshot_units = e->snapshot_units; */
 

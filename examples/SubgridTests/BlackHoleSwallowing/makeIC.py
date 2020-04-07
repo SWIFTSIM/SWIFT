@@ -21,8 +21,8 @@ import h5py
 from numpy import *
 
 # Some constants
-solar_mass_cgs = 1.988480e33 
-kpc_in_cm = 3.085678e21
+solar_mass_cgs = 1.988410e33 
+kpc_in_cm = 3.08567758149e21
 mp_cgs = 1.67e-24
 boltzmann_k_cgs = 1.38e-16
 
@@ -34,8 +34,8 @@ P_cgs = rho_cgs*u0_cgs*(gamma - 1.)          	# Background pressure
 fileName = "bh_swallowing.hdf5" 
 
 # Units
-unit_l_cgs = 3.085678e24  # kpc
-unit_m_cgs = 1.988480e43  # 10^10 Msun
+unit_l_cgs = 3.08567758149e24  # kpc
+unit_m_cgs = 1.988410e43       # 10^10 Msun
 unit_v_cgs = 1e5          # km / s
 unit_A_cgs = 1.
 unit_T_cgs = 1.

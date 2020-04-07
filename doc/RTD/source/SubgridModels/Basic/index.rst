@@ -2,8 +2,8 @@
    Matthieu Schaller, 20th December 2018
 
 
-Basic model
-===========
+Basic model (others)
+====================
 
 
 Cooling: Analytic models

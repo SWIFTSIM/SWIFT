@@ -112,6 +112,11 @@ const char *subtaskID_names[task_subtype_count] = {
     "bh_density", "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
     "bh_feedback"};
 
+const char *task_category_names[task_category_count] = {
+    "drift",       "sort",    "hydro",          "gravity", "feedback",
+    "black holes", "cooling", "star formation", "limiter", "time integration",
+    "mpi",         "fof",     "others"};
+
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
 MPI_Comm subtaskMPI_comms[task_subtype_count];
@@ -823,7 +828,11 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       strcpy(cluster, "Gravity");
       break;
     case task_subtype_limiter:
-      strcpy(cluster, "Timestep_limiter");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "Timestep_limiter");
+      }
       break;
     case task_subtype_stars_density:
       strcpy(cluster, "StarsDensity");
@@ -901,7 +910,7 @@ void task_free_mpi_comms(void) {
  *
  * Dumps the information to a file "thread_info-stepn.dat" where n is the
  * given step value, or "thread_info_MPI-stepn.dat", if we are running
- * under MPI. Note if running under MPIU all the ranks are dumped into this
+ * under MPI. Note if running under MPI all the ranks are dumped into this
  * one file, which has an additional field to identify the rank.
  *
  * @param e the #engine
@@ -910,6 +919,8 @@ void task_free_mpi_comms(void) {
 void task_dump_all(struct engine *e, int step) {
 
 #ifdef SWIFT_DEBUG_TASKS
+
+  const ticks tic = getticks();
 
   /* Need this to convert ticks to seconds. */
   const unsigned long long cpufreq = clocks_get_cpufreq();
@@ -1004,6 +1015,10 @@ void task_dump_all(struct engine *e, int step) {
   }
   fclose(file_thread);
 #endif  // WITH_MPI
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #endif  // SWIFT_DEBUG_TASKS
 }
 
@@ -1031,6 +1046,8 @@ void task_dump_all(struct engine *e, int step) {
  */
 void task_dump_stats(const char *dumpfile, struct engine *e, int header,
                      int allranks) {
+
+  const ticks function_tic = getticks();
 
   /* Need arrays for sum, min and max across all types and subtypes. */
   double sum[task_type_count][task_subtype_count];
@@ -1167,4 +1184,175 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
 #ifdef WITH_MPI
   }
 #endif
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - function_tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief dump all the active tasks of all the known engines into files.
+ *
+ * Dumps the information into file "task_dump-stepn.dat" where n is the given
+ * step value, or files "task_dump_MPI-stepn.dat_rank", if we are running
+ * under MPI. Note if running under MPI all the ranks are dumped into separate
+ * files to avoid interaction with other MPI calls that may be blocking at the
+ * time. Very similar to task_dump_all() except for the additional fields used
+ * in task debugging and we record tasks that have not ran (i.e !skip, but toc
+ * == 0) and how many waits are still active.
+ *
+ * @param e the #engine
+ */
+void task_dump_active(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  /* Need this to convert ticks to seconds. */
+  unsigned long long cpufreq = clocks_get_cpufreq();
+  char dumpfile[35];
+
+#ifdef WITH_MPI
+  snprintf(dumpfile, sizeof(dumpfile), "task_dump_MPI-step%d.dat_%d", e->step,
+           e->nodeID);
+#else
+  snprintf(dumpfile, sizeof(dumpfile), "task_dump-step%d.dat", e->step);
+#endif
+
+  FILE *file_thread = fopen(dumpfile, "w");
+  fprintf(file_thread,
+          "# rank otherrank type subtype waits pair tic toc"
+          " ci.hydro.count cj.hydro.count ci.grav.count cj.grav.count"
+          " flags\n");
+
+  /* Add some information to help with the plots and conversion of ticks to
+   * seconds. */
+  fprintf(file_thread, "%i 0 none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
+          engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
+          e->updates, e->g_updates, e->s_updates, cpufreq);
+  int count = 0;
+  for (int l = 0; l < e->sched.nr_tasks; l++) {
+    struct task *t = &e->sched.tasks[l];
+
+    /* Not implicit and not skipped. */
+    if (!t->implicit && !t->skip) {
+
+      /* Get destination rank of MPI requests. */
+      int paired = (t->cj != NULL);
+      int otherrank = t->ci->nodeID;
+      if (paired) otherrank = t->cj->nodeID;
+
+      fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
+              engine_rank, otherrank, taskID_names[t->type],
+              subtaskID_names[t->subtype], t->wait, paired,
+              (long long int)t->tic, (long long int)t->toc,
+              (t->ci != NULL) ? t->ci->hydro.count : 0,
+              (t->cj != NULL) ? t->cj->hydro.count : 0,
+              (t->ci != NULL) ? t->ci->grav.count : 0,
+              (t->cj != NULL) ? t->cj->grav.count : 0, t->flags);
+    }
+    count++;
+  }
+  fclose(file_thread);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Return the #task_categories of a given #task.
+ *
+ * @param t The #task.
+ */
+enum task_categories task_get_category(const struct task *t) {
+
+  switch (t->type) {
+
+    case task_type_cooling:
+      return task_category_cooling;
+
+    case task_type_star_formation:
+      return task_category_star_formation;
+
+    case task_type_drift_part:
+    case task_type_drift_spart:
+    case task_type_drift_bpart:
+    case task_type_drift_gpart:
+      return task_category_drift;
+
+    case task_type_sort:
+    case task_type_stars_sort:
+    case task_type_stars_resort:
+      return task_category_sort;
+
+    case task_type_send:
+    case task_type_recv:
+      return task_category_mpi;
+
+    case task_type_kick1:
+    case task_type_kick2:
+    case task_type_timestep:
+      return task_category_time_integration;
+
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
+      return task_category_limiter;
+
+    case task_type_ghost:
+    case task_type_extra_ghost:
+    case task_type_end_hydro_force:
+      return task_category_hydro;
+
+    case task_type_stars_ghost:
+      return task_category_feedback;
+
+    case task_type_bh_density_ghost:
+    case task_type_bh_swallow_ghost2:
+      return task_category_black_holes;
+
+    case task_type_init_grav:
+    case task_type_grav_long_range:
+    case task_type_grav_mm:
+    case task_type_grav_down:
+    case task_type_grav_mesh:
+    case task_type_end_grav_force:
+      return task_category_gravity;
+
+    case task_type_self:
+    case task_type_pair:
+    case task_type_sub_self:
+    case task_type_sub_pair: {
+      switch (t->subtype) {
+
+        case task_subtype_density:
+        case task_subtype_gradient:
+        case task_subtype_force:
+          return task_category_hydro;
+
+        case task_subtype_limiter:
+          return task_category_limiter;
+
+        case task_subtype_grav:
+        case task_subtype_external_grav:
+          return task_category_gravity;
+
+        case task_subtype_stars_density:
+        case task_subtype_stars_feedback:
+          return task_category_feedback;
+
+        case task_subtype_bh_density:
+        case task_subtype_bh_swallow:
+        case task_subtype_do_gas_swallow:
+        case task_subtype_do_bh_swallow:
+        case task_subtype_bh_feedback:
+          return task_category_black_holes;
+
+        default:
+          return task_category_others;
+      }
+    }
+
+    default:
+      return task_category_others;
+  }
 }

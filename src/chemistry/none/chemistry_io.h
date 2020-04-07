@@ -94,8 +94,9 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 /**
  * @brief Writes the current model of chemistry to the file
  * @param h_grp The HDF5 group in which to write
+ * @param h_grp_columns The HDF5 group containing named columns
  */
-INLINE static void chemistry_write_flavour(hid_t h_grp) {
+INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "None");
 }

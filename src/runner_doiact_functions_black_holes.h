@@ -44,6 +44,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
   if (c->black_holes.count == 0) return;
@@ -100,8 +101,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < hig2) {
-          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, e->gravity_properties,
-                      ti_current);
+          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+                      e->gravity_properties, ti_current, e->time);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -187,6 +188,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   /* Anything to do here? */
   if (ci->black_holes.count == 0) return;
@@ -252,8 +254,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
         if (r2 < hig2) {
-          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, e->gravity_properties,
-                      ti_current);
+          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+                      e->gravity_properties, ti_current, e->time);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the bparts in ci. */
@@ -366,6 +368,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
@@ -418,8 +421,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, e->gravity_properties,
-                    ti_current);
+        IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+                    e->gravity_properties, ti_current, e->time);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -446,6 +449,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
@@ -494,8 +498,8 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, cosmo,
-                    e->gravity_properties, ti_current);
+        IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
+                    e->gravity_properties, ti_current, e->time);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */

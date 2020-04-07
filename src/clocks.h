@@ -52,7 +52,7 @@ double clocks_diff_ticks(ticks tic, ticks toc);
 const char *clocks_get_timesincestart(void);
 double clocks_get_hours_since_start(void);
 
-double clocks_get_cputime_used(void);
+void clocks_get_cputimes_used(double *usertime, double *systime);
 int clocks_random_seed(void);
 
 #endif /* SWIFT_CLOCKS_H */

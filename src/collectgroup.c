@@ -56,6 +56,7 @@ struct mpicollectgroup1 {
   long long total_nr_tasks;
   float tasks_per_cell_max;
   struct star_formation_history sfh;
+  float runtime;
 };
 
 /* Forward declarations. */
@@ -125,6 +126,8 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
   e->tasks_per_cell_max = grp1->tasks_per_cell_max;
 
   star_formation_logger_add_to_accumulator(&e->sfh, &grp1->sfh);
+
+  e->runtime = grp1->runtime;
 }
 
 /**
@@ -174,6 +177,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
  * @param total_nr_tasks total number of tasks on rank.
  * @param tasks_per_cell the used number of tasks per cell.
  * @param sfh The star formation history logger
+ * @param runtime The runtime of rank in hours.
  */
 void collectgroup1_init(
     struct collectgroup1 *grp1, size_t updated, size_t g_updated,
@@ -186,7 +190,7 @@ void collectgroup1_init(
     integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh) {
+    const struct star_formation_history sfh, float runtime) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
@@ -213,6 +217,7 @@ void collectgroup1_init(
   grp1->total_nr_tasks = total_nr_tasks;
   grp1->tasks_per_cell_max = tasks_per_cell;
   grp1->sfh = sfh;
+  grp1->runtime = runtime;
 }
 
 /**
@@ -254,6 +259,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.total_nr_tasks = grp1->total_nr_tasks;
   mpigrp11.tasks_per_cell_max = grp1->tasks_per_cell_max;
   mpigrp11.sfh = grp1->sfh;
+  mpigrp11.runtime = grp1->runtime;
 
   struct mpicollectgroup1 mpigrp12;
   if (MPI_Allreduce(&mpigrp11, &mpigrp12, 1, mpicollectgroup1_type,
@@ -286,6 +292,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->total_nr_tasks = mpigrp12.total_nr_tasks;
   grp1->tasks_per_cell_max = mpigrp12.tasks_per_cell_max;
   grp1->sfh = mpigrp12.sfh;
+  grp1->runtime = mpigrp12.runtime;
 
 #endif
 }
@@ -357,6 +364,9 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
 
   /* Star formation history */
   star_formation_logger_add(&mpigrp11->sfh, &mpigrp12->sfh);
+
+  /* Use the maximum runtime as the global runtime. */
+  mpigrp11->runtime = max(mpigrp11->runtime, mpigrp12->runtime);
 }
 
 /**

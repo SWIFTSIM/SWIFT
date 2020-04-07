@@ -1,24 +1,30 @@
 .. Equations of State
    Loic Hausammann, 6th April 2018
-   Jacob Kegerreis, 3rd February 2019
+   Jacob Kegerreis, 13th March 2020
 
 .. _equation_of_state:
 
 Equations of State
 ==================
 
-Currently (if the documentation was well updated), we have two different gas
-equations of state (EoS) implemented: ideal and isothermal; as well as a variety  
-of EoS for "planetary" materials. 
-The EoS describe the relations between our main thermodynamical variables: 
-the internal energy (\\(u\\)), the density (\\(\\rho\\)), the entropy (\\(A\\)) 
-and the pressure (\\(P\\)).
+Currently, SWIFT offers two different gas equations of state (EoS)
+implemented: ``ideal`` and ``isothermal``; as well as a variety of EoS for
+"planetary" materials.  The EoS describe the relations between our
+main thermodynamical variables: the internal energy per unit mass
+(\\(u\\)), the mass density (\\(\\rho\\)), the entropy (\\(A\\)) and
+the pressure (\\(P\\)).
 
 Gas EoS
 -------
 
-In the following section, the variables not yet defined are: \\(\\gamma\\) for
-the adiabatic index and \\( c_s \\) for the speed of sound.
+We write the adiabatic index as \\(\\gamma \\) and \\( c_s \\) denotes
+the speed of sound. The adiabatic index can be changed at configure
+time by choosing one of the allowed values of the option
+``--with-adiabatic-index``. The default value is \\(\\gamma = 5/3 \\).
+
+The tables below give the expression for the thermodynamic quantities
+on each row entry as a function of the gas density and the
+thermodynamical quantity given in the header of each column.
 
 .. csv-table:: Ideal Gas
    :header: "Variable", "A", "u", "P"
@@ -38,48 +44,19 @@ the adiabatic index and \\( c_s \\) for the speed of sound.
    "P", "", "\\(\\left( \\gamma - 1\\right) u \\rho \\)", ""
    "\\( c_s\\)", "", "\\(\\sqrt{ u \\gamma \\left( \\gamma - 1 \\right) } \\)", ""
 
+Note that when running with an isothermal equation of state, the value
+of the tracked thermodynamic variable (e.g. the entropy in a
+density-entropy scheme or the internal enegy in a density-energy SPH
+formulation) written to the snapshots is meaningless. The pressure,
+however, is always correct in all scheme.
+
 
 
 Planetary EoS
 -------------
-Configuring SWIFT with the ``--with-equation-of-state=planetary`` and 
-``--with-hydro=planetary`` options enables the use of multiple EoS.
-Every SPH particle then requires and carries the additional ``MaterialID`` flag 
-from the initial conditions file. This flag indicates the particle's material 
-and which EoS it should use. 
 
-So far, we have implemented several Tillotson, SESAME, and Hubbard \& MacFarlane 
-(1980) materials, with more on their way.
-The material's ID is set by a base type ID (multiplied by 100), plus a minor 
-type:
+See :ref:`planetary_eos`.
 
-+ Tillotson (Melosh, 2007): ``1``
-    + Iron: ``100``
-    + Granite: ``101``
-    + Water: ``102``
-+ Hubbard \& MacFarlane (1980): ``2``
-    + Hydrogen-helium atmosphere: ``200``
-    + Ice H20-CH4-NH3 mix: ``201``
-    + Rock SiO2-MgO-FeS-FeO mix: ``202``
-+ SESAME (and similar): ``3``
-    + Iron (2140): ``300``
-    + Basalt (7530): ``301``
-    + Water (7154): ``302``
-    + Senft \& Stewart (2008) water (in a SESAME-style table): ``303``
-
-Unlike the EoS for an ideal or isothermal gas, these more complicated materials 
-do not always include transformations between the internal energy, 
-temperature, and entropy. At the moment, we have only implemented 
-\\(P(\\rho, u)\\) and \\(c_s(\\rho, u)\\). 
-This is sufficient for the simple :ref:`planetary_sph` hydrodynamics scheme, 
-but makes these materials currently incompatible with other entropy-based 
-schemes.
-
-The Tillotson sound speed was derived using 
-\\(c_s^2 = \\left. \\dfrac{\\partial P}{\\partial \\rho} \\right|_S \\)
-as described in Kegerreis et al. (2019).
-The table files for the HM80 and SESAME-style EoS can be downloaded using 
-the ``examples/EoSTables/get_eos_tables.sh`` script.
 
 
 How to Implement a New Equation of State

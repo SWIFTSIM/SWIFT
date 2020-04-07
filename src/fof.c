@@ -324,8 +324,8 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   /* Set initial group index */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 props->group_index, s->nr_gparts, sizeof(size_t), 0,
-                 props->group_index);
+                 props->group_index, s->nr_gparts, sizeof(size_t),
+                 threadpool_auto_chunk_size, props->group_index);
 
   if (verbose)
     message("Setting initial group index took: %.3f %s.",
@@ -335,7 +335,8 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   /* Set initial group sizes */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
-                 props->group_size, s->nr_gparts, sizeof(size_t), 0, NULL);
+                 props->group_size, s->nr_gparts, sizeof(size_t),
+                 threadpool_auto_chunk_size, NULL);
 
   if (verbose)
     message("Setting initial group sizes took: %.3f %s.",
@@ -1759,7 +1760,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
   /* Increment the group mass for groups above min_group_size. */
   threadpool_map(&s->e->threadpool, fof_calc_group_mass_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), 0, (struct space *)s);
+                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 (struct space *)s);
 
   /* Loop over particles and find the densest particle in each group. */
   /* JSW TODO: Parallelise with threadpool*/
@@ -2278,7 +2280,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   data.nr_gparts = nr_gparts;
   data.space_gparts = s->gparts;
   threadpool_map(&e->threadpool, fof_set_outgoing_root_mapper, local_cells,
-                 num_cells_out, sizeof(struct cell **), 0, &data);
+                 num_cells_out, sizeof(struct cell **),
+                 threadpool_auto_chunk_size, &data);
 
   if (verbose)
     message(
@@ -2308,7 +2311,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   tic = getticks();
 
   /* Perform send and receive tasks. */
-  engine_launch(e, /*fof=*/1);
+  engine_launch(e, "fof comms");
 
   if (verbose)
     message("MPI send/recv comms took: %.3f %s.",
@@ -2636,7 +2639,8 @@ void fof_search_tree(struct fof_props *props,
   ticks tic_calc_group_size = getticks();
 
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), 0, s);
+                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 s);
   if (verbose)
     message("FOF calc group size took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_calc_group_size),
@@ -2778,7 +2782,7 @@ void fof_search_tree(struct fof_props *props,
 
   /* Set default group ID for all particles */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
-                 s->nr_gparts, sizeof(struct gpart), 0,
+                 s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                  (void *)&group_id_default);
 
   if (verbose)

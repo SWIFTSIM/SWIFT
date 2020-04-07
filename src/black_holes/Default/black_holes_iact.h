@@ -29,18 +29,19 @@
  * @param bi First particle (black hole).
  * @param pj Second particle (gas, not updated).
  * @param xpj The extended data of the second particle (not updated).
+ * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  struct bpart *bi, const struct part *pj,
-                                  const struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const struct gravity_props *grav_props,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_density(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *bi, const struct part *pj, const struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, const integertime_t ti_current,
+    const double time) {
 
   float wi, wi_dx;
 
@@ -80,18 +81,21 @@ runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
  * @param bi First particle (black hole).
  * @param pj Second particle (gas)
  * @param xpj The extended data of the second particle.
+ * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
                                   const float hi, const float hj,
                                   const struct bpart *bi, struct part *pj,
-                                  struct xpart *xpj,
+                                  struct xpart *xpj, const int with_cosmology,
                                   const struct cosmology *cosmo,
                                   const struct gravity_props *grav_props,
-                                  const integertime_t ti_current) {}
+                                  const integertime_t ti_current,
+                                  const double time) {}
 
 /**
  * @brief Swallowing interaction between two BH particles (non-symmetric).
@@ -127,18 +131,21 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param bi First particle (black hole).
  * @param pj Second particle (gas)
  * @param xpj The extended data of the second particle.
+ * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
+ * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
                                    const float hi, const float hj,
                                    struct bpart *bi, struct part *pj,
-                                   struct xpart *xpj,
+                                   struct xpart *xpj, const int with_cosmology,
                                    const struct cosmology *cosmo,
                                    const struct gravity_props *grav_props,
-                                   const integertime_t ti_current) {
+                                   const integertime_t ti_current,
+                                   const double time) {
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)

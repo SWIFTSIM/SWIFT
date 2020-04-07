@@ -664,7 +664,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)parts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_part, parts,
-                 nr_parts, sizeof(struct part), 0, &redist_data);
+                 nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (nr_parts > 0)
@@ -711,7 +712,8 @@ void engine_redistribute(struct engine *e) {
     savelink_data.parts = (void *)parts;
     savelink_data.nodeID = nodeID;
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_part,
-                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
+                   nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                   &savelink_data);
   }
   swift_free("dest", dest);
 
@@ -729,7 +731,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)sparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_spart, sparts,
-                 nr_sparts, sizeof(struct spart), 0, &redist_data);
+                 nr_sparts, sizeof(struct spart), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (nr_sparts > 0)
@@ -775,7 +778,8 @@ void engine_redistribute(struct engine *e) {
     savelink_data.parts = (void *)sparts;
     savelink_data.nodeID = nodeID;
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_spart,
-                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
+                   nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                   &savelink_data);
   }
   swift_free("s_dest", s_dest);
 
@@ -793,7 +797,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)bparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_bpart, bparts,
-                 nr_bparts, sizeof(struct bpart), 0, &redist_data);
+                 nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (nr_bparts > 0)
@@ -839,7 +844,8 @@ void engine_redistribute(struct engine *e) {
     savelink_data.parts = (void *)bparts;
     savelink_data.nodeID = nodeID;
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_bpart,
-                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
+                   nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                   &savelink_data);
   }
   swift_free("b_dest", b_dest);
 
@@ -857,7 +863,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)gparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_gpart, gparts,
-                 nr_gparts, sizeof(struct gpart), 0, &redist_data);
+                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
@@ -969,6 +976,59 @@ void engine_redistribute(struct engine *e) {
   for (int k = 0; k < nr_nodes; k++)
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
+#ifdef WITH_LOGGER
+  if (e->policy & engine_policy_logger) {
+    /* Log the particles before sending them out */
+    size_t part_offset = 0;
+    size_t spart_offset = 0;
+    size_t gpart_offset = 0;
+    size_t bpart_offset = 0;
+
+    for (int i = 0; i < nr_nodes; i++) {
+      const size_t c_ind = engine_rank * nr_nodes + i;
+
+      /* No need to log the local particles. */
+      if (i == engine_rank) {
+        part_offset += counts[c_ind];
+        spart_offset += s_counts[c_ind];
+        gpart_offset += g_counts[c_ind];
+        bpart_offset += b_counts[c_ind];
+        continue;
+      }
+      const uint32_t flag = logger_pack_flags_and_data(logger_flag_mpi_exit, i);
+
+      /* Log the hydro parts. */
+      logger_log_parts(
+          e->logger, &parts[part_offset], &xparts[part_offset], counts[c_ind],
+          logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the stellar parts. */
+      logger_log_sparts(
+          e->logger, &sparts[spart_offset], s_counts[c_ind],
+          logger_masks_all_spart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the gparts */
+      logger_log_gparts(
+          e->logger, &gparts[gpart_offset], g_counts[c_ind],
+          logger_masks_all_gpart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the bparts */
+      if (b_counts[c_ind] > 0) {
+        error("TODO");
+      }
+
+      /* Update the counters */
+      part_offset += counts[c_ind];
+      spart_offset += s_counts[c_ind];
+      gpart_offset += g_counts[c_ind];
+      bpart_offset += b_counts[c_ind];
+    }
+  }
+#endif
+
   /* Now exchange the particles, type by type to keep the memory required
    * under control. */
 
@@ -1020,6 +1080,61 @@ void engine_redistribute(struct engine *e) {
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
+
+#ifdef WITH_LOGGER
+  if (e->policy & engine_policy_logger) {
+    size_t part_offset = 0;
+    size_t spart_offset = 0;
+    size_t gpart_offset = 0;
+    size_t bpart_offset = 0;
+
+    for (int i = 0; i < nr_nodes; i++) {
+      const size_t c_ind = i * nr_nodes + engine_rank;
+
+      /* No need to log the local particles. */
+      if (i == engine_rank) {
+        part_offset += counts[c_ind];
+        spart_offset += s_counts[c_ind];
+        gpart_offset += g_counts[c_ind];
+        bpart_offset += b_counts[c_ind];
+        continue;
+      }
+
+      const uint32_t flag =
+          logger_pack_flags_and_data(logger_flag_mpi_enter, i);
+
+      /* Log the hydro parts. */
+      logger_log_parts(
+          e->logger, &s->parts[part_offset], &s->xparts[part_offset],
+          counts[c_ind],
+          logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the stellar parts. */
+      logger_log_sparts(
+          e->logger, &s->sparts[spart_offset], s_counts[c_ind],
+          logger_masks_all_spart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the gparts */
+      logger_log_gparts(
+          e->logger, &s->gparts[gpart_offset], g_counts[c_ind],
+          logger_masks_all_gpart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the bparts */
+      if (b_counts[c_ind] > 0) {
+        error("TODO");
+      }
+
+      /* Update the counters */
+      part_offset += counts[c_ind];
+      spart_offset += s_counts[c_ind];
+      gpart_offset += g_counts[c_ind];
+      bpart_offset += b_counts[c_ind];
+    }
+  }
+#endif
 
   /* Restore the part<->gpart and spart<->gpart links.
    * Generate indices and counts for threadpool tasks. Note we process a node

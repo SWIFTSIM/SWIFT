@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitMass_in_cgs:     1.98841e43       # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758149e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1.            # Amperes
   UnitTemp_in_cgs:     1.            # Kelvin
@@ -34,6 +34,17 @@ Statistics:
   time_first:          0.
   delta_time:          1.e-5  # non cosmology time between statistics output
 
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                    0.025     # Constant dimensionless multiplier for time integration.
+  theta:                  0.7       # Opening angle (Multipole acceptance criterion)
+  mesh_side_length:       128
+  comoving_DM_softening:         0.003320 # Comoving softening for DM (3.32 ckpc)
+  max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)
+  comoving_baryon_softening:     0.001790 # Comoving softening for baryons (1.79 ckpc)
+  max_physical_baryon_softening: 0.000700 # Physical softening for baryons (0.70 pkpc)
+  dithering:             0
+  
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation 
@@ -47,7 +58,6 @@ InitialConditions:
   
 Scheduler:
   max_top_level_cells: 8
-  tasks_per_cell:      500			
 
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:

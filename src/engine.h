@@ -77,9 +77,10 @@ enum engine_policy {
   engine_policy_black_holes = (1 << 19),
   engine_policy_fof = (1 << 20),
   engine_policy_timestep_limiter = (1 << 21),
-  engine_policy_timestep_sync = (1 << 22)
+  engine_policy_timestep_sync = (1 << 22),
+  engine_policy_logger = (1 << 23),
 };
-#define engine_maxpolicy 23
+#define engine_maxpolicy 24
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -361,8 +362,9 @@ struct engine {
   ticks tic_step, toc_step;
 
 #ifdef WITH_MPI
-  /* CPU time of the last step. */
-  double cputime_last_step;
+  /* CPU times that the tasks used in the last step. */
+  double usertime_last_step;
+  double systime_last_step;
 
   /* Step of last repartition. */
   int last_repartition;
@@ -402,7 +404,7 @@ struct engine {
 
   /* Average number of links per tasks. This number is used before
      the creation of communication tasks so needs to be large enough. */
-  size_t links_per_tasks;
+  float links_per_tasks;
 
   /* Are we talkative ? */
   int verbose;
@@ -441,7 +443,7 @@ struct engine {
   const struct star_formation *star_formation;
 
   /* Properties of the sellar feedback model */
-  const struct feedback_props *feedback_props;
+  struct feedback_props *feedback_props;
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
@@ -477,11 +479,28 @@ struct engine {
   /* Maximum number of tasks needed for restarting. */
   int restart_max_tasks;
 
+  /* The globally agreed runtime, in hours. */
+  float runtime;
+
   /* Label of the run */
   char run_name[PARSER_MAX_LINE_SIZE];
 
   /* Has there been an stf this timestep? */
   char stf_this_timestep;
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Run brute force checks only on steps when all gparts active? */
+  int force_checks_only_all_active;
+
+  /* Run brute force checks only during snapshot timesteps? */
+  int force_checks_only_at_snapshots;
+
+  /* Are all gparts active this timestep? */
+  int all_gparts_active;
+
+  /* Flag to tell brute force checks a snapshot was recently written. */
+  int force_checks_snapshot_flag;
+#endif
 };
 
 /* Function prototypes, engine.c. */
@@ -493,6 +512,7 @@ void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
+void engine_unskip_timestep_communications(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
@@ -513,7 +533,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  const struct black_holes_props *black_holes,
-                 const struct feedback_props *feedback, struct pm_mesh *mesh,
+                 struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
@@ -524,7 +544,7 @@ void engine_config(int restart, int fof, struct engine *e,
                    int nr_threads, int with_aff, int verbose,
                    const char *restart_file);
 void engine_dump_index(struct engine *e);
-void engine_launch(struct engine *e, const int fof);
+void engine_launch(struct engine *e, const char *call);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);

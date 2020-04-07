@@ -57,6 +57,7 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "pressure_floor.h"
+#include "proxy.h"
 #include "restart.h"
 #include "sort_part.h"
 #include "star_formation.h"
@@ -201,6 +202,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.dx_max_sort = 0.f;
     c->black_holes.dx_max_part = 0.f;
     c->hydro.sorted = 0;
+    c->hydro.sort_allocated = 0;
     c->stars.sorted = 0;
     c->hydro.count = 0;
     c->hydro.count_total = 0;
@@ -301,7 +303,8 @@ void space_free_cells(struct space *s) {
   ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
-                 s->nr_cells, sizeof(struct cell), 0, s);
+                 s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
+                 s);
   s->maxdepth = 0;
 
   if (s->e->verbose)
@@ -313,8 +316,10 @@ void space_free_cells(struct space *s) {
  * @brief Free any memory in use for foreign particles.
  *
  * @param s The #space.
+ * @param clear_cell_pointers Are we also setting all the foreign cell particle
+ * pointers to NULL?
  */
-void space_free_foreign_parts(struct space *s) {
+void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
 
 #ifdef WITH_MPI
   if (s->parts_foreign != NULL) {
@@ -336,6 +341,13 @@ void space_free_foreign_parts(struct space *s) {
     swift_free("bparts_foreign", s->bparts_foreign);
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
+  }
+  if (clear_cell_pointers) {
+    for (int k = 0; k < s->e->nr_proxies; k++) {
+      for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
+        cell_unlink_foreign_particles(s->e->proxies[k].cells_in[j]);
+      }
+    }
   }
 #endif
 }
@@ -566,12 +578,14 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for gravity.");
       if (lock_init(&s->cells_top[k].grav.mlock) != 0)
         error("Failed to init spinlock for multipoles.");
+      if (lock_init(&s->cells_top[k].grav.star_formation_lock) != 0)
+        error("Failed to init spinlock for star formation (gpart).");
       if (lock_init(&s->cells_top[k].stars.lock) != 0)
         error("Failed to init spinlock for stars.");
       if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
         error("Failed to init spinlock for black holes.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
-        error("Failed to init spinlock for star formation.");
+        error("Failed to init spinlock for star formation (spart).");
     }
 
     /* Set the cell location and sizes. */
@@ -770,7 +784,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
    * ? */
-  if (nr_gparts + expected_num_extra_gparts > size_gparts) {
+  if (nr_actual_gparts + expected_num_extra_gparts > nr_gparts) {
 
     /* Ok... need to put some more in the game */
 
@@ -805,6 +819,10 @@ void space_allocate_extras(struct space *s, int verbose) {
       for (size_t i = 0; i < nr_sparts; ++i) {
         if (s->sparts[i].time_bin != time_bin_not_created)
           s->sparts[i].gpart += delta;
+      }
+      for (size_t i = 0; i < nr_bparts; ++i) {
+        if (s->bparts[i].time_bin != time_bin_not_created)
+          s->bparts[i].gpart += delta;
       }
     }
 
@@ -1183,7 +1201,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (s->e->nodeID == 0 || verbose) message("(re)building space");
   fflush(stdout);
-
+#endif
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Reset the cell counter */
   last_cell_id = 1;
 #endif
@@ -1309,6 +1328,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         "Number of extra bparts in the bpart array not matching the space "
         "counter.");
 #endif
+
+  const ticks tic2 = getticks();
 
   /* Move non-local parts and inhibited parts to the end of the list. */
   if ((with_dithering || !repartitioned) &&
@@ -1508,6 +1529,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       }
     }
   }
+
+  if (verbose)
+    message("Moving non-local particles took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all gparts are in the correct place. */
@@ -1889,7 +1914,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
-  ticks tic2 = getticks();
+  const ticks tic3 = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
   struct gpart *gfinger = s->gparts;
@@ -1955,7 +1980,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
             s->nr_cells);
     message("hooking up cells took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+            clocks_from_ticks(getticks() - tic3), clocks_getunit());
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's
@@ -1996,7 +2021,8 @@ void space_split(struct space *s, int verbose) {
 
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
-                 s->nr_local_cells_with_particles, sizeof(int), 0, s);
+                 s->nr_local_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2056,17 +2082,20 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the gas particles */
   if (space_extra_parts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int), 0, s);
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, s);
 
   /* Re-order the gravity particles */
   if (space_extra_gparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_gparts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int), 0, s);
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, s);
 
   /* Re-order the star particles */
   if (space_extra_sparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int), 0, s);
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, s);
 
   /* Re-order the black hole particles */
   if (space_extra_bparts)
@@ -2100,7 +2129,8 @@ void space_sanitize(struct space *s) {
   if (s->e->nodeID == 0) message("Cleaning up unreasonable values of h");
 
   threadpool_map(&s->e->threadpool, space_sanitize_mapper, s->cells_top,
-                 s->nr_cells, sizeof(struct cell), 0, NULL);
+                 s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
 }
 
 /**
@@ -2175,9 +2205,16 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 #endif
 
     /* Put it back into the simulation volume */
-    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
-    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
-    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+    double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+    /* Treat the case where a particle was wrapped back exactly onto
+     * the edge because of rounding issues (more accuracy around 0
+     * than around dim) */
+    if (pos_x == dim_x) pos_x = 0.0;
+    if (pos_y == dim_y) pos_y = 0.0;
+    if (pos_z == dim_z) pos_z = 0.0;
 
     /* Get its cell index */
     const int index =
@@ -2308,9 +2345,16 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 #endif
 
     /* Put it back into the simulation volume */
-    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
-    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
-    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+    double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+    /* Treat the case where a particle was wrapped back exactly onto
+     * the edge because of rounding issues (more accuracy around 0
+     * than around dim) */
+    if (pos_x == dim_x) pos_x = 0.0;
+    if (pos_y == dim_y) pos_y = 0.0;
+    if (pos_z == dim_z) pos_z = 0.0;
 
     /* Get its cell index */
     const int index =
@@ -2447,9 +2491,16 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 #endif
 
     /* Put it back into the simulation volume */
-    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
-    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
-    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+    double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+    /* Treat the case where a particle was wrapped back exactly onto
+     * the edge because of rounding issues (more accuracy around 0
+     * than around dim) */
+    if (pos_x == dim_x) pos_x = 0.0;
+    if (pos_y == dim_y) pos_y = 0.0;
+    if (pos_z == dim_z) pos_z = 0.0;
 
     /* Get its cell index */
     const int index =
@@ -2582,9 +2633,16 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 #endif
 
     /* Put it back into the simulation volume */
-    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
-    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
-    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+    double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+    /* Treat the case where a particle was wrapped back exactly onto
+     * the edge because of rounding issues (more accuracy around 0
+     * than around dim) */
+    if (pos_x == dim_x) pos_x = 0.0;
+    if (pos_y == dim_y) pos_y = 0.0;
+    if (pos_z == dim_z) pos_z = 0.0;
 
     /* Get its cell index */
     const int index =
@@ -2684,7 +2742,8 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   data.count_extra_bpart = 0;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 0, &data);
+                 s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                 &data);
 
   *count_inhibited_parts = data.count_inhibited_part;
   *count_extra_parts = data.count_extra_part;
@@ -2732,7 +2791,8 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   data.count_extra_bpart = 0;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
-                 s->gparts, s->nr_gparts, sizeof(struct gpart), 0, &data);
+                 s->gparts, s->nr_gparts, sizeof(struct gpart),
+                 threadpool_auto_chunk_size, &data);
 
   *count_inhibited_gparts = data.count_inhibited_gpart;
   *count_extra_gparts = data.count_extra_gpart;
@@ -2780,7 +2840,8 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   data.count_extra_bpart = 0;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
-                 s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
+                 s->sparts, s->nr_sparts, sizeof(struct spart),
+                 threadpool_auto_chunk_size, &data);
 
   *count_inhibited_sparts = data.count_inhibited_spart;
   *count_extra_sparts = data.count_extra_spart;
@@ -2828,7 +2889,8 @@ void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
   data.count_extra_bpart = 0;
 
   threadpool_map(&s->e->threadpool, space_bparts_get_cell_index_mapper,
-                 s->bparts, s->nr_bparts, sizeof(struct bpart), 0, &data);
+                 s->bparts, s->nr_bparts, sizeof(struct bpart),
+                 threadpool_auto_chunk_size, &data);
 
   *count_inhibited_bparts = data.count_inhibited_bpart;
   *count_extra_bparts = data.count_extra_bpart;
@@ -3843,7 +3905,8 @@ void space_recycle(struct space *s, struct cell *c) {
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
       lock_destroy(&c->grav.mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
       lock_destroy(&c->black_holes.lock) != 0 ||
-      lock_destroy(&c->stars.star_formation_lock))
+      lock_destroy(&c->grav.star_formation_lock) != 0 ||
+      lock_destroy(&c->stars.star_formation_lock) != 0)
     error("Failed to destroy spinlocks.");
 
   /* Lock the space. */
@@ -3896,7 +3959,8 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
         lock_destroy(&c->grav.mlock) != 0 ||
         lock_destroy(&c->stars.lock) != 0 ||
         lock_destroy(&c->black_holes.lock) != 0 ||
-        lock_destroy(&c->stars.star_formation_lock))
+        lock_destroy(&c->stars.star_formation_lock) != 0 ||
+        lock_destroy(&c->grav.star_formation_lock) != 0)
       error("Failed to destroy spinlocks.");
 
     /* Count this cell. */
@@ -3997,7 +4061,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
         lock_init(&cells[j]->black_holes.lock) != 0 ||
-        lock_init(&cells[j]->stars.star_formation_lock) != 0)
+        lock_init(&cells[j]->stars.star_formation_lock) != 0 ||
+        lock_init(&cells[j]->grav.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
@@ -4184,15 +4249,18 @@ void space_synchronize_particle_positions(struct space *s) {
 
   if (s->nr_gparts > 0 && s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_synchronize_part_positions_mapper,
-                   s->parts, s->nr_parts, sizeof(struct part), 0, (void *)s);
+                   s->parts, s->nr_parts, sizeof(struct part),
+                   threadpool_auto_chunk_size, (void *)s);
 
   if (s->nr_gparts > 0 && s->nr_sparts > 0)
     threadpool_map(&s->e->threadpool, space_synchronize_spart_positions_mapper,
-                   s->sparts, s->nr_sparts, sizeof(struct spart), 0, NULL);
+                   s->sparts, s->nr_sparts, sizeof(struct spart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
 
   if (s->nr_gparts > 0 && s->nr_bparts > 0)
     threadpool_map(&s->e->threadpool, space_synchronize_bpart_positions_mapper,
-                   s->bparts, s->nr_bparts, sizeof(struct bpart), 0, NULL);
+                   s->bparts, s->nr_bparts, sizeof(struct bpart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4286,7 +4354,8 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
                                    &xp[k]);
 
     /* And the cooling */
-    cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
+    cooling_first_init_part(phys_const, us, hydro_props, cosmo, cool_func,
+                            &p[k], &xp[k]);
 
     /* And the tracers */
     tracers_first_init_xpart(&p[k], &xp[k], us, phys_const, cosmo, hydro_props,
@@ -4319,7 +4388,8 @@ void space_first_init_parts(struct space *s, int verbose) {
   const ticks tic = getticks();
   if (s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_first_init_parts_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), 0, s);
+                   s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                   s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4380,7 +4450,8 @@ void space_first_init_gparts(struct space *s, int verbose) {
   const ticks tic = getticks();
   if (s->nr_gparts > 0)
     threadpool_map(&s->e->threadpool, space_first_init_gparts_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), 0, s);
+                   s->nr_gparts, sizeof(struct gpart),
+                   threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4472,7 +4543,8 @@ void space_first_init_sparts(struct space *s, int verbose) {
   const ticks tic = getticks();
   if (s->nr_sparts > 0)
     threadpool_map(&s->e->threadpool, space_first_init_sparts_mapper, s->sparts,
-                   s->nr_sparts, sizeof(struct spart), 0, s);
+                   s->nr_sparts, sizeof(struct spart),
+                   threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4554,7 +4626,8 @@ void space_first_init_bparts(struct space *s, int verbose) {
   const ticks tic = getticks();
   if (s->nr_bparts > 0)
     threadpool_map(&s->e->threadpool, space_first_init_bparts_mapper, s->bparts,
-                   s->nr_bparts, sizeof(struct bpart), 0, s);
+                   s->nr_bparts, sizeof(struct bpart),
+                   threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4596,7 +4669,8 @@ void space_init_parts(struct space *s, int verbose) {
 
   if (s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_init_parts_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), 0, s->e);
+                   s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                   s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -4622,7 +4696,8 @@ void space_init_gparts(struct space *s, int verbose) {
 
   if (s->nr_gparts > 0)
     threadpool_map(&s->e->threadpool, space_init_gparts_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), 0, NULL);
+                   s->nr_gparts, sizeof(struct gpart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -4648,7 +4723,8 @@ void space_init_sparts(struct space *s, int verbose) {
 
   if (s->nr_sparts > 0)
     threadpool_map(&s->e->threadpool, space_init_sparts_mapper, s->sparts,
-                   s->nr_sparts, sizeof(struct spart), 0, NULL);
+                   s->nr_sparts, sizeof(struct spart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -4674,7 +4750,8 @@ void space_init_bparts(struct space *s, int verbose) {
 
   if (s->nr_bparts > 0)
     threadpool_map(&s->e->threadpool, space_init_bparts_mapper, s->bparts,
-                   s->nr_bparts, sizeof(struct bpart), 0, NULL);
+                   s->nr_bparts, sizeof(struct bpart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -4709,7 +4786,8 @@ void space_convert_quantities(struct space *s, int verbose) {
 
   if (s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), 0, s);
+                   s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                   s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -5033,7 +5111,8 @@ void space_init(struct space *s, struct swift_params *params,
 #endif
 
   /* Do we want any spare particles for on the fly creation? */
-  if (!star_formation) space_extra_sparts = 0;
+  if (!star_formation || !swift_star_formation_model_creates_stars)
+    space_extra_sparts = 0;
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
@@ -5598,10 +5677,12 @@ void space_check_swallow(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   threadpool_map(&s->e->threadpool, space_check_part_swallow_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 0, NULL);
+                 s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
 
   threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
-                 s->nr_bparts, sizeof(struct bpart), 0, NULL);
+                 s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 /*extra_data=*/NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -5873,7 +5954,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         NULL, "bparts");
   }
 
-  /* Need to reconnect the gravity parts to their hydro and stars particles. */
+  /* Need to reconnect the gravity parts to their hydro, star and BH particles.
+   * Note that we can't use the threadpool here as we have not restored it yet.
+   */
+
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
     part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);

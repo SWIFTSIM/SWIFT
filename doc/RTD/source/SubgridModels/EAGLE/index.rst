@@ -11,12 +11,12 @@ the parameters and values output in the snapshots.
 
 .. _EAGLE_entropy_floors:
 
-Entropy floors
-~~~~~~~~~~~~~~
+Gas entropy floors
+~~~~~~~~~~~~~~~~~~
 
 The gas particles in the EAGLE model are prevented from cooling below a
 certain temperature. The temperature limit depends on the density of the
-particles. Two floors are used in conjonction. Both are implemented as
+particles. Two floors are used in conjunction. Both are implemented as
 polytropic "equations of states":math:`P = P_c
 \left(\rho/\rho_c\right)^\gamma` (all done in physical coordinates), with
 the constants derived from the user input given in terms of temperature and
@@ -25,10 +25,10 @@ is located in the directory ``src/entropy_floor/EAGLE/`` and the floor
 is applied in the drift and kick operations of the hydro scheme. It is
 also used in some of the other subgrid schemes.
 
-The first limit, labelled as ``Cool``, is typically used to prevent
+The first limit, labeled as ``Cool``, is typically used to prevent
 low-density high-metallicity particles to cool below the warm phase because
 of over-cooling induced by the absence of metal diffusion. This limit plays
-only a small role in practice. The second limit, labelled as ``Jeans``, is
+only a small role in practice. The second limit, labeled as ``Jeans``, is
 used to prevent the fragmentation of high-density gas into clumps that
 cannot be resolved by the coupled hydro+gravity solver. The two limits are
 sketched on the following figure.
@@ -89,7 +89,7 @@ For a normal EAGLE run, that section of the parameter file reads:
 
 SWIFT will convert the temperature normalisations and Hydrogen number
 density thresholds into internal energies and densities respectively
-assuming a neutral gas with primoridal abundance pattern. This implies
+assuming a neutral gas with primordial abundance pattern. This implies
 that the floor may not be exactly at the position given in the YAML
 file if the gas has different properties. This is especially the case
 for the temperature limit which will often be lower than the imposed
@@ -97,7 +97,7 @@ floor by a factor :math:`\frac{\mu_{\rm neutral}}{\mu_{ionised}}
 \approx \frac{1.22}{0.59} \approx 2` due to the different ionisation
 states of the gas.
 
-Recall that we additionally impose an absolute minium temperature at all
+Recall that we additionally impose an absolute minimum temperature at all
 densities with a value provided in the :ref:`Parameters_SPH` section of the parameter
 file. This minimal temperature is typically set to 100 Kelvin.
 
@@ -197,15 +197,15 @@ In the snapshots, we output for each gas and star particle:
 
 The stars will lose mass over their lifetime (up to ~45%). The fractions will
 remain unchanged but if one is interested in computing an absolute metal mass
-(say) for a star, the ``InitialMass`` (see the section
+(say) for a star, the ``InitialMasses`` (see the section
 :ref:`EAGLE_star_formation` below) of the star must be used.
 
 The chemistry model only requires a small number of parameters to be specified
 in the `EAGLEChemistry` section of the YAML file. These are the initial values
 of the metallicity and element mass fractions. These are then applied at the
-start of a simulation to *all* the *gas* particles. All 9 traced elements have
-to be specified An example section, for primordial abundances (typical for a
-cosmological run), is:
+start of a simulation to *all* the gas and star particles. All 9 traced elements
+have to be specified An example section, for primordial abundances (typical for
+a cosmological run), is:
 
 .. code:: YAML
 
@@ -327,19 +327,16 @@ along the redshift dimension then becomes a trivial operation.
 
 The cooling itself is performed using an implicit scheme (see the theory
 documents) which for small values of the cooling rates is solved explicitly. For
-larger values we use a bisection scheme. Users can alternatively use a
-Newton-Raphson method that in some cases runs faster than the bisection
-method. If the Newton-Raphson method does not converge after a few steps, the
-code reverts to a bisection scheme, that is guaranteed to converge. The cooling
-rate is added to the calculated change in energy over time from the other
-dynamical equations. This is different from other commonly used codes in the
-literature where the cooling is done instantaneously.
+larger values we use a bisection scheme.  The cooling rate is added to the
+calculated change in energy over time from the other dynamical equations. This
+is different from other commonly used codes in the literature where the cooling
+is done instantaneously.
 
 We note that the EAGLE cooling model does not impose any restriction on the
 particles' individual time-steps. The cooling takes place over the time span
 given by the other conditions (e.g the Courant condition).
 
-Finelly, the cooling module also provides a function to compute the temperature
+Finally, the cooling module also provides a function to compute the temperature
 of a given gas particle based on its density, internal energy, abundances and
 the current redshift. This temperature is the one used to compute the cooling
 rate from the tables and similarly to the cooling rates, they assume that the
@@ -362,15 +359,14 @@ the case with cooling switched on.
 
 The cooling model is driven by a small number of parameter files in the
 `EAGLECooling` section of the YAML file. These are the re-ionization parameters,
-the path to the tables and optionally the modified abundances of `Ca` and `S` as
-well as the flag to attempt using the Newton-Raphson scheme to solve the
-implicit problem. A valid section of the YAML file looks like:
+the path to the tables and optionally the modified abundances of `Ca`
+and `S`. A valid section of the YAML file looks like:
 
 .. code:: YAML
 
    EAGLECooling:
      dir_name:     /path/to/the/Wiersma/tables/directory # Absolute or relative path
-     H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
+     H_reion_z:            11.5      # Redshift of Hydrogen re-ionization
      H_reion_ev_p_H:        2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
@@ -383,7 +379,6 @@ And the optional parameters are:
    EAGLECooling:
      Ca_over_Si_in_solar:       1.0 # (Optional) Value of the Calcium mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
      S_over_Si_in_solar:        1.0 # (Optional) Value of the Sulphur mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
-     newton_integration:        0   # (Optional) Set to 1 to use the Newton-Raphson scheme for the explicit cooling problem.
 
 .. _EAGLE_tracers:
      
@@ -395,7 +390,7 @@ about their evolution. These are updated for a given particle every time it is
 active. The EAGLE tracers module is located in the directory
 ``src/tracers/EAGLE/``. 
 
-In the EAGLE model, we trace the maximal tempearature a particle has reached and
+In the EAGLE model, we trace the maximal temperature a particle has reached and
 the time at which this happened. When a star is formed (see the section
 :ref:`EAGLE_star_formation` below), it inherits all the tracer values of its parent
 gas particle.  There are no parameters to the model but two values are added to
@@ -404,7 +399,7 @@ the snapshots for each gas and star particle:
 +----------------------------------------+---------------------------------------+-----------+-----------------------------+
 | Name                                   | Description                           | Units     | Comments                    |
 +========================================+=======================================+===========+=============================+
-| | ``MaximalTemperatures``              | | Mximal temperature reached by       | | [U_T]   |                             |
+| | ``MaximalTemperatures``              | | Maximal temperature reached by      | | [U_T]   |                             |
 |                                        | | this particle.                      |           |                             |
 +----------------------------------------+---------------------------------------+-----------+-----------------------------+
 | | ``MaximalTemperaturesScaleFactors``  | | Scale-factor (cosmological runs)    | | [-]     |                             |
@@ -429,9 +424,11 @@ pc^2} \right)^{-n} \times \left(\frac{\gamma}{G_{\rm N}}f_gP\right)^{(n-1)/2}`,
 where :math:`n` is the exponent of the Kennicutt-Schmidt relation (typically
 :math:`n=1.4`) and :math:`A` is the normalisation of the law (typically
 :math:`A=1.515\times10^{-4} {\rm M_\odot}~{\rm yr^{-1}}~{\rm kpc^{-2}}` for a
-Cabrier IMF). :math:`m_g` is the gas particle mass, :math:`\gamma` is the
+Chabrier IMF). :math:`m_g` is the gas particle mass, :math:`\gamma` is the
 adiabatic index, :math:`f_g` the gas fraction of the disk and :math:`P` the
-total pressure of the gas including any subgrid turbulent terms.
+total pressure of the gas including any subgrid turbulent terms. The star
+formation rate of the gas particles is stored in the particles and written to
+the snapshots.
 
 Once a gas particle has computed its star formation rate, we compute the
 probability that this particle turns into a star using :math:`Prob=
@@ -439,7 +436,7 @@ probability that this particle turns into a star using :math:`Prob=
 and convert the gas particle into a star or not depending on our luck.
 
 The density threshold itself has a metallicity dependence. We use the *smoothed*
-metallicty (metal mass fraction) of the gas (See :ref:`EAGLE_chemical_tracers`)
+metallicity (metal mass fraction) of the gas (See :ref:`EAGLE_chemical_tracers`)
 and apply the relation :math:`n^*_{\rm H} = n_{\rm H,norm}\left(\frac{Z_{\rm
 smooth}}{Z_0}\right)^{n_{\rm Z}}`, alongside a maximal value. The model is
 designed such that star formation threshold decreases with increasing
@@ -450,10 +447,10 @@ the figure below.
     :width: 400px
     :align: center
     :figclass: align-center
-    :alt: Metal-dependance of the threshold for star formation in the
+    :alt: Metal-dependence of the threshold for star formation in the
 	  EAGLE model.
 
-    The dependency of the SF threshold density on the metallicty of the gas
+    The dependency of the SF threshold density on the metallicity of the gas
     in the EAGLE model (black line). The function is described by the four
     parameters indicated on the figure. These are the slope of the
     dependency, its position on the metallicity-axis and normalisation
@@ -490,7 +487,7 @@ the relevant YAML parameters defining it is shown on the figure below.
     ones assumed in the reference EAGLE model.
 
 In EAGLE, an entropy floor is already in use, so that the pressure of the gas is
-mentained high enough to prvent fragmentation of the gas. In such a scenario,
+maintained high enough to prevent fragmentation of the gas. In such a scenario,
 there is no need for the internal EoS described above. And, of course, in such a
 scenario, the gas can have a pressure above the floor. The code hence uses
 :math:`P = \max(P_{\rm gas}, P_{\rm floor}, P_{\rm EoS})`.
@@ -520,6 +517,25 @@ The code applying this star formation law is located in the directory
 ``src/star_formation/EAGLE/``. To simplify things, all constants are converted
 to the internal system of units upon reading the parameter file.
 
+Snapshots contain an extra field to store the star formation rates of the gas
+particles. If a particle was star forming in the past but isn't any more, the
+field will contain negative number either corresponding to the last
+scale-factor where the particle was star forming (cosmological runs) or the last
+time where it was star forming (non-cosmological runs).
+
++------------------------+--------------------------------------+-------------+-------------------------------------+
+| Name                   | Description                          | Units       | Comments                            |
++========================+======================================+=============+=====================================+
+| ``StarFormationRates`` | | Star formation rates of the gas if | [U_M / U_t] | | The quantity is not drifted so    |
+|                        | | star forming. Negative numbers     |             | | corresponds to the rate the last  |
+|                        | | indicate the last time the gas was |             | | time the particle was active.     |
+|                        | | star-forming.                      |             | |                                   |
++------------------------+--------------------------------------+-------------+-------------------------------------+
+
+Note that the star formation rates are expressed in internal units and not in
+solar masses per year as is the case in many other codes. This choice ensures
+consistency between all the fields written to the snapshots.
+
 For a normal EAGLE run, that section of the parameter file reads:
 
 .. code:: YAML
@@ -532,8 +548,8 @@ For a normal EAGLE run, that section of the parameter file reads:
      KS_normalisation:                  1.515e-4  # Normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
      KS_exponent:                       1.4       # Exponent of the Kennicutt-Schmidt law.
      min_over_density:                  57.7      # Over-density above which star-formation is allowed.
-     KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
-     KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+     KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicutt-Schmidt law changes slope in Hydrogen atoms per cm^3.
+     KS_high_density_exponent:          2.0       # Slope of the Kennicutt-Schmidt law above the high-density threshold.
      EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
      KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Hydrogen number density above which a particle gets automatically turned into a star in Hydrogen atoms per cm^3.
      threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
@@ -635,6 +651,9 @@ whilst for the more recent runs we use:
 Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Supernova and enrichment parameters in the EAGLE-Ref model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. code:: YAML
 
   # EAGLE stellar enrichment and feedback model
@@ -659,9 +678,8 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
     SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
     SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-    SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
+    SNIa_DTD:                         Exponential     # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
     SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
-    SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution in the power-law DTD case (in Msun^-1).
     SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalization of the SNIa delay time distribution in the exponential DTD case (in Msun^-1).
     SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the SNIa delay time distribution in the exponential DTD case (in Gyr).
     SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
@@ -674,7 +692,7 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_yield_factor_Nitrogen:       1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
     SNII_yield_factor_Oxygen:         1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
     SNII_yield_factor_Neon:           1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
-    SNII_yield_factor_Magnesium:      4.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+    SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
     SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
     SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
@@ -683,9 +701,7 @@ different from the value (:math:`0.67`) reported in table 3 of `Schaye
 (2015) <http://adsabs.harvard.edu/abs/2015MNRAS.446..521S>`_ , as a factor
 of :math:`h^{-2} = 0.6777^{-2} = 2.1773` is missing in the paper.
 
-The Magnesium yields from SNII have also been doubled since the
-original EAGLE simulations were run and the minimal mass for SNII stars has
-been raised to 8 solar masses (from 6).
+The minimal mass for SNII stars has been raised to 8 solar masses (from 6).
 
 
     

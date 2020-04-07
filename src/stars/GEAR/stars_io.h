@@ -34,7 +34,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 5;
+  *num_fields = 7;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -47,6 +47,15 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_NO_UNITS, sparts, id);
   list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sparts, h);
+  // TODO take it from initial mass
+  list[5] = io_make_input_field("BirthMass", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_MASS, sparts, birth.mass);
+
+  // TODO make it optional
+  list[6] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+                                sparts, birth_time);
+
+  // TODO read birth density
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
@@ -110,7 +119,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 9;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -159,6 +168,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[8] = io_make_output_field("BirthMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  sparts, birth.mass,
                                  "Masses of the star particles at birth time");
+
+  list[9] = io_make_output_field("ProgenitorIDs", LONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, 0.f, sparts, prog_id,
+                                 "Unique IDs of the progenitor particle");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

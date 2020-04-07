@@ -130,8 +130,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       io_make_output_field("DynamicalMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                            bparts, mass, "Dynamical masses of the particles");
 
-  list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 0.f, bparts, id, "Unique ID of the particles");
+  list[3] =
+      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           bparts, id, "Unique ID of the particles");
 
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, bparts, h,

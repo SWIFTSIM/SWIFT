@@ -25,6 +25,9 @@
 /* This object's header. */
 #include "engine.h"
 
+/* Local headers. */
+#include "fof.h"
+
 /**
  * @brief Activate all the #gpart communications in preparation
  * fof a call to FOF.
@@ -127,7 +130,7 @@ void engine_fof(struct engine *e, const int dump_results,
   if (e->verbose) engine_print_task_counts(e);
 
   /* Perform local FOF tasks. */
-  engine_launch(e, /*fof=*/1);
+  engine_launch(e, "fof");
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
