@@ -3507,7 +3507,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->cellID = last_cell_id++;
 #endif
       // ALEXEI: zero the decoupled particles counter
-      cp->hydro.nparts_decoupled = 0;
+      //cp->hydro.nparts_decoupled = 0;
     }
 
     /* Split the cell's particle data. */

@@ -992,7 +992,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Particle recoupling task */
-    else if (t_type == task_type_part_recouple) {
+    else if (t_type == task_type_part_recouple && t->ci->hydro.nparts_decoupled > 0) {
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
   }

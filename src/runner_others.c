@@ -838,7 +838,12 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
 
-  if (c->hydro.nparts_decoupled == 0) error("There are no decoupled particles in this cell.");
+  //if (c->hydro.nparts_decoupled == 0) error("There are no decoupled particles in this cell %p", c);
+  //if (c == c->top) {
+  //  message("top cell %p nparts_decoupled %d depth %d maxdepth %d", c, c->hydro.nparts_decoupled, c->depth, c->maxdepth);
+  //} else { 
+  //  message("cell %p parent %p top %p nparts_decoupled %d depth %d maxdepth %d", c, c->parent, c->top, c->hydro.nparts_decoupled, c->depth, c->maxdepth);
+  //}
 
   if (c->split) {
     for (int j = 0; j < 8; ++j) {
@@ -877,6 +882,8 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
 
 	  // Update counter
 	  c->hydro.nparts_decoupled--; 
+	  
+	  //message("recoupled particle %llu cell %p depth maxdepth %d %d", p->id, c, c->depth, c->maxdepth);
 #if SWIFT_DEBUG_CHECKS
           p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
 #endif

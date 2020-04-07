@@ -916,8 +916,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       /* Particle recoupling */
       // ALEXEI: make sure we're only doing this for the types of star formation which actually decouple particles
-      // Make sure we're only activating this task if there actually is a decoupled particle in the cell
-      if (with_star_formation && c->hydro.nparts_decoupled > 0) {
+      if (with_star_formation) {
 	c->part_recouple = scheduler_addtask(s, task_type_part_recouple,
 					     task_subtype_none, 0, 0, c, NULL);
 
