@@ -85,6 +85,8 @@ GrackleCooling:
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
   maximal_temperature:  1e10         # Upper limit to the temperature of a star forming particle
+  n_stars_per_particle: 4
+  min_mass_frac: 0.5
 
 GEARPressureFloor:
   jeans_factor: 10
