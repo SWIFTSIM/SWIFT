@@ -456,8 +456,10 @@ void task_unlock(struct task *t) {
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
+#endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
@@ -470,7 +472,11 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
-      } else {
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_unlocktree(ci);
+#endif
+      } else { /* hydro */
         cell_unlocktree(ci);
       }
       break;
@@ -478,10 +484,12 @@ void task_unlock(struct task *t) {
     case task_type_pair:
     case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_gunlocktree(cj);
         cell_munlocktree(ci);
         cell_munlocktree(cj);
+#endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
@@ -499,24 +507,35 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
         cell_bunlocktree(cj);
-      } else {
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+#endif
+      } else { /* hydro */
         cell_unlocktree(ci);
         cell_unlocktree(cj);
       }
       break;
 
     case task_type_grav_down:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_gunlocktree(ci);
       cell_munlocktree(ci);
+#endif
       break;
 
     case task_type_grav_long_range:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_munlocktree(ci);
+#endif
       break;
 
     case task_type_grav_mm:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_munlocktree(ci);
       cell_munlocktree(cj);
+#endif
       break;
 
     case task_type_star_formation:
@@ -612,6 +631,7 @@ int task_lock(struct task *t) {
     case task_type_self:
     case task_type_sub_self:
       if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole */
         if (ci->grav.phold || ci->grav.mhold) return 0;
         if (cell_glocktree(ci) != 0)
@@ -620,6 +640,7 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           return 0;
         }
+#endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
@@ -643,6 +664,11 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         if (ci->black_holes.hold) return 0;
         if (cell_blocktree(ci) != 0) return 0;
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        if (ci->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+#endif
       } else { /* subtype == hydro */
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
@@ -652,6 +678,7 @@ int task_lock(struct task *t) {
     case task_type_pair:
     case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole in both cells */
         if (ci->grav.phold || cj->grav.phold) return 0;
         if (cell_glocktree(ci) != 0) return 0;
@@ -668,6 +695,7 @@ int task_lock(struct task *t) {
           cell_munlocktree(ci);
           return 0;
         }
+#endif
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
@@ -719,6 +747,15 @@ int task_lock(struct task *t) {
           cell_bunlocktree(ci);
           return 0;
         }
+      } else if (subtype == task_subtype_limiter) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+#endif
       } else { /* subtype == hydro */
         /* Lock the parts in both cells */
         if (ci->hydro.hold || cj->hydro.hold) return 0;
@@ -731,6 +768,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_down:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       /* Lock the gparts and the m-poles */
       if (ci->grav.phold || ci->grav.mhold) return 0;
       if (cell_glocktree(ci) != 0)
@@ -739,15 +777,19 @@ int task_lock(struct task *t) {
         cell_gunlocktree(ci);
         return 0;
       }
+#endif
       break;
 
     case task_type_grav_long_range:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       /* Lock the m-poles */
       if (ci->grav.mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
+#endif
       break;
 
     case task_type_grav_mm:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       /* Lock both m-poles */
       if (ci->grav.mhold || cj->grav.mhold) return 0;
       if (cell_mlocktree(ci) != 0) return 0;
@@ -755,6 +797,7 @@ int task_lock(struct task *t) {
         cell_munlocktree(ci);
         return 0;
       }
+#endif
       break;
 
     case task_type_star_formation:

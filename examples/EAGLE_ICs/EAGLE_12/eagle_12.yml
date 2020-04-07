@@ -68,17 +68,19 @@ FOF:
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
-  scale_factor_first:              0.01        # Scale-factor of first FoF black hole seeding calls.
-  delta_time:                      1.005       # Scale-factor ratio between consecutive FoF black hole seeding calls.
+  scale_factor_first:              0.05        # Scale-factor of first FoF black hole seeding calls.
+  delta_time:                      1.00751     # Scale-factor ratio between consecutive FoF black hole seeding calls.
 
 Scheduler:
   max_top_level_cells:   8
-  tasks_per_cell:        5
   cell_split_size:       200
   
 Restarts:
   onexit:       1
-  delta_hours:  1.0
+  delta_hours:  6.0
+  max_run_time: 71.5                 # Three days minus fergie time
+  resubmit_on_exit:   1
+  resubmit_command:   ./resub.sh
 
 # Parameters related to the initial conditions
 InitialConditions:
