@@ -70,16 +70,8 @@ __attribute__((always_inline)) static INLINE float
 pressure_floor_get_physical_pressure(const struct part* p,
                                      const float pressure_physical,
                                      const struct cosmology* cosmo) {
-
-  const float H_phys = p->h * cosmo->a_inv * kernel_gamma;
-  const float rho = hydro_get_physical_density(p, cosmo);
-
-  /* Compute the pressure floor */
-  float floor = H_phys * H_phys * rho * pressure_floor_props.constants -
-                p->pressure_floor_data.sigma2;
-  floor *= rho * hydro_one_over_gamma;
-
-  return fmaxf(pressure_physical, floor);
+  error("Not implemented");
+  return 0;
 }
 
 /**
@@ -104,7 +96,7 @@ pressure_floor_get_comoving_pressure(const struct part* p,
   /* Compute the pressure floor */
   float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
                 pressure_floor_props.constants * cosmo->a_inv;
-  floor -= p->pressure_floor_data.sigma2;
+  floor -= p->pressure_floor_data.sigma2 * cosmo->a2_inv;
   floor *= a_coef * rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_comoving, floor);
@@ -175,9 +167,6 @@ __attribute__((always_inline)) INLINE static void pressure_floor_end_density(
   /* To finish the turbulence estimation we devide by the density */
   p->pressure_floor_data.sigma2 /=
       pow_dimension(p->h) * hydro_get_comoving_density(p);
-
-  /* Add the cosmological term */
-  p->pressure_floor_data.sigma2 *= cosmo->a2_inv;
 }
 
 /**
