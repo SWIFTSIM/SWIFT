@@ -1179,7 +1179,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   if (h_grp_columns < 0) error("Error while creating named columns group");
   entropy_floor_write_flavour(h_grp);
   cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
-  chemistry_write_flavour(h_grp, h_grp_columns);
+  chemistry_write_flavour(h_grp, h_grp_columns, e);
   tracers_write_flavour(h_grp);
   feedback_write_flavour(e->feedback_props, h_grp);
   H5Gclose(h_grp_columns);

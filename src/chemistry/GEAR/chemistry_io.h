@@ -21,6 +21,7 @@
 
 #include "chemistry_struct.h"
 #include "error.h"
+#include "feedback.h"
 #include "io_properties.h"
 #include "parser.h"
 #include "part.h"
@@ -113,12 +114,33 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
  * @brief Writes the current model of SPH to the file
  * @param h_grp The HDF5 group in which to write
  * @param h_grp_columns The HDF5 group containing named columns
+ * @param e The #engine.
  */
-INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns) {
+INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
+                                           const struct engine *e) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
   io_write_attribute_d(h_grp, "Chemistry element count",
                        GEAR_CHEMISTRY_ELEMENT_COUNT);
+#ifdef FEEDBACK_GEAR
+  const char *element_names = e->feedback_props->stellar_model.elements_name;
+
+  /* Add to the named columns */
+  hsize_t dims[1] = {GEAR_CHEMISTRY_ELEMENT_COUNT};
+  hid_t type = H5Tcopy(H5T_C_S1);
+  H5Tset_size(type, GEAR_LABELS_SIZE);
+  hid_t space = H5Screate_simple(1, dims, NULL);
+  hid_t dset = H5Dcreate(h_grp_columns, "ElementAbundances", type, space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, element_names);
+  H5Dclose(dset);
+  dset = H5Dcreate(h_grp_columns, "SmoothedElementAbundances", type, space,
+                   H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, element_names);
+  H5Dclose(dset);
+
+  H5Tclose(type);
+#endif
 }
 #endif
 

@@ -74,14 +74,6 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR");
-
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    char buffer[20];
-    sprintf(buffer, "Element %d", (int)i);
-    io_write_attribute_s(
-        h_grp, buffer,
-        stellar_evolution_get_element_name(&feedback->stellar_model, i));
-  }
 };
 
 #endif /* SWIFT_FEEDBACK_GEAR_H */
