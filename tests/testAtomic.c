@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
   threadpool_init(&tp, num_threads);
 
   /* Create some random data */
-  float *array_f = malloc(array_size * sizeof(float));
-  long long *array_ll = malloc(array_size * sizeof(long long));
+  float *array_f = (float *)malloc(array_size * sizeof(float));
+  long long *array_ll = (long long *)malloc(array_size * sizeof(long long));
 
   for (int i = 0; i < array_size; ++i) {
     array_f[i] = rand() / ((float)RAND_MAX);
