@@ -36,6 +36,7 @@
 #include "gravity_properties.h"
 #include "kernel_long_gravity.h"
 #include "part.h"
+#include "restart.h"
 #include "runner.h"
 #include "space.h"
 #include "threadpool.h"
@@ -675,6 +676,39 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
 }
 
 /**
+ * @bried Allocates the potential grid to be ready for an FFT calculation
+ *
+ * @param mesh The #pm_mesh structure.
+ */
+void pm_mesh_allocate(struct pm_mesh* mesh) {
+
+  if (mesh->potential != NULL) error("Mesh already allocated!");
+
+  const int N = mesh->N;
+
+  /* Allocate the memory for the combined density and potential array */
+  mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
+  if (mesh->potential == NULL)
+    error("Error allocating memory for the long-range gravity mesh.");
+  memuse_log_allocation("fftw_mesh.potential", mesh->potential, 1,
+                        sizeof(double) * N * N * N);
+}
+
+/**
+ * @brief Frees the potential grid.
+ *
+ * @param mesh The #pm_mesh structure.
+ */
+void pm_mesh_free(struct pm_mesh* mesh) {
+
+  if (mesh->potential) {
+    memuse_log_allocation("fftw_mesh.potential", mesh->potential, 0, 0);
+    free(mesh->potential);
+  }
+  mesh->potential = NULL;
+}
+
+/**
  * @brief Initialisses the mesh used for the long-range periodic forces
  *
  * @param mesh The #pm_mesh to initialise.
@@ -704,6 +738,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
+  mesh->potential = NULL;
 
   if (mesh->N > 1290)
     error(
@@ -721,12 +756,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   }
 #endif
 
-  /* Allocate the memory for the combined density and potential array */
-  mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
-  if (mesh->potential == NULL)
-    error("Error allocating memory for the long-range gravity mesh.");
-  memuse_log_allocation("fftw_mesh.potential", mesh->potential, 1,
-                        sizeof(double) * N * N * N);
+  pm_mesh_allocate(mesh);
 
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
@@ -766,11 +796,7 @@ void pm_mesh_clean(struct pm_mesh* mesh) {
   fftw_cleanup_threads();
 #endif
 
-  if (mesh->potential) {
-    memuse_log_allocation("fftw_mesh.potential", mesh->potential, 0, 0);
-    free(mesh->potential);
-  }
-  mesh->potential = 0;
+  pm_mesh_free(mesh);
 }
 
 /**
