@@ -70,7 +70,7 @@ __attribute__((always_inline)) static INLINE float
 pressure_floor_get_physical_pressure(const struct part* p,
                                      const float pressure_physical,
                                      const struct cosmology* cosmo) {
-  error("Not implemented");
+  error("Not used.");
   return 0;
 }
 
@@ -96,7 +96,12 @@ pressure_floor_get_comoving_pressure(const struct part* p,
   /* Compute the pressure floor */
   float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
                 pressure_floor_props.constants * cosmo->a_inv;
-  floor -= p->pressure_floor_data.sigma2 * cosmo->a2_inv;
+
+  /* Add the velocity dispersion */
+  const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a2_inv;
+  if (sigma2 < floor) {
+    floor -= sigma2;
+  }
   floor *= a_coef * rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_comoving, floor);

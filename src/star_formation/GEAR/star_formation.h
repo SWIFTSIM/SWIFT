@@ -303,9 +303,14 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
 #ifdef SPHENIX_SPH
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->viscosity.div_v;
-#else
+  /* SPHENIX is already including the Hubble flow */
+#elif GADGET_SPH
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->density.div_v;
+  xp->sf_data.div_v += hydro_dimension * cosmo->H;
+#else
+#error  This scheme is not implemented. Different scheme apply the Hubble flow \
+  at different place. Be careful about it.
 #endif
 }
 
