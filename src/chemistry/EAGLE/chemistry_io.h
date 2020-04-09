@@ -283,7 +283,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
  * @param e The #engine.
  */
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
-                                           const struct engine *e) {
+                                           const struct engine* e) {
 
   /* Write the chemistry model */
   io_write_attribute_s(h_grp, "Chemistry Model", "EAGLE");
