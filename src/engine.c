@@ -1664,8 +1664,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
  * @param clean_smoothing_length_values Are we cleaning up the values of
  * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, int repartitioned,
-                    int clean_smoothing_length_values) {
+void engine_rebuild(struct engine *e, const int repartitioned,
+                    const int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
 
@@ -1750,8 +1750,14 @@ void engine_rebuild(struct engine *e, int repartitioned,
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Re-compute the mesh forces */
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+
+    /* Re-allocate the PM grid if we freed it... */
+    if (repartitioned) pm_mesh_allocate(e->mesh);
+
+    /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+  }
 
   /* Re-compute the maximal RMS displacement constraint */
   if (e->policy & engine_policy_cosmology)
@@ -1887,6 +1893,10 @@ void engine_prepare(struct engine *e) {
     /* Let's start by drifting everybody to the current time */
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
+
+    /* Free the PM grid */
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      pm_mesh_free(e->mesh);
 
     /* And repartition */
     engine_repartition(e);

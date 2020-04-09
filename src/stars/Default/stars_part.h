@@ -26,6 +26,7 @@
 #include "chemistry_struct.h"
 #include "feedback_struct.h"
 #include "part_lock.h"
+#include "star_formation_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -81,6 +82,9 @@ struct spart {
 
   /*! Particle time bin */
   timebin_t time_bin;
+
+  /*! Star formation struct */
+  struct star_formation_spart_data sf_data;
 
   /*! Feedback structure */
   struct feedback_spart_data feedback_data;

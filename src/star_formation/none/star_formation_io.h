@@ -41,4 +41,19 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
   return 0;
 }
 
+/**
+ * @brief Specifies which sparticle fields to write to a dataset
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
+ */
+__attribute__((always_inline)) INLINE static int
+star_formation_write_sparticles(const struct spart* sparts,
+                                struct io_props* list) {
+
+  return 0;
+}
+
 #endif /* SWIFT_STAR_FORMATION_NONE_IO_H */

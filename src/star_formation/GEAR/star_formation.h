@@ -248,7 +248,7 @@ INLINE static void star_formation_copy_properties(
   } else {
     sp->mass = mass_gas;
   }
-  sp->birth.mass = sp->mass;
+  sp->sf_data.birth_mass = sp->mass;
 
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
@@ -261,17 +261,17 @@ INLINE static void star_formation_copy_properties(
   sp->tracers_data = xp->tracers_data;
 
   /* Store the birth density in the star particle */
-  sp->birth.density = hydro_get_physical_density(p, cosmo);
+  sp->sf_data.birth_density = hydro_get_physical_density(p, cosmo);
 
   /* Store the birth temperature*/
-  sp->birth.temperature = cooling_get_temperature(phys_const, hydro_props, us,
-                                                  cosmo, cooling, p, xp);
+  sp->sf_data.birth_temperature = cooling_get_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   /* Copy the chemistry properties */
   chemistry_copy_star_formation_properties(p, xp, sp);
 
   /* Copy the progenitor id */
-  sp->prog_id = p->id;
+  sp->sf_data.progenitor_id = p->id;
 }
 
 /**
