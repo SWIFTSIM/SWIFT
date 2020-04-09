@@ -3,7 +3,7 @@
 echo "Fetching initial conditions for the zoom in example..."
 ./getIC.sh
 
-# ../../swift --cooling --feedback --cosmology  --limiter --sync --self-gravity --hydro --stars --star-formation --threads=8 zoom_in.yml 2>&1 | tee output.log
+../../swift --cooling --feedback --cosmology  --limiter --sync --self-gravity --hydro --stars --star-formation --threads=8 zoom_in.yml 2>&1 | tee output.log
 
 echo "Fetching the solution from GEAR..."
 ./getSolution.sh
