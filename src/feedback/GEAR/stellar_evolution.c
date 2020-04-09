@@ -122,7 +122,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
 
   if (sp->mass <= sp->feedback_data.mass_ejected) {
     error("Stars cannot have negative mass. (%g <= %g). Initial mass = %g",
-          sp->mass, sp->feedback_data.mass_ejected, sp->birth.mass);
+          sp->mass, sp->feedback_data.mass_ejected, sp->sf_data.birth_mass);
   }
 
   /* Update the mass */
@@ -154,7 +154,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
         chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
 
     /* Convert it to total mass */
-    sp->feedback_data.metal_mass_ejected[i] *= sp->birth.mass;
+    sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
   }
 }
 
@@ -209,7 +209,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
 
   if (sp->mass <= sp->feedback_data.mass_ejected) {
     error("Stars cannot have negative mass. (%g <= %g). Initial mass = %g",
-          sp->mass, sp->feedback_data.mass_ejected, sp->birth.mass);
+          sp->mass, sp->feedback_data.mass_ejected, sp->sf_data.birth_mass);
   }
 
   /* Update the mass */
@@ -240,7 +240,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
         chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
 
     /* Convert it to total mass */
-    sp->feedback_data.metal_mass_ejected[i] *= sp->birth.mass;
+    sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
   }
 }
 
@@ -301,7 +301,7 @@ void stellar_evolution_evolve_spart(
   if (!can_produce_snia && !can_produce_snii) return;
 
   /* Compute the initial mass */
-  const float m_init = sp->birth.mass / phys_const->const_solar_mass;
+  const float m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
   /* Compute number of SNIa */
   int number_snia = 0;

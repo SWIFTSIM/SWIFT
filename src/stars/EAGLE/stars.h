@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     const int with_cosmology, const double scale_factor, const double time) {
 
   sp->time_bin = 0;
-  sp->birth_density = 0.f;
+  sp->sf_data.birth_density = 0.f;
   sp->f_E = -1.f;
   sp->count_since_last_enrichment = -1;
 
