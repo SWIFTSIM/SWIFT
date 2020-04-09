@@ -1438,8 +1438,8 @@ void write_output_serial(struct engine* e, const char* baseName,
                   chemistry_write_sparticles(sparts_written, list + num_fields);
               num_fields += tracers_write_sparticles(
                   sparts_written, list + num_fields, with_cosmology);
-              num_fields +=
-                  star_formation_write_sparticles(sparts, list + num_fields);
+              num_fields += star_formation_write_sparticles(sparts_written,
+                                                            list + num_fields);
               if (with_fof) {
                 num_fields +=
                     fof_write_sparts(sparts_written, list + num_fields);
