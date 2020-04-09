@@ -17,10 +17,8 @@ import numpy as np
 
 # Parameters
 
-snap = int(sys.argv[-1])
-
-swift = "swift/snapshot_%04i.hdf5" % snap
-gear = "gear/snapshot_%04i.hdf5" % snap
+swift = "swift_final.hdf5"
+gear = "h050_final.hdf5"
 
 width = 50 * kpc
 
