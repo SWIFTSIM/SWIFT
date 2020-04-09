@@ -49,7 +49,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   // TODO take it from initial mass
   list[5] = io_make_input_field("BirthMass", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_MASS, sparts, birth.mass);
+                                UNIT_CONV_MASS, sparts, sf_data.birth_mass);
 
   // TODO make it optional
   list[6] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
@@ -119,7 +119,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 10;
+  *num_fields = 7;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -151,27 +151,6 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                    sparts, birth_time,
                                    "Times at which the stars were born");
   }
-
-  list[6] = io_make_output_field(
-      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts, birth.density,
-      "Physical densities at the time of birth of the gas particles that "
-      "turned into stars (note that "
-      "we store the physical density at the birth redshift, no conversion is "
-      "needed)");
-
-  list[7] =
-      io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,
-                           0.f, sparts, birth.temperature,
-                           "Temperatures at the time of birth of the gas "
-                           "particles that turned into stars");
-
-  list[8] = io_make_output_field("BirthMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
-                                 sparts, birth.mass,
-                                 "Masses of the star particles at birth time");
-
-  list[9] = io_make_output_field("ProgenitorIDs", LONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, 0.f, sparts, prog_id,
-                                 "Unique IDs of the progenitor particle");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
