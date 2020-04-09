@@ -25,6 +25,7 @@
 /* Read additional subgrid models */
 #include "chemistry_struct.h"
 #include "feedback_struct.h"
+#include "part_lock.h"
 #include "tracers_struct.h"
 
 /**
@@ -51,6 +52,9 @@ struct spart {
 
   /*! Particle velocity. */
   float v[3];
+
+  /*! Lock for the particle in parallel task sections */
+  swift_particle_lock_t lock;
 
   /*! Star mass */
   float mass;

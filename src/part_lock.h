@@ -100,10 +100,11 @@ struct swift_particle_lock {};
  *
  * @param p The particle (part, spart, gpart, bpart,...)
  */
-#define swift_particle_lock_unlock(p)   \
-  ({                                    \
-    if (lock_unlock(&((p)->lock)) != 0) \
-      ;                                 \
+#define swift_particle_lock_unlock(p)     \
+  ({                                      \
+    if (lock_unlock(&((p)->lock)) != 0) { \
+      ;                                   \
+    }                                     \
   })
 #endif /* SWIFT_DEBUG_CHECKS */
 
