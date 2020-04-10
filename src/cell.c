@@ -6173,8 +6173,8 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
   /* Copy the gpart */
   *gp = *p->gpart;
 
-  /* Assign the ID back */
-  sp->id = p->id;
+  /* Assign the ID. */
+  sp->id = space_get_new_unique_id(e->s);
   gp->type = swift_type_stars;
 
   /* Re-link things */
