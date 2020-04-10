@@ -34,6 +34,7 @@
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
+#include "space_unique_id.h"
 #include "velociraptor_struct.h"
 
 /* Avoid cyclic inclusions */
@@ -277,6 +278,9 @@ struct space {
   /*! The group information returned by VELOCIraptor for each #gpart. */
   struct velociraptor_gpart_data *gpart_group_data;
 
+  /*! Structure dealing with the computation of a unique ID */
+  struct unique_id unique_id;
+
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
@@ -316,8 +320,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int gravity,
-                int star_formation, int DM_background, int verbose,
-                int dry_run);
+                int star_formation, int DM_background, int verbose, int dry_run,
+                int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);

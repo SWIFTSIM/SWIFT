@@ -1058,7 +1058,7 @@ int main(int argc, char *argv[]) {
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
                Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
                with_hydro, with_self_gravity, with_star_formation,
-               with_DM_background_particles, talking, dry_run);
+               with_DM_background_particles, talking, dry_run, nr_nodes);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
