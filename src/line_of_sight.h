@@ -4,8 +4,8 @@
 struct line_of_sight {
   int xaxis, yaxis, zaxis;
   double Xpos, Ypos;
-  size_t particles_in_los_total;
-  size_t particles_in_los_local;
+  int particles_in_los_total;
+  int particles_in_los_local;
 };
 
 struct line_of_sight_particles {

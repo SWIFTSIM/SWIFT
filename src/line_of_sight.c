@@ -10,27 +10,16 @@
 #include <stdlib.h>
 
 #include "engine.h"
+#include "kernel_hydro.h"
 #include "line_of_sight.h"
-
-/**
- * @brief Periodic wrap in 2D.
- *
- * @param x 1D coordinate of particle.
- * @param dim Length of volume for this dimension.
- */
-double los_periodic(double x, double dim) {
-  if (x >= 0.5 * dim) x -= dim;
-  if (x < -0.5 * dim) x += dim;
-
-  return x;
-}
+#include "periodic.h"
 
 /**
  * @brief Generates random sightline positions.
  *
  * Independent sightlines are made for the XY, YZ and XZ planes.
  *
- * @param Los Structure to store sightlines.
+ * @param LOS Structure to store sightlines.
  * @param params Sightline parameters.
  */
 void generate_line_of_sights(struct line_of_sight *Los,
@@ -99,7 +88,7 @@ void print_los_info(struct line_of_sight *Los,
 
   printf("\nPrinting LOS information...\n");
   for (int i = 0; i < params->num_tot; i++) {
-    printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%lld\n", i,
+    printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%i\n", i,
            Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total);
   }
 }
@@ -110,15 +99,15 @@ void do_line_of_sight(struct engine *e) {
   const size_t nr_parts = s->nr_parts;
 
   /* LOS params, dummy until included in parameter file. */
-  struct line_of_sight_params LOS_params = {.num_along_xy = 1,
+  struct line_of_sight_params LOS_params = {.num_along_xy = 2,
                                             .num_along_yz = 2,
-                                            .num_along_xz = 3,
-                                            .xmin = 4,
-                                            .xmax = 6,
+                                            .num_along_xz = 2,
+                                            .xmin = 1,
+                                            .xmax = 2,
                                             .ymin = 4,
-                                            .ymax = 6,
-                                            .zmin = 4,
-                                            .zmax = 6};
+                                            .ymax = 5,
+                                            .zmin = 7,
+                                            .zmax = 8};
   LOS_params.num_tot = LOS_params.num_along_xy + LOS_params.num_along_yz +
                        LOS_params.num_along_xz;
 
@@ -132,7 +121,6 @@ void do_line_of_sight(struct engine *e) {
 #endif
 
   double dx, dy, r2, hsml;
-  // size_t LOS_nmax;
 
   FILE *f;
 
@@ -149,21 +137,29 @@ void do_line_of_sight(struct engine *e) {
   /* Loop over each random LOS. */
   for (int j = 0; j < LOS_params.num_tot; j++) {
 
-    // LOS_nmax = 0;
-
     /* Loop over each gas particle to find those in LOS. */
     for (size_t i = 0; i < nr_parts; i++) {
       if (s->parts[i].gpart->type == swift_type_gas) {
-        dx = los_periodic(s->parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos,
-                          s->dim[LOS_list[j].xaxis]);
-        hsml = s->parts[i].h;
+        /* Distance from this particle to LOS along x dim. */
+        dx = s->parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+
+        /* Periodic wrap. */
+        if (e->s->periodic) dx = nearest(dx, s->dim[LOS_list[j].xaxis]);
+
+        /* Smoothing length of this part. */
+        hsml = s->parts[i].h * kernel_gamma;
 
         /* Does this particle fall into our LOS? */
         if (dx <= hsml) {
-          dy = los_periodic(s->parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos,
-                            s->dim[LOS_list[j].yaxis]);
+          /* Distance from this particle to LOS along y dim. */
+          dy = s->parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
+          
+          /* Periodic wrap. */
+          if (e->s->periodic) dy = nearest(dy, s->dim[LOS_list[j].yaxis]);
 
+          /* Does this particle still fall into our LOS? */
           if (dy <= hsml) {
+            /* 2D distance to LOS. */
             r2 = dx * dx + dy * dy;
 
             if (r2 <= hsml * hsml) {
@@ -181,27 +177,19 @@ void do_line_of_sight(struct engine *e) {
     int LOS_disps[e->nr_nodes];
 
     /* How many particles does each rank have for this LOS? */
-    MPI_Allgather(&LOS_list[j].particles_in_los_local, 1, MPI_LONG_LONG_INT,
-                  &LOS_counts, 1, MPI_LONG_LONG_INT, MPI_COMM_WORLD);
+    MPI_Allgather(&LOS_list[j].particles_in_los_local, 1, MPI_INT,
+                  &LOS_counts, 1, MPI_INT, MPI_COMM_WORLD);
 
     for (int k = 0, disp_count = 0; k < e->nr_nodes; k++) {
       if (e->nodeID == 0)
-        message("k=%i disp_count=%i LOS_counts=%i", k, disp_count,
-                LOS_counts[k]);
       /* Total particles in this LOS. */
       LOS_list[j].particles_in_los_total += LOS_counts[k];
 
+      /* Counts and disps for Gatherv. */
       LOS_disps[k] = disp_count;
-
       disp_count += LOS_counts[k];
-
-      // message("k=%i disp_count=%i LOS_counts=%lld", k, disp_count,
-      // LOS_counts[k]);
-      /* Max number of LOS particles on one node. */
-      // if (LOS_counts[k] > LOS_nmax) LOS_nmax = LOS_counts[k];
     }
 #else
-    // LOS_nmax = LOS_list[j].particles_in_los_local;
     LOS_list[j].particles_in_los_total = LOS_list[j].particles_in_los_local;
 #endif
 
@@ -209,8 +197,6 @@ void do_line_of_sight(struct engine *e) {
     struct line_of_sight_particles *LOS_particles;
     struct line_of_sight_particles *LOS_particles_total;
     if (e->nodeID == 0) {
-      // LOS_particles = (struct line_of_sight_particles*)malloc(LOS_nmax *
-      // sizeof(struct line_of_sight_particles));
       LOS_particles_total = (struct line_of_sight_particles *)malloc(
           LOS_list[j].particles_in_los_total *
           sizeof(struct line_of_sight_particles));
@@ -224,21 +210,31 @@ void do_line_of_sight(struct engine *e) {
     }
 
     /* Loop over each gas particle again to store properties. */
-    size_t count = 0;
+    int count = 0;
 
     for (size_t i = 0; i < nr_parts; i++) {
 
       if (s->parts[i].gpart->type == swift_type_gas) {
-        dx = los_periodic(s->parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos,
-                          s->dim[LOS_list[j].xaxis]);
-        hsml = s->parts[i].h;
+        /* Distance from this particle to LOS along x dim. */
+        dx = s->parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+
+        /* Periodic wrap. */
+        if (e->s->periodic) dx = nearest(dx, s->dim[LOS_list[j].xaxis]);
+
+        /* Smoothing length of this part. */
+        hsml = s->parts[i].h * kernel_gamma;
 
         /* Does this particle fall into our LOS? */
         if (dx <= hsml) {
-          dy = los_periodic(s->parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos,
-                            s->dim[LOS_list[j].yaxis]);
+          /* Distance from this particle to LOS along y dim. */
+          dy = s->parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
+        
+          /* Periodic wrap. */
+          if (e->s->periodic) dy = nearest(dy, s->dim[LOS_list[j].yaxis]);
 
+          /* Does this particle still fall into our LOS? */
           if (dy <= hsml) {
+            /* 2D distance to LOS. */
             r2 = dx * dx + dy * dy;
 
             if (r2 <= hsml * hsml) {
@@ -258,59 +254,20 @@ void do_line_of_sight(struct engine *e) {
     } /* End of loop over all gas particles. */
 
 #ifdef WITH_MPI
-    message("rank %i about to gather for LOS %i", e->nodeID, j);
-    MPI_Gatherv(&LOS_particles, LOS_list[j].particles_in_los_local,
-                lospart_mpi_type, &LOS_particles_total, LOS_counts, LOS_disps,
+    /* Collect all particles in LOS to rank 0. */
+    MPI_Gatherv(LOS_particles, LOS_list[j].particles_in_los_local,
+                lospart_mpi_type, LOS_particles_total, LOS_counts, LOS_disps,
                 lospart_mpi_type, 0, MPI_COMM_WORLD);
-//
-//    if (e->nodeID == 0) {
-//       for (size_t kk = 0; kk < LOS_list[j].particles_in_los_total; kk++) {
-//          fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles_total[kk].pos[0],
-//          LOS_particles_total[kk].pos[1], LOS_particles_total[kk].pos[2],
-//          LOS_particles_total[kk].h);
-//       }
-//    }
-//    /* Loop over each rank and rank 0 saves LOS data. */
-//    for (int k = 0; k < e->nr_nodes; k++) {
-//      /* First dump any particles on node 0. */
-//      if (e->nodeID == 0) {
-//        if (k == 0) {
-//          if (LOS_counts[k] > 0) {
-//            message("node 0 saving %lld", LOS_counts[k]);
-//            for (size_t kk = 0; kk < LOS_counts[k]; kk++) {
-//              fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0],
-//              LOS_particles[kk].pos[1], LOS_particles[kk].pos[2],
-//              LOS_particles[kk].h);
-//            }
-//          }
-//        } else {
-//          if (LOS_counts[k] > 0) {
-//            message("node 0 recieving %lld particles", LOS_counts[k]);
-//            MPI_Recv(LOS_particles, LOS_counts[k], lospart_mpi_type, k, 12,
-//            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-//
-//            for (size_t kk = 0; kk < LOS_counts[k]; kk++) {
-//              fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0],
-//              LOS_particles[kk].pos[1], LOS_particles[kk].pos[2],
-//              LOS_particles[kk].h);
-//            }
-//          }
-//        }
-//      } else {
-//          if (k > 0 && LOS_counts[k] > 0) {
-//            message("node %i sending %lld particles to 0", k, LOS_counts[k]);
-//            MPI_Send(LOS_particles, LOS_counts[k], lospart_mpi_type, 0, 12,
-//            MPI_COMM_WORLD);
-//          }
-//      }
-//    } /* End of loop over each node. */
-#else
-    for (size_t kk = 0; kk < LOS_list[j].particles_in_los_local; kk++) {
-      fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0],
-              LOS_particles[kk].pos[1], LOS_particles[kk].pos[2],
-              LOS_particles[kk].h);
-    }
 #endif
+    
+    /* Write particles to file. */
+    if (e->nodeID == 0) {
+      for (int kk = 0; kk < LOS_list[j].particles_in_los_total; kk++) {
+        fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0],
+                LOS_particles[kk].pos[1], LOS_particles[kk].pos[2],
+                LOS_particles[kk].h);
+      }
+    }
   } /* End of loop over each LOS */
 
   if (e->nodeID == 0) fclose(f);
