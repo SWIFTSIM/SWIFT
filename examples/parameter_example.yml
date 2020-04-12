@@ -280,13 +280,13 @@ NFWPotential:
   critical_density:   127.4    # Critical density (internal units).
   timestep_mult:      0.01     # Dimensionless pre-factor for the time-step condition, basically determines fraction of orbital time we need to do an integration step
 
-# Disk-patch potential parameters
+# Disk-patch potential parameters. The potential is along the x-axis.
 DiscPatchPotential:
   surface_density: 10.      # Surface density of the disc (internal units)
   scale_height:    100.     # Scale height of the disc (internal units)
-  z_disc:          400.     # Position of the disc along the z-axis (internal units)
-  z_trunc:         300.     # (Optional) Distance from the disc along z-axis above which the potential gets truncated.
-  z_max:           380.     # (Optional) Distance from the disc along z-axis above which the potential is set to 0.
+  x_disc:          400.     # Position of the disc along the z-axis (internal units)
+  x_trunc:         300.     # (Optional) Distance from the disc along z-axis above which the potential gets truncated.
+  x_max:           380.     # (Optional) Distance from the disc along z-axis above which the potential is set to 0.
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   growth_time:     5.       # (Optional) Time for the disc to grow to its final size (multiple of the dynamical time)
 
