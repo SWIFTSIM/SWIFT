@@ -883,7 +883,7 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
 	  // Update counter
 	  c->hydro.nparts_decoupled--; 
 	  
-	  //message("recoupled particle %llu cell %p depth maxdepth %d %d", p->id, c, c->depth, c->maxdepth);
+	  message("recoupled particle %llu cell %p depth maxdepth %d %d", p->id, c, c->depth, c->maxdepth);
 #if SWIFT_DEBUG_CHECKS
           p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
 #endif

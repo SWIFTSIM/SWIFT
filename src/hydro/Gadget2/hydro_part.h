@@ -40,6 +40,8 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
+
+// ALEXEI: do this include properly
 #include "feedback/SIMBA/feedback_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
@@ -73,6 +75,7 @@ struct xpart {
   struct feedback_part_data feedback_data;
   
   /* Additional data used by the star formation */
+  // ALEXEI: make this compatible with EAGLE feedback
   struct feedback_xpart_data feedback_data;
 
 #ifdef WITH_LOGGER
