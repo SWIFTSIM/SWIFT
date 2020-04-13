@@ -41,7 +41,7 @@ for i in range(order+1):
                 print "*"
                 print "* @param v vector (\\f$ v \\f$)."
                 print "*/"
-                print "__attribute__((always_inline)) INLINE static double X_%d%d%d(const double v[3]) {"%(i,j,k)
+                print "__attribute__((always_inline, const)) INLINE static double X_%d%d%d(const double v[3]) {"%(i,j,k)
                 print ""
                 print "  return",
                 if fact != 1:
