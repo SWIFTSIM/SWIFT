@@ -295,8 +295,8 @@ void stellar_evolution_evolve_spart(
       &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity);
 
   const float m_beg_step =
-      star_age_beg_step == 0. ? FLT_MAX : pow(10, log_m_beg_step);
-  const float m_end_step = pow(10, log_m_end_step);
+      star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
+  const float m_end_step = exp10(log_m_end_step);
 
   /* Check if the star can produce a supernovae */
   const int can_produce_snia =

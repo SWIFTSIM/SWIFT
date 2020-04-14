@@ -86,8 +86,8 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
 
   /* Index in the data */
   size_t j = 1;
-  const float mass_min = pow(10, log_mass_min);
-  const float mass_max = pow(10, log_mass_min + (count - 1) * step_size);
+  const float mass_min = exp10(log_mass_min);
+  const float mass_max = exp10(log_mass_min + (count - 1) * step_size);
 
   float m = mass_min;
 
@@ -113,9 +113,9 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
 
       /* Compute the masses */
       const float log_m1 = log_mass_min + (j - 1) * step_size;
-      const float m1 = pow(10, log_m1);
+      const float m1 = exp10(log_m1);
       const float log_m2 = log_mass_min + j * step_size;
-      const float m2 = pow(10, log_m2);
+      const float m2 = exp10(log_m2);
       const float dm = m2 - m1;
       const float imf_1 = imf->coef[i] * pow(m1, imf->exp[i]);
 
