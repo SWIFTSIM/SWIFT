@@ -488,7 +488,8 @@ void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream) {
  * @param sm the struct
  * @param stream the file stream
  */
-void stellar_evolution_restore(struct stellar_model* sm, FILE* stream) {
+void stellar_evolution_restore(struct stellar_model* sm, FILE* stream,
+                               struct engine *e) {
 
   /* Restore the initial mass function */
   initial_mass_function_restore(&sm->imf, stream, sm);
@@ -500,7 +501,7 @@ void stellar_evolution_restore(struct stellar_model* sm, FILE* stream) {
   supernovae_ia_restore(&sm->snia, stream, sm);
 
   /* Restore the supernovae II model */
-  supernovae_ii_restore(&sm->snii, stream, sm);
+  supernovae_ii_restore(&sm->snii, stream, sm, e);
 }
 
 /**

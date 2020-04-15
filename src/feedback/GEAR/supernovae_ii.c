@@ -21,6 +21,7 @@
 #include "supernovae_ii.h"
 
 /* Local headers */
+#include "engine.h"
 #include "hdf5_functions.h"
 #include "interpolation.h"
 #include "stellar_evolution.h"
@@ -403,65 +404,6 @@ void supernovae_ii_init(struct supernovae_ii *snii,
  */
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
                         const struct stellar_model *sm) {
-
-  /* Dump the yields. */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    const char *element_name = stellar_evolution_get_element_name(sm, i);
-
-    /* Integrated yields */
-    if (snii->integrated.yields[i].data != NULL) {
-      /* Generate name */
-      char name[200];
-      sprintf(name, "%s_int", element_name);
-
-      /* Write the array */
-      restart_write_blocks((void *)snii->integrated.yields[i].data,
-                           sizeof(float), snii->integrated.yields[i].N, stream,
-                           name, name);
-    }
-
-    /* Raw yields */
-    if (snii->raw.yields[i].data != NULL) {
-      /* Generate name */
-      char name[200];
-      sprintf(name, "%s_raw", element_name);
-
-      /* Write the array */
-      restart_write_blocks((void *)snii->raw.yields[i].data, sizeof(float),
-                           snii->raw.yields[i].N, stream, name, name);
-    }
-  }
-
-  /*! Dump the processed mass (integrated). */
-  if (snii->integrated.ejected_mass_processed.data != NULL) {
-    restart_write_blocks((void *)snii->integrated.ejected_mass_processed.data,
-                         sizeof(float),
-                         snii->integrated.ejected_mass_processed.N, stream,
-                         "processed_mass_int", "processed_mass_int");
-  }
-
-  /*! Dump the processed mass (raw). */
-  if (snii->raw.ejected_mass_processed.data != NULL) {
-    restart_write_blocks((void *)snii->raw.ejected_mass_processed.data,
-                         sizeof(float), snii->raw.ejected_mass_processed.N,
-                         stream, "processed_mass_raw", "processed_mass_raw");
-  }
-
-  /*! Dump the non processed mass (integrated). */
-  if (snii->integrated.ejected_mass_non_processed.data != NULL) {
-    restart_write_blocks(
-        (void *)snii->integrated.ejected_mass_non_processed.data, sizeof(float),
-        snii->integrated.ejected_mass_non_processed.N, stream,
-        "non_processed_mass_int", "non_processed_mass_int");
-  }
-
-  /*! Dump the non processed mass (raw). */
-  if (snii->raw.ejected_mass_non_processed.data != NULL) {
-    restart_write_blocks((void *)snii->raw.ejected_mass_non_processed.data,
-                         sizeof(float), snii->raw.ejected_mass_non_processed.N,
-                         stream, "non_processed_mass_raw",
-                         "non_processed_mass_raw");
-  }
 }
 
 /**
@@ -476,103 +418,18 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
  * @param sm The #stellar_model.
  */
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
-                           const struct stellar_model *sm) {
+                           const struct stellar_model *sm,
+                           struct engine *e) {
 
-  /* Restore the yields */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    const char *element_name = stellar_evolution_get_element_name(sm, i);
+  /* Read the supernovae yields (and apply the units) */
+  supernovae_ii_read_yields(snii, e->parameter_file, e->physical_constants, sm);
 
-    /* Integrated yields */
-    if (snii->integrated.yields[i].data != NULL) {
-      /* Generate name */
-      char name[200];
-      sprintf(name, "%s_int", element_name);
-
-      /* Allocate the memory */
-      snii->integrated.yields[i].data =
-          (float *)malloc(sizeof(float) * snii->integrated.yields[i].N);
-      if (snii->integrated.yields[i].data == NULL) {
-        error("Failed to allocate memory for the yields");
-      }
-
-      /* Read the data */
-      restart_read_blocks((void *)snii->integrated.yields[i].data,
-                          sizeof(float), snii->integrated.yields[i].N, stream,
-                          NULL, name);
-    }
-
-    /* Raw yields */
-    if (snii->raw.yields[i].data != NULL) {
-      /* Generate name */
-      char name[200];
-      sprintf(name, "%s_raw", element_name);
-
-      /* Allocate the memory */
-      snii->raw.yields[i].data =
-          (float *)malloc(sizeof(float) * snii->raw.yields[i].N);
-      if (snii->raw.yields[i].data == NULL) {
-        error("Failed to allocate memory for the yields");
-      }
-
-      /* Read the data */
-      restart_read_blocks((void *)snii->raw.yields[i].data, sizeof(float),
-                          snii->raw.yields[i].N, stream, NULL, name);
-    }
-  }
-
-  /* Restore the processed mass (integrated) */
-  if (snii->integrated.ejected_mass_processed.data != NULL) {
-    snii->integrated.ejected_mass_processed.data = (float *)malloc(
-        sizeof(float) * snii->integrated.ejected_mass_processed.N);
-    if (snii->integrated.ejected_mass_processed.data == NULL) {
-      error("Failed to allocate memory for the yields");
-    }
-
-    restart_read_blocks((void *)snii->integrated.ejected_mass_processed.data,
-                        sizeof(float),
-                        snii->integrated.ejected_mass_processed.N, stream, NULL,
-                        "processed_mass_int");
-  }
-
-  /* Restore the processed mass (raw) */
-  if (snii->raw.ejected_mass_processed.data != NULL) {
-    snii->raw.ejected_mass_processed.data =
-        (float *)malloc(sizeof(float) * snii->raw.ejected_mass_processed.N);
-    if (snii->raw.ejected_mass_processed.data == NULL) {
-      error("Failed to allocate memory for the yields");
-    }
-
-    restart_read_blocks((void *)snii->raw.ejected_mass_processed.data,
-                        sizeof(float), snii->raw.ejected_mass_processed.N,
-                        stream, NULL, "processed_mass_raw");
-  }
-
-  /* Restore the non processed mass (integrated) */
-  if (snii->integrated.ejected_mass_non_processed.data != NULL) {
-    snii->integrated.ejected_mass_non_processed.data = (float *)malloc(
-        sizeof(float) * snii->integrated.ejected_mass_non_processed.N);
-    if (snii->integrated.ejected_mass_non_processed.data == NULL) {
-      error("Failed to allocate memory for the yields");
-    }
-
-    restart_read_blocks(
-        (void *)snii->integrated.ejected_mass_non_processed.data, sizeof(float),
-        snii->integrated.ejected_mass_non_processed.N, stream, NULL,
-        "non_processed_mass_int");
-  }
-
-  /* Restore the non processed mass (raw) */
-  if (snii->raw.ejected_mass_non_processed.data != NULL) {
-    snii->raw.ejected_mass_non_processed.data =
-        (float *)malloc(sizeof(float) * snii->raw.ejected_mass_non_processed.N);
-    if (snii->raw.ejected_mass_non_processed.data == NULL) {
-      error("Failed to allocate memory for the yields");
-    }
-
-    restart_read_blocks((void *)snii->raw.ejected_mass_non_processed.data,
-                        sizeof(float), snii->raw.ejected_mass_non_processed.N,
-                        stream, NULL, "non_processed_mass_raw");
-  }
+  /* Get the IMF parameters */
+  snii->exponent = initial_mass_function_get_exponent(&sm->imf, snii->mass_min,
+                                                      snii->mass_max);
+  snii->coef_exp = initial_mass_function_get_coefficient(
+                                                         &sm->imf, snii->mass_min, snii->mass_max);
+  snii->coef_exp /= snii->exponent;
 }
 
 /**

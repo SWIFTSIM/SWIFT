@@ -63,7 +63,8 @@ void stellar_evolution_props_init(struct stellar_model* sm,
                                   const struct cosmology* cosmo);
 
 void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream);
-void stellar_evolution_restore(struct stellar_model* sm, FILE* stream);
+void stellar_evolution_restore(struct stellar_model* sm, FILE* stream,
+                               struct engine *e);
 
 void stellar_evolution_clean(struct stellar_model* sm);
 
