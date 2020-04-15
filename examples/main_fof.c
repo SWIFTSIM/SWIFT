@@ -698,7 +698,7 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
-  engine_clean(&e, /*fof=*/1);
+  engine_clean(&e, /*fof=*/1, /*restart=*/0);
   free(params);
 
   /* Say goodbye. */
