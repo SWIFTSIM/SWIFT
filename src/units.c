@@ -258,6 +258,10 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
 
+    case UNIT_CONV_FREQUENCY_SQUARED:
+      baseUnitsExp[UNIT_TIME] = -2.f;
+      break;
+
     case UNIT_CONV_DENSITY:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = -3.f;

@@ -774,6 +774,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Set our old div_v to the one for the next loop */
   p->viscosity.div_v_previous_step = p->viscosity.div_v;
+  p->viscosity.div_v_dt = div_v_dt;
 
   /* Now for the diffusive alpha */
 
@@ -1046,6 +1047,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->viscosity.alpha = hydro_props->viscosity.alpha;
   /* Initialise this here to keep all the AV variables together */
   p->viscosity.div_v_previous_step = 0.f;
+  p->viscosity.div_v_dt = 0.f;
 
   /* Set the initial values for the thermal diffusion */
   p->diffusion.alpha = hydro_props->diffusion.alpha;
