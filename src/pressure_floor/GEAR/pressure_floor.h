@@ -24,9 +24,6 @@ struct cosmology;
 __attribute__((always_inline)) static INLINE float
 pressure_floor_get_comoving_pressure(const struct part* p, const float pressure,
                                      const struct cosmology* cosmo);
-__attribute__((always_inline)) static INLINE float
-pressure_floor_get_physical_pressure(const struct part* p, const float pressure,
-                                     const struct cosmology* cosmo);
 
 #include "adiabatic_index.h"
 #include "cosmology.h"
@@ -54,25 +51,6 @@ struct pressure_floor_properties {
   /*! The constants in internal units (4 G N_jeans^(2/3) / PI) */
   float constants;
 };
-
-/**
- * @brief Compute the physical pressure floor of a given #part.
- *
- * Note that the particle is not updated!!
- *
- * @param p The #part.
- * @param pressure_physical The physical pressure without any pressure floor.
- * @param cosmo The #cosmology model.
- *
- * @return The physical pressure with the floor.
- */
-__attribute__((always_inline)) static INLINE float
-pressure_floor_get_physical_pressure(const struct part* p,
-                                     const float pressure_physical,
-                                     const struct cosmology* cosmo) {
-  error("Not used.");
-  return 0;
-}
 
 /**
  * @brief Compute the comoving pressure floor of a given #part.

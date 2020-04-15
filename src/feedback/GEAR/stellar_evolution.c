@@ -311,18 +311,18 @@ void stellar_evolution_evolve_spart(
   const float m_init = sp->sf_data.birth_mass / phys_const->const_solar_mass;
 
   /* Compute number of SNIa */
-  const float number_snia_f = can_produce_snia
-                                  ? supernovae_ia_get_number_per_unit_mass(
+  const float number_snia_f = !can_produce_snia
+                                  ? 0
+                                  : supernovae_ia_get_number_per_unit_mass(
                                         &sm->snia, m_end_step, m_beg_step) *
-                                        m_init
-                                  : 0;
+                                        m_init;
 
   /* Compute number of SNII */
-  const float number_snii_f = can_produce_snii
-                                  ? supernovae_ii_get_number_per_unit_mass(
+  const float number_snii_f = !can_produce_snii
+                                  ? 0
+                                  : supernovae_ii_get_number_per_unit_mass(
                                         &sm->snii, m_end_step, m_beg_step) *
-                                        m_init
-                                  : 0;
+                                        m_init;
 
   /* Does this star produce a supernovae? */
   if (number_snia_f == 0 && number_snii_f == 0) return;

@@ -419,6 +419,8 @@ QLAStarFormation:
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
   maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+  n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
+  min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
 
 
 # Parameters related to feedback models  -----------------------------------------------

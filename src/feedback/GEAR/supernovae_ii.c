@@ -412,8 +412,7 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
     if (snii->integrated.yields[i].data != NULL) {
       /* Generate name */
       char name[200];
-      strcpy(name, element_name);
-      strcat(name, "_int");
+      sprintf(name, "%s_int", element_name);
 
       /* Write the array */
       restart_write_blocks((void *)snii->integrated.yields[i].data,
@@ -425,8 +424,7 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
     if (snii->raw.yields[i].data != NULL) {
       /* Generate name */
       char name[200];
-      strcpy(name, element_name);
-      strcat(name, "_raw");
+      sprintf(name, "%s_raw", element_name);
 
       /* Write the array */
       restart_write_blocks((void *)snii->raw.yields[i].data, sizeof(float),
@@ -488,8 +486,7 @@ void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
     if (snii->integrated.yields[i].data != NULL) {
       /* Generate name */
       char name[200];
-      strcpy(name, element_name);
-      strcat(name, "_int");
+      sprintf(name, "%s_int", element_name);
 
       /* Allocate the memory */
       snii->integrated.yields[i].data =
@@ -508,8 +505,7 @@ void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
     if (snii->raw.yields[i].data != NULL) {
       /* Generate name */
       char name[200];
-      strcpy(name, element_name);
-      strcat(name, "_raw");
+      sprintf(name, "%s_raw", element_name);
 
       /* Allocate the memory */
       snii->raw.yields[i].data =
