@@ -118,6 +118,9 @@ struct part {
     /*! Particle velocity divergence */
     float div_v;
 
+    /*! Time differential of velocity divergence */
+    float div_v_dt;
+
     /*! Particle velocity divergence from previous step */
     float div_v_previous_step;
 
