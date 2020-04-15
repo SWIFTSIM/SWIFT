@@ -780,6 +780,9 @@ int main(int argc, char *argv[]) {
 
     /* Just one restart file. */
     strcpy(restart_file, restart_files[0]);
+
+    /* Finished with the list. */
+    restart_locate_free(1, restart_files);
 #endif
 
     /* Now read it. */
@@ -1235,7 +1238,7 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0)
       message("Time integration ready to start. End of dry-run.");
-    engine_clean(&e, /*fof=*/0);
+    engine_clean(&e, /*fof=*/0, /*restart=*/0);
     free(params);
     return 0;
   }
@@ -1524,7 +1527,7 @@ int main(int argc, char *argv[]) {
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  engine_clean(&e, /*fof=*/0);
+  engine_clean(&e, /*fof=*/0, restart);
   free(params);
 
 #ifdef WITH_MPI
