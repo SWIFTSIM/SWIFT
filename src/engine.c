@@ -5415,7 +5415,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->parameter_file = parameter_file;
 
   struct feedback_props *feedback_properties =
-    (struct feedback_props *)malloc(sizeof(struct feedback_props));
+      (struct feedback_props *)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream, e);
   e->feedback_props = feedback_properties;
 

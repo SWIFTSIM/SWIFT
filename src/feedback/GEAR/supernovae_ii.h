@@ -70,7 +70,6 @@ void supernovae_ii_init(struct supernovae_ii *snii,
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
                         const struct stellar_model *sm);
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
-                           const struct stellar_model *sm,
-                           struct engine *e);
+                           const struct stellar_model *sm, struct engine *e);
 void supernovae_ii_clean(struct supernovae_ii *snii);
 #endif  // SWIFT_SUPERNOVAE_II_GEAR_H

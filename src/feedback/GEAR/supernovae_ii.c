@@ -403,8 +403,7 @@ void supernovae_ii_init(struct supernovae_ii *snii,
  * @param sm The #stellar_model.
  */
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
-                        const struct stellar_model *sm) {
-}
+                        const struct stellar_model *sm) {}
 
 /**
  * @brief Restore a supernovae_ii struct from the given FILE as a stream of
@@ -418,8 +417,7 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
  * @param sm The #stellar_model.
  */
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
-                           const struct stellar_model *sm,
-                           struct engine *e) {
+                           const struct stellar_model *sm, struct engine *e) {
 
   /* Read the supernovae yields (and apply the units) */
   supernovae_ii_read_yields(snii, e->parameter_file, e->physical_constants, sm);
@@ -428,7 +426,7 @@ void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
   snii->exponent = initial_mass_function_get_exponent(&sm->imf, snii->mass_min,
                                                       snii->mass_max);
   snii->coef_exp = initial_mass_function_get_coefficient(
-                                                         &sm->imf, snii->mass_min, snii->mass_max);
+      &sm->imf, snii->mass_min, snii->mass_max);
   snii->coef_exp /= snii->exponent;
 }
 

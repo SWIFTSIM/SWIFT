@@ -489,7 +489,7 @@ void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream) {
  * @param stream the file stream
  */
 void stellar_evolution_restore(struct stellar_model* sm, FILE* stream,
-                               struct engine *e) {
+                               struct engine* e) {
 
   /* Restore the initial mass function */
   initial_mass_function_restore(&sm->imf, stream, sm);
