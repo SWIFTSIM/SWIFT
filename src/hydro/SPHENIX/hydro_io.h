@@ -229,8 +229,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       UNIT_CONV_FREQUENCY_SQUARED, 0.f, parts, viscosity.div_v_dt,
       "Time differential (over the previous step) of the "
       "velocity divergence field around the particles. Again, provided without "
-      "cosmology as this includes a Hubble flow term. To get back to a peculiar
-      velocity divergence time differential, x_pec = a^4 (x - a^{-2} n_D dH / dt)");
+      "cosmology as this includes a Hubble flow term. To get back to a "
+      "peculiar velocity divergence time differential, x_pec = a^4 (x - a^{-2} "
+      "n_D dH / dt)");
 }
 
 /**
