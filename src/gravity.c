@@ -722,7 +722,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       fprintf(file_swift,
               "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
               "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-              "%16.8e %16.8e %16.8e %18lld %18lld %18lld %18lld\n",
+              "%16.8e %16.8e %16.8e %16lld %16lld %16lld %16lld\n",
               id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0],
               gpi->a_grav[1], gpi->a_grav[2],
               gravity_get_comoving_potential(gpi), gpi->a_grav_PM[0],

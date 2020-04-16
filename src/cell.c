@@ -1228,7 +1228,7 @@ int cell_unpack_sf_counts(struct cell *restrict c,
  * @return 0 on success, 1 on failure
  */
 int cell_locktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->hydro.hold || lock_trylock(&c->hydro.lock) != 0) {
@@ -1288,7 +1288,7 @@ int cell_locktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_glocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->grav.phold || lock_trylock(&c->grav.plock) != 0) {
@@ -1348,7 +1348,7 @@ int cell_glocktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_mlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->grav.mhold || lock_trylock(&c->grav.mlock) != 0) {
@@ -1408,7 +1408,7 @@ int cell_mlocktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_slocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->stars.hold || lock_trylock(&c->stars.lock) != 0) {
@@ -1468,7 +1468,7 @@ int cell_slocktree(struct cell *c) {
  * @return 0 on success, 1 on failure
  */
 int cell_blocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to lock this cell. */
   if (c->black_holes.hold || lock_trylock(&c->black_holes.lock) != 0) {
@@ -1528,7 +1528,7 @@ int cell_blocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_unlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->hydro.lock) != 0) error("Failed to unlock cell.");
@@ -1546,7 +1546,7 @@ void cell_unlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_gunlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->grav.plock) != 0) error("Failed to unlock cell.");
@@ -1564,7 +1564,7 @@ void cell_gunlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_munlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->grav.mlock) != 0) error("Failed to unlock cell.");
@@ -1582,7 +1582,7 @@ void cell_munlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_sunlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->stars.lock) != 0) error("Failed to unlock cell.");
@@ -1600,7 +1600,7 @@ void cell_sunlocktree(struct cell *c) {
  * @param c The #cell.
  */
 void cell_bunlocktree(struct cell *c) {
-  TIMER_TIC
+  TIMER_TIC;
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->black_holes.lock) != 0) error("Failed to unlock cell.");
@@ -5358,16 +5358,31 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   /* Only check cells that have at least one non-inhibited particle */
   if (count > 0) {
 
-    if (ti_end_min != c->hydro.ti_end_min)
-      error(
-          "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
-          "depth=%d",
-          c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+    if (count != c->hydro.count) {
+
+      /* Note that we use a < as the particle with the smallest time-bin
+         might have been swallowed. This means we will run this cell with
+         0 active particles but that's not wrong */
+      if (ti_end_min < c->hydro.ti_end_min)
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+
+    } else /* Normal case: nothing was swallowed/converted */ {
+      if (ti_end_min != c->hydro.ti_end_min)
+        error(
+            "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+            "depth=%d",
+            c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+    }
+
     if (ti_end_max > c->hydro.ti_end_max)
       error(
           "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
           "depth=%d",
           c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
+
     if (ti_beg_max != c->hydro.ti_beg_max)
       error(
           "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
@@ -6158,8 +6173,8 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
   /* Copy the gpart */
   *gp = *p->gpart;
 
-  /* Assign the ID back */
-  sp->id = p->id;
+  /* Assign the ID. */
+  sp->id = space_get_new_unique_id(e->s);
   gp->type = swift_type_stars;
 
   /* Re-link things */

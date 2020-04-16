@@ -24,9 +24,6 @@ struct cosmology;
 __attribute__((always_inline)) static INLINE float
 pressure_floor_get_comoving_pressure(const struct part* p, const float pressure,
                                      const struct cosmology* cosmo);
-__attribute__((always_inline)) static INLINE float
-pressure_floor_get_physical_pressure(const struct part* p, const float pressure,
-                                     const struct cosmology* cosmo);
 
 #include "adiabatic_index.h"
 #include "cosmology.h"
@@ -56,33 +53,6 @@ struct pressure_floor_properties {
 };
 
 /**
- * @brief Compute the physical pressure floor of a given #part.
- *
- * Note that the particle is not updated!!
- *
- * @param p The #part.
- * @param pressure_physical The physical pressure without any pressure floor.
- * @param cosmo The #cosmology model.
- *
- * @return The physical pressure with the floor.
- */
-__attribute__((always_inline)) static INLINE float
-pressure_floor_get_physical_pressure(const struct part* p,
-                                     const float pressure_physical,
-                                     const struct cosmology* cosmo) {
-
-  const float H_phys = p->h * cosmo->a_inv * kernel_gamma;
-  const float rho = hydro_get_physical_density(p, cosmo);
-
-  /* Compute the pressure floor */
-  float floor = H_phys * H_phys * rho * pressure_floor_props.constants -
-                p->pressure_floor_data.sigma2;
-  floor *= rho * hydro_one_over_gamma;
-
-  return fmaxf(pressure_physical, floor);
-}
-
-/**
  * @brief Compute the comoving pressure floor of a given #part.
  *
  * Note that the particle is not updated!!
@@ -103,8 +73,13 @@ pressure_floor_get_comoving_pressure(const struct part* p,
 
   /* Compute the pressure floor */
   float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
-                pressure_floor_props.constants;
-  floor -= p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
+                pressure_floor_props.constants * cosmo->a_inv;
+
+  /* Add the velocity dispersion */
+  const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a2_inv;
+  if (sigma2 < floor) {
+    floor -= sigma2;
+  }
   floor *= a_coef * rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_comoving, floor);
@@ -175,9 +150,6 @@ __attribute__((always_inline)) INLINE static void pressure_floor_end_density(
   /* To finish the turbulence estimation we devide by the density */
   p->pressure_floor_data.sigma2 /=
       pow_dimension(p->h) * hydro_get_comoving_density(p);
-
-  /* Add the cosmological term */
-  p->pressure_floor_data.sigma2 *= cosmo->a2_inv;
 }
 
 /**

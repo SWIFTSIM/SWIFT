@@ -1,8 +1,8 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e33    # M_sun in grams
-  UnitLength_in_cgs:   3.08567758e18 # parsec in centimeters
-  UnitVelocity_in_cgs: 1e5           # km/s in cm/s
+  UnitMass_in_cgs:     1.98841e33       # M_sun in grams
+  UnitLength_in_cgs:   3.08567758149e18 # parsec in centimeters
+  UnitVelocity_in_cgs: 1e5              # km/s in cm/s
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
@@ -23,14 +23,6 @@ Snapshots:
   time_first:          0.         # Time of the first output (in internal units)
   delta_time:          8.         # Time difference between consecutive outputs (in internal units)
 
-# Parameters for the hydrodynamics scheme
-SPH:
-  resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
-  delta_neighbours:      1.       # The tolerance for the targetted number of neighbours.
-  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  max_ghost_iterations:  30       # Maximal number of iterations allowed to converge towards the smoothing length.
-  max_smoothing_length:  40.      # Maximal smoothing length allowed (in internal units).
-
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Disc-Patch.hdf5       # The file to read
@@ -40,5 +32,9 @@ InitialConditions:
 DiscPatchPotential:
   surface_density: 10.
   scale_height:    100.
-  z_disc:          300.
-  timestep_mult:   0.03
+  x_disc:          300.
+  timestep_mult:   0.01
+
+Scheduler:
+  max_top_level_cells:  8
+  tasks_per_cell:       5

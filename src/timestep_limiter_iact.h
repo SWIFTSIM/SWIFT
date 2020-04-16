@@ -88,7 +88,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   if (pj->time_bin > pi->time_bin + time_bin_neighbour_max_delta_bin) {
 
     /* Store the smallest time bin that woke up this particle */
-    pj->limiter_data.wakeup = max(pj->limiter_data.wakeup, -pi->time_bin);
+    accumulate_max_c(&pj->limiter_data.wakeup, -pi->time_bin);
   }
 }
 

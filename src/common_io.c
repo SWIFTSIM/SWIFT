@@ -2153,6 +2153,7 @@ void io_check_output_fields(const struct swift_params* params,
         num_fields += chemistry_write_sparticles(NULL, list + num_fields);
         num_fields += tracers_write_sparticles(NULL, list + num_fields,
                                                /*with_cosmology=*/1);
+        num_fields += star_formation_write_sparticles(NULL, list + num_fields);
         num_fields += fof_write_sparts(NULL, list + num_fields);
         num_fields += velociraptor_write_sparts(NULL, list + num_fields);
         break;
@@ -2272,6 +2273,7 @@ void io_write_output_field_parameter(const char* filename) {
         num_fields += chemistry_write_sparticles(NULL, list + num_fields);
         num_fields += tracers_write_sparticles(NULL, list + num_fields,
                                                /*with_cosmology=*/1);
+        num_fields += star_formation_write_sparticles(NULL, list + num_fields);
         num_fields += fof_write_sparts(NULL, list + num_fields);
         num_fields += velociraptor_write_sparts(NULL, list + num_fields);
         break;

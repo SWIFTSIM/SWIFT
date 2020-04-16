@@ -19,29 +19,32 @@
  ##############################################################################
 
 import h5py
-import sys
 import numpy
+import sys
 import math
-import random
 
-# Generates N particles in a box of [0:BoxSize,0:BoxSize,-2scale_height:2scale_height]
+# Generates N particles in a box of [-2scale_height:2scale_height, 0:BoxSize, 0:BoxSize]
+#
+# The potential is long the x-axis. 
+#
 # see Creasey, Theuns & Bower, 2013, for the equations:
 # disc parameters are: surface density sigma
 #                      scale height b
-# density: rho(z) = (sigma/2b) sech^2(z/b)
-# isothermal velocity dispersion = <v_z^2? = b pi G sigma
+# density: rho(x) = (sigma/2b) sech^2(x/b)
+# isothermal velocity dispersion = <v_x^2? = b pi G sigma
 # grad potential  = 2 pi G sigma tanh(z/b)
-# potential       = ln(cosh(z/b)) + const
+# potential       = ln(cosh(x/b)) + const
 # Dynamical time  = sqrt(b / (G sigma))
-# to obtain the 1/ch^2(z/b) profile from a uniform profile (a glass, say, or a uniform random variable), note that, when integrating in z
-# \int 0^z dz/ch^2(z) = tanh(z)-tanh(0) = \int_0^x dx = x (where the last integral refers to a uniform density distribution), so that z = atanh(x)
+# to obtain the 1/ch^2(x/b) profile from a uniform profile (a glass, say, or a uniform random variable), note that, when integrating in x
+# \int 0^x dx/ch^2(x) = tanh(x)-tanh(0) = \int_0^u du = u (where the last integral refers to a uniform density distribution), so that x = atanh(u)
+#
 # usage: python makeIC.py 1000 
 
 # physical constants in cgs
-NEWTON_GRAVITY_CGS  = 6.67408e-8
-SOLAR_MASS_IN_CGS   = 1.98848e33
-PARSEC_IN_CGS       = 3.08567758e18
-YEAR_IN_CGS         = 3.15569252e7
+NEWTON_GRAVITY_CGS  = 6.67430e-8
+SOLAR_MASS_IN_CGS   = 1.98841e33
+PARSEC_IN_CGS       = 3.08567758149e18
+YEAR_IN_CGS         = 3.15569251e7
 
 # choice of units
 const_unit_length_in_cgs   =   (PARSEC_IN_CGS)
@@ -67,24 +70,13 @@ print 'dynamical time = ',t_dyn
 print ' velocity dispersion = ',v_disp
 
 # Parameters
-periodic= 1             # 1 For periodic box
-boxSize = 600.          #  
-Radius  = 100.          # maximum radius of particles [kpc]
-G       = const_G 
-
-N       = int(sys.argv[1])  # Number of particles
-
-# these are not used but necessary for I/O
-rho = 2.              # Density
-P = 1.                # Pressure
-gamma = 5./3.         # Gas adiabatic index
+periodic = 1             # 1 For periodic box
+boxSize  = 600.          #  
+Radius   = 100.          # maximum radius of particles [kpc]
+G        = const_G 
+mass     = 1
+numPart  = int(sys.argv[1])  # Number of particles
 fileName = "Disc-Patch.hdf5" 
-
-
-#---------------------------------------------------
-numPart        = N
-mass           = 1
-internalEnergy = P / ((gamma - 1.)*rho)
 
 #--------------------------------------------------
 
@@ -115,25 +107,23 @@ grp.attrs["Dimension"] = 3
 numpy.random.seed(1234)
 
 #Particle group
-#grp0 = file.create_group("/PartType0")
 grp1 = file.create_group("/PartType1")
 
 #generate particle positions
 r      = numpy.zeros((numPart, 3))
-r[:,0] = numpy.random.rand(N) * boxSize
-r[:,1] = numpy.random.rand(N) * boxSize
-z      = scale_height * numpy.arctanh(numpy.random.rand(2*N))
-gd     = z < boxSize / 2
-r[:,2] = z[gd][0:N]
-random = numpy.random.rand(N) > 0.5
-r[random,2] *= -1
-r[:,2] += 0.5 * boxSize
+x      = scale_height * numpy.arctanh(numpy.random.rand(2*numPart))
+gd     = x < boxSize / 2
+r[:,0] = x[gd][0:numPart]
+random = numpy.random.rand(numPart) > 0.5
+r[random,0] *= -1
+r[:,0] += 0.5 * boxSize
+
+r[:,1] = numpy.random.rand(numPart) * boxSize
+r[:,2] = numpy.random.rand(numPart) * boxSize
 
 #generate particle velocities
 v      = numpy.zeros((numPart, 3))
 v      = numpy.zeros(1)
-#v[:,2] = 
-
 
 ds = grp1.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v

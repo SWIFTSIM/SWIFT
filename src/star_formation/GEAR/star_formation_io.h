@@ -43,11 +43,49 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
 }
 
 /**
+ * @brief Specifies which sparticle fields to write to a dataset
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
+ */
+__attribute__((always_inline)) INLINE static int
+star_formation_write_sparticles(const struct spart* sparts,
+                                struct io_props* list) {
+
+  list[0] = io_make_output_field(
+      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
+      sf_data.birth_density,
+      "Physical densities at the time of birth of the gas particles that "
+      "turned into stars (note that "
+      "we store the physical density at the birth redshift, no conversion is "
+      "needed)");
+
+  list[1] =
+      io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,
+                           0.f, sparts, sf_data.birth_temperature,
+                           "Temperatures at the time of birth of the gas "
+                           "particles that turned into stars");
+
+  list[2] = io_make_output_field("BirthMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 sparts, sf_data.birth_mass,
+                                 "Masses of the star particles at birth time");
+
+  list[3] = io_make_output_field(
+      "ProgenitorIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      sf_data.progenitor_id, "Unique IDs of the progenitor particle");
+
+  return 4;
+}
+
+/**
  * @brief initialization of the star formation law
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
+ * @param hydro_props The #hydro_props.
  * @param starform the star formation law properties to initialize
  *
  */

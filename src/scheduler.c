@@ -2405,31 +2405,34 @@ void scheduler_report_task_times(const struct scheduler *s,
 
   const ticks tic = getticks();
 
-  /* Initialise counters */
-  float time[task_category_count] = {0};
-  threadpool_map(s->threadpool, scheduler_report_task_times_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
-                 time);
-
   /* Total CPU time spent in engine_launch() */
   const float total_tasks_time = clocks_from_ticks(s->total_ticks) * nr_threads;
 
-  /* Compute the dead time */
-  float total_time = 0.;
-  for (int i = 0; i < task_category_count; ++i) {
-    total_time += time[i];
-  }
-  const float dead_time = total_tasks_time - total_time;
+  if (total_tasks_time > 0.) {
 
-  message("*** CPU time spent in different task categories:");
-  for (int i = 0; i < task_category_count; ++i) {
-    message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i], time[i],
-            clocks_getunit(), time[i] / total_tasks_time * 100.);
+    /* Initialise counters */
+    float time[task_category_count] = {0};
+    threadpool_map(s->threadpool, scheduler_report_task_times_mapper, s->tasks,
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   time);
+
+    /* Compute the dead time */
+    float total_time = 0.;
+    for (int i = 0; i < task_category_count; ++i) {
+      total_time += time[i];
+    }
+    const float dead_time = total_tasks_time - total_time;
+
+    message("*** CPU time spent in different task categories:");
+    for (int i = 0; i < task_category_count; ++i) {
+      message("*** %20s: %8.2f %s (%.2f %%)", task_category_names[i], time[i],
+              clocks_getunit(), time[i] / total_tasks_time * 100.);
+    }
+    message("*** %20s: %8.2f %s (%.2f %%)", "dead time", dead_time,
+            clocks_getunit(), dead_time / total_tasks_time * 100.);
+    message("*** %20s: %8.2f %s (%.2f %%)", "total", total_tasks_time,
+            clocks_getunit(), total_tasks_time / total_tasks_time * 100.);
   }
-  message("*** %20s: %8.2f %s (%.2f %%)", "dead time", dead_time,
-          clocks_getunit(), dead_time / total_tasks_time * 100.);
-  message("*** %20s: %8.2f %s (%.2f %%)", "total", total_tasks_time,
-          clocks_getunit(), total_tasks_time / total_tasks_time * 100.);
 
   /* Done. Report the time spent doing this analysis */
   message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

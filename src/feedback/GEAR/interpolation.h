@@ -19,6 +19,9 @@
 #ifndef SWIFT_GEAR_INTERPOLATION_H
 #define SWIFT_GEAR_INTERPOLATION_H
 
+/**
+ * @brief Type of boundary condition available.
+ */
 enum interpolate_boundary_condition {
   /* No extrapolation => raise errors */
   boundary_condition_error,
@@ -28,8 +31,14 @@ enum interpolate_boundary_condition {
 
   /* Zero (left boundary) and constant (right boundary) boundary conditions */
   boundary_condition_zero_const,
+
+  /* constant boundary conditions */
+  boundary_condition_const,
 };
 
+/**
+ * @brief Structure for the interpolation.
+ */
 struct interpolation_1d {
   /* Data to interpolate */
   float *data;
@@ -50,18 +59,16 @@ struct interpolation_1d {
 /**
  * @brief Initialize the #interpolation_1d.
  *
- * Assumes x are linear in log.
- *
- * @params interp The #interpolation_1d.
- * @params xmin Minimal value of x (in log).
- * @params xmax Maximal value of x (in log).
- * @params N Requested number of values.
- * @params log_data_xmin The minimal value of the data (in log).
- * @params step_size The size of the x steps (in log).
- * @params N_data The number of element in the data.
- * @params data The data to interpolate (y).
- * @params N The number of element in data.
- * @params boundary_condition The type of #interpolate_boundary_condition.
+ * @param interp The #interpolation_1d.
+ * @param xmin Minimal value of x (in log).
+ * @param xmax Maximal value of x (in log).
+ * @param N Requested number of values.
+ * @param log_data_xmin The minimal value of the data (in log).
+ * @param step_size The size of the x steps (in log).
+ * @param N_data The number of element in the data.
+ * @param data The data to interpolate (y).
+ * @param N The number of element in data.
+ * @param boundary_condition The type of #interpolate_boundary_condition.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_init(
     struct interpolation_1d *interp, float xmin, float xmax, int N,
@@ -96,6 +103,9 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
         case boundary_condition_zero_const:
           interp->data[i] = 0;
           break;
+        case boundary_condition_const:
+          interp->data[i] = data[0];
+          break;
         default:
           error("Interpolation type not implemented");
       }
@@ -109,6 +119,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
           interp->data[i] = 0;
           break;
         case boundary_condition_zero_const:
+        case boundary_condition_const:
           interp->data[i] = interp->data[i - 1];
           break;
         default:
@@ -127,8 +138,8 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
 /**
  * @brief Interpolate the data.
  *
- * @params interp The #interpolation_1d.
- * @params x The x value where to interpolate.
+ * @param interp The #interpolation_1d.
+ * @param x The x value where to interpolate.
  *
  * @return The interpolated value y.
  */
@@ -149,6 +160,8 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
       case boundary_condition_zero:
       case boundary_condition_zero_const:
         return 0;
+      case boundary_condition_const:
+        return interp->data[0];
       default:
         error("Interpolation type not implemented");
     }
@@ -160,6 +173,7 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
       case boundary_condition_zero:
         return 0;
       case boundary_condition_zero_const:
+      case boundary_condition_const:
         return interp->data[interp->N - 1];
       default:
         error("Interpolation type not implemented");
@@ -173,7 +187,7 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
 /**
  * @brief Print the data.
  *
- * @params interp The #interpolation_1d.
+ * @param interp The #interpolation_1d.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_print(
     const struct interpolation_1d *interp) {
@@ -194,7 +208,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_print(
 /**
  * @brief Cleanup the #interpolation_1d structure.
  *
- * @params interp The #interpolation_1d.
+ * @param interp The #interpolation_1d.
  */
 __attribute__((always_inline)) static INLINE void interpolate_1d_free(
     struct interpolation_1d *interp) {

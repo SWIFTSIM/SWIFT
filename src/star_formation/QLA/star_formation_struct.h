@@ -19,6 +19,10 @@
 #ifndef SWIFT_QLA_STAR_FORMATION_STRUCT_H
 #define SWIFT_QLA_STAR_FORMATION_STRUCT_H
 
+/* Do we need unique IDs (only useful when spawning
+   new particles, conversion gas->stars does not need unique IDs) */
+#define star_formation_need_unique_id 1
+
 /**
  * @brief Star-formation-related properties stored in the extended particle
  * data.
@@ -27,5 +31,11 @@ struct star_formation_xpart_data {
 
   char convert_to_star;
 };
+
+/**
+ * @brief Star-formation-related properties stored in the star particle
+ * data.
+ */
+struct star_formation_spart_data {};
 
 #endif /* SWIFT_QLA_STAR_FORMATION_STRUCT_H */

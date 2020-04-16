@@ -40,14 +40,15 @@
  *
  * Use the star formation criterion given by eq. 3 in Revaz & Jablonka 2018.
  *
- * @param starform the star formation law properties to use.
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
+ * @param starform the star formation law properties to use.
  * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
+ * @param entropy_floor The #entropy_floor_properties.
  *
  */
 INLINE static int star_formation_is_star_forming(
@@ -75,11 +76,10 @@ INLINE static int star_formation_is_star_forming(
   }
 
   /* Get the required variables */
-  const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
+  const float density = hydro_get_physical_density(p, cosmo);
   const float n_jeans_2_3 = starform->n_jeans_2_3;
 
-  const float h = p->h * kernel_gamma;
-  const float density = hydro_get_physical_density(p, cosmo);
+  const float h = p->h * kernel_gamma * cosmo->a;
 
   // TODO use GRACKLE */
   const float mu = hydro_props->mu_neutral;
@@ -87,10 +87,9 @@ INLINE static int star_formation_is_star_forming(
   /* Compute the density criterion */
   const float coef =
       M_PI_4 / (phys_const->const_newton_G * n_jeans_2_3 * h * h);
-  const float density_criterion =
-      coef * (hydro_gamma * phys_const->const_boltzmann_k * temperature /
-                  (mu * phys_const->const_proton_mass) +
-              sigma2);
+  const float density_criterion = coef * hydro_gamma *
+                                  phys_const->const_boltzmann_k * temperature /
+                                  (mu * phys_const->const_proton_mass);
 
   /* Check the density criterion */
   return density > density_criterion;
@@ -212,14 +211,17 @@ INLINE static void star_formation_update_part_not_SFR(
  * @brief Copies the properties of the gas particle over to the
  * star particle.
  *
- * @param e The #engine
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
  * @param sp the new created star particle with its properties.
+ * @param e The #engine
  * @param starform the star formation law properties to use.
- * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
- * @param with_cosmology if we run with cosmology.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param phys_const the physical constants in internal units.
+ * @param hydro_props The #hydro_props.
+ * @param us The #unit_system.
+ * @param cooling The #cooling_function_data.
  * @param convert_part Did we convert a part (or spawned one)?
  */
 INLINE static void star_formation_copy_properties(
@@ -248,7 +250,7 @@ INLINE static void star_formation_copy_properties(
   } else {
     sp->mass = mass_gas;
   }
-  sp->birth.mass = sp->mass;
+  sp->sf_data.birth_mass = sp->mass;
 
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
@@ -261,17 +263,17 @@ INLINE static void star_formation_copy_properties(
   sp->tracers_data = xp->tracers_data;
 
   /* Store the birth density in the star particle */
-  sp->birth.density = hydro_get_physical_density(p, cosmo);
+  sp->sf_data.birth_density = hydro_get_physical_density(p, cosmo);
 
   /* Store the birth temperature*/
-  sp->birth.temperature = cooling_get_temperature(phys_const, hydro_props, us,
-                                                  cosmo, cooling, p, xp);
+  sp->sf_data.birth_temperature = cooling_get_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   /* Copy the chemistry properties */
   chemistry_copy_star_formation_properties(p, xp, sp);
 
   /* Copy the progenitor id */
-  sp->prog_id = p->id;
+  sp->sf_data.progenitor_id = p->id;
 }
 
 /**
@@ -298,8 +300,18 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
     struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* cd, const struct cosmology* cosmo) {
 
+#ifdef SPHENIX_SPH
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = p->viscosity.div_v;
+  /* SPHENIX is already including the Hubble flow */
+#elif GADGET2_SPH
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->density.div_v;
+  xp->sf_data.div_v += hydro_dimension * cosmo->H;
+#else
+#error  This scheme is not implemented. Different scheme apply the Hubble flow \
+  at different place. Be careful about it.
+#endif
 }
 
 /**

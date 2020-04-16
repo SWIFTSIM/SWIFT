@@ -512,7 +512,7 @@ int main(int argc, char *argv[]) {
              Ngpart, Nspart, Nbpart, periodic, replicate,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, with_DM_background_particles, talking,
-             /*dry_run=*/0);
+             /*dry_run=*/0, nr_nodes);
 
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -698,7 +698,7 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
-  engine_clean(&e, /*fof=*/1);
+  engine_clean(&e, /*fof=*/1, /*restart=*/0);
   free(params);
 
   /* Say goodbye. */

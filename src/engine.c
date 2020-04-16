@@ -1665,8 +1665,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
  * @param clean_smoothing_length_values Are we cleaning up the values of
  * the smoothing lengths before building the tasks ?
  */
-void engine_rebuild(struct engine *e, int repartitioned,
-                    int clean_smoothing_length_values) {
+void engine_rebuild(struct engine *e, const int repartitioned,
+                    const int clean_smoothing_length_values) {
 
   const ticks tic = getticks();
 
@@ -1751,8 +1751,14 @@ void engine_rebuild(struct engine *e, int repartitioned,
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Re-compute the mesh forces */
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+
+    /* Re-allocate the PM grid if we freed it... */
+    if (repartitioned) pm_mesh_allocate(e->mesh);
+
+    /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+  }
 
   /* Re-compute the maximal RMS displacement constraint */
   if (e->policy & engine_policy_cosmology)
@@ -1873,7 +1879,7 @@ void engine_prepare(struct engine *e) {
 
   /* Perform particle splitting. Only if there is a rebuild coming and no
      repartitioning. */
-  if (e->forcerebuild && !e->forcerepart && e->step > 1) {
+  if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
     /* Let's start by drifting everybody to the current time */
     if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
@@ -1888,6 +1894,10 @@ void engine_prepare(struct engine *e) {
     /* Let's start by drifting everybody to the current time */
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
+
+    /* Free the PM grid */
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      pm_mesh_free(e->mesh);
 
     /* And repartition */
     engine_repartition(e);
@@ -2580,8 +2590,10 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   engine_prepare(e);
 
-  /* Print the number of active tasks ? */
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Print the number of active tasks */
   if (e->verbose) engine_print_task_counts(e);
+#endif
 
     /* Dump local cells and active particle counts. */
     // dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
@@ -5183,8 +5195,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
  *
  * @param e The #engine to clean.
  * @param fof Was this a stand-alone FOF run?
+ * @param restart Was this a run that was restarted from check-point files?
  */
-void engine_clean(struct engine *e, const int fof) {
+void engine_clean(struct engine *e, const int fof, const int restart) {
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
   swift_barrier_wait(&e->run_barrier);
@@ -5241,6 +5254,39 @@ void engine_clean(struct engine *e, const int fof) {
     if (e->policy & engine_policy_star_formation) {
       fclose(e->sfh_logger);
     }
+  }
+
+  /* If the run was restarted, we should also free the memory allocated
+     in engine_struct_restore() */
+  if (restart) {
+    free((void *)e->parameter_file);
+    free((void *)e->external_potential);
+    free((void *)e->black_holes_properties);
+    free((void *)e->stars_properties);
+    free((void *)e->gravity_properties);
+    free((void *)e->hydro_properties);
+    free((void *)e->physical_constants);
+    free((void *)e->internal_units);
+    free((void *)e->cosmology);
+    free((void *)e->mesh);
+    free((void *)e->chemistry);
+    free((void *)e->entropy_floor);
+    free((void *)e->cooling_func);
+    free((void *)e->star_formation);
+    free((void *)e->feedback_props);
+#ifdef WITH_FOF
+    free((void *)e->fof_properties);
+#endif
+#ifdef WITH_MPI
+    free((void *)e->reparttype);
+#endif
+    if (e->output_list_snapshots) free((void *)e->output_list_snapshots);
+    if (e->output_list_stats) free((void *)e->output_list_stats);
+    if (e->output_list_stf) free((void *)e->output_list_stf);
+#ifdef WITH_LOGGER
+    if (e->policy & engine_policy_logger) free((void *)e->logger);
+#endif
+    free(e->s);
   }
 }
 
@@ -5325,14 +5371,15 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->s = s;
   s->e = e;
 
-  struct unit_system *us =
+  struct unit_system *internal_us =
       (struct unit_system *)malloc(sizeof(struct unit_system));
-  units_struct_restore(us, stream);
-  e->internal_units = us;
+  units_struct_restore(internal_us, stream);
+  e->internal_units = internal_us;
 
-  us = (struct unit_system *)malloc(sizeof(struct unit_system));
-  units_struct_restore(us, stream);
-  e->snapshot_units = us;
+  struct unit_system *snap_us =
+      (struct unit_system *)malloc(sizeof(struct unit_system));
+  units_struct_restore(snap_us, stream);
+  e->snapshot_units = snap_us;
 
   struct cosmology *cosmo =
       (struct cosmology *)malloc(sizeof(struct cosmology));

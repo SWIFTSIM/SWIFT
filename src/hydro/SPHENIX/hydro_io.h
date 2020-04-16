@@ -140,7 +140,7 @@ INLINE static void convert_part_potential(const struct engine* e,
 INLINE static void convert_viscosity(const struct engine* e,
                                      const struct part* p,
                                      const struct xpart* xp, float* ret) {
-  ret[0] = p->viscosity.alpha;
+  ret[0] = p->viscosity.alpha * p->force.balsara;
 }
 
 INLINE static void convert_diffusion(const struct engine* e,
@@ -161,7 +161,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 11;
+  *num_fields = 14;
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
@@ -203,11 +203,35 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[9] = io_make_output_field_convert_part(
       "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-      convert_viscosity, "Visosity coefficient (alpha_visc) of the particles");
+      convert_viscosity,
+      "Visosity coefficient (alpha_visc) of the particles, multiplied by the "
+      "balsara switch");
 
   list[10] = io_make_output_field_convert_part(
       "DiffusionParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
       convert_diffusion, "Diffusion coefficient (alpha_diff) of the particles");
+
+  list[11] = io_make_output_field(
+      "LaplacianInternalEnergies", FLOAT, 1, UNIT_CONV_FREQUENCY_SQUARED,
+      1.f - 3.f * hydro_gamma, parts, diffusion.laplace_u,
+      "Laplacian (del squared) of the Internal Energy per "
+      "unit mass of the particles");
+
+  list[12] = io_make_output_field(
+      "VelocityDivergences", FLOAT, 1, UNIT_CONV_FREQUENCY, 0.f, parts,
+      viscosity.div_v,
+      "Local velocity divergence field around the particles. Provided without "
+      "cosmology, as this includes the Hubble flow. To return to a peculiar "
+      "velocity divergence, div . v_pec = a^2 (div . v - n_D H)");
+
+  list[13] = io_make_output_field(
+      "VelocityDivergenceTimeDifferentials", FLOAT, 1,
+      UNIT_CONV_FREQUENCY_SQUARED, 0.f, parts, viscosity.div_v_dt,
+      "Time differential (over the previous step) of the "
+      "velocity divergence field around the particles. Again, provided without "
+      "cosmology as this includes a Hubble flow term. To get back to a "
+      "peculiar velocity divergence time differential, x_pec = a^4 (x - a^{-2} "
+      "n_D dH / dt)");
 }
 
 /**

@@ -26,6 +26,9 @@
 #include "inline.h"
 #include "minmax.h"
 
+/* Standard includes */
+#include <stdint.h>
+
 #define atomic_add(v, i) __sync_fetch_and_add(v, i)
 #define atomic_sub(v, i) __sync_fetch_and_sub(v, i)
 #define atomic_or(v, i) __sync_fetch_and_or(v, i)
@@ -34,6 +37,29 @@
 #define atomic_dec(v) atomic_sub(v, 1)
 #define atomic_cas(v, o, n) __sync_val_compare_and_swap(v, o, n)
 #define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
+
+/**
+ * @brief Atomic min operation on ints.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_min(
+    volatile int *const address, const int y) {
+
+  int *int_ptr = (int *)address;
+
+  int test_val, old_val, new_val;
+  old_val = *address;
+
+  do {
+    test_val = old_val;
+    new_val = min(old_val, y);
+    old_val = atomic_cas(int_ptr, test_val, new_val);
+  } while (test_val != old_val);
+}
 
 /**
  * @brief Atomic min operation on floats.
@@ -67,29 +93,6 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
 }
 
 /**
- * @brief Atomic min operation on ints.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_min(
-    volatile int *address, int y) {
-
-  int *int_ptr = (int *)address;
-
-  int test_val, old_val, new_val;
-  old_val = *address;
-
-  do {
-    test_val = old_val;
-    new_val = min(old_val, y);
-    old_val = atomic_cas(int_ptr, test_val, new_val);
-  } while (test_val != old_val);
-}
-
-/**
  * @brief Atomic min operation on doubles.
  *
  * This is a text-book implementation based on an atomic CAS.
@@ -119,6 +122,50 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
     old_val.as_long_long =
         atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
   } while (test_val.as_long_long != old_val.as_long_long);
+}
+
+/**
+ * @brief Atomic max operation on int8_t.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_max_c(
+    volatile int8_t *const address, const int8_t y) {
+
+  int8_t test_val, old_val, new_val;
+  old_val = *address;
+
+  do {
+    test_val = old_val;
+    new_val = max(old_val, y);
+    old_val = atomic_cas(address, test_val, new_val);
+  } while (test_val != old_val);
+}
+
+/**
+ * @brief Atomic max operation on ints.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_max(
+    volatile int *const address, const int y) {
+
+  int *int_ptr = (int *)address;
+
+  int test_val, old_val, new_val;
+  old_val = *address;
+
+  do {
+    test_val = old_val;
+    new_val = max(old_val, y);
+    old_val = atomic_cas(int_ptr, test_val, new_val);
+  } while (test_val != old_val);
 }
 
 /**
