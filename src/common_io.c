@@ -33,6 +33,7 @@
 #include "const.h"
 #include "cooling_io.h"
 #include "error.h"
+#include "feedback.h"
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro.h"
@@ -480,6 +481,137 @@ void io_write_attribute_l(hid_t grp, const char* name, long data) {
  */
 void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
   io_writeStringAttribute(grp, name, str, strlen(str));
+}
+
+/**
+ * @brief Writes the meta-dat of the run to an open hdf5 snapshot file.
+ *
+ * @param h_file The opened hdf5 file.
+ * @param e The #engine containing the meta-data.
+ * @param internal_units The system of units used internally.
+ * @param snapshot_units The system of units used in snapshots.
+ */
+void io_write_meta_data(hid_t h_file, const struct engine* e,
+                        const struct unit_system* internal_units,
+                        const struct unit_system* snapshot_units) {
+
+  hid_t h_grp;
+
+  /* Print the code version */
+  io_write_code_description(h_file);
+
+  /* Print the run's policy */
+  io_write_engine_policy(h_file, e);
+
+  /* Print the physical constants */
+  phys_const_print_snapshot(h_file, e->physical_constants);
+
+  /* Print the SPH parameters */
+  if (e->policy & engine_policy_hydro) {
+    h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating SPH group");
+    hydro_props_print_snapshot(h_grp, e->hydro_properties);
+    hydro_write_flavour(h_grp);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the subgrid parameters */
+  h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating subgrid group");
+  hid_t h_grp_columns =
+      H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp_columns < 0) error("Error while creating named columns group");
+  entropy_floor_write_flavour(h_grp);
+  cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
+  chemistry_write_flavour(h_grp, h_grp_columns, e);
+  tracers_write_flavour(h_grp);
+  feedback_write_flavour(e->feedback_props, h_grp);
+  H5Gclose(h_grp_columns);
+  H5Gclose(h_grp);
+
+  /* Print the gravity parameters */
+  if (e->policy & engine_policy_self_gravity) {
+    h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating gravity group");
+    gravity_props_print_snapshot(h_grp, e->gravity_properties);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the stellar parameters */
+  if (e->policy & engine_policy_stars) {
+    h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating stars group");
+    stars_props_print_snapshot(h_grp, e->stars_properties);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the cosmological model  */
+  h_grp =
+      H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating cosmology group");
+  if (e->policy & engine_policy_cosmology)
+    io_write_attribute_i(h_grp, "Cosmological run", 1);
+  else
+    io_write_attribute_i(h_grp, "Cosmological run", 0);
+  cosmology_write_model(h_grp, e->cosmology);
+  H5Gclose(h_grp);
+
+  /* Print the runtime parameters */
+  h_grp =
+      H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, /*write_used=*/1);
+  H5Gclose(h_grp);
+
+  /* Print the runtime unused parameters */
+  h_grp = H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, /*write_used=*/0);
+  H5Gclose(h_grp);
+
+  /* Print the system of Units used in the spashot */
+  io_write_unit_system(h_file, snapshot_units, "Units");
+
+  /* Print the system of Units used internally */
+  io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
+
+  /* Tell the user if a conversion will be needed */
+  if (e->verbose) {
+    if (units_are_equal(snapshot_units, internal_units)) {
+
+      message("Snapshot and internal units match. No conversion needed.");
+
+    } else {
+
+      message("Conversion needed from:");
+      message("(Snapshot) Unit system: U_M =      %e g.",
+              snapshot_units->UnitMass_in_cgs);
+      message("(Snapshot) Unit system: U_L =      %e cm.",
+              snapshot_units->UnitLength_in_cgs);
+      message("(Snapshot) Unit system: U_t =      %e s.",
+              snapshot_units->UnitTime_in_cgs);
+      message("(Snapshot) Unit system: U_I =      %e A.",
+              snapshot_units->UnitCurrent_in_cgs);
+      message("(Snapshot) Unit system: U_T =      %e K.",
+              snapshot_units->UnitTemperature_in_cgs);
+      message("to:");
+      message("(internal) Unit system: U_M = %e g.",
+              internal_units->UnitMass_in_cgs);
+      message("(internal) Unit system: U_L = %e cm.",
+              internal_units->UnitLength_in_cgs);
+      message("(internal) Unit system: U_t = %e s.",
+              internal_units->UnitTime_in_cgs);
+      message("(internal) Unit system: U_I = %e A.",
+              internal_units->UnitCurrent_in_cgs);
+      message("(internal) Unit system: U_T = %e K.",
+              internal_units->UnitTemperature_in_cgs);
+    }
+  }
 }
 
 /**
