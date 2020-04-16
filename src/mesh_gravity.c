@@ -682,6 +682,7 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
  */
 void pm_mesh_allocate(struct pm_mesh* mesh) {
 
+#ifdef HAVE_FFTW
   if (mesh->potential != NULL) error("Mesh already allocated!");
 
   const int N = mesh->N;
@@ -692,6 +693,9 @@ void pm_mesh_allocate(struct pm_mesh* mesh) {
     error("Error allocating memory for the long-range gravity mesh.");
   memuse_log_allocation("fftw_mesh.potential", mesh->potential, 1,
                         sizeof(double) * N * N * N);
+#else
+  error("No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
 }
 
 /**
@@ -701,11 +705,16 @@ void pm_mesh_allocate(struct pm_mesh* mesh) {
  */
 void pm_mesh_free(struct pm_mesh* mesh) {
 
+#ifdef HAVE_FFTW
+
   if (mesh->potential) {
     memuse_log_allocation("fftw_mesh.potential", mesh->potential, 0, 0);
     free(mesh->potential);
   }
   mesh->potential = NULL;
+#else
+  error("No FFTW library found. Cannot compute periodic long-range forces.");
+#endif
 }
 
 /**
