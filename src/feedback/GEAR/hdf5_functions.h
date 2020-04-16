@@ -91,19 +91,14 @@ io_read_string_array_attribute(hid_t grp, const char *name, void *data,
 /**
  * @brief Open a group in the yields table (#h5_close_group needs to be called).
  *
- * @param params The #swift_params.
+ * @param filename The filename.
  * @param group_name The name of the group to open.
  * @param file_id (output) The id of the file opened.
  * @param group_id (output) The id of the group opened.
  *
  */
 __attribute__((always_inline)) INLINE static void h5_open_group(
-    struct swift_params *params, char *group_name, hid_t *file_id,
-    hid_t *group_id) {
-
-  /* Get filename. */
-  char filename[256];
-  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+    const char *filename, char *group_name, hid_t *file_id, hid_t *group_id) {
 
   /* Open file. */
   *file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);

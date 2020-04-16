@@ -61,8 +61,7 @@ void feedback_evolve_spart(struct spart* restrict sp,
                            const double time, const integertime_t ti_begin,
                            const int with_cosmology);
 void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
-void feedback_struct_restore(struct feedback_props* feedback, FILE* stream,
-                             struct engine* e);
+void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 void feedback_clean(struct feedback_props* feedback);
 
 /**

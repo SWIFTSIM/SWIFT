@@ -5278,13 +5278,13 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
+  feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
 #endif
   parser_struct_dump(e->parameter_file, stream);
-  feedback_struct_dump(e->feedback_props, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
   if (e->output_list_stats)
@@ -5391,6 +5391,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   starformation_struct_restore(star_formation, stream);
   e->star_formation = star_formation;
 
+  struct feedback_props *feedback_properties =
+      (struct feedback_props *)malloc(sizeof(struct feedback_props));
+  feedback_struct_restore(feedback_properties, stream);
+  e->feedback_props = feedback_properties;
+
   struct black_holes_props *black_holes_properties =
       (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
   black_holes_struct_restore(black_holes_properties, stream);
@@ -5413,11 +5418,6 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
-
-  struct feedback_props *feedback_properties =
-      (struct feedback_props *)malloc(sizeof(struct feedback_props));
-  feedback_struct_restore(feedback_properties, stream, e);
-  e->feedback_props = feedback_properties;
 
   if (e->output_list_snapshots) {
     struct output_list *output_list_snapshots =

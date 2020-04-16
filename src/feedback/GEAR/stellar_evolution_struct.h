@@ -152,6 +152,9 @@ struct supernovae_ii {
 
   /*! coefficient of the IMF over the exponent */
   float coef_exp;
+
+  /*! Number of element in the interpolation array */
+  int interpolation_size;
 };
 
 /**
@@ -176,6 +179,9 @@ struct stellar_model {
 
   /*! Use a discrete yields approach */
   char discrete_yields;
+
+  /* Filename of the yields table */
+  char yields_table[FILENAME_BUFFER_SIZE];
 };
 
 #endif  // SWIFT_STELLAR_EVOLUTION_STRUCT_GEAR_H

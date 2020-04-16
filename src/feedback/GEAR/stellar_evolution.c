@@ -313,15 +313,17 @@ void stellar_evolution_evolve_spart(
   /* Compute number of SNIa */
   float number_snia_f = 0;
   if (can_produce_snia) {
-    number_snia_f = supernovae_ia_get_number_per_unit_mass(&sm->snia, m_end_step, m_beg_step) *
-      m_init;
+    number_snia_f = supernovae_ia_get_number_per_unit_mass(
+                        &sm->snia, m_end_step, m_beg_step) *
+                    m_init;
   }
 
   /* Compute number of SNII */
   float number_snii_f = 0;
   if (can_produce_snii) {
-    number_snii_f = supernovae_ii_get_number_per_unit_mass(&sm->snii, m_end_step, m_beg_step) *
-      m_init;
+    number_snii_f = supernovae_ii_get_number_per_unit_mass(
+                        &sm->snii, m_end_step, m_beg_step) *
+                    m_init;
   }
 
   /* Does this star produce a supernovae? */
@@ -383,7 +385,7 @@ void stellar_evolution_read_elements(struct stellar_model* sm,
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  h5_open_group(params, "Data", &file_id, &group_id);
+  h5_open_group(sm->yields_table, "Data", &file_id, &group_id);
 
   /* Read the elements */
   io_read_string_array_attribute(group_id, "elts", sm->elements_name,
@@ -433,6 +435,10 @@ void stellar_evolution_props_init(struct stellar_model* sm,
                                   struct swift_params* params,
                                   const struct cosmology* cosmo) {
 
+  /* Get filename. */
+  parser_get_param_string(params, "GEARFeedback:yields_table",
+                          sm->yields_table);
+
   /* Read the list of elements */
   stellar_evolution_read_elements(sm, params);
 
@@ -450,7 +456,7 @@ void stellar_evolution_props_init(struct stellar_model* sm,
   supernovae_ia_init(&sm->snia, phys_const, us, params, sm);
 
   /* Initialize the supernovae II model */
-  supernovae_ii_init(&sm->snii, phys_const, us, params, sm);
+  supernovae_ii_init(&sm->snii, params, sm);
 }
 
 /**
@@ -488,8 +494,7 @@ void stellar_evolution_dump(const struct stellar_model* sm, FILE* stream) {
  * @param sm the struct
  * @param stream the file stream
  */
-void stellar_evolution_restore(struct stellar_model* sm, FILE* stream,
-                               struct engine* e) {
+void stellar_evolution_restore(struct stellar_model* sm, FILE* stream) {
 
   /* Restore the initial mass function */
   initial_mass_function_restore(&sm->imf, stream, sm);
@@ -501,7 +506,7 @@ void stellar_evolution_restore(struct stellar_model* sm, FILE* stream,
   supernovae_ia_restore(&sm->snia, stream, sm);
 
   /* Restore the supernovae II model */
-  supernovae_ii_restore(&sm->snii, stream, sm, e);
+  supernovae_ii_restore(&sm->snii, stream, sm);
 }
 
 /**

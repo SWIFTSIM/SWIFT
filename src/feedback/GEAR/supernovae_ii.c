@@ -198,7 +198,6 @@ float supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
  * @param snii The #supernovae_ii model.
  * @param interp_raw Interpolation data to initialize (raw).
  * @param interp_int Interpolation data to initialize (integrated).
- * @param phys_const The #phys_const.
  * @param sm * The #stellar_model.
  * @param group_id The HDF5 group id where to read from.
  * @param hdf5_dataset_name The dataset name to read.
@@ -208,9 +207,8 @@ float supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
  */
 void supernovae_ii_read_yields_array(
     struct supernovae_ii *snii, struct interpolation_1d *interp_raw,
-    struct interpolation_1d *interp_int, const struct phys_const *phys_const,
-    const struct stellar_model *sm, hid_t group_id,
-    const char *hdf5_dataset_name, hsize_t *previous_count,
+    struct interpolation_1d *interp_int, const struct stellar_model *sm,
+    hid_t group_id, const char *hdf5_dataset_name, hsize_t *previous_count,
     int interpolation_size) {
 
   /* Now let's get the number of elements */
@@ -272,23 +270,25 @@ void supernovae_ii_read_yields_array(
  *
  * @param snii The #supernovae_ii model.
  * @param params The simulation parameters.
- * @param phys_const The #phys_const.
  * @param sm The #stellar_model.
+ * @param restart Are we restarting the simulation? (Is params NULL?)
  */
 void supernovae_ii_read_yields(struct supernovae_ii *snii,
                                struct swift_params *params,
-                               const struct phys_const *phys_const,
-                               const struct stellar_model *sm) {
+                               const struct stellar_model *sm,
+                               const int restart) {
 
   hid_t file_id, group_id;
 
   hsize_t previous_count = 0;
 
-  const int interpolation_size = parser_get_opt_param_int(
-      params, "GEARSupernovaeII:interpolation_size", 200);
+  if (!restart) {
+    snii->interpolation_size = parser_get_opt_param_int(
+        params, "GEARSupernovaeII:interpolation_size", 200);
+  }
 
   /* Open IMF group */
-  h5_open_group(params, "Data/SNII", &file_id, &group_id);
+  h5_open_group(sm->yields_table, "Data/SNII", &file_id, &group_id);
 
   /* Do all the elements */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -298,21 +298,21 @@ void supernovae_ii_read_yields(struct supernovae_ii *snii,
 
     /* Read the array */
     supernovae_ii_read_yields_array(
-        snii, &snii->raw.yields[i], &snii->integrated.yields[i], phys_const, sm,
-        group_id, name, &previous_count, interpolation_size);
+        snii, &snii->raw.yields[i], &snii->integrated.yields[i], sm, group_id,
+        name, &previous_count, snii->interpolation_size);
   }
 
   /* Read the mass ejected */
   supernovae_ii_read_yields_array(snii, &snii->raw.ejected_mass_processed,
-                                  &snii->integrated.ejected_mass_processed,
-                                  phys_const, sm, group_id, "Ej",
-                                  &previous_count, interpolation_size);
+                                  &snii->integrated.ejected_mass_processed, sm,
+                                  group_id, "Ej", &previous_count,
+                                  snii->interpolation_size);
 
   /* Read the mass ejected of non processed gas */
   supernovae_ii_read_yields_array(snii, &snii->raw.ejected_mass_non_processed,
                                   &snii->integrated.ejected_mass_non_processed,
-                                  phys_const, sm, group_id, "Ejnp",
-                                  &previous_count, interpolation_size);
+                                  sm, group_id, "Ejnp", &previous_count,
+                                  snii->interpolation_size);
 
   /* Cleanup everything */
   h5_close_group(file_id, group_id);
@@ -348,7 +348,9 @@ void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  h5_open_group(params, "Data/SNII", &file_id, &group_id);
+  char filename[FILENAME_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+  h5_open_group(filename, "Data/SNII", &file_id, &group_id);
 
   /* Read the minimal mass of a supernovae */
   io_read_attribute(group_id, "Mmin", FLOAT, &snii->mass_min);
@@ -364,25 +366,20 @@ void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
  * @brief Initialize the #supernovae_ii structure.
  *
  * @param snii The #supernovae_ii model.
- * @param phys_const The #phys_const.
- * @param us The #unit_system.
  * @param params The simulation parameters.
  * @param sm The #stellar_model.
  */
-void supernovae_ii_init(struct supernovae_ii *snii,
-                        const struct phys_const *phys_const,
-                        const struct unit_system *us,
-                        struct swift_params *params,
+void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
                         const struct stellar_model *sm) {
 
   /* Read the parameters from the tables */
   supernovae_ii_read_from_tables(snii, params);
 
   /* Read the parameters from the params file */
-  supernovae_ii_read_from_tables(snii, params);
+  supernovae_ii_read_from_params(snii, params);
 
-  /* Read the supernovae yields (and apply the units) */
-  supernovae_ii_read_yields(snii, params, phys_const, sm);
+  /* Read the supernovae yields */
+  supernovae_ii_read_yields(snii, params, sm, /* restart */ 0);
 
   /* Get the IMF parameters */
   snii->exponent = initial_mass_function_get_exponent(&sm->imf, snii->mass_min,
@@ -417,10 +414,10 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
  * @param sm The #stellar_model.
  */
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
-                           const struct stellar_model *sm, struct engine *e) {
+                           const struct stellar_model *sm) {
 
   /* Read the supernovae yields (and apply the units) */
-  supernovae_ii_read_yields(snii, e->parameter_file, e->physical_constants, sm);
+  supernovae_ii_read_yields(snii, NULL, sm, /* restart */ 1);
 
   /* Get the IMF parameters */
   snii->exponent = initial_mass_function_get_exponent(&sm->imf, snii->mass_min,

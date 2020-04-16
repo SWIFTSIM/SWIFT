@@ -49,27 +49,23 @@ float supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
     const struct supernovae_ii *snii, float log_m);
 void supernovae_ii_read_yields_array(
     struct supernovae_ii *snii, struct interpolation_1d *interp_raw,
-    struct interpolation_1d *interp_int, const struct phys_const *phys_const,
-    const struct stellar_model *sm, hid_t group_id,
-    const char *hdf5_dataset_name, hsize_t *previous_count,
+    struct interpolation_1d *interp_int, const struct stellar_model *sm,
+    hid_t group_id, const char *hdf5_dataset_name, hsize_t *previous_count,
     int interpolation_size);
 void supernovae_ii_read_yields(struct supernovae_ii *snii,
                                struct swift_params *params,
-                               const struct phys_const *phys_const,
-                               const struct stellar_model *sm);
+                               const struct stellar_model *sm,
+                               const int restart);
 void supernovae_ii_read_from_params(struct supernovae_ii *snii,
                                     struct swift_params *params);
 
 void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
                                     struct swift_params *params);
-void supernovae_ii_init(struct supernovae_ii *snii,
-                        const struct phys_const *phys_const,
-                        const struct unit_system *us,
-                        struct swift_params *params,
+void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
                         const struct stellar_model *sm);
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
                         const struct stellar_model *sm);
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
-                           const struct stellar_model *sm, struct engine *e);
+                           const struct stellar_model *sm);
 void supernovae_ii_clean(struct supernovae_ii *snii);
 #endif  // SWIFT_SUPERNOVAE_II_GEAR_H

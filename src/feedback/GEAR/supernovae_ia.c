@@ -177,7 +177,9 @@ void supernovae_ia_read_yields(struct supernovae_ia *snia,
   const int number_labels = GEAR_CHEMISTRY_ELEMENT_COUNT + 2;
 
   /* Open IMF group */
-  h5_open_group(params, "Data/SNIa/Metals", &file_id, &group_id);
+  char filename[FILENAME_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+  h5_open_group(filename, "Data/SNIa/Metals", &file_id, &group_id);
 
   /* Read the yields */
   float *yields = (float *)malloc(sizeof(float) * number_labels);
@@ -247,7 +249,9 @@ void supernovae_ia_read_from_tables(struct supernovae_ia *snia,
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  h5_open_group(params, "Data/SNIa", &file_id, &group_id);
+  char filename[FILENAME_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+  h5_open_group(filename, "Data/SNIa", &file_id, &group_id);
 
   /* Read the exponent of the IMF for companion */
   io_read_attribute(group_id, "a", FLOAT, &snia->companion_exponent);
@@ -282,7 +286,7 @@ void supernovae_ia_read_from_tables(struct supernovae_ia *snia,
   /* Read the white dwarf mass */
 
   /* Open IMF group */
-  h5_open_group(params, "Data", &file_id, &group_id);
+  h5_open_group(filename, "Data", &file_id, &group_id);
 
   /* Read the white dwarf mass */
   io_read_attribute(group_id, "MeanWDMass", FLOAT, &snia->mass_white_dwarf);

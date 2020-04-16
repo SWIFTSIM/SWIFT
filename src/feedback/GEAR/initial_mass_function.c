@@ -340,7 +340,9 @@ void initial_mass_function_read_from_table(struct initial_mass_function *imf,
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  h5_open_group(params, "Data/IMF", &file_id, &group_id);
+  char filename[FILENAME_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+  h5_open_group(filename, "Data/IMF", &file_id, &group_id);
 
   /* Read number of parts */
   io_read_attribute(group_id, "n", INT, &imf->n_parts);

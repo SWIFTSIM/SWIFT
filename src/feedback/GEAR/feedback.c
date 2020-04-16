@@ -265,13 +265,12 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
  * @param feedback the struct
  * @param stream the file stream
  */
-void feedback_struct_restore(struct feedback_props* feedback, FILE* stream,
-                             struct engine* e) {
+void feedback_struct_restore(struct feedback_props* feedback, FILE* stream) {
 
   restart_read_blocks((void*)feedback, sizeof(struct feedback_props), 1, stream,
                       NULL, "feedback function");
 
-  stellar_evolution_restore(&feedback->stellar_model, stream, e);
+  stellar_evolution_restore(&feedback->stellar_model, stream);
 }
 
 /**

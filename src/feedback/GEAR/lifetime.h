@@ -131,7 +131,9 @@ __attribute__((always_inline)) INLINE static void lifetime_read_from_tables(
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  h5_open_group(params, "Data/LiveTimes", &file_id, &group_id);
+  char filename[256];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+  h5_open_group(filename, "Data/LiveTimes", &file_id, &group_id);
 
   /* Allocate the temporary array */
   float* tmp;
