@@ -95,6 +95,9 @@ void print_los_info(struct line_of_sight *Los,
 
 void do_line_of_sight(struct engine *e) {
 
+  /* Start counting. */
+  const ticks tic = getticks();
+
   const struct space *s = e->s;
   const size_t nr_parts = s->nr_parts;
 
@@ -239,7 +242,7 @@ void do_line_of_sight(struct engine *e) {
               LOS_particles[count].pos[1] = s->parts[i].x[1];
               LOS_particles[count].pos[2] = s->parts[i].x[2];
 
-              LOS_particles[count].h = s->parts[i].h;
+              LOS_particles[count].h = hsml;
 
               count++;
             }
@@ -276,4 +279,7 @@ void do_line_of_sight(struct engine *e) {
   //#ifdef SWIFT_DEBUG_CHECKS
   if (e->nodeID == 0) print_los_info(LOS_list, &LOS_params);
   //#endif
+  
+  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
