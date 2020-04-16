@@ -4493,6 +4493,12 @@ void engine_config(int restart, int fof, struct engine *e,
       engine_compute_next_fof_time(e);
     }
 
+    /* Check that the snapshot naming policy is valid */
+    if (e->snapshot_invoke_stf && e->snapshot_int_time_label_on)
+      error(
+          "Cannot use snapshot time labels and VELOCIraptor invocations "
+          "together!");
+
     /* Check that we are invoking VELOCIraptor only if we have it */
     if (e->snapshot_invoke_stf &&
         !(e->policy & engine_policy_structure_finding)) {

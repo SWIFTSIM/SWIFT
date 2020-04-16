@@ -683,7 +683,23 @@ with a base name and output number that matches the snapshot name
 (e.g. ``stf_base_name_1234.hdf5``) irrespective of the name specified in the
 section dedicated to VELOCIraptor. Note that the invocation of VELOCIraptor at
 every dump is done additionally to the stand-alone dumps that can be specified
-in the corresponding section of the YAML parameter file.
+in the corresponding section of the YAML parameter file. When running with
+_more_ calls to VELOCIraptor than snapshots, gaps between snapshot numbers will
+be created to accommodate for the intervening VELOCIraptor-only catalogs.
+
+When running over MPI, users have the option to split the snapshot over more
+than one file. This can be useful if the parallel-io on a given system is slow
+but has the drawback of producing many files per time slice. This is activated
+by setting the parameter:
+
+* Distributed snapshots over MPI: ``distributed`` (default: ``0``).
+
+This option has no effect when running the non-MPI version of the code. Note
+also that unlike other codes, SWIFT does *not* let the users chose the number of
+individual files over which a snapshot is distributed. This is set by the number
+of MPI ranks used in a given run. The individual files of snapshot 1234 will
+have the name ``base_name_1234.x.hdf5`` where when running on N MPI ranks, ``x``
+runs from 0 to N-1.
 
 Users can optionally specify the level of compression used by the HDF5 library
 using the parameter:
@@ -709,7 +725,7 @@ one described above (See the :ref:`Parameters_units` section) and read:
 * a unit of electric current ``UnitCurrent_in_cgs`` (default: ``InternalUnitSystem:UnitCurrent_in_cgs``),
 * a unit of temperature ``UnitTemp_in_cgs`` (default: ``InternalUnitSystem:UnitTemp_in_cgs``).
 
-When un-specified, these all take the same value as assumed by the internal
+When unspecified, these all take the same value as assumed by the internal
 system of units. These are rarely used but can offer a practical alternative to
 converting data in the post-processing of the simulations.
 
@@ -730,11 +746,13 @@ Showing all the parameters for a basic hydro test-case, one would have:
 
    Snapshots:
      basename:            sedov
+     subdir:              snapshots
      time_first:          0.01
      delta_time:          0.005
      invoke_stf:          0
      int_time_label_on:   0
      compression:         3
+     distributed:         1
      UnitLength_in_cgs:   1.  # Use cm in outputs
      UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
