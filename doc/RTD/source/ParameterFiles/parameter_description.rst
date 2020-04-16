@@ -692,10 +692,12 @@ using the parameter:
 
 The default level of ``0`` implies no compression and values have to be in the
 range :math:`[0-9]`. This integer is passed to the i/o library and used for the
-loss-less GZIP compression algorithm. Higher values imply higher compression but
-also more time spent deflating and inflating the data. Note that up until HDF5
-1.10.x this option is not available when using the MPI-parallel version of the
-i/o routines.
+loss-less GZIP compression algorithm. The compression is applied to *all* the
+fields in the snapshots. Higher values imply higher compression but also more
+time spent deflating and inflating the data.  When compression is switched on
+the SHUFFLE filter is also applied to get higher compression rates. Note that up
+until HDF5 1.10.x this option is not available when using the MPI-parallel
+version of the i/o routines.
 
 Finally, it is possible to specify a different system of units for the snapshots
 than the one that was used internally by SWIFT. The format is identical to the
