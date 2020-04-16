@@ -276,16 +276,29 @@ the simulation volume. Both the cell sizes and positions of the centres are
 expressed in the unit system used for the snapshots (see above) and are hence
 consistent with the particle positions themselves. 
 
-Once the cell(s) containing the region of interest has been located, users can
-use the ``/Cells/Offsets/PartTypeN/Counts`` and
-``/Cells/Offsets/PartTypeN/Offsets`` to retrieve the location of the particles
-of type ``N`` in the ``/PartTypeN`` arrays. The cells, offsets and counts are
-sorted spatiall using C-style ordering. That is we first loop over the z axis
-then y axis and x is the slowest varying dimension.
+Once the cell(s) containing the region of interest has been located,
+users can use the ``/Cells/Offsets/PartTypeN/Files``,
+``/Cells/Offsets/PartTypeN/Counts`` and
+``/Cells/Offsets/PartTypeN/OffsetsInFile`` to retrieve the location of
+the particles of type ``N`` in the ``/PartTypeN`` arrays.  These
+contain information about which file contains the particles of a given
+cell. It also gives the offset from the start of the ``/PartTypeN``
+array *in that file* at which the particles of that cell are located
+and how many particles are in the cell. This allows to read a single
+contiguous section of the whole array by directly reading the slab
+starting at the offset and with the given length.
+
+The cells, files, offsets in file and counts arrays are sorted
+spatially using C-style ordering. That means the inner-most loop runs
+over the z axis, then y axis and x is the slowest varying dimension.
+
+In the case of a single-file snapshot, the ``Files`` array is just an array of
+zeroes since all the particles will be in the 0-th file. Note also that in the
+case of a multi-files snapshot, a cell is always contained in a single file.
 
 As an example, if one is interested in retriving all the densities of the gas
-particles in the cell around the position `[1, 1, 1]` one could use a piece of
-code similar to:
+particles in the cell around the position `[1, 1, 1]` in a single-file
+snapstshot one could use a piece of code similar to:
 
 .. code-block:: python
    :linenos:
@@ -320,7 +333,7 @@ code similar to:
    print("Centre of the cell:", centre)
 
    # Retrieve the offset and counts
-   my_offset = snapshot_file["/Cells/Offsets/PartType0"][my_cell]
+   my_offset = snapshot_file["/Cells/OffsetsInFile/PartType0"][my_cell]
    my_count = snapshot_file["/Cells/Counts/PartType0"][my_cell]
 
    # Get the densities of the particles in this cell
