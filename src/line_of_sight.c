@@ -99,15 +99,15 @@ void do_line_of_sight(struct engine *e) {
   const size_t nr_parts = s->nr_parts;
 
   /* LOS params, dummy until included in parameter file. */
-  struct line_of_sight_params LOS_params = {.num_along_xy = 2,
-                                            .num_along_yz = 2,
-                                            .num_along_xz = 2,
-                                            .xmin = 1,
-                                            .xmax = 2,
-                                            .ymin = 4,
-                                            .ymax = 5,
-                                            .zmin = 7,
-                                            .zmax = 8};
+  struct line_of_sight_params LOS_params = {.num_along_xy = 1,
+                                            .num_along_yz = 1,
+                                            .num_along_xz = 1,
+                                            .xmin = 0,
+                                            .xmax = 10,
+                                            .ymin = 0,
+                                            .ymax = 10,
+                                            .zmin = 0,
+                                            .zmax = 10};
   LOS_params.num_tot = LOS_params.num_along_xy + LOS_params.num_along_yz +
                        LOS_params.num_along_xz;
 
@@ -181,7 +181,6 @@ void do_line_of_sight(struct engine *e) {
                   &LOS_counts, 1, MPI_INT, MPI_COMM_WORLD);
 
     for (int k = 0, disp_count = 0; k < e->nr_nodes; k++) {
-      if (e->nodeID == 0)
       /* Total particles in this LOS. */
       LOS_list[j].particles_in_los_total += LOS_counts[k];
 
@@ -195,15 +194,11 @@ void do_line_of_sight(struct engine *e) {
 
     /* Setup los particles structure. */
     struct line_of_sight_particles *LOS_particles;
-    struct line_of_sight_particles *LOS_particles_total;
     if (e->nodeID == 0) {
-      LOS_particles_total = (struct line_of_sight_particles *)malloc(
+      LOS_particles = (struct line_of_sight_particles *)malloc(
           LOS_list[j].particles_in_los_total *
           sizeof(struct line_of_sight_particles));
-      LOS_particles = (struct line_of_sight_particles *)malloc(
-          LOS_list[j].particles_in_los_local *
-          sizeof(struct line_of_sight_particles));
-    } else {
+    } else { 
       LOS_particles = (struct line_of_sight_particles *)malloc(
           LOS_list[j].particles_in_los_local *
           sizeof(struct line_of_sight_particles));
@@ -255,9 +250,15 @@ void do_line_of_sight(struct engine *e) {
 
 #ifdef WITH_MPI
     /* Collect all particles in LOS to rank 0. */
-    MPI_Gatherv(LOS_particles, LOS_list[j].particles_in_los_local,
-                lospart_mpi_type, LOS_particles_total, LOS_counts, LOS_disps,
-                lospart_mpi_type, 0, MPI_COMM_WORLD);
+    if (e->nodeID == 0) {
+      MPI_Gatherv(MPI_IN_PLACE, 0,
+                  lospart_mpi_type, LOS_particles, LOS_counts, LOS_disps,
+                  lospart_mpi_type, 0, MPI_COMM_WORLD);
+    } else {
+      MPI_Gatherv(LOS_particles, LOS_list[j].particles_in_los_local,
+                  lospart_mpi_type, LOS_particles, LOS_counts, LOS_disps,
+                  lospart_mpi_type, 0, MPI_COMM_WORLD);
+    }
 #endif
     
     /* Write particles to file. */
