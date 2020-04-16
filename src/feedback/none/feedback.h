@@ -199,7 +199,7 @@ static INLINE void feedback_struct_dump(const struct feedback_props* feedback,
  * @param stream the file stream
  * @param cosmo #cosmology structure
  */
-static INLINE void feedback_struct_restore(struct feedback_props* feedback) {}
+static INLINE void feedback_struct_restore(struct feedback_props* feedback, FILE *stream) {}
 
 #ifdef HAVE_HDF5
 /**
