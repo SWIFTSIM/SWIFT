@@ -25,11 +25,6 @@
 #define task_order_star_formation_before_feedback 0
 
 /**
- * Is the cooling task running after the time-step calculation task?
- */
-#define task_order_cooling_after_timestep 1
-
-/**
  * @brief Place the star formation cell at the right place in the dependency
  * graph.
  *
@@ -45,22 +40,6 @@ INLINE static void task_order_addunlock_star_formation_feedback(
     struct scheduler *s, struct cell *c, struct cell *star_resort_cell) {
 
   scheduler_addunlock(s, c->stars.stars_out, c->top->hydro.star_formation);
-}
-
-/**
- * @brief Place the cooling cell at the right place in the dependency
- * graph.
- *
- * In GEAR, the cooling takes place after the kick1.
- *
- * @param s The #scheduler.
- * @param c The #cell on which to act.
- */
-INLINE static void task_order_addunlock_cooling(struct scheduler *s,
-                                                struct cell *c) {
-
-  scheduler_addunlock(s, c->super->kick1, c->hydro.cooling);
-  scheduler_addunlock(s, c->hydro.end_force, c->super->kick2);
 }
 
 #endif /* SWIFT_TASK_ORDER_GEAR_H */

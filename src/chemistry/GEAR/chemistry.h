@@ -21,7 +21,6 @@
 
 /**
  * @file src/chemistry/GEAR/chemistry.h
- * @brief Empty infrastructure for the cases without chemistry function
  */
 
 /* Some standard headers. */
@@ -273,11 +272,12 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
  * @brief Sets the chemistry properties of the (x-)particles to a valid start
  * state.
  *
- * Nothing to do here.
- *
+ * @param phys_const The #phys_const.
+ * @param us The #unit_system.
+ * @param cosmo The #cosmology.
+ * @param data The global chemistry information.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
- * @param data The global chemistry information.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct phys_const* restrict phys_const,

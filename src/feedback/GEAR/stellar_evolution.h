@@ -39,7 +39,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct phys_const* phys_const, const float log_m_beg_step,
     const float log_m_end_step, const float m_beg_step, const float m_end_step,
-    const float m_init, const int number_snia, const int number_snii);
+    const float m_init, const float number_snia_f, const float number_snii_f);
 void stellar_evolution_compute_discrete_feedback_properties(
     struct spart* restrict sp, const struct stellar_model* sm,
     const struct phys_const* phys_const, const float log_m_beg_step,

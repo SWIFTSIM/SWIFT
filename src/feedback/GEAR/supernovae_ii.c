@@ -21,6 +21,7 @@
 #include "supernovae_ii.h"
 
 /* Local headers */
+#include "engine.h"
 #include "hdf5_functions.h"
 #include "interpolation.h"
 #include "stellar_evolution.h"
@@ -68,8 +69,8 @@ int supernovae_ii_can_explode(const struct supernovae_ii *snii, float m_low,
  *
  * @return The number of supernovae II per unit of mass.
  */
-float supernovae_ii_get_number(const struct supernovae_ii *snii, float m1,
-                               float m2) {
+float supernovae_ii_get_number_per_unit_mass(const struct supernovae_ii *snii,
+                                             float m1, float m2) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (m1 > m2) error("Mass 1 larger than mass 2 %g > %g.", m1, m2);
 #endif
@@ -92,37 +93,69 @@ float supernovae_ii_get_number(const struct supernovae_ii *snii, float m1,
  * @brief Get the SNII yields per mass (Poirier version).
  *
  * @param snii The #supernovae_ii model.
- * @param m1 The lower mass in log.
- * @param m2 The upper mass in log.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
  * @param yields The elements ejected (needs to be allocated).
  */
-void supernovae_ii_get_yields(const struct supernovae_ii *snii, float log_m1,
-                              float log_m2, float *yields) {
+void supernovae_ii_get_yields_from_integral(const struct supernovae_ii *snii,
+                                            float log_m1, float log_m2,
+                                            float *yields) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    float yields_1 = interpolate_1d(&snii->integrated_yields[i], log_m1);
-    float yields_2 = interpolate_1d(&snii->integrated_yields[i], log_m2);
+    float yields_1 = interpolate_1d(&snii->integrated.yields[i], log_m1);
+    float yields_2 = interpolate_1d(&snii->integrated.yields[i], log_m2);
 
     yields[i] = yields_2 - yields_1;
   }
 };
 
 /**
- * @brief Get the ejected mass per mass unit.
+ * @brief Get the SNII yields per mass.
  *
  * @param snii The #supernovae_ii model.
- * @param m1 The lower mass in log.
- * @param m2 The upper mass in log.
- *
- * @return mass_ejected_processed The mass of processsed elements.
+ * @param log_m The mass in log.
+ * @param yields The elements ejected (needs to be allocated).
  */
-float supernovae_ii_get_ejected_mass_fraction(const struct supernovae_ii *snii,
-                                              float log_m1, float log_m2) {
+void supernovae_ii_get_yields_from_raw(const struct supernovae_ii *snii,
+                                       float log_m, float *yields) {
 
-  float mass_ejected_1 = interpolate_1d(&snii->integrated_ejected_mass, log_m1);
-  float mass_ejected_2 = interpolate_1d(&snii->integrated_ejected_mass, log_m2);
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    yields[i] = interpolate_1d(&snii->raw.yields[i], log_m);
+  }
+};
+
+/**
+ * @brief Get the ejected mass (non processed) per mass unit.
+ *
+ * @param snii The #supernovae_ii model.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ *
+ * @return mass_ejected_processed The mass of non processsed elements.
+ */
+float supernovae_ii_get_ejected_mass_fraction_non_processed_from_integral(
+    const struct supernovae_ii *snii, float log_m1, float log_m2) {
+
+  float mass_ejected_1 =
+      interpolate_1d(&snii->integrated.ejected_mass_non_processed, log_m1);
+  float mass_ejected_2 =
+      interpolate_1d(&snii->integrated.ejected_mass_non_processed, log_m2);
 
   return mass_ejected_2 - mass_ejected_1;
+};
+
+/**
+ * @brief Get the ejected mass (non processed) per mass unit.
+ *
+ * @param snii The #supernovae_ii model.
+ * @param log_m The mass in log.
+ *
+ * @return The mass of non processsed elements.
+ */
+float supernovae_ii_get_ejected_mass_fraction_non_processed_from_raw(
+    const struct supernovae_ii *snii, float log_m) {
+
+  return interpolate_1d(&snii->raw.ejected_mass_non_processed, log_m);
 };
 
 /**
@@ -134,26 +167,47 @@ float supernovae_ii_get_ejected_mass_fraction(const struct supernovae_ii *snii,
  *
  * @return mass_ejected The mass of non processsed elements.
  */
-float supernovae_ii_get_ejected_mass_fraction_processed(
+float supernovae_ii_get_ejected_mass_fraction_processed_from_integral(
     const struct supernovae_ii *snii, float log_m1, float log_m2) {
 
   float mass_ejected_1 =
-      interpolate_1d(&snii->integrated_ejected_mass_processed, log_m1);
+      interpolate_1d(&snii->integrated.ejected_mass_processed, log_m1);
   float mass_ejected_2 =
-      interpolate_1d(&snii->integrated_ejected_mass_processed, log_m2);
+      interpolate_1d(&snii->integrated.ejected_mass_processed, log_m2);
 
   return mass_ejected_2 - mass_ejected_1;
+};
+
+/**
+ * @brief Get the ejected mass (processed) per mass.
+ *
+ * @param snii The #supernovae_ii model.
+ * @param log_m The mass in log.
+ *
+ * @return mass_ejected The mass of non processsed elements.
+ */
+float supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
+    const struct supernovae_ii *snii, float log_m) {
+
+  return interpolate_1d(&snii->raw.ejected_mass_processed, log_m);
 };
 
 /**
  * @brief Read an array of SNII yields from the table.
  *
  * @param snii The #supernovae_ii model.
- * @param sm The #stellar_model.
+ * @param interp_raw Interpolation data to initialize (raw).
+ * @param interp_int Interpolation data to initialize (integrated).
+ * @param sm * The #stellar_model.
+ * @param group_id The HDF5 group id where to read from.
+ * @param hdf5_dataset_name The dataset name to read.
+ * @param previous_count Number of element in the previous array read.
+ * @param interpolation_size Number of element to keep in the interpolation
+ * data.
  */
 void supernovae_ii_read_yields_array(
-    struct supernovae_ii *snii, struct interpolation_1d *interp,
-    const struct phys_const *phys_const, const struct stellar_model *sm,
+    struct supernovae_ii *snii, struct interpolation_1d *interp_raw,
+    struct interpolation_1d *interp_int, const struct stellar_model *sm,
     hid_t group_id, const char *hdf5_dataset_name, hsize_t *previous_count,
     int interpolation_size) {
 
@@ -191,13 +245,19 @@ void supernovae_ii_read_yields_array(
   /* Read the dataset */
   io_read_array_dataset(group_id, hdf5_dataset_name, FLOAT, data, count);
 
-  /* Initialize the interpolation */
-  interpolate_1d_init(interp, log10(snii->mass_min), log10(snii->mass_max),
+  /* Initialize the raw interpolation */
+  interpolate_1d_init(interp_raw, log10(snii->mass_min), log10(snii->mass_max),
                       interpolation_size, log_mass_min, step_size, count, data,
                       boundary_condition_zero);
 
-  /* Integrate the yields */
-  initial_mass_function_integrate(&sm->imf, interp);
+  initial_mass_function_integrate(&sm->imf, data, count, log_mass_min,
+                                  step_size);
+  // TODO: decrease count in order to keep the same distance between points
+
+  /* Initialize the integrated interpolation */
+  interpolate_1d_init(interp_int, log10(snii->mass_min), log10(snii->mass_max),
+                      interpolation_size, log_mass_min, step_size, count, data,
+                      boundary_condition_const);
 
   /* Cleanup the memory */
   free(data);
@@ -211,21 +271,24 @@ void supernovae_ii_read_yields_array(
  * @param snii The #supernovae_ii model.
  * @param params The simulation parameters.
  * @param sm The #stellar_model.
+ * @param restart Are we restarting the simulation? (Is params NULL?)
  */
 void supernovae_ii_read_yields(struct supernovae_ii *snii,
                                struct swift_params *params,
-                               const struct phys_const *phys_const,
-                               const struct stellar_model *sm) {
+                               const struct stellar_model *sm,
+                               const int restart) {
 
   hid_t file_id, group_id;
 
   hsize_t previous_count = 0;
 
-  const int interpolation_size = parser_get_opt_param_int(
-      params, "GEARSupernovaeII:interpolation_size", 200);
+  if (!restart) {
+    snii->interpolation_size = parser_get_opt_param_int(
+        params, "GEARSupernovaeII:interpolation_size", 200);
+  }
 
   /* Open IMF group */
-  h5_open_group(params, "Data/SNII", &file_id, &group_id);
+  h5_open_group(sm->yields_table, "Data/SNII", &file_id, &group_id);
 
   /* Do all the elements */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -234,20 +297,22 @@ void supernovae_ii_read_yields(struct supernovae_ii *snii,
     const char *name = stellar_evolution_get_element_name(sm, i);
 
     /* Read the array */
-    supernovae_ii_read_yields_array(snii, &snii->integrated_yields[i],
-                                    phys_const, sm, group_id, name,
-                                    &previous_count, interpolation_size);
+    supernovae_ii_read_yields_array(
+        snii, &snii->raw.yields[i], &snii->integrated.yields[i], sm, group_id,
+        name, &previous_count, snii->interpolation_size);
   }
 
   /* Read the mass ejected */
-  supernovae_ii_read_yields_array(
-      snii, &snii->integrated_ejected_mass_processed, phys_const, sm, group_id,
-      "Ej", &previous_count, interpolation_size);
+  supernovae_ii_read_yields_array(snii, &snii->raw.ejected_mass_processed,
+                                  &snii->integrated.ejected_mass_processed, sm,
+                                  group_id, "Ej", &previous_count,
+                                  snii->interpolation_size);
 
   /* Read the mass ejected of non processed gas */
-  supernovae_ii_read_yields_array(snii, &snii->integrated_ejected_mass,
-                                  phys_const, sm, group_id, "Ejnp",
-                                  &previous_count, interpolation_size);
+  supernovae_ii_read_yields_array(snii, &snii->raw.ejected_mass_non_processed,
+                                  &snii->integrated.ejected_mass_non_processed,
+                                  sm, group_id, "Ejnp", &previous_count,
+                                  snii->interpolation_size);
 
   /* Cleanup everything */
   h5_close_group(file_id, group_id);
@@ -283,7 +348,9 @@ void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  h5_open_group(params, "Data/SNII", &file_id, &group_id);
+  char filename[FILENAME_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+  h5_open_group(filename, "Data/SNII", &file_id, &group_id);
 
   /* Read the minimal mass of a supernovae */
   io_read_attribute(group_id, "Mmin", FLOAT, &snii->mass_min);
@@ -299,25 +366,20 @@ void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
  * @brief Initialize the #supernovae_ii structure.
  *
  * @param snii The #supernovae_ii model.
- * @param phys_const The #phys_const.
- * @param us The #unit_system.
  * @param params The simulation parameters.
  * @param sm The #stellar_model.
  */
-void supernovae_ii_init(struct supernovae_ii *snii,
-                        const struct phys_const *phys_const,
-                        const struct unit_system *us,
-                        struct swift_params *params,
+void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
                         const struct stellar_model *sm) {
 
   /* Read the parameters from the tables */
   supernovae_ii_read_from_tables(snii, params);
 
   /* Read the parameters from the params file */
-  supernovae_ii_read_from_tables(snii, params);
+  supernovae_ii_read_from_params(snii, params);
 
-  /* Read the supernovae yields (and apply the units) */
-  supernovae_ii_read_yields(snii, params, phys_const, sm);
+  /* Read the supernovae yields */
+  supernovae_ii_read_yields(snii, params, sm, /* restart */ 0);
 
   /* Get the IMF parameters */
   snii->exponent = initial_mass_function_get_exponent(&sm->imf, snii->mass_min,
@@ -335,36 +397,10 @@ void supernovae_ii_init(struct supernovae_ii *snii,
  *
  * @param snii the struct
  * @param stream the file stream
+ * @param sm The #stellar_model.
  */
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
-                        const struct stellar_model *sm) {
-
-  /* Dump the yields. */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    if (snii->integrated_yields[i].data == NULL) {
-      continue;
-    }
-
-    const char *name = stellar_evolution_get_element_name(sm, i);
-    restart_write_blocks((void *)snii->integrated_yields[i].data, sizeof(float),
-                         snii->integrated_yields[i].N, stream, name, name);
-  }
-
-  /*! Dump the processed mass. */
-  if (snii->integrated_ejected_mass_processed.data != NULL) {
-    restart_write_blocks((void *)snii->integrated_ejected_mass_processed.data,
-                         sizeof(float),
-                         snii->integrated_ejected_mass_processed.N, stream,
-                         "processed_mass", "processed_mass");
-  }
-
-  /*! Dump the non processed mass. */
-  if (snii->integrated_ejected_mass.data != NULL) {
-    restart_write_blocks((void *)snii->integrated_ejected_mass.data,
-                         sizeof(float), snii->integrated_ejected_mass.N, stream,
-                         "non_processed_mass", "non_processed_mass");
-  }
-}
+                        const struct stellar_model *sm) {}
 
 /**
  * @brief Restore a supernovae_ii struct from the given FILE as a stream of
@@ -375,45 +411,20 @@ void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
  *
  * @param snii the struct
  * @param stream the file stream
+ * @param sm The #stellar_model.
  */
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
                            const struct stellar_model *sm) {
 
-  /* Restore the yields */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    if (snii->integrated_yields[i].data == NULL) {
-      continue;
-    }
+  /* Read the supernovae yields (and apply the units) */
+  supernovae_ii_read_yields(snii, NULL, sm, /* restart */ 1);
 
-    const char *name = stellar_evolution_get_element_name(sm, i);
-    snii->integrated_yields[i].data =
-        (float *)malloc(sizeof(float) * snii->integrated_yields[i].N);
-
-    restart_read_blocks((void *)snii->integrated_yields[i].data, sizeof(float),
-                        snii->integrated_yields[i].N, stream, NULL, name);
-  }
-
-  /* Restore the processed mass */
-
-  if (snii->integrated_ejected_mass_processed.data != NULL) {
-    snii->integrated_ejected_mass_processed.data = (float *)malloc(
-        sizeof(float) * snii->integrated_ejected_mass_processed.N);
-
-    restart_read_blocks((void *)snii->integrated_ejected_mass_processed.data,
-                        sizeof(float),
-                        snii->integrated_ejected_mass_processed.N, stream, NULL,
-                        "processed_mass");
-  }
-
-  /* Restore the non processed mass */
-  if (snii->integrated_ejected_mass.data != NULL) {
-    snii->integrated_ejected_mass.data =
-        (float *)malloc(sizeof(float) * snii->integrated_ejected_mass.N);
-
-    restart_read_blocks((void *)snii->integrated_ejected_mass.data,
-                        sizeof(float), snii->integrated_ejected_mass.N, stream,
-                        NULL, "non_processed_mass");
-  }
+  /* Get the IMF parameters */
+  snii->exponent = initial_mass_function_get_exponent(&sm->imf, snii->mass_min,
+                                                      snii->mass_max);
+  snii->coef_exp = initial_mass_function_get_coefficient(
+      &sm->imf, snii->mass_min, snii->mass_max);
+  snii->coef_exp /= snii->exponent;
 }
 
 /**
@@ -424,9 +435,12 @@ void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
 void supernovae_ii_clean(struct supernovae_ii *snii) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    interpolate_1d_free(&snii->integrated_yields[i]);
+    interpolate_1d_free(&snii->integrated.yields[i]);
+    interpolate_1d_free(&snii->raw.yields[i]);
   }
 
-  interpolate_1d_free(&snii->integrated_ejected_mass_processed);
-  interpolate_1d_free(&snii->integrated_ejected_mass);
+  interpolate_1d_free(&snii->integrated.ejected_mass_processed);
+  interpolate_1d_free(&snii->raw.ejected_mass_processed);
+  interpolate_1d_free(&snii->integrated.ejected_mass_non_processed);
+  interpolate_1d_free(&snii->raw.ejected_mass_non_processed);
 }

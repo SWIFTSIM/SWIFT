@@ -63,8 +63,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
 /**
  * @brief Initialize the global properties of the feedback scheme.
  *
- * By default, takes the values provided by the hydro.
- *
  * @param fp The #feedback_props.
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.

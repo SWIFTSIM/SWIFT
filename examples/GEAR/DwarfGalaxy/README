@@ -1,7 +1,0 @@
-This example is a galaxy extracted from the example "ZoomIn". It allows
-to test SWIFT on a smaller problem. See the README in "ZoomIn" for more
-information.
-
-
-MD5 check-sum of the ICS: 
-ae2af84d88f30011b6a8af3f37d140cf  dwarf_galaxy.hdf5

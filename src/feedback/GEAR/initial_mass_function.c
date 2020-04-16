@@ -75,19 +75,23 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
  * The x are supposed to be linear in log.
  *
  * @param imf The #initial_mass_function.
- * @param interp The #interpolation_1d.
+ * @param data The data to integrate.
+ * @param count The number of element in data.
+ * @param log_mass_min The value of the first element.
+ * @param step_size The distance between two points.
  */
 void initial_mass_function_integrate(const struct initial_mass_function *imf,
-                                     struct interpolation_1d *interp) {
+                                     float *data, size_t count,
+                                     float log_mass_min, float step_size) {
 
   /* Index in the data */
-  int j = 1;
-  const float mass_min = pow(10, interp->xmin);
-  const float mass_max = pow(10, interp->xmin + (interp->N - 1) * interp->dx);
+  size_t j = 1;
+  const float mass_min = exp10(log_mass_min);
+  const float mass_max = exp10(log_mass_min + (count - 1) * step_size);
 
   float m = mass_min;
 
-  float *tmp = (float *)malloc(sizeof(float) * interp->N);
+  float *tmp = (float *)malloc(sizeof(float) * count);
 
   /* Set lower limit */
   tmp[0] = 0;
@@ -104,13 +108,14 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
     }
 
     /* Integrate the data */
-    while (m < imf->mass_limits[i + 1] && j < interp->N) {
+    while ((m < imf->mass_limits[i + 1] || i == imf->n_parts - 1) &&
+           j < count) {
 
       /* Compute the masses */
-      const float log_m1 = interp->xmin + (j - 1) * interp->dx;
-      const float m1 = pow(10, log_m1);
-      const float log_m2 = interp->xmin + j * interp->dx;
-      const float m2 = pow(10, log_m2);
+      const float log_m1 = log_mass_min + (j - 1) * step_size;
+      const float m1 = exp10(log_m1);
+      const float log_m2 = log_mass_min + j * step_size;
+      const float m2 = exp10(log_m2);
       const float dm = m2 - m1;
       const float imf_1 = imf->coef[i] * pow(m1, imf->exp[i]);
 
@@ -123,9 +128,7 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
       }
 
       /* Compute the integral */
-      tmp[j] =
-          tmp[j - 1] +
-          0.5 * (imf_1 * interp->data[j - 1] + imf_2 * interp->data[j]) * dm;
+      tmp[j] = tmp[j - 1] + 0.5 * (imf_1 * data[j - 1] + imf_2 * data[j]) * dm;
 
       /* Update j and m */
       j += 1;
@@ -134,15 +137,12 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
   }
 
   /* The rest is extrapolated with 0 */
-  for (int k = j; k < interp->N; k++) {
+  for (size_t k = j; k < count; k++) {
     tmp[k] = tmp[k - 1];
   }
 
   /* Copy temporary array */
-  memcpy(interp->data, tmp, interp->N * sizeof(float));
-
-  /* Update the boundary conditions */
-  interp->boundary_condition = boundary_condition_zero_const;
+  memcpy(data, tmp, count * sizeof(float));
 
   /* clean everything */
   free(tmp);
@@ -192,6 +192,13 @@ float initial_mass_function_get_coefficient(
  */
 float initial_mass_function_get_integral_xi(
     const struct initial_mass_function *imf, float m1, float m2) {
+
+  /* Ensure the masses to be withing the limits */
+  m1 = min(m1, imf->mass_max);
+  m1 = max(m1, imf->mass_min);
+
+  m2 = min(m2, imf->mass_max);
+  m2 = max(m2, imf->mass_min);
 
   int k = -1;
   /* Find the correct part */
@@ -259,16 +266,14 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
  * @return The integral of the mass fraction.
  */
 float initial_mass_function_get_integral_imf(
-    const struct initial_mass_function *imf, const float m1, const float m2) {
+    const struct initial_mass_function *imf, float m1, float m2) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (m1 > imf->mass_max || m1 < imf->mass_min)
-    error("Mass 1 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m1, imf->mass_max);
-  if (m2 > imf->mass_max || m2 < imf->mass_min)
-    error("Mass 2 below or above limits expecting %g < %g < %g.", imf->mass_min,
-          m2, imf->mass_max);
-#endif
+  /* Ensure the masses to be withing the limits */
+  m1 = min(m1, imf->mass_max);
+  m1 = max(m1, imf->mass_min);
+
+  m2 = min(m2, imf->mass_max);
+  m2 = max(m2, imf->mass_min);
 
   for (int i = 0; i < imf->n_parts; i++) {
     if (m1 <= imf->mass_limits[i + 1]) {
@@ -335,7 +340,9 @@ void initial_mass_function_read_from_table(struct initial_mass_function *imf,
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  h5_open_group(params, "Data/IMF", &file_id, &group_id);
+  char filename[FILENAME_BUFFER_SIZE];
+  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
+  h5_open_group(filename, "Data/IMF", &file_id, &group_id);
 
   /* Read number of parts */
   io_read_attribute(group_id, "n", INT, &imf->n_parts);

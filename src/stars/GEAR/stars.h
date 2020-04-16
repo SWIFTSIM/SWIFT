@@ -59,6 +59,9 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
  *
  * @param sp The particle to act upon.
  * @param stars_properties Properties of the stars model.
+ * @param with_cosmology Are we running a cosmological simulation?
+ * @param scale_factor The current scale factor.
+ * @param time The current time.
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     struct spart* sp, const struct stars_props* stars_properties,

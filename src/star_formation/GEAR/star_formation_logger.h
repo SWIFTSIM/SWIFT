@@ -34,7 +34,6 @@
  * @brief Update the stellar quantities in the current cell after creating
  * the new star particle spart sp.
  *
- * @param time_step, the current time step of the simulation
  * @param sp new created star particle
  * @param sf the star_formation_history struct of the current cell
  */
