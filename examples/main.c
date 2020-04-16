@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
   struct unit_system us;
+  struct los_props los_properties;
 
   int nr_nodes = 1, myrank = 0;
 
@@ -1063,6 +1064,9 @@ int main(int argc, char *argv[]) {
                with_hydro, with_self_gravity, with_star_formation,
                with_DM_background_particles, talking, dry_run, nr_nodes);
 
+    /* Initialise the line of sight properties. */
+    los_init(s.dim, &los_properties, params);
+
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -1196,7 +1200,7 @@ int main(int argc, char *argv[]) {
         &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
         &entropy_floor, &gravity_properties, &stars_properties,
         &black_holes_properties, &feedback_properties, &mesh, &potential,
-        &cooling_func, &starform, &chemistry, &fof_properties);
+        &cooling_func, &starform, &chemistry, &fof_properties, &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, with_aff, talking, restart_file);
 

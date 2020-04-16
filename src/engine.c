@@ -2805,8 +2805,12 @@ void engine_check_for_dumps(struct engine *e) {
   }
 
   /* Do we want to write a line of sight file? */
-  ti_output = e->ti_current;
-  type = output_los;
+  if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
+    if (e->ti_next_los < ti_output) {
+      ti_output = e->ti_next_los;
+      type = output_los;
+    }
+  }
 
   /* Store information before attempting extra dump-related drifts */
   const integertime_t ti_current = e->ti_current;
@@ -2897,6 +2901,8 @@ void engine_check_for_dumps(struct engine *e) {
       case output_los:
         do_line_of_sight(e);
 
+        engine_compute_next_los_time(e);
+
         break;
 
       default:
@@ -2932,6 +2938,14 @@ void engine_check_for_dumps(struct engine *e) {
           ti_output = e->ti_next_stf;
           type = output_stf;
         }
+      }
+    }
+
+    /* Do line of sight ? */
+    if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
+      if (e->ti_next_los < ti_output) {
+        ti_output = e->ti_next_los;
+        type = output_los;
       }
     }
 
@@ -3835,7 +3849,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry,
-                 struct fof_props *fof_properties) {
+                 struct fof_props *fof_properties, struct los_props *los_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -3884,6 +3898,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
   e->stf_output_count = 0;
+  e->los_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
@@ -3916,6 +3931,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->fof_properties = fof_properties;
   e->parameter_file = params;
   e->stf_this_timestep = 0;
+  e->los_properties = los_properties;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
   e->systime_last_step = 0.0;
@@ -4472,6 +4488,9 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Find the time of the first statistics output */
     engine_compute_next_statistics_time(e);
 
+    /* Find the time of the first line of sight output */
+    engine_compute_next_los_time(e);
+
     /* Find the time of the first stf output */
     if (e->policy & engine_policy_structure_finding) {
       engine_compute_next_stf_time(e);
@@ -4885,6 +4904,77 @@ void engine_compute_next_statistics_time(struct engine *e) {
 }
 
 /**
+ * @brief Computes the next time (on the time line) for a line of sight dump
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_los_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_los) {
+    output_list_read_next_time(e->output_list_los, e, "line of sights",
+                               &e->ti_next_los);
+    return;
+  }
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_los;
+  else
+    time_end = e->time_end + e->delta_time_los;
+
+  /* Find next los above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_los;
+  else
+    time = e->time_first_los;
+
+  int found_los_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_los = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_los = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_los > e->ti_current) {
+      found_los_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_los;
+    else
+      time += e->delta_time_los;
+  }
+
+  /* Deal with last line of sight */
+  if (!found_los_time) {
+    e->ti_next_los = -1;
+    if (e->verbose) message("No further LOS output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const double next_los_time =
+          exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time for line of sight set to a=%e.",
+                next_los_time);
+    } else {
+      const double next_los_time =
+          e->ti_next_los * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time for line of sight set to t=%e.",
+                next_los_time);
+    }
+  }
+}
+
+/**
  * @brief Computes the next time (on the time line) for structure finding
  *
  * @param e The #engine.
@@ -5056,6 +5146,19 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
       e->a_first_stf_output = stf_time_first;
     else
       e->time_first_stf_output = stf_time_first;
+  }
+
+  /* Deal with line of sight */
+  double los_time_first;
+  e->output_list_los = NULL;
+  output_list_init(&e->output_list_los, e, "LineOfSight",
+                   &e->delta_time_los, &los_time_first);
+
+  if (e->output_list_los) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_los = stf_time_first;
+    else
+      e->time_first_los = stf_time_first;
   }
 }
 

@@ -14,6 +14,36 @@
 #include "line_of_sight.h"
 #include "periodic.h"
 
+void los_init(double dim[3], struct los_props *los_params,
+        struct swift_params *params) {
+  /* How many line of sights in each plane. */
+  los_params->num_along_xy =
+      parser_get_opt_param_int(params, "LineOfSight:num_along_xy", 0);
+  los_params->num_along_yz =
+      parser_get_opt_param_int(params, "LineOfSight:num_along_yz", 0);
+  los_params->num_along_xz =
+      parser_get_opt_param_int(params, "LineOfSight:num_along_xz", 0);
+
+  /* Min/max range across x,y and z where random LOS's are allowed. */
+  los_params->xmin =
+            parser_get_opt_param_double(params, "LineOfSight:xmin", 0.);
+  los_params->xmax =
+            parser_get_opt_param_double(params, "LineOfSight:xmax", dim[0]);
+  los_params->ymin =
+            parser_get_opt_param_double(params, "LineOfSight:ymin", 0.);
+  los_params->ymax =
+            parser_get_opt_param_double(params, "LineOfSight:ymax", dim[1]);
+  los_params->zmin =
+            parser_get_opt_param_double(params, "LineOfSight:zmin", 0.);
+  los_params->zmax =
+            parser_get_opt_param_double(params, "LineOfSight:zmax", dim[2]);
+
+  /* Compute total number of sightlines. */
+  los_params->num_tot = los_params->num_along_xy +
+                        los_params->num_along_yz +
+                        los_params->num_along_xz;
+} 
+
 /**
  * @brief Generates random sightline positions.
  *
@@ -23,7 +53,7 @@
  * @param params Sightline parameters.
  */
 void generate_line_of_sights(struct line_of_sight *Los,
-                             struct line_of_sight_params *params) {
+                             struct los_props *params) {
 
   /* Keep track of number of sightlines. */
   int count = 0;
@@ -84,7 +114,7 @@ void generate_line_of_sights(struct line_of_sight *Los,
  * @param params Sightline parameters.
  */
 void print_los_info(struct line_of_sight *Los,
-                    struct line_of_sight_params *params) {
+                    struct los_props *params) {
 
   printf("\nPrinting LOS information...\n");
   for (int i = 0; i < params->num_tot; i++) {
@@ -100,26 +130,14 @@ void do_line_of_sight(struct engine *e) {
 
   const struct space *s = e->s;
   const size_t nr_parts = s->nr_parts;
-
-  /* LOS params, dummy until included in parameter file. */
-  struct line_of_sight_params LOS_params = {.num_along_xy = 1,
-                                            .num_along_yz = 1,
-                                            .num_along_xz = 1,
-                                            .xmin = 0,
-                                            .xmax = 10,
-                                            .ymin = 0,
-                                            .ymax = 10,
-                                            .zmin = 0,
-                                            .zmax = 10};
-  LOS_params.num_tot = LOS_params.num_along_xy + LOS_params.num_along_yz +
-                       LOS_params.num_along_xz;
+  struct los_props *LOS_params = e->los_properties;
 
   /* Start by generating the random sightline positions. */
   struct line_of_sight *LOS_list = (struct line_of_sight *)malloc(
-      LOS_params.num_tot * sizeof(struct line_of_sight));
-  if (e->nodeID == 0) generate_line_of_sights(LOS_list, &LOS_params);
+      LOS_params->num_tot * sizeof(struct line_of_sight));
+  if (e->nodeID == 0) generate_line_of_sights(LOS_list, LOS_params);
 #ifdef WITH_MPI
-  MPI_Bcast(LOS_list, LOS_params.num_tot * sizeof(struct line_of_sight),
+  MPI_Bcast(LOS_list, LOS_params->num_tot * sizeof(struct line_of_sight),
             MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
@@ -129,7 +147,7 @@ void do_line_of_sight(struct engine *e) {
 
   if (e->nodeID == 0) {
     char filename[200];
-    sprintf(filename, "los_%04i.csv", engine_current_step);
+    sprintf(filename, "los_%04i.csv", e->los_output_count);
     f = fopen(filename, "w");
     if (f == NULL) error("Error opening los file.");
 
@@ -138,7 +156,7 @@ void do_line_of_sight(struct engine *e) {
   }
 
   /* Loop over each random LOS. */
-  for (int j = 0; j < LOS_params.num_tot; j++) {
+  for (int j = 0; j < LOS_params->num_tot; j++) {
 
     /* Loop over each gas particle to find those in LOS. */
     for (size_t i = 0; i < nr_parts; i++) {
@@ -277,9 +295,12 @@ void do_line_of_sight(struct engine *e) {
   if (e->nodeID == 0) fclose(f);
 
   //#ifdef SWIFT_DEBUG_CHECKS
-  if (e->nodeID == 0) print_los_info(LOS_list, &LOS_params);
+  if (e->nodeID == 0) print_los_info(LOS_list, LOS_params);
   //#endif
-  
+ 
+  /* Up the count. */
+  e->los_output_count++;
+
   message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
