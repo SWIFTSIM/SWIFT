@@ -39,6 +39,8 @@ TimeIntegration:
   
 # Parameters governing the snapshots
 Snapshots:
+  subdir:              sn
+  distributed:         1
   basename:            eagle # Common part of the name of output files
   scale_factor_first:  0.91  # Scale-factor of the first snaphot (cosmological run)
   time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)

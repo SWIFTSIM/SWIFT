@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 
 /* This object's header. */
@@ -280,17 +281,44 @@ void write_output_distributed(struct engine* e, const char* baseName,
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
-  /* File name */
-  char fileName[FILENAME_BUFFER_SIZE];
+  int snap_count = -1;
   if (e->snapshot_int_time_label_on)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.%d.hdf5", baseName,
-             (int)round(e->time), mpi_rank);
-  else if (e->snapshot_invoke_stf) {
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.%d.hdf5", baseName,
-             e->stf_output_count, mpi_rank);
-  } else
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.%d.hdf5", baseName,
-             e->snapshot_output_count, mpi_rank);
+    snap_count = (int)round(e->time);
+  else if (e->snapshot_invoke_stf)
+    snap_count = e->stf_output_count;
+  else
+    snap_count = e->snapshot_output_count;
+
+  int number_digits = -1;
+  if (e->snapshot_int_time_label_on)
+    number_digits = 6;
+  else
+    number_digits = 4;
+
+  /* Directory and file name */
+  char dirName[1024];
+  char fileName[1024];
+
+  if (strnlen(e->snapshot_subdir, PARSER_MAX_LINE_SIZE) > 0) {
+    sprintf(dirName, "%s/%s_%0*d", e->snapshot_subdir, e->snapshot_base_name,
+            number_digits, snap_count);
+
+    sprintf(fileName, "%s/%s_%0*d/%s_%0*d.%d.hdf5", e->snapshot_subdir,
+            e->snapshot_base_name, number_digits, snap_count,
+            e->snapshot_base_name, number_digits, snap_count, mpi_rank);
+
+  } else {
+    sprintf(dirName, "%s_%0*d", e->snapshot_base_name, number_digits,
+            snap_count);
+
+    sprintf(fileName, "%s_%0*d/%s_%0*d.%d.hdf5", e->snapshot_base_name,
+            number_digits, snap_count, e->snapshot_base_name, number_digits,
+            snap_count, mpi_rank);
+  }
+
+  /* Create the directory */
+  if (mpi_rank == 0) mkdir(dirName, 0777);
+  MPI_Barrier(MPI_COMM_WORLD);
 
   /* Compute offset in the file and total number of particles */
   const long long N[swift_type_count] = {Ngas_written,   Ndm_written,
