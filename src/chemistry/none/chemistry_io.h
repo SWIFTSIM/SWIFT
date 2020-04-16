@@ -96,7 +96,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
  * @param h_grp The HDF5 group in which to write
  * @param h_grp_columns The HDF5 group containing named columns
  * @param e The #engine.
-0 */
+ */
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
                                            const struct engine* e) {
 
