@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 params = {
     "axes.labelsize": 14,
     "axes.titlesize": 18,
-    "font.size": 12,
+    "font.size": 11,
     "legend.fontsize": 12,
     "xtick.labelsize": 14,
     "ytick.labelsize": 14,
     "text.usetex": True,
-    "figure.figsize": (12, 10),
+    "figure.figsize": (12, 9),
     "figure.subplot.left": 0.06,
     "figure.subplot.right": 0.99,
     "figure.subplot.bottom": 0.06,
@@ -22,8 +22,7 @@ params = {
     "figure.subplot.wspace": 0.14,
     "figure.subplot.hspace": 0.14,
     "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
+    "lines.linewidth": 3.0
 }
 plt.rcParams.update(params)
 plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
@@ -78,6 +77,12 @@ print("Number of particles tested:", np.size(exact_ids))
 
 # Start the plot
 plt.figure()
+
+ax1 = plt.subplot(231)
+ax2 = plt.subplot(232)
+ax3 = plt.subplot(233)
+ax4 = plt.subplot(234)
+ax5 = plt.subplot(235)
 
 count = 0
 
@@ -208,42 +213,41 @@ if len(gadget2_file_list) != 0:
     print("Z   : median= %f 99%%= %f max= %f" % (median_z, per99_z, max_z))
     print("")
 
-    plt.subplot(231)
-    plt.text(
+    ax4.text(
         min_error * 1.5,
         1.55,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (norm_median, norm_per99),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (norm_median, norm_per99),
         ha="left",
         va="top",
         alpha=0.8,
     )
-    plt.semilogx(bins, norm_error_hist, "k--", label="Gadget-2", alpha=0.8)
-    plt.subplot(232)
-    plt.semilogx(bins, error_x_hist, "k--", label="Gadget-2", alpha=0.8)
-    plt.text(
+    ax4.semilogx(bins, norm_error_hist, "k--", label="Gadget-2", alpha=0.8)
+
+    ax1.semilogx(bins, error_x_hist, "k--", label="Gadget-2", alpha=0.8)
+    ax1.text(
         min_error * 1.5,
         1.55,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (median_x, per99_x),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (median_x, per99_x),
         ha="left",
         va="top",
         alpha=0.8,
     )
-    plt.subplot(233)
-    plt.semilogx(bins, error_y_hist, "k--", label="Gadget-2", alpha=0.8)
-    plt.text(
+
+    ax2.semilogx(bins, error_y_hist, "k--", label="Gadget-2", alpha=0.8)
+    ax2.text(
         min_error * 1.5,
         1.55,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (median_y, per99_y),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (median_y, per99_y),
         ha="left",
         va="top",
         alpha=0.8,
     )
-    plt.subplot(234)
-    plt.semilogx(bins, error_z_hist, "k--", label="Gadget-2", alpha=0.8)
-    plt.text(
+
+    ax3.semilogx(bins, error_z_hist, "k--", label="Gadget-2", alpha=0.8)
+    ax3.text(
         min_error * 1.5,
         1.55,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (median_z, per99_z),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (median_z, per99_z),
         ha="left",
         va="top",
         alpha=0.8,
@@ -358,62 +362,57 @@ for i in range(num_order):
     print("Pot : median= %f 99%%= %f max= %f" % (median_pot, per99_pot, max_pot))
     print("")
 
-    plt.subplot(231)
-    plt.semilogx(
+    ax1.semilogx(
         bins, error_x_hist, color=cols[i], label="SWIFT m-poles order %d" % order[i]
     )
-    plt.text(
+    ax1.text(
         min_error * 1.5,
         1.5 - count / 10.0,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (median_x, per99_x),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (median_x, per99_x),
         ha="left",
         va="top",
         color=cols[i],
     )
-    plt.subplot(232)
-    plt.semilogx(
+    ax2.semilogx(
         bins, error_y_hist, color=cols[i], label="SWIFT m-poles order %d" % order[i]
     )
-    plt.text(
+    ax2.text(
         min_error * 1.5,
         1.5 - count / 10.0,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (median_y, per99_y),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (median_y, per99_y),
         ha="left",
         va="top",
         color=cols[i],
     )
-    plt.subplot(233)
-    plt.semilogx(
+    ax3.semilogx(
         bins, error_z_hist, color=cols[i], label="SWIFT m-poles order %d" % order[i]
     )
-    plt.text(
+    ax3.text(
         min_error * 1.5,
         1.5 - count / 10.0,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (median_z, per99_z),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (median_z, per99_z),
         ha="left",
         va="top",
         color=cols[i],
     )
-    plt.subplot(234)
-    plt.semilogx(
+    ax4.semilogx(
         bins, norm_error_hist, color=cols[i], label="SWIFT m-poles order %d" % order[i]
     )
-    plt.text(
+    ax4.text(
         min_error * 1.5,
         1.5 - count / 10.0,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (norm_median, norm_per99),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (norm_median, norm_per99),
         ha="left",
         va="top",
         color=cols[i],
     )
-    plt.subplot(235)
-    plt.semilogx(
+    ax5.semilogx(
         bins, error_pot_hist, color=cols[i], label="SWIFT m-poles order %d" % order[i]
     )
-    plt.text(
+    ax5.text(
         min_error * 1.5,
         1.5 - count / 10.0,
-        "$50\\%%\\rightarrow%.4f~~ 99\\%%\\rightarrow%.4f$" % (median_pot, per99_pot),
+        "$50\\%%\\rightarrow%.5f~~ 99\\%%\\rightarrow%.5f$" % (median_pot, per99_pot),
         ha="left",
         va="top",
         color=cols[i],
@@ -421,34 +420,34 @@ for i in range(num_order):
 
     count += 1
 
-plt.subplot(231)
-plt.xlabel("$\delta a_x/|\overrightarrow{a}_{exact}|$")
+
+ax1.set_xlabel("$\delta a_x/|\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
-plt.xlim(min_error, max_error)
-plt.ylim(0, 1.75)
+ax1.set_xlim(min_error, max_error)
+ax1.set_ylim(0, 1.75)
 # plt.legend(loc="center left")
-plt.subplot(232)
-plt.xlabel("$\delta a_y/|\overrightarrow{a}_{exact}|$")
+
+ax2.set_xlabel("$\delta a_y/|\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
-plt.xlim(min_error, max_error)
-plt.ylim(0, 1.75)
+ax2.set_xlim(min_error, max_error)
+ax2.set_ylim(0, 1.75)
 # plt.legend(loc="center left")
-plt.subplot(233)
-plt.xlabel("$\delta a_z/|\overrightarrow{a}_{exact}|$")
+
+ax3.set_xlabel("$\delta a_z/|\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
-plt.xlim(min_error, max_error)
-plt.ylim(0, 1.75)
-plt.subplot(234)
-plt.xlabel("$|\delta \overrightarrow{a}|/|\overrightarrow{a}_{exact}|$")
+ax3.set_xlim(min_error, max_error)
+ax3.set_ylim(0, 1.75)
+
+ax4.set_xlabel("$|\delta \overrightarrow{a}|/|\overrightarrow{a}_{exact}|$")
 # plt.ylabel("Density")
-plt.xlim(min_error, max_error)
-plt.ylim(0, 2.5)
-plt.legend(loc="upper left")
-plt.subplot(235)
-plt.xlabel("$\delta \phi/\phi_{exact}$")
+ax4.set_xlim(min_error, max_error)
+ax4.set_ylim(0, 2.5)
+ax4.legend(loc="upper left", fontsize=8)
+
+ax5.set_xlabel("$\delta \phi/\phi_{exact}$")
 # plt.ylabel("Density")
-plt.xlim(min_error, max_error)
-plt.ylim(0, 1.75)
+ax5.set_xlim(min_error, max_error)
+ax5.set_ylim(0, 1.75)
 # plt.legend(loc="center left")
 
 

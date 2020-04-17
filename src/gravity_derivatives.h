@@ -149,7 +149,7 @@ struct potential_derivatives_M2P {
  *
  * @param pot The derivatives of the potential.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline, nonnull)) INLINE static void
 potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -213,7 +213,7 @@ potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
  * @param r_s_inv Inverse of the long-range gravity mesh smoothing length.
  * @param pot (return) The structure containing all the derivatives.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline, nonnull)) INLINE static void
 potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
@@ -443,7 +443,7 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
  * @param r_s_inv The inverse of the gravity mesh-smoothing scale.
  * @param pot (return) The structure containing all the derivatives.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline, nonnull)) INLINE static void
 potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
