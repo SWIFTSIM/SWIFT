@@ -776,7 +776,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       else if (gpi->type == swift_type_stars)
         id = sparts[-gpi->id_or_neg_offset].id;
       else if (gpi->type == swift_type_black_hole)
-	id = bparts[-gpi->id_or_neg_offset].id;
+        id = bparts[-gpi->id_or_neg_offset].id;
       else
         id = gpi->id_or_neg_offset;
 
