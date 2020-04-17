@@ -47,6 +47,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     float r2, const float* dx, float hi, float hj, struct part* pi,
     struct part* pj, float a, float H) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked(pj)) error("Acting on unlocked particle!");
+#endif
+
   float wi, wj, wi_dx, wj_dx;
   float dv[3], curlvr[3];
 
@@ -123,6 +128,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float r2, const float* dx, float hi, float hj, struct part* pi,
     const struct part* pj, float a, float H) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+#endif
+
   float wi, wi_dx;
   float dv[3], curlvr[3];
 
@@ -182,6 +191,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     float r2, const float* dx, float hi, float hj, struct part* restrict pi,
     struct part* restrict pj, float a, float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked(pj)) error("Acting on unlocked particle!");
+#endif
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
@@ -254,7 +268,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
+    const struct part* restrict pj, float a, float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+#endif
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
@@ -317,6 +335,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     float r2, const float* dx, float hi, float hj, struct part* pi,
     struct part* pj, float a, float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked(pj)) error("Acting on unlocked particle!");
+#endif
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -456,6 +479,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float r2, const float* dx, float hi, float hj, struct part* pi,
     const struct part* pj, float a, float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+#endif
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);

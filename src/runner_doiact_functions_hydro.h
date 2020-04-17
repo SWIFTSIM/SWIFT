@@ -678,6 +678,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pi);
+
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -687,6 +690,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pi);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -738,6 +744,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
+          /* Lock the particle for update */
+          swift_particle_lock_lock(pi);
+
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -747,6 +756,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+          /* Unlock the particle now that we are done */
+          swift_particle_lock_unlock(pi);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -884,6 +896,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
 
+        /* Lock the particle for update */
+        swift_particle_lock_lock(pi);
+
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -893,6 +908,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+
+        /* Unlock the particle now that we are done */
+        swift_particle_lock_unlock(pi);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
