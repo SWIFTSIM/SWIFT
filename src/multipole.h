@@ -28,6 +28,7 @@
 #include <string.h>
 
 /* Includes. */
+#include "accumulate.h"
 #include "align.h"
 #include "const.h"
 #include "error.h"
@@ -37,186 +38,10 @@
 #include "gravity_softened_derivatives.h"
 #include "inline.h"
 #include "kernel_gravity.h"
+#include "multipole_struct.h"
 #include "part.h"
 #include "periodic.h"
 #include "vector_power.h"
-
-#define multipole_align 128
-
-struct grav_tensor {
-
-  /* 0th order terms */
-  float F_000;
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-
-  /* 1st order terms */
-  float F_100, F_010, F_001;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-
-  /* 2nd order terms */
-  float F_200, F_020, F_002;
-  float F_110, F_101, F_011;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-
-  /* 3rd order terms */
-  float F_300, F_030, F_003;
-  float F_210, F_201;
-  float F_120, F_021;
-  float F_102, F_012;
-  float F_111;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-
-  /* 4th order terms */
-  float F_400, F_040, F_004;
-  float F_310, F_301;
-  float F_130, F_031;
-  float F_103, F_013;
-  float F_220, F_202, F_022;
-  float F_211, F_121, F_112;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-
-  /* 5th order terms */
-  float F_005, F_014, F_023;
-  float F_032, F_041, F_050;
-  float F_104, F_113, F_122;
-  float F_131, F_140, F_203;
-  float F_212, F_221, F_230;
-  float F_302, F_311, F_320;
-  float F_401, F_410, F_500;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
-#error "Missing implementation for order >5"
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  /* Number of gparts interacted through the tree. */
-  long long num_interacted_tree;
-
-  /* Number of gparts interacted through the FFT mesh */
-  long long num_interacted_pm;
-#endif
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Total number of gpart this field tensor interacted with */
-  long long num_interacted;
-
-  /* Last time this tensor was zeroed */
-  integertime_t ti_init;
-
-#endif
-
-  /* Has this tensor received any contribution? */
-  char interacted;
-};
-
-struct multipole {
-
-  /*! Bulk velocity */
-  float vel[3];
-
-  /*! Maximal velocity along each axis of all #gpart */
-  float max_delta_vel[3];
-
-  /*! Minimal velocity along each axis of all #gpart */
-  float min_delta_vel[3];
-
-  /*! Maximal co-moving softening of all the #gpart in the mulipole */
-  float max_softening;
-
-  /* 0th order term */
-  float M_000;
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-
-  /* 1st order terms */
-  float M_100, M_010, M_001;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-
-  /* 2nd order terms */
-  float M_200, M_020, M_002;
-  float M_110, M_101, M_011;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-
-  /* 3rd order terms */
-  float M_300, M_030, M_003;
-  float M_210, M_201;
-  float M_120, M_021;
-  float M_102, M_012;
-  float M_111;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-
-  /* 4th order terms */
-  float M_400, M_040, M_004;
-  float M_310, M_301;
-  float M_130, M_031;
-  float M_103, M_013;
-  float M_220, M_202, M_022;
-  float M_211, M_121, M_112;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-
-  /* 5th order terms */
-  float M_005, M_014, M_023;
-  float M_032, M_041, M_050;
-  float M_104, M_113, M_122;
-  float M_131, M_140, M_203;
-  float M_212, M_221, M_230;
-  float M_302, M_311, M_320;
-  float M_401, M_410, M_500;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
-#error "Missing implementation for order >5"
-#endif
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-
-  /* Total number of gpart in this multipole */
-  long long num_gpart;
-
-#endif
-};
-
-/**
- * @brief The multipole expansion of a mass distribution.
- */
-struct gravity_tensors {
-
-  union {
-
-    /*! Linking pointer for "memory management". */
-    struct gravity_tensors *next;
-
-    /*! The actual content */
-    struct {
-
-      /*! Field tensor for the potential */
-      struct grav_tensor pot;
-
-      /*! Multipole mass */
-      struct multipole m_pole;
-
-      /*! Centre of mass of the matter dsitribution */
-      double CoM[3];
-
-      /*! Centre of mass of the matter dsitribution at the last rebuild */
-      double CoM_rebuild[3];
-
-      /*! Upper limit of the CoM<->gpart distance */
-      double r_max;
-
-      /*! Upper limit of the CoM<->gpart distance at the last rebuild */
-      double r_max_rebuild;
-    };
-  };
-} SWIFT_STRUCT_ALIGN;
 
 #ifdef WITH_MPI
 /* MPI datatypes for transfers */
@@ -231,7 +56,8 @@ void multipole_free_mpi_types(void);
  *
  * @param m The #multipole.
  */
-INLINE static void gravity_reset(struct gravity_tensors *m) {
+__attribute__((nonnull)) INLINE static void gravity_reset(
+    struct gravity_tensors *m) {
 
   /* Just bzero the struct. */
   bzero(m, sizeof(struct gravity_tensors));
@@ -246,7 +72,8 @@ INLINE static void gravity_reset(struct gravity_tensors *m) {
  * @param m The #multipole.
  * @param dt The drift time-step.
  */
-INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
+__attribute__((nonnull)) INLINE static void gravity_drift(
+    struct gravity_tensors *m, double dt) {
 
   /* Motion of the centre of mass */
   const double dx = m->m_pole.vel[0] * dt;
@@ -296,8 +123,8 @@ INLINE static void gravity_drift(struct gravity_tensors *m, double dt) {
  * @param l The field tensor.
  * @param ti_current The current (integer) time (for debugging only).
  */
-INLINE static void gravity_field_tensors_init(struct grav_tensor *l,
-                                              integertime_t ti_current) {
+__attribute__((nonnull)) INLINE static void gravity_field_tensors_init(
+    struct grav_tensor *l, integertime_t ti_current) {
 
   bzero(l, sizeof(struct grav_tensor));
 
@@ -312,7 +139,7 @@ INLINE static void gravity_field_tensors_init(struct grav_tensor *l,
  * @param la The gravity tensors to add to.
  * @param lb The gravity tensors to add.
  */
-INLINE static void gravity_field_tensors_add(
+__attribute__((nonnull)) INLINE static void gravity_field_tensors_add(
     struct grav_tensor *restrict la, const struct grav_tensor *restrict lb) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted == 0) error("Adding tensors that did not interact");
@@ -411,7 +238,8 @@ INLINE static void gravity_field_tensors_add(
  *
  * @param l The #grav_tensor to print.
  */
-INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
+__attribute__((nonnull)) INLINE static void gravity_field_tensors_print(
+    const struct grav_tensor *l) {
 
   printf("-------------------------\n");
   printf("Interacted: %d\n", l->interacted);
@@ -462,7 +290,8 @@ INLINE static void gravity_field_tensors_print(const struct grav_tensor *l) {
  *
  * @param m The multipole
  */
-INLINE static void gravity_multipole_init(struct multipole *m) {
+__attribute__((nonnull)) INLINE static void gravity_multipole_init(
+    struct multipole *m) {
 
   bzero(m, sizeof(struct multipole));
 }
@@ -474,7 +303,8 @@ INLINE static void gravity_multipole_init(struct multipole *m) {
  *
  * @param m The #multipole to print.
  */
-INLINE static void gravity_multipole_print(const struct multipole *m) {
+__attribute__((nonnull)) INLINE static void gravity_multipole_print(
+    const struct multipole *m) {
 
   printf("eps_max = %12.5e\n", m->max_softening);
   printf("Vel= [%12.5e %12.5e %12.5e]\n", m->vel[0], m->vel[1], m->vel[2]);
@@ -527,8 +357,8 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
  * @param ma The multipole to add to.
  * @param mb The multipole to add.
  */
-INLINE static void gravity_multipole_add(struct multipole *restrict ma,
-                                         const struct multipole *restrict mb) {
+__attribute__((nonnull)) INLINE static void gravity_multipole_add(
+    struct multipole *restrict ma, const struct multipole *restrict mb) {
 
   /* Maximum of both softenings */
   ma->max_softening = max(ma->max_softening, mb->max_softening);
@@ -623,9 +453,9 @@ INLINE static void gravity_multipole_add(struct multipole *restrict ma,
  * @param tolerance The maximal allowed relative difference for the fields.
  * @return 1 if the multipoles are equal, 0 otherwise
  */
-INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
-                                          const struct gravity_tensors *gb,
-                                          double tolerance) {
+__attribute__((nonnull)) INLINE static int gravity_multipole_equal(
+    const struct gravity_tensors *ga, const struct gravity_tensors *gb,
+    double tolerance) {
 
   /* Check CoM */
   if (fabs(ga->CoM[0] - gb->CoM[0]) / fabs(ga->CoM[0] + gb->CoM[0]) >
@@ -1053,9 +883,9 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
  * @param gcount The number of particles.
  * @param grav_props The properties of the gravity scheme.
  */
-INLINE static void gravity_P2M(struct gravity_tensors *multi,
-                               const struct gpart *gparts, const int gcount,
-                               const struct gravity_props *const grav_props) {
+__attribute__((nonnull)) INLINE static void gravity_P2M(
+    struct gravity_tensors *multi, const struct gpart *gparts, const int gcount,
+    const struct gravity_props *const grav_props) {
 
   /* Temporary variables */
   float epsilon_max = 0.f;
@@ -1347,9 +1177,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
  */
-INLINE static void gravity_M2M(struct multipole *restrict m_a,
-                               const struct multipole *restrict m_b,
-                               const double pos_a[3], const double pos_b[3]) {
+__attribute__((nonnull)) INLINE static void gravity_M2M(
+    struct multipole *restrict m_a, const struct multipole *restrict m_b,
+    const double pos_a[3], const double pos_b[3]) {
 
   /* "shift" the softening */
   m_a->max_softening = m_b->max_softening;
@@ -1603,7 +1433,7 @@ INLINE static void gravity_M2M(struct multipole *restrict m_a,
  * @param m_a The multipole creating the field.
  * @param pot The derivatives of the potential.
  */
-INLINE static void gravity_M2L_apply(
+__attribute__((nonnull)) INLINE static void gravity_M2L_apply(
     struct grav_tensor *restrict l_b, const struct multipole *restrict m_a,
     const struct potential_derivatives_M2L *pot) {
 
@@ -2007,7 +1837,7 @@ INLINE static void gravity_M2L_apply(
  * @param dim The size of the simulation box.
  * @param rs_inv The inverse of the gravity mesh-smoothing scale.
  */
-INLINE static void gravity_M2L_nonsym(
+__attribute__((nonnull)) INLINE static void gravity_M2L_nonsym(
     struct grav_tensor *l_b, const struct multipole *m_a, const double pos_b[3],
     const double pos_a[3], const struct gravity_props *props,
     const int periodic, const double dim[3], const float rs_inv) {
@@ -2055,7 +1885,7 @@ INLINE static void gravity_M2L_nonsym(
  * @param dim The size of the simulation box.
  * @param rs_inv The inverse of the gravity mesh-smoothing scale.
  */
-INLINE static void gravity_M2L_symmetric(
+__attribute__((nonnull)) INLINE static void gravity_M2L_symmetric(
     struct grav_tensor *restrict l_a, struct grav_tensor *restrict l_b,
     const struct multipole *restrict m_a, const struct multipole *restrict m_b,
     const double pos_a[3], const double pos_b[3],
@@ -2097,6 +1927,268 @@ INLINE static void gravity_M2L_symmetric(
 }
 
 /**
+ * @brief Compute the reduced field tensor due to a multipole
+ *
+ * Corresponds to equation (3g) but written in the notation of
+ * appendix A.
+ *
+ * @param m The #multipole.
+ * @param r_x x-component of the distance vector to the multipole.
+ * @param r_y y-component of the distance vector to the multipole.
+ * @param r_z z-component of the distance vector to the multipole.
+ * @param r2 Square of the distance vector to the multipole.
+ * @param eps The softening length.
+ * @param periodic Is the calculation periodic ?
+ * @param rs_inv The inverse of the gravity mesh-smoothing scale.
+ * @param l (return) The #reduced_grav_tensor to compute.
+ */
+__attribute__((nonnull)) INLINE static void gravity_M2P(
+    const struct multipole *const m, const float r_x, const float r_y,
+    const float r_z, const float r2, const float eps, const int periodic,
+    const float rs_inv, struct reduced_grav_tensor *const l) {
+
+  /* Get the inverse distance */
+  const float r_inv = 1.f / sqrtf(r2);
+
+  /* Compute the derivatives of the potential */
+  struct potential_derivatives_M2P d;
+  potential_derivatives_compute_M2P(r_x, r_y, r_z, r2, r_inv, eps, periodic,
+                                    rs_inv, &d);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (l->F_000 != 0. || l->F_100 != 0. || l->F_010 != 0. || l->F_001 != 0.)
+    error("Working on uninitialised reduced tensor!");
+#endif
+
+  const float M_000 = m->M_000;
+  const float D_000 = d.D_000;
+
+  const float D_100 = d.D_100;
+  const float D_010 = d.D_010;
+  const float D_001 = d.D_001;
+
+  /*  0th order term */
+  l->F_000 -= M_000 * D_000;
+
+  /*  1st order multipole term (addition to rank 1) */
+  l->F_100 -= M_000 * D_100;
+  l->F_010 -= M_000 * D_010;
+  l->F_001 -= M_000 * D_001;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+
+  /* The dipole term is zero when using the CoM */
+  /* We keep them written to maintain the logical structure. */
+
+  /* const float M_100 = 0.f; */
+  /* const float M_010 = 0.f; */
+  /* const float M_001 = 0.f; */
+
+  /* const float D_200 = d.D_200; */
+  /* const float D_020 = d.D_020; */
+  /* const float D_002 = d.D_002; */
+  /* const float D_110 = d.D_110; */
+  /* const float D_101 = d.D_101; */
+  /* const float D_011 = d.D_011; */
+
+  /*  1st order multipole term (addition to rank 0) */
+  /* l->F_000 += M_100 * D_100 + M_010 * D_010 + M_001 * D_001; */
+
+  /*  2nd order multipole term (addition to rank 1) */
+  /* l->F_100 += M_100 * D_200 + M_010 * D_110 + M_001 * D_101; */
+  /* l->F_010 += M_100 * D_110 + M_010 * D_020 + M_001 * D_011; */
+  /* l->F_001 += M_100 * D_101 + M_010 * D_011 + M_001 * D_002; */
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  /* To keep the logic these would be defined at order 1 but
+     since all the M terms are 0 we did not define them above */
+  const float D_200 = d.D_200;
+  const float D_020 = d.D_020;
+  const float D_002 = d.D_002;
+  const float D_110 = d.D_110;
+  const float D_101 = d.D_101;
+  const float D_011 = d.D_011;
+
+  const float M_200 = m->M_200;
+  const float M_020 = m->M_020;
+  const float M_002 = m->M_002;
+  const float M_110 = m->M_110;
+  const float M_101 = m->M_101;
+  const float M_011 = m->M_011;
+
+  const float D_300 = d.D_300;
+  const float D_030 = d.D_030;
+  const float D_003 = d.D_003;
+  const float D_210 = d.D_210;
+  const float D_201 = d.D_201;
+  const float D_021 = d.D_021;
+  const float D_120 = d.D_120;
+  const float D_012 = d.D_012;
+  const float D_102 = d.D_102;
+  const float D_111 = d.D_111;
+
+  /*  2nd order multipole term (addition to rank 0)*/
+  l->F_000 -= M_200 * D_200 + M_020 * D_020 + M_002 * D_002;
+  l->F_000 -= M_110 * D_110 + M_101 * D_101 + M_011 * D_011;
+
+  /*  3rd order multipole term (addition to rank 1)*/
+  l->F_100 -= M_200 * D_300 + M_020 * D_120 + M_002 * D_102;
+  l->F_100 -= M_110 * D_210 + M_101 * D_201 + M_011 * D_111;
+  l->F_010 -= M_200 * D_210 + M_020 * D_030 + M_002 * D_012;
+  l->F_010 -= M_110 * D_120 + M_101 * D_111 + M_011 * D_021;
+  l->F_001 -= M_200 * D_201 + M_020 * D_021 + M_002 * D_003;
+  l->F_001 -= M_110 * D_111 + M_101 * D_102 + M_011 * D_012;
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  const float M_300 = m->M_300;
+  const float M_030 = m->M_030;
+  const float M_003 = m->M_003;
+  const float M_210 = m->M_210;
+  const float M_201 = m->M_201;
+  const float M_021 = m->M_021;
+  const float M_120 = m->M_120;
+  const float M_012 = m->M_012;
+  const float M_102 = m->M_102;
+  const float M_111 = m->M_111;
+
+  const float D_400 = d.D_400;
+  const float D_040 = d.D_040;
+  const float D_004 = d.D_004;
+  const float D_310 = d.D_310;
+  const float D_301 = d.D_301;
+  const float D_031 = d.D_031;
+  const float D_130 = d.D_130;
+  const float D_013 = d.D_013;
+  const float D_103 = d.D_103;
+  const float D_220 = d.D_220;
+  const float D_202 = d.D_202;
+  const float D_022 = d.D_022;
+  const float D_211 = d.D_211;
+  const float D_121 = d.D_121;
+  const float D_112 = d.D_112;
+
+  /*  3rd order multipole term (addition to rank 0)*/
+  l->F_000 += M_300 * D_300 + M_030 * D_030 + M_003 * D_003;
+  l->F_000 += M_210 * D_210 + M_201 * D_201 + M_120 * D_120;
+  l->F_000 += M_021 * D_021 + M_102 * D_102 + M_012 * D_012;
+  l->F_000 += M_111 * D_111;
+
+  /* Compute 4th order field tensor terms (addition to rank 1) */
+  l->F_001 += M_003 * D_004 + M_012 * D_013 + M_021 * D_022 + M_030 * D_031 +
+              M_102 * D_103 + M_111 * D_112 + M_120 * D_121 + M_201 * D_202 +
+              M_210 * D_211 + M_300 * D_301;
+  l->F_010 += M_003 * D_013 + M_012 * D_022 + M_021 * D_031 + M_030 * D_040 +
+              M_102 * D_112 + M_111 * D_121 + M_120 * D_130 + M_201 * D_211 +
+              M_210 * D_220 + M_300 * D_310;
+  l->F_100 += M_003 * D_103 + M_012 * D_112 + M_021 * D_121 + M_030 * D_130 +
+              M_102 * D_202 + M_111 * D_211 + M_120 * D_220 + M_201 * D_301 +
+              M_210 * D_310 + M_300 * D_400;
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  const float M_400 = m->M_400;
+  const float M_040 = m->M_040;
+  const float M_004 = m->M_004;
+  const float M_310 = m->M_310;
+  const float M_301 = m->M_301;
+  const float M_031 = m->M_031;
+  const float M_130 = m->M_130;
+  const float M_013 = m->M_013;
+  const float M_103 = m->M_103;
+  const float M_220 = m->M_220;
+  const float M_202 = m->M_202;
+  const float M_022 = m->M_022;
+  const float M_211 = m->M_211;
+  const float M_121 = m->M_121;
+  const float M_112 = m->M_112;
+
+  const float D_500 = d.D_500;
+  const float D_050 = d.D_050;
+  const float D_005 = d.D_005;
+  const float D_410 = d.D_410;
+  const float D_401 = d.D_401;
+  const float D_041 = d.D_041;
+  const float D_140 = d.D_140;
+  const float D_014 = d.D_014;
+  const float D_104 = d.D_104;
+  const float D_320 = d.D_320;
+  const float D_302 = d.D_302;
+  const float D_230 = d.D_230;
+  const float D_032 = d.D_032;
+  const float D_203 = d.D_203;
+  const float D_023 = d.D_023;
+  const float D_122 = d.D_122;
+  const float D_212 = d.D_212;
+  const float D_221 = d.D_221;
+  const float D_311 = d.D_311;
+  const float D_131 = d.D_131;
+  const float D_113 = d.D_113;
+
+  /* Compute 4th order field tensor terms (addition to rank 0) */
+  l->F_000 -= M_004 * D_004 + M_013 * D_013 + M_022 * D_022 + M_031 * D_031 +
+              M_040 * D_040 + M_103 * D_103 + M_112 * D_112 + M_121 * D_121 +
+              M_130 * D_130 + M_202 * D_202 + M_211 * D_211 + M_220 * D_220 +
+              M_301 * D_301 + M_310 * D_310 + M_400 * D_400;
+
+  /* Compute 5th order field tensor terms (addition to rank 1) */
+  l->F_001 -= M_004 * D_005 + M_013 * D_014 + M_022 * D_023 + M_031 * D_032 +
+              M_040 * D_041 + M_103 * D_104 + M_112 * D_113 + M_121 * D_122 +
+              M_130 * D_131 + M_202 * D_203 + M_211 * D_212 + M_220 * D_221 +
+              M_301 * D_302 + M_310 * D_311 + M_400 * D_401;
+  l->F_010 -= M_004 * D_014 + M_013 * D_023 + M_022 * D_032 + M_031 * D_041 +
+              M_040 * D_050 + M_103 * D_113 + M_112 * D_122 + M_121 * D_131 +
+              M_130 * D_140 + M_202 * D_212 + M_211 * D_221 + M_220 * D_230 +
+              M_301 * D_311 + M_310 * D_320 + M_400 * D_410;
+  l->F_100 -= M_004 * D_104 + M_013 * D_113 + M_022 * D_122 + M_031 * D_131 +
+              M_040 * D_140 + M_103 * D_203 + M_112 * D_212 + M_121 * D_221 +
+              M_130 * D_230 + M_202 * D_302 + M_211 * D_311 + M_220 * D_320 +
+              M_301 * D_401 + M_310 * D_410 + M_400 * D_500;
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
+  const float M_500 = m->M_500;
+  const float M_050 = m->M_050;
+  const float M_005 = m->M_005;
+  const float M_410 = m->M_410;
+  const float M_401 = m->M_401;
+  const float M_041 = m->M_041;
+  const float M_140 = m->M_140;
+  const float M_014 = m->M_014;
+  const float M_104 = m->M_104;
+  const float M_320 = m->M_320;
+  const float M_302 = m->M_302;
+  const float M_230 = m->M_230;
+  const float M_032 = m->M_032;
+  const float M_203 = m->M_203;
+  const float M_023 = m->M_023;
+  const float M_122 = m->M_122;
+  const float M_212 = m->M_212;
+  const float M_221 = m->M_221;
+  const float M_311 = m->M_311;
+  const float M_131 = m->M_131;
+  const float M_113 = m->M_113;
+
+  /* Compute 5th order field tensor terms (addition to rank 0) */
+  l->F_000 += M_005 * D_005 + M_014 * D_014 + M_023 * D_023 + M_032 * D_032 +
+              M_041 * D_041 + M_050 * D_050 + M_104 * D_104 + M_113 * D_113 +
+              M_122 * D_122 + M_131 * D_131 + M_140 * D_140 + M_203 * D_203 +
+              M_212 * D_212 + M_221 * D_221 + M_230 * D_230 + M_302 * D_302 +
+              M_311 * D_311 + M_320 * D_320 + M_401 * D_401 + M_410 * D_410 +
+              M_500 * D_500;
+
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for orders >5"
+#endif
+}
+
+/**
  * @brief Creates a copy of #grav_tensor shifted to a new location.
  *
  * Corresponds to equation (28e).
@@ -2106,9 +2198,9 @@ INLINE static void gravity_M2L_symmetric(
  * @param pos_a The position to which m_b will be shifted.
  * @param pos_b The current postion of the multipole to shift.
  */
-INLINE static void gravity_L2L(struct grav_tensor *restrict la,
-                               const struct grav_tensor *restrict lb,
-                               const double pos_a[3], const double pos_b[3]) {
+__attribute__((nonnull)) INLINE static void gravity_L2L(
+    struct grav_tensor *restrict la, const struct grav_tensor *restrict lb,
+    const double pos_a[3], const double pos_b[3]) {
 
   /* Initialise everything to zero */
   gravity_field_tensors_init(la, 0);
@@ -2468,8 +2560,8 @@ INLINE static void gravity_L2L(struct grav_tensor *restrict la,
  * @param loc The position of the gravity field tensor.
  * @param gp The #gpart to update.
  */
-INLINE static void gravity_L2P(const struct grav_tensor *lb,
-                               const double loc[3], struct gpart *gp) {
+__attribute__((nonnull)) INLINE static void gravity_L2P(
+    const struct grav_tensor *lb, const double loc[3], struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted == 0) error("Interacting with empty field tensor");
@@ -2489,6 +2581,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
   /* Distance to the multipole */
   const double dx[3] = {gp->x[0] - loc[0], gp->x[1] - loc[1],
                         gp->x[2] - loc[2]};
+
   /* 0th order contributions */
   pot -= X_000(dx) * lb->F_000;
 

@@ -72,8 +72,9 @@ struct chi_derivatives {
  * @param r_s_inv The inverse of the long-range gravity mesh scale.
  * @param derivs (return) The computed #chi_derivatives.
  */
-__attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
-    const float r, const float r_s_inv, struct chi_derivatives *const derivs) {
+__attribute__((always_inline, nonnull)) INLINE static void
+kernel_long_grav_derivatives(const float r, const float r_s_inv,
+                             struct chi_derivatives *const derivs) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
@@ -152,8 +153,8 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_derivatives(
  * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
  * @param W (return) The value of the kernel function.
  */
-__attribute__((always_inline)) INLINE static void kernel_long_grav_pot_eval(
-    const float u, float *const W) {
+__attribute__((always_inline, nonnull)) INLINE static void
+kernel_long_grav_pot_eval(const float u, float *const W) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
@@ -180,8 +181,8 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_pot_eval(
  * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
  * @param W (return) The value of the kernel function.
  */
-__attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
-    const float u, float *const W) {
+__attribute__((always_inline, nonnull)) INLINE static void
+kernel_long_grav_force_eval(const float u, float *const W) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
@@ -215,7 +216,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
  * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
  * @param W (return) The value of the kernel function.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline, nonnull)) INLINE static void
 kernel_long_grav_force_eval_double(const double u, double *const W) {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 #ifdef GADGET2_LONG_RANGE_CORRECTION
@@ -252,8 +253,8 @@ kernel_long_grav_force_eval_double(const double u, double *const W) {
  * \f$u^2 = k^2r_s^2\f$.
  * @param W (return) The value of the kernel function.
  */
-__attribute__((always_inline)) INLINE static void fourier_kernel_long_grav_eval(
-    const double u2, double *const W) {
+__attribute__((always_inline, nonnull)) INLINE static void
+fourier_kernel_long_grav_eval(const double u2, double *const W) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
   *W = exp(-u2);
