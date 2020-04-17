@@ -822,13 +822,26 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   return count;
 }
 
-void io_write_array(hid_t h_grp, const int nr_cells, const void* array,
+/**
+ * @brief Write a single 1D array to a hdf5 group.
+ *
+ * This creates a simple Nx1 array with a chunk size of 1024x1.
+ * The Fletcher-32 filter is applied to the array.
+ *
+ * @param h_grp The open hdf5 group.
+ * @param n The number of elements in the array.
+ * @param array The data to write.
+ * @param type The type of the data to write.
+ * @param name The name of the array.
+ * @param array_content The name of the parent group (only used for error
+ * messages).
+ */
+void io_write_array(hid_t h_grp, const int n, const void* array,
                     const enum IO_DATA_TYPE type, const char* name,
                     const char* array_content) {
 
-  hsize_t shape[2] = {(hsize_t)nr_cells, 3};
-  shape[0] = nr_cells;
-  shape[1] = 1;
+  /* Create memory space */
+  const hsize_t shape[2] = {(hsize_t)n, 1};
   hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
     error("Error while creating data space for %s %s", name, array_content);
@@ -836,14 +849,30 @@ void io_write_array(hid_t h_grp, const int nr_cells, const void* array,
   if (h_err < 0)
     error("Error while changing shape of %s %s data space.", name,
           array_content);
+
+  const hsize_t chunk[2] = {(1024 > n ? n : 1024), 1};
+  hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
+  h_err = H5Pset_chunk(h_prop, 1, chunk);
+  if (h_err < 0)
+    error("Error while setting chunk shapes of %s %s data space.", name,
+          array_content);
+
+  /* Impose check-sum to verify data corruption */
+  h_err = H5Pset_fletcher32(h_prop);
+  if (h_err < 0)
+    error("Error while setting check-sum filter on %s %s data space.", name,
+          array_content);
+
+  /* Write */
   hid_t h_data = H5Dcreate(h_grp, name, io_hdf5_type(type), h_space,
-                           H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                           H5P_DEFAULT, h_prop, H5P_DEFAULT);
   if (h_data < 0)
     error("Error while creating dataspace for %s %s.", name, array_content);
   h_err = H5Dwrite(h_data, io_hdf5_type(type), h_space, H5S_ALL, H5P_DEFAULT,
                    array);
   if (h_err < 0) error("Error while writing %s %s.", name, array_content);
   H5Dclose(h_data);
+  H5Pclose(h_prop);
   H5Sclose(h_space);
 }
 
