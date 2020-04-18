@@ -32,8 +32,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_timebin(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float *dx, const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   /* Update the minimal time-bin */
   if (pj->time_bin > 0)
@@ -58,8 +59,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_timebin(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_timebin(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float *dx, const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   /* Update the minimal time-bin */
   if (pj->time_bin > 0)
@@ -71,8 +73,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_timebin(
  * @brief Timestep limiter loop
  */
 __attribute__((always_inline)) INLINE static void runner_iact_limiter(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float *dx, const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   /* Nothing to do here if both particles are active */
 }
@@ -81,8 +84,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
  * @brief Timestep limiter loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   /* Wake up the neighbour? */
   if (pj->time_bin > pi->time_bin + time_bin_neighbour_max_delta_bin) {
