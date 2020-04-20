@@ -48,8 +48,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     struct part* pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
-  if (!swift_particle_lock_is_locked(pj)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked_by_thread(pi))
+    error("Acting on unlocked particle or particle locked by another thread!");
+  if (!swift_particle_lock_is_locked_by_thread(pj))
+    error("Acting on unlocked particle or particle locked by another thread!");
 #endif
 
   float wi, wj, wi_dx, wj_dx;
@@ -129,7 +131,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const struct part* pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked_by_thread(pi))
+    error("Acting on unlocked particle or particle locked by another thread!");
 #endif
 
   float wi, wi_dx;
@@ -193,8 +196,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     struct part* restrict pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
-  if (!swift_particle_lock_is_locked(pj)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked_by_thread(pi))
+    error("Acting on unlocked particle or particle locked by another thread!");
+  if (!swift_particle_lock_is_locked_by_thread(pj))
+    error("Acting on unlocked particle or particle locked by another thread!");
 #endif
 
   /* We need to construct the maximal signal velocity between our particle
@@ -271,7 +276,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const struct part* restrict pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked_by_thread(pi))
+    error("Acting on unlocked particle or particle locked by another thread!");
 #endif
 
   /* We need to construct the maximal signal velocity between our particle
@@ -337,8 +343,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     struct part* pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
-  if (!swift_particle_lock_is_locked(pj)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked_by_thread(pi))
+    error("Acting on unlocked particle or particle locked by another thread!");
+  if (!swift_particle_lock_is_locked_by_thread(pj))
+    error("Acting on unlocked particle or particle locked by another thread!");
 #endif
 
   /* Cosmological factors entering the EoMs */
@@ -481,7 +489,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const struct part* pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!swift_particle_lock_is_locked(pi)) error("Acting on unlocked particle!");
+  if (!swift_particle_lock_is_locked_by_thread(pi))
+    error("Acting on unlocked particle or particle locked by another thread!");
 #endif
 
   /* Cosmological factors entering the EoMs */
