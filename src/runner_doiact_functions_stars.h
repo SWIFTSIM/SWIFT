@@ -109,7 +109,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
       if (r2 < hig2) {
 
         /* Lock both particles for access */
-        swift_particle_lock_lock_both(si, pj);
+        swift_particle_lock_lock_both(si, pj, r);
 
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -121,7 +121,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Unlock both particles */
-        swift_particle_lock_unlock_both(si, pj);
+        swift_particle_lock_unlock_both(si, pj, r);
       }
     } /* loop over the parts in ci. */
   }   /* loop over the sparts in ci. */
@@ -224,7 +224,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
 
         /* Lock both particles for access */
-        swift_particle_lock_lock_both(si, pj);
+        swift_particle_lock_lock_both(si, pj, r);
 
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
@@ -237,7 +237,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
         /* Unlock both particles */
-        swift_particle_lock_unlock_both(si, pj);
+        swift_particle_lock_unlock_both(si, pj, r);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -403,7 +403,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
         if (r2 < hig2) {
 
           /* Lock both particles for access */
-          swift_particle_lock_lock_both(spi, pj);
+          swift_particle_lock_lock_both(spi, pj, r);
 
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
@@ -416,7 +416,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
           /* Unlock both particles */
-          swift_particle_lock_unlock_both(spi, pj);
+          swift_particle_lock_unlock_both(spi, pj, r);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -537,7 +537,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
         if (r2 < hjg2) {
 
           /* Lock both particles for access */
-          swift_particle_lock_lock_both(spj, pi);
+          swift_particle_lock_lock_both(spj, pi, r);
 
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
@@ -550,7 +550,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
           /* Unlock both particles */
-          swift_particle_lock_unlock_both(spj, pi);
+          swift_particle_lock_unlock_both(spj, pi, r);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */

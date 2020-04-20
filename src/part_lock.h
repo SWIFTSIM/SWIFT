@@ -25,18 +25,22 @@
 /* Local headers */
 #include "error.h"
 
+/* Some standard headers. */
+#include <pthread.h>
+
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
 
 /* Place-holders for the case where tasks never access particlesc concurrently
  */
 
 struct swift_particle_lock {};
-#define swift_particle_lock_init(p) ;
-#define swift_particle_lock_lock(p) ;
-#define swift_particle_lock_unlock(p) ;
-#define swift_particle_lock_lock_both(p, q) ;
-#define swift_particle_lock_unlock_both(p, q) ;
+#define swift_particle_lock_init(p, r) ;
+#define swift_particle_lock_lock(p, r) ;
+#define swift_particle_lock_unlock(p, r) ;
+#define swift_particle_lock_lock_both(p, q, r) ;
+#define swift_particle_lock_unlock_both(p, q, r) ;
 #define swift_particle_lock_is_locked(p) 1
+#define swift_particle_lock_is_locked_by_thread(p) 1
 #else
 
 /*! A particle-carried lock for neighbour interactions */
@@ -47,20 +51,22 @@ typedef volatile int swift_particle_lock_t;
  *
  * @param p Pointer to the particle (part, spart, gpart, bpart,...)
  */
-#define swift_particle_lock_init(p) ((p)->lock = 0)
+#define swift_particle_lock_init(p) ((p)->lock = -1)
 
 /**
  * @brief Lock a particle for access within this thread.
  *
  * The thread will spin until the lock can be aquired.
  *
- * @param p Pointer to the particle (part, spart, gpart, bpart,...)
+ * @param p Pointer to the particle (part, spart, gpart, bpart,...).
+ * @param r Pointer to the runner locking the particle.
  */
-#define swift_particle_lock_lock(p)               \
-  ({                                              \
-    while (atomic_cas(&((p)->lock), 0, 1) != 0) { \
-      ;                                           \
-    }                                             \
+#define swift_particle_lock_lock(p, r)                                         \
+  ({                                                                           \
+    while (atomic_cas(&((p)->lock), -1, ((swift_particle_lock_t)r->thread)) != \
+           -1) {                                                               \
+      ;                                                                        \
+    }                                                                          \
   })
 
 /**
@@ -71,18 +77,19 @@ typedef volatile int swift_particle_lock_t;
  * To avoid the dining philosopher's problem, we create a
  * hierarchy by using the address of the particles.
  *
- * @param p Pointer to the first particle (part, spart, gpart, bpart,...)
- * @param q Pointer to the second particle (part, spart, gpart, bpart,...)
+ * @param p Pointer to the first particle (part, spart, gpart, bpart,...).
+ * @param q Pointer to the second particle (part, spart, gpart, bpart,...).
+ * @param r Pointer to the runner locking the particles.
  */
-#define swift_particle_lock_lock_both(p, q) \
-  ({                                        \
-    if ((void*)p < (void*)q) {              \
-      swift_particle_lock_lock(p);          \
-      swift_particle_lock_lock(q);          \
-    } else {                                \
-      swift_particle_lock_lock(q);          \
-      swift_particle_lock_lock(p);          \
-    }                                       \
+#define swift_particle_lock_lock_both(p, q, r) \
+  ({                                           \
+    if ((void*)p < (void*)q) {                 \
+      swift_particle_lock_lock(p, r);          \
+      swift_particle_lock_lock(q, r);          \
+    } else {                                   \
+      swift_particle_lock_lock(q, r);          \
+      swift_particle_lock_lock(p, r);          \
+    }                                          \
   })
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -92,12 +99,14 @@ typedef volatile int swift_particle_lock_t;
  *
  * Raises and error if the lock can't be released.
  *
- * @param p Pointer to the particle (part, spart, gpart, bpart,...)
+ * @param p Pointer to the particle (part, spart, gpart, bpart,...).
+ * @param r Pointer to the runner locking the particle.
  */
-#define swift_particle_lock_unlock(p)        \
-  ({                                         \
-    if (atomic_cas(&((p)->lock), 1, 0) != 1) \
-      error("Failed to unlock particle!");   \
+#define swift_particle_lock_unlock(p, r)                                    \
+  ({                                                                        \
+    if (atomic_cas(&((p)->lock), ((swift_particle_lock_t)r->thread), -1) != \
+        ((swift_particle_lock_t)r->thread))                                 \
+      error("Failed to unlock particle!");                                  \
   })
 #else
 
@@ -105,8 +114,10 @@ typedef volatile int swift_particle_lock_t;
  * @brief Release the lock of a particle.
  *
  * @param p Pointer to the particle (part, spart, gpart, bpart,...)
+ * @param r Pointer to the runner locking the particle.
  */
-#define swift_particle_lock_unlock(p) ({ atomic_cas(&((p)->lock), 1, 0); })
+#define swift_particle_lock_unlock(p, r) \
+  ({ atomic_cas(&((p)->lock), ((swift_particle_lock_t)r->thread), -1); })
 #endif /* SWIFT_DEBUG_CHECKS */
 
 /**
@@ -114,22 +125,32 @@ typedef volatile int swift_particle_lock_t;
  *
  * @param p Pointer to the first particle (part, spart, gpart, bpart,...)
  * @param q Pointer to the second particle (part, spart, gpart, bpart,...)
+ * @param r Pointer to the runner locking the particles.
  */
-#define swift_particle_lock_unlock_both(p, q) \
-  ({                                          \
-    swift_particle_lock_unlock(p);            \
-    swift_particle_lock_unlock(q);            \
+#define swift_particle_lock_unlock_both(p, q, r) \
+  ({                                             \
+    swift_particle_lock_unlock(p, r);            \
+    swift_particle_lock_unlock(q, r);            \
   })
 
 /**
  * @brief Verifies whether a given particle lock has been aquired.
  *
- * Note that there is no way to know whether the lock has been
+ * Note that this does not check whether the particle's lock
  * aquired by the calling thread.
  *
  * @param p Pointer to the particle (part, spart, gpart, bpart,...)
  */
-#define swift_particle_lock_is_locked(p) ((p)->lock == 1)
+#define swift_particle_lock_is_locked(p) ((p)->lock != -1)
+
+/**
+ * @brief Verifies whether a given particle lock has been aquired by
+ * the calling thread.
+ *
+ * @param p Pointer to the particle (part, spart, gpart, bpart,...)
+ */
+#define swift_particle_lock_is_locked_by_thread(p) \
+  ((p)->lock == ((swift_particle_lock_t)pthread_self()))
 
 #endif /* SWIFT_TASKS_WITHOUT_ATOMICS */
 
