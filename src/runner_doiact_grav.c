@@ -742,7 +742,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
  * @param ci The first #cell.
  * @param cj The other #cell.
  * @param symmetric Are we updating both cells (1) or just ci (0) ?
- * @param allow_mpole Are we allowing the use of P2M interactions ?
+ * @param allow_mpole Are we allowing the use of M2P interactions ?
  */
 void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                            const int symmetric, const int allow_mpole) {

@@ -2219,6 +2219,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
   gravity_reset(c->grav.multipole);
 
   if (c->split) {
+
     /* Start by recursing */
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL)
@@ -2281,9 +2282,18 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
     /* Take minimum of both limits */
     c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
 
+    /* We know the first-order multipole (dipole) is 0. */
+    c->grav.multipole->m_pole.M_100 = 0.f;
+    c->grav.multipole->m_pole.M_010 = 0.f;
+    c->grav.multipole->m_pole.M_001 = 0.f;
+
+    /* Compute the multipole power */
+    gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
   } else {
     if (c->grav.count > 0) {
       gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count, grav_props);
+      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
       const double dx =
           c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
               ? c->grav.multipole->CoM[0] - c->loc[0]
@@ -2377,6 +2387,7 @@ void cell_check_multipole(struct cell *c,
   if (c->grav.count > 0) {
     /* Brute-force calculation */
     gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
+    gravity_multipole_compute_power(&ma.m_pole);
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {

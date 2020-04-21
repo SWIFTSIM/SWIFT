@@ -3664,6 +3664,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       c->grav.multipole->m_pole.M_010 = 0.f;
       c->grav.multipole->m_pole.M_001 = 0.f;
 
+      /* Compute the multipole power */
+      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
     } /* Deal with gravity */
   }   /* Split or let it be? */
 
@@ -3800,6 +3803,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
                     e->gravity_properties);
+
+        /* Compute the multipole power */
+        gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
       } else {
 
