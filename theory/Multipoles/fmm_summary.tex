@@ -324,12 +324,17 @@ This leads to the following MAC for the M2P kernel:
   {|\mathbf{R}|} < 1.
     \label{eq:fmm:mac_m2p}  
 \end{equation}
-The value of $\epsilon$ could in principle be different than the one used
-for the M2L MAC.
+The value of $\epsilon$ could in principle be different than the one
+used for the M2L MAC. One specific case is of particular
+interest. Using the expression for order $2$ and the approximation
+$P_{A,p} \approx M_A \rho_A^p$, we get
+\begin{equation}
+  8\frac{M_A}{|\mathbf{R}|^2}\left(\frac{\rho_A}{|\mathbf{R}|}\right)^2
+  < \epsilon \min_{b\in B}\left(|\mathbf{a}_b|\right) \nonumber
+\end{equation}
+for our MAC.  This is the same expression as the adaptive opening
+angle used by \gadget \cite[see eq.18 of][]{Springel2005} up to
+numerical factors and definition of the size ($\rho$ vs. the cell
+edge) of a multipole. Note, however, that, in practice, since formally
+$P_{A,p} \leq M_A \rho_A^p$, the dependence is slightly different.
 
-%% We could hence replace the opening angle
-%% condition (\ref{eq:fmm:angle}) with $E_{AB} < \theta_{\rm cr}$, which would
-%% be at least as strict a condition but takes into account the higher order
-%% terms in the multi-poles\footnote{Expanding to order $p=1$, $E_{AB} =
-%%   \frac{1}{M_A|\mathbf{R}|} \mathsf{P}_{A,0} \rho_B \leq
-%%     \frac{1}{M_A|\mathbf{R}|} M_A \rho_A \rho_B \leq \frac{\rho_A \rho_B}{|\mathbf{R}|}$.}.
