@@ -1,9 +1,12 @@
 .. GEAR sub-grid model
-   Matthieu Schaller, 20th December 2018
+   Loic Hausammann, 17th April 2020
 
 
 GEAR model
 ===========
+
+GEAR's model are mainly described in `Revaz \& Jablonka <https://ui.adsabs.harvard.edu/abs/2018A%26A...616A..96R/abstract>`_.
+This model can be selected with the configuration option ``--with-subgrid=GEAR`` and run with the option ``--gear``. A few examples exist and can be found in ``examples/GEAR``. 
 
 Pressure Floor
 ~~~~~~~~~~~~~~
@@ -12,11 +15,10 @@ In order to avoid the artificial collapse of unresolved clumps, a minimum in pre
 This additional pressure can be seen as the pressure due to unresolved hydrodynamics turbulence and is given by:
 
 .. math::
-    P_\textrm{Jeans} = \frac{\rho}{\gamma} \left( \frac{4}{\pi} G h^2 \rho N_\textrm{Jeans}^{2/3} - \sigma^2 \right)
+    P_\textrm{Jeans} = \frac{\rho}{\gamma} \frac{4}{\pi} G h^2 \rho N_\textrm{Jeans}^{2/3}
 
 where :math:`\rho` is the density, :math:`\gamma` the adiabatic index, :math:`G` is the gravitational constant,
-:math:`h` the smoothing length, :math:`N_\textrm{Jeans}` is the number of particle required in order to resolve a clump and
-:math:`\sigma` the velocity dispersion.
+:math:`h` the kernel support and :math:`N_\textrm{Jeans}` (``GEARPressureFloor:jeans_factor`` in the parameter file) is the number of particle required in order to resolve a clump.
 
 
 This must be directly implemented into the hydro schemes, therefore only a subset of schemes (Gadget-2, SPHENIX and Pressure-Energy) have the floor available.
@@ -25,8 +27,14 @@ In order to implement it, you need equation 12 in `Hopkins 2013 <https://arxiv.o
 .. math::
    m_i \frac{\mathrm{d}v_i}{\mathrm{d}t} = - \sum_j x_i x_j \left[ \frac{P_i}{y_i^2} f_{ij} \nabla_i W_{ij}(h_i) + \frac{P_j}{y_j^2} f_{ji} \nabla_j W_{ji}(h_j) \right]
 
-and simply replace the :math:`P_i, P_j` by the pressure with the floor.
+and simply replace the :math:`P_i, P_j` by the pressure with the floor (when the pressure is below the floor).
 Here the :math:`x, y` are simple weights that should never have the pressure floor included even if they are related to the pressure (e.g. pressure-entropy).
+
+.. code:: YAML
+
+   GEARPressureFloor:
+    jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
 
 
 Cooling: Grackle
@@ -39,12 +47,12 @@ and He\\( ^{++} \\)), 9 species network (adds H\\(^-\\), H\\(_2\\) and
 H\\(_2^+\\)) and 12 species (adds D, D\\(^+\\) and HD).  Following the same
 order, the swift cooling options are ``grackle_0``, ``grackle_1``, ``grackle_2``
 and ``grackle_3`` (the numbers correspond to the value of
-``primordial_chemistry`` in Grackle).  It also includes some self-shielding
-methods and UV background.  In order to use the Grackle cooling, you will need
-to provide an HDF5 table computed by Cloudy.
+``primordial_chemistry`` in Grackle).  It also includes some metal cooling (on/off with ``GrackleCooling:with_metal_cooling``), self-shielding
+methods and UV background (on/off with ``GrackleCooling:with_UV_background``).  In order to use the Grackle cooling, you will need
+to provide a HDF5 table computed by Cloudy (``GrackleCooling:cloudy_table``).
 
-When starting a simulation without providing the different fractions, the code
-supposes an equilibrium and computes the fractions automatically.
+When starting a simulation without providing the different element fractions in the non equilibrium mode, the code supposes an equilibrium and computes them automatically.
+The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
 
 In order to compile SWIFT with Grackle, you need to provide the options ``with-chemistry=GEAR`` and ``with-grackle=$GRACKLE_ROOT``
 where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``).
@@ -58,3 +66,179 @@ Finish with ``make machine-linux-gnu; make && make install``.
 If you encounter any problem, you can look at the `Grackle documentation <https://grackle.readthedocs.io/en/latest/>`_
 
 You can now provide the path given for ``MACH_INSTALL_PREFIX`` to ``with-grackle``.
+
+In the parameters file, a few different parameters are available.
+``GrackleCooling:redshift`` defines the redshift to use for the UV background (for cosmological simulation, it must be set to -1 in order to use the simulation's redshift) and ``GrackleCooling:provide_*_heating_rates`` can enable the computation of user provided heating rates (such as with the radiative transfer) in either volumetric or specific units.
+
+For the feedback, it can be made more efficient by turning off the cooling during a few Myr (``GrackleCooling:thermal_time_myr``) for the particles touched by a supernovae.
+
+The self shielding method is defined by ``GrackleCooling:self_shielding_method`` where 0 means no self shielding, > 0 means a method defined in Grackle (see Grackle documentation for more information) and -1 means GEAR's self shielding that simply turn off the UV background when reaching a given density (``GrackleCooling:self_shielding_threshold_atom_per_cm3``).
+
+.. code:: YAML
+
+  GrackleCooling:
+    cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+    with_UV_background: 1                        # Enable or not the UV background
+    redshift: 0                                  # Redshift to use (-1 means time based redshift)
+    with_metal_cooling: 1                        # Enable or not the metal cooling
+    provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
+    provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+    max_steps: 10000                             # (optional) Max number of step when computing the initial composition
+    convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+    thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
+    self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
+    self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+
+
+
+Star formation
+~~~~~~~~~~~~~~
+
+The star formation is done in two steps: first we check if a particle is in the star forming regime and then we use a stochastic approach to transform the gas particles into stars.
+
+A particle is in the star forming regime if:
+ - The velocity divergence is negative (:math:`\nabla\cdot v < 0`),
+ - The temperature is lower than a threshold (:math:`T < T_t` where :math:`T_t` is defined with ``GEARStarFormation:maximal_temperature``),
+ - The particle reaches the pressure floor (:math:`\rho > \frac{\pi}{4 G N_\textrm{Jeans}^{2/3} h^2}\frac{\gamma k_B T}{\mu m_p}` where :math:`N_\textrm{Jeans}` is defined in the pressure floor).
+
+A star will be able to form if a randomly drawn number is below :math:`\frac{m_g}{m_\star}\left(1 - \exp\left(-c_\star \Delta t / t_\textrm{ff}\right)\right)` where :math:`t_\textrm{ff}` is the free fall time, :math:`\Delta t` is the time step of the particle and :math:`c_\star` is the star formation coefficient (``GEARStarFormation:star_formation_efficiency``), :math:`m_g` the mass of the gas particle and :math:`m_\star` the mass of the possible future star. The mass of the star is computed from the average gas mass in the initial conditions divided by the number of possible stars formed per gas particle (``GEARStarFormation:n_stars_per_particle``). When we cannot have enough mass to form a second star (defined with the fraction of mass ``GEARStarFormation:min_mass_frac``), we fully convert the gas particle into a stellar particle. Once the star is formed, we move it a bit in a random direction and fraction of the smoothing length in order to avoid any division by 0.
+
+.. code:: YAML
+
+  GEARStarFormation:
+    star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+    maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+    n_stars_per_particle: 4           # Number of stars that an hydro particle can generate
+    min_mass_frac: 0.5                # Minimal mass for a stellar particle as a fraction of the average mass for the stellar particles.
+
+
+Chemistry
+~~~~~~~~~
+
+In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition.
+
+.. code:: YAML
+
+   GEARChemistry:
+    initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
+    scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
+
+Feedback
+~~~~~~~~
+
+The feedback is composed of a few different models:
+  - The initial mass function (IMF) defines the quantity of each type of stars,
+  - The lifetime of a star defines when a star will explode (or simply die),
+  - The supernovae of type II (SNII) defines the rates and yields,
+  - The supernovae of type Ia (SNIa) defines the rates and yields,
+  - The energy injection that defines how to inject the energy / metals into the particles.
+
+Most of the parameters are defined inside a table (``GEARFeedback:yields_table``) but can be override with some parameters in the YAML file.
+I will not describe theses parameters more than providing them at the end of this section.
+Two different models exist for the supernovae (``GEARFeedback:discrete_yields``).
+In the continuous mode, we integrate the quantities over the IMF and then explodes a floating point number of stars (can be below 1 in some cases).
+In the discrete mode, we avoid the problem of floating points by rounding the number of supernovae (using a floor and randomly adding a supernovae depending on the fractional part) and then compute the properties for a single star at a time.
+
+Initial mass function
+^^^^^^^^^^^^^^^^^^^^^
+
+GEAR is using the IMF model from `Kroupa (2001) <https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract>`_.
+We have a difference of 1 in the exponent due to the usage of IMF in mass and not in number.
+We also restrict the mass of the stars to be inside :math:`[0.05, 50] M_\odot`.
+
+.. math::
+  \xi(m) \propto m^{-\alpha_i}\, \textrm{where}\,
+  \begin{cases}
+   \alpha_0 = 0.3,\, & 0.01 \leq m / M_\odot < 0.08, \\
+   \alpha_1 = 1.3,\, & 0.08 \leq m / M_\odot < 0.50, \\
+   \alpha_2 = 2.3,\, & 0.50 \leq m / M_\odot < 1.00, \\
+   \alpha_3 = 2.3,\, & 1.00 \leq m / M_\odot,
+  \end{cases}
+
+
+
+
+Lifetime
+^^^^^^^^
+
+The lifetime of a star in GEAR depends only on two parameters: first its mass and then its metallicity.
+
+.. math::
+   \log(\tau(m)) = a(Z) \log^2(m) + b(Z) \log(m) + c(Z) \\ \\
+   a(Z) = -40.110 Z^2 + 5.509 Z + 0.7824 \\
+   b(Z) = 141.929 Z^2 - 15.889 Z - 3.2557 \\
+   c(Z) = -261.365 Z^2 + 17.073 Z + 9.8661
+
+where :math:`\tau` is the lifetime in years, :math:`m` is the mass of the star (in solar mass) and Z the metallicity of the star.
+
+Supernovae II
+^^^^^^^^^^^^^
+
+The supernovae rate is simply given by the number of stars massive enough that end their life at the required time.
+
+.. math::
+   \dot{N}_\textrm{SNII}(t) = \int_{M_l}^{M_u} \delta(t - \tau(m)) \frac{\phi(m)}{m} \mathrm{d}m
+
+where :math:`M_l` and :math:`M_u` are the lower and upper mass limits for a star exploding in SNII, :math:`\delta` is the Dirac function and :math:`\phi` is the initial mass function (in mass).
+
+The yields for SNII cannot be written in an analytical form, they depend on a few different tables that are based on the work of `Kobayashi et al. (2000) <https://ui.adsabs.harvard.edu/abs/2000ApJ...539...26K/abstract>`_ and `Tsujimoto et al. (1995) <https://ui.adsabs.harvard.edu/abs/1995MNRAS.277..945T/abstract>`_.
+
+Supernovae Ia
+^^^^^^^^^^^^^
+
+The supernovae Ia are a bit more complicated as they involve two different stars.
+
+.. math::
+  \dot{N}_\textrm{SNIa}(t) = \left( \int_{M_{p,l}}^{M_{p,u}} \frac{\phi(m)}{m} \mathrm{d}m \right) \sum_i b_i \int_{M_{d,l,i}}^{M_{d,u,i}}
+  \delta(t-\tau(m)) \frac{\phi_d(m)}{m}\mathrm{d}m
+
+.. math::
+   \phi_d(m) \propto m^{-0.35}
+
+where :math:`M_{p,l}` and :math:`M_{p,u}` are the mass limits for a progenitor of a white dwarf, :math:`b_i` is the probability to have a companion and
+:math:`M_{d,l,i}` and :math:`M_{d,u,i}` are the mass limits for each type of companion.
+The first parenthesis represents the number of white dwarfs and the second one the probability to form a binary.
+
++------------------+--------------------+-------------------+------------------+
+| Companion        |  :math:`M_{d,l,i}` | :math:`M_{d,u,i}` | :math:`b_i`      |
++==================+====================+===================+==================+
+| Red giant        |   0.9              |    1.5            |    0.02          |
++------------------+--------------------+-------------------+------------------+
+| Main sequence    |   1.8              |    2.5            |    0.05          |
++------------------+--------------------+-------------------+------------------+
+
+The yields are based on the same papers than the SNII.
+
+Energy injection
+^^^^^^^^^^^^^^^^
+
+All the supernovae (type II and Ia) inject the same amount of energy into the surrounding gas (``GEARFeedback:supernovae_energy_erg``) and distribute it according to the hydro kernel.
+The same is done with the metals and the mass.
+
+.. code:: YAML
+
+  GEARFeedback:
+    supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+    yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
+    discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
+  GEARInitialMassFunction:
+    number_function_part:  4                       # Number of different part in the IMF
+    exponents:  [0.7, -0.8, -1.7, -1.3]            # Exponents of each part of the IMF
+    mass_limits_msun:  [0.05, 0.08, 0.5, 1, 50]    # Limits in mass between each part of the IMF
+  GEARLifetime:
+   quadratic:  [-40.1107, 5.50992, 0.782432]  # Quadratic terms in the fit
+   linear:  [141.93, -15.8895, -3.25578]      # Linear terms in the fit
+   constant:  [-261.366, 17.0735, 9.86606]    # Constant terms in the fit
+  GEARSupernovaeIa:
+    exponent:  -0.35                      # Exponent for the distribution of companions
+    min_mass_white_dwarf_progenitor:  3   # Minimal mass of a progenitor of white dwarf
+    max_mass_white_dwarf_progenitor:  8   # Maximal mass of a progenitor of white dwarf
+    max_mass_red_giant:  1.5              # Maximal mass for a red giant
+    min_mass_red_giant:  0.9              # Minimal mass for a red giant
+    coef_red_giant:  0.02                 # Coefficient for the distribution of red giants companions
+    max_mass_main_sequence:  2.6          # Maximal mass for a main sequence star
+    min_mass_main_sequence:  1.8          # Minimal mass for a main sequence star
+    coef_main_sequence:  0.05             # Coefficient for the distribution of main sequence companions
+    white_dwarf_mass:  1.38               # Mass of a white dwarf
+  GEARSupernovaeII:
+  interpolation_size:  200                # Number of elements for the interpolation of the data
