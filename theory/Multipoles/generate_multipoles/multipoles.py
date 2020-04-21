@@ -95,6 +95,7 @@ for i in range(order+1):
         for k in range(order+1):
             if i + j + k == order:
                 print "ma->M_%d%d%d += mb->M_%d%d%d;"%(i,j,k,i,j,k)
+                
 if order > 0:
     print "#endif"
 
@@ -140,6 +141,36 @@ if order > 0:
 print ""
 print "-------------------------------------------------"
 
+print "gravity_multipole_compute_power():"
+print "-------------------------------------------------\n"
+
+if order > 0:
+    print "#if SELF_GRAVITY_MULTIPOLE_ORDER > %d"%(order-1)
+
+print "/* %s order terms */"%ordinal(order)
+
+# Add the terms to the multipole power
+for i in range(order+1):
+    for j in range(order+1):
+        for k in range(order+1):
+            if i + j + k == order:
+                fact1 = factorial(i) * factorial(j) * factorial(k)
+                fact2 = float(factorial(i + j + k))
+                frac = fact1 / fact2
+                if frac == 1.0:
+                    print "power[%d] += m->M_%d%d%d * m->M_%d%d%d;"%(order, i, j, k, i, j, k)
+                else:
+                    print "power[%d] += %12.15e * m->M_%d%d%d * m->M_%d%d%d;"%(order, frac, i, j, k, i, j, k)
+
+print ""
+print "m->power[%d] = sqrt(power[%d]);"%(order, order)
+                    
+if order > 0:
+    print "#endif"
+                    
+print ""
+print "-------------------------------------------------"
+
 print "gravity_P2M(): (loop)"
 print "-------------------------------------------------\n"
 
@@ -157,12 +188,13 @@ for i in range(order+1):
                     print "M_%d%d%d += m * X_%d%d%d(dx);"%(i,j,k,i,j,k)
                 else:
                     print "M_%d%d%d += -m * X_%d%d%d(dx);"%(i,j,k,i,j,k)
+                    
 if order > 0:
     print "#endif"
 
 print ""
 print "-------------------------------------------------"
-    
+
 print "gravity_P2M(): (storing)"
 print "-------------------------------------------------\n"
 
@@ -177,6 +209,7 @@ for i in range(order+1):
         for k in range(order+1):
             if i + j + k == order:
                 print "m->m_pole.M_%d%d%d = M_%d%d%d;"%(i,j,k,i,j,k)
+                
 if order > 0:
     print "#endif"
 
@@ -212,6 +245,7 @@ for i in range(order+1):
 
                                         
                 print ";"
+                
 if order > 0:
     print "#endif"
 

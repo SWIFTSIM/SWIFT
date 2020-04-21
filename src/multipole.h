@@ -873,6 +873,104 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
 }
 
 /**
+ * @brief Compute the multipole power of a #multipole.
+ *
+ * @param m The #multipole.
+ */
+__attribute__((nonnull)) INLINE static void gravity_multipole_compute_power(
+    struct multipole *m) {
+
+  double power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.};
+
+  /* 0th order terms */
+  m->power[0] = m->M_000;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  /* 1st order terms */
+  power[1] += m->M_001 * m->M_001;
+  power[1] += m->M_010 * m->M_010;
+  power[1] += m->M_100 * m->M_100;
+
+  m->power[1] = sqrt(power[1]);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  /* 2nd order terms */
+  power[2] += m->M_002 * m->M_002;
+  power[2] += 5.000000000000000e-01 * m->M_011 * m->M_011;
+  power[2] += m->M_020 * m->M_020;
+  power[2] += 5.000000000000000e-01 * m->M_101 * m->M_101;
+  power[2] += 5.000000000000000e-01 * m->M_110 * m->M_110;
+  power[2] += m->M_200 * m->M_200;
+
+  m->power[2] = sqrt(power[2]);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+  /* 3rd order terms */
+  power[3] += m->M_003 * m->M_003;
+  power[3] += 3.333333333333333e-01 * m->M_012 * m->M_012;
+  power[3] += 3.333333333333333e-01 * m->M_021 * m->M_021;
+  power[3] += m->M_030 * m->M_030;
+  power[3] += 3.333333333333333e-01 * m->M_102 * m->M_102;
+  power[3] += 1.666666666666667e-01 * m->M_111 * m->M_111;
+  power[3] += 3.333333333333333e-01 * m->M_120 * m->M_120;
+  power[3] += 3.333333333333333e-01 * m->M_201 * m->M_201;
+  power[3] += 3.333333333333333e-01 * m->M_210 * m->M_210;
+  power[3] += m->M_300 * m->M_300;
+
+  m->power[3] = sqrt(power[3]);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+  /* 4th order terms */
+  power[4] += m->M_004 * m->M_004;
+  power[4] += 2.500000000000000e-01 * m->M_013 * m->M_013;
+  power[4] += 1.666666666666667e-01 * m->M_022 * m->M_022;
+  power[4] += 2.500000000000000e-01 * m->M_031 * m->M_031;
+  power[4] += m->M_040 * m->M_040;
+  power[4] += 2.500000000000000e-01 * m->M_103 * m->M_103;
+  power[4] += 8.333333333333333e-02 * m->M_112 * m->M_112;
+  power[4] += 8.333333333333333e-02 * m->M_121 * m->M_121;
+  power[4] += 2.500000000000000e-01 * m->M_130 * m->M_130;
+  power[4] += 1.666666666666667e-01 * m->M_202 * m->M_202;
+  power[4] += 8.333333333333333e-02 * m->M_211 * m->M_211;
+  power[4] += 1.666666666666667e-01 * m->M_220 * m->M_220;
+  power[4] += 2.500000000000000e-01 * m->M_301 * m->M_301;
+  power[4] += 2.500000000000000e-01 * m->M_310 * m->M_310;
+  power[4] += m->M_400 * m->M_400;
+
+  m->power[4] = sqrt(power[4]);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+  /* 5th order terms */
+  power[5] += m->M_005 * m->M_005;
+  power[5] += 2.000000000000000e-01 * m->M_014 * m->M_014;
+  power[5] += 1.000000000000000e-01 * m->M_023 * m->M_023;
+  power[5] += 1.000000000000000e-01 * m->M_032 * m->M_032;
+  power[5] += 2.000000000000000e-01 * m->M_041 * m->M_041;
+  power[5] += m->M_050 * m->M_050;
+  power[5] += 2.000000000000000e-01 * m->M_104 * m->M_104;
+  power[5] += 5.000000000000000e-02 * m->M_113 * m->M_113;
+  power[5] += 3.333333333333333e-02 * m->M_122 * m->M_122;
+  power[5] += 5.000000000000000e-02 * m->M_131 * m->M_131;
+  power[5] += 2.000000000000000e-01 * m->M_140 * m->M_140;
+  power[5] += 1.000000000000000e-01 * m->M_203 * m->M_203;
+  power[5] += 3.333333333333333e-02 * m->M_212 * m->M_212;
+  power[5] += 3.333333333333333e-02 * m->M_221 * m->M_221;
+  power[5] += 1.000000000000000e-01 * m->M_230 * m->M_230;
+  power[5] += 1.000000000000000e-01 * m->M_302 * m->M_302;
+  power[5] += 5.000000000000000e-02 * m->M_311 * m->M_311;
+  power[5] += 1.000000000000000e-01 * m->M_320 * m->M_320;
+  power[5] += 2.000000000000000e-01 * m->M_401 * m->M_401;
+  power[5] += 2.000000000000000e-01 * m->M_410 * m->M_410;
+  power[5] += m->M_500 * m->M_500;
+
+  m->power[5] = sqrt(power[5]);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
+#endif
+}
+
+/**
  * @brief Constructs the #multipole of a bunch of particles around their
  * centre of mass.
  *

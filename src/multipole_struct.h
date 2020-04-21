@@ -121,6 +121,9 @@ struct multipole {
   /*! Maximal co-moving softening of all the #gpart in the mulipole */
   float max_softening;
 
+  /*! Mulipole power for the different orders */
+  float power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
+
   /* 0th order term */
   float M_000;
 
@@ -128,12 +131,14 @@ struct multipole {
 
   /* 1st order terms */
   float M_100, M_010, M_001;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order terms */
   float M_200, M_020, M_002;
   float M_110, M_101, M_011;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
