@@ -204,4 +204,132 @@ construction. This allows us to simplify some of the expressions and
 helps reduce, albeit by a small fraction, the memory footprint of the
 tree structure.
 
-\subsubsection{The Multipole acceptance criterion}
+\subsubsection{Computing the accelerations via a tree-walk}
+
+We define the maximal distance between a centre of mass of a cell $B$ and
+any particle in that cell as
+
+\begin{equation}
+  \rho_B = \max_{b \in B}(|\mathbf{r}_b|)
+\end{equation}
+\\
+\textcolor{red}{MORE WORDS HERE}
+
+\subsubsection{The multipole acceptance criterion}
+
+The main remaining question is to decide when two cells are far enough from
+each others that the truncated Taylor expansion used as approximation for
+the potential (eq. \ref{eq:fmm:expansion}) is accurate enough. The
+criterion used to make that decision is called the \emph{multipole
+  acceptance criterion} (MAC).
+
+We know that (\ref{eq:fmm:expansion}) is converging towards the correct
+answer provided $1>|\mathbf{r}_a + \mathbf{r}_b| / |\mathbf{R}|$. This is
+hence the most basic (and always necessary) MAC that can be designed. If
+this ratio is lower, the accuracy (at a fixed expansion order) is improved
+and it is hence common practice to define a critical \emph{opening angle}
+$\theta_{\rm cr}$ and allow the use of the multipole approximation between
+two cells if
+
+\begin{equation}
+  \theta_{\rm cr} > \frac{\rho_A + \rho_B} {|\mathbf{R}|}.
+  \label{eq:fmm:angle}
+\end{equation}
+This lets users have a second handle on the accuracy on the gravity
+calculation besides the much more involved change in the expansion order
+$p$ of the FMM method. Typical values for the opening angle are in the
+range $[0.3, 0.7]$, with the cost of the simulation growing as $\theta_{\rm
+  cr}$ decreases.
+
+This method has the drawback of using a uniform criterion across the entire
+simulation volume and time evolution, which means that the chosen value of
+$\theta_{\rm cr}$ could be too small in some regions (leading to too many
+operations for the expected accuracy) and too large in some other other
+ones (leading to a lower level of accuracy than expected). \swift instead
+uses a more adaptive criterion to decide when the multipole approximation
+can be used. This is based on the error analysis of FMM by
+\cite{Dehnen2014} and is summarised below for completeness. The key idea is
+to exploit the additional information about the distribution of particles
+that is encoded in the higher-order multipole terms.
+
+We start by defining the scalar quantity $\mathsf{P}_{A,n}$, the
+\emph{power} of the multipole of order $n$ of the particles in cell $A$,
+via
+\begin{equation}
+  \mathsf{P}_{A,n}^2 = \sum_{|\mathbf{m}|=n} \frac{\mathbf{m}!}{|\mathbf{m}|!}\mathsf{M}_{A,\mathbf{m}}^2,
+\end{equation}
+where the sum runs over all the multipole terms of order $n$ in the
+cell\footnote{Note that $\mathsf{P}_{0} \equiv \mathsf{M}_{(0,0,0)}$ is
+  just the mass of the cell and since \swift uses the centre of mass as the
+  centre of expansion of the multipoles, $\mathsf{P}_{1} = 0$.}. This
+quantity is a simple upper bound for the amplitude of the multipole
+($\mathsf{M}_{A, \mathbf{m}} < \mathsf{P}_{A,|\mathbf{m}|}/|\mathbf{m}|!$)
+and can hence be used to estimate the importance of the terms of a given
+order in the Taylor series of the potential. Following \cite{Dehnen2014} we
+then consider a source cell $A$ and a sink cell $B$ for which we evaluate
+at order $p$ the expression
+\begin{equation}
+  E_{AB} = \frac{1}{M_A|\mathbf{R}|^p} \sum_m^p \binom{p}{m} \mathsf{P}_m
+  \rho_B^{p-m},
+  \label{eq:fmm:e_ab}
+\end{equation}
+with $M_A \equiv \mathsf{M}_{A,(0,0,0)}$, the sum of the mass of the
+particles in the cell. Note that since $\mathsf{P}_{A,n} \leq M_A
+\rho_A^n$, we have $E_{AB} \leq \left((\rho_A +
+\rho_B)/|\mathbf{R}|\right)^p$, where the right-hand side is the expression
+used in the basic opening angle condition (\ref{eq:fmm:angle}). We finally
+scale the $E_{AB}$'s by the relative size of the two cells to define the
+error estimator $\tilde{E}_{AB}$:
+\begin{equation}
+  \tilde{E}_{AB} = 8\frac{\max(\rho_A, \rho_B)}{\rho_A + \rho_B}E_{AB}.
+  \label{eq:fmm:e_ab_tilde}
+\end{equation}
+As shown by \cite{Dehnen2014}, these quantities are excellent estimators of
+the error made in computing the accelerations between two cells using the
+M2L and M2P kernels at a given order. We can hence use this property to
+design a new MAC by demanding that the estimated acceleration error is no
+larger than a certain fraction of the smallest acceleration in the sink
+cell $B$. This means we can use the FMM approximation between to
+approximate the accelerations in cell $A$ due to the particles in cell $B$ if
+\begin{equation}
+  \tilde{E}_{AB} \frac{M_A}{|\mathbf{R}|^2} < \epsilon \min_{b\in
+    B}\left(|\mathbf{a}_b|\right) \quad \rm{and} \quad \frac{\rho_A +
+    \rho_B} {|\mathbf{R}|} < 1,
+  \label{eq:fmm:mac}  
+\end{equation}
+where the $\mathbf{a}_b$ are the accelerations of the particles in cell $B$
+and $\epsilon$ is a tolerance parameter. Since this is self-referencing
+(i.e. we need the accelerations to decide how to compute the
+accelerations), we need to use a an estimator of $|\mathbf{a}_b|$. In
+\swift, we follow the strategy used by \gadget and use the acceleration of
+the previous time-step\footnote{On the first time-step of a simulation this
+  value has not been computed yet. We hence run a fake 0th time-step with
+  the simpler MAC (eq. \ref{eq:fmm:angle}), which is good enough to obtain
+  approximations of the accelerations.}. The minimal norm of the
+acceleration in a given cell can be computed at the same time as the P2M
+and M2M kernels are evaluated in the tree construction phase. The second
+condition in (\ref{eq:fmm:mac}) is necessary to ensure the convergence of the
+Taylor expansion.
+
+In the specific case of the M2P kernel, we have $\rho_B = 0$, which
+simplifies some of the expressions above. In this case, at order $p$, we get:
+\begin{align}
+  E_{AB} &= \frac{\mathsf{P}_{p, A}}{M_A |\mathbf{R}|^p}, \nonumber \\
+  \tilde{E}_{AB} &= 8E_{AB} \nonumber 
+\end{align}
+This leads to the following MAC for the M2P kernel:
+\begin{equation}
+  8\frac{\mathsf{P}_{p, A}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{b\in
+    B}\left(|\mathbf{a}_b|\right) \quad \rm{and} \quad \frac{\rho_A}
+  {|\mathbf{R}|} < 1.
+    \label{eq:fmm:mac_m2p}  
+\end{equation}
+The value of $\epsilon$ could in principle be different than the one used
+for the M2L MAC.
+
+%% We could hence replace the opening angle
+%% condition (\ref{eq:fmm:angle}) with $E_{AB} < \theta_{\rm cr}$, which would
+%% be at least as strict a condition but takes into account the higher order
+%% terms in the multi-poles\footnote{Expanding to order $p=1$, $E_{AB} =
+%%   \frac{1}{M_A|\mathbf{R}|} \mathsf{P}_{A,0} \rho_B \leq
+%%     \frac{1}{M_A|\mathbf{R}|} M_A \rho_A \rho_B \leq \frac{\rho_A \rho_B}{|\mathbf{R}|}$.}.
