@@ -868,6 +868,14 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
 #error "Missing implementation for order >5"
 #endif
 
+  /* Compare the multipole power */
+  for (int i = 0; i < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++i) {
+    if (fabsf(ma->power[i] - mb->power[i]) /
+            fabsf(ma->power[i] + mb->power[i]) >
+        tolerance)
+      message("Power of order %d different", i);
+  }
+
   /* All is good */
   return 1;
 }
