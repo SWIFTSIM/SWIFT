@@ -269,7 +269,7 @@ order in the Taylor series of the potential. Following \cite{Dehnen2014} we
 then consider a source cell $A$ and a sink cell $B$ for which we evaluate
 at order $p$ the expression
 \begin{equation}
-  E_{AB} = \frac{1}{M_A|\mathbf{R}|^p} \sum_m^p \binom{p}{m} \mathsf{P}_m
+  E_{AB} = \frac{1}{M_A|\mathbf{R}|^p} \sum_m^p \binom{p}{m} \mathsf{P}_{A,m}
   \rho_B^{p-m},
   \label{eq:fmm:e_ab}
 \end{equation}
@@ -314,12 +314,12 @@ Taylor expansion.
 In the specific case of the M2P kernel, we have $\rho_B = 0$, which
 simplifies some of the expressions above. In this case, at order $p$, we get:
 \begin{align}
-  E_{AB} &= \frac{\mathsf{P}_{p, A}}{M_A |\mathbf{R}|^p}, \nonumber \\
+  E_{AB} &= \frac{\mathsf{P}_{A,p}}{M_A |\mathbf{R}|^p}, \nonumber \\
   \tilde{E}_{AB} &= 8E_{AB} \nonumber 
 \end{align}
 This leads to the following MAC for the M2P kernel:
 \begin{equation}
-  8\frac{\mathsf{P}_{p, A}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{b\in
+  8\frac{\mathsf{P}_{A,p}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{b\in
     B}\left(|\mathbf{a}_b|\right) \quad \rm{and} \quad \frac{\rho_A}
   {|\mathbf{R}|} < 1.
     \label{eq:fmm:mac_m2p}  
@@ -327,7 +327,7 @@ This leads to the following MAC for the M2P kernel:
 The value of $\epsilon$ could in principle be different than the one
 used for the M2L MAC. One specific case is of particular
 interest. Using the expression for order $2$ and the approximation
-$P_{A,p} \approx M_A \rho_A^p$, we get
+$\mathsf{P}_{A,p} \approx M_A \rho_A^p$, we get
 \begin{equation}
   8\frac{M_A}{|\mathbf{R}|^2}\left(\frac{\rho_A}{|\mathbf{R}|}\right)^2
   < \epsilon \min_{b\in B}\left(|\mathbf{a}_b|\right) \nonumber
@@ -336,5 +336,5 @@ for our MAC.  This is the same expression as the adaptive opening
 angle used by \gadget \cite[see eq.18 of][]{Springel2005} up to
 numerical factors and definition of the size ($\rho$ vs. the cell
 edge) of a multipole. Note, however, that, in practice, since formally
-$P_{A,p} \leq M_A \rho_A^p$, the dependence is slightly different.
+$\mathsf{P}_{A,p} \leq M_A \rho_A^p$, the dependence is slightly different.
 
