@@ -234,6 +234,10 @@ black_holes_bpart_has_no_neighbours(struct bpart* bp,
   /* Re-set problematic values */
   bp->density.wcount = kernel_root * h_inv_dim;
   bp->density.wcount_dh = 0.f;
+
+  bp->velocity_gas[0] = FLT_MAX;
+  bp->velocity_gas[1] = FLT_MAX;
+  bp->velocity_gas[2] = FLT_MAX;
 }
 
 /**
@@ -387,7 +391,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     const struct phys_const* constants, const struct cosmology* cosmo,
     const double time, const int with_cosmology, const double dt) {
 
-  if (dt == 0.) return;
+  if (dt == 0. || bp->rho_gas == 0.) return;
 
   /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;
