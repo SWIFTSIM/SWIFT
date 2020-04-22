@@ -19,6 +19,10 @@
 #ifndef SWIFT_BINOMIAL_H
 #define SWIFT_BINOMIAL_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local headers */
 #include "error.h"
 #include "inline.h"
 
