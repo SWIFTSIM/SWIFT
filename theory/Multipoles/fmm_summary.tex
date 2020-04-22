@@ -249,29 +249,29 @@ can be used. This is based on the error analysis of FMM by
 \cite{Dehnen2014} and is summarised below for completeness. The key idea is
 to exploit the additional information about the distribution of particles
 that is encoded in the higher-order multipole terms.\\
-We start by defining the scalar quantity $\mathsf{P}_{A,n}$, the
+We start by defining the scalar quantity $P_{A,n}$, the
 \emph{power} of the multipole of order $n$ of the particles in cell $A$,
 via
 \begin{equation}
-  \mathsf{P}_{A,n}^2 = \sum_{|\mathbf{m}|=n} \frac{\mathbf{m}!}{|\mathbf{m}|!}\mathsf{M}_{A,\mathbf{m}}^2,
+  P_{A,n}^2 = \sum_{|\mathbf{m}|=n} \frac{\mathbf{m}!}{|\mathbf{m}|!}\mathsf{M}_{A,\mathbf{m}}^2,
 \end{equation}
 where the sum runs over all the multipole terms of order $n$ in the
-cell\footnote{Note that $\mathsf{P}_{0} \equiv \mathsf{M}_{(0,0,0)}$ is
+cell\footnote{Note that $P_{0} \equiv \mathsf{M}_{(0,0,0)}$ is
   just the mass of the cell and since \swift uses the centre of mass as the
-  centre of expansion of the multipoles, $\mathsf{P}_{1} = 0$.}. This
+  centre of expansion of the multipoles, $P_{1} = 0$.}. This
 quantity is a simple upper bound for the amplitude of the multipole
-($\mathsf{M}_{A, \mathbf{m}} < \mathsf{P}_{A,|\mathbf{m}|}/|\mathbf{m}|!$)
+($\mathsf{M}_{A, \mathbf{m}} < P_{A,|\mathbf{m}|}/|\mathbf{m}|!$)
 and can hence be used to estimate the importance of the terms of a given
 order in the Taylor series of the potential. Following \cite{Dehnen2014} we
 then consider a sink cell $A$ and a source cell $B$ (figure \ref{fig:fmm:cells}) for which we evaluate
 at order $p$ the scalar
 \begin{equation}
-  E_{BA,p} = \frac{1}{M_B|\mathbf{R}|^p} \sum_{n=0}^p \binom{p}{n} \mathsf{P}_{B,n}
+  E_{BA,p} = \frac{1}{M_B|\mathbf{R}|^p} \sum_{n=0}^p \binom{p}{n} P_{B,n}
   \rho_A^{p-n},
   \label{eq:fmm:e_ab}
 \end{equation}
 with $M_B \equiv \mathsf{M}_{B,(0,0,0)}$, the sum of the mass of the
-particles in cell $B$. Note that since $\mathsf{P}_{B,n} \leq M_B
+particles in cell $B$. Note that since $P_{B,n} \leq M_B
 \rho_B^n$, we have $E_{BA, p} \leq \left((\rho_A +
 \rho_B)/|\mathbf{R}|\right)^p$, where the right-hand side is the
 expression used in the basic opening angle condition
@@ -318,14 +318,14 @@ to cells of different sizes interacting. \\
 In the specific case of the M2P kernel, we have $\rho_A = 0$, which
 simplifies some of the expressions above. In this case, at order $p$, we get:
 \begin{equation}
-  E_{BA,p} = \frac{\mathsf{P}_{B,p}}{M_B |\mathbf{R}|^p}, \qquad
+  E_{BA,p} = \frac{P_{B,p}}{M_B |\mathbf{R}|^p}, \qquad
   \tilde{E}_{BA,p} = 8E_{BA,p} \nonumber
 \end{equation}
 Note that, in this case, only the power term of the order of the
 scheme appears; not a sum over the lower-order ones. This leads to the
 following MAC for the M2P kernel:
 \begin{equation}
-  8\frac{\mathsf{P}_{B,p}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{a\in
+  8\frac{P_{B,p}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{a\in
     A}\left(|\mathbf{a}_a|\right) \quad \rm{and} \quad \frac{\rho_B}
   {|\mathbf{R}|} < 1.
     \label{eq:fmm:mac_m2p}  
@@ -333,7 +333,7 @@ following MAC for the M2P kernel:
 The value of $\epsilon$ could in principle be different than the one
 used for the M2L MAC. One special case is of particular interest to
 link our expression to other results. Using the expression for order
-$2$ and the approximation $\mathsf{P}_{B,p} \approx M_B \rho_B^p$, we
+$2$ and the approximation $P_{B,p} \approx M_B \rho_B^p$, we
 get
 \begin{equation}
   8\frac{M_B}{|\mathbf{R}|^2}\left(\frac{\rho_B}{|\mathbf{R}|}\right)^2
@@ -343,7 +343,7 @@ for our MAC.  This is the same expression as the adaptive opening
 angle used by \gadget \cite[see eq.18 of][]{Springel2005} up to
 numerical factors and definition of the size of a multipole ($\rho$
 vs. the cell edge). Note, however, that, in practice, since formally
-$\mathsf{P}_{B,p} \leq M_B \rho_B^p$, the dependence is slightly
+$P_{B,p} \leq M_B \rho_B^p$, the dependence is slightly
 different.\\
 We conclude this section by noting that whilst the derivation of the
 FMM equations and of the simple geometric MAC (eq. \ref{eq:fmm:angle})
