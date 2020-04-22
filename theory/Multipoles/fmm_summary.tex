@@ -269,8 +269,8 @@ order in the Taylor series of the potential. Following \cite{Dehnen2014} we
 then consider a source cell $A$ and a sink cell $B$ for which we evaluate
 at order $p$ the expression
 \begin{equation}
-  E_{AB} = \frac{1}{M_A|\mathbf{R}|^p} \sum_m^p \binom{p}{m} \mathsf{P}_{A,m}
-  \rho_B^{p-m},
+  E_{AB} = \frac{1}{M_A|\mathbf{R}|^p} \sum_{n=0}^p \binom{p}{n} \mathsf{P}_{A,n}
+  \rho_B^{p-n},
   \label{eq:fmm:e_ab}
 \end{equation}
 with $M_A \equiv \mathsf{M}_{A,(0,0,0)}$, the sum of the mass of the
@@ -325,16 +325,18 @@ This leads to the following MAC for the M2P kernel:
     \label{eq:fmm:mac_m2p}  
 \end{equation}
 The value of $\epsilon$ could in principle be different than the one
-used for the M2L MAC. One specific case is of particular
-interest. Using the expression for order $2$ and the approximation
-$\mathsf{P}_{A,p} \approx M_A \rho_A^p$, we get
+used for the M2L MAC. One special case is of particular interest to
+link our expression to other results. Using the expression for order
+$2$ and the approximation $\mathsf{P}_{A,p} \approx M_A \rho_A^p$, we
+get
 \begin{equation}
   8\frac{M_A}{|\mathbf{R}|^2}\left(\frac{\rho_A}{|\mathbf{R}|}\right)^2
   < \epsilon \min_{b\in B}\left(|\mathbf{a}_b|\right) \nonumber
 \end{equation}
 for our MAC.  This is the same expression as the adaptive opening
 angle used by \gadget \cite[see eq.18 of][]{Springel2005} up to
-numerical factors and definition of the size ($\rho$ vs. the cell
-edge) of a multipole. Note, however, that, in practice, since formally
-$\mathsf{P}_{A,p} \leq M_A \rho_A^p$, the dependence is slightly different.
+numerical factors and definition of the size of a multipole ($\rho$
+vs. the cell edge). Note, however, that, in practice, since formally
+$\mathsf{P}_{A,p} \leq M_A \rho_A^p$, the dependence is slightly
+different.
 
