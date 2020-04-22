@@ -489,7 +489,7 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
 
   /* Check minimal old acceleration norm */
   if (fabsf(ma->min_old_a_grav_norm - mb->min_old_a_grav_norm) /
-          fabsf(ma->min_old_a_grav_norm + mb->min_old_a_grav_norm) >
+          fabsf(ma->min_old_a_grav_norm + mb->min_old_a_grav_norm + FLT_MIN) >
       tolerance) {
     message("min old_a_grav_norm different!");
     return 0;
@@ -876,6 +876,10 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
 
   /* Compare the multipole power */
   for (int i = 0; i < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++i) {
+
+    /* Ignore the order 1 power to avoid FPE since it's always 0 */
+    if (i == 1 || (ma->power[i] + mb->power[i] == 0.)) continue;
+
     if (fabsf(ma->power[i] - mb->power[i]) /
             fabsf(ma->power[i] + mb->power[i]) >
         tolerance)
