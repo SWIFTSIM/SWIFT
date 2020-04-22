@@ -221,8 +221,7 @@ The main remaining question is to decide when two cells are far enough from
 each others that the truncated Taylor expansion used as approximation for
 the potential (eq. \ref{eq:fmm:expansion}) is accurate enough. The
 criterion used to make that decision is called the \emph{multipole
-  acceptance criterion} (MAC).
-
+  acceptance criterion} (MAC). \\
 We know that (\ref{eq:fmm:expansion}) is converging towards the correct
 answer provided $1>|\mathbf{r}_a + \mathbf{r}_b| / |\mathbf{R}|$. This is
 hence the most basic (and always necessary) MAC that can be designed. If
@@ -239,8 +238,7 @@ This lets users have a second handle on the accuracy on the gravity
 calculation besides the much more involved change in the expansion order
 $p$ of the FMM method. Typical values for the opening angle are in the
 range $[0.3, 0.7]$, with the cost of the simulation growing as $\theta_{\rm
-  cr}$ decreases.
-
+  cr}$ decreases. \\
 This method has the drawback of using a uniform criterion across the entire
 simulation volume and time evolution, which means that the chosen value of
 $\theta_{\rm cr}$ could be too small in some regions (leading to too many
@@ -250,8 +248,7 @@ uses a more adaptive criterion to decide when the multipole approximation
 can be used. This is based on the error analysis of FMM by
 \cite{Dehnen2014} and is summarised below for completeness. The key idea is
 to exploit the additional information about the distribution of particles
-that is encoded in the higher-order multipole terms.
-
+that is encoded in the higher-order multipole terms.\\
 We start by defining the scalar quantity $\mathsf{P}_{A,n}$, the
 \emph{power} of the multipole of order $n$ of the particles in cell $A$,
 via
@@ -309,15 +306,23 @@ the previous time-step\footnote{On the first time-step of a simulation this
 acceleration in a given cell can be computed at the same time as the P2M
 and M2M kernels are evaluated in the tree construction phase. The second
 condition in (\ref{eq:fmm:mac}) is necessary to ensure the convergence of the
-Taylor expansion.
-
+Taylor expansion.\\
+One important difference between this criterion and the purely geometric
+one (\ref{eq:fmm:angle}) is that it is not symmetric in $A \leftrightarrow
+B$. This implies that there are cases where a multipole in cell $A$ can be
+used to compute the field tensors in cell $B$ but the multipole in $B$
+cannot be used to compute the $\mathsf{F}$ values of cell $A$. This affects
+the tree walk by breaking the symmetry and potentially leading to cells of
+different sizes interacting. \\
 In the specific case of the M2P kernel, we have $\rho_B = 0$, which
 simplifies some of the expressions above. In this case, at order $p$, we get:
-\begin{align}
-  E_{AB} &= \frac{\mathsf{P}_{A,p}}{M_A |\mathbf{R}|^p}, \nonumber \\
-  \tilde{E}_{AB} &= 8E_{AB} \nonumber 
-\end{align}
-This leads to the following MAC for the M2P kernel:
+\begin{equation}
+  E_{AB} = \frac{\mathsf{P}_{A,p}}{M_A |\mathbf{R}|^p}, \qquad
+  \tilde{E}_{AB} = 8E_{AB} \nonumber
+\end{equation}
+Note that, in this case, only the power term of the order of the
+scheme appears; not a sum over the lower-order ones. This leads to the
+following MAC for the M2P kernel:
 \begin{equation}
   8\frac{\mathsf{P}_{A,p}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{b\in
     B}\left(|\mathbf{a}_b|\right) \quad \rm{and} \quad \frac{\rho_A}
