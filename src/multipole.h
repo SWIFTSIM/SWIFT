@@ -52,8 +52,8 @@
 __attribute__((nonnull)) INLINE static void gravity_reset(
     struct gravity_tensors *m) {
 
-  /* Just bzero the struct. */
   bzero(m, sizeof(struct gravity_tensors));
+  m->m_pole.min_old_a_grav_norm = FLT_MAX;
 }
 
 /**
@@ -287,6 +287,7 @@ __attribute__((nonnull)) INLINE static void gravity_multipole_init(
     struct multipole *m) {
 
   bzero(m, sizeof(struct multipole));
+  m->min_old_a_grav_norm = FLT_MAX;
 }
 
 /**
@@ -355,6 +356,10 @@ __attribute__((nonnull)) INLINE static void gravity_multipole_add(
 
   /* Maximum of both softenings */
   ma->max_softening = max(ma->max_softening, mb->max_softening);
+
+  /* Minimum of both old accelerations */
+  ma->min_old_a_grav_norm =
+      min(ma->min_old_a_grav_norm, mb->min_old_a_grav_norm);
 
   /* Add 0th order term */
   ma->M_000 += mb->M_000;
@@ -479,6 +484,14 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
           fabsf(ma->max_softening + mb->max_softening) >
       tolerance) {
     message("max softening different!");
+    return 0;
+  }
+
+  /* Check minimal old acceleration norm */
+  if (fabsf(ma->min_old_a_grav_norm - mb->min_old_a_grav_norm) /
+          fabsf(ma->min_old_a_grav_norm + mb->min_old_a_grav_norm) >
+      tolerance) {
+    message("min old_a_grav_norm different!");
     return 0;
   }
 
@@ -988,6 +1001,7 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
 
   /* Temporary variables */
   float epsilon_max = 0.f;
+  float min_old_a_grav_norm = FLT_MAX;
   double mass = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
   double vel[3] = {0.f, 0.f, 0.f};
@@ -1003,6 +1017,7 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
 #endif
 
     epsilon_max = max(epsilon_max, epsilon);
+    min_old_a_grav_norm = min(min_old_a_grav_norm, gparts[k].old_a_grav_norm);
     mass += m;
     com[0] += gparts[k].x[0] * m;
     com[1] += gparts[k].x[1] * m;
@@ -1166,12 +1181,12 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
 #endif
 
   /* Store the data on the multipole. */
-  multi->m_pole.max_softening = epsilon_max;
-  multi->m_pole.M_000 = mass;
   multi->r_max = sqrt(r_max2);
   multi->CoM[0] = com[0];
   multi->CoM[1] = com[1];
   multi->CoM[2] = com[2];
+  multi->m_pole.max_softening = epsilon_max;
+  multi->m_pole.min_old_a_grav_norm = min_old_a_grav_norm;
   multi->m_pole.vel[0] = vel[0];
   multi->m_pole.vel[1] = vel[1];
   multi->m_pole.vel[2] = vel[2];
@@ -1181,6 +1196,7 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
   multi->m_pole.min_delta_vel[0] = min_delta_vel[0];
   multi->m_pole.min_delta_vel[1] = min_delta_vel[1];
   multi->m_pole.min_delta_vel[2] = min_delta_vel[2];
+  multi->m_pole.M_000 = mass;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
@@ -1282,6 +1298,9 @@ __attribute__((nonnull)) INLINE static void gravity_M2M(
 
   /* "shift" the softening */
   m_a->max_softening = m_b->max_softening;
+
+  /* "shift" the minimal acceleration */
+  m_a->min_old_a_grav_norm = m_b->min_old_a_grav_norm;
 
   /* Shift 0th order term */
   m_a->M_000 = m_b->M_000;

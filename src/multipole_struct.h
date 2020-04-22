@@ -121,6 +121,9 @@ struct multipole {
   /*! Maximal co-moving softening of all the #gpart in the mulipole */
   float max_softening;
 
+  /*! Minimal acceleration norm of all the #gpart in the mulipole */
+  float min_old_a_grav_norm;
+
   /*! Mulipole power for the different orders */
   float power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
 

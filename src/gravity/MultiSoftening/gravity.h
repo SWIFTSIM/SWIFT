@@ -160,6 +160,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
   gp->potential = 0.f;
+  gp->old_a_grav_norm = 0.f;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = 0.f;
@@ -205,6 +206,14 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 
   /* Apply the periodic correction to the peculiar potential */
   if (periodic) gp->potential += potential_normalisation;
+
+  /* Record the norm of the acceleration for the adaptive opening criteria.
+   * Will always be an (active) timestep behind. */
+  gp->old_a_grav_norm = gp->a_grav[0] * gp->a_grav[0] +
+                        gp->a_grav[1] * gp->a_grav[1] +
+                        gp->a_grav[2] * gp->a_grav[2];
+
+  gp->old_a_grav_norm = sqrtf(gp->old_a_grav_norm);
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
