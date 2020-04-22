@@ -25,20 +25,26 @@
 /**
  * @brief Compute the binomial coefficient (n, k)
  *
- * Only valid for values up to n = 5.
+ * Only valid for values 0 <= n <= 8 and 0 <= k <= n.
  */
 __attribute__((const)) INLINE static int binomial(const int n, const int k) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   assert(n >= 0);
   assert(k >= 0);
-  assert(n <= 5);
+  assert(n <= 8);
   assert(k <= n);
 #endif
 
-  static const int coeffs[6][6] = {{1, 0, 0, 0, 0, 0}, {1, 1, 0, 0, 0, 0},
-                                   {1, 2, 1, 0, 0, 0}, {1, 3, 3, 1, 0, 0},
-                                   {1, 4, 6, 4, 1, 0}, {1, 5, 10, 10, 5, 1}};
+  /* Hello Pascal! Nice to meet again */
+  static const int coeffs[9][9] = {
+      {1, 0, 0, 0, 0, 0, 0, 0, 0},     {1, 1, 0, 0, 0, 0, 0, 0, 0},
+      {1, 2, 1, 0, 0, 0, 0, 0, 0},     {1, 3, 3, 1, 0, 0, 0, 0, 0},
+      {1, 4, 6, 4, 1, 0, 0, 0, 0},     {1, 5, 10, 10, 5, 1, 0, 0, 0},
+      {1, 6, 15, 20, 15, 6, 1, 0, 0},  {1, 7, 21, 35, 35, 21, 7, 1, 0},
+      {1, 8, 28, 56, 70, 56, 28, 8, 1}
+
+  };
 
   return coeffs[n][k];
 }
