@@ -263,22 +263,22 @@ quantity is a simple upper bound for the amplitude of the multipole
 ($\mathsf{M}_{A, \mathbf{m}} < \mathsf{P}_{A,|\mathbf{m}|}/|\mathbf{m}|!$)
 and can hence be used to estimate the importance of the terms of a given
 order in the Taylor series of the potential. Following \cite{Dehnen2014} we
-then consider a source cell $A$ and a sink cell $B$ for which we evaluate
-at order $p$ the expression
+then consider a sink cell $A$ and a source cell $B$ (figure \ref{fig:fmm:cells}) for which we evaluate
+at order $p$ the scalar
 \begin{equation}
-  E_{AB} = \frac{1}{M_A|\mathbf{R}|^p} \sum_{n=0}^p \binom{p}{n} \mathsf{P}_{A,n}
-  \rho_B^{p-n},
+  E_{BA,p} = \frac{1}{M_B|\mathbf{R}|^p} \sum_{n=0}^p \binom{p}{n} \mathsf{P}_{B,n}
+  \rho_A^{p-n},
   \label{eq:fmm:e_ab}
 \end{equation}
-with $M_A \equiv \mathsf{M}_{A,(0,0,0)}$, the sum of the mass of the
-particles in the cell. Note that since $\mathsf{P}_{A,n} \leq M_A
-\rho_A^n$, we have $E_{AB} \leq \left((\rho_A +
-\rho_B)/|\mathbf{R}|\right)^p$, where the right-hand side is the expression
-used in the basic opening angle condition (\ref{eq:fmm:angle}). We finally
-scale the $E_{AB}$'s by the relative size of the two cells to define the
-error estimator $\tilde{E}_{AB}$:
+with $M_B \equiv \mathsf{M}_{B,(0,0,0)}$, the sum of the mass of the
+particles in cell $B$. Note that since $\mathsf{P}_{B,n} \leq M_B
+\rho_B^n$, we have $E_{BA, p} \leq \left((\rho_A +
+\rho_B)/|\mathbf{R}|\right)^p$, where the right-hand side is the
+expression used in the basic opening angle condition
+(\ref{eq:fmm:angle}). We finally scale the $E_{BA,p}$'s by the relative
+size of the two cells to define the error estimator $\tilde{E}_{BA,p}$:
 \begin{equation}
-  \tilde{E}_{AB} = 8\frac{\max(\rho_A, \rho_B)}{\rho_A + \rho_B}E_{AB}.
+  \tilde{E}_{BA,p} = 8\frac{\max(\rho_A, \rho_B)}{\rho_A + \rho_B}E_{BA,p}.
   \label{eq:fmm:e_ab_tilde}
 \end{equation}
 As shown by \cite{Dehnen2014}, these quantities are excellent estimators of
@@ -286,18 +286,18 @@ the error made in computing the accelerations between two cells using the
 M2L and M2P kernels at a given order. We can hence use this property to
 design a new MAC by demanding that the estimated acceleration error is no
 larger than a certain fraction of the smallest acceleration in the sink
-cell $B$. This means we can use the FMM approximation between to
+cell $A$. This means we can use the FMM approximation between to
 approximate the accelerations in cell $A$ due to the particles in cell $B$ if
 \begin{equation}
-  \tilde{E}_{AB} \frac{M_A}{|\mathbf{R}|^2} < \epsilon \min_{b\in
-    B}\left(|\mathbf{a}_b|\right) \quad \rm{and} \quad \frac{\rho_A +
+  \tilde{E}_{BA,p} \frac{M_B}{|\mathbf{R}|^2} < \epsilon \min_{a\in
+    A}\left(|\mathbf{a}_a|\right) \quad \rm{and} \quad \frac{\rho_A +
     \rho_B} {|\mathbf{R}|} < 1,
   \label{eq:fmm:mac}  
 \end{equation}
-where the $\mathbf{a}_b$ are the accelerations of the particles in cell $B$
+where the $\mathbf{a}_a$ are the accelerations of the particles in cell $A$
 and $\epsilon$ is a tolerance parameter. Since this is self-referencing
 (i.e. we need the accelerations to decide how to compute the
-accelerations), we need to use a an estimator of $|\mathbf{a}_b|$. In
+accelerations), we need to use a an estimator of $|\mathbf{a}_a|$. In
 \swift, we follow the strategy used by \gadget and use the acceleration of
 the previous time-step\footnote{On the first time-step of a simulation this
   value has not been computed yet. We hence run a fake 0th time-step with
@@ -307,41 +307,48 @@ acceleration in a given cell can be computed at the same time as the P2M
 and M2M kernels are evaluated in the tree construction phase. The second
 condition in (\ref{eq:fmm:mac}) is necessary to ensure the convergence of the
 Taylor expansion.\\
-One important difference between this criterion and the purely geometric
-one (\ref{eq:fmm:angle}) is that it is not symmetric in $A \leftrightarrow
-B$. This implies that there are cases where a multipole in cell $A$ can be
-used to compute the field tensors in cell $B$ but the multipole in $B$
-cannot be used to compute the $\mathsf{F}$ values of cell $A$. This affects
-the tree walk by breaking the symmetry and potentially leading to cells of
-different sizes interacting. \\
-In the specific case of the M2P kernel, we have $\rho_B = 0$, which
+One important difference between this criterion and the purely
+geometric one (\ref{eq:fmm:angle}) is that it is not symmetric in $A
+\leftrightarrow B$ (i.e. $E_{AB,p} \neq E_{BA,p}$). This implies that
+there are cases where a multipole in cell $A$ can be used to compute
+the field tensors in cell $B$ but the multipole in $B$ cannot be used
+to compute the $\mathsf{F}$ values of cell $A$ and vice versa. This
+affects the tree walk by breaking the symmetry and potentially leading
+to cells of different sizes interacting. \\
+In the specific case of the M2P kernel, we have $\rho_A = 0$, which
 simplifies some of the expressions above. In this case, at order $p$, we get:
 \begin{equation}
-  E_{AB} = \frac{\mathsf{P}_{A,p}}{M_A |\mathbf{R}|^p}, \qquad
-  \tilde{E}_{AB} = 8E_{AB} \nonumber
+  E_{BA,p} = \frac{\mathsf{P}_{B,p}}{M_B |\mathbf{R}|^p}, \qquad
+  \tilde{E}_{BA,p} = 8E_{BA,p} \nonumber
 \end{equation}
 Note that, in this case, only the power term of the order of the
 scheme appears; not a sum over the lower-order ones. This leads to the
 following MAC for the M2P kernel:
 \begin{equation}
-  8\frac{\mathsf{P}_{A,p}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{b\in
-    B}\left(|\mathbf{a}_b|\right) \quad \rm{and} \quad \frac{\rho_A}
+  8\frac{\mathsf{P}_{B,p}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{a\in
+    A}\left(|\mathbf{a}_a|\right) \quad \rm{and} \quad \frac{\rho_B}
   {|\mathbf{R}|} < 1.
     \label{eq:fmm:mac_m2p}  
 \end{equation}
 The value of $\epsilon$ could in principle be different than the one
 used for the M2L MAC. One special case is of particular interest to
 link our expression to other results. Using the expression for order
-$2$ and the approximation $\mathsf{P}_{A,p} \approx M_A \rho_A^p$, we
+$2$ and the approximation $\mathsf{P}_{B,p} \approx M_B \rho_B^p$, we
 get
 \begin{equation}
-  8\frac{M_A}{|\mathbf{R}|^2}\left(\frac{\rho_A}{|\mathbf{R}|}\right)^2
-  < \epsilon \min_{b\in B}\left(|\mathbf{a}_b|\right) \nonumber
+  8\frac{M_B}{|\mathbf{R}|^2}\left(\frac{\rho_B}{|\mathbf{R}|}\right)^2
+  < \epsilon \min_{a\in A}\left(|\mathbf{a}_a|\right) \nonumber
 \end{equation}
 for our MAC.  This is the same expression as the adaptive opening
 angle used by \gadget \cite[see eq.18 of][]{Springel2005} up to
 numerical factors and definition of the size of a multipole ($\rho$
 vs. the cell edge). Note, however, that, in practice, since formally
-$\mathsf{P}_{A,p} \leq M_A \rho_A^p$, the dependence is slightly
-different.
-
+$\mathsf{P}_{B,p} \leq M_B \rho_B^p$, the dependence is slightly
+different.\\
+We conclude this section by noting that whilst the derivation of the
+FMM equations and of the simple geometric MAC (eq. \ref{eq:fmm:angle})
+do not make any assumptions about the functional form of $\varphi(r)$,
+the more advanced MAC is valid in the specific case of the
+gravitational potential $\varphi(r) = m/r$ as can be inferred from the
+$m/r^2$ term appearing on the LHS of the criteria (\ref{eq:fmm:mac})
+and (\ref{eq:fmm:mac_m2p}).
