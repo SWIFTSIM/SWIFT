@@ -32,6 +32,7 @@
 #include "engine.h"
 #include "feedback.h"
 #include "kick.h"
+#include "multipole.h"
 #include "timers.h"
 #include "timestep.h"
 #include "timestep_limiter.h"

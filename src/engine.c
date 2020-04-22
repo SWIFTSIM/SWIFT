@@ -75,6 +75,7 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "mpiuse.h"
+#include "multipole_struct.h"
 #include "outputlist.h"
 #include "parallel_io.h"
 #include "part.h"

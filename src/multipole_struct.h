@@ -230,4 +230,13 @@ struct reduced_grav_tensor {
   float F_001;
 };
 
+#ifdef WITH_MPI
+/* MPI datatypes for transfers */
+extern MPI_Datatype multipole_mpi_type;
+extern MPI_Op multipole_mpi_reduce_op;
+
+void multipole_create_mpi_types(void);
+void multipole_free_mpi_types(void);
+#endif
+
 #endif /* SWIFT_MULTIPOLE_STRUCT_H */
