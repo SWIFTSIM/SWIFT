@@ -3099,8 +3099,9 @@ void engine_makeproxies(struct engine *e) {
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+  const double theta_crit2 =
+      e->gravity_properties->theta_crit * e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 

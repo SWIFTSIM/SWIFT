@@ -541,7 +541,8 @@ static INLINE void runner_dopair_grav_pm_full(
 #ifdef SWIFT_DEBUG_CHECKS
     const float r_max_j = cj->grav.multipole->r_max;
     const float r_max2 = r_max_j * r_max_j;
-    const float theta_crit2 = e->gravity_properties->theta_crit2;
+    const double theta_crit = e->gravity_properties->theta_crit;
+    const double theta_crit2 = theta_crit * theta_crit;
 
     /* Note: 0.99 and 1.1 to avoid FP rounding false-positives */
     if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
@@ -684,7 +685,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
 #ifdef SWIFT_DEBUG_CHECKS
     const float r_max_j = cj->grav.multipole->r_max;
     const float r_max2 = r_max_j * r_max_j;
-    const float theta_crit2 = e->gravity_properties->theta_crit2;
+    const double theta_crit = e->gravity_properties->theta_crit;
+    const double theta_crit2 = theta_crit * theta_crit;
 
     /* 0.99 and 1.1 to avoid FP rounding false-positives */
     if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
@@ -1623,7 +1625,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit2 = theta_crit * theta_crit;
   const double max_distance = e->mesh->r_cut_max;
 
   /* Anything to do here? */
@@ -1840,7 +1843,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit2 = theta_crit * theta_crit;
   const double max_distance2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
 
   TIMER_TIC;

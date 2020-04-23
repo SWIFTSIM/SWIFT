@@ -6389,7 +6389,9 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
  */
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s) {
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit2 = theta_crit * theta_crit;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
@@ -6431,7 +6433,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
                                  const struct engine *e,
                                  const struct space *s) {
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit2 = theta_crit * theta_crit;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
