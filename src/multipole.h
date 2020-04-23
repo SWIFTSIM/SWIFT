@@ -30,7 +30,6 @@
 /* Includes. */
 #include "accumulate.h"
 #include "align.h"
-#include "binomial.h"
 #include "const.h"
 #include "error.h"
 #include "gravity.h"
