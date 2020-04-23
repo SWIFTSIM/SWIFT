@@ -26,6 +26,7 @@
 #include "gravity_properties.h"
 
 /* Forward declarations */
+struct engine;
 struct space;
 struct gpart;
 struct threadpool;
