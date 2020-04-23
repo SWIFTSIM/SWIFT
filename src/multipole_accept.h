@@ -93,14 +93,14 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const int cond_2 = max_softening * max_softening < r2;
 
     /* Condition 3: The contribution is accurate enough
-     * (E_BA / r^(p+2) < eps a_min) */
+     * (E_BA / r^(p+2) < eps * a_min) */
     const int cond_3 = E_BA_term < eps * min_a_grav * r_to_p_plus2;
 
     return cond_1 && cond_2 && cond_3;
 
   } else {
 
-    /* Condition 1: We are in the converging part of the Taylor expansion */
+    /* Condition 1: We are obeying the purely geometric criterion */
     const int cond_1 = rho_sum * rho_sum < theta_crit2 * r2;
 
     /* Condition 2: We are not below softening */
@@ -169,7 +169,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
 
   } else {
 
-    /* Condition 1: We are in the converging part of the Taylor expansion */
+    /* Condition 1: We are obeying the purely geometric criterion */
     const int cond_1 = (B->r_max) * (B->r_max) < theta_crit2 * r2;
 
     /* Condition 2: We are not below softening */
