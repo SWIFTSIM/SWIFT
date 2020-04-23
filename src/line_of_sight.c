@@ -13,6 +13,8 @@
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
 #include "periodic.h"
+#include "io_properties.h"
+#include "hydro_io.h"
 
 void los_init(double dim[3], struct los_props *los_params,
         struct swift_params *params) {
@@ -53,7 +55,7 @@ void los_init(double dim[3], struct los_props *los_params,
  * @param params Sightline parameters.
  */
 void generate_line_of_sights(struct line_of_sight *Los,
-                             struct los_props *params) {
+                             const struct los_props *params) {
 
   /* Keep track of number of sightlines. */
   int count = 0;
@@ -113,8 +115,8 @@ void generate_line_of_sights(struct line_of_sight *Los,
  * @param Los Structure of sightlines to print.
  * @param params Sightline parameters.
  */
-void print_los_info(struct line_of_sight *Los,
-                    struct los_props *params) {
+void print_los_info(const struct line_of_sight *Los,
+                    const struct los_props *params) {
 
   printf("\nPrinting LOS information...\n");
   for (int i = 0; i < params->num_tot; i++) {
@@ -129,8 +131,17 @@ void do_line_of_sight(struct engine *e) {
   const ticks tic = getticks();
 
   const struct space *s = e->s;
+  const struct part *p = s->parts;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const size_t nr_parts = s->nr_parts;
-  struct los_props *LOS_params = e->los_properties;
+  const struct los_props *LOS_params = e->los_properties;
+
+  double dx, dy, r2, hsml;
+
+  /* HDF5 vars. */
+  hid_t h_file, h_grp;
+  char fileName[200], groupName[200];
 
   /* Start by generating the random sightline positions. */
   struct line_of_sight *LOS_list = (struct line_of_sight *)malloc(
@@ -141,18 +152,11 @@ void do_line_of_sight(struct engine *e) {
             MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  double dx, dy, r2, hsml;
-
-  FILE *f;
-
+  /* Create HDF5 file. */
   if (e->nodeID == 0) {
-    char filename[200];
-    sprintf(filename, "los_%04i.csv", e->los_output_count);
-    f = fopen(filename, "w");
-    if (f == NULL) error("Error opening los file.");
-
-    /* Write header */
-    fprintf(f, "los_id,x,y,z,hsml\n");
+    sprintf(fileName, "los_%04i.hdf5", e->los_output_count);
+    h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_file < 0) error("Error while opening file '%s'.", fileName);
   }
 
   /* Loop over each random LOS. */
@@ -160,23 +164,23 @@ void do_line_of_sight(struct engine *e) {
 
     /* Loop over each gas particle to find those in LOS. */
     for (size_t i = 0; i < nr_parts; i++) {
-      if (s->parts[i].gpart->type == swift_type_gas) {
+      if (p[i].gpart->type == swift_type_gas) {
         /* Distance from this particle to LOS along x dim. */
-        dx = s->parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+        dx = p[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
 
         /* Periodic wrap. */
-        if (e->s->periodic) dx = nearest(dx, s->dim[LOS_list[j].xaxis]);
+        if (periodic) dx = nearest(dx, dim[LOS_list[j].xaxis]);
 
         /* Smoothing length of this part. */
-        hsml = s->parts[i].h * kernel_gamma;
+        hsml = p[i].h * kernel_gamma;
 
         /* Does this particle fall into our LOS? */
         if (dx <= hsml) {
           /* Distance from this particle to LOS along y dim. */
-          dy = s->parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
+          dy = p[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
           
           /* Periodic wrap. */
-          if (e->s->periodic) dy = nearest(dy, s->dim[LOS_list[j].yaxis]);
+          if (periodic) dy = nearest(dy, dim[LOS_list[j].yaxis]);
 
           /* Does this particle still fall into our LOS? */
           if (dy <= hsml) {
@@ -214,15 +218,15 @@ void do_line_of_sight(struct engine *e) {
 #endif
 
     /* Setup los particles structure. */
-    struct line_of_sight_particles *LOS_particles;
+    struct part *LOS_particles;
     if (e->nodeID == 0) {
-      LOS_particles = (struct line_of_sight_particles *)malloc(
+      LOS_particles = (struct part *)malloc(
           LOS_list[j].particles_in_los_total *
-          sizeof(struct line_of_sight_particles));
-    } else { 
-      LOS_particles = (struct line_of_sight_particles *)malloc(
+          sizeof(struct part));
+    } else {
+      LOS_particles = (struct part *)malloc(
           LOS_list[j].particles_in_los_local *
-          sizeof(struct line_of_sight_particles));
+          sizeof(struct part));
     }
 
     /* Loop over each gas particle again to store properties. */
@@ -230,23 +234,23 @@ void do_line_of_sight(struct engine *e) {
 
     for (size_t i = 0; i < nr_parts; i++) {
 
-      if (s->parts[i].gpart->type == swift_type_gas) {
+      if (p[i].gpart->type == swift_type_gas) {
         /* Distance from this particle to LOS along x dim. */
-        dx = s->parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+        dx = p[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
 
         /* Periodic wrap. */
-        if (e->s->periodic) dx = nearest(dx, s->dim[LOS_list[j].xaxis]);
+        if (periodic) dx = nearest(dx, dim[LOS_list[j].xaxis]);
 
         /* Smoothing length of this part. */
-        hsml = s->parts[i].h * kernel_gamma;
+        hsml = p[i].h * kernel_gamma;
 
         /* Does this particle fall into our LOS? */
         if (dx <= hsml) {
           /* Distance from this particle to LOS along y dim. */
-          dy = s->parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
+          dy = p[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
         
           /* Periodic wrap. */
-          if (e->s->periodic) dy = nearest(dy, s->dim[LOS_list[j].yaxis]);
+          if (periodic) dy = nearest(dy, dim[LOS_list[j].yaxis]);
 
           /* Does this particle still fall into our LOS? */
           if (dy <= hsml) {
@@ -256,9 +260,9 @@ void do_line_of_sight(struct engine *e) {
             if (r2 <= hsml * hsml) {
 
               /* Store particle properties. */
-              LOS_particles[count].pos[0] = s->parts[i].x[0];
-              LOS_particles[count].pos[1] = s->parts[i].x[1];
-              LOS_particles[count].pos[2] = s->parts[i].x[2];
+              LOS_particles[count].x[0] = p[i].x[0];
+              LOS_particles[count].x[1] = p[i].x[1];
+              LOS_particles[count].x[2] = p[i].x[2];
 
               LOS_particles[count].h = hsml;
 
@@ -273,26 +277,29 @@ void do_line_of_sight(struct engine *e) {
     /* Collect all particles in LOS to rank 0. */
     if (e->nodeID == 0) {
       MPI_Gatherv(MPI_IN_PLACE, 0,
-                  lospart_mpi_type, LOS_particles, LOS_counts, LOS_disps,
-                  lospart_mpi_type, 0, MPI_COMM_WORLD);
+                  part_mpi_type, LOS_particles, LOS_counts, LOS_disps,
+                  part_mpi_type, 0, MPI_COMM_WORLD);
     } else {
       MPI_Gatherv(LOS_particles, LOS_list[j].particles_in_los_local,
-                  lospart_mpi_type, LOS_particles, LOS_counts, LOS_disps,
-                  lospart_mpi_type, 0, MPI_COMM_WORLD);
+                  part_mpi_type, LOS_particles, LOS_counts, LOS_disps,
+                  part_mpi_type, 0, MPI_COMM_WORLD);
     }
 #endif
     
     /* Write particles to file. */
     if (e->nodeID == 0) {
-      for (int kk = 0; kk < LOS_list[j].particles_in_los_total; kk++) {
-        fprintf(f, "%i,%g,%g,%g,%g\n", j, LOS_particles[kk].pos[0],
-                LOS_particles[kk].pos[1], LOS_particles[kk].pos[2],
-                LOS_particles[kk].h);
-      }
+      sprintf(groupName, "/LOS_%04i", j);
+      h_grp = H5Gcreate(h_file, groupName, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating LOS HDF5 group\n");
+      write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_particles, e);
+      H5Gclose(h_grp);
     }
   } /* End of loop over each LOS */
 
-  if (e->nodeID == 0) fclose(f);
+  if (e->nodeID == 0) {
+    /* Close file */
+    H5Fclose(h_file);
+  }
 
   //#ifdef SWIFT_DEBUG_CHECKS
   if (e->nodeID == 0) print_los_info(LOS_list, LOS_params);
@@ -303,4 +310,63 @@ void do_line_of_sight(struct engine *e) {
 
   message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+void write_los_hdf5_datasets(hid_t grp, int j, int N, struct part* parts,
+        struct engine* e) {
+
+  struct io_props p;
+
+  /* Coordinates. */
+  p = io_make_output_field_convert_part(
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, NULL,
+      convert_part_pos, "Co-moving positions of the particles");
+  write_los_hdf5_dataset(p, N, j, e, grp);
+  bzero(&p, sizeof(struct io_props));
+
+  /* Smoothing Lengths. */
+  //p = io_make_output_field(
+  //    "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
+  //    "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+  //message("%s", p.description);
+  ////write_los_hdf5_dataset(p, N, j, e, grp);
+  //bzero(&p, sizeof(struct io_props));
+}
+
+void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine* e,
+        hid_t grp) {
+
+  hsize_t dims[2];
+  hid_t dataset_id, dataspace_id;
+  herr_t status;
+  char att_name[200];
+
+  /* Allocate temporary buffer */
+  void* temp = NULL;
+  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
+                     N * io_sizeof_type(p.type)) != 0)
+    error("Unable to allocate temporary i/o buffer");
+
+  /* Copy particle data to temp buffer */
+  io_copy_temp_buffer(temp, e, p, N, e->internal_units, e->snapshot_units);
+
+  /* Prepare dataset */
+  dims[0] = N;
+  dims[1] = p.dimension;
+  dataspace_id = H5Screate_simple(2, dims, NULL);
+
+  /* Write dataset */
+  sprintf(att_name, "/LOS_%04i/%s", j, p.name);
+  dataset_id = H5Dcreate(grp, att_name, io_hdf5_type(p.type), dataspace_id,    
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  status = H5Dwrite(dataset_id, io_hdf5_type(p.type), H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                     temp);
+  if (status < 0) error("Error while writing data array '%s'.", p.name);
+ 
+  /* Free and close everything */
+  swift_free("writebuff", temp);
+  H5Dclose(dataset_id);
+  H5Sclose(dataspace_id);
+
 }

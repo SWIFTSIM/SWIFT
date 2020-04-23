@@ -2758,7 +2758,7 @@ void engine_step(struct engine *e) {
  * @param e The #engine.
  */
 void engine_check_for_dumps(struct engine *e) {
-
+  message("checking for dumps");
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
 

@@ -474,12 +474,6 @@ void part_create_mpi_types(void) {
       MPI_Type_commit(&bpart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for bparts.");
   }
-  if (MPI_Type_contiguous(
-          sizeof(struct line_of_sight_particles) / sizeof(unsigned char),
-          MPI_BYTE, &lospart_mpi_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&lospart_mpi_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for losparts.");
-  }
 }
 
 void part_free_mpi_types(void) {
