@@ -26,10 +26,6 @@
 #include <hdf5.h>
 #endif
 
-/* Local includes. */
-#include "kernel_gravity.h"
-#include "restart.h"
-
 /* Forward declarations */
 struct cosmology;
 struct phys_const;
@@ -58,14 +54,14 @@ struct gravity_props {
 
   /* -------------- Properties of the FFM gravity ---------------------- */
 
+  /*! Are we using the adaptive opening angle? */
+  int use_adaptive_tolerance;
+
+  /*! Accuracy parameter of the advanced MAC */
+  float adaptive_tolerance;
+
   /*! Tree opening angle (Multipole acceptance criterion) */
   double theta_crit;
-
-  /*! Square of opening angle */
-  double theta_crit2;
-
-  /*! Inverse of opening angle */
-  double theta_crit_inv;
 
   /* ------------- Properties of the softened gravity ------------------ */
 
