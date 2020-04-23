@@ -538,19 +538,7 @@ static INLINE void runner_dopair_grav_pm_full(
 
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    const float r_max_j = cj->grav.multipole->r_max;
-    const float r_max2 = r_max_j * r_max_j;
-    const double theta_crit = e->gravity_properties->theta_crit;
-    const double theta_crit2 = theta_crit * theta_crit;
-
-    /* Note: 0.99 and 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
-      error(
-          "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
-          "%e], rmax=%e r=%e epsilon=%e",
-          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j, sqrtf(r2), h_i);
-#endif
+    // MATTHIEU: Do we want a check that the particle can indeed use M2P?
 
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
@@ -682,19 +670,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
 
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    const float r_max_j = cj->grav.multipole->r_max;
-    const float r_max2 = r_max_j * r_max_j;
-    const double theta_crit = e->gravity_properties->theta_crit;
-    const double theta_crit2 = theta_crit * theta_crit;
-
-    /* 0.99 and 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
-      error(
-          "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
-          "%e], rmax=%e",
-          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j);
-#endif
+    // MATTHIEU: Do we want a check that the particle can indeed use M2P?
 
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
@@ -791,8 +767,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   /* Recover the multipole info and shift the CoM locations */
   const float rmax_i = ci->grav.multipole->r_max;
   const float rmax_j = cj->grav.multipole->r_max;
-  const float rmax2_i = rmax_i * rmax_i;
-  const float rmax2_j = rmax_j * rmax_j;
   const struct multipole *multi_i = &ci->grav.multipole->m_pole;
   const struct multipole *multi_j = &cj->grav.multipole->m_pole;
   const float CoM_i[3] = {(float)(ci->grav.multipole->CoM[0] - shift_i[0]),
@@ -820,10 +794,12 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
                          ci_cache, ci->grav.parts, gcount_i, gcount_padded_i,
-                         shift_i, CoM_j, rmax2_j, ci, e->gravity_properties);
+                         shift_i, CoM_j, cj->grav.multipole, ci,
+                         e->gravity_properties);
   gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
                          cj_cache, cj->grav.parts, gcount_j, gcount_padded_j,
-                         shift_j, CoM_i, rmax2_i, cj, e->gravity_properties);
+                         shift_j, CoM_i, ci->grav.multipole, cj,
+                         e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -1573,7 +1549,6 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
     /* Recover the multipole info and the CoM locations */
     const struct multipole *multi_j = &cj->grav.multipole->m_pole;
-    const float r_max = cj->grav.multipole->r_max;
     const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
                             (float)(cj->grav.multipole->CoM[1]),
                             (float)(cj->grav.multipole->CoM[2])};
@@ -1581,7 +1556,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
         e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-        gcount_padded_i, ci, CoM_j, r_max * r_max, e->gravity_properties);
+        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties);
 
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {
@@ -1618,15 +1593,13 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
  * @param gettimer Are we timing this ?
  */
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
-                                  struct cell *cj, int gettimer) {
+                                  struct cell *cj, const int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit2 = theta_crit * theta_crit;
   const double max_distance = e->mesh->r_cut_max;
 
   /* Anything to do here? */
@@ -1704,9 +1677,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
-                         multi_i->m_pole.max_softening,
-                         multi_j->m_pole.max_softening)) {
+  if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_i, multi_j, r2,
+                                   /* use_rebuild_sizes=*/0)) {
 
     /* Go M-M */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1786,7 +1758,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
  * @param gettimer Are we timing this ?
  */
 void runner_doself_recursive_grav(struct runner *r, struct cell *c,
-                                  int gettimer) {
+                                  const int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1837,14 +1809,13 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
  * @param ci The #cell of interest.
  * @param timer Are we timing this ?
  */
-void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
+void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+                               const int timer) {
 
   /* Some constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit2 = theta_crit * theta_crit;
   const double max_distance2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
 
   TIMER_TIC;
@@ -1934,10 +1905,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
     const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
 
     /* Are we in charge of this cell pair? */
-    if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,
-                           theta_crit2, r2_rebuild,
-                           multi_top->m_pole.max_softening,
-                           multi_j->m_pole.max_softening)) {
+    if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_top, multi_j,
+                                     r2_rebuild, /*use_rebuild_sizes=*/1)) {
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);

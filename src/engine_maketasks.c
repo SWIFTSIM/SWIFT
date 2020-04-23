@@ -1381,7 +1381,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
           if (periodic && min_radius2 > max_distance2) continue;
 
           /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s)) {
+          if (!cell_can_use_pair_mm(ci, cj, e, s)) {
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,

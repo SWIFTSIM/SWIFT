@@ -6382,6 +6382,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
+ * This uses the information from the last tree-build.
+ *
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param e The #engine.
@@ -6390,8 +6392,7 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s) {
 
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit2 = theta_crit * theta_crit;
+  const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
@@ -6412,76 +6413,6 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
 
-  const double epsilon_i = multi_i->m_pole.max_softening;
-  const double epsilon_j = multi_j->m_pole.max_softening;
-
-  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
-                            epsilon_i, epsilon_j);
-}
-
-/**
- * @brief Can we use the MM interactions fo a given pair of cells?
- *
- * This function uses the information gathered in the multipole at rebuild
- * time and not the current position and radius of the multipole.
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
- * @param e The #engine.
- * @param s The #space.
- */
-int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
-                                 const struct engine *e,
-                                 const struct space *s) {
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit2 = theta_crit * theta_crit;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-
-  /* Recover the multipole information */
-  const struct gravity_tensors *const multi_i = ci->grav.multipole;
-  const struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  if (multi_i->CoM_rebuild[0] < ci->loc[0] ||
-      multi_i->CoM_rebuild[0] > ci->loc[0] + ci->width[0])
-    error("Invalid multipole position ci");
-  if (multi_i->CoM_rebuild[1] < ci->loc[1] ||
-      multi_i->CoM_rebuild[1] > ci->loc[1] + ci->width[1])
-    error("Invalid multipole position ci");
-  if (multi_i->CoM_rebuild[2] < ci->loc[2] ||
-      multi_i->CoM_rebuild[2] > ci->loc[2] + ci->width[2])
-    error("Invalid multipole position ci");
-
-  if (multi_j->CoM_rebuild[0] < cj->loc[0] ||
-      multi_j->CoM_rebuild[0] > cj->loc[0] + cj->width[0])
-    error("Invalid multipole position cj");
-  if (multi_j->CoM_rebuild[1] < cj->loc[1] ||
-      multi_j->CoM_rebuild[1] > cj->loc[1] + cj->width[1])
-    error("Invalid multipole position cj");
-  if (multi_j->CoM_rebuild[2] < cj->loc[2] ||
-      multi_j->CoM_rebuild[2] > cj->loc[2] + cj->width[2])
-    error("Invalid multipole position cj");
-
-#endif
-
-  /* Get the distance between the CoMs */
-  double dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
-  double dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
-  double dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-  const double r2 = dx * dx + dy * dy + dz * dz;
-
-  const double epsilon_i = multi_i->m_pole.max_softening;
-  const double epsilon_j = multi_j->m_pole.max_softening;
-
-  return gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
-                            theta_crit2, r2, epsilon_i, epsilon_j);
+  return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
+                                      /*use_rebuild_sizes=*/1);
 }

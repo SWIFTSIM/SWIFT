@@ -960,8 +960,6 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
-int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
-                                 const struct engine *e, const struct space *s);
 
 /**
  * @brief Compute the square of the minimal distance between any two points in
