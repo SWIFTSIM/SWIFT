@@ -26,17 +26,16 @@
 #include "error.h"
 #include "inline.h"
 
+/* Standard headers */
+#include <math.h>
+
 /**
  * @brief Computes the power of x to the n for a (small) positive integer n.
  *
- * Only valid for values 0 <= n <= 8.
+ * Only optimized for values 0 <= n <= 8. Defaults to pow() above.
  */
 __attribute__((const)) INLINE static int integer_pow(const double x,
                                                      const unsigned int n) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  assert(n <= 8);
-#endif
 
   switch (n) {
     case 0:
@@ -68,20 +67,18 @@ __attribute__((const)) INLINE static int integer_pow(const double x,
       const double z = y * y;
       return z * z;
     }
+    default:
+      return pow(x, (double)n);
   }
 }
 
 /**
  * @brief Computes the power of x to the n for a (small) positive integer n.
  *
- * Only valid for values 0 <= n <= 8.
+ * Only optimized for values 0 <= n <= 8. Defaults to powf() above.
  */
 __attribute__((const)) INLINE static int integer_powf(const float x,
                                                       const unsigned int n) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  assert(n <= 8);
-#endif
 
   switch (n) {
     case 0:
@@ -113,6 +110,8 @@ __attribute__((const)) INLINE static int integer_powf(const float x,
       const float z = y * y;
       return z * z;
     }
+    default:
+      return powf(x, (float)n);
   }
 }
 
