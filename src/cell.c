@@ -3332,7 +3332,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Can we use multipoles ? */
-    if (cell_can_use_pair_mm(ci, cj, e, sp)) {
+    if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_sizes=*/0)) {
       /* Ok, no need to drift anything */
       return;
     }
@@ -6382,15 +6382,16 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
- * This uses the information from the last tree-build.
- *
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param e The #engine.
  * @param s The #space.
+ * @param use_rebuild_sizes Are we considering the sizes at the last tree-build
+ * (1) or current sizes (0)?
  */
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
-                         const struct engine *e, const struct space *s) {
+                         const struct engine *e, const struct space *s,
+                         const int use_rebuild_sizes) {
 
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
@@ -6414,5 +6415,5 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   const double r2 = dx * dx + dy * dy + dz * dz;
 
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
-                                      /*use_rebuild_sizes=*/1);
+                                      use_rebuild_sizes);
 }
