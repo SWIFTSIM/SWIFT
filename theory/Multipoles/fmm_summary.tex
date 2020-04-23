@@ -315,8 +315,9 @@ the field tensors in cell $B$ but the multipole in $B$ cannot be used
 to compute the $\mathsf{F}$ values of cell $A$ and vice versa. This
 affects the tree walk by breaking the symmetry and potentially leading
 to cells of different sizes interacting. \\
-In the specific case of the M2P kernel, we have $\rho_A = 0$, which
-simplifies some of the expressions above. In this case, at order $p$, we get:
+For the M2P kernel, the sink is a single particle $a$ and hence
+$\rho_A = 0$, which simplifies some of the expressions above. In this
+case, at order $p$, we get:
 \begin{equation}
   E_{BA,p} = \frac{P_{B,p}}{M_B |\mathbf{R}|^p}, \qquad
   \tilde{E}_{BA,p} = 8E_{BA,p} \nonumber
@@ -325,9 +326,8 @@ Note that, in this case, only the power term of the order of the
 scheme appears; not a sum over the lower-order ones. This leads to the
 following MAC for the M2P kernel:
 \begin{equation}
-  8\frac{P_{B,p}}{|\mathbf{R}|^{p+2}} < \epsilon \min_{a\in
-    A}\left(|\mathbf{a}_a|\right) \quad \rm{and} \quad \frac{\rho_B}
-  {|\mathbf{R}|} < 1.
+  8\frac{P_{B,p}}{|\mathbf{R}|^{p+2}} < \epsilon |\mathbf{a}_a| \quad
+  \rm{and} \quad \frac{\rho_B} {|\mathbf{R}|} < 1.
     \label{eq:fmm:mac_m2p}  
 \end{equation}
 The value of $\epsilon$ could in principle be different than the one
@@ -337,7 +337,7 @@ $2$ and the approximation $P_{B,p} \approx M_B \rho_B^p$, we
 get
 \begin{equation}
   8\frac{M_B}{|\mathbf{R}|^2}\left(\frac{\rho_B}{|\mathbf{R}|}\right)^2
-  < \epsilon \min_{a\in A}\left(|\mathbf{a}_a|\right) \nonumber
+  < \epsilon |\mathbf{a}_a| \nonumber
 \end{equation}
 for our MAC.  This is the same expression as the adaptive opening
 angle used by \gadget \cite[see eq.18 of][]{Springel2005} up to
