@@ -29,13 +29,15 @@
 /* Includes. */
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 /* Local includes. */
 #include "align.h"
 #include "kernel_hydro.h"
 #include "lock.h"
-#include "multipole.h"
+#include "multipole_struct.h"
 #include "part.h"
+#include "periodic.h"
 #include "sort_part.h"
 #include "space.h"
 #include "star_formation_logger_struct.h"

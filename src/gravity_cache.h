@@ -27,6 +27,7 @@
 #include "align.h"
 #include "error.h"
 #include "gravity.h"
+#include "multipole.h"
 #include "vector.h"
 
 /**

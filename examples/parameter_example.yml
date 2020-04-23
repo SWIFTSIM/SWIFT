@@ -240,7 +240,7 @@ EoS:
 
 # Point mass external potentials
 PointMassPotential:
-  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:       0                   # 0 -> positions based on centre, 1 -> absolute positions 
   position:        [50.,50.0,50.]      # location of external point mass (internal units)
   mass:            1e10                # mass of external point mass (internal units)
   timestep_mult:   0.03                # Dimensionless pre-factor for the time-step condition
@@ -248,16 +248,16 @@ PointMassPotential:
 
 # Isothermal potential parameters
 IsothermalPotential:
-  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:       0                   # 0 -> positions based on centre, 1 -> absolute positions 
   position:        [100.,100.,100.]    # Location of centre of isothermal potential with respect to centre of the box (internal units)
-  vrot:            200.     # Rotation speed of isothermal potential (internal units)
-  timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
-  epsilon:         0.1      # Softening size (internal units)
+  vrot:            200.                # Rotation speed of isothermal potential (internal units)
+  timestep_mult:   0.03                # Dimensionless pre-factor for the time-step condition
+  epsilon:         0.1                 # Softening size (internal units)
   
 # Hernquist potential parameters
 HernquistPotential:
   useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
-  position:        [100.,100.,100.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  position:        [100.,100.,100.]    # Location of centre of Henrquist potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
   idealizeddisk:   0        # (Optional) Whether to run with idealizeddisk or without, 0 used the mass and scalelength as mandatory parameters, while 1 uses more advanced disk dependent paramters
   mass:            1e10     # (Optional 0) default parameter, Mass of the Hernquist potential
   scalelength:     10.0     # (Optional 0) default parameter, Scale length of the potential
@@ -272,14 +272,14 @@ HernquistPotential:
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:         0.1      # Softening size (internal units)
  
-# Isothermal potential parameters
+# NFW potential parameters
 NFWPotential:
-  useabspos:          0
-  position:           [0.0,0.0,0.0]      # Location of centre of isothermal potential with respect to centre of the box (internal units) if useabspos=0 otherwise with respect to the 0,0,0, coordinates.
-  concentration:      8.       # Concentration of the halo
-  M_200:              2.0e+12  # Mass of the halo (M_200 in internal units)
-  critical_density:   127.4    # Critical density (internal units).
-  timestep_mult:      0.01     # Dimensionless pre-factor for the time-step condition, basically determines fraction of orbital time we need to do an integration step
+  useabspos:          0             # 0 -> positions based on centre, 1 -> absolute positions 
+  position:           [0.0,0.0,0.0] # Location of centre of the NFW potential with respect to centre of the box (internal units) if useabspos=0 otherwise with respect to the 0,0,0, coordinates.
+  concentration:      8.            # Concentration of the halo
+  M_200:              2.0e+12       # Mass of the halo (M_200 in internal units)
+  critical_density:   127.4         # Critical density (internal units).
+  timestep_mult:      0.01          # Dimensionless pre-factor for the time-step condition, basically determines fraction of orbital time we need to do an integration step
 
 # Disk-patch potential parameters. The potential is along the x-axis.
 DiscPatchPotential:

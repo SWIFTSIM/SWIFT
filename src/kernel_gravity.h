@@ -46,8 +46,8 @@
  * @param u The ratio of the distance to the softening length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
-    float u, float *const W) {
+__attribute__((always_inline, nonnull)) INLINE static void kernel_grav_pot_eval(
+    const float u, float *const W) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5f)
@@ -78,8 +78,8 @@ __attribute__((always_inline)) INLINE static void kernel_grav_pot_eval(
  * @param u The ratio of the distance to the softening length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_grav_force_eval(
-    float u, float *const W) {
+__attribute__((always_inline, nonnull)) INLINE static void
+kernel_grav_force_eval(const float u, float *const W) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5f)

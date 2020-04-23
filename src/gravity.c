@@ -633,6 +633,7 @@ void gravity_exact_force_compute(struct space *s, const struct engine *e) {
   /* Let's start by checking whether we already computed these forces */
   if (gravity_exact_force_file_exits(e)) {
     message("Exact accelerations already computed. Skipping calculation.");
+    fflush(stdout);
     return;
   }
 
@@ -775,7 +776,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       else if (gpi->type == swift_type_stars)
         id = sparts[-gpi->id_or_neg_offset].id;
       else if (gpi->type == swift_type_black_hole)
-        error("Unexisting type");
+        id = bparts[-gpi->id_or_neg_offset].id;
       else
         id = gpi->id_or_neg_offset;
 
