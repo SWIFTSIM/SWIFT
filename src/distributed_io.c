@@ -329,9 +329,6 @@ void write_output_distributed(struct engine* e, const char* baseName,
   long long N_total[swift_type_count] = {0};
   MPI_Allreduce(N, N_total, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
 
-  /* First time, we need to create the XMF file */
-  if (e->snapshot_output_count == 0) xmf_create_file(baseName);
-
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
