@@ -154,8 +154,8 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
  * @param c The #gravity_cache to zero.
  * @param gcount_padded The padded size of the cache arrays.
  */
-__attribute__((always_inline)) INLINE static void gravity_cache_zero_output(
-    struct gravity_cache *c, const int gcount_padded) {
+INLINE static void gravity_cache_zero_output(struct gravity_cache *c,
+                                             const int gcount_padded) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded % VEC_SIZE != 0)
@@ -193,19 +193,17 @@ __attribute__((always_inline)) INLINE static void gravity_cache_zero_output(
  * multiple of the vector length.
  * @param shift A shift to apply to all the particles.
  * @param CoM The position of the multipole.
- * @param r_max2 The square of the multipole radius.
+ * @param multipole The mulipole to check for.
  * @param cell The cell we play with (to get reasonable padding positions).
  * @param grav_props The global gravity properties.
  */
-__attribute__((always_inline)) INLINE static void gravity_cache_populate(
+INLINE static void gravity_cache_populate(
     const timebin_t max_active_bin, const int allow_mpole, const int periodic,
     const float dim[3], struct gravity_cache *c,
     const struct gpart *restrict gparts, const int gcount,
     const int gcount_padded, const double shift[3], const float CoM[3],
-    const float r_max2, const struct cell *cell,
+    const struct gravity_tensors *multipole, const struct cell *cell,
     const struct gravity_props *grav_props) {
-
-  const float theta_crit2 = grav_props->theta_crit2;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -257,8 +255,8 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     /* Check whether we can use the multipole instead of P-P */
-    use_mpole[i] =
-        allow_mpole && gravity_M2P_accept(r_max2, theta_crit2, r2, epsilon[i]);
+    use_mpole[i] = allow_mpole &&
+                   gravity_M2P_accept(grav_props, &gparts[i], multipole, r2);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -300,13 +298,11 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
  * @param cell The cell we play with (to get reasonable padding positions).
  * @param grav_props The global gravity properties.
  */
-__attribute__((always_inline)) INLINE static void
-gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
-                                struct gravity_cache *c,
-                                const struct gpart *restrict gparts,
-                                const int gcount, const int gcount_padded,
-                                const double shift[3], const struct cell *cell,
-                                const struct gravity_props *grav_props) {
+INLINE static void gravity_cache_populate_no_mpole(
+    const timebin_t max_active_bin, struct gravity_cache *c,
+    const struct gpart *restrict gparts, const int gcount,
+    const int gcount_padded, const double shift[3], const struct cell *cell,
+    const struct gravity_props *grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -381,18 +377,15 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
  * multiple of the vector length.
  * @param cell The cell we play with (to get reasonable padding positions).
  * @param CoM The position of the multipole.
- * @param r_max2 The square of the multipole radius.
+ * @param multipole The mulipole to check for.
  * @param grav_props The global gravity properties.
  */
-__attribute__((always_inline)) INLINE static void
-gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
-                                 const int periodic, const float dim[3],
-                                 struct gravity_cache *c,
-                                 const struct gpart *restrict gparts,
-                                 const int gcount, const int gcount_padded,
-                                 const struct cell *cell, const float CoM[3],
-                                 const float r_max2,
-                                 const struct gravity_props *grav_props) {
+INLINE static void gravity_cache_populate_all_mpole(
+    const timebin_t max_active_bin, const int periodic, const float dim[3],
+    struct gravity_cache *c, const struct gpart *restrict gparts,
+    const int gcount, const int gcount_padded, const struct cell *cell,
+    const float CoM[3], const struct gravity_tensors *multipole,
+    const struct gravity_props *grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -400,8 +393,6 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
     error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
   if (c->count < gcount_padded)
     error("Size of the gravity cache is not large enough.");
-
-  const float theta_crit2 = grav_props->theta_crit2;
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
@@ -439,7 +430,7 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
     }
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-    if (!gravity_M2P_accept(r_max2, theta_crit2, r2, epsilon[i]))
+    if (!gravity_M2P_accept(grav_props, &gparts[i], multipole, r2))
       error("Using m-pole where the test fails");
 #endif
   }
@@ -479,9 +470,9 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
  * @param gparts The #gpart array to write to.
  * @param gcount The number of particles to write.
  */
-__attribute__((always_inline)) INLINE static void gravity_cache_write_back(
-    const struct gravity_cache *c, struct gpart *restrict gparts,
-    const int gcount) {
+INLINE static void gravity_cache_write_back(const struct gravity_cache *c,
+                                            struct gpart *restrict gparts,
+                                            const int gcount) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
