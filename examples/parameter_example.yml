@@ -62,20 +62,22 @@ Stars:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh.
-  eta:                           0.025     # Constant dimensionless multiplier for time integration.
-  theta:                         0.7       # Opening angle (Multipole acceptance criterion).
-  comoving_DM_softening:         0.0026994 # Comoving Plummer-equivalent softening length for DM particles (in internal units).
-  max_physical_DM_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
-  comoving_baryon_softening:     0.0026994 # Comoving Plummer-equivalent softening length for baryon particles (in internal units).
-  max_physical_baryon_softening: 0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
-  softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
-  rebuild_frequency:             0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
-  a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
-  r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
-  r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
-  dithering:                     1         # (Optional) Activate the dithering of the gravity mesh at every rebuild (this is the default value).
-  dithering_ratio:               1.0       # (Optional) Magnitude of each component of the dithering vector in units of the top-level cell sizes (this is the default value).
+  mesh_side_length:               128       # Number of cells along each axis for the periodic gravity mesh.
+  eta:                            0.025     # Constant dimensionless multiplier for time integration.
+  mulitpole_acceptance_criterion: adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                    0.01      # Tolerance parameter for the adaptice multipole acceptance criterion.
+  theta_cr:                       0.7       # Opening angle for the purely gemoetric criterion.
+  comoving_DM_softening:          0.0026994 # Comoving Plummer-equivalent softening length for DM particles (in internal units).
+  max_physical_DM_softening:      0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
+  comoving_baryon_softening:      0.0026994 # Comoving Plummer-equivalent softening length for baryon particles (in internal units).
+  max_physical_baryon_softening:  0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
+  softening_ratio_background:     0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
+  rebuild_frequency:              0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
+  a_smooth:                       1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
+  r_cut_max:                      4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
+  r_cut_min:                      0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
+  dithering:                      1         # (Optional) Activate the dithering of the gravity mesh at every rebuild (this is the default value).
+  dithering_ratio:                1.0       # (Optional) Magnitude of each component of the dithering vector in units of the top-level cell sizes (this is the default value).
 
 # Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
 ForceChecks:

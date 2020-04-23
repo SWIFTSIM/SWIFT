@@ -54,6 +54,9 @@ struct gravity_props {
 
   /* -------------- Properties of the FFM gravity ---------------------- */
 
+  /*! What MAC are we currently using? */
+  int use_advanced_mac;
+
   /*! Are we using the adaptive opening angle? */
   int use_adaptive_tolerance;
 

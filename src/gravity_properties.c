@@ -23,6 +23,7 @@
 /* Standard headers */
 #include <float.h>
 #include <math.h>
+#include <string.h>
 
 /* Local headers. */
 #include "adiabatic_index.h"
@@ -84,9 +85,31 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Time integration */
   p->eta = parser_get_param_float(params, "Gravity:eta");
 
-  /* Opening angle */
+  /* Read the choice of multipole acceptance criterion */
+  char buffer[32] = {0};
+  parser_get_param_string(params, "Gravity:mulitpole_acceptance_criterion",
+                          buffer);
+
+  if (strcmp(buffer, "adaptive") == 0) {
+    p->use_adaptive_tolerance = 1;
+  } else if (strcmp(buffer, "geometric") == 0) {
+    p->use_adaptive_tolerance = 0;
+  } else {
+    error(
+        "Invalid choice of multipole acceptance criterion: '%s'. Should be "
+        "'adaptive' or 'geometric'",
+        buffer);
+  }
+
+  /* We always start with the geometric MAC */
+  p->use_advanced_mac = 0;
+
+  /* Geometric opening angle */
   p->theta_crit = parser_get_param_double(params, "Gravity:theta");
   if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
+
+  /* Adaptive opening angle tolerance */
+  p->adaptive_tolerance = parser_get_param_float(params, "Gravity:epsilon_fmm");
 
   /* Mesh dithering */
   if (periodic && !with_external_potential) {
@@ -169,6 +192,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo) {
+
+  /* Choice of MAC */
+  if (p->use_adaptive_tolerance) p->use_advanced_mac = 1;
 
   /* Current softening length for the high-res. DM particles. */
   double DM_softening, baryon_softening;

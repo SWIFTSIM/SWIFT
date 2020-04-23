@@ -89,7 +89,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   /* Get the sum of the multipole sizes */
   const float rho_sum = rho_A + rho_B;
 
-  if (props->use_adaptive_tolerance) {
+  if (props->use_advanced_mac) {
 
     /* Test the different conditions */
 
@@ -181,7 +181,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float theta_crit = props->theta_crit;
   const float theta_crit2 = theta_crit * theta_crit;
 
-  if (props->use_adaptive_tolerance) {
+  if (props->use_advanced_mac) {
 
     /* Test the different conditions */
 
