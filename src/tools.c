@@ -24,12 +24,16 @@
 
 /* Some standard headers. */
 #include <ctype.h>
+#include <errno.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /* This object's header. */
 #include "tools.h"
@@ -1057,4 +1061,49 @@ char *trim_trailing(char *s) {
 char *trim_both(char *s) {
   if (s == NULL || strlen(s) < 2) return s;
   return trim_trailing(trim_leading(s));
+}
+
+/**
+ * @brief safe check directory existence and creation.
+ *
+ * Doesn't try to re-create an existing directory and makes sure that it can
+ * have files created in it. If the directory doesn't exist and we want to
+ * create it then we try to do that with an appropriate mask that should
+ * honour the users umask. If the directory is something odd like a broken
+ * link then that is dereferenced so should also result in an error, since
+ * it doesn't exist and cannot be created. Finally we check that an existing
+ * file with this name is indeed a directory.
+ *
+ * @param dir the directory we need to exist.
+ * @param create create if not already exists, otherwise non-existence is an
+ *               error.
+ */
+void safe_checkdir(const char *dir, int create) {
+
+  if (access(dir, W_OK | X_OK) != 0) {
+
+    /* A file with this name and the minimally correct permissions does not
+     * exist. */
+    if (create) {
+      if (mkdir(dir, 0777) != 0)
+        error("Failed to create directory %s (%s)", dir, strerror(errno));
+    } else {
+      error("directory %s does not exist or cannot be used (%s)", dir,
+            strerror(errno));
+    }
+  } else {
+
+    /* Exists and has the minimally correct permissions, is this a
+     * directory? */
+    struct stat sb;
+    if (stat(dir, &sb) != 0) {
+      /* Weird error, can stat all existing files. */
+      error("Failed to stat directory %s (%s)", dir, strerror(errno));
+    } else if ((sb.st_mode & S_IFMT) != S_IFDIR) {
+      error("%s is not a directory, cannot use or create.", dir);
+    }
+  }
+
+  /* Success. */
+  return;
 }
