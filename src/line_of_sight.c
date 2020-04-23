@@ -219,14 +219,21 @@ void do_line_of_sight(struct engine *e) {
 
     /* Setup los particles structure. */
     struct part *LOS_particles;
+    struct xpart *LOS_particles_xparts;
     if (e->nodeID == 0) {
       LOS_particles = (struct part *)malloc(
           LOS_list[j].particles_in_los_total *
           sizeof(struct part));
+      LOS_particles_xparts = (struct xpart *)malloc(
+          LOS_list[j].particles_in_los_total *
+          sizeof(struct xpart));
     } else {
       LOS_particles = (struct part *)malloc(
           LOS_list[j].particles_in_los_local *
           sizeof(struct part));
+      LOS_particles_xparts = (struct xpart *)malloc(
+          LOS_list[j].particles_in_los_local *
+          sizeof(struct xpart));
     }
 
     /* Loop over each gas particle again to store properties. */
@@ -291,7 +298,8 @@ void do_line_of_sight(struct engine *e) {
       sprintf(groupName, "/LOS_%04i", j);
       h_grp = H5Gcreate(h_file, groupName, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating LOS HDF5 group\n");
-      write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_particles, e);
+      write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_particles, e,
+        LOS_particles_xparts);
       H5Gclose(h_grp);
     }
   } /* End of loop over each LOS */
@@ -313,24 +321,23 @@ void do_line_of_sight(struct engine *e) {
 }
 
 void write_los_hdf5_datasets(hid_t grp, int j, int N, struct part* parts,
-        struct engine* e) {
+        struct engine* e, struct xpart* xparts) {
 
   struct io_props p;
 
   /* Coordinates. */
   p = io_make_output_field_convert_part(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, NULL,
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_pos, "Co-moving positions of the particles");
   write_los_hdf5_dataset(p, N, j, e, grp);
   bzero(&p, sizeof(struct io_props));
 
   /* Smoothing Lengths. */
-  //p = io_make_output_field(
-  //    "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
-  //    "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
-  //message("%s", p.description);
-  ////write_los_hdf5_dataset(p, N, j, e, grp);
-  //bzero(&p, sizeof(struct io_props));
+  p = io_make_output_field(
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
+      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+  write_los_hdf5_dataset(p, N, j, e, grp);
+  bzero(&p, sizeof(struct io_props));
 }
 
 void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine* e,

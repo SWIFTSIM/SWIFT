@@ -31,5 +31,5 @@ void do_line_of_sight(struct engine *e);
 void los_init(double dim[3], struct los_props *los_params,
         struct swift_params *params);
 void write_los_hdf5_datasets(hid_t grp, int j, int N, struct part* parts,
-                struct engine* e);
+                struct engine* e, struct xpart* xparts);
 void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine* e, hid_t grp);
