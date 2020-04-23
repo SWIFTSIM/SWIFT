@@ -289,13 +289,13 @@ larger than a certain fraction of the smallest acceleration in the sink
 cell $A$. This means we can use the FMM approximation between to
 approximate the accelerations in cell $A$ due to the particles in cell $B$ if
 \begin{equation}
-  \tilde{E}_{BA,p} \frac{M_B}{|\mathbf{R}|^2} < \epsilon \min_{a\in
+  \tilde{E}_{BA,p} \frac{M_B}{|\mathbf{R}|^2} < \epsilon_{\rm FMM} \min_{a\in
     A}\left(|\mathbf{a}_a|\right) \quad \rm{and} \quad \frac{\rho_A +
     \rho_B} {|\mathbf{R}|} < 1,
   \label{eq:fmm:mac}  
 \end{equation}
 where the $\mathbf{a}_a$ are the accelerations of the particles in cell $A$
-and $\epsilon$ is a tolerance parameter. Since this is self-referencing
+and $\epsilon_{\rm FMM}$ is a tolerance parameter. Since this is self-referencing
 (i.e. we need the accelerations to decide how to compute the
 accelerations), we need to use a an estimator of $|\mathbf{a}_a|$. In
 \swift, we follow the strategy used by \gadget and use the acceleration of
@@ -326,18 +326,18 @@ Note that, in this case, only the power term of the order of the
 scheme appears; not a sum over the lower-order ones. This leads to the
 following MAC for the M2P kernel:
 \begin{equation}
-  8\frac{P_{B,p}}{|\mathbf{R}|^{p+2}} < \epsilon |\mathbf{a}_a| \quad
+  8\frac{P_{B,p}}{|\mathbf{R}|^{p+2}} < \epsilon_{\rm FMM} |\mathbf{a}_a| \quad
   \rm{and} \quad \frac{\rho_B} {|\mathbf{R}|} < 1.
     \label{eq:fmm:mac_m2p}  
 \end{equation}
-The value of $\epsilon$ could in principle be different than the one
+The value of $\epsilon_{\rm FMM}$ could in principle be different than the one
 used for the M2L MAC. One special case is of particular interest to
 link our expression to other results. Using the expression for order
 $2$ and the approximation $P_{B,p} \approx M_B \rho_B^p$, we
 get
 \begin{equation}
   8\frac{M_B}{|\mathbf{R}|^2}\left(\frac{\rho_B}{|\mathbf{R}|}\right)^2
-  < \epsilon |\mathbf{a}_a| \nonumber
+  < \epsilon_{\rm FMM} |\mathbf{a}_a| \nonumber
 \end{equation}
 for our MAC.  This is the same expression as the adaptive opening
 angle used by \gadget \cite[see eq.18 of][]{Springel2005} up to
