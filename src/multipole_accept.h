@@ -41,23 +41,30 @@
  * @param A The gravity tensors that we want to update (sink).
  * @param B The gravity tensors that act as a source.
  * @param r2 The square of the distance between the centres of mass of A and B.
+ * @param use_rebuild_sizes Are we considering the sizes at the last tree-build
+ * (1) or current sizes (0)?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const struct gravity_props *props, const struct gravity_tensors *restrict A,
-    const struct gravity_tensors *restrict B, const float r2) {
+    const struct gravity_tensors *restrict B, const float r2,
+    const int use_rebuild_sizes) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
+
+  /* Sizes of the multipoles */
+  const int rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
+  const int rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
   float E_BA_term = 0.f;
   for (int n = 0; n <= p; ++n) {
     E_BA_term +=
-        binomial(p, n) * B->m_pole.power[n] * integer_powf(A->r_max, p - n);
+        binomial(p, n) * B->m_pole.power[n] * integer_powf(rho_A, p - n);
   }
   E_BA_term *= 8.f;
-  E_BA_term *= max(A->r_max, B->r_max);
-  E_BA_term /= (A->r_max + B->r_max);
+  E_BA_term *= max(rho_A, rho_B);
+  E_BA_term /= (rho_A + rho_B);
 
   /* Compute r^(p+2) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
@@ -80,7 +87,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const float theta_crit2 = theta_crit * theta_crit;
 
   /* Get the sum of the multipole sizes */
-  const float rho_sum = A->r_max + B->r_max;
+  const float rho_sum = rho_A + rho_B;
 
   if (props->use_adaptive_tolerance) {
 
@@ -108,6 +115,29 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
 
     return cond_1 && cond_2;
   }
+}
+
+/**
+ * @brief Checks whether The multipole in B can be used to update the field
+ * tensor in A and whether the multipole in A can be used to update the field
+ * tensor in B.
+ *
+ * We use the MAC of Dehnen 2014 eq. 16.
+ *
+ * @param props The properties of the gravity scheme.
+ * @param A The first set of multipole and gravity tensors.
+ * @param B The second set of multipole and gravity tensors.
+ * @param r2 The square of the distance between the centres of mass of A and B.
+ * @param use_rebuild_sizes Are we considering the sizes at the last tree-build
+ * (1) or current sizes (0)?
+ */
+__attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
+    const struct gravity_props *props, const struct gravity_tensors *restrict A,
+    const struct gravity_tensors *restrict B, const float r2,
+    const int use_rebuild_sizes) {
+
+  return gravity_M2L_accept(props, A, B, r2, use_rebuild_sizes) &&
+         gravity_M2L_accept(props, B, A, r2, use_rebuild_sizes);
 }
 
 /**
