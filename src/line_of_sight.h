@@ -8,6 +8,8 @@ struct line_of_sight {
   double Xpos, Ypos;
   int particles_in_los_total;
   int particles_in_los_local;
+  int periodic;
+  double dim[3];
 };
 
 struct los_props {
@@ -26,7 +28,8 @@ struct los_props {
 
 double los_periodic(double x, double dim);
 void generate_line_of_sights(struct line_of_sight *Los,
-                             const struct los_props *params);
+                             const struct los_props *params,
+                             const int periodic, const double dim[3]);
 void print_los_info(const struct line_of_sight *Los,
                     const struct los_props *params);
 void do_line_of_sight(struct engine *e);

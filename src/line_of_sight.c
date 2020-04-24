@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "atomic.h"
 #include "cooling_io.h"
 #include "engine.h"
 #include "kernel_hydro.h"
@@ -71,7 +72,8 @@ void los_init(double dim[3], struct los_props *los_params,
  * @param params Sightline parameters.
  */
 void generate_line_of_sights(struct line_of_sight *Los,
-                             const struct los_props *params) {
+                             const struct los_props *params,
+                             const int periodic, const double dim[3]) {
 
   /* Keep track of number of sightlines. */
   int count = 0;
@@ -89,6 +91,10 @@ void generate_line_of_sights(struct line_of_sight *Los,
     Los[count].xaxis = 0;
     Los[count].yaxis = 1;
     Los[count].zaxis = 2;
+    Los[count].periodic = periodic;
+    Los[count].dim[0] = dim[0];
+    Los[count].dim[1] = dim[1];
+    Los[count].dim[2] = dim[2];
     count += 1;
   }
 
@@ -105,6 +111,10 @@ void generate_line_of_sights(struct line_of_sight *Los,
     Los[count].xaxis = 1;
     Los[count].yaxis = 2;
     Los[count].zaxis = 0;
+    Los[count].periodic = periodic;
+    Los[count].dim[0] = dim[0];
+    Los[count].dim[1] = dim[1];
+    Los[count].dim[2] = dim[2];
     count += 1;
   }
 
@@ -121,6 +131,10 @@ void generate_line_of_sights(struct line_of_sight *Los,
     Los[count].xaxis = 0;
     Los[count].yaxis = 2;
     Los[count].zaxis = 1;
+    Los[count].periodic = periodic;
+    Los[count].dim[0] = dim[0];
+    Los[count].dim[1] = dim[1];
+    Los[count].dim[2] = dim[2];
     count += 1;
   }
 }
@@ -142,6 +156,59 @@ void print_los_info(const struct line_of_sight *Los,
 }
 
 /**
+ * @brief Loop over each part to see which ones intersect the LOS.
+ * 
+ * @param map_data The parts.
+ * @param count The number of parts.
+ * @param extra_data The line_of_sight structure for this LOS.
+ */
+void los_first_loop_mapper(void *restrict map_data, int count,
+                           void *restrict extra_data) {
+
+  int los_particle_count = 0;
+  double dx, dy, r2, hsml;
+  struct line_of_sight *restrict LOS_list = (struct line_of_sight *)extra_data;
+  struct part *restrict p = (struct part *)map_data;
+
+  /* Loop over each gas particle to find those in LOS. */
+  for (size_t i = 0; i < count; i++) {
+    if (p[i].gpart->type == swift_type_gas) {
+      /* Distance from this particle to LOS along x dim. */
+      dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
+
+      /* Periodic wrap. */
+      if (LOS_list->periodic) dx = nearest(dx, LOS_list->dim[LOS_list->xaxis]);
+
+      /* Smoothing length of this part. */
+      hsml = p[i].h * kernel_gamma;
+
+      /* Does this particle fall into our LOS? */
+      if (dx <= hsml) {
+        /* Distance from this particle to LOS along y dim. */
+        dy = p[i].x[LOS_list->yaxis] - LOS_list->Ypos;
+      
+        /* Periodic wrap. */
+        if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
+
+        /* Does this particle still fall into our LOS? */
+        if (dy <= hsml) {
+          /* 2D distance to LOS. */
+          r2 = dx * dx + dy * dy;
+
+          if (r2 <= hsml * hsml) {
+
+            /* We've found one. */
+            los_particle_count++;
+          }
+        }
+      }
+    }
+  } /* End of loop over all gas particles */
+
+  atomic_add(&LOS_list->particles_in_los_local, los_particle_count);
+}
+
+/**
  * @brief Main work function for computing line of sights.
  * 
  * 1) Construct random line of sight positions.
@@ -159,7 +226,7 @@ void do_line_of_sight(struct engine *e) {
   const ticks tic = getticks();
 
   const struct space *s = e->s;
-  const struct part *p = s->parts;
+  struct part *p = s->parts;
   const struct xpart *xp = s->xparts;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -175,7 +242,8 @@ void do_line_of_sight(struct engine *e) {
   /* Start by generating the random sightline positions. */
   struct line_of_sight *LOS_list = (struct line_of_sight *)malloc(
       LOS_params->num_tot * sizeof(struct line_of_sight));
-  if (e->nodeID == 0) generate_line_of_sights(LOS_list, LOS_params);
+  if (e->nodeID == 0) generate_line_of_sights(LOS_list, LOS_params,
+                                              periodic, dim);
 #ifdef WITH_MPI
   MPI_Bcast(LOS_list, LOS_params->num_tot * sizeof(struct line_of_sight),
             MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -194,41 +262,12 @@ void do_line_of_sight(struct engine *e) {
   /* Loop over each random LOS. */
   for (int j = 0; j < LOS_params->num_tot; j++) {
 
-    /* Loop over each gas particle to find those in LOS. */
-    for (size_t i = 0; i < nr_parts; i++) {
-      if (p[i].gpart->type == swift_type_gas) {
-        /* Distance from this particle to LOS along x dim. */
-        dx = p[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+    /* First find all particles that intersect line of sight */
+    threadpool_map(&s->e->threadpool, los_first_loop_mapper, p,
+              nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+              &LOS_list[j]);
 
-        /* Periodic wrap. */
-        if (periodic) dx = nearest(dx, dim[LOS_list[j].xaxis]);
-
-        /* Smoothing length of this part. */
-        hsml = p[i].h * kernel_gamma;
-
-        /* Does this particle fall into our LOS? */
-        if (dx <= hsml) {
-          /* Distance from this particle to LOS along y dim. */
-          dy = p[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
-          
-          /* Periodic wrap. */
-          if (periodic) dy = nearest(dy, dim[LOS_list[j].yaxis]);
-
-          /* Does this particle still fall into our LOS? */
-          if (dy <= hsml) {
-            /* 2D distance to LOS. */
-            r2 = dx * dx + dy * dy;
-
-            if (r2 <= hsml * hsml) {
-
-              /* We've found one. */
-              LOS_list[j].particles_in_los_local += 1;
-            }
-          }
-        }
-      }
-    } /* End of loop over all gas particles */
-
+    /* Make sure all nodes know how many particles are in LOS */
 #ifdef WITH_MPI
     int LOS_counts[e->nr_nodes];
     int LOS_disps[e->nr_nodes];
@@ -249,7 +288,7 @@ void do_line_of_sight(struct engine *e) {
     LOS_list[j].particles_in_los_total = LOS_list[j].particles_in_los_local;
 #endif
 
-    /* Setup los particles structure. */
+    /* Setup LOS particles structure. */
     struct part *LOS_particles;
     struct xpart *LOS_particles_xparts;
     if (e->nodeID == 0) {
