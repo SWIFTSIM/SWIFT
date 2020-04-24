@@ -2264,6 +2264,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
 
+  /* Update the MAC strategy if necessary */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_props_update_MAC_choice(e->gravity_properties);
+
   /* Construct all cells again for a new round (need to update h_max) */
   engine_rebuild(e, 0, 0);
 
@@ -2275,10 +2279,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(e->s, e->verbose);
   space_init_sparts(e->s, e->verbose);
   space_init_bparts(e->s, e->verbose);
-
-  /* Update the MAC strategy if necessary */
-  if (e->policy & engine_policy_self_gravity)
-    gravity_props_update_MAC_choice(e->gravity_properties);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
