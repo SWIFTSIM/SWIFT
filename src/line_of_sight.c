@@ -17,6 +17,13 @@
 #include "io_properties.h"
 #include "hydro_io.h"
 
+/**
+ * @brief Reads the LOS properties from the param file.
+ *
+ * @param dim Space dimensions.
+ * @param los_params Sightline parameters to save into.
+ * @param params Swift params to read from.
+ */
 void los_init(double dim[3], struct los_props *los_params,
         struct swift_params *params) {
   /* How many line of sights in each plane. */
@@ -126,6 +133,18 @@ void print_los_info(const struct line_of_sight *Los,
   }
 }
 
+/**
+ * @brief Main work function for computing line of sights.
+ * 
+ * 1) Construct random line of sight positions.
+ * 2) Loop over each line of sight.
+ * -  a) Loop over each part to see who falls within this LOS.
+ * -  b) Use this count to construct a LOS parts array.
+ * -  c) Loop over each part and extract those in LOS.
+ * -  d) Save LOS particles to HDF5 file.
+ * 
+ * @param e The engine.
+ */
 void do_line_of_sight(struct engine *e) {
 
   /* Start counting. */
@@ -397,6 +416,15 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
   //bzero(&p, sizeof(struct io_props));
 }
 
+/**
+ * @brief Writes dataset for a given part attribute.
+ *
+ * @param p io_props dataset for this attribute.
+ * @param N number of parts in this line of sight.
+ * @param j Line of sight ID.
+ * @param e The engine.
+ * @param grp HDF5 group to write to.
+ */
 void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine* e,
         hid_t grp) {
 
@@ -480,6 +508,13 @@ void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine
   H5Sclose(dataspace_id);
 }
 
+/**
+ * @brief Writes HDF5 headers and information groups for this line of sight.
+ *
+ * @param h_file HDF5 file reference.
+ * @param e The engine.
+ * @param LOS_params The line of sight params.
+ */
 void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_props *LOS_params) {
   /* Open header to write simulation properties */
   hid_t h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
