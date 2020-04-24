@@ -169,8 +169,8 @@ void do_line_of_sight(struct engine *e) {
   double dx, dy, r2, hsml;
 
   /* HDF5 vars. */
-  hid_t h_file, h_grp;
-  char fileName[200], groupName[200];
+  hid_t h_file = -1, h_grp = -1;
+  char fileName[256], groupName[200];
 
   /* Start by generating the random sightline positions. */
   struct line_of_sight *LOS_list = (struct line_of_sight *)malloc(
