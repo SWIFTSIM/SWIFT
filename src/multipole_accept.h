@@ -63,10 +63,12 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
         binomial(p, n) * B->m_pole.power[n] * integer_powf(rho_A, p - n);
   }
   E_BA_term *= 8.f;
-  E_BA_term *= max(rho_A, rho_B);
-  E_BA_term /= (rho_A + rho_B);
+  if (rho_A != 0. && rho_B != 0.) {
+    E_BA_term *= max(rho_A, rho_B);
+    E_BA_term /= (rho_A + rho_B);
+  }
 
-  /* Compute r^(p+2) */
+    /* Compute r^(p+2) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
   const float r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
 #else
@@ -163,7 +165,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
-  float E_BA_term = 8.f * B->m_pole.power[p];
+  const float E_BA_term = 8.f * B->m_pole.power[p];
 
   /* Compute r^(p+2) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
