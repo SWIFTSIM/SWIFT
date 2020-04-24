@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//#include "cooling_io.h"
 #include "engine.h"
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
@@ -132,6 +133,7 @@ void do_line_of_sight(struct engine *e) {
 
   const struct space *s = e->s;
   const struct part *p = s->parts;
+  const struct xpart *xp = s->xparts;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const size_t nr_parts = s->nr_parts;
@@ -157,6 +159,9 @@ void do_line_of_sight(struct engine *e) {
     sprintf(fileName, "los_%04i.hdf5", e->los_output_count);
     h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
+
+    /* Write header */
+    write_hdf5_header(h_file, e, LOS_params);
   }
 
   /* Loop over each random LOS. */
@@ -267,11 +272,8 @@ void do_line_of_sight(struct engine *e) {
             if (r2 <= hsml * hsml) {
 
               /* Store particle properties. */
-              LOS_particles[count].x[0] = p[i].x[0];
-              LOS_particles[count].x[1] = p[i].x[1];
-              LOS_particles[count].x[2] = p[i].x[2];
-
-              LOS_particles[count].h = hsml;
+              LOS_particles[count] = p[i];
+              LOS_particles_xparts[count] = xp[i];
 
               count++;
             }
@@ -286,26 +288,45 @@ void do_line_of_sight(struct engine *e) {
       MPI_Gatherv(MPI_IN_PLACE, 0,
                   part_mpi_type, LOS_particles, LOS_counts, LOS_disps,
                   part_mpi_type, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(MPI_IN_PLACE, 0,
+                  xpart_mpi_type, LOS_particles_xparts, LOS_counts, LOS_disps,
+                  xpart_mpi_type, 0, MPI_COMM_WORLD);
     } else {
       MPI_Gatherv(LOS_particles, LOS_list[j].particles_in_los_local,
                   part_mpi_type, LOS_particles, LOS_counts, LOS_disps,
                   part_mpi_type, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(LOS_particles_xparts, LOS_list[j].particles_in_los_local,
+                  xpart_mpi_type, LOS_particles_xparts, LOS_counts, LOS_disps,
+                  xpart_mpi_type, 0, MPI_COMM_WORLD);
     }
 #endif
     
     /* Write particles to file. */
     if (e->nodeID == 0) {
+      /* Create HDF5 group for this LOS */
       sprintf(groupName, "/LOS_%04i", j);
       h_grp = H5Gcreate(h_file, groupName, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating LOS HDF5 group\n");
+
+      /* Record this LOS attributes */
+      io_write_attribute(h_grp, "NumParts", INT, &LOS_list[j].particles_in_los_total, 1);
+      io_write_attribute(h_grp, "Xaxis", INT, &LOS_list[j].xaxis, 1);
+      io_write_attribute(h_grp, "Yaxis", INT, &LOS_list[j].yaxis, 1);
+      io_write_attribute(h_grp, "Zaxis", INT, &LOS_list[j].zaxis, 1);
+      io_write_attribute(h_grp, "Xpos", FLOAT, &LOS_list[j].Xpos, 1);
+      io_write_attribute(h_grp, "Ypos", FLOAT, &LOS_list[j].Ypos, 1);
+
+      /* Write the data for this LOS */
       write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_particles, e,
         LOS_particles_xparts);
+
+      /* Close HDF5 group */
       H5Gclose(h_grp);
     }
   } /* End of loop over each LOS */
 
   if (e->nodeID == 0) {
-    /* Close file */
+    /* Close HDF5 file */
     H5Fclose(h_file);
   }
 
@@ -320,47 +341,94 @@ void do_line_of_sight(struct engine *e) {
             clocks_getunit());
 }
 
-void write_los_hdf5_datasets(hid_t grp, int j, int N, struct part* parts,
-        struct engine* e, struct xpart* xparts) {
+void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
+        struct engine* e, const struct xpart* xparts) {
 
   struct io_props p;
 
-  /* Coordinates. */
   p = io_make_output_field_convert_part(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_pos, "Co-moving positions of the particles");
   write_los_hdf5_dataset(p, N, j, e, grp);
   bzero(&p, sizeof(struct io_props));
 
-  /* Smoothing Lengths. */
+  p = io_make_output_field_convert_part(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, xparts,
+      convert_part_vel,
+      "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
+      "co-moving positions of the particles");
+  write_los_hdf5_dataset(p, N, j, e, grp);
+  bzero(&p, sizeof(struct io_props));
+
+  p = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
+                                 mass, "Masses of the particles");
+  write_los_hdf5_dataset(p, N, j, e, grp);
+  bzero(&p, sizeof(struct io_props));
+
   p = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
   write_los_hdf5_dataset(p, N, j, e, grp);
   bzero(&p, sizeof(struct io_props));
+
+  p = io_make_output_field(
+      "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      -3.f * hydro_gamma_minus_one, parts, u,
+      "Co-moving thermal energies per unit mass of the particles");
+  write_los_hdf5_dataset(p, N, j, e, grp);
+  bzero(&p, sizeof(struct io_props));
+
+  p = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
+                                 parts, rho,
+                                 "Co-moving mass densities of the particles");
+  write_los_hdf5_dataset(p, N, j, e, grp);
+  bzero(&p, sizeof(struct io_props));
+
+  p = io_make_output_field_convert_part(
+      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
+      xparts, convert_S, "Co-moving entropies per unit mass of the particles");
+  write_los_hdf5_dataset(p, N, j, e, grp);
+  bzero(&p, sizeof(struct io_props));
+
+  //p = io_make_output_field_convert_part(
+  //    "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
+  //    convert_part_T, "Temperatures of the gas particles"); 
+  //write_los_hdf5_dataset(p, N, j, e, grp);
+  //bzero(&p, sizeof(struct io_props));
 }
 
 void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine* e,
         hid_t grp) {
 
-  hsize_t dims[2];
   hid_t dataset_id, dataspace_id;
   herr_t status;
   char att_name[200];
 
+  int rank;
+  hsize_t shape[2];
+  if (p.dimension > 1) {
+    rank = 2;
+    shape[0] = N;
+    shape[1] = p.dimension;
+  } else {
+    rank = 1;
+    shape[0] = N;
+    shape[1] = 0;
+  }
+
   /* Allocate temporary buffer */
+  const size_t num_elements = N * p.dimension;
+  const size_t typeSize = io_sizeof_type(p.type);
   void* temp = NULL;
   if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
-                     N * io_sizeof_type(p.type)) != 0)
+                     num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
   /* Copy particle data to temp buffer */
   io_copy_temp_buffer(temp, e, p, N, e->internal_units, e->snapshot_units);
 
   /* Prepare dataset */
-  dims[0] = N;
-  dims[1] = p.dimension;
-  dataspace_id = H5Screate_simple(2, dims, NULL);
+  dataspace_id = H5Screate_simple(rank, shape, NULL);
 
   /* Write dataset */
   sprintf(att_name, "/LOS_%04i/%s", j, p.name);
@@ -370,10 +438,169 @@ void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine
   status = H5Dwrite(dataset_id, io_hdf5_type(p.type), H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      temp);
   if (status < 0) error("Error while writing data array '%s'.", p.name);
- 
+
+  /* Write unit conversion factors for this data set */
+  char buffer[FIELD_BUFFER_SIZE] = {0};
+  units_cgs_conversion_string(buffer, e->snapshot_units, p.units,
+                              p.scale_factor_exponent);
+  float baseUnitsExp[5];
+  units_get_base_unit_exponents_array(baseUnitsExp, p.units);
+  io_write_attribute_f(dataset_id, "U_M exponent", baseUnitsExp[UNIT_MASS]);
+  io_write_attribute_f(dataset_id, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
+  io_write_attribute_f(dataset_id, "U_t exponent", baseUnitsExp[UNIT_TIME]);
+  io_write_attribute_f(dataset_id, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
+  io_write_attribute_f(dataset_id, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
+  io_write_attribute_f(dataset_id, "h-scale exponent", 0.f);
+  io_write_attribute_f(dataset_id, "a-scale exponent", p.scale_factor_exponent);
+  io_write_attribute_s(dataset_id, "Expression for physical CGS units", buffer);
+
+  /* Write the actual number this conversion factor corresponds to */
+  const double factor =
+      units_cgs_conversion_factor(e->snapshot_units, p.units);
+  io_write_attribute_d(
+      dataset_id,
+      "Conversion factor to CGS (not including cosmological corrections)",
+      factor);
+  io_write_attribute_d(
+      dataset_id,
+      "Conversion factor to physical CGS (including cosmological corrections)",
+      factor * pow(e->cosmology->a, p.scale_factor_exponent));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (strlen(p.description) == 0)
+    error("Invalid (empty) description of the field '%s'", p.name);
+#endif
+
+  /* Write the full description */
+  io_write_attribute_s(dataset_id, "Description", p.description);
+
   /* Free and close everything */
   swift_free("writebuff", temp);
   H5Dclose(dataset_id);
   H5Sclose(dataspace_id);
+}
 
+void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_props *LOS_params) {
+  /* Open header to write simulation properties */
+  hid_t h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating file header\n");
+
+  /* Convert basic output information to snapshot units */
+  const double factor_time =
+      units_conversion_factor(e->internal_units, e->snapshot_units, UNIT_CONV_TIME);
+  const double factor_length = units_conversion_factor(
+      e->internal_units, e->snapshot_units, UNIT_CONV_LENGTH);
+  const double dblTime = e->time * factor_time;
+  const double dim[3] = {e->s->dim[0] * factor_length,
+                         e->s->dim[1] * factor_length,
+                         e->s->dim[2] * factor_length};
+
+  /* Print the relevant information and print status */
+  io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
+  io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
+  const int dimension = (int)hydro_dimension;
+  io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
+  io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
+  io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
+  io_write_attribute_s(h_grp, "Code", "SWIFT");
+  io_write_attribute_s(h_grp, "RunName", e->run_name);
+
+  /* Store the time at which the snapshot was written */
+  time_t tm = time(NULL);
+  struct tm* timeinfo = localtime(&tm);
+  char snapshot_date[64];
+  strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
+  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+
+  /* Close group */
+  H5Gclose(h_grp);
+
+  /* Print the code version */
+  io_write_code_description(h_file);
+
+  /* Print the run's policy */
+  io_write_engine_policy(h_file, e);
+
+  /* Print the physical constants */
+  phys_const_print_snapshot(h_file, e->physical_constants);
+
+  /* Print the SPH parameters */
+  if (e->policy & engine_policy_hydro) {
+    h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating SPH group");
+    hydro_props_print_snapshot(h_grp, e->hydro_properties);
+    hydro_write_flavour(h_grp);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the subgrid parameters */
+  h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating subgrid group");
+  hid_t h_grp_columns =
+      H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp_columns < 0) error("Error while creating named columns group");
+  entropy_floor_write_flavour(h_grp);
+  //cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
+  H5Gclose(h_grp_columns);
+  H5Gclose(h_grp);
+
+  /* Print the gravity parameters */
+  if (e->policy & engine_policy_self_gravity) {
+    h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating gravity group");
+    gravity_props_print_snapshot(h_grp, e->gravity_properties);
+    H5Gclose(h_grp);
+  }
+
+  /* Print the cosmological model */
+  h_grp =
+      H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating cosmology group");
+  if (e->policy & engine_policy_cosmology)
+    io_write_attribute_i(h_grp, "Cosmological run", 1);
+  else
+    io_write_attribute_i(h_grp, "Cosmological run", 0);
+  cosmology_write_model(h_grp, e->cosmology);
+  H5Gclose(h_grp);
+
+  /* Print the runtime parameters */
+  h_grp =
+      H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, 1);
+  H5Gclose(h_grp);
+
+  /* Print the runtime unused parameters */
+  h_grp = H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp, 0);
+  H5Gclose(h_grp);
+
+  /* Print the system of Units used in the spashot */
+  io_write_unit_system(h_file, e->snapshot_units, "Units");
+
+  /* Print the system of Units used internally */
+  io_write_unit_system(h_file, e->internal_units, "InternalCodeUnits");
+
+  /* Print the LOS properties */
+  h_grp = H5Gcreate(h_file, "/LineOfSightParameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating LOS group");
+
+  /* Record this LOS attributes */
+  io_write_attribute(h_grp, "NumAlongXY", INT, &LOS_params->num_along_xy, 1);
+  io_write_attribute(h_grp, "NumAlongYZ", INT, &LOS_params->num_along_yz, 1);
+  io_write_attribute(h_grp, "NumAlongXZ", INT, &LOS_params->num_along_xz, 1);
+  io_write_attribute(h_grp, "NumLineOfSight", INT, &LOS_params->num_tot, 1);
+  io_write_attribute(h_grp, "Minx", FLOAT, &LOS_params->xmin, 1);
+  io_write_attribute(h_grp, "Maxx", FLOAT, &LOS_params->xmax, 1);
+  io_write_attribute(h_grp, "Miny", FLOAT, &LOS_params->ymin, 1);
+  io_write_attribute(h_grp, "Maxy", FLOAT, &LOS_params->ymax, 1);
+  io_write_attribute(h_grp, "Minz", FLOAT, &LOS_params->zmin, 1);
+  io_write_attribute(h_grp, "Maxz", FLOAT, &LOS_params->zmax, 1);
+
+  H5Gclose(h_grp);
 }
