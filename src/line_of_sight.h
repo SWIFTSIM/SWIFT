@@ -20,6 +20,8 @@ struct los_props {
   float zmin, zmax;
 
   int num_tot;
+
+  char basename[200];
 };
 
 double los_periodic(double x, double dim);

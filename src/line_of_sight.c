@@ -16,6 +16,11 @@
 #include "periodic.h"
 #include "io_properties.h"
 #include "hydro_io.h"
+#include "chemistry_io.h"
+#include "fof_io.h"
+#include "star_formation_io.h"
+#include "tracers_io.h"
+#include "velociraptor_io.h"
 
 /**
  * @brief Reads the LOS properties from the param file.
@@ -52,6 +57,9 @@ void los_init(double dim[3], struct los_props *los_params,
   los_params->num_tot = los_params->num_along_xy +
                         los_params->num_along_yz +
                         los_params->num_along_xz;
+
+  /* Where are we saving them? */
+  parser_get_param_string(params, "LineOfSight:basename", los_params->basename);
 } 
 
 /**
@@ -175,7 +183,7 @@ void do_line_of_sight(struct engine *e) {
 
   /* Create HDF5 file. */
   if (e->nodeID == 0) {
-    sprintf(fileName, "los_%04i.hdf5", e->los_output_count);
+    sprintf(fileName, "%s_%04i.hdf5", LOS_params->basename, e->los_output_count);
     h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
@@ -356,6 +364,7 @@ void do_line_of_sight(struct engine *e) {
   /* Up the count. */
   e->los_output_count++;
 
+  /* How long did we take? */
   message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
@@ -363,57 +372,44 @@ void do_line_of_sight(struct engine *e) {
 void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
         struct engine* e, const struct xpart* xparts) {
 
-  struct io_props p;
+  /* What kind of run are we working with? */
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  //const int with_cooling = e->policy & engine_policy_cooling;
+  //const int with_temperature = e->policy & engine_policy_temperature;
+  const int with_fof = e->policy & engine_policy_fof;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
 
-  p = io_make_output_field_convert_part(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
-      convert_part_pos, "Co-moving positions of the particles");
-  write_los_hdf5_dataset(p, N, j, e, grp);
-  bzero(&p, sizeof(struct io_props));
+  int num_fields = 0;
+  struct io_props list[100];
 
-  p = io_make_output_field_convert_part(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, xparts,
-      convert_part_vel,
-      "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
-      "co-moving positions of the particles");
-  write_los_hdf5_dataset(p, N, j, e, grp);
-  bzero(&p, sizeof(struct io_props));
+  /* Find the output fields */
+  hydro_write_particles(parts, xparts, list, &num_fields);
+  num_fields += chemistry_write_particles(parts, list + num_fields);
+  //if (with_cooling || with_temperature) {
+  //  num_fields += cooling_write_particles(
+  //      parts, xparts, list + num_fields, e->cooling_func);
+  //}
+  if (with_fof) {
+    num_fields += fof_write_parts(parts, xparts, list + num_fields);
+  }
+  if (with_stf) {
+    num_fields +=
+        velociraptor_write_parts(parts, xparts, list + num_fields);
+  }
+  num_fields += tracers_write_particles(
+      parts, xparts, list + num_fields, with_cosmology);
+  num_fields += star_formation_write_particles(parts, xparts,
+                                                list + num_fields);
 
-  p = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
-                                 mass, "Masses of the particles");
-  write_los_hdf5_dataset(p, N, j, e, grp);
-  bzero(&p, sizeof(struct io_props));
-
-  p = io_make_output_field(
-      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
-      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
-  write_los_hdf5_dataset(p, N, j, e, grp);
-  bzero(&p, sizeof(struct io_props));
-
-  p = io_make_output_field(
-      "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      -3.f * hydro_gamma_minus_one, parts, u,
-      "Co-moving thermal energies per unit mass of the particles");
-  write_los_hdf5_dataset(p, N, j, e, grp);
-  bzero(&p, sizeof(struct io_props));
-
-  p = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
-                                 parts, rho,
-                                 "Co-moving mass densities of the particles");
-  write_los_hdf5_dataset(p, N, j, e, grp);
-  bzero(&p, sizeof(struct io_props));
-
-  p = io_make_output_field_convert_part(
-      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
-      xparts, convert_S, "Co-moving entropies per unit mass of the particles");
-  write_los_hdf5_dataset(p, N, j, e, grp);
-  bzero(&p, sizeof(struct io_props));
-
-  //p = io_make_output_field_convert_part(
-  //    "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
-  //    convert_part_T, "Temperatures of the gas particles"); 
-  //write_los_hdf5_dataset(p, N, j, e, grp);
-  //bzero(&p, sizeof(struct io_props));
+  /* Loop over and write each output field */
+  for (int i = 0; i < num_fields; i++) {
+    write_los_hdf5_dataset(list[i], N, j, e, grp);
+  }
 }
 
 /**
@@ -636,6 +632,5 @@ void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_pr
   io_write_attribute(h_grp, "Maxy", FLOAT, &LOS_params->ymax, 1);
   io_write_attribute(h_grp, "Minz", FLOAT, &LOS_params->zmin, 1);
   io_write_attribute(h_grp, "Maxz", FLOAT, &LOS_params->zmax, 1);
-
   H5Gclose(h_grp);
 }
