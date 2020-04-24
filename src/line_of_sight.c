@@ -369,10 +369,21 @@ void do_line_of_sight(struct engine *e) {
             clocks_getunit());
 }
 
+/**
+ * @brief Write parts in LOS to HDF5 file.
+ *
+ * @param grp HDF5 group of this LOS.
+ * @param j LOS ID.
+ * @param N number of parts in this line of sight.
+ * @param parts the list of parts in this LOS.
+ * @param e The engine.
+ * @param xparts the list of xparts in this LOS.
+ */
 void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
         struct engine* e, const struct xpart* xparts) {
 
   /* What kind of run are we working with? */
+  struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   //const int with_cooling = e->policy & engine_policy_cooling;
   //const int with_temperature = e->policy & engine_policy_temperature;
@@ -387,7 +398,7 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
   int num_fields = 0;
   struct io_props list[100];
 
-  /* Find the output fields */
+  /* Find all the gas output fields */
   hydro_write_particles(parts, xparts, list, &num_fields);
   num_fields += chemistry_write_particles(parts, list + num_fields);
   //if (with_cooling || with_temperature) {
@@ -406,9 +417,17 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
   num_fields += star_formation_write_particles(parts, xparts,
                                                 list + num_fields);
 
-  /* Loop over and write each output field */
+  /* Loop over each output field */
   for (int i = 0; i < num_fields; i++) {
-    write_los_hdf5_dataset(list[i], N, j, e, grp);
+
+    /* Did the user cancel this field? */
+    char field[PARSER_MAX_LINE_SIZE];
+    sprintf(field, "SelectOutputLOS:%.*s", FIELD_BUFFER_SIZE,
+            list[i].name);
+    int should_write = parser_get_opt_param_int(params, field, 1);  
+    
+    /* Write (if selected) */
+    if (should_write) write_los_hdf5_dataset(list[i], N, j, e, grp);
   }
 }
 
@@ -421,87 +440,129 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
  * @param e The engine.
  * @param grp HDF5 group to write to.
  */
-void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine* e,
+void write_los_hdf5_dataset(const struct io_props props, int N, int j, struct engine* e,
         hid_t grp) {
 
-  hid_t dataset_id, dataspace_id;
-  herr_t status;
-  char att_name[200];
+  /* Create data space */
+  const hid_t h_space = H5Screate(H5S_SIMPLE);
+  if (h_space < 0)
+    error("Error while creating data space for field '%s'.", props.name);
 
-  int rank;
+  int rank = 0;
   hsize_t shape[2];
-  if (p.dimension > 1) {
+  hsize_t chunk_shape[2];
+  if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
-    shape[1] = p.dimension;
+    shape[1] = props.dimension;
+    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[1] = props.dimension;
   } else {
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
+    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[1] = 0;
+  }
+
+  /* Make sure the chunks are not larger than the dataset */
+  if (chunk_shape[0] > N) chunk_shape[0] = N;
+
+  /* Change shape of data space */
+  hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, shape);
+  if (h_err < 0)
+    error("Error while changing data space shape for field '%s'.", props.name);
+
+  /* Dataset properties */
+  const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
+
+  /* Set chunk size */
+  h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
+  if (h_err < 0)
+    error("Error while setting chunk size (%llu, %llu) for field '%s'.",
+          chunk_shape[0], chunk_shape[1], props.name);
+
+  /* Impose check-sum to verify data corruption */
+  h_err = H5Pset_fletcher32(h_prop);
+  if (h_err < 0)
+    error("Error while setting checksum options for field '%s'.", props.name);
+
+  /* Impose data compression */
+  if (e->snapshot_compression > 0) {
+    h_err = H5Pset_shuffle(h_prop);
+    if (h_err < 0)
+      error("Error while setting shuffling options for field '%s'.",
+            props.name);
+
+    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+    if (h_err < 0)
+      error("Error while setting compression options for field '%s'.",
+            props.name);
   }
 
   /* Allocate temporary buffer */
-  const size_t num_elements = N * p.dimension;
-  const size_t typeSize = io_sizeof_type(p.type);
+  const size_t num_elements = N * props.dimension;
+  const size_t typeSize = io_sizeof_type(props.type);
   void* temp = NULL;
   if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
   /* Copy particle data to temp buffer */
-  io_copy_temp_buffer(temp, e, p, N, e->internal_units, e->snapshot_units);
+  io_copy_temp_buffer(temp, e, props, N, e->internal_units, e->snapshot_units);
 
-  /* Prepare dataset */
-  dataspace_id = H5Screate_simple(rank, shape, NULL);
+  /* Create dataset */
+  char att_name[200];
+  sprintf(att_name, "/LOS_%04i/%s", j, props.name);
+  const hid_t h_data = H5Dcreate(grp, att_name, io_hdf5_type(props.type),
+                                 h_space, H5P_DEFAULT, h_prop, H5P_DEFAULT);
+  if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write dataset */
-  sprintf(att_name, "/LOS_%04i/%s", j, p.name);
-  dataset_id = H5Dcreate(grp, att_name, io_hdf5_type(p.type), dataspace_id,    
-                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  status = H5Dwrite(dataset_id, io_hdf5_type(p.type), H5S_ALL, H5S_ALL, H5P_DEFAULT,
+  herr_t status = H5Dwrite(h_data, io_hdf5_type(props.type), H5S_ALL, H5S_ALL, H5P_DEFAULT,
                      temp);
-  if (status < 0) error("Error while writing data array '%s'.", p.name);
+  if (status < 0) error("Error while writing data array '%s'.", props.name);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
-  units_cgs_conversion_string(buffer, e->snapshot_units, p.units,
-                              p.scale_factor_exponent);
+  units_cgs_conversion_string(buffer, e->snapshot_units, props.units,
+                              props.scale_factor_exponent);
   float baseUnitsExp[5];
-  units_get_base_unit_exponents_array(baseUnitsExp, p.units);
-  io_write_attribute_f(dataset_id, "U_M exponent", baseUnitsExp[UNIT_MASS]);
-  io_write_attribute_f(dataset_id, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
-  io_write_attribute_f(dataset_id, "U_t exponent", baseUnitsExp[UNIT_TIME]);
-  io_write_attribute_f(dataset_id, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
-  io_write_attribute_f(dataset_id, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
-  io_write_attribute_f(dataset_id, "h-scale exponent", 0.f);
-  io_write_attribute_f(dataset_id, "a-scale exponent", p.scale_factor_exponent);
-  io_write_attribute_s(dataset_id, "Expression for physical CGS units", buffer);
+  units_get_base_unit_exponents_array(baseUnitsExp, props.units);
+  io_write_attribute_f(h_data, "U_M exponent", baseUnitsExp[UNIT_MASS]);
+  io_write_attribute_f(h_data, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
+  io_write_attribute_f(h_data, "U_t exponent", baseUnitsExp[UNIT_TIME]);
+  io_write_attribute_f(h_data, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
+  io_write_attribute_f(h_data, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
+  io_write_attribute_f(h_data, "h-scale exponent", 0.f);
+  io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
+  io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
-      units_cgs_conversion_factor(e->snapshot_units, p.units);
+      units_cgs_conversion_factor(e->snapshot_units, props.units);
   io_write_attribute_d(
-      dataset_id,
+      h_data,
       "Conversion factor to CGS (not including cosmological corrections)",
       factor);
   io_write_attribute_d(
-      dataset_id,
+      h_data,
       "Conversion factor to physical CGS (including cosmological corrections)",
-      factor * pow(e->cosmology->a, p.scale_factor_exponent));
+      factor * pow(e->cosmology->a, props.scale_factor_exponent));
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (strlen(p.description) == 0)
-    error("Invalid (empty) description of the field '%s'", p.name);
+  if (strlen(props.description) == 0)
+    error("Invalid (empty) description of the field '%s'", props.name);
 #endif
 
   /* Write the full description */
-  io_write_attribute_s(dataset_id, "Description", p.description);
+  io_write_attribute_s(h_data, "Description", props.description);
 
   /* Free and close everything */
   swift_free("writebuff", temp);
-  H5Dclose(dataset_id);
-  H5Sclose(dataspace_id);
+  H5Pclose(h_prop);
+  H5Dclose(h_data);
+  H5Sclose(h_space);
 }
 
 /**
