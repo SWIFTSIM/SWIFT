@@ -34,8 +34,8 @@
  *
  * Only optimized for values 0 <= n <= 8. Defaults to pow() above.
  */
-__attribute__((const)) INLINE static int integer_pow(const double x,
-                                                     const unsigned int n) {
+__attribute__((const)) INLINE static double integer_pow(const double x,
+                                                        const unsigned int n) {
 
   switch (n) {
     case 0:
@@ -77,8 +77,8 @@ __attribute__((const)) INLINE static int integer_pow(const double x,
  *
  * Only optimized for values 0 <= n <= 8. Defaults to powf() above.
  */
-__attribute__((const)) INLINE static int integer_powf(const float x,
-                                                      const unsigned int n) {
+__attribute__((const)) INLINE static float integer_powf(const float x,
+                                                        const unsigned int n) {
 
   switch (n) {
     case 0:
