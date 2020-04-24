@@ -340,8 +340,8 @@ void do_line_of_sight(struct engine *e) {
       io_write_attribute(h_grp, "Xaxis", INT, &LOS_list[j].xaxis, 1);
       io_write_attribute(h_grp, "Yaxis", INT, &LOS_list[j].yaxis, 1);
       io_write_attribute(h_grp, "Zaxis", INT, &LOS_list[j].zaxis, 1);
-      io_write_attribute(h_grp, "Xpos", FLOAT, &LOS_list[j].Xpos, 1);
-      io_write_attribute(h_grp, "Ypos", FLOAT, &LOS_list[j].Ypos, 1);
+      io_write_attribute(h_grp, "Xpos", DOUBLE, &LOS_list[j].Xpos, 1);
+      io_write_attribute(h_grp, "Ypos", DOUBLE, &LOS_list[j].Ypos, 1);
 
       /* Write the data for this LOS */
       write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_particles, e,
@@ -687,11 +687,11 @@ void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_pr
   io_write_attribute(h_grp, "NumAlongYZ", INT, &LOS_params->num_along_yz, 1);
   io_write_attribute(h_grp, "NumAlongXZ", INT, &LOS_params->num_along_xz, 1);
   io_write_attribute(h_grp, "NumLineOfSight", INT, &LOS_params->num_tot, 1);
-  io_write_attribute(h_grp, "Minx", FLOAT, &LOS_params->xmin, 1);
-  io_write_attribute(h_grp, "Maxx", FLOAT, &LOS_params->xmax, 1);
-  io_write_attribute(h_grp, "Miny", FLOAT, &LOS_params->ymin, 1);
-  io_write_attribute(h_grp, "Maxy", FLOAT, &LOS_params->ymax, 1);
-  io_write_attribute(h_grp, "Minz", FLOAT, &LOS_params->zmin, 1);
-  io_write_attribute(h_grp, "Maxz", FLOAT, &LOS_params->zmax, 1);
+  io_write_attribute(h_grp, "Minx", DOUBLE, &LOS_params->xmin, 1);
+  io_write_attribute(h_grp, "Maxx", DOUBLE, &LOS_params->xmax, 1);
+  io_write_attribute(h_grp, "Miny", DOUBLE, &LOS_params->ymin, 1);
+  io_write_attribute(h_grp, "Maxy", DOUBLE, &LOS_params->ymax, 1);
+  io_write_attribute(h_grp, "Minz", DOUBLE, &LOS_params->zmin, 1);
+  io_write_attribute(h_grp, "Maxz", DOUBLE, &LOS_params->zmax, 1);
   H5Gclose(h_grp);
 }

@@ -15,9 +15,9 @@ struct los_props {
   int num_along_yz;
   int num_along_xz;
 
-  float xmin, xmax;
-  float ymin, ymax;
-  float zmin, zmax;
+  double xmin, xmax;
+  double ymin, ymax;
+  double zmin, zmax;
 
   int num_tot;
 
