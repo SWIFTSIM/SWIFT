@@ -87,8 +87,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   /* Read the choice of multipole acceptance criterion */
   char buffer[32] = {0};
-  parser_get_param_string(params, "Gravity:mulitpole_acceptance_criterion",
-                          buffer);
+  parser_get_param_string(params, "Gravity:MAC", buffer);
 
   if (strcmp(buffer, "adaptive") == 0) {
     p->use_adaptive_tolerance = 1;
@@ -105,7 +104,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->use_advanced_mac = 0;
 
   /* Geometric opening angle */
-  p->theta_crit = parser_get_param_double(params, "Gravity:theta");
+  p->theta_crit = parser_get_param_double(params, "Gravity:theta_cr");
   if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
 
   /* Adaptive opening angle tolerance */
@@ -190,11 +189,15 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   gravity_props_update(p, cosmo);
 }
 
+void gravity_props_update_MAC_choice(struct gravity_props *p) {
+
+  /* Now that we have run initial accelerations,
+   * switch to the better MAC */
+  if (p->use_adaptive_tolerance) p->use_advanced_mac = 1;
+}
+
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo) {
-
-  /* Choice of MAC */
-  if (p->use_adaptive_tolerance) p->use_advanced_mac = 1;
 
   /* Current softening length for the high-res. DM particles. */
   double DM_softening, baryon_softening;

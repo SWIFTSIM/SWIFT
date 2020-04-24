@@ -2041,19 +2041,18 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
-        t->subtype == task_subtype_force ||
-        t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
-        t->type == task_type_end_hydro_force ||
-        t->type == task_type_end_grav_force ||
-        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_grav_down_in ||
-        t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
+        t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
+        t->type == task_type_stars_ghost ||
+        t->type == task_type_stars_ghost_in ||
+        t->type == task_type_stars_ghost_out ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
-        t->type == task_type_bh_swallow_ghost3 ||
+        t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
+        t->type == task_type_bh_out || t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
@@ -2069,8 +2068,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
         t->subtype == task_subtype_tend_bpart ||
-        t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart ||
-        t->subtype == task_subtype_sf_counts)
+        t->subtype == task_subtype_rho || t->subtype == task_subtype_sf_counts)
       t->skip = 1;
   }
 
@@ -2193,7 +2191,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
 
-  if (e->nodeID == 0) message("Computing initial gas densities.");
+  if (e->nodeID == 0)
+    message("Computing initial gas densities and approximate gravity.");
 
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
@@ -2276,6 +2275,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(e->s, e->verbose);
   space_init_sparts(e->s, e->verbose);
   space_init_bparts(e->s, e->verbose);
+
+  /* Update the MAC strategy if necessary */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_props_update_MAC_choice(e->gravity_properties);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
