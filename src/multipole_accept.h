@@ -91,6 +91,10 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
 
   if (props->use_advanced_mac) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (min_a_grav == 0.) error("Acceleration is 0");
+#endif
+
     /* Test the different conditions */
 
     /* Condition 1: We are in the converging part of the Taylor expansion */
@@ -182,6 +186,10 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float theta_crit2 = theta_crit * theta_crit;
 
   if (props->use_advanced_mac) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (old_a_grav == 0.) error("Acceleration is 0");
+#endif
 
     /* Test the different conditions */
 
