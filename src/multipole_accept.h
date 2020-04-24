@@ -53,8 +53,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
 
   /* Sizes of the multipoles */
-  const int rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
-  const int rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
+  const float rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
+  const float rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
   float E_BA_term = 0.f;
