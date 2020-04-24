@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//#include "cooling_io.h"
+#include "cooling_io.h"
 #include "engine.h"
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
@@ -385,8 +385,8 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
   /* What kind of run are we working with? */
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
-  //const int with_cooling = e->policy & engine_policy_cooling;
-  //const int with_temperature = e->policy & engine_policy_temperature;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
@@ -401,10 +401,10 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
   /* Find all the gas output fields */
   hydro_write_particles(parts, xparts, list, &num_fields);
   num_fields += chemistry_write_particles(parts, list + num_fields);
-  //if (with_cooling || with_temperature) {
-  //  num_fields += cooling_write_particles(
-  //      parts, xparts, list + num_fields, e->cooling_func);
-  //}
+  if (with_cooling || with_temperature) {
+    num_fields += cooling_write_particles(
+        parts, xparts, list + num_fields, e->cooling_func);
+  }
   if (with_fof) {
     num_fields += fof_write_parts(parts, xparts, list + num_fields);
   }
