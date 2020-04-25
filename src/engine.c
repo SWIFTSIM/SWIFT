@@ -3616,9 +3616,8 @@ void engine_dump_snapshot(struct engine *e) {
 
   if (e->snapshot_distributed) {
 
-    write_output_distributed(e, snapshotBase, e->internal_units,
-                             e->snapshot_units, e->nodeID, e->nr_nodes,
-                             MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_distributed(e, e->internal_units, e->snapshot_units, e->nodeID,
+                             e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
   } else {
 
 #if defined(HAVE_PARALLEL_HDF5)

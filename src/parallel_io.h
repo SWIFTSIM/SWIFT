@@ -28,10 +28,10 @@
 #include <mpi.h>
 
 /* Includes. */
-#include "engine.h"
-#include "io_properties.h"
 #include "part.h"
-#include "units.h"
+
+struct engine;
+struct unit_system;
 
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,

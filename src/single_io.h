@@ -24,11 +24,11 @@
 
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
-/* Includes. */
-#include "engine.h"
-#include "io_properties.h"
+/* Local includes */
 #include "part.h"
-#include "units.h"
+
+struct engine;
+struct unit_system;
 
 void read_ic_single(const char* fileName,
                     const struct unit_system* internal_units, double dim[3],

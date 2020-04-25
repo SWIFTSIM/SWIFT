@@ -54,6 +54,7 @@
 #include "part_type.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
+#include "tools.h"
 #include "tracers_io.h"
 #include "units.h"
 #include "velociraptor_io.h"
@@ -220,16 +221,19 @@ void write_distributed_array(const struct engine* e, hid_t grp,
  * @brief Writes a snapshot distributed into multiple files.
  *
  * @param e The engine containing all the system.
- * @param baseName The common part of the snapshot file name.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param mpi_rank The rank number of the calling MPI rank.
+ * @param mpi_size the number of MPI ranks.
+ * @param comm The communicator used by the MPI ranks.
+ * @param info The MPI information object.
  *
  * Creates a series of HDF5 output files (1 per MPI node) as a snapshot.
  * Writes the particles contained in the engine.
  * If such files already exist, it is erased and replaced by the new one.
  * The companion XMF file is also updated accordingly.
  */
-void write_output_distributed(struct engine* e, const char* baseName,
+void write_output_distributed(struct engine* e,
                               const struct unit_system* internal_units,
                               const struct unit_system* snapshot_units,
                               const int mpi_rank, const int mpi_size,
@@ -317,8 +321,8 @@ void write_output_distributed(struct engine* e, const char* baseName,
   }
 
   /* Create the directory */
-  if (mpi_rank == 0) mkdir(dirName, 0777);
-  MPI_Barrier(MPI_COMM_WORLD);
+  if (mpi_rank == 0) safe_checkdir(dirName, /*create=*/1);
+  MPI_Barrier(comm);
 
   /* Compute offset in the file and total number of particles */
   const long long N[swift_type_count] = {Ngas_written,   Ndm_written,

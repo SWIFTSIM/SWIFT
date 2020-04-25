@@ -21,6 +21,9 @@
 
 #include "../config.h"
 
+/* Local includes */
+#include "engine.h"
+
 /* Load the correct star type */
 #if defined(BLACK_HOLES_NONE)
 #include "./black_holes/Default/black_holes_io.h"
