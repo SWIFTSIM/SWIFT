@@ -45,6 +45,7 @@
 #include "star_formation_io.h"
 #include "stars_io.h"
 #include "threadpool.h"
+#include "tools.h"
 #include "tracers_io.h"
 #include "units.h"
 #include "velociraptor_io.h"
@@ -2478,4 +2479,16 @@ void io_write_output_field_parameter(const char* filename) {
       "List of valid ouput fields for the particle in snapshots dumped in "
       "'%s'.\n",
       filename);
+}
+
+/**
+ * @brief Create the subdirectory for snapshots if the user demanded one.
+ *
+ * @param dirname The name of the directory.
+ */
+void io_make_snapshot_subdir(const char* dirname) {
+
+  if (strnlen(dirname, PARSER_MAX_LINE_SIZE) > 0) {
+    safe_checkdir(dirname, /*create=*/1);
+  }
 }

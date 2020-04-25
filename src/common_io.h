@@ -172,4 +172,6 @@ void io_check_output_fields(const struct swift_params* params,
 
 void io_write_output_field_parameter(const char* filename);
 
+void io_make_snapshot_subdir(const char* dirname);
+
 #endif /* SWIFT_COMMON_IO_H */

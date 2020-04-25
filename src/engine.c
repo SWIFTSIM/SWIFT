@@ -3596,13 +3596,6 @@ void engine_dump_snapshot(struct engine *e) {
       error(
           "FILENAME_BUFFER_SIZE is too small for snapshot path and file name");
     }
-      /* Try to ensure the directory exists */
-#ifdef WITH_MPI
-    if (engine_rank == 0) mkdir(e->snapshot_subdir, 0777);
-    MPI_Barrier(MPI_COMM_WORLD);
-#else
-    mkdir(e->snapshot_subdir, 0777);
-#endif
   } else {
     if (snprintf(snapshotBase, FILENAME_BUFFER_SIZE, "%s",
                  e->snapshot_base_name) >= FILENAME_BUFFER_SIZE) {
@@ -4457,6 +4450,9 @@ void engine_config(int restart, int fof, struct engine *e,
               e->time_first_stf_output, e->time_begin);
       }
     }
+
+    /* Try to ensure the snapshot directory exists */
+    if (e->nodeID == 0) io_make_snapshot_subdir(e->snapshot_subdir);
 
     /* Get the total mass */
     e->total_mass = 0.;
