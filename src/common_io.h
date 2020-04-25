@@ -174,4 +174,10 @@ void io_write_output_field_parameter(const char* filename);
 
 void io_make_snapshot_subdir(const char* dirname);
 
+void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+                              const int use_time_label,
+                              const int snapshots_invoke_stf, const double time,
+                              const int stf_count, const int snap_count,
+                              const char* subdir, const char* basename);
+
 #endif /* SWIFT_COMMON_IO_H */

@@ -378,7 +378,7 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
  * @param N_total The total number of particles to write in this array.
  * @param snapshot_units The units used for the data in this snapshot.
  */
-void prepare_array_parallel(struct engine* e, hid_t grp, char* fileName,
+void prepare_array_parallel(struct engine* e, hid_t grp, const char* fileName,
                             FILE* xmfFile, char* partTypeGroupName,
                             struct io_props props, long long N_total,
                             const struct unit_system* snapshot_units) {
@@ -1041,12 +1041,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
  * @brief Prepares a file for a parallel write.
  *
  * @param e The #engine.
- * @param baseName The base name of the snapshots.
  * @param N_total The total number of particles of each type to write.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
+void prepare_file(struct engine* e, const char* fileName,
+                  const char* xmfFileName, long long N_total[6],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
@@ -1071,23 +1071,10 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   int numFiles = 1;
 
   /* First time, we need to create the XMF file */
-  if (e->snapshot_output_count == 0) xmf_create_file(baseName);
+  if (e->snapshot_output_count == 0) xmf_create_file(xmfFileName);
 
   /* Prepare the XMF file for the new entry */
-  xmfFile = xmf_prepare_file(baseName);
-
-  /* HDF5 File name */
-  char fileName[FILENAME_BUFFER_SIZE];
-  if (e->snapshot_int_time_label_on)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             (int)round(e->time));
-  else if (e->snapshot_invoke_stf) {
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->stf_output_count);
-  } else {
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
-  }
+  xmfFile = xmf_prepare_file(xmfFileName);
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1301,7 +1288,6 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
  *its XMF descriptor
  *
  * @param e The engine containing all the system.
- * @param baseName The common part of the snapshot file name.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
  * @param mpi_rank The MPI rank of this node.
@@ -1317,7 +1303,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
  * Calls #error() if an error occurs.
  *
  */
-void write_output_parallel(struct engine* e, const char* baseName,
+void write_output_parallel(struct engine* e,
                            const struct unit_system* internal_units,
                            const struct unit_system* snapshot_units,
                            int mpi_rank, int mpi_size, MPI_Comm comm,
@@ -1389,9 +1375,18 @@ void write_output_parallel(struct engine* e, const char* baseName,
   ticks tic = getticks();
 #endif
 
+  /* File names */
+  char fileName[FILENAME_BUFFER_SIZE];
+  char xmfFileName[FILENAME_BUFFER_SIZE];
+  io_get_snapshot_filename(fileName, xmfFileName, e->snapshot_int_time_label_on,
+                           e->snapshot_invoke_stf, e->time, e->stf_output_count,
+                           e->snapshot_output_count, e->snapshot_subdir,
+                           e->snapshot_base_name);
+
   /* Rank 0 prepares the file */
   if (mpi_rank == 0)
-    prepare_file(e, baseName, N_total, internal_units, snapshot_units);
+    prepare_file(e, fileName, xmfFileName, N_total, internal_units,
+                 snapshot_units);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1402,19 +1397,6 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   tic = getticks();
 #endif
-
-  /* HDF5 File name */
-  char fileName[FILENAME_BUFFER_SIZE];
-  if (e->snapshot_int_time_label_on)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             (int)round(e->time));
-  else if (e->snapshot_invoke_stf) {
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->stf_output_count);
-  } else {
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
-  }
 
   /* Now write the top-level cell structure */
   hid_t h_file_cells = 0, h_grp_cells = 0;

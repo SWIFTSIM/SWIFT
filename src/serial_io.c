@@ -841,7 +841,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
  *
  * @param e The engine containing all the system.
- * @param baseName The common part of the snapshot file name.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
  * @param mpi_rank The MPI rank of this node.
@@ -857,7 +856,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
  * Calls #error() if an error occurs.
  *
  */
-void write_output_serial(struct engine* e, const char* baseName,
+void write_output_serial(struct engine* e,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units, int mpi_rank,
                          int mpi_size, MPI_Comm comm, MPI_Info info) {
@@ -914,16 +913,11 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  if (e->snapshot_int_time_label_on)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             (int)round(e->time));
-  else if (e->snapshot_invoke_stf) {
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->stf_output_count);
-  } else {
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
-  }
+  char xmfFileName[FILENAME_BUFFER_SIZE];
+  io_get_snapshot_filename(fileName, xmfFileName, e->snapshot_int_time_label_on,
+                           e->snapshot_invoke_stf, e->time, e->stf_output_count,
+                           e->snapshot_output_count, e->snapshot_subdir,
+                           e->snapshot_base_name);
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
@@ -945,10 +939,10 @@ void write_output_serial(struct engine* e, const char* baseName,
   if (mpi_rank == 0) {
 
     /* First time, we need to create the XMF file */
-    if (e->snapshot_output_count == 0) xmf_create_file(baseName);
+    if (e->snapshot_output_count == 0) xmf_create_file(xmfFileName);
 
     /* Prepare the XMF file for the new entry */
-    xmfFile = xmf_prepare_file(baseName);
+    xmfFile = xmf_prepare_file(xmfFileName);
 
     /* Write the part corresponding to this specific output */
     xmf_write_outputheader(xmfFile, fileName, e->time);

@@ -51,15 +51,13 @@ static const char* xmf_basename(const char* hdfFileName) {
 /**
  * @brief Prepare the XMF file corresponding to a snapshot.
  *
- * @param baseName The common part of the file name.
+ * @param fileName The name of the file.
  */
-FILE* xmf_prepare_file(const char* baseName) {
+FILE* xmf_prepare_file(const char* fileName) {
   char buffer[1024];
 
-  char fileName[FILENAME_BUFFER_SIZE];
   char tempFileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
-  snprintf(tempFileName, FILENAME_BUFFER_SIZE, "%s_temp.xmf", baseName);
+  snprintf(tempFileName, FILENAME_BUFFER_SIZE, "%s.temp", fileName);
   FILE* xmfFile = fopen(fileName, "r");
   FILE* tempFile = fopen(tempFileName, "w");
 
@@ -101,11 +99,11 @@ FILE* xmf_prepare_file(const char* baseName) {
  *
  * @todo Exploit the XML nature of the XMF format to write a proper XML writer
  * and simplify all the XMF-related stuff.
+ *
+ * @param fileName The name of the file.
  */
-void xmf_create_file(const char* baseName) {
+void xmf_create_file(const char* fileName) {
 
-  char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
   FILE* xmfFile = fopen(fileName, "w");
   if (xmfFile == NULL) error("Unable to create XMF file.");
 
@@ -134,7 +132,8 @@ void xmf_create_file(const char* baseName) {
  * @param hdfFileName The name of the HDF5 file corresponding to this output.
  * @param time The current simulation time.
  */
-void xmf_write_outputheader(FILE* xmfFile, char* hdfFileName, float time) {
+void xmf_write_outputheader(FILE* xmfFile, const char* hdfFileName,
+                            float time) {
   /* Write end of file */
 
   fprintf(xmfFile, "<!-- XMF description for file: %s -->\n", hdfFileName);
@@ -171,7 +170,7 @@ void xmf_write_outputfooter(FILE* xmfFile, int output, float time) {
  * @param N The number of particles to write.
  * @param ptype The particle type we are writing.
  */
-void xmf_write_groupheader(FILE* xmfFile, char* hdfFileName, size_t N,
+void xmf_write_groupheader(FILE* xmfFile, const char* hdfFileName, size_t N,
                            enum part_type ptype) {
 
   fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",

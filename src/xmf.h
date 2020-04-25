@@ -26,11 +26,11 @@
 #include "common_io.h"
 #include "part_type.h"
 
-void xmf_create_file(const char* baseName);
-FILE* xmf_prepare_file(const char* baseName);
-void xmf_write_outputheader(FILE* xmfFile, char* hdfFileName, float time);
+void xmf_create_file(const char* fileName);
+FILE* xmf_prepare_file(const char* fileName);
+void xmf_write_outputheader(FILE* xmfFile, const char* hdfFileName, float time);
 void xmf_write_outputfooter(FILE* xmfFile, int outputCount, float time);
-void xmf_write_groupheader(FILE* xmfFile, char* hdfFileName, size_t N,
+void xmf_write_groupheader(FILE* xmfFile, const char* hdfFileName, size_t N,
                            enum part_type ptype);
 void xmf_write_groupfooter(FILE* xmfFile, enum part_type ptype);
 void xmf_write_line(FILE* xmfFile, const char* fileName,

@@ -2492,3 +2492,47 @@ void io_make_snapshot_subdir(const char* dirname) {
     safe_checkdir(dirname, /*create=*/1);
   }
 }
+
+/**
+ * @brief Construct the file names for a single-file hdf5 snapshots and
+ *
+ * @param filename (return) The file name of the hdf5 snapshot.
+ * @param xmf_filename (return) The file name of the associated XMF file.
+ * @param use_time_label Are we using time labels for the snapshot indices?
+ * @param snapshots_invoke_stf Are we calling STF when dumping a snapshot?
+ * @param time The current simulation time.
+ * @param stf_count The counter of STF outputs.
+ * @param snap_count The counter of snapshot outputs.
+ * @param subdir The sub-directory in which the snapshots are written.
+ * @param basename The common part of the snapshot names.
+ */
+void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+                              const int use_time_label,
+                              const int snapshots_invoke_stf, const double time,
+                              const int stf_count, const int snap_count,
+                              const char* subdir, const char* basename) {
+
+  int snap_number = -1;
+  if (use_time_label)
+    snap_number = (int)round(time);
+  else if (snapshots_invoke_stf)
+    snap_number = stf_count;
+  else
+    snap_number = snap_count;
+
+  int number_digits = -1;
+  if (use_time_label)
+    number_digits = 6;
+  else
+    number_digits = 4;
+
+  /* Are we using a sub-dir? */
+  if (strlen(subdir) > 0) {
+    sprintf(filename, "%s/%s_%0*d.hdf5", subdir, basename, number_digits,
+            snap_number);
+    sprintf(xmf_filename, "%s/%s.xmf", subdir, basename);
+  } else {
+    sprintf(filename, "%s_%0*d.hdf5", basename, number_digits, snap_number);
+    sprintf(xmf_filename, "%s.xmf", basename);
+  }
+}

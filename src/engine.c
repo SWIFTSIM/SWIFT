@@ -3587,22 +3587,6 @@ void engine_dump_snapshot(struct engine *e) {
   engine_collect_stars_counter(e);
 #endif
 
-  /* Determine snapshot location */
-  char snapshotBase[FILENAME_BUFFER_SIZE];
-  if (strnlen(e->snapshot_subdir, PARSER_MAX_LINE_SIZE) > 0) {
-    if (snprintf(snapshotBase, FILENAME_BUFFER_SIZE, "%s/%s",
-                 e->snapshot_subdir,
-                 e->snapshot_base_name) >= FILENAME_BUFFER_SIZE) {
-      error(
-          "FILENAME_BUFFER_SIZE is too small for snapshot path and file name");
-    }
-  } else {
-    if (snprintf(snapshotBase, FILENAME_BUFFER_SIZE, "%s",
-                 e->snapshot_base_name) >= FILENAME_BUFFER_SIZE) {
-      error("FILENAME_BUFFER_SIZE is too small for snapshot file name");
-    }
-  }
-
 /* Dump (depending on the chosen strategy) ... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -3614,16 +3598,15 @@ void engine_dump_snapshot(struct engine *e) {
   } else {
 
 #if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(e, snapshotBase, e->internal_units, e->snapshot_units,
-                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
+    write_output_parallel(e, e->internal_units, e->snapshot_units, e->nodeID,
+                          e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-    write_output_serial(e, snapshotBase, e->internal_units, e->snapshot_units,
-                        e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_serial(e, e->internal_units, e->snapshot_units, e->nodeID,
+                        e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
   }
 #else
-  write_output_single(e, snapshotBase, e->internal_units, e->snapshot_units);
+  write_output_single(e, e->internal_units, e->snapshot_units);
 #endif
 #endif
 
