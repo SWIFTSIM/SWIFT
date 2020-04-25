@@ -57,8 +57,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const float rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (rho_A == 0.) error("Size of multipole A is 0!");
-  if (rho_B == 0.) error("Size of multipole B is 0!");
+  //if (rho_A == 0.) error("Size of multipole A is 0!");
+  //if (rho_B == 0.) error("Size of multipole B is 0!");
 #endif
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
@@ -68,8 +68,10 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
         binomial(p, n) * B->m_pole.power[n] * integer_powf(rho_A, p - n);
   }
   E_BA_term *= 8.f;
-  E_BA_term *= max(rho_A, rho_B);
-  E_BA_term /= (rho_A + rho_B);
+  if (rho_A != 0. && rho_B != 0.) {
+    E_BA_term *= max(rho_A, rho_B);
+    E_BA_term /= (rho_A + rho_B);
+  }
 
   /* Compute r^(p+2) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
@@ -171,7 +173,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float rho_B = B->r_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (rho_B == 0.) error("Size of multipole B is 0!");
+  //if (rho_B == 0.) error("Size of multipole B is 0!");
 #endif
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
