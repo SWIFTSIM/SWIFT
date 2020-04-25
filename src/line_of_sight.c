@@ -78,81 +78,64 @@ void generate_line_of_sights(struct line_of_sight *Los,
   /* Keep track of number of sightlines. */
   int count = 0;
 
+  double Xpos, Ypos;
+
   /* Sightlines in XY plane. */
   for (int i = 0; i < params->num_along_xy; i++) {
-    Los[count].Xpos =
-        ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
+    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
         params->xmin;
-    Los[count].Ypos =
-        ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
+    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
         params->ymin;
-    Los[count].particles_in_los_local = 0;
-    Los[count].particles_in_los_total = 0;
-    Los[count].xaxis = 0;
-    Los[count].yaxis = 1;
-    Los[count].zaxis = 2;
-    Los[count].periodic = periodic;
-    Los[count].dim[0] = dim[0];
-    Los[count].dim[1] = dim[1];
-    Los[count].dim[2] = dim[2];
+    create_line_of_sight(Xpos, Ypos, 0, 1, 2, periodic, dim, &Los[count]);
     count += 1;
   }
 
   /* Sightlines in YZ plane. */
   for (int i = 0; i < params->num_along_yz; i++) {
-    Los[count].Xpos =
-        ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
+    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
         params->ymin;
-    Los[count].Ypos =
-        ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
+    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
         params->zmin;
-    Los[count].particles_in_los_local = 0;
-    Los[count].particles_in_los_total = 0;
-    Los[count].xaxis = 1;
-    Los[count].yaxis = 2;
-    Los[count].zaxis = 0;
-    Los[count].periodic = periodic;
-    Los[count].dim[0] = dim[0];
-    Los[count].dim[1] = dim[1];
-    Los[count].dim[2] = dim[2];
+    create_line_of_sight(Xpos, Ypos, 1, 2, 0, periodic, dim, &Los[count]);
     count += 1;
   }
 
   /* Sightlines in XZ plane. */
   for (int i = 0; i < params->num_along_xz; i++) {
-    Los[count].Xpos =
-        ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
+    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
         params->xmin;
-    Los[count].Ypos =
-        ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
+    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
         params->zmin;
-    Los[count].particles_in_los_local = 0;
-    Los[count].particles_in_los_total = 0;
-    Los[count].xaxis = 0;
-    Los[count].yaxis = 2;
-    Los[count].zaxis = 1;
-    Los[count].periodic = periodic;
-    Los[count].dim[0] = dim[0];
-    Los[count].dim[1] = dim[1];
-    Los[count].dim[2] = dim[2];
+    create_line_of_sight(Xpos, Ypos, 0, 2, 1, periodic, dim, &Los[count]);
     count += 1;
   }
 }
 
-/**
- * @brief Print line_of_sight structure (for debugging).
- *
- * @param Los Structure of sightlines to print.
- * @param params Sightline parameters.
- */
-void print_los_info(const struct line_of_sight *Los,
-                    const struct los_props *params) {
+void create_line_of_sight(const double Xpos, const double Ypos, 
+        const int xaxis, const int yaxis, const int zaxis,
+        const int periodic, const double dim[3], struct line_of_sight *los) {
+  los->Xpos = Xpos;
+  los->Ypos = Ypos;
+  los->particles_in_los_local = 0;
+  los->particles_in_los_total = 0;
+  los->xaxis = xaxis;
+  los->yaxis = yaxis;
+  los->zaxis = zaxis;
+  los->periodic = periodic;
+  los->dim[0] = dim[0];
+  los->dim[1] = dim[1];
+  los->dim[2] = dim[2];
+}
 
-  printf("\nPrinting LOS information...\n");
-  for (int i = 0; i < params->num_tot; i++) {
-    printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%i\n", i,
-           Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total);
-  }
+/**
+ * @brief Print line_of_sight information.
+ *
+ * @param Los Structure to print.
+ */
+void print_los_info(const struct line_of_sight *Los, const int i) {
+
+  printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%i\n", i,
+        Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total);
 }
 
 /**
@@ -262,13 +245,13 @@ void do_line_of_sight(struct engine *e) {
   /* Loop over each random LOS. */
   for (int j = 0; j < LOS_params->num_tot; j++) {
 
-    /* First find all particles that intersect line of sight */
+    /* First find all particles that intersect with this line of sight */
     threadpool_map(&s->e->threadpool, los_first_loop_mapper, p,
               nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
               &LOS_list[j]);
 
-    /* Make sure all nodes know how many particles are in LOS */
 #ifdef WITH_MPI
+    /* Make sure all nodes know how many particles are in this LOS */
     int LOS_counts[e->nr_nodes];
     int LOS_disps[e->nr_nodes];
 
@@ -288,7 +271,20 @@ void do_line_of_sight(struct engine *e) {
     LOS_list[j].particles_in_los_total = LOS_list[j].particles_in_los_local;
 #endif
 
-    /* Setup LOS particles structure. */
+    //#ifdef SWIFT_DEBUG_CHECKS
+    if (e->nodeID == 0) print_los_info(LOS_list, j);
+    //#endif
+
+    /* Don't work with empty LOS */
+    if (LOS_list[j].particles_in_los_total == 0) {
+        if (e->nodeID == 0) {
+            message("*WARNING* LOS %i is empty", j);
+            print_los_info(LOS_list, j);
+        }
+        continue;
+    }
+
+    /* Setup LOS part and xpart structures. */
     struct part *LOS_particles;
     struct xpart *LOS_particles_xparts;
     if (e->nodeID == 0) {
@@ -349,7 +345,7 @@ void do_line_of_sight(struct engine *e) {
     } /* End of loop over all gas particles. */
 
 #ifdef WITH_MPI
-    /* Collect all particles in LOS to rank 0. */
+    /* Collect all particles in this LOS to rank 0. */
     if (e->nodeID == 0) {
       MPI_Gatherv(MPI_IN_PLACE, 0,
                   part_mpi_type, LOS_particles, LOS_counts, LOS_disps,
@@ -391,14 +387,8 @@ void do_line_of_sight(struct engine *e) {
     }
   } /* End of loop over each LOS */
 
-  if (e->nodeID == 0) {
-    /* Close HDF5 file */
-    H5Fclose(h_file);
-  }
-
-  //#ifdef SWIFT_DEBUG_CHECKS
-  if (e->nodeID == 0) print_los_info(LOS_list, LOS_params);
-  //#endif
+  /* Close HDF5 file */
+  if (e->nodeID == 0) H5Fclose(h_file);
  
   /* Up the count. */
   e->los_output_count++;

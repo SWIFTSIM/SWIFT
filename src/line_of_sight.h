@@ -30,8 +30,7 @@ double los_periodic(double x, double dim);
 void generate_line_of_sights(struct line_of_sight *Los,
                              const struct los_props *params,
                              const int periodic, const double dim[3]);
-void print_los_info(const struct line_of_sight *Los,
-                    const struct los_props *params);
+void print_los_info(const struct line_of_sight *Los, const int i);
 void do_line_of_sight(struct engine *e);
 void los_init(double dim[3], struct los_props *los_params,
         struct swift_params *params);
@@ -39,3 +38,6 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
                 struct engine* e, const struct xpart* xparts);
 void write_los_hdf5_dataset(const struct io_props p, int N, int j, struct engine* e, hid_t grp);
 void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_props* LOS_params);
+void create_line_of_sight(const double Xpos, const double Ypos,   
+        const int xaxis, const int yaxis, const int zaxis,
+        const int periodic, const double dim[3], struct line_of_sight *los);
