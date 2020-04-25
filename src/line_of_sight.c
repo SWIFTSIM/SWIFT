@@ -153,10 +153,10 @@ void los_first_loop_mapper(void *restrict map_data, int count,
   struct line_of_sight *restrict LOS_list = (struct line_of_sight *)extra_data;
   struct part *restrict p = (struct part *)map_data;
 
-  /* Loop over each gas particle to find those in LOS. */
+  /* Loop over each part to find those in LOS. */
   for (size_t i = 0; i < count; i++) {
     if (p[i].gpart->type == swift_type_gas) {
-      /* Distance from this particle to LOS along x dim. */
+      /* Distance from this part to LOS along x dim. */
       dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
 
       /* Periodic wrap. */
@@ -167,13 +167,13 @@ void los_first_loop_mapper(void *restrict map_data, int count,
 
       /* Does this particle fall into our LOS? */
       if (dx <= hsml) {
-        /* Distance from this particle to LOS along y dim. */
+        /* Distance from this part to LOS along y dim. */
         dy = p[i].x[LOS_list->yaxis] - LOS_list->Ypos;
       
         /* Periodic wrap. */
         if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
 
-        /* Does this particle still fall into our LOS? */
+        /* Does this part still fall into our LOS? */
         if (dy <= hsml) {
           /* 2D distance to LOS. */
           r2 = dx * dx + dy * dy;
@@ -232,7 +232,7 @@ void do_line_of_sight(struct engine *e) {
             MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Create HDF5 file. */
+  /* Node 0 creates HDF5 file. */
   if (e->nodeID == 0) {
     sprintf(fileName, "%s_%04i.hdf5", LOS_params->basename, e->los_output_count);
     h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -242,25 +242,25 @@ void do_line_of_sight(struct engine *e) {
     write_hdf5_header(h_file, e, LOS_params);
   }
 
-  /* Loop over each random LOS. */
+  /* Main loop over each random LOS. */
   for (int j = 0; j < LOS_params->num_tot; j++) {
 
-    /* First find all particles that intersect with this line of sight */
+    /* First count all parts that intersect with this line of sight */
     threadpool_map(&s->e->threadpool, los_first_loop_mapper, p,
               nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
               &LOS_list[j]);
 
 #ifdef WITH_MPI
-    /* Make sure all nodes know how many particles are in this LOS */
+    /* Make sure all nodes know how many parts are in this LOS */
     int LOS_counts[e->nr_nodes];
     int LOS_disps[e->nr_nodes];
 
-    /* How many particles does each rank have for this LOS? */
+    /* How many parts does each rank have for this LOS? */
     MPI_Allgather(&LOS_list[j].particles_in_los_local, 1, MPI_INT,
                   &LOS_counts, 1, MPI_INT, MPI_COMM_WORLD);
 
     for (int k = 0, disp_count = 0; k < e->nr_nodes; k++) {
-      /* Total particles in this LOS. */
+      /* Total parts in this LOS. */
       LOS_list[j].particles_in_los_total += LOS_counts[k];
 
       /* Counts and disps for Gatherv. */
@@ -285,80 +285,76 @@ void do_line_of_sight(struct engine *e) {
     }
 
     /* Setup LOS part and xpart structures. */
-    struct part *LOS_particles;
-    struct xpart *LOS_particles_xparts;
     if (e->nodeID == 0) {
-      LOS_particles = (struct part *)malloc(
+      LOS_list[j].parts = (struct part *)malloc(
           LOS_list[j].particles_in_los_total *
           sizeof(struct part));
-      LOS_particles_xparts = (struct xpart *)malloc(
+      LOS_list[j].xparts = (struct xpart *)malloc(
           LOS_list[j].particles_in_los_total *
           sizeof(struct xpart));
     } else {
-      LOS_particles = (struct part *)malloc(
+      LOS_list[j].parts = (struct part *)malloc(
           LOS_list[j].particles_in_los_local *
           sizeof(struct part));
-      LOS_particles_xparts = (struct xpart *)malloc(
+      LOS_list[j].xparts = (struct xpart *)malloc(
           LOS_list[j].particles_in_los_local *
           sizeof(struct xpart));
     }
 
-    /* Loop over each gas particle again to store properties. */
+    /* Loop over each part again, pulling out those in LOS. */
     int count = 0;
-
+    
     for (size_t i = 0; i < nr_parts; i++) {
 
-      if (p[i].gpart->type == swift_type_gas) {
-        /* Distance from this particle to LOS along x dim. */
-        dx = p[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+      /* Distance from this part to LOS along x dim. */
+      dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
+
+      /* Periodic wrap. */
+      if (LOS_list->periodic) dx = nearest(dx, LOS_list->dim[LOS_list->xaxis]);
+
+      /* Smoothing length of this part. */
+      hsml = p[i].h * kernel_gamma;
+
+      /* Does this part fall into our LOS? */
+      if (dx <= hsml) {
+        /* Distance from this part to LOS along y dim. */
+        dy = p[i].x[LOS_list->yaxis] - LOS_list->Ypos;
 
         /* Periodic wrap. */
-        if (periodic) dx = nearest(dx, dim[LOS_list[j].xaxis]);
+        if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
 
-        /* Smoothing length of this part. */
-        hsml = p[i].h * kernel_gamma;
+        /* Does this part still fall into our LOS? */
+        if (dy <= hsml) {
+          /* 2D distance to LOS. */
+          r2 = dx * dx + dy * dy;
 
-        /* Does this particle fall into our LOS? */
-        if (dx <= hsml) {
-          /* Distance from this particle to LOS along y dim. */
-          dy = p[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
-        
-          /* Periodic wrap. */
-          if (periodic) dy = nearest(dy, dim[LOS_list[j].yaxis]);
+          if (r2 <= hsml * hsml) {
 
-          /* Does this particle still fall into our LOS? */
-          if (dy <= hsml) {
-            /* 2D distance to LOS. */
-            r2 = dx * dx + dy * dy;
+            /* Store part and xpart properties. */
+            LOS_list->parts[count] = p[i];
+            LOS_list->xparts[count] = xp[i];
 
-            if (r2 <= hsml * hsml) {
-
-              /* Store particle properties. */
-              LOS_particles[count] = p[i];
-              LOS_particles_xparts[count] = xp[i];
-
-              count++;
-            }
+            count++;
           }
         }
       }
-    } /* End of loop over all gas particles. */
+    }
 
 #ifdef WITH_MPI
-    /* Collect all particles in this LOS to rank 0. */
+    /* Collect all parts in this LOS to rank 0. */
     if (e->nodeID == 0) {
       MPI_Gatherv(MPI_IN_PLACE, 0,
-                  part_mpi_type, LOS_particles, LOS_counts, LOS_disps,
+                  part_mpi_type, LOS_list[j].parts, LOS_counts, LOS_disps,
                   part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(MPI_IN_PLACE, 0,
-                  xpart_mpi_type, LOS_particles_xparts, LOS_counts, LOS_disps,
+                  xpart_mpi_type, LOS_list[j].xparts, LOS_counts, LOS_disps,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
     } else {
-      MPI_Gatherv(LOS_particles, LOS_list[j].particles_in_los_local,
-                  part_mpi_type, LOS_particles, LOS_counts, LOS_disps,
+      MPI_Gatherv(LOS_list[j].parts, LOS_list[j].particles_in_los_local,
+                  part_mpi_type, LOS_list[j].parts, LOS_counts, LOS_disps,
                   part_mpi_type, 0, MPI_COMM_WORLD);
-      MPI_Gatherv(LOS_particles_xparts, LOS_list[j].particles_in_los_local,
-                  xpart_mpi_type, LOS_particles_xparts, LOS_counts, LOS_disps,
+      MPI_Gatherv(LOS_list[j].xparts, LOS_list[j].particles_in_los_local,
+                  xpart_mpi_type, LOS_list[j].xparts, LOS_counts, LOS_disps,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
     }
 #endif
@@ -379,12 +375,17 @@ void do_line_of_sight(struct engine *e) {
       io_write_attribute(h_grp, "Ypos", DOUBLE, &LOS_list[j].Ypos, 1);
 
       /* Write the data for this LOS */
-      write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_particles, e,
-        LOS_particles_xparts);
+      write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_list[j].parts, e,
+        LOS_list[j].xparts);
 
       /* Close HDF5 group */
       H5Gclose(h_grp);
     }
+
+    /* Free up some memory */
+    //swift_free("los_array_parts", &LOS_list[j].parts);
+    //swift_free("los_array_xparts", &LOS_list[j].xparts);
+
   } /* End of loop over each LOS */
 
   /* Close HDF5 file */
