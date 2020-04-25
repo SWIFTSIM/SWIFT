@@ -240,7 +240,7 @@ print("-------------------------------------------------\n")
 if order > 0:
     print("#if SELF_GRAVITY_MULTIPOLE_ORDER > %d" % (order - 1))
 
-print("/* Shift %s order terms */" % ordinal(order))
+print("/* Shift %s order terms (1st order mpole (all 0) commented out) */" % ordinal(order))
 
 # Create all the terms relevent for this order
 for i in range(order + 1):
@@ -262,11 +262,18 @@ for i in range(order + 1):
                                                 and jj + jjj == j
                                                 and kk + kkk == k
                                             ):
-                                                print(
-                                                    "+ X_%d%d%d(dx) * m_b->M_%d%d%d"
-                                                    % (ii, jj, kk, iii, jjj, kkk),
-                                                    end=" ",
-                                                )
+                                                if iii + jjj + kkk == 1:
+                                                    print(
+                                                        "/* + X_%d%d%d(dx) * m_b->M_%d%d%d */"
+                                                        % (ii, jj, kk, iii, jjj, kkk),
+                                                        end=" ",
+                                                    )
+                                                else:
+                                                    print(
+                                                        "+ X_%d%d%d(dx) * m_b->M_%d%d%d"
+                                                        % (ii, jj, kk, iii, jjj, kkk),
+                                                        end=" ",
+                                                    )
 
                 print(";")
 
