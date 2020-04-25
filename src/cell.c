@@ -2283,11 +2283,6 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
     /* Take minimum of both limits */
     c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
 
-    /* We know the first-order multipole (dipole) is 0. */
-    c->grav.multipole->m_pole.M_100 = 0.f;
-    c->grav.multipole->m_pole.M_010 = 0.f;
-    c->grav.multipole->m_pole.M_001 = 0.f;
-
     /* Compute the multipole power */
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 

@@ -3659,11 +3659,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
       c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
 
-      /* We know the first-order multipole (dipole) is 0. */
-      c->grav.multipole->m_pole.M_100 = 0.f;
-      c->grav.multipole->m_pole.M_010 = 0.f;
-      c->grav.multipole->m_pole.M_001 = 0.f;
-
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
 
