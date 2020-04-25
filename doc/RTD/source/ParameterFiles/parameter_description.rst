@@ -652,6 +652,16 @@ the case of non-cosmological runs, the time of the first snapshot is expressed
 in the internal units of time. Users also have to provide the difference in time
 (or scale-factor) between consecutive outputs:
 
+* Time difference between consecutive outputs: ``delta_time``.
+
+In non-cosmological runs this is also expressed in internal units. For
+cosmological runs, this value is *multiplied* to obtain the
+scale-factor of the next snapshot. This implies that the outputs are
+equally spaced in :math:`\log(a)` (See :ref:`Output_list_label` to have
+snapshots not regularly spaced in time).
+
+The location and naming of the snapshots is altered by the following options:
+
 * Directory in which to write snapshots: ``subdir``.
   (default: empty string).
 
@@ -660,14 +670,6 @@ taking this value and appending a slash and then the snapshot file name
 described above - e.g. ``subdir/base_name_1234.hdf5``. The directory is
 created if necessary. Any VELOCIraptor output produced by the run is also written
 to this directory.
-
-* Time difference between consecutive outputs: ``delta_time``.
-
-In non-cosmological runs this is also expressed in internal units. For
-cosmological runs, this value is *multiplied* to obtain the
-scale-factor of the next snapshot. This implies that the outputs are
-equally spaced in :math:`\log(a)` (See :ref:`Output_list_label` to have
-snapshots not regularly spaced in time).
 
 When running the code with structure finding activated, it is often
 useful to have a structure catalog written at the same simulation time
