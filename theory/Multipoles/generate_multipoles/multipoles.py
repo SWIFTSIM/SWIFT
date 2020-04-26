@@ -240,7 +240,10 @@ print("-------------------------------------------------\n")
 if order > 0:
     print("#if SELF_GRAVITY_MULTIPOLE_ORDER > %d" % (order - 1))
 
-print("/* Shift %s order terms (1st order mpole (all 0) commented out) */" % ordinal(order))
+print(
+    "/* Shift %s order terms (1st order mpole (all 0) commented out) */"
+    % ordinal(order)
+)
 
 # Create all the terms relevent for this order
 for i in range(order + 1):
@@ -319,6 +322,26 @@ for l in range(order + 1):
                                     )
                     print(";")
     print("")
+
+if order > 0:
+    print("#endif")
+
+
+print("")
+print("-------------------------------------------------")
+
+print("gravity_P2L():")
+print("-------------------------------------------------\n")
+
+if order > 0:
+    print("#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n" % (order - 1))
+
+# Loop over LHS order
+for i in range(order + 1):
+    for j in range(order + 1):
+        for k in range(order + 1):
+            if i + j + k == order:
+                print("l_b->F_%d%d%d += m * D_%d%d%d;" % (i, j, k, i, j, k))
 
 if order > 0:
     print("#endif")
