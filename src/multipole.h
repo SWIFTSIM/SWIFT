@@ -2087,6 +2087,150 @@ __attribute__((nonnull)) INLINE static void gravity_M2L_symmetric(
 }
 
 /**
+ * @brief Compute the field tensor due to a multipole and the symmetric
+ * equivalent.
+ *
+ * @param l_b The field tensor to compute.
+ * @param ga The @gpart sourcing the field.
+ * @param pos_b The position of field tensor b.
+ * @param props The #gravity_props of this calculation.
+ * @param periodic Is the calculation periodic ?
+ * @param dim The size of the simulation box.
+ * @param rs_inv The inverse of the gravity mesh-smoothing scale.
+ */
+__attribute__((nonnull)) INLINE static void gravity_P2L(
+    struct grav_tensor *l_b, const struct gpart *ga, const double pos_b[3],
+    const struct gravity_props *props, const int periodic, const double dim[3],
+    const float rs_inv) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Count all interactions
+   * Note that despite being in a section of the code protected by locks,
+   * we must use atomics here as the long-range task may update this
+   * counter in a lock-free section of code. */
+  accumulate_inc_ll(&l_b->num_interacted);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Count tree interactions
+   * Note that despite being in a section of the code protected by locks,
+   * we must use atomics here as the long-range task may update this
+   * counter in a lock-free section of code. */
+  accumulate_inc_ll(&l_b->num_interacted_tree);
+#endif
+
+  /* Record that this tensor has received contributions */
+  l_b->interacted = 1;
+
+  /* Recover some constants */
+  const float eps = gravity_get_softening(ga, props);
+  const float mass = ga->mass;
+
+  /* Compute distance vector */
+  float dx = (float)(pos_b[0] - ga->x[0]);
+  float dy = (float)(pos_b[1] - ga->x[1]);
+  float dz = (float)(pos_b[2] - ga->x[2]);
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+
+  /* Compute distance */
+  const float r2 = dx * dx + dy * dy + dz * dz;
+  const float r_inv = 1. / sqrtf(r2);
+
+  /* Compute all derivatives */
+  struct potential_derivatives_M2L pot;
+  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, periodic,
+                                    rs_inv, &pot);
+
+  /* 0th order contributions */
+  l_b->F_000 += mass * pot.D_000;
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+
+  /* 1st order contributions */
+  l_b->F_001 += mass * pot.D_001;
+  l_b->F_010 += mass * pot.D_010;
+  l_b->F_100 += mass * pot.D_100;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  /* 2nd order contributions */
+  l_b->F_002 += mass * pot.D_002;
+  l_b->F_011 += mass * pot.D_011;
+  l_b->F_020 += mass * pot.D_020;
+  l_b->F_101 += mass * pot.D_101;
+  l_b->F_110 += mass * pot.D_110;
+  l_b->F_200 += mass * pot.D_200;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  /* 3rd order contributions */
+  l_b->F_003 += mass * pot.D_003;
+  l_b->F_012 += mass * pot.D_012;
+  l_b->F_021 += mass * pot.D_021;
+  l_b->F_030 += mass * pot.D_030;
+  l_b->F_102 += mass * pot.D_102;
+  l_b->F_111 += mass * pot.D_111;
+  l_b->F_120 += mass * pot.D_120;
+  l_b->F_201 += mass * pot.D_201;
+  l_b->F_210 += mass * pot.D_210;
+  l_b->F_300 += mass * pot.D_300;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  /* 4th order contributions */
+  l_b->F_004 += mass * pot.D_004;
+  l_b->F_013 += mass * pot.D_013;
+  l_b->F_022 += mass * pot.D_022;
+  l_b->F_031 += mass * pot.D_031;
+  l_b->F_040 += mass * pot.D_040;
+  l_b->F_103 += mass * pot.D_103;
+  l_b->F_112 += mass * pot.D_112;
+  l_b->F_121 += mass * pot.D_121;
+  l_b->F_130 += mass * pot.D_130;
+  l_b->F_202 += mass * pot.D_202;
+  l_b->F_211 += mass * pot.D_211;
+  l_b->F_220 += mass * pot.D_220;
+  l_b->F_301 += mass * pot.D_301;
+  l_b->F_310 += mass * pot.D_310;
+  l_b->F_400 += mass * pot.D_400;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
+  /* 5th order contributions */
+  l_b->F_005 += mass * pot.D_005;
+  l_b->F_014 += mass * pot.D_014;
+  l_b->F_023 += mass * pot.D_023;
+  l_b->F_032 += mass * pot.D_032;
+  l_b->F_041 += mass * pot.D_041;
+  l_b->F_050 += mass * pot.D_050;
+  l_b->F_104 += mass * pot.D_104;
+  l_b->F_113 += mass * pot.D_113;
+  l_b->F_122 += mass * pot.D_122;
+  l_b->F_131 += mass * pot.D_131;
+  l_b->F_140 += mass * pot.D_140;
+  l_b->F_203 += mass * pot.D_203;
+  l_b->F_212 += mass * pot.D_212;
+  l_b->F_221 += mass * pot.D_221;
+  l_b->F_230 += mass * pot.D_230;
+  l_b->F_302 += mass * pot.D_302;
+  l_b->F_311 += mass * pot.D_311;
+  l_b->F_320 += mass * pot.D_320;
+  l_b->F_401 += mass * pot.D_401;
+  l_b->F_410 += mass * pot.D_410;
+  l_b->F_500 += mass * pot.D_500;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
+#endif
+}
+
+/**
  * @brief Compute the reduced field tensor due to a multipole
  *
  * Corresponds to equation (3g) but written in the notation of

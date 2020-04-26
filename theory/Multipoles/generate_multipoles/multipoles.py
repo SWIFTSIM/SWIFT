@@ -336,12 +336,14 @@ print("-------------------------------------------------\n")
 if order > 0:
     print("#if SELF_GRAVITY_MULTIPOLE_ORDER > %d\n" % (order - 1))
 
+print("/* %s order contributions */" % ordinal(order))
+
 # Loop over LHS order
 for i in range(order + 1):
     for j in range(order + 1):
         for k in range(order + 1):
             if i + j + k == order:
-                print("l_b->F_%d%d%d += m * D_%d%d%d;" % (i, j, k, i, j, k))
+                print("l_b->F_%d%d%d += mass * pot.D_%d%d%d;" % (i, j, k, i, j, k))
 
 if order > 0:
     print("#endif")
