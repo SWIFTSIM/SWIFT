@@ -57,7 +57,7 @@ struct gravity_props {
   /*! What MAC are we currently using? */
   int use_advanced_mac;
 
-  /*! Are we using the adaptive opening angle? */
+  /*! Are we using the adaptive opening angle? (as read from param file) */
   int use_adaptive_tolerance;
 
   /*! Accuracy parameter of the advanced MAC */
