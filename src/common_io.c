@@ -485,7 +485,7 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str) {
 }
 
 /**
- * @brief Writes the meta-dat of the run to an open hdf5 snapshot file.
+ * @brief Writes the meta-data of the run to an open hdf5 snapshot file.
  *
  * @param h_file The opened hdf5 file.
  * @param e The #engine containing the meta-data.
@@ -2495,6 +2495,7 @@ void io_make_snapshot_subdir(const char* dirname) {
 
 /**
  * @brief Construct the file names for a single-file hdf5 snapshots and
+ * corresponding XMF descriptor file.
  *
  * @param filename (return) The file name of the hdf5 snapshot.
  * @param xmf_filename (return) The file name of the associated XMF file.
