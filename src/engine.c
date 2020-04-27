@@ -5374,12 +5374,14 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 #ifdef WITH_FOF
     free((void *)e->fof_properties);
 #endif
+    free((void *)e->los_properties);
 #ifdef WITH_MPI
     free((void *)e->reparttype);
 #endif
     if (e->output_list_snapshots) free((void *)e->output_list_snapshots);
     if (e->output_list_stats) free((void *)e->output_list_stats);
     if (e->output_list_stf) free((void *)e->output_list_stf);
+    if (e->output_list_los) free((void *)e->output_list_los);
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) free((void *)e->logger);
 #endif
@@ -5428,12 +5430,14 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
 #endif
+  los_struct_dump(e->los_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
   if (e->output_list_stats)
     output_list_struct_dump(e->output_list_stats, stream);
   if (e->output_list_stf) output_list_struct_dump(e->output_list_stf, stream);
+  if (e->output_list_los) output_list_struct_dump(e->output_list_los, stream);
 
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
@@ -5559,6 +5563,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->fof_properties = fof_props;
 #endif
 
+  struct los_props *los_properties =
+      (struct los_props *)malloc(sizeof(struct los_props));
+  los_struct_restore(los_properties, stream);
+  e->los_properties = los_properties;
+
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
@@ -5583,6 +5592,13 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
         (struct output_list *)malloc(sizeof(struct output_list));
     output_list_struct_restore(output_list_stf, stream);
     e->output_list_stf = output_list_stf;
+  }
+
+  if (e->output_list_los) {
+    struct output_list *output_list_los =
+        (struct output_list *)malloc(sizeof(struct output_list));
+    output_list_struct_restore(output_list_los, stream);
+    e->output_list_los = output_list_los;
   }
 
 #ifdef WITH_LOGGER

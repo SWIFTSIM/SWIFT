@@ -725,3 +725,29 @@ void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_pr
   io_write_attribute(h_grp, "Maxz", DOUBLE, &LOS_params->zmax, 1);
   H5Gclose(h_grp);
 }
+
+/**
+ * @brief Write a los_props struct to the given FILE as a stream of bytes.
+ *
+ * @param internal_los the struct
+ * @param stream the file stream
+ */
+void los_struct_dump(const struct los_props *internal_los,
+                            FILE *stream) {
+  restart_write_blocks((void *)internal_los, sizeof(struct los_props), 1,
+                       stream, "losparams", "los params");
+}
+
+/**
+ * @brief Restore a los_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param internal_los the struct
+ * @param stream the file stream
+ */
+void los_struct_restore(const struct los_props *internal_los,
+                               FILE *stream) {
+  restart_read_blocks((void *)internal_los, sizeof(struct los_props), 1,
+                      stream, NULL, "los params");
+}
+

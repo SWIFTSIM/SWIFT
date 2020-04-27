@@ -44,3 +44,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_pr
 void create_line_of_sight(const double Xpos, const double Ypos,   
         const int xaxis, const int yaxis, const int zaxis,
         const int periodic, const double dim[3], struct line_of_sight *los);
+void los_struct_dump(const struct los_props *internal_los,
+                            FILE *stream);
+void los_struct_restore(const struct los_props *internal_los,
+                                       FILE *stream);
