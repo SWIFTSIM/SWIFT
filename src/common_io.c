@@ -896,6 +896,10 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   }
 #endif
 
+  /* Abort if we don't have any cells yet (i.e. haven't constructed the space)
+   */
+  if (nr_cells == 0) return;
+
   double cell_width[3] = {width[0], width[1], width[2]};
 
   /* Temporary memory for the cell-by-cell information */
