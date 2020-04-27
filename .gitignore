@@ -154,6 +154,7 @@ tests/testDump
 tests/testLogger
 tests/benchmarkInteractions
 tests/testGravityDerivatives
+tests/testGravitySpeed
 tests/testPotentialSelf
 tests/testPotentialPair
 tests/testEOS
