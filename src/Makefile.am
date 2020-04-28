@@ -43,8 +43,8 @@ endif
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
-    common_io.h single_io.h map.h tools.h partition.h partition_fixed_costs.h \
-    clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
+    common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h \
+    partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
     statistics.h memswap.h cache.h runner_doiact_hydro_vec.h profiler.h entropy_floor.h \
     dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
@@ -101,7 +101,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
     engine_redistribute.c engine_fof.c serial_io.c timers.c debug.c scheduler.c \
     proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
-    kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
+    kernel_hydro.c tools.c part.c partition.c clocks.c parser.c distributed_io.c \
     physical_constants.c potential.c hydro_properties.c \
     threadpool.c cooling.c star_formation.c \
     statistics.c profiler.c dump.c logger.c \

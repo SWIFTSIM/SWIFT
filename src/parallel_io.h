@@ -28,10 +28,10 @@
 #include <mpi.h>
 
 /* Includes. */
-#include "engine.h"
-#include "io_properties.h"
 #include "part.h"
-#include "units.h"
+
+struct engine;
+struct unit_system;
 
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
@@ -44,7 +44,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       int mpi_size, MPI_Comm comm, MPI_Info info,
                       int nr_threads, int dry_run);
 
-void write_output_parallel(struct engine* e, const char* baseName,
+void write_output_parallel(struct engine* e,
                            const struct unit_system* internal_units,
                            const struct unit_system* snapshot_units,
                            int mpi_rank, int mpi_size, MPI_Comm comm,

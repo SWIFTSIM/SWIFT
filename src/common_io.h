@@ -90,6 +90,10 @@ void io_write_attribute_i(hid_t grp, const char* name, int data);
 void io_write_attribute_l(hid_t grp, const char* name, long data);
 void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
+void io_write_meta_data(hid_t h_file, const struct engine* e,
+                        const struct unit_system* internal_units,
+                        const struct unit_system* snapshot_units);
+
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
@@ -97,6 +101,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const double pos_dithering[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
+                           const int distributed,
                            const long long global_counts[swift_type_count],
                            const long long global_offsets[swift_type_count],
                            const struct unit_system* internal_units,
@@ -166,5 +171,13 @@ void io_check_output_fields(const struct swift_params* params,
                             const long long N_total[3]);
 
 void io_write_output_field_parameter(const char* filename);
+
+void io_make_snapshot_subdir(const char* dirname);
+
+void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+                              const int use_time_label,
+                              const int snapshots_invoke_stf, const double time,
+                              const int stf_count, const int snap_count,
+                              const char* subdir, const char* basename);
 
 #endif /* SWIFT_COMMON_IO_H */

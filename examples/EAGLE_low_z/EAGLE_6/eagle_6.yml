@@ -44,6 +44,7 @@ Snapshots:
   time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
   delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
   compression:         1
+  distributed:         1
 
 # Parameters governing the conserved quantities statistics
 Statistics:

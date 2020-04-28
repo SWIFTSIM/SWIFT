@@ -79,7 +79,8 @@ int main(int argc, char *argv[]) {
                       &hydro_properties, &cosmo);
 
   /* Init spart */
-  stars_first_init_spart(&sp, &stars_properties);
+  stars_first_init_spart(&sp, &stars_properties, /*with_cosmology=*/0, cosmo.a,
+                         cosmo.time);
 
   /* Define an initial stellar mass. (for use when calling the feedback
    * functions, the results are presented per initial stellar mass, so the
