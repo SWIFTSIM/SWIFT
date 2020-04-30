@@ -664,7 +664,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_pr
       H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp_columns < 0) error("Error while creating named columns group");
   entropy_floor_write_flavour(h_grp);
-  //cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
+  cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
   H5Gclose(h_grp_columns);
   H5Gclose(h_grp);
 
