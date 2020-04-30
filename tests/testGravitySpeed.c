@@ -26,10 +26,12 @@
 #include <unistd.h>
 
 /* Local headers. */
+#include "runner_doiact_grav.h"
 #include "swift.h"
 
 const int num_M2L_runs = 1 << 23;
 const int num_M2P_runs = 1 << 23;
+const int num_PP_runs = 1;  // << 8;
 
 void make_cell(struct cell *c, int N, const double loc[3], double width,
                int id_base, const struct gravity_props *grav_props) {
@@ -110,12 +112,28 @@ int main(int argc, char *argv[]) {
   const double r_s = grav_props.a_smooth * dim[0] / grav_props.mesh_size;
   const double r_s_inv = 1. / r_s;
 
+  /* Mesh structure */
+  struct pm_mesh mesh;
+  mesh.periodic = 0;
+  mesh.dim[0] = dim[0];
+  mesh.dim[1] = dim[1];
+  mesh.dim[2] = dim[2];
+
+  /* Construct an engine */
+  struct engine e;
+  e.mesh = &mesh;
+  e.max_active_bin = 56;
+
+  /* Construct a runner */
+  struct runner r;
+  r.e = &e;
+
   /* Construct two cells */
   struct cell ci;
   struct cell cj;
   const double loc_i[3] = {0., 0., 0.};
   const double loc_j[3] = {1., 1., 1.};
-  const int num_particles = 256;
+  const int num_particles = 8;
   make_cell(&ci, num_particles, loc_i, 1., 0, &grav_props);
   make_cell(&cj, num_particles, loc_j, 1., num_particles, &grav_props);
 
@@ -132,25 +150,25 @@ int main(int argc, char *argv[]) {
     memcpy(&tensors_j[n], cj.grav.multipole, sizeof(struct gravity_tensors));
 
     /* Move the values a bit to prevent optimization in the actual loops */
-    tensors_i[n].CoM[0] += rand() / ((double) RAND_MAX);
-    tensors_i[n].CoM[1] += rand() / ((double) RAND_MAX);
-    tensors_i[n].CoM[1] += rand() / ((double) RAND_MAX);
+    tensors_i[n].CoM[0] += rand() / ((double)RAND_MAX);
+    tensors_i[n].CoM[1] += rand() / ((double)RAND_MAX);
+    tensors_i[n].CoM[1] += rand() / ((double)RAND_MAX);
 
-    tensors_j[n].CoM[0] += rand() / ((double) RAND_MAX);
-    tensors_j[n].CoM[1] += rand() / ((double) RAND_MAX);
-    tensors_j[n].CoM[1] += rand() / ((double) RAND_MAX);
+    tensors_j[n].CoM[0] += rand() / ((double)RAND_MAX);
+    tensors_j[n].CoM[1] += rand() / ((double)RAND_MAX);
+    tensors_j[n].CoM[1] += rand() / ((double)RAND_MAX);
 
-    tensors_i[n].m_pole.M_000 += rand() / ((double) RAND_MAX);
-    tensors_j[n].m_pole.M_000 += rand() / ((double) RAND_MAX);
+    tensors_i[n].m_pole.M_000 += rand() / ((double)RAND_MAX);
+    tensors_j[n].m_pole.M_000 += rand() / ((double)RAND_MAX);
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    tensors_i[n].m_pole.M_200 += rand() / ((double) RAND_MAX);
-    tensors_i[n].m_pole.M_020 += rand() / ((double) RAND_MAX);
-    tensors_i[n].m_pole.M_002 += rand() / ((double) RAND_MAX);
+    tensors_i[n].m_pole.M_200 += rand() / ((double)RAND_MAX);
+    tensors_i[n].m_pole.M_020 += rand() / ((double)RAND_MAX);
+    tensors_i[n].m_pole.M_002 += rand() / ((double)RAND_MAX);
 
-    tensors_j[n].m_pole.M_200 += rand() / ((double) RAND_MAX);
-    tensors_j[n].m_pole.M_020 += rand() / ((double) RAND_MAX);
-    tensors_j[n].m_pole.M_002 += rand() / ((double) RAND_MAX);
+    tensors_j[n].m_pole.M_200 += rand() / ((double)RAND_MAX);
+    tensors_j[n].m_pole.M_020 += rand() / ((double)RAND_MAX);
+    tensors_j[n].m_pole.M_002 += rand() / ((double)RAND_MAX);
 #endif
   }
 
@@ -287,6 +305,22 @@ int main(int argc, char *argv[]) {
   /* Print out to avoid optimization */
   // gravity_field_tensors_print(&ci.grav.multipole->pot);
   // gravity_field_tensors_print(&cj.grav.multipole->pot);
+
+  tic = getticks();
+  for (int n = 0; n < num_PP_runs; ++n) {
+    runner_dopair_grav_pp(&r, &ci, &cj, 1, 0);
+  }
+  toc = getticks();
+  message("%30s at order %d took %4d %s.", "dopair_grav (no mpole)",
+          SELF_GRAVITY_MULTIPOLE_ORDER,
+          (int)(1e6 * clocks_from_ticks(toc - tic) / num_PP_runs), "ns");
+
+  tic = getticks();
+  runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
+  toc = getticks();
+  message("%30s at order %d took %4d %s.", "dopair_grav (mpole)",
+          SELF_GRAVITY_MULTIPOLE_ORDER,
+          (int)(1e6 * clocks_from_ticks(toc - tic) / num_PP_runs), "ns");
 
   return 0;
 }
