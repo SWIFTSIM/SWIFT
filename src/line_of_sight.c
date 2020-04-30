@@ -278,8 +278,8 @@ void do_line_of_sight(struct engine *e) {
     /* Don't work with empty LOS */
     if (LOS_list[j].particles_in_los_total == 0) {
         if (e->nodeID == 0) {
-            message("*WARNING* LOS %i is empty", j);
-            print_los_info(LOS_list, j);
+          message("*WARNING* LOS %i is empty", j);
+          print_los_info(LOS_list, j);
         }
         continue;
     }
