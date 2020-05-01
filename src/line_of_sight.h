@@ -10,9 +10,6 @@ struct line_of_sight {
   int particles_in_los_local;
   int periodic;
   double dim[3];
-
-  struct part *parts;
-  struct xpart *xparts;
 };
 
 struct los_props {

@@ -109,6 +109,9 @@ void generate_line_of_sights(struct line_of_sight *Los,
     create_line_of_sight(Xpos, Ypos, 0, 2, 1, periodic, dim, &Los[count]);
     count += 1;
   }
+
+  /* Make sure we made the correct ammount */
+  if (count != params->num_tot) error("Could not make the right number of sight lines");
 }
 
 void create_line_of_sight(const double Xpos, const double Ypos, 
@@ -194,12 +197,12 @@ void los_first_loop_mapper(void *restrict map_data, int count,
 /**
  * @brief Main work function for computing line of sights.
  * 
- * 1) Construct random line of sight positions.
+ * 1) Construct N random line of sight positions.
  * 2) Loop over each line of sight.
- * -  a) Loop over each part to see who falls within this LOS.
- * -  b) Use this count to construct a LOS parts array.
- * -  c) Loop over each part and extract those in LOS.
- * -  d) Save LOS particles to HDF5 file.
+ * -  2.1) Loop over each part to see which fall within this LOS.
+ * -  2.2) Use this count to construct a LOS parts array.
+ * -  2.3) Loop over each part and extract those in LOS to new array.
+ * -  2.4) Save LOS parts to HDF5 file.
  * 
  * @param e The engine.
  */
@@ -215,6 +218,7 @@ void do_line_of_sight(struct engine *e) {
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const size_t nr_parts = s->nr_parts;
   const struct los_props *LOS_params = e->los_properties;
+  const int verbose = e->verbose;
 
   double dx, dy, r2, hsml;
 
@@ -225,16 +229,20 @@ void do_line_of_sight(struct engine *e) {
   /* Start by generating the random sightline positions. */
   struct line_of_sight *LOS_list = (struct line_of_sight *)malloc(
       LOS_params->num_tot * sizeof(struct line_of_sight));
-  if (e->nodeID == 0) generate_line_of_sights(LOS_list, LOS_params,
-                                              periodic, dim);
+  if (e->nodeID == 0) {
+      if (verbose) message("Generating random sightlines...");
+      generate_line_of_sights(LOS_list, LOS_params, periodic, dim);
+      if (verbose) message("Generated %i random line of sights.", LOS_params->num_tot);
+  }
 #ifdef WITH_MPI
   MPI_Bcast(LOS_list, LOS_params->num_tot * sizeof(struct line_of_sight),
             MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Node 0 creates HDF5 file. */
+  /* Node 0 creates the HDF5 file. */
   if (e->nodeID == 0) {
     sprintf(fileName, "%s_%04i.hdf5", LOS_params->basename, e->los_output_count);
+    if (verbose) message("Creating LOS file: %s", fileName);
     h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
@@ -285,18 +293,21 @@ void do_line_of_sight(struct engine *e) {
     }
 
     /* Setup LOS part and xpart structures. */
+    struct part *LOS_parts;
+    struct xpart *LOS_xparts;
+
     if (e->nodeID == 0) {
-      LOS_list[j].parts = (struct part *)malloc(
+      LOS_parts = (struct part *)malloc(
           LOS_list[j].particles_in_los_total *
           sizeof(struct part));
-      LOS_list[j].xparts = (struct xpart *)malloc(
+      LOS_xparts = (struct xpart *)malloc(
           LOS_list[j].particles_in_los_total *
           sizeof(struct xpart));
     } else {
-      LOS_list[j].parts = (struct part *)malloc(
+      LOS_parts = (struct part *)malloc(
           LOS_list[j].particles_in_los_local *
           sizeof(struct part));
-      LOS_list[j].xparts = (struct xpart *)malloc(
+      LOS_xparts = (struct xpart *)malloc(
           LOS_list[j].particles_in_los_local *
           sizeof(struct xpart));
     }
@@ -331,8 +342,8 @@ void do_line_of_sight(struct engine *e) {
           if (r2 <= hsml * hsml) {
 
             /* Store part and xpart properties. */
-            LOS_list->parts[count] = p[i];
-            LOS_list->xparts[count] = xp[i];
+            LOS_parts[count] = p[i];
+            LOS_xparts[count] = xp[i];
 
             count++;
           }
@@ -344,17 +355,17 @@ void do_line_of_sight(struct engine *e) {
     /* Collect all parts in this LOS to rank 0. */
     if (e->nodeID == 0) {
       MPI_Gatherv(MPI_IN_PLACE, 0,
-                  part_mpi_type, LOS_list[j].parts, LOS_counts, LOS_disps,
+                  part_mpi_type, LOS_parts, LOS_counts, LOS_disps,
                   part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(MPI_IN_PLACE, 0,
-                  xpart_mpi_type, LOS_list[j].xparts, LOS_counts, LOS_disps,
+                  xpart_mpi_type, LOS_xparts, LOS_counts, LOS_disps,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
     } else {
-      MPI_Gatherv(LOS_list[j].parts, LOS_list[j].particles_in_los_local,
-                  part_mpi_type, LOS_list[j].parts, LOS_counts, LOS_disps,
+      MPI_Gatherv(LOS_parts, LOS_list[j].particles_in_los_local,
+                  part_mpi_type, LOS_parts, LOS_counts, LOS_disps,
                   part_mpi_type, 0, MPI_COMM_WORLD);
-      MPI_Gatherv(LOS_list[j].xparts, LOS_list[j].particles_in_los_local,
-                  xpart_mpi_type, LOS_list[j].xparts, LOS_counts, LOS_disps,
+      MPI_Gatherv(LOS_xparts, LOS_list[j].particles_in_los_local,
+                  xpart_mpi_type, LOS_xparts, LOS_counts, LOS_disps,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
     }
 #endif
@@ -375,16 +386,16 @@ void do_line_of_sight(struct engine *e) {
       io_write_attribute(h_grp, "Ypos", DOUBLE, &LOS_list[j].Ypos, 1);
 
       /* Write the data for this LOS */
-      write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_list[j].parts, e,
-        LOS_list[j].xparts);
+      write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total, LOS_parts, e,
+        LOS_xparts);
 
       /* Close HDF5 group */
       H5Gclose(h_grp);
     }
 
     /* Free up some memory */
-    //swift_free("los_array_parts", &LOS_list[j].parts);
-    //swift_free("los_array_xparts", &LOS_list[j].xparts);
+    swift_free("los_array_parts", &LOS_parts);
+    swift_free("los_array_xparts", &LOS_xparts);
 
   } /* End of loop over each LOS */
 
