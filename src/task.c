@@ -1125,6 +1125,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
     }
   }
 
+  double stepdt = (double)e->toc_step - (double)e->tic_step;
   double total[1] = {0.0};
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
@@ -1152,6 +1153,12 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
         tmax[type][subtype] = tic;
       }
       total[0] += dt;
+
+      /* Check if this is a problematic task and make a report. */
+      if (e->verbose)
+        if (dt / stepdt > 0.05)
+          message("Long running task detected: %s/%s using %.1f%% of step runtime", taskID_names[type],
+                  subtaskID_names[subtype], dt / stepdt * 100.0);
     }
   }
 
