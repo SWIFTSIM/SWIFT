@@ -238,6 +238,7 @@ __attribute__((const)) INLINE static float D_soft_9(const float u,
   float phi = -420.f * u_inv;
   phi = phi * u_inv + 315.f;
   phi = phi * u_inv;
+
   return phi;
 }
 
@@ -256,7 +257,7 @@ __attribute__((const)) INLINE static float D_soft_11(const float u,
   phi = phi * u_inv;
   phi = phi * u_inv;
 
-  return 0.f;
+  return phi;
 }
 
 #endif /* SWIFT_KERNEL_GRAVITY_H */
