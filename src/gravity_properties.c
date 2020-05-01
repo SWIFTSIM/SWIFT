@@ -110,6 +110,10 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Adaptive opening angle tolerance */
   p->adaptive_tolerance = parser_get_param_float(params, "Gravity:epsilon_fmm");
 
+  /* Are we allowing tree use below softening? */
+  p->use_tree_below_softening =
+      parser_get_opt_param_int(params, "Gravity:use_tree_below_softening", 1);
+
   /* Mesh dithering */
   if (periodic && !with_external_potential) {
     p->with_dithering =

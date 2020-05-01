@@ -57,8 +57,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const float rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  //if (rho_A == 0.) error("Size of multipole A is 0!");
-  //if (rho_B == 0.) error("Size of multipole B is 0!");
+  // if (rho_A == 0.) error("Size of multipole A is 0!");
+  // if (rho_B == 0.) error("Size of multipole B is 0!");
 #endif
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
@@ -73,7 +73,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     E_BA_term /= (rho_A + rho_B);
   }
 
-  /* Compute r^(p+2) */
+    /* Compute r^(p+2) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
   const float r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
 #else
@@ -108,7 +108,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const int cond_1 = rho_sum * rho_sum < r2;
 
     /* Condition 2: We are not below softening */
-    const int cond_2 = max_softening * max_softening < r2;
+    const int cond_2 =
+        props->use_tree_below_softening || max_softening * max_softening < r2;
 
     /* Condition 3: The contribution is accurate enough
      * (E_BA / r^(p+2) < eps * a_min) */
@@ -122,7 +123,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const int cond_1 = rho_sum * rho_sum < theta_crit2 * r2;
 
     /* Condition 2: We are not below softening */
-    const int cond_2 = max_softening * max_softening < r2;
+    const int cond_2 =
+        props->use_tree_below_softening || max_softening * max_softening < r2;
 
     return cond_1 && cond_2;
   }
@@ -173,7 +175,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float rho_B = B->r_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  //if (rho_B == 0.) error("Size of multipole B is 0!");
+  // if (rho_B == 0.) error("Size of multipole B is 0!");
 #endif
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
@@ -190,7 +192,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float old_a_grav = pa->old_a_grav_norm;
 
   /* Get the maximal softening length in B */
-  const float max_softening = B->m_pole.max_softening;
+  const float max_softening = max(B->m_pole.max_softening,
+				  gravity_get_softening(pa, props));
 
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
@@ -211,7 +214,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const int cond_1 = rho_B * rho_B < r2;
 
     /* Condition 2: We are not below softening */
-    const int cond_2 = max_softening * max_softening < r2;
+    const int cond_2 =
+        props->use_tree_below_softening || max_softening * max_softening < r2;
 
     /* Condition 3: The contribution is accurate enough
      * (E_BA / r^(p+2) < eps * a) */
@@ -225,7 +229,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const int cond_1 = rho_B * rho_B < theta_crit2 * r2;
 
     /* Condition 2: We are not below softening */
-    const int cond_2 = max_softening * max_softening < r2;
+    const int cond_2 =
+        props->use_tree_below_softening || max_softening * max_softening < r2;
 
     return cond_1 && cond_2;
   }

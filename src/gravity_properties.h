@@ -66,6 +66,9 @@ struct gravity_props {
   /*! Tree opening angle (Multipole acceptance criterion) */
   double theta_crit;
 
+  /*! Are we allowing tree gravity below softening? */
+  int use_tree_below_softening;
+
   /* ------------- Properties of the softened gravity ------------------ */
 
   /*! Co-moving softening length for for high-res. DM particles */
