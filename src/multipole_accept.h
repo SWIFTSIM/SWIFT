@@ -84,7 +84,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const float min_a_grav = A->m_pole.min_old_a_grav_norm;
 
   /* Get the maximal softening length in B */
-  const float max_softening = B->m_pole.max_softening;
+  const float max_softening =
+      max(A->m_pole.max_softening, B->m_pole.max_softening);
 
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
@@ -192,8 +193,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float old_a_grav = pa->old_a_grav_norm;
 
   /* Get the maximal softening length in B */
-  const float max_softening = max(B->m_pole.max_softening,
-				  gravity_get_softening(pa, props));
+  const float max_softening =
+      max(B->m_pole.max_softening, gravity_get_softening(pa, props));
 
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
