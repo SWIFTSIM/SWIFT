@@ -255,10 +255,8 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     /* Get the particle */
     const struct gpart *gp = &gparts[k];
 
-    /* If the g-particle has a counterpart, ignore it */
-    if (gp->type != swift_type_dark_matter &&
-        gp->type != swift_type_dark_matter_background)
-      continue;
+    /* Ignore the hydro particles as they are already computed */
+    if (gp->type == swift_type_gas) continue;
 
     /* Ignore non-existing particles */
     if (gp->time_bin == time_bin_inhibited ||
