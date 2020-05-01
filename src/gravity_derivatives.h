@@ -221,29 +221,63 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   struct potential_derivatives_M2L *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r2 < 0.99f * eps * eps)
-    error("Computing M2L derivatives below softening length");
+// if (r2 < 0.99f * eps * eps)
+//  error("Computing M2L derivatives below softening length");
 #endif
 
-  float Dt_1 = 0.f;
+  float Dt_1;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  float Dt_3 = 0.f;
+  float Dt_3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  float Dt_5 = 0.f;
+  float Dt_5;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  float Dt_7 = 0.f;
+  float Dt_7;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  float Dt_9 = 0.f;
+  float Dt_9;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-  float Dt_11 = 0.f;
+  float Dt_11;
 #endif
 
-  /* Un-truncated case (Newtonian potential) */
-  if (!periodic) {
+  /* Softened case */
+  if (r2 < eps * eps) {
+
+    const float eps_inv = 1.f / eps;
+    const float r = r2 * r_inv;
+    const float u = r * eps_inv;
+    const float u_inv = r_inv * eps;
+
+    Dt_1 = eps_inv * D_soft_1(u, u_inv);
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+    const float eps_inv2 = eps_inv * eps_inv;
+    const float eps_inv3 = eps_inv * eps_inv2;
+    Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+    const float eps_inv5 = eps_inv3 * eps_inv2;
+    Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+    const float eps_inv7 = eps_inv5 * eps_inv2;
+    Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+    const float eps_inv9 = eps_inv7 * eps_inv2;
+    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+    const float eps_inv11 = eps_inv9 * eps_inv2;
+    Dt_11 = -eps_inv11 * D_soft_11(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
+#error "Missing implementation for order >5"
+#endif
+
+    /* Un-truncated un-softened case (Newtonian potential) */
+  } else if (!periodic) {
 
     Dt_1 = r_inv;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -266,7 +300,7 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 #error "Missing implementation for order >5"
 #endif
 
-    /* Truncated case */
+    /* Truncated case (long-range) */
   } else {
 
     /* Get the derivatives of the truncated potential */
@@ -451,8 +485,8 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   struct potential_derivatives_M2P *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r2 < 0.99f * eps * eps)
-    error("Computing M2P derivatives below softening length");
+// if (r2 < 0.99f * eps * eps)
+//  error("Computing M2P derivatives below softening length");
 #endif
 
   float Dt_1;
@@ -470,8 +504,37 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
   float Dt_11;
 #endif
 
-  /* Un-truncated case (Newtonian potential) */
-  if (!periodic) {
+  /* Softened case */
+  if (r2 < eps * eps) {
+
+    const float eps_inv = 1.f / eps;
+    const float r = r2 * r_inv;
+    const float u = r * eps_inv;
+    const float u_inv = r_inv * eps;
+
+    Dt_1 = eps_inv * D_soft_1(u, u_inv);
+    const float eps_inv2 = eps_inv * eps_inv;
+    const float eps_inv3 = eps_inv * eps_inv2;
+    Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+    const float eps_inv5 = eps_inv3 * eps_inv2;
+    Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+    const float eps_inv7 = eps_inv5 * eps_inv2;
+    Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+    const float eps_inv9 = eps_inv7 * eps_inv2;
+    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+    const float eps_inv11 = eps_inv9 * eps_inv2;
+    Dt_11 = -eps_inv11 * D_soft_11(u, u_inv);
+#endif
+
+    /* Un-truncated un-softened case (Newtonian potential) */
+  } else if (!periodic) {
 
     const float r_inv2 = r_inv * r_inv;
     Dt_1 = r_inv;
@@ -489,7 +552,7 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
     Dt_11 = -9.f * Dt_9 * r_inv2; /* -945 / r^11 */
 #endif
 
-    /* Truncated case */
+    /* Truncated case (long-range) */
   } else {
 
     /* Get the derivatives of the truncated potential */
