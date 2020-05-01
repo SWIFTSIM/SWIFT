@@ -114,6 +114,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->use_tree_below_softening =
       parser_get_opt_param_int(params, "Gravity:use_tree_below_softening", 1);
 
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (p->use_tree_below_softening)
+    error(
+        "Cannot solve gravity via the tree below softening with the "
+        "Gadget2-type softening kernel");
+#endif
+
   /* Mesh dithering */
   if (periodic && !with_external_potential) {
     p->with_dithering =
