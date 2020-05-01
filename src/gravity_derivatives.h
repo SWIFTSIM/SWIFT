@@ -250,7 +250,7 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
     const float u = r * eps_inv;
     const float u_inv = r_inv * eps;
 
-    Dt_1 = eps_inv * D_soft_1(u, u_inv);
+    Dt_1 = -eps_inv * D_soft_1(u, u_inv);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
     const float eps_inv2 = eps_inv * eps_inv;
     const float eps_inv3 = eps_inv * eps_inv2;
@@ -258,7 +258,7 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
     const float eps_inv5 = eps_inv3 * eps_inv2;
-    Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
+    Dt_5 = -eps_inv5 * D_soft_5(u, u_inv);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
     const float eps_inv7 = eps_inv5 * eps_inv2;
@@ -266,7 +266,7 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
     const float eps_inv9 = eps_inv7 * eps_inv2;
-    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
+    Dt_9 = -eps_inv9 * D_soft_9(u, u_inv);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
     const float eps_inv11 = eps_inv9 * eps_inv2;
@@ -512,13 +512,13 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
     const float u = r * eps_inv;
     const float u_inv = r_inv * eps;
 
-    Dt_1 = eps_inv * D_soft_1(u, u_inv);
+    Dt_1 = -eps_inv * D_soft_1(u, u_inv);
     const float eps_inv2 = eps_inv * eps_inv;
     const float eps_inv3 = eps_inv * eps_inv2;
     Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
     const float eps_inv5 = eps_inv3 * eps_inv2;
-    Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
+    Dt_5 = -eps_inv5 * D_soft_5(u, u_inv);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
     const float eps_inv7 = eps_inv5 * eps_inv2;
@@ -526,7 +526,7 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
     const float eps_inv9 = eps_inv7 * eps_inv2;
-    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
+    Dt_9 = -eps_inv9 * D_soft_9(u, u_inv);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
     const float eps_inv11 = eps_inv9 * eps_inv2;

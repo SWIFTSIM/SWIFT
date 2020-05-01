@@ -235,8 +235,8 @@ __attribute__((const)) INLINE static float D_soft_9(const float u,
 
   /* -315 u^-1 + 420 u^-3 */
   /* -315 u_inv + 420 u_inv^3 */
-  float phi = 420.f * u_inv;
-  phi = phi * u_inv - 315.f;
+  float phi = -420.f * u_inv;
+  phi = phi * u_inv + 315.f;
   phi = phi * u_inv;
   return phi;
 }
