@@ -81,6 +81,23 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->eta_zero = 0.0f;
   mat->P_min = 0.0f;
 }
+INLINE static void set_Til_basalt(struct Til_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  mat->mat_id = mat_id;
+  mat->rho_0 = 2700.0f;
+  mat->a = 0.5f;
+  mat->b = 1.5f;
+  mat->A = 2.67e10f;
+  mat->B = 2.67e10f;
+  mat->u_0 = 4.87e8f;
+  mat->u_iv = 4.72e6f;
+  mat->u_cv = 1.82e7f;
+  mat->alpha = 5.0f;
+  mat->beta = 5.0f;
+  mat->eta_min = 0.0f;
+  mat->eta_zero = 0.0f;
+  mat->P_min = 0.0f;
+}
 INLINE static void set_Til_water(struct Til_params *mat,
                                  enum eos_planetary_material_id mat_id) {
   mat->mat_id = mat_id;

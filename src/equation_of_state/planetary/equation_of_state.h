@@ -80,6 +80,10 @@ enum eos_planetary_material_id {
   /*! Tillotson water */
   eos_planetary_id_Til_water =
       eos_planetary_type_Til * eos_planetary_type_factor + 2,
+  
+  /*! Tillotson basalt */
+  eos_planetary_id_Til_basalt =
+    eos_planetary_type_Til * eos_planetary_type_factor + 3,
 
   /* Hubbard & MacFarlane (1980) Uranus/Neptune */
 
@@ -123,7 +127,7 @@ enum eos_planetary_material_id {
  * @brief The parameters of the equation of state.
  */
 struct eos_parameters {
-  struct Til_params Til_iron, Til_granite, Til_water;
+  struct Til_params Til_iron, Til_granite, Til_water, Til_basalt;
   struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
   struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water;
 };
@@ -162,6 +166,11 @@ gas_internal_energy_from_entropy(float density, float entropy,
         case eos_planetary_id_Til_water:
           return Til_internal_energy_from_entropy(density, entropy,
                                                   &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_internal_energy_from_entropy(density, entropy,
+                                                  &eos.Til_basalt);
           break;
 
         default:
@@ -265,6 +274,10 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
           return Til_pressure_from_entropy(density, entropy, &eos.Til_water);
           break;
 
+        case eos_planetary_id_Til_basalt:
+          return Til_pressure_from_entropy(density, entropy, &eos.Til_basalt);
+          break;
+
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
           return 0.f;
@@ -364,6 +377,10 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
           return Til_entropy_from_pressure(density, P, &eos.Til_water);
           break;
 
+        case eos_planetary_id_Til_basalt:
+          return Til_entropy_from_pressure(density, P, &eos.Til_basalt);
+          break;
+
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
           return 0.f;
@@ -457,6 +474,10 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
 
         case eos_planetary_id_Til_water:
           return Til_soundspeed_from_entropy(density, entropy, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_soundspeed_from_entropy(density, entropy, &eos.Til_basalt);
           break;
 
         default:
@@ -557,6 +578,10 @@ gas_entropy_from_internal_energy(float density, float u,
           return Til_entropy_from_internal_energy(density, u, &eos.Til_water);
           break;
 
+        case eos_planetary_id_Til_basalt:
+          return Til_entropy_from_internal_energy(density, u, &eos.Til_basalt);
+          break;
+
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
           return 0.f;
@@ -655,6 +680,10 @@ gas_pressure_from_internal_energy(float density, float u,
 
         case eos_planetary_id_Til_water:
           return Til_pressure_from_internal_energy(density, u, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_pressure_from_internal_energy(density, u, &eos.Til_basalt);
           break;
 
         default:
@@ -760,6 +789,10 @@ gas_internal_energy_from_pressure(float density, float P,
           return Til_internal_energy_from_pressure(density, P, &eos.Til_water);
           break;
 
+        case eos_planetary_id_Til_basalt:
+          return Til_internal_energy_from_pressure(density, P, &eos.Til_basalt);
+          break;
+
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
           return 0.f;
@@ -859,6 +892,11 @@ gas_soundspeed_from_internal_energy(float density, float u,
         case eos_planetary_id_Til_water:
           return Til_soundspeed_from_internal_energy(density, u,
                                                      &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_soundspeed_from_internal_energy(density, u,
+                                                     &eos.Til_basalt);
           break;
 
         default:
@@ -962,6 +1000,10 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
           return Til_soundspeed_from_pressure(density, P, &eos.Til_water);
           break;
 
+        case eos_planetary_id_Til_basalt:
+          return Til_soundspeed_from_pressure(density, P, &eos.Til_basalt);
+          break;
+
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
           return 0.f;
@@ -1051,10 +1093,12 @@ __attribute__((always_inline)) INLINE static void eos_init(
     set_Til_iron(&e->Til_iron, eos_planetary_id_Til_iron);
     set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
     set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
+    set_Til_basalt(&e->Til_basalt, eos_planetary_id_Til_basalt);
 
     convert_units_Til(&e->Til_iron, us);
     convert_units_Til(&e->Til_granite, us);
     convert_units_Til(&e->Til_water, us);
+    convert_units_Til(&e->Til_basalt, us);
   }
 
   // Hubbard & MacFarlane (1980)
