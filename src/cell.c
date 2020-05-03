@@ -3327,7 +3327,7 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Can we use multipoles ? */
-    if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_sizes=*/0)) {
+    if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_data=*/0)) {
       /* Ok, no need to drift anything */
       return;
     }
@@ -6381,12 +6381,12 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
  * @param cj The second #cell.
  * @param e The #engine.
  * @param s The #space.
- * @param use_rebuild_sizes Are we considering the sizes at the last tree-build
- * (1) or current sizes (0)?
+ * @param use_rebuild_data Are we considering the data at the last tree-build
+ * (1) or current data (0)?
  */
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
-                         const int use_rebuild_sizes) {
+                         const int use_rebuild_data) {
 
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
@@ -6396,10 +6396,18 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   const struct gravity_tensors *const multi_i = ci->grav.multipole;
   const struct gravity_tensors *const multi_j = cj->grav.multipole;
 
+  double dx, dy, dz;
+
   /* Get the distance between the CoMs */
-  double dx = multi_i->CoM[0] - multi_j->CoM[0];
-  double dy = multi_i->CoM[1] - multi_j->CoM[1];
-  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+  if (use_rebuild_data) {
+    dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
+    dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
+    dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
+  } else {
+    dx = multi_i->CoM[0] - multi_j->CoM[0];
+    dy = multi_i->CoM[1] - multi_j->CoM[1];
+    dz = multi_i->CoM[2] - multi_j->CoM[2];
+  }
 
   /* Apply BC */
   if (periodic) {
@@ -6410,5 +6418,5 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   const double r2 = dx * dx + dy * dy + dz * dz;
 
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
-                                      use_rebuild_sizes);
+                                      use_rebuild_data);
 }
