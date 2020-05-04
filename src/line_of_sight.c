@@ -178,27 +178,27 @@ void los_first_loop_mapper(void *restrict map_data, int count,
   size_t los_particle_count = 0;
   double dx, dy, r2, hsml;
   struct line_of_sight *restrict LOS_list = (struct line_of_sight *)extra_data;
-  struct part *restrict p = (struct part *)map_data;
+  struct part *restrict parts = (struct part *)map_data;
 
   /* Loop over each part to find those in LOS. */
   for (int i = 0; i < count; i++) {
 
     /* Don't consider inhibited parts. */
-    if (p[i].time_bin == time_bin_inhibited) continue;
+    if (parts[i].time_bin == time_bin_inhibited) continue;
 
     /* Distance from this part to LOS along x dim. */
-    dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
+    dx = parts[i].x[LOS_list->xaxis] - LOS_list->Xpos;
 
     /* Periodic wrap. */
     if (LOS_list->periodic) dx = nearest(dx, LOS_list->dim[LOS_list->xaxis]);
 
     /* Smoothing length of this part. */
-    hsml = p[i].h * kernel_gamma;
+    hsml = parts[i].h * kernel_gamma;
 
     /* Does this particle fall into our LOS? */
     if (dx <= hsml) {
       /* Distance from this part to LOS along y dim. */
-      dy = p[i].x[LOS_list->yaxis] - LOS_list->Ypos;
+      dy = parts[i].x[LOS_list->yaxis] - LOS_list->Ypos;
     
       /* Periodic wrap. */
       if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
@@ -238,8 +238,8 @@ void do_line_of_sight(struct engine *e) {
   const ticks tic = getticks();
 
   const struct space *s = e->s;
-  struct part *p = s->parts;
-  const struct xpart *xp = s->xparts;
+  struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const size_t nr_parts = s->nr_parts;
@@ -280,7 +280,7 @@ void do_line_of_sight(struct engine *e) {
   for (int j = 0; j < LOS_params->num_tot; j++) {
 
     /* First count all parts that intersect with this line of sight */
-    threadpool_map(&s->e->threadpool, los_first_loop_mapper, p,
+    threadpool_map(&s->e->threadpool, los_first_loop_mapper, parts,
               nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
               &LOS_list[j]);
 
@@ -346,21 +346,21 @@ void do_line_of_sight(struct engine *e) {
     for (size_t i = 0; i < nr_parts; i++) {
 
       /* Don't consider inhibited parts. */
-      if (p[i].time_bin == time_bin_inhibited) continue;
+      if (parts[i].time_bin == time_bin_inhibited) continue;
 
       /* Distance from this part to LOS along x dim. */
-      dx = p[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+      dx = parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
 
       /* Periodic wrap. */
       if (LOS_list[j].periodic) dx = nearest(dx, LOS_list[j].dim[LOS_list[j].xaxis]);
 
       /* Smoothing length of this part. */
-      hsml = p[i].h * kernel_gamma;
+      hsml = parts[i].h * kernel_gamma;
 
       /* Does this part fall into our LOS? */
       if (dx <= hsml) {
         /* Distance from this part to LOS along y dim. */
-        dy = p[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
+        dy = parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
 
         /* Periodic wrap. */
         if (LOS_list[j].periodic) dy = nearest(dy, LOS_list[j].dim[LOS_list[j].yaxis]);
@@ -373,8 +373,8 @@ void do_line_of_sight(struct engine *e) {
           if (r2 <= hsml * hsml) {
 
             /* Store part and xpart properties. */
-            memcpy(&LOS_parts[count], &p[i], sizeof(struct part));
-            memcpy(&LOS_xparts[count], &xp[i], sizeof(struct xpart));
+            memcpy(&LOS_parts[count], &parts[i], sizeof(struct part));
+            memcpy(&LOS_xparts[count], &xparts[i], sizeof(struct xpart));
 
             count++;
           }
