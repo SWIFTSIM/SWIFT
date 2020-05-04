@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2020 Stuart McAlpine (stuart.mcalpine@helsinki.fi)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+
 /* Config parameters. */
 #include "../config.h"
 
@@ -137,7 +157,7 @@ void create_line_of_sight(const double Xpos, const double Ypos,
  */
 void print_los_info(const struct line_of_sight *Los, const int i) {
 
-  printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%li\n", i,
+  message("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%li", i,
         Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total);
   fflush(stdout);
 }
@@ -159,38 +179,36 @@ void los_first_loop_mapper(void *restrict map_data, int count,
 
   /* Loop over each part to find those in LOS. */
   for (int i = 0; i < count; i++) {
-    if (p[i].gpart->type == swift_type_gas) {
-      /* Distance from this part to LOS along x dim. */
-      dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
+    /* Distance from this part to LOS along x dim. */
+    dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
 
+    /* Periodic wrap. */
+    if (LOS_list->periodic) dx = nearest(dx, LOS_list->dim[LOS_list->xaxis]);
+
+    /* Smoothing length of this part. */
+    hsml = p[i].h * kernel_gamma;
+
+    /* Does this particle fall into our LOS? */
+    if (dx <= hsml) {
+      /* Distance from this part to LOS along y dim. */
+      dy = p[i].x[LOS_list->yaxis] - LOS_list->Ypos;
+    
       /* Periodic wrap. */
-      if (LOS_list->periodic) dx = nearest(dx, LOS_list->dim[LOS_list->xaxis]);
+      if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
 
-      /* Smoothing length of this part. */
-      hsml = p[i].h * kernel_gamma;
+      /* Does this part still fall into our LOS? */
+      if (dy <= hsml) {
+        /* 2D distance to LOS. */
+        r2 = dx * dx + dy * dy;
 
-      /* Does this particle fall into our LOS? */
-      if (dx <= hsml) {
-        /* Distance from this part to LOS along y dim. */
-        dy = p[i].x[LOS_list->yaxis] - LOS_list->Ypos;
-      
-        /* Periodic wrap. */
-        if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
+        if (r2 <= hsml * hsml) {
 
-        /* Does this part still fall into our LOS? */
-        if (dy <= hsml) {
-          /* 2D distance to LOS. */
-          r2 = dx * dx + dy * dy;
-
-          if (r2 <= hsml * hsml) {
-
-            /* We've found one. */
-            los_particle_count++;
-          }
+          /* We've found one. */
+          los_particle_count++;
         }
       }
     }
-  } /* End of loop over all gas particles */
+  } /* End of loop over all parts */
 
   atomic_add(&LOS_list->particles_in_los_local, los_particle_count);
 }
@@ -221,12 +239,6 @@ void do_line_of_sight(struct engine *e) {
   const struct los_props *LOS_params = e->los_properties;
   const int verbose = e->verbose;
 
-  double dx, dy, r2, hsml;
-
-  /* HDF5 vars. */
-  hid_t h_file = -1, h_grp = -1;
-  char fileName[256], groupName[200];
-
   /* Start by generating the random sightline positions. */
   struct line_of_sight *LOS_list = (struct line_of_sight *)malloc(
       LOS_params->num_tot * sizeof(struct line_of_sight));
@@ -241,18 +253,21 @@ void do_line_of_sight(struct engine *e) {
 #endif
 
   /* Node 0 creates the HDF5 file. */
+  hid_t h_file = -1, h_grp = -1;
+  char fileName[256], groupName[200];
+  
   if (e->nodeID == 0) {
     sprintf(fileName, "%s_%04i.hdf5", LOS_params->basename, e->los_output_count);
     if (verbose) message("Creating LOS file: %s", fileName);
     h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
-
-    /* Write header */
-    write_hdf5_header(h_file, e, LOS_params);
   }
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
+  /* Keep track of the total number of parts in all LOSs. */
+  size_t total_num_parts_in_los = 0;
 
   /* Main loop over each random LOS. */
   for (int j = 0; j < LOS_params->num_tot; j++) {
@@ -282,10 +297,11 @@ void do_line_of_sight(struct engine *e) {
 #else
     LOS_list[j].particles_in_los_total = LOS_list[j].particles_in_los_local;
 #endif
+    total_num_parts_in_los += LOS_list[j].particles_in_los_total;
 
-    //#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
     if (e->nodeID == 0) print_los_info(LOS_list, j);
-    //#endif
+#endif
 
     /* Don't work with empty LOS */
     if (LOS_list[j].particles_in_los_total == 0) {
@@ -318,7 +334,8 @@ void do_line_of_sight(struct engine *e) {
 
     /* Loop over each part again, pulling out those in LOS. */
     size_t count = 0;
-    
+    double dx, dy, r2, hsml;
+
     for (size_t i = 0; i < nr_parts; i++) {
 
       /* Distance from this part to LOS along x dim. */
@@ -355,9 +372,9 @@ void do_line_of_sight(struct engine *e) {
       }
     }
 
-//#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
     if (count != LOS_list[j].particles_in_los_local) error("LOS counts don't add up");
-//#endif
+#endif
 
 #ifdef WITH_MPI
     /* Collect all parts in this LOS to rank 0. */
@@ -407,9 +424,14 @@ void do_line_of_sight(struct engine *e) {
 
   } /* End of loop over each LOS */
 
-  /* Close HDF5 file */
-  if (e->nodeID == 0) H5Fclose(h_file);
- 
+  if (e->nodeID == 0) {
+    /* Write header */
+    write_hdf5_header(h_file, e, LOS_params, total_num_parts_in_los);
+    
+    /* Close HDF5 file */  
+    H5Fclose(h_file);
+  }
+
   /* Up the count. */
   e->los_output_count++;
 
@@ -477,6 +499,11 @@ void write_los_hdf5_datasets(hid_t grp, int j, size_t N, const struct part* part
     
     /* Write (if selected) */
     if (should_write) write_los_hdf5_dataset(list[i], N, j, e, grp);
+    //if (should_write) write_array_single(e, grp, NULL,
+    //                    NULL, NULL,
+    //                    list[i], N,
+    //                    e->internal_units,
+    //                    e->snapshot_units);
   }
 }
 
@@ -621,7 +648,8 @@ void write_los_hdf5_dataset(const struct io_props props, size_t N, int j, struct
  * @param e The engine.
  * @param LOS_params The line of sight params.
  */
-void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_props *LOS_params) {
+void write_hdf5_header(hid_t h_file, const struct engine *e,
+        const struct los_props *LOS_params, const size_t total_num_parts_in_los) {
   /* Open header to write simulation properties */
   hid_t h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating file header\n");
@@ -645,6 +673,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_pr
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+  io_write_attribute(h_grp, "TotalPartsInAllSightlines", UINT,
+          &total_num_parts_in_los, 1);
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
@@ -656,76 +686,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_pr
   /* Close group */
   H5Gclose(h_grp);
 
-  /* Print the code version */
-  io_write_code_description(h_file);
-
-  /* Print the run's policy */
-  io_write_engine_policy(h_file, e);
-
-  /* Print the physical constants */
-  phys_const_print_snapshot(h_file, e->physical_constants);
-
-  /* Print the SPH parameters */
-  if (e->policy & engine_policy_hydro) {
-    h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
-                      H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating SPH group");
-    hydro_props_print_snapshot(h_grp, e->hydro_properties);
-    hydro_write_flavour(h_grp);
-    H5Gclose(h_grp);
-  }
-
-  /* Print the subgrid parameters */
-  h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
-                    H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating subgrid group");
-  hid_t h_grp_columns =
-      H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp_columns < 0) error("Error while creating named columns group");
-  entropy_floor_write_flavour(h_grp);
-  cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
-  H5Gclose(h_grp_columns);
-  H5Gclose(h_grp);
-
-  /* Print the gravity parameters */
-  if (e->policy & engine_policy_self_gravity) {
-    h_grp = H5Gcreate(h_file, "/GravityScheme", H5P_DEFAULT, H5P_DEFAULT,
-                      H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating gravity group");
-    gravity_props_print_snapshot(h_grp, e->gravity_properties);
-    H5Gclose(h_grp);
-  }
-
-  /* Print the cosmological model */
-  h_grp =
-      H5Gcreate(h_file, "/Cosmology", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating cosmology group");
-  if (e->policy & engine_policy_cosmology)
-    io_write_attribute_i(h_grp, "Cosmological run", 1);
-  else
-    io_write_attribute_i(h_grp, "Cosmological run", 0);
-  cosmology_write_model(h_grp, e->cosmology);
-  H5Gclose(h_grp);
-
-  /* Print the runtime parameters */
-  h_grp =
-      H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating parameters group");
-  parser_write_params_to_hdf5(e->parameter_file, h_grp, 1);
-  H5Gclose(h_grp);
-
-  /* Print the runtime unused parameters */
-  h_grp = H5Gcreate(h_file, "/UnusedParameters", H5P_DEFAULT, H5P_DEFAULT,
-                    H5P_DEFAULT);
-  if (h_grp < 0) error("Error while creating parameters group");
-  parser_write_params_to_hdf5(e->parameter_file, h_grp, 0);
-  H5Gclose(h_grp);
-
-  /* Print the system of Units used in the spashot */
-  io_write_unit_system(h_file, e->snapshot_units, "Units");
-
-  /* Print the system of Units used internally */
-  io_write_unit_system(h_file, e->internal_units, "InternalCodeUnits");
+  io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
 
   /* Print the LOS properties */
   h_grp = H5Gcreate(h_file, "/LineOfSightParameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
