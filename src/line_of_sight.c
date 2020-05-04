@@ -137,7 +137,7 @@ void create_line_of_sight(const double Xpos, const double Ypos,
  */
 void print_los_info(const struct line_of_sight *Los, const int i) {
 
-  printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%i\n", i,
+  printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%li\n", i,
         Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total);
   fflush(stdout);
 }
@@ -152,13 +152,13 @@ void print_los_info(const struct line_of_sight *Los, const int i) {
 void los_first_loop_mapper(void *restrict map_data, int count,
                            void *restrict extra_data) {
 
-  int los_particle_count = 0;
+  size_t los_particle_count = 0;
   double dx, dy, r2, hsml;
   struct line_of_sight *restrict LOS_list = (struct line_of_sight *)extra_data;
   struct part *restrict p = (struct part *)map_data;
 
   /* Loop over each part to find those in LOS. */
-  for (size_t i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     if (p[i].gpart->type == swift_type_gas) {
       /* Distance from this part to LOS along x dim. */
       dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
@@ -317,7 +317,7 @@ void do_line_of_sight(struct engine *e) {
     }
 
     /* Loop over each part again, pulling out those in LOS. */
-    int count = 0;
+    size_t count = 0;
     
     for (size_t i = 0; i < nr_parts; i++) {
 
@@ -428,7 +428,7 @@ void do_line_of_sight(struct engine *e) {
  * @param e The engine.
  * @param xparts the list of xparts in this LOS.
  */
-void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
+void write_los_hdf5_datasets(hid_t grp, int j, size_t N, const struct part* parts,
         struct engine* e, const struct xpart* xparts) {
 
   /* What kind of run are we working with? */
@@ -489,7 +489,7 @@ void write_los_hdf5_datasets(hid_t grp, int j, int N, const struct part* parts,
  * @param e The engine.
  * @param grp HDF5 group to write to.
  */
-void write_los_hdf5_dataset(const struct io_props props, int N, int j, struct engine* e,
+void write_los_hdf5_dataset(const struct io_props props, size_t N, int j, struct engine* e,
         hid_t grp) {
 
   /* Create data space */
