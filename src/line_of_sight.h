@@ -26,18 +26,34 @@
 #include "engine.h"
 #include "io_properties.h"
 
+/* 
+ * Maps the LOS axis geometry to the simulation axis geometry.
+ *
+ * Sigtlines will always shoot down the los_direction_z, 
+ * which can map to x,y or z of the simulation geometry.
+ *
+ * The remainng two axes, los_direction_x/y, then create
+ * the plane orthogonal to the LOS direction. The random
+ * sightline positions are created on this plane.
+ */
+enum los_direction { 
+   simulation_x_axis = 0,
+   simulation_y_axis = 1,
+   simulation_z_axis = 2
+};
+
 struct line_of_sight {
-  /* Axis the sightline is shooting down.
-   * 0 = simulation x axis.
-   * 1 = simulation y axis.
-   * 2 = simulation z axis. */
-  int zaxis;
+  /* Simulation axis the LOS shoots down. */
+  enum los_direction zaxis;
 
   /* The two remaining axes defining the plane orthogonal to the sightline. */
-  int xaxis, yaxis;
+  enum los_direction xaxis, yaxis;
 
-  /* Random sightline position on the defined xaxis--yaxis plane. */
-  double Xpos, Ypos;
+  /* Sightline position along los_direction_x. */
+  double Xpos;
+
+  /* Sightline position along los_direction_y. */
+  double Ypos;
 
   /* Number of parts in LOS. */
   size_t particles_in_los_total;
@@ -91,8 +107,8 @@ void write_los_hdf5_datasets(hid_t grp, int j, size_t N, const struct part* part
 void write_los_hdf5_dataset(const struct io_props p, size_t N, int j, struct engine* e, hid_t grp);
 void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_props* LOS_params,
         const size_t total_num_parts_in_los);
-void create_line_of_sight(const double Xpos, const double Ypos,   
-        const int xaxis, const int yaxis, const int zaxis,
+void create_line_of_sight(const double Xpos, const double Ypos,
+        enum los_direction xaxis, enum los_direction yaxis, enum los_direction zaxis,
         const int periodic, const double dim[3], struct line_of_sight *los);
 void los_struct_dump(const struct los_props *internal_los,
                             FILE *stream);

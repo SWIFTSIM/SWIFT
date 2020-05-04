@@ -100,33 +100,36 @@ void generate_line_of_sights(struct line_of_sight *Los,
 
   double Xpos, Ypos;
 
-  /* Sightlines in XY plane. */
+  /* Sightlines in XY plane, shoots down Z. */
   for (int i = 0; i < params->num_along_xy; i++) {
     Xpos = ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
         params->xmin;
     Ypos = ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
         params->ymin;
-    create_line_of_sight(Xpos, Ypos, 0, 1, 2, periodic, dim, &Los[count]);
+    create_line_of_sight(Xpos, Ypos, simulation_x_axis, simulation_y_axis,
+            simulation_z_axis, periodic, dim, &Los[count]);
     count += 1;
   }
 
-  /* Sightlines in YZ plane. */
+  /* Sightlines in YZ plane, shoots down X. */
   for (int i = 0; i < params->num_along_yz; i++) {
     Xpos = ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
         params->ymin;
     Ypos = ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
         params->zmin;
-    create_line_of_sight(Xpos, Ypos, 1, 2, 0, periodic, dim, &Los[count]);
+    create_line_of_sight(Xpos, Ypos, simulation_y_axis, simulation_z_axis,
+            simulation_x_axis, periodic, dim, &Los[count]);
     count += 1;
   }
 
-  /* Sightlines in XZ plane. */
+  /* Sightlines in XZ plane, shoots down Y. */
   for (int i = 0; i < params->num_along_xz; i++) {
     Xpos = ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
         params->xmin;
     Ypos = ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
         params->zmin;
-    create_line_of_sight(Xpos, Ypos, 0, 2, 1, periodic, dim, &Los[count]);
+    create_line_of_sight(Xpos, Ypos, simulation_x_axis, simulation_z_axis,
+            simulation_y_axis, periodic, dim, &Los[count]);
     count += 1;
   }
 
@@ -135,7 +138,7 @@ void generate_line_of_sights(struct line_of_sight *Los,
 }
 
 void create_line_of_sight(const double Xpos, const double Ypos, 
-        const int xaxis, const int yaxis, const int zaxis,
+        enum los_direction xaxis, enum los_direction yaxis, enum los_direction zaxis,
         const int periodic, const double dim[3], struct line_of_sight *los) {
   los->Xpos = Xpos;
   los->Ypos = Ypos;
