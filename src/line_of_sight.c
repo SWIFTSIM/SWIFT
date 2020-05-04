@@ -179,6 +179,10 @@ void los_first_loop_mapper(void *restrict map_data, int count,
 
   /* Loop over each part to find those in LOS. */
   for (int i = 0; i < count; i++) {
+
+    /* Don't consider inhibited parts. */
+    if (p[i].time_bin == time_bin_inhibited) continue;
+
     /* Distance from this part to LOS along x dim. */
     dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
 
@@ -337,6 +341,9 @@ void do_line_of_sight(struct engine *e) {
     double dx, dy, r2, hsml;
 
     for (size_t i = 0; i < nr_parts; i++) {
+
+      /* Don't consider inhibited parts. */
+      if (p[i].time_bin == time_bin_inhibited) continue;
 
       /* Distance from this part to LOS along x dim. */
       dx = p[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
