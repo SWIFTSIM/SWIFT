@@ -268,8 +268,8 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
 
   /* Physical distance between the particles */
   const float dx[3] = {(bp->x[0] - p->x[0]) * cosmo->a,
-                       (bp->x[0] - p->x[0]) * cosmo->a,
-                       (bp->x[0] - p->x[0]) * cosmo->a};
+                       (bp->x[1] - p->x[1]) * cosmo->a,
+                       (bp->x[2] - p->x[2]) * cosmo->a};
 
   /* Collect the swallowed angular momentum */
   bp->swallowed_angular_momentum[0] +=
