@@ -453,17 +453,19 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                       denominator_inv * denominator_inv * denominator_inv;
 
   /* Compute the reduction factor from Rosas-Guevara et al. (2015) */
-  const double Bondi_radius = G * BH_mass / gas_c_phys2;
-  const double Bondi_time = Bondi_radius / gas_c_phys;
-  const double r_times_v_tang = Bondi_radius * tangential_velocity;
-  const double r_times_v_tang_3 =
-      r_times_v_tang * r_times_v_tang * r_times_v_tang;
-  const double viscous_time = 2. * M_PI * r_times_v_tang_3 /
-                              (1e-6 * alpha_visc * G * G * BH_mass * BH_mass);
-  const double f_visc = max(Bondi_time / viscous_time, 1.);
+  if (props->with_angmom_limiter) {
+    const double Bondi_radius = G * BH_mass / gas_c_phys2;
+    const double Bondi_time = Bondi_radius / gas_c_phys;
+    const double r_times_v_tang = Bondi_radius * tangential_velocity;
+    const double r_times_v_tang_3 =
+        r_times_v_tang * r_times_v_tang * r_times_v_tang;
+    const double viscous_time = 2. * M_PI * r_times_v_tang_3 /
+                                (1e-6 * alpha_visc * G * G * BH_mass * BH_mass);
+    const double f_visc = max(Bondi_time / viscous_time, 1.);
 
-  /* Limit the Bondi rate by the Bondi viscuous time ratio */
-  Bondi_rate *= f_visc;
+    /* Limit the Bondi rate by the Bondi viscuous time ratio */
+    Bondi_rate *= f_visc;
+  }
 
   /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =
