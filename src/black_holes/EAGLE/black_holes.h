@@ -291,6 +291,13 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   bp->gpart->v_full[1] = bp->v[1];
   bp->gpart->v_full[2] = bp->v[2];
 
+  const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  message(
+      "BH %lld swallowing gas particle %lld "
+      "(Delta_v = [%f, %f, %f] U_V, Delta_v_rad = %f)",
+      bp->id, p->id, dv[0], dv[1], dv[2],
+      (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
+
   /* Update the BH metal masses */
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
