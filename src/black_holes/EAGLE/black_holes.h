@@ -69,6 +69,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->swallowed_angular_momentum[0] = 0.f;
   bp->swallowed_angular_momentum[1] = 0.f;
   bp->swallowed_angular_momentum[2] = 0.f;
+  bp->number_of_repositions = 0;
 
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
@@ -156,6 +157,9 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
     bp->reposition.delta_x[1] = -FLT_MAX;
     bp->reposition.delta_x[2] = -FLT_MAX;
     bp->reposition.min_potential = FLT_MAX;
+
+    /* Count the jump */
+    bp->number_of_repositions++;
   }
 }
 
@@ -664,6 +668,9 @@ INLINE static void black_holes_create_from_gas(
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
   bp->number_of_gas_swallows = 0;
+
+  /* We haven't repositioned yet */
+  bp->number_of_repositions = 0;
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);
