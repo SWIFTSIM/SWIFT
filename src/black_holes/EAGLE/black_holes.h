@@ -62,6 +62,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->formation_time = -1.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
+  bp->number_of_gas_swallows = 0;
   bp->last_high_Eddington_fraction_scale_factor = -1.f;
   bp->last_minor_merger_time = -1.;
   bp->last_major_merger_time = -1.;
@@ -303,6 +304,9 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
   chemistry_add_part_to_bpart(bp_chem, p_chem, gas_mass);
 
+  /* This BH swallowed a gas particle */
+  bp->number_of_gas_swallows++;
+
   /* This BH lost a neighbour */
   bp->num_ngbs--;
   bp->ngb_mass -= gas_mass;
@@ -376,6 +380,9 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
 
   /* Add up all the BH seeds */
   bpi->cumulative_number_seeds += bpj->cumulative_number_seeds;
+
+  /* Add up all the gas particles we swallowed */
+  bpi->number_of_gas_swallows += bpj->number_of_gas_swallows;
 
   /* We had another merger */
   bpi->number_of_mergers++;

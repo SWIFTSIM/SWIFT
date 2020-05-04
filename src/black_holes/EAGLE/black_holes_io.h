@@ -145,7 +145,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 20;
+  *num_fields = 21;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -276,6 +276,13 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Peculiar circular velocities of the gas particles around the black "
       "holes. This is the curl of a * dx/dt where x is the co-moving position "
       "of the particles.");
+
+  list[20] = io_make_output_field(
+      "NumberOfSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      number_of_gas_swallows,
+      "Number of gas particles the black holes have swallowed. "
+      "This includes the particles swallowed by any of the BHs that "
+      "merged into this one.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
