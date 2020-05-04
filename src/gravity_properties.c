@@ -108,7 +108,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
 
   /* Adaptive opening angle tolerance */
-  p->adaptive_tolerance = parser_get_param_float(params, "Gravity:epsilon_fmm");
+  if (p->use_adaptive_tolerance)
+    p->adaptive_tolerance =
+        parser_get_param_float(params, "Gravity:epsilon_fmm");
 
   /* Are we allowing tree use below softening? */
   p->use_tree_below_softening =
