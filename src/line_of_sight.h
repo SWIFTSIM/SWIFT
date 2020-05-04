@@ -18,6 +18,9 @@
  *
  ******************************************************************************/
 
+#ifndef SWIFT_LOS_H
+#define SWIFT_LOS_H
+
 /* Config parameters. */
 #include "../config.h"
 #include "engine.h"
@@ -95,3 +98,5 @@ void los_struct_dump(const struct los_props *internal_los,
                             FILE *stream);
 void los_struct_restore(const struct los_props *internal_los,
                                        FILE *stream);
+
+#endif /* SWIFT_LOS_H */ 
