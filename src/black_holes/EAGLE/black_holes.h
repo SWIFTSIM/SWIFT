@@ -663,6 +663,7 @@ INLINE static void black_holes_create_from_gas(
   bp->total_accreted_mass = 0.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
+  bp->number_of_gas_swallows = 0;
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);
