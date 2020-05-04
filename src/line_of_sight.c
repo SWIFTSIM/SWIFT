@@ -111,7 +111,7 @@ void generate_line_of_sights(struct line_of_sight *Los,
   }
 
   /* Make sure we made the correct ammount */
-  if (count != params->num_tot) error("Could not make the right number of sight lines");
+  if (count != params->num_tot) error("Could not make the right number of sightlines");
 }
 
 void create_line_of_sight(const double Xpos, const double Ypos, 
@@ -139,6 +139,7 @@ void print_los_info(const struct line_of_sight *Los, const int i) {
 
   printf("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%i\n", i,
         Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total);
+  fflush(stdout);
 }
 
 /**
@@ -232,7 +233,7 @@ void do_line_of_sight(struct engine *e) {
   if (e->nodeID == 0) {
       if (verbose) message("Generating random sightlines...");
       generate_line_of_sights(LOS_list, LOS_params, periodic, dim);
-      if (verbose) message("Generated %i random line of sights.", LOS_params->num_tot);
+      if (verbose) message("Generated %i random sightlines.", LOS_params->num_tot);
   }
 #ifdef WITH_MPI
   MPI_Bcast(LOS_list, LOS_params->num_tot * sizeof(struct line_of_sight),
@@ -249,6 +250,9 @@ void do_line_of_sight(struct engine *e) {
     /* Write header */
     write_hdf5_header(h_file, e, LOS_params);
   }
+#ifdef WITH_MPI
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
   /* Main loop over each random LOS. */
   for (int j = 0; j < LOS_params->num_tot; j++) {
@@ -293,23 +297,23 @@ void do_line_of_sight(struct engine *e) {
     }
 
     /* Setup LOS part and xpart structures. */
-    struct part *LOS_parts;
-    struct xpart *LOS_xparts;
+    struct part *LOS_parts = NULL;
+    struct xpart *LOS_xparts = NULL;
 
     if (e->nodeID == 0) {
-      LOS_parts = (struct part *)malloc(
-          LOS_list[j].particles_in_los_total *
-          sizeof(struct part));
-      LOS_xparts = (struct xpart *)malloc(
-          LOS_list[j].particles_in_los_total *
-          sizeof(struct xpart));
+      if ((LOS_parts = (struct part *)swift_malloc(
+            "los_parts_array", sizeof(struct part) * LOS_list[j].particles_in_los_total)) == NULL)
+        error("Failed to allocate LOS part memory.");
+      if ((LOS_xparts = (struct xpart *)swift_malloc(
+            "los_xparts_array", sizeof(struct xpart) * LOS_list[j].particles_in_los_total)) == NULL)
+        error("Failed to allocate LOS xpart memory.");
     } else {
-      LOS_parts = (struct part *)malloc(
-          LOS_list[j].particles_in_los_local *
-          sizeof(struct part));
-      LOS_xparts = (struct xpart *)malloc(
-          LOS_list[j].particles_in_los_local *
-          sizeof(struct xpart));
+      if ((LOS_parts = (struct part *)swift_malloc(
+            "los_parts_array", sizeof(struct part) * LOS_list[j].particles_in_los_local)) == NULL)
+        error("Failed to allocate LOS part memory.");
+      if ((LOS_xparts = (struct xpart *)swift_malloc(
+            "los_xparts_array", sizeof(struct xpart) * LOS_list[j].particles_in_los_local)) == NULL)
+        error("Failed to allocate LOS xpart memory.");
     }
 
     /* Loop over each part again, pulling out those in LOS. */
@@ -318,10 +322,10 @@ void do_line_of_sight(struct engine *e) {
     for (size_t i = 0; i < nr_parts; i++) {
 
       /* Distance from this part to LOS along x dim. */
-      dx = p[i].x[LOS_list->xaxis] - LOS_list->Xpos;
+      dx = p[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
 
       /* Periodic wrap. */
-      if (LOS_list->periodic) dx = nearest(dx, LOS_list->dim[LOS_list->xaxis]);
+      if (LOS_list[j].periodic) dx = nearest(dx, LOS_list[j].dim[LOS_list[j].xaxis]);
 
       /* Smoothing length of this part. */
       hsml = p[i].h * kernel_gamma;
@@ -329,10 +333,10 @@ void do_line_of_sight(struct engine *e) {
       /* Does this part fall into our LOS? */
       if (dx <= hsml) {
         /* Distance from this part to LOS along y dim. */
-        dy = p[i].x[LOS_list->yaxis] - LOS_list->Ypos;
+        dy = p[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
 
         /* Periodic wrap. */
-        if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
+        if (LOS_list[j].periodic) dy = nearest(dy, LOS_list[j].dim[LOS_list[j].yaxis]);
 
         /* Does this part still fall into our LOS? */
         if (dy <= hsml) {
@@ -342,14 +346,18 @@ void do_line_of_sight(struct engine *e) {
           if (r2 <= hsml * hsml) {
 
             /* Store part and xpart properties. */
-            LOS_parts[count] = p[i];
-            LOS_xparts[count] = xp[i];
+            memcpy(&LOS_parts[count], &p[i], sizeof(struct part));
+            memcpy(&LOS_xparts[count], &xp[i], sizeof(struct xpart));
 
             count++;
           }
         }
       }
     }
+
+//#ifdef SWIFT_DEBUG_CHECKS
+    if (count != LOS_list[j].particles_in_los_local) error("LOS counts don't add up");
+//#endif
 
 #ifdef WITH_MPI
     /* Collect all parts in this LOS to rank 0. */
@@ -394,8 +402,8 @@ void do_line_of_sight(struct engine *e) {
     }
 
     /* Free up some memory */
-    swift_free("los_array_parts", &LOS_parts);
-    swift_free("los_array_xparts", &LOS_xparts);
+    swift_free("los_parts_array", LOS_parts);
+    swift_free("los_xparts_array", LOS_xparts);
 
   } /* End of loop over each LOS */
 
