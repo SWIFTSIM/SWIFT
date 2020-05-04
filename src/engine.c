@@ -3810,6 +3810,7 @@ static void engine_dumper_init(struct engine *e) {
  * @param fof_properties The #fof_props.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
+                 struct swift_params *select_output,
                  long long Ngas, long long Ngparts, long long Nstars,
                  long long Nblackholes, long long Nbackground_gparts,
                  int policy, int verbose, struct repartition *reparttype,
@@ -3904,6 +3905,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->chemistry = chemistry;
   e->fof_properties = fof_properties;
   e->parameter_file = params;
+  e->select_output = select_output;
   e->stf_this_timestep = 0;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
@@ -5244,6 +5246,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
      in engine_struct_restore() */
   if (restart) {
     free((void *)e->parameter_file);
+    free((void *)e->select_output);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
     free((void *)e->stars_properties);
@@ -5316,6 +5319,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   parser_struct_dump(e->parameter_file, stream);
+  parser_struct_dump(e->select_output, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
   if (e->output_list_stats)
@@ -5450,6 +5454,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
+
+  struct swift_params *select_output =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
+  parser_struct_restore(select_output, stream);
+  e->select_output = select_output;
 
   if (e->output_list_snapshots) {
     struct output_list *output_list_snapshots =

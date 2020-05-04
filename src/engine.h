@@ -454,6 +454,9 @@ struct engine {
   /* The (parsed) parameter file */
   struct swift_params *parameter_file;
 
+  /* The (parsed) selection output file */
+  struct swift_params *select_output;
+
   /* Temporary struct to hold a group of deferable properties (in MPI mode
    * these are reduced together, but may not be required just yet). */
   struct collectgroup1 collect_group1;
@@ -523,7 +526,7 @@ void engine_check_for_index_dump(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_dump_snapshot(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params);
-void engine_init(struct engine *e, struct space *s, struct swift_params *params,
+void engine_init(struct engine *e, struct space *s, struct swift_params *params, struct swift_params *select_output,
                  long long Ngas, long long Ngparts, long long Nstars,
                  long long Nblackholes, long long Nbackground_gparts,
                  int policy, int verbose, struct repartition *reparttype,

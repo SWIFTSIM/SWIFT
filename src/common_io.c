@@ -2271,7 +2271,8 @@ void io_collect_gparts_background_to_write(
 /**
  * @brief Verify the io parameter file
  *
- * @param params The #swift_params
+ * @param params The #swift_params instance corresponding to the select_output
+ *               file.
  * @param N_total The total number of each particle type.
  */
 void io_check_output_fields(const struct swift_params* params,
@@ -2339,11 +2340,20 @@ void io_check_output_fields(const struct swift_params* params,
     /* loop over each parameter */
     for (int param_id = 0; param_id < params->paramCount; param_id++) {
       const char* param_name = params->data[param_id].name;
+      message("%s", param_name);
 
       char section_name[PARSER_MAX_LINE_SIZE];
 
       /* Skip if wrong section */
       sprintf(section_name, "SelectOutput:");
+      if (strstr(param_name, section_name) != NULL) {
+        message("%s %s", param_name, section_name);
+        error("Output selection files no longer require the use of top level SelectOutput");
+        continue;
+      }
+
+      /* Skip if top-levle section */
+      sprintf(section_name, "Default:");
       if (strstr(param_name, section_name) == NULL) continue;
 
       /* Skip if wrong particle type */
@@ -2355,7 +2365,7 @@ void io_check_output_fields(const struct swift_params* params,
       /* loop over each possible output field */
       for (int field_id = 0; field_id < num_fields; field_id++) {
         char field_name[PARSER_MAX_LINE_SIZE];
-        sprintf(field_name, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE,
+        sprintf(field_name, "Default:%.*s_%s", FIELD_BUFFER_SIZE,
                 list[field_id].name, part_type_names[ptype]);
 
         if (strcmp(param_name, field_name) == 0) {
