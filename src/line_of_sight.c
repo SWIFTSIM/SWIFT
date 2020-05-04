@@ -436,7 +436,7 @@ void do_line_of_sight(struct engine *e) {
   e->los_output_count++;
 
   /* How long did we take? */
-  message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+  if (verbose) message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
 
