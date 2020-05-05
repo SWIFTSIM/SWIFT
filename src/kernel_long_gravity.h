@@ -151,17 +151,15 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
  * coming from FFT.
  *
  * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
- * @param W (return) The value of the kernel function.
  */
-__attribute__((always_inline, nonnull)) INLINE static void
-kernel_long_grav_pot_eval(const float u, float *const W) {
+__attribute__((const)) INLINE static float kernel_long_grav_pot_eval(
+    const float u) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
   const float arg1 = u * 0.5f;
-  const float term1 = approx_erfcf(arg1);
+  return approx_erfcf(arg1);
 
-  *W = term1;
 #else
 
   const float x = 2.f * u;
@@ -169,8 +167,10 @@ kernel_long_grav_pot_eval(const float u, float *const W) {
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2 - 2 exp(x) * alpha */
-  *W = 1.f - alpha * exp_x;
-  *W *= 2.f;
+  float W = 1.f - alpha * exp_x;
+  W = W * 2.f;
+
+  return W;
 #endif
 }
 
@@ -179,14 +179,13 @@ kernel_long_grav_pot_eval(const float u, float *const W) {
  * coming from FFT.
  *
  * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
- * @param W (return) The value of the kernel function.
  */
-__attribute__((always_inline, nonnull)) INLINE static void
-kernel_long_grav_force_eval(const float u, float *const W) {
+__attribute__((const)) INLINE static float kernel_long_grav_force_eval(
+    const float u) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
-  const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
+  static const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
 
   const float arg1 = u * 0.5f;
   const float arg2 = -arg1 * arg1;
@@ -194,7 +193,7 @@ kernel_long_grav_force_eval(const float u, float *const W) {
   const float term1 = approx_erfcf(arg1);
   const float term2 = u * one_over_sqrt_pi * expf(arg2);
 
-  *W = term1 + term2;
+  return term1 + term2;
 #else
 
   const float x = 2.f * u;
@@ -202,10 +201,12 @@ kernel_long_grav_force_eval(const float u, float *const W) {
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
-  *W = 1.f - alpha;
-  *W = *W * x - exp_x;
-  *W = *W * alpha + 1.f;
-  *W *= 2.f;
+  float W = 1.f - alpha;
+  W = W * x - exp_x;
+  W = W * alpha + 1.f;
+  W = W * 2.f;
+
+  return W;
 #endif
 }
 
