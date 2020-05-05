@@ -25,6 +25,7 @@
 /* Local includes */
 #include "binomial.h"
 #include "integer_power.h"
+#include "kernel_long_gravity.h"
 #include "minmax.h"
 #include "multipole_struct.h"
 
@@ -74,12 +75,24 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     E_BA_term /= (rho_A + rho_B);
   }
 
-    /* Compute r^(p+2) */
+  float r_to_p_plus2, W;
+  if (periodic && props->consider_truncation_in_MAC) {
+
+    /* Compute r^(p+2) and the long-range correction */
+    const float r = sqrtf(r2);
+    r_to_p_plus2 = integer_powf(r, (p + 2));
+    W = kernel_long_grav_force_eval(r * props->r_s_inv);
+
+  } else {
+
+  /* Compute r^(p+2) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-  const float r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
+    r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
 #else
-  const float r_to_p_plus2 = integer_powf(r2, ((p / 2) + 1));
+    r_to_p_plus2 = integer_powf(r2, ((p / 2) + 1));
 #endif
+    W = 1.f;
+  }
 
   /* Get the mimimal acceleration in A */
   const float min_a_grav = A->m_pole.min_old_a_grav_norm;
@@ -98,7 +111,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   /* Get the sum of the multipole sizes */
   const float rho_sum = rho_A + rho_B;
 
-  if (props->use_advanced_mac) {
+  if (props->use_advanced_MAC) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (min_a_grav == 0.) error("Acceleration is 0");
@@ -114,8 +127,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
         props->use_tree_below_softening || max_softening * max_softening < r2;
 
     /* Condition 3: The contribution is accurate enough
-     * (E_BA / r^(p+2) < eps * a_min) */
-    const int cond_3 = E_BA_term < eps * min_a_grav * r_to_p_plus2;
+     * (E_BA * (1 / r^(p)) * ((1 / r^2) * W) < eps * a_min) */
+    const int cond_3 = E_BA_term * W < eps * min_a_grav * r_to_p_plus2;
 
     return cond_1 && cond_2 && cond_3;
 
@@ -185,12 +198,24 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
   const float E_BA_term = 8.f * B->m_pole.power[p];
 
+  float r_to_p_plus2, W;
+  if (periodic && props->consider_truncation_in_MAC) {
+
+    /* Compute r^(p+2) and the long-range correction */
+    const float r = sqrtf(r2);
+    r_to_p_plus2 = integer_powf(r, (p + 2));
+    W = kernel_long_grav_force_eval(r * props->r_s_inv);
+
+  } else {
+
   /* Compute r^(p+2) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-  const float r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
+    r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
 #else
-  const float r_to_p_plus2 = integer_powf(r2, ((p / 2) + 1));
+    r_to_p_plus2 = integer_powf(r2, ((p / 2) + 1));
 #endif
+    W = 1.f;
+  }
 
   /* Get the estimate of the acceleration */
   const float old_a_grav = pa->old_a_grav_norm;
@@ -206,7 +231,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float theta_crit = props->theta_crit;
   const float theta_crit2 = theta_crit * theta_crit;
 
-  if (props->use_advanced_mac) {
+  if (props->use_advanced_MAC) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (old_a_grav == 0.) error("Acceleration is 0");
@@ -222,8 +247,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
         props->use_tree_below_softening || max_softening * max_softening < r2;
 
     /* Condition 3: The contribution is accurate enough
-     * (E_BA / r^(p+2) < eps * a) */
-    const int cond_3 = E_BA_term < eps * old_a_grav * r_to_p_plus2;
+     * (E_BA * (1 / r^(p)) * ((1 / r^2) * W) < eps * a_min) */
+    const int cond_3 = E_BA_term * W < eps * old_a_grav * r_to_p_plus2;
 
     return cond_1 && cond_2 && cond_3;
 

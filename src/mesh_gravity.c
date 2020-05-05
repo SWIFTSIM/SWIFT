@@ -726,7 +726,7 @@ void pm_mesh_free(struct pm_mesh* mesh) {
  * @param nr_threads The number of threads on this MPI rank.
  */
 void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
-                  double dim[3], int nr_threads) {
+                  const double dim[3], int nr_threads) {
 
 #ifdef HAVE_FFTW
 

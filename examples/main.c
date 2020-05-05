@@ -1076,7 +1076,7 @@ int main(int argc, char *argv[]) {
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
-                         with_DM_background_particles, periodic);
+                         with_DM_background_particles, periodic, s.dim);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));

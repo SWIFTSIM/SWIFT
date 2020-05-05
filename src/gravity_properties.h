@@ -55,7 +55,7 @@ struct gravity_props {
   /* -------------- Properties of the FFM gravity ---------------------- */
 
   /*! What MAC are we currently using? */
-  int use_advanced_mac;
+  int use_advanced_MAC;
 
   /*! Are we using the adaptive opening angle? (as read from param file) */
   int use_adaptive_tolerance;
@@ -68,6 +68,9 @@ struct gravity_props {
 
   /*! Are we allowing tree gravity below softening? */
   int use_tree_below_softening;
+
+  /*! Are we applying long-range truncation to the forces in the MAC? */
+  int consider_truncation_in_MAC;
 
   /* ------------- Properties of the softened gravity ------------------ */
 
@@ -113,11 +116,16 @@ struct gravity_props {
    * a_smooth */
   float r_cut_max_ratio;
 
+  /*! Inverse of the long-range gravity mesh scale. */
+  float r_s_inv;
+
   /*! Are we dithering the particles at every rebuild? */
   int with_dithering;
 
   /*! Fraction of the top-level cell size used to normalize the dithering */
   double dithering_ratio;
+
+  /* ------------- Physical constants ---------------------------------- */
 
   /*! Gravitational constant (in internal units, copied from the physical
    * constants) */
@@ -130,7 +138,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct cosmology *cosmo, const int with_cosmology,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
-                        const int is_zoom_simulation, const int periodic);
+                        const int is_zoom_simulation, const int periodic,
+                        const double dim[3]);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 void gravity_props_update_MAC_choice(struct gravity_props *p);

@@ -45,7 +45,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct cosmology *cosmo, const int with_cosmology,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
-                        const int is_zoom_simulation, const int periodic) {
+                        const int is_zoom_simulation, const int periodic,
+                        const double dim[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -64,6 +65,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
         params, "Gravity:r_cut_max", gravity_props_default_r_cut_max);
     p->r_cut_min_ratio = parser_get_opt_param_float(
         params, "Gravity:r_cut_min", gravity_props_default_r_cut_min);
+
+    const double r_s = p->a_smooth * dim[0] / p->mesh_size;
+    p->r_s_inv = 1. / r_s;
 
     /* Some basic checks of what we read */
     if (p->mesh_size % 2 != 0)
@@ -101,7 +105,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   }
 
   /* We always start with the geometric MAC */
-  p->use_advanced_mac = 0;
+  p->use_advanced_MAC = 0;
 
   /* Geometric opening angle */
   p->theta_crit = parser_get_param_double(params, "Gravity:theta_cr");
@@ -111,6 +115,11 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   if (p->use_adaptive_tolerance)
     p->adaptive_tolerance =
         parser_get_param_float(params, "Gravity:epsilon_fmm");
+
+  /* Consider truncated forces in the MAC? */
+  if (p->use_adaptive_tolerance)
+    p->consider_truncation_in_MAC =
+        parser_get_param_int(params, "Gravity:allow_truncation_in_MAC");
 
   /* Are we allowing tree use below softening? */
   p->use_tree_below_softening =
@@ -206,7 +215,7 @@ void gravity_props_update_MAC_choice(struct gravity_props *p) {
 
   /* Now that we have run initial accelerations,
    * switch to the better MAC */
-  if (p->use_adaptive_tolerance) p->use_advanced_mac = 1;
+  if (p->use_adaptive_tolerance) p->use_advanced_MAC = 1;
 }
 
 void gravity_props_update(struct gravity_props *p,
