@@ -43,11 +43,12 @@
  * @param r2 The square of the distance between the centres of mass of A and B.
  * @param use_rebuild_sizes Are we considering the sizes at the last tree-build
  * (1) or current sizes (0)?
+ * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const struct gravity_props *props, const struct gravity_tensors *restrict A,
     const struct gravity_tensors *restrict B, const float r2,
-    const int use_rebuild_sizes) {
+    const int use_rebuild_sizes, const int periodic) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
@@ -144,14 +145,15 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
  * @param r2 The square of the distance between the centres of mass of A and B.
  * @param use_rebuild_sizes Are we considering the sizes at the last tree-build
  * (1) or current sizes (0)?
+ * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
     const struct gravity_props *props, const struct gravity_tensors *restrict A,
     const struct gravity_tensors *restrict B, const float r2,
-    const int use_rebuild_sizes) {
+    const int use_rebuild_sizes, const int periodic) {
 
-  return gravity_M2L_accept(props, A, B, r2, use_rebuild_sizes) &&
-         gravity_M2L_accept(props, B, A, r2, use_rebuild_sizes);
+  return gravity_M2L_accept(props, A, B, r2, use_rebuild_sizes, periodic) &&
+         gravity_M2L_accept(props, B, A, r2, use_rebuild_sizes, periodic);
 }
 
 /**
@@ -164,10 +166,11 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
  * @param pa The particle we want to compute forces for (sink)
  * @param B The gravity tensors that act as a source.
  * @param r2 The square of the distance between pa and the centres of mass of B.
+ * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const struct gravity_props *props, const struct gpart *pa,
-    const struct gravity_tensors *B, const float r2) {
+    const struct gravity_tensors *B, const float r2, const int periodic) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;

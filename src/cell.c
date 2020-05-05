@@ -6418,5 +6418,5 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   const double r2 = dx * dx + dy * dy + dz * dz;
 
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
-                                      use_rebuild_data);
+                                      use_rebuild_data, periodic);
 }

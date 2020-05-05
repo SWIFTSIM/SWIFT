@@ -255,8 +255,8 @@ INLINE static void gravity_cache_populate(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     /* Check whether we can use the multipole instead of P-P */
-    use_mpole[i] = allow_mpole &&
-                   gravity_M2P_accept(grav_props, &gparts[i], multipole, r2);
+    use_mpole[i] = allow_mpole && gravity_M2P_accept(grav_props, &gparts[i],
+                                                     multipole, r2, periodic);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -430,7 +430,7 @@ INLINE static void gravity_cache_populate_all_mpole(
     }
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-    if (!gravity_M2P_accept(grav_props, &gparts[i], multipole, r2))
+    if (!gravity_M2P_accept(grav_props, &gparts[i], multipole, r2, periodic))
       error("Using m-pole where the test fails");
 #endif
   }
