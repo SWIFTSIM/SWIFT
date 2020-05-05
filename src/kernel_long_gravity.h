@@ -91,7 +91,7 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   const float r_s_inv5 = r_s_inv4 * r_s_inv;
 
   /* Derivatives of \chi */
-  derivs->chi_0 = approx_erfcf(u);
+  derivs->chi_0 = erfcf(u);
   derivs->chi_1 = -r_s_inv;
   derivs->chi_2 = r_s_inv2 * u;
   derivs->chi_3 = -r_s_inv3 * (u2 - 0.5f);
@@ -158,7 +158,7 @@ __attribute__((const)) INLINE static float kernel_long_grav_pot_eval(
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
   const float arg1 = u * 0.5f;
-  return approx_erfcf(arg1);
+  return erfcf(arg1);
 
 #else
 
@@ -190,7 +190,7 @@ __attribute__((const)) INLINE static float kernel_long_grav_force_eval(
   const float arg1 = u * 0.5f;
   const float arg2 = -arg1 * arg1;
 
-  const float term1 = approx_erfcf(arg1);
+  const float term1 = erfcf(arg1);
   const float term2 = u * one_over_sqrt_pi * expf(arg2);
 
   return term1 + term2;
