@@ -2,7 +2,6 @@ Various hints on settings needed to get various MPIs running with SWIFT.
 
 Last update 5th May 2020.
 
-[[_TOC_]]
 
 ## Intel MPI
 
