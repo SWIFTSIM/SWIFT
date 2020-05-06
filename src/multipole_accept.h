@@ -192,7 +192,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float rho_B = B->r_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  // if (rho_B == 0.) error("Size of multipole B is 0!");
+  if (rho_B == 0.) error("Size of multipole B is 0!");
 #endif
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */

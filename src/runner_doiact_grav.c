@@ -791,12 +791,15 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
           gcount_j);
 #endif
 
+  const int allow_multipole_i = allow_mpole && ci->grav.count > 1;
+  const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
+
   /* Fill the caches */
-  gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
+  gravity_cache_populate(e->max_active_bin, allow_multipole_j, periodic, dim,
                          ci_cache, ci->grav.parts, gcount_i, gcount_padded_i,
                          shift_i, CoM_j, cj->grav.multipole, ci,
                          e->gravity_properties);
-  gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
+  gravity_cache_populate(e->max_active_bin, allow_multipole_i, periodic, dim,
                          cj_cache, cj->grav.parts, gcount_j, gcount_padded_j,
                          shift_j, CoM_i, ci->grav.multipole, cj,
                          e->gravity_properties);
@@ -1552,6 +1555,11 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
                             (float)(cj->grav.multipole->CoM[1]),
                             (float)(cj->grav.multipole->CoM[2])};
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cj->grav.count == 1)
+      error("Constructing cache for M2P interaction with multipole of size 0!");
+#endif
 
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
