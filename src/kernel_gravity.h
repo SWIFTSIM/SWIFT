@@ -209,10 +209,10 @@ __attribute__((const)) INLINE static float D_soft_5(const float u,
   error("Invalid choice of softening kernel shape");
 #endif
 
-  /* (phi'(u)/u)'/u = 105u^3 - 360u^2 + 420u - 168 */
-  float phi = 105.f * u - 360.f;
-  phi = phi * u + 420.f;
-  phi = phi * u - 168.f;
+  /* (phi'(u)/u)'/u = 35u^3 - 120u^2 + 140u - 56 */
+  float phi = 35.f * u - 120.f;
+  phi = phi * u + 140.f;
+  phi = phi * u - 56.f;
 
   return phi;
 }
@@ -223,7 +223,9 @@ __attribute__((const)) INLINE static float D_soft_7(const float u,
   error("Invalid choice of softening kernel shape");
 #endif
 
-  return 315.f * u - 720.f + 420.f * u_inv;
+  /* 21 u - 48 + 28 u^-1 */
+  /* 21 u - 48 + 28 u_inv */
+  return 21.f * u - 48.f + 28.f * u_inv;
 }
 
 __attribute__((const)) INLINE static float D_soft_9(const float u,
@@ -233,10 +235,10 @@ __attribute__((const)) INLINE static float D_soft_9(const float u,
   error("Invalid choice of softening kernel shape");
 #endif
 
-  /* -315 u^-1 + 420 u^-3 */
-  /* -315 u_inv + 420 u_inv^3 */
-  float phi = -420.f * u_inv;
-  phi = phi * u_inv + 315.f;
+  /* (1/3) u^-1 - (4/3) u^-3 */
+  /* (1/3) u_inv - (4/3) u_inv^3 */
+  float phi = 1.3333333f * u_inv;
+  phi = phi * u_inv + 0.3333333f;
   phi = phi * u_inv;
 
   return phi;
