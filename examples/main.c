@@ -617,27 +617,18 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Read the provided output selection file, if available. */
-  /* TODO: Consider changing the name of the swift_params struct to
-   * be yaml_params or something more general */
-  struct swift_params *select_output_params =
-      (struct swift_params *)malloc(sizeof(struct swift_params));
-  if (select_output_params == NULL) error("Error allocating memory for select output options.");
-  if (myrank == 0) {
-    char select_param_filename[PARSER_MAX_LINE_SIZE];
-    parser_get_opt_param_string(params, "Snapshots:select_output", select_param_filename, "NoSelectParamFilename");
-    if (strcmp("NoSelectParamFilename", select_param_filename)) {
-      message("Reading select output parameters from file '%s'", select_param_filename);
-      parser_read_file(select_param_filename, select_output_params);
-      parser_print_params(select_output_params);
-    }
-  }
-
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
-  MPI_Bcast(select_output_params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
+
+  /* Read the provided output selection file, if available. Best to
+   * do this after broadcasting the parameters as there may be code in this
+   * function that is repeated on each node based on the parameter file. */
+
+  struct output_options *output_options =
+      (struct output_options *)malloc(sizeof(struct output_options));
+  output_options_init(params, myrank, output_options);
 
   /* Temporary early aborts for modes not supported over MPI. */
 #ifdef WITH_MPI
@@ -1072,7 +1063,8 @@ int main(int argc, char *argv[]) {
         N_total[swift_type_dark_matter_background] > 0;
 
     /* Verify that the fields to dump actually exist */
-    if (myrank == 0) io_check_output_fields(select_output_params, N_total);
+    if (myrank == 0)
+      io_check_output_fields(output_options->select_output, N_total);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -1207,14 +1199,15 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(
-        &e, &s, params, select_output_params, N_total[swift_type_gas], N_total[swift_type_count],
-        N_total[swift_type_stars], N_total[swift_type_black_hole],
-        N_total[swift_type_dark_matter_background], engine_policies, talking,
-        &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
-        &entropy_floor, &gravity_properties, &stars_properties,
-        &black_holes_properties, &feedback_properties, &mesh, &potential,
-        &cooling_func, &starform, &chemistry, &fof_properties);
+    engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
+                N_total[swift_type_count], N_total[swift_type_stars],
+                N_total[swift_type_black_hole],
+                N_total[swift_type_dark_matter_background], engine_policies,
+                talking, &reparttype, &us, &prog_const, &cosmo,
+                &hydro_properties, &entropy_floor, &gravity_properties,
+                &stars_properties, &black_holes_properties,
+                &feedback_properties, &mesh, &potential, &cooling_func,
+                &starform, &chemistry, &fof_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, with_aff, talking, restart_file);
 

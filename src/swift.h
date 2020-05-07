@@ -59,6 +59,7 @@
 #include "minmax.h"
 #include "mpiuse.h"
 #include "multipole.h"
+#include "output_options.h"
 #include "outputlist.h"
 #include "parallel_io.h"
 #include "parser.h"

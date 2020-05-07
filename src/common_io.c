@@ -2348,7 +2348,9 @@ void io_check_output_fields(const struct swift_params* params,
       sprintf(section_name, "SelectOutput:");
       if (strstr(param_name, section_name) != NULL) {
         message("%s %s", param_name, section_name);
-        error("Output selection files no longer require the use of top level SelectOutput");
+        error(
+            "Output selection files no longer require the use of top level "
+            "SelectOutput");
         continue;
       }
 

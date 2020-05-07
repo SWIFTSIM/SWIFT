@@ -50,6 +50,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "memuse.h"
+#include "output_options.h"
 #include "part.h"
 #include "part_type.h"
 #include "star_formation_io.h"
@@ -727,7 +728,7 @@ void write_output_single(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
-  struct swift_params* select_output = e->select_output;
+  struct swift_params* select_output = e->output_options->select_output;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
