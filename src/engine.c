@@ -76,8 +76,8 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "mpiuse.h"
+#include "output_list.h"
 #include "output_options.h"
-#include "outputlist.h"
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
@@ -4743,7 +4743,7 @@ void engine_print_policy(struct engine *e) {
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
 
-  /* Do outputlist file case */
+  /* Do output_list file case */
   if (e->output_list_snapshots) {
     output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
                                &e->ti_next_snapshot);

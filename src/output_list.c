@@ -21,7 +21,7 @@
 #include "../config.h"
 
 /* This object's header. */
-#include "outputlist.h"
+#include "output_list.h"
 
 /* Local includes. */
 #include "cosmology.h"
@@ -36,12 +36,12 @@
 /**
  * @brief Read a file containing a list of time
  *
- * @param outputlist The #output_list to fill.
+ * @param output_list The #output_list to fill.
  * @param filename The file to read.
  * @param cosmo The #cosmology model.
  */
-void output_list_read_file(struct output_list *outputlist, const char *filename,
-                           struct cosmology *cosmo) {
+void output_list_read_file(struct output_list *output_list,
+                           const char *filename, struct cosmology *cosmo) {
 
   /* Open file */
   FILE *file = fopen(filename, "r");
@@ -53,12 +53,12 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
   size_t nber_line = 0;
   while (getline(&line, &len, file) != -1) nber_line++;
 
-  outputlist->size = nber_line - 1; /* Do not count header */
+  output_list->size = nber_line - 1; /* Do not count header */
 
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
-  outputlist->times = (double *)malloc(sizeof(double) * outputlist->size);
-  if (!outputlist->times)
+  output_list->times = (double *)malloc(sizeof(double) * output_list->size);
+  if (!output_list->times)
     error(
         "Unable to malloc output_list. "
         "Try reducing the number of lines in %s",
@@ -94,8 +94,8 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
   /* Read file */
   size_t ind = 0;
   while (getline(&line, &len, file) != -1) {
-    double *time = &outputlist->times[ind];
-    /* Write data to outputlist */
+    double *time = &output_list->times[ind];
+    /* Write data to output_list */
     if (sscanf(line, "%lf", time) != 1)
       error(
           "Tried parsing double but found '%s' with illegal double "
@@ -115,30 +115,30 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
   /* Cleanup */
   free(line);
 
-  if (ind != outputlist->size)
+  if (ind != output_list->size)
     error("Did not read the correct number of output times.");
 
   /* Check that the list is in monotonic order */
-  for (size_t i = 1; i < outputlist->size; ++i) {
+  for (size_t i = 1; i < output_list->size; ++i) {
 
     if ((type == OUTPUT_LIST_REDSHIFT) &&
-        (outputlist->times[i] <= outputlist->times[i - 1]))
+        (output_list->times[i] <= output_list->times[i - 1]))
       error("Output list not having monotonically decreasing redshifts.");
 
     if ((type == OUTPUT_LIST_AGE) &&
-        (outputlist->times[i] <= outputlist->times[i - 1]))
+        (output_list->times[i] <= output_list->times[i - 1]))
       error("Output list not having monotonically increasing ages.");
 
     if ((type == OUTPUT_LIST_SCALE_FACTOR) &&
-        (outputlist->times[i] <= outputlist->times[i - 1]))
+        (output_list->times[i] <= output_list->times[i - 1]))
       error("Output list not having monotonically increasing scale-factors.");
   }
 
   /* set current indice to 0 */
-  outputlist->cur_ind = 0;
+  output_list->cur_ind = 0;
 
   /* We check if this is true later */
-  outputlist->final_step_dump = 0;
+  output_list->final_step_dump = 0;
 
   fclose(file);
 }
@@ -238,12 +238,12 @@ void output_list_init(struct output_list **list, const struct engine *e,
   /* Read output on/off */
   char param_name[PARSER_MAX_LINE_SIZE];
   sprintf(param_name, "%s:output_list_on", name);
-  int outputlist_on = parser_get_opt_param_int(params, param_name, 0);
+  int output_list_on = parser_get_opt_param_int(params, param_name, 0);
 
-  /* Check if read outputlist */
-  if (!outputlist_on) return;
+  /* Check if read output_list */
+  if (!output_list_on) return;
 
-  /* Read outputlist for snapshots */
+  /* Read output_list for snapshots */
   *list = (struct output_list *)malloc(sizeof(struct output_list));
 
   /* Read filename */
@@ -270,26 +270,26 @@ void output_list_init(struct output_list **list, const struct engine *e,
 /**
  * @brief Print an #output_list
  */
-void output_list_print(const struct output_list *outputlist) {
+void output_list_print(const struct output_list *output_list) {
 
   printf("/*\t Time Array\t */\n");
-  printf("Number of Line: %zu\n", outputlist->size);
-  for (size_t ind = 0; ind < outputlist->size; ind++) {
-    if (ind == outputlist->cur_ind)
-      printf("\t%lf <-- Current\n", outputlist->times[ind]);
+  printf("Number of Line: %zu\n", output_list->size);
+  for (size_t ind = 0; ind < output_list->size; ind++) {
+    if (ind == output_list->cur_ind)
+      printf("\t%lf <-- Current\n", output_list->times[ind]);
     else
-      printf("\t%lf\n", outputlist->times[ind]);
+      printf("\t%lf\n", output_list->times[ind]);
   }
 }
 
 /**
  * @brief Clean an #output_list
  */
-void output_list_clean(struct output_list **outputlist) {
-  if (*outputlist) {
-    free((*outputlist)->times);
-    free(*outputlist);
-    *outputlist = NULL;
+void output_list_clean(struct output_list **output_list) {
+  if (*output_list) {
+    free((*output_list)->times);
+    free(*output_list);
+    *output_list = NULL;
   }
 }
 
