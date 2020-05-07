@@ -35,3 +35,16 @@ using the asynchronous progression settings:
 
 ## OpenMPI
 
+_Open MPI_ comes in many flavours with many combinations of underlying
+transport libraries and running on many different fabrics. A complete
+description of all combinations is beyond the scope of this guide.
+
+On Mellanox hardware, we have had success running version 4.0 with the
+UCX layer version 1.6 and using the following settings:
+
+```
+-mca coll_hcoll_enable 0
+UCX_TLS=ud_x,shm,self
+UCX_RC_MLX5_TM_ENABLE=n
+UCX_DC_MLX5_TM_ENABLE=n
+```
