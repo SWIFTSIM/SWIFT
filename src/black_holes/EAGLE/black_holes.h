@@ -479,7 +479,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
         r_times_v_tang * r_times_v_tang * r_times_v_tang;
     const double viscous_time = 2. * M_PI * r_times_v_tang_3 /
                                 (1e-6 * alpha_visc * G * G * BH_mass * BH_mass);
-    const double f_visc = max(Bondi_time / viscous_time, 1.);
+    const double f_visc = min(Bondi_time / viscous_time, 1.);
 
     /* Limit the Bondi rate by the Bondi viscuous time ratio */
     Bondi_rate *= f_visc;
