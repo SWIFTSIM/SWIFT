@@ -39,63 +39,63 @@
 #endif /* GADGET2_SOFTENING_CORRECTION */
 
 /**
- * @brief Computes the gravity softening function for potential.
+ * @brief Computes the gravity softening kernel for the potential.
  *
  * This functions assumes 0 < u < 1.
  *
- * @param u The ratio of the distance to the softening length $u = x/h$.
- * @param W (return) The value of the kernel function $W(x,h)$.
+ * @param u The ratio of the distance to the spline softening length $u = x/H$.
  */
-__attribute__((always_inline, nonnull)) INLINE static void kernel_grav_pot_eval(
-    const float u, float *const W) {
+__attribute__((const)) INLINE static float kernel_grav_pot_eval(const float u) {
 
+  float W;
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5f)
-    *W = -2.8f + u * u * (5.333333333333f + u * u * (6.4f * u - 9.6f));
+    W = -2.8f + u * u * (5.333333333333f + u * u * (6.4f * u - 9.6f));
   else
-    *W =
-        -3.2f + 0.066666666667f / u +
+    W = -3.2f + 0.066666666667f / u +
         u * u *
             (10.666666666667f + u * (-16.f + u * (9.6f - 2.133333333333f * u)));
 #else
 
   /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
-  *W = 3.f * u - 15.f;
-  *W = *W * u + 28.f;
-  *W = *W * u - 21.f;
-  *W = *W * u;
-  *W = *W * u + 7.f;
-  *W = *W * u;
-  *W = *W * u - 3.f;
+  W = 3.f * u - 15.f;
+  W = W * u + 28.f;
+  W = W * u - 21.f;
+  W = W * u;
+  W = W * u + 7.f;
+  W = W * u;
+  W = W * u - 3.f;
 #endif
+  return W;
 }
 
 /**
- * @brief Computes the gravity softening function for forces.
+ * @brief Computes the gravity softening kernel for the forces.
  *
  * This functions assumes 0 < u < 1.
  *
- * @param u The ratio of the distance to the softening length $u = x/h$.
- * @param W (return) The value of the kernel function $W(x,h)$.
+ * @param u The ratio of the distance to the spline softening length $u = x/H$.
  */
-__attribute__((always_inline, nonnull)) INLINE static void
-kernel_grav_force_eval(const float u, float *const W) {
+__attribute__((const)) INLINE static float kernel_grav_force_eval(
+    const float u) {
 
+  float W;
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5f)
-    *W = 10.6666667f + u * u * (32.f * u - 38.4f);
+    W = 10.6666667f + u * u * (32.f * u - 38.4f);
   else
-    *W = 21.3333333f - 48.f * u + 38.4f * u * u - 10.6666667f * u * u * u -
-         0.06666667f / (u * u * u);
+    W = 21.3333333f - 48.f * u + 38.4f * u * u - 10.6666667f * u * u * u -
+        0.06666667f / (u * u * u);
 #else
 
   /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
-  *W = 21.f * u - 90.f;
-  *W = *W * u + 140.f;
-  *W = *W * u - 84.f;
-  *W = *W * u;
-  *W = *W * u + 14.f;
+  W = 21.f * u - 90.f;
+  W = W * u + 140.f;
+  W = W * u - 84.f;
+  W = W * u;
+  W = W * u + 14.f;
 #endif
+  return W;
 }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

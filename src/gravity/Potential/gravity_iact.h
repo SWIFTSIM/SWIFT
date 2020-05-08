@@ -62,10 +62,8 @@ runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
 
     const float r = r2 * r_inv;
     const float ui = r * h_inv;
-
-    float W_f_ij, W_pot_ij;
-    kernel_grav_force_eval(ui, &W_f_ij);
-    kernel_grav_pot_eval(ui, &W_pot_ij);
+    const float W_f_ij = kernel_grav_force_eval(ui);
+    const float W_pot_ij = kernel_grav_pot_eval(ui);
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
@@ -109,10 +107,8 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
   } else {
 
     const float ui = r * h_inv;
-    float W_f_ij, W_pot_ij;
-
-    kernel_grav_force_eval(ui, &W_f_ij);
-    kernel_grav_pot_eval(ui, &W_pot_ij);
+    const float W_f_ij = kernel_grav_force_eval(ui);
+    const float W_pot_ij = kernel_grav_pot_eval(ui);
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
