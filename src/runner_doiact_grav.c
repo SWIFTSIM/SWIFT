@@ -538,7 +538,11 @@ static INLINE void runner_dopair_grav_pm_full(
 
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-    // MATTHIEU: Do we want a check that the particle can indeed use M2P?
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+                            cj->grav.multipole, r2 * 1.01, periodic))
+      error("use_mpole[i] set when M2P accept fails");
+#endif
 
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
@@ -670,7 +674,11 @@ static INLINE void runner_dopair_grav_pm_truncated(
 
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-    // MATTHIEU: Do we want a check that the particle can indeed use M2P?
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+                            cj->grav.multipole, r2 * 1.01, /*periodic=*/1))
+      error("use_mpole[i] set when M2P accept fails");
+#endif
 
     /* Interact! */
     float f_x, f_y, f_z, pot_ij;
