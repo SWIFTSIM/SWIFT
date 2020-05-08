@@ -51,9 +51,10 @@ r^{-3} & \mbox{if} & r \geq H,
 \end{align}
 with $g(u) \equiv f'(u)/u = -21u^5+90u^4-140u^3+84u^2-14$. This last
 expression has the advantage of not containing any divisions or
-branching, making it faster to evaluate than the softened force
-derived from the \cite{Monaghan1985} spline kernel. Note also, the
-useful expression for the norm of the forces:
+branching (besides the always necessary check for $r<H$), making it
+faster to evaluate than the softened force derived from the
+\cite{Monaghan1985} spline kernel. Note also, the useful expression
+for the norm of the forces:
 \begin{align}
 |\mathbf{\nabla}\varphi(r,H)| = 
 \left\lbrace\begin{array}{rcl}
@@ -68,8 +69,6 @@ resulting forces are shown on Fig. \ref{fig:fmm:softening} (for more
 details about how these are constructed see section 2
 of~\cite{Price2007}). For comparison purposes, we also implemented the
 more traditional spline-kernel softening in \swift.
-
-
 \begin{figure}
 \includegraphics[width=\columnwidth]{potential.pdf}
 \caption{The density (top), potential (middle) and forces (bottom)
@@ -81,3 +80,9 @@ more traditional spline-kernel softening in \swift.
   potential at $r=H$ to better highlight the differences in shapes.}
 \label{fig:fmm:softening}
 \end{figure}
+Users specify the value of the Plummer-equivalent softening
+$\epsilon_{\rm Plummer}$ in the parameter file.
+
+\subsubsection{Interaction of bodies with different softening lengths}
+
+\textcolor{red}{MORE WORDS HERE.}\\
