@@ -2,18 +2,17 @@
 \label{ssec:potential_softening}
 
 To avoid artificial two-body relaxation, the Dirac
-$\delta$-distribution of particles is convolved with a softening
-kernel of a given fixed, but time-variable, scale-length
-$\epsilon$. Instead of the commonly used spline kernel of
+$\delta$-distribution corresponding to each particle is convolved with
+a softening kernel of a given fixed, but time-variable, scale-length
+$H$. Instead of the commonly used spline kernel of
 \cite{Monaghan1985} (e.g. in \textsc{Gadget}), we use a C2 kernel
 \citep{Wendland1995} which leads to an expression for the force that
 is cheaper to compute and has a very similar overall shape. The C2
 kernel has the advantage of being branch-free leading to an expression
 which is faster to evaluate using vector units available on modern
 architectures; it also does not require any divisions to evaluate the
-softened forces. We set
-$\tilde\delta(\mathbf{x}) = \rho(|\mathbf{x}|) = W(|\mathbf{x}|,
-3\epsilon_{\rm Plummer})$, with $W(r, H)$ given by
+softened forces. We set $\tilde\delta(\mathbf{r}) = \rho(|\mathbf{r}|)
+= W(|\mathbf{r}|, 3\epsilon_{\rm Plummer})$, with $W(r, H)$ given by
 
 \begin{align}
 W(r,H) &= \frac{21}{2\pi H^3} \times \nonumber \\
@@ -25,25 +24,50 @@ W(r,H) &= \frac{21}{2\pi H^3} \times \nonumber \\
 \end{align}
 and $u = r/H$. The potential $\varphi(r,H)$ corresponding to this density distribution reads
 \begin{align}
-\varphi = 
+\varphi(r,H) = 
 \left\lbrace\begin{array}{rcl}
-\frac{1}{H} (-3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3) & \mbox{if} & u < 1,\\
-\frac{1}{r} & \mbox{if} & u \geq 1.
+f(\frac{r}{H}) \times H^{-1} & \mbox{if} & r < H,\\
+r^{-1} & \mbox{if} & r \geq H,
 \end{array}
 \right.
 \label{eq:fmm:potential}
 \end{align}
-
-These choices, lead to a potential at $|\mathbf{x}| = 0$ equal to the
-central potential of a Plummer sphere (i.e.
-$\varphi(0) = 1/\epsilon_{\rm Plummer}$)\footnote{Note the factor $3$
-  in the definition of $\rho(|\mathbf{x}|)$ which differs from the
-  factor $2.8$ used in \textsc{Gadget} as a consequence of the change
-  of kernel shape.}. The softened density profile, its corresponding
-potential and resulting forces are shown on
-Fig. \ref{fig:fmm:softening} (for details of these are obtained see
-section 2 of~\cite{Price2007}). For comparison purposes, we also
-implemented the more traditional spline-kernel softening in \swift.
+with $f(u) \equiv -3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3$. These
+choices lead to a potential at $|\mathbf{x}| = 0$ equal to the central
+potential of a Plummer sphere (i.e. $\varphi(0) = 1/\epsilon_{\rm
+  Plummer}$)\footnote{Note the factor $3$ in the definition of
+  $\rho(|\mathbf{x}|)$ which differs from the factor $2.8$ used for
+  the cubic spline kernel as a consequence of the change of the functional
+  form of $W$.}. From this expression the softened gravitational force can
+be easily obtained:
+\begin{align}
+\mathbf{\nabla}\varphi(r,H) = \mathbf{r} \cdot
+\left\lbrace\begin{array}{rcl}
+g(\frac{r}{H}) \times H^{-3} & \mbox{if} & r < H,\\
+r^{-3} & \mbox{if} & r \geq H,
+\end{array}
+\right.
+\label{eq:fmm:force}
+\end{align}
+with $g(u) \equiv f'(u)/u = -21u^5+90u^4-140u^3+84u^2-14$. This last
+expression has the advantage of not containing any divisions or
+branching, making it faster to evaluate than the softened force
+derived from the \cite{Monaghan1985} spline kernel. Note also, the
+useful expression for the norm of the forces:
+\begin{align}
+|\mathbf{\nabla}\varphi(r,H)| = 
+\left\lbrace\begin{array}{rcl}
+f'(\frac{r}{H}) \times H^{-2} & \mbox{if} & r < H,\\
+r^{-2} & \mbox{if} & r \geq H.
+\end{array}
+\right.
+\label{eq:fmm:force}
+\end{align}
+The softened density profile, its corresponding potential and
+resulting forces are shown on Fig. \ref{fig:fmm:softening} (for more
+details about how these are constructed see section 2
+of~\cite{Price2007}). For comparison purposes, we also implemented the
+more traditional spline-kernel softening in \swift.
 
 
 \begin{figure}
@@ -51,8 +75,9 @@ implemented the more traditional spline-kernel softening in \swift.
 \caption{The density (top), potential (middle) and forces (bottom)
   generated py a point mass in our softened gravitational scheme.  A
   Plummer-equivalent sphere is shown for comparison. The spline kernel
-  of \citet{Monaghan1985}, used for instance in \textsc{Gadget}, is
-  shown for comparison but note that it has not been re-scaled to
-  match the Plummer-sphere potential at $r=0$.  }
+  of \citet{Monaghan1985} is also depicted but note that it has not
+  been normalised to match the Plummer-sphere potential at $r=0$ (as
+  is done in simulations) but rather normalised to the Newtonian
+  potential at $r=H$ to better highlight the differences in shapes.}
 \label{fig:fmm:softening}
 \end{figure}
