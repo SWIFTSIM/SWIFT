@@ -220,11 +220,6 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   const int periodic, const float r_s_inv,
                                   struct potential_derivatives_M2L *pot) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-// if (r2 < 0.99f * eps * eps)
-//  error("Computing M2L derivatives below softening length");
-#endif
-
   float Dt_1;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   float Dt_3;
@@ -247,8 +242,8 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 
     const float eps_inv = 1.f / eps;
     const float r = r2 * r_inv;
-    const float u = r * eps_inv;
-    const float u_inv = r_inv * eps;
+    const float u = max(r * eps_inv, 0.01f);
+    const float u_inv = min(r_inv * eps, 100.f);
 
     Dt_1 = -eps_inv * D_soft_1(u, u_inv);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -484,11 +479,6 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const int periodic, const float r_s_inv,
                                   struct potential_derivatives_M2P *pot) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-// if (r2 < 0.99f * eps * eps)
-//  error("Computing M2P derivatives below softening length");
-#endif
-
   float Dt_1;
   float Dt_3;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -509,8 +499,8 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
 
     const float eps_inv = 1.f / eps;
     const float r = r2 * r_inv;
-    const float u = r * eps_inv;
-    const float u_inv = r_inv * eps;
+    const float u = max(r * eps_inv, 0.01f);
+    const float u_inv = min(r_inv * eps, 100.f);
 
     Dt_1 = -eps_inv * D_soft_1(u, u_inv);
     const float eps_inv2 = eps_inv * eps_inv;
