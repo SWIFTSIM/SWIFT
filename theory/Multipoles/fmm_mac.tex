@@ -189,7 +189,25 @@ f_{\rm MAC}(r) =
 \right.
 \label{eq:fmm:f_mac}
 \end{align}
-This esimator is shown as a dot-dashed line on
-Fig. \ref{fig:fmm:mac_potential} and obeys the relation $f_{\rm SWIFT}(r)
-\leq f_{\rm MAC}(r) \leq 1/r^2$, with $f_{\rm SWIFT}(r)$ the true
-truncated and softened forces (green line).
+Since it is made of constants and even powers of the distance,
+computin this term is much cheaper than the true forces.  This
+esimator is shown as a dot-dashed line on
+Fig. \ref{fig:fmm:mac_potential} and obeys the relation $f_{\rm
+  SWIFT}(r) \leq f_{\rm MAC}(r) \leq 1/r^2$, with $f_{\rm SWIFT}(r)$
+being the true truncated and softened norm of the gravity forces the
+code solves for (green line). We use this expression in the multipole
+acceptance criterion instead of the $1/|\mathbf{R}|$ term:
+\begin{equation}
+  \tilde{E}_{BA,p} M_Bf_{\rm MAC}(|\mathbf{R}|) < \epsilon_{\rm FMM} \min_{a\in
+    A}\left(|\mathbf{a}_a|\right).
+  \label{eq:fmm:mac_f_mac}  
+\end{equation}
+The same change is applied to the MAC used of the M2P kernel
+(eq. \ref{eq:fmm:mac_m2p}). In the non-truncated un-softened case, this
+expression reduces to \citep{Dehnen2014} one. Using this expression
+instead of the simpler Newtonian one only makes a difference in
+simulations where a lot of particles cluster below the scale of the
+softening, which is often the case for hydrodynamical simulations
+including radiative cooling processes. The use of this term over the
+simpler $1/r^2$ estimator is a runtime parameter.
+
