@@ -116,8 +116,8 @@ struct gravity_props {
    * a_smooth */
   float r_cut_max_ratio;
 
-  /*! Inverse of the long-range gravity mesh scale. */
-  float r_s_inv;
+  /*! Long-range gravity mesh scale. */
+  float r_s;
 
   /*! Are we dithering the particles at every rebuild? */
   int with_dithering;

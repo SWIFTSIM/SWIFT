@@ -30,6 +30,33 @@
 #include "multipole_struct.h"
 
 /**
+ * @brief Compute the inverse of the force estimator entering the MAC
+ *
+ * @param H The spline softening length.
+ * @param r_s The scale of the gravity mesh.
+ * @param r2 The square of the distance between the multipoles.
+ */
+__attribute__((const)) INLINE static float gravity_f_MAC_inverse(
+    const float H, const float r_s, const float r2) {
+
+  if (r2 < (25.f / 81.f) * H * H) {
+
+    /* Below softening radius */
+    return (25.f / 81.f) * H * H;
+
+  } else if (r2 > (25.f / 9.f) * r_s * r_s) {
+
+    /* Above truncation radius */
+    return (25.f / 9.f) * r_s * r_s * r2 * r2;
+
+  } else {
+
+    /* Normal Newtonian case */
+    return r2;
+  }
+}
+
+/**
  * @brief Checks whether The multipole in B can be used to update the field
  * tensor in A.
  *
@@ -58,6 +85,10 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const float rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
   const float rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
+  /* Get the softening */
+  const float max_softening =
+      max(A->m_pole.max_softening, B->m_pole.max_softening);
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (rho_A == 0.) error("Size of multipole A is 0!");
   if (rho_B == 0.) error("Size of multipole B is 0!");
@@ -70,36 +101,25 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
         binomial(p, n) * B->m_pole.power[n] * integer_powf(rho_A, p - n);
   }
   E_BA_term *= 8.f;
-  if (rho_A != 0. && rho_B != 0.) {
-    E_BA_term *= max(rho_A, rho_B);
-    E_BA_term /= (rho_A + rho_B);
-  }
+  E_BA_term *= max(rho_A, rho_B);
+  E_BA_term /= (rho_A + rho_B);
 
-  float r_to_p_plus2, W;
-  if (periodic && props->consider_truncation_in_MAC) {
-
-    /* Compute r^(p+2) and the long-range correction */
-    const float r = sqrtf(r2);
-    r_to_p_plus2 = integer_powf(r, (p + 2));
-    W = kernel_long_grav_force_eval(r * props->r_s_inv);
-
-  } else {
-
-  /* Compute r^(p+2) */
+  /* Compute r^p */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-    r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
+  const float r_to_p = integer_powf(sqrtf(r2), p);
 #else
-    r_to_p_plus2 = integer_powf(r2, ((p / 2) + 1));
+  const float r_to_p = integer_powf(r2, (p / 2));
 #endif
-    W = 1.f;
+
+  float f_MAC_inv;
+  if (props->consider_truncation_in_MAC) {
+    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s, r2);
+  } else {
+    f_MAC_inv = r2;
   }
 
   /* Get the mimimal acceleration in A */
   const float min_a_grav = A->m_pole.min_old_a_grav_norm;
-
-  /* Get the maximal softening length in B */
-  const float max_softening =
-      max(A->m_pole.max_softening, B->m_pole.max_softening);
 
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
@@ -128,7 +148,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
 
     /* Condition 3: The contribution is accurate enough
      * (E_BA * (1 / r^(p)) * ((1 / r^2) * W) < eps * a_min) */
-    const int cond_3 = E_BA_term * W < eps * min_a_grav * r_to_p_plus2;
+    const int cond_3 = E_BA_term < eps * min_a_grav * r_to_p * f_MAC_inv;
 
     return cond_1 && cond_2 && cond_3;
 
@@ -191,6 +211,10 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   /* Sizes of the multipoles */
   const float rho_B = B->r_max;
 
+  /* Get the maximal softening */
+  const float max_softening =
+      max(B->m_pole.max_softening, gravity_get_softening(pa, props));
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (rho_B == 0.) error("Size of multipole B is 0!");
 #endif
@@ -198,31 +222,22 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
   const float E_BA_term = 8.f * B->m_pole.power[p];
 
-  float r_to_p_plus2, W;
-  if (periodic && props->consider_truncation_in_MAC) {
-
-    /* Compute r^(p+2) and the long-range correction */
-    const float r = sqrtf(r2);
-    r_to_p_plus2 = integer_powf(r, (p + 2));
-    W = kernel_long_grav_force_eval(r * props->r_s_inv);
-
-  } else {
-
-  /* Compute r^(p+2) */
+  /* Compute r^p */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-    r_to_p_plus2 = integer_powf(sqrtf(r2), (p + 2));
+  const float r_to_p = integer_powf(sqrtf(r2), p);
 #else
-    r_to_p_plus2 = integer_powf(r2, ((p / 2) + 1));
+  const float r_to_p = integer_powf(r2, (p / 2));
 #endif
-    W = 1.f;
+
+  float f_MAC_inv;
+  if (props->consider_truncation_in_MAC) {
+    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s, r2);
+  } else {
+    f_MAC_inv = r2;
   }
 
   /* Get the estimate of the acceleration */
   const float old_a_grav = pa->old_a_grav_norm;
-
-  /* Get the maximal softening length in B */
-  const float max_softening =
-      max(B->m_pole.max_softening, gravity_get_softening(pa, props));
 
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
@@ -248,7 +263,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
 
     /* Condition 3: The contribution is accurate enough
      * (E_BA * (1 / r^(p)) * ((1 / r^2) * W) < eps * a_min) */
-    const int cond_3 = E_BA_term * W < eps * old_a_grav * r_to_p_plus2;
+    const int cond_3 = E_BA_term < eps * old_a_grav * r_to_p * f_MAC_inv;
 
     return cond_1 && cond_2 && cond_3;
 
