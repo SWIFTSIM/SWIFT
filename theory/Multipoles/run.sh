@@ -14,6 +14,11 @@ then
     echo "Generating derivative figures..."
     python plot_derivatives.py
 fi
+if [ ! -e mac_potential.pdf ]
+then
+    echo "Generating derivative figures..."
+    python3 plot_mac_potential.py
+fi
 echo "Generating PDF..."
 pdflatex -jobname=fmm fmm_standalone.tex
 bibtex fmm.aux
