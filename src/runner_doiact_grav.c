@@ -1060,8 +1060,14 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   } else { /* Periodic BC */
 
     /* Get the relative distance between the CoMs */
-    const double dx[3] = {CoM_j[0] - CoM_i[0], CoM_j[1] - CoM_i[1],
-                          CoM_j[2] - CoM_i[2]};
+    double dx[3] = {CoM_j[0] - CoM_i[0], CoM_j[1] - CoM_i[1],
+                    CoM_j[2] - CoM_i[2]};
+
+    /* Correct for periodic BCs */
+    dx[0] = nearestf(dx[0], dim[0]);
+    dx[1] = nearestf(dx[1], dim[1]);
+    dx[2] = nearestf(dx[2], dim[2]);
+
     const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Get the maximal distance between any two particles */
