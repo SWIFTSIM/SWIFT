@@ -6393,8 +6393,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Check for trivial cases */
-  if (ci->grav.count < 2) return 0;
-  if (cj->grav.count < 2) return 0;
+  if (ci->grav.count < VEC_SIZE) return 0;
+  if (cj->grav.count < VEC_SIZE) return 0;
 
   /* Recover the multipole information */
   const struct gravity_tensors *const multi_i = ci->grav.multipole;
