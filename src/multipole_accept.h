@@ -24,6 +24,7 @@
 
 /* Local includes */
 #include "binomial.h"
+#include "gravity_properties.h"
 #include "integer_power.h"
 #include "kernel_long_gravity.h"
 #include "minmax.h"
