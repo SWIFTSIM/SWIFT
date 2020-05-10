@@ -67,9 +67,6 @@ struct line_of_sight {
   /* Dimensions of the space. */
   double dim[3];
 
-  /* Flag what top level cells this LOS intersects with */
-  int *cells_top;
-
   /* How many top level cells does ths LOS intersect? */
   int num_intersecting_top_level_cells;
 };
@@ -101,7 +98,7 @@ struct los_props {
 };
 
 double los_periodic(double x, double dim);
-void generate_line_of_sights(struct line_of_sight *Los,
+void generate_sightlines(struct line_of_sight *Los,
                              const struct los_props *params,
                              const int periodic, const double dim[3]);
 void print_los_info(const struct line_of_sight *Los, const int i);
@@ -113,14 +110,15 @@ void write_los_hdf5_datasets(hid_t grp, int j, size_t N, const struct part* part
 void write_los_hdf5_dataset(const struct io_props p, size_t N, int j, struct engine* e, hid_t grp);
 void write_hdf5_header(hid_t h_file, const struct engine *e, const struct los_props* LOS_params,
         const size_t total_num_parts_in_los);
-void create_line_of_sight(const double Xpos, const double Ypos,
+void create_sightline(const double Xpos, const double Ypos,
         enum los_direction xaxis, enum los_direction yaxis, enum los_direction zaxis,
         const int periodic, const double dim[3], struct line_of_sight *los);
 void los_struct_dump(const struct los_props *internal_los,
                             FILE *stream);
 void los_struct_restore(const struct los_props *internal_los,
                                        FILE *stream);
-void find_intersecting_top_level_cells(const struct engine *e, struct line_of_sight *los);
 int does_los_intersect(const struct cell *c, const struct line_of_sight *los);
+void find_intersecting_top_level_cells(const struct engine *e,
+                        struct line_of_sight *los, int *los_cells_top);
 
 #endif /* SWIFT_LOS_H */ 
