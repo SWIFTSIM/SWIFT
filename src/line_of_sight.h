@@ -66,6 +66,12 @@ struct line_of_sight {
 
   /* Dimensions of the space. */
   double dim[3];
+
+  /* Flag what top level cells this LOS intersects with */
+  int *cells_top;
+
+  /* How many top level cells does ths LOS intersect? */
+  int num_intersecting_top_level_cells;
 };
 
 struct los_props {
@@ -114,5 +120,7 @@ void los_struct_dump(const struct los_props *internal_los,
                             FILE *stream);
 void los_struct_restore(const struct los_props *internal_los,
                                        FILE *stream);
+void find_intersecting_top_level_cells(const struct engine *e, struct line_of_sight *los);
+int does_los_intersect(const struct cell *c, const struct line_of_sight *los);
 
 #endif /* SWIFT_LOS_H */ 

@@ -160,9 +160,8 @@ void create_line_of_sight(const double Xpos, const double Ypos,
  */
 void print_los_info(const struct line_of_sight *Los, const int i) {
 
-  message("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%li", i,
-        Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total);
-  fflush(stdout);
+  message("[LOS %i] Xpos:%g Ypos:%g particles_in_los_total:%li num_intersecting_top_level_cells:%i", i,
+        Los[i].Xpos, Los[i].Ypos, Los[i].particles_in_los_total, Los[i].num_intersecting_top_level_cells);
 }
 
 /**
@@ -176,7 +175,7 @@ void los_first_loop_mapper(void *restrict map_data, int count,
                            void *restrict extra_data) {
 
   size_t los_particle_count = 0;
-  double dx, dy, r2, hsml;
+  double dx, dy, dx2, dy2, hsml, hsml2;
   struct line_of_sight *restrict LOS_list = (struct line_of_sight *)extra_data;
   struct part *restrict parts = (struct part *)map_data;
 
@@ -192,23 +191,27 @@ void los_first_loop_mapper(void *restrict map_data, int count,
     /* Periodic wrap. */
     if (LOS_list->periodic) dx = nearest(dx, LOS_list->dim[LOS_list->xaxis]);
 
+    dx2 = dx * dx;
+
     /* Smoothing length of this part. */
     hsml = parts[i].h * kernel_gamma;
+    hsml2 = hsml * hsml;
 
     /* Does this particle fall into our LOS? */
-    if (dx <= hsml) {
+    if (dx2 < hsml2) {
       /* Distance from this part to LOS along y dim. */
       dy = parts[i].x[LOS_list->yaxis] - LOS_list->Ypos;
     
       /* Periodic wrap. */
       if (LOS_list->periodic) dy = nearest(dy, LOS_list->dim[LOS_list->yaxis]);
 
-      /* Does this part still fall into our LOS? */
-      if (dy <= hsml) {
-        /* 2D distance to LOS. */
-        r2 = dx * dx + dy * dy;
+      dy2 = dy * dy;
 
-        if (r2 <= hsml * hsml) {
+      /* Does this part still fall into our LOS? */
+      if (dy2 < hsml2) {
+        
+        /* 2D distance to LOS. */
+        if (dx2 + dy2 <= hsml2) {
 
           /* We've found one. */
           los_particle_count++;
@@ -218,6 +221,102 @@ void los_first_loop_mapper(void *restrict map_data, int count,
   } /* End of loop over all parts */
 
   atomic_add(&LOS_list->particles_in_los_local, los_particle_count);
+}
+
+/**
+ * @brief Find all top level cells that a LOS will intersect.
+ * 
+ * This includes the top level cells the LOS directly passes through
+ * and the neighbouring top level cells whose parts could smooth into the LOS.
+ * 
+ * @param e The engine.
+ * @param los The line_of_sight structure.
+ */
+void find_intersecting_top_level_cells(const struct engine *e,
+                struct line_of_sight *los) {
+  
+  /* Recover the list of top-level cells */
+  const struct cell *cells = e->s->cells_top;
+  const int *local_cells_with_particles = e->s->local_cells_with_particles_top;
+  const int nr_local_cells_with_particles = e->s->nr_local_cells_with_particles;
+
+  int num_intersecting_top_level_cells = 0;
+
+  /* Start with an empty top level cell list for this LOS */
+  if ((los->cells_top = (int *)swift_malloc("tl_cells_los",
+    nr_local_cells_with_particles * sizeof(int))) == NULL)
+      error("Failed to allocate LOS top level cells array.");
+  for (int n = 0; n < nr_local_cells_with_particles; n++) los->cells_top[n] = 0; 
+
+  /* Loop over each top level cell */
+  for (int n = 0; n < nr_local_cells_with_particles; n++) {
+    
+    /* This top level cell. */
+    const struct cell *c = &cells[local_cells_with_particles[n]];
+
+    if (does_los_intersect(c, los)) {
+      num_intersecting_top_level_cells++;
+      los->cells_top[n] = 1;
+    }
+  }
+
+#ifdef WITH_MPI
+  const int nr_nodes = e->nr_nodes;
+  if (MPI_Allreduce(MPI_IN_PLACE, &num_intersecting_top_level_cells,
+        nr_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to allreduce num_intersecting_top_level_cells."); 
+#endif
+
+  /* Store how many top level cells this LOS intersects. */
+  los->num_intersecting_top_level_cells = num_intersecting_top_level_cells;
+}
+
+/**
+ * @brief Will the line of sight intersect a given top level cell?
+ * 
+ * @param c The top level cell.
+ * @param los The line of sight structure.
+ */
+int does_los_intersect(const struct cell *c, const struct line_of_sight *los) {
+
+  /* Empty cell? */
+  if (c->hydro.count == 0) return 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.h_max <= 0.) error("Invalid h_max for does_los_intersect");
+#endif
+
+  const double cx_min = c->loc[los->xaxis];
+  const double cy_min = c->loc[los->yaxis];
+
+  const double cx_max = c->loc[los->xaxis] + c->width[los->xaxis];
+  const double cy_max = c->loc[los->yaxis] + c->width[los->yaxis];
+
+  const double hsml = c->hydro.h_max * kernel_gamma;
+  const double hsml2 = hsml * hsml;
+
+  double dx, dy;
+
+  if (los->periodic) {
+    dx = min(fabs(nearest(cx_min - los->Xpos, los->dim[los->xaxis])),
+             fabs(nearest(cx_max - los->Xpos, los->dim[los->xaxis])));
+    dy = min(fabs(nearest(cy_min - los->Ypos, los->dim[los->yaxis])),
+             fabs(nearest(cy_max - los->Ypos, los->dim[los->yaxis])));
+  } else {
+    dx = fabs(cx_max - los->Xpos);
+    dy = fabs(cy_max - los->Ypos);
+  }
+
+  /* Is line of sight directly within this top level cell? */
+  if (dx < (1.01*c->width[los->xaxis])/2. && dy < (1.01*c->width[los->yaxis])/2.) {
+    return 1;
+  /* Could a part from this top level cell smooth into the line of sight? */
+  } else if (dx * dx + dy * dy < hsml2) {
+    return 1;
+  /* Don't need to work with this top level cell. */
+  } else {
+    return 0;
+  }
 }
 
 /**
@@ -238,11 +337,8 @@ void do_line_of_sight(struct engine *e) {
   const ticks tic = getticks();
 
   const struct space *s = e->s;
-  struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const size_t nr_parts = s->nr_parts;
   const struct los_props *LOS_params = e->los_properties;
   const int verbose = e->verbose;
 
@@ -250,7 +346,6 @@ void do_line_of_sight(struct engine *e) {
   struct line_of_sight *LOS_list = (struct line_of_sight *)malloc(
       LOS_params->num_tot * sizeof(struct line_of_sight));
   if (e->nodeID == 0) {
-      if (verbose) message("Generating random sightlines...");
       generate_line_of_sights(LOS_list, LOS_params, periodic, dim);
       if (verbose) message("Generated %i random sightlines.", LOS_params->num_tot);
   }
@@ -273,42 +368,78 @@ void do_line_of_sight(struct engine *e) {
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-  /* Keep track of the total number of parts in all LOSs. */
+  /* Keep track of the total number of parts in all sightlines. */
   size_t total_num_parts_in_los = 0;
 
+  /* ------------------------------- */
   /* Main loop over each random LOS. */
+  /* ------------------------------- */
+  const struct cell *cells = e->s->cells_top;
+  const int *local_cells_with_particles = e->s->local_cells_with_particles_top;
+  const int nr_local_cells_with_particles = s->nr_local_cells_with_particles;  
+
   for (int j = 0; j < LOS_params->num_tot; j++) {
 
-    /* First count all parts that intersect with this line of sight */
+    /* Start by finding all top level cells this LOS will intersect. */
+    find_intersecting_top_level_cells(e, &LOS_list[j]);
+
+    /* Next count all the parts that intersect with this line of sight */
+    for (int n = 0; n < nr_local_cells_with_particles; n++) {
+      if (LOS_list[j].cells_top[n] == 1) {
+        const struct cell *c = &cells[local_cells_with_particles[n]];
+        threadpool_map(&s->e->threadpool, los_first_loop_mapper, c->hydro.parts,
+                  c->hydro.count, sizeof(struct part), threadpool_auto_chunk_size,
+                  &LOS_list[j]);
+      }
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Confirm we are capturing all the parts that intersect the LOS by redoing
+     * the count looping over all parts in the space (not just those in the subset
+     * of top level cells). */
+
+    struct part *parts = s->parts;
+    const size_t nr_parts = s->nr_parts;
+    const size_t old_particles_in_los_local = LOS_list[j].particles_in_los_local;
+    LOS_list[j].particles_in_los_local = 0;
+
+    /* Count all parts that intersect with this line of sight. */
     threadpool_map(&s->e->threadpool, los_first_loop_mapper, parts,
               nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
               &LOS_list[j]);
 
+    /* Make sure we get the same answer as above. */
+    if (old_particles_in_los_local != LOS_list[j].particles_in_los_local)
+        error("Space vs cells don't match s:%li != c:%li",
+                LOS_list[j].particles_in_los_local,
+                old_particles_in_los_local);
+#endif
+
 #ifdef WITH_MPI
+    message("%i", e->nr_nodes);
     /* Make sure all nodes know how many parts are in this LOS */
-    int LOS_counts[e->nr_nodes];
-    int LOS_disps[e->nr_nodes];
+    int *counts = (int *)malloc(sizeof(int) * e->nr_nodes);
+    int *offsets = (int *)malloc(sizeof(int) * e->nr_nodes);
 
     /* How many parts does each rank have for this LOS? */
     MPI_Allgather(&LOS_list[j].particles_in_los_local, 1, MPI_INT,
-                  &LOS_counts, 1, MPI_INT, MPI_COMM_WORLD);
+                  &counts, 1, MPI_INT, MPI_COMM_WORLD);
 
-    for (int k = 0, disp_count = 0; k < e->nr_nodes; k++) {
+    for (int k = 0, offset_count = 0; k < e->nr_nodes; k++) {
       /* Total parts in this LOS. */
-      LOS_list[j].particles_in_los_total += LOS_counts[k];
+      LOS_list[j].particles_in_los_total += counts[k];
 
-      /* Counts and disps for Gatherv. */
-      LOS_disps[k] = disp_count;
-      disp_count += LOS_counts[k];
+      /* Counts and offsets for Gatherv. */
+      offsets[k] = offset_count;
+      offset_count += counts[k];
     }
 #else
     LOS_list[j].particles_in_los_total = LOS_list[j].particles_in_los_local;
 #endif
     total_num_parts_in_los += LOS_list[j].particles_in_los_total;
 
-#ifdef SWIFT_DEBUG_CHECKS
+    /* Print information about this LOS */
     if (e->nodeID == 0) print_los_info(LOS_list, j);
-#endif
 
     /* Don't work with empty LOS */
     if (LOS_list[j].particles_in_los_total == 0) {
@@ -341,42 +472,58 @@ void do_line_of_sight(struct engine *e) {
 
     /* Loop over each part again, pulling out those in LOS. */
     size_t count = 0;
-    double dx, dy, r2, hsml;
+    double dx, dy, dx2, dy2, hsml, hsml2;
 
-    for (size_t i = 0; i < nr_parts; i++) {
+    for (int n = 0; n < e->s->nr_local_cells_with_particles; ++n) {
 
-      /* Don't consider inhibited parts. */
-      if (parts[i].time_bin == time_bin_inhibited) continue;
+      if (LOS_list[j].cells_top[n] == 0) continue;
 
-      /* Distance from this part to LOS along x dim. */
-      dx = parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
+      const struct cell *c = &cells[local_cells_with_particles[n]];
+      const struct part *cell_parts = c->hydro.parts;
+      const struct xpart *cell_xparts = c->hydro.xparts;
+      const size_t num_parts_in_cell = c->hydro.count;
 
-      /* Periodic wrap. */
-      if (LOS_list[j].periodic) dx = nearest(dx, LOS_list[j].dim[LOS_list[j].xaxis]);
+      for (size_t i = 0; i < num_parts_in_cell; i++) {
 
-      /* Smoothing length of this part. */
-      hsml = parts[i].h * kernel_gamma;
+        /* Don't consider inhibited parts. */
+        if (cell_parts[i].time_bin == time_bin_inhibited) continue;
 
-      /* Does this part fall into our LOS? */
-      if (dx <= hsml) {
-        /* Distance from this part to LOS along y dim. */
-        dy = parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
+        /* Distance from this part to LOS along x dim. */
+        dx = cell_parts[i].x[LOS_list[j].xaxis] - LOS_list[j].Xpos;
 
         /* Periodic wrap. */
-        if (LOS_list[j].periodic) dy = nearest(dy, LOS_list[j].dim[LOS_list[j].yaxis]);
+        if (LOS_list[j].periodic) dx = nearest(dx, LOS_list[j].dim[LOS_list[j].xaxis]);
 
-        /* Does this part still fall into our LOS? */
-        if (dy <= hsml) {
-          /* 2D distance to LOS. */
-          r2 = dx * dx + dy * dy;
+        /* Square */
+        dx2 = dx * dx;
 
-          if (r2 <= hsml * hsml) {
+        /* Smoothing length of this part. */
+        hsml = cell_parts[i].h * kernel_gamma;
+        hsml2 = hsml * hsml;
 
-            /* Store part and xpart properties. */
-            memcpy(&LOS_parts[count], &parts[i], sizeof(struct part));
-            memcpy(&LOS_xparts[count], &xparts[i], sizeof(struct xpart));
+        /* Does this part fall into our LOS? */
+        if (dx2 < hsml2) {
+          /* Distance from this part to LOS along y dim. */
+          dy = cell_parts[i].x[LOS_list[j].yaxis] - LOS_list[j].Ypos;
 
-            count++;
+          /* Periodic wrap. */
+          if (LOS_list[j].periodic) dy = nearest(dy, LOS_list[j].dim[LOS_list[j].yaxis]);
+
+          /* Square */
+          dy2 = dy * dy;
+
+          /* Does this part still fall into our LOS? */
+          if (dy2 < hsml2) {
+            /* 2D distance to LOS. */
+
+            if (dx2 + dy2 <= hsml2) {
+
+              /* Store part and xpart properties. */
+              memcpy(&LOS_parts[count], &cell_parts[i], sizeof(struct part));
+              memcpy(&LOS_xparts[count], &cell_xparts[i], sizeof(struct xpart));
+
+              count++;
+            }
           }
         }
       }
@@ -390,17 +537,17 @@ void do_line_of_sight(struct engine *e) {
     /* Collect all parts in this LOS to rank 0. */
     if (e->nodeID == 0) {
       MPI_Gatherv(MPI_IN_PLACE, 0,
-                  part_mpi_type, LOS_parts, LOS_counts, LOS_disps,
+                  part_mpi_type, LOS_parts, counts, offsets,
                   part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(MPI_IN_PLACE, 0,
-                  xpart_mpi_type, LOS_xparts, LOS_counts, LOS_disps,
+                  xpart_mpi_type, LOS_xparts, counts, offsets,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
     } else {
       MPI_Gatherv(LOS_parts, LOS_list[j].particles_in_los_local,
-                  part_mpi_type, LOS_parts, LOS_counts, LOS_disps,
+                  part_mpi_type, LOS_parts, counts, offsets,
                   part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(LOS_xparts, LOS_list[j].particles_in_los_local,
-                  xpart_mpi_type, LOS_xparts, LOS_counts, LOS_disps,
+                  xpart_mpi_type, LOS_xparts, counts, offsets,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
     }
 #endif
@@ -429,6 +576,7 @@ void do_line_of_sight(struct engine *e) {
     }
 
     /* Free up some memory */
+    //swift_free("tl_cells_los", &LOS_list[j].cells_top);
     swift_free("los_parts_array", LOS_parts);
     swift_free("los_xparts_array", LOS_xparts);
 
