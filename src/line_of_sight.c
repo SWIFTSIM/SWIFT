@@ -151,6 +151,7 @@ void create_sightline(const double Xpos, const double Ypos,
   los->dim[0] = dim[0];
   los->dim[1] = dim[1];
   los->dim[2] = dim[2];
+  los->num_intersecting_top_level_cells = 0;
 }
 
 /**
@@ -237,12 +238,9 @@ void los_first_loop_mapper(void *restrict map_data, int count,
  * @param los The line_of_sight structure.
  */
 void find_intersecting_top_level_cells(const struct engine *e,
-                struct line_of_sight *los, int *los_cells_top) {
-  
-  /* Recover the list of top-level cells */
-  const struct cell *cells = e->s->cells_top;
-  const int *local_cells_with_particles = e->s->local_cells_with_particles_top;
-  const int nr_local_cells_with_particles = e->s->nr_local_cells_with_particles;
+            struct line_of_sight *los, int *los_cells_top,
+            const struct cell *cells, const int *local_cells_with_particles,
+            const int nr_local_cells_with_particles) {
 
   /* Keep track of how many top level cells we intersect. */
   int num_intersecting_top_level_cells = 0;
@@ -261,7 +259,7 @@ void find_intersecting_top_level_cells(const struct engine *e,
 
 #ifdef WITH_MPI
   if (MPI_Allreduce(MPI_IN_PLACE, &num_intersecting_top_level_cells,
-        e->nr_nodes, MPI_INT, MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+        1, MPI_INT, MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce num_intersecting_top_level_cells."); 
 #endif
 
@@ -382,15 +380,17 @@ void do_line_of_sight(struct engine *e) {
   const int *local_cells_with_particles = e->s->local_cells_with_particles_top;
   const int nr_local_cells_with_particles = s->nr_local_cells_with_particles;  
 
+  /* Loop over each random LOS. */
   for (int j = 0; j < LOS_params->num_tot; j++) {
 
-    /* Start with an empty top level cell list for this LOS */
+    /* Create empty top level cell list for this LOS */
     int *los_cells_top = (int *)swift_malloc("tl_cells_los",
       nr_local_cells_with_particles * sizeof(int));
     for (int n = 0; n < nr_local_cells_with_particles; n++) los_cells_top[n] = 0;
 
     /* Find all top level cells this LOS will intersect. */
-    find_intersecting_top_level_cells(e, &LOS_list[j], los_cells_top);
+    find_intersecting_top_level_cells(e, &LOS_list[j], los_cells_top,
+            cells, local_cells_with_particles, nr_local_cells_with_particles);
 
     /* Next count all the parts that intersect with this line of sight */
     for (int n = 0; n < nr_local_cells_with_particles; n++) {
@@ -589,7 +589,7 @@ void do_line_of_sight(struct engine *e) {
     swift_free("tl_cells_los", los_cells_top);
     swift_free("los_parts_array", LOS_parts);
     swift_free("los_xparts_array", LOS_xparts);
-
+  
   } /* End of loop over each LOS */
 
   if (e->nodeID == 0) {

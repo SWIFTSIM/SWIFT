@@ -119,6 +119,9 @@ void los_struct_restore(const struct los_props *internal_los,
                                        FILE *stream);
 int does_los_intersect(const struct cell *c, const struct line_of_sight *los);
 void find_intersecting_top_level_cells(const struct engine *e,
-                        struct line_of_sight *los, int *los_cells_top);
+                struct line_of_sight *los, int *los_cells_top,
+                const struct cell *cells,
+                const int *local_cells_with_particles,
+                const int nr_local_cells_with_particles);
 
 #endif /* SWIFT_LOS_H */ 
