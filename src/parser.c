@@ -128,7 +128,7 @@ static int parse_quoted_strings(const char *line, char ***result) {
     word[nchar] = '\0';
     if (count <= nwords) {
       count += 1;
-      strings = (char **)realloc(strings, count * sizeof(char));
+      strings = (char **)realloc(strings, count * sizeof(char *));
     }
     strings[nwords] = (char *)malloc((strlen(word) + 1) * sizeof(char));
     strcpy(strings[nwords], trim_both(word));
