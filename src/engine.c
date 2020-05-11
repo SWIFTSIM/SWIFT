@@ -3102,6 +3102,7 @@ void engine_makeproxies(struct engine *e) {
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
   const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
@@ -3246,27 +3247,17 @@ void engine_makeproxies(struct engine *e) {
                       sqrt(min_dist_centres2) - 2. * delta_CoM;
                   const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
-                  /* /\* We also assume that the softening is negligible
-                   * compared */
-                  /*    to the cell size *\/ */
-                  /* const double epsilon_i = 0.; */
-                  /* const double epsilon_j = 0.; */
-
                   /* Are we beyond the distance where the truncated forces are 0
                    * but not too far such that M2L can be used? */
                   if (periodic) {
 
-                    if ((min_dist_CoM2 < max_mesh_dist2))  // &&
-                      /* (!gravity_M2L_accept(r_max, r_max, theta_crit2, */
-                      /*                      min_dist_CoM2, epsilon_i, */
-                      /*                      epsilon_j))) */
+                    if ((min_dist_CoM2 < max_mesh_dist2) &&
+                        !(2. * r_max < theta_crit * min_dist_CoM2))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
-                    if (1 /* !gravity_M2L_accept(r_max, r_max, theta_crit2, */
-                          /*                     min_dist_CoM2, epsilon_i, */
-                        /*                     epsilon_j) */)
+                    if (!(2. * r_max < theta_crit * min_dist_CoM2))
                       proxy_type |= (int)proxy_cell_type_gravity;
                   }
                 }
