@@ -67,6 +67,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
         params, "Gravity:r_cut_min", gravity_props_default_r_cut_min);
 
     p->r_s = p->a_smooth * dim[0] / p->mesh_size;
+    p->r_s_inv = 1. / p->r_s;
 
     /* Some basic checks of what we read */
     if (p->mesh_size % 2 != 0)
@@ -82,6 +83,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     p->mesh_size = 0;
     p->a_smooth = 0.f;
     p->r_s = FLT_MAX;
+    p->r_s_inv = 0.f;
     p->r_cut_min_ratio = 0.f;
     p->r_cut_max_ratio = 0.f;
   }

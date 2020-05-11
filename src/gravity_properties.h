@@ -119,6 +119,9 @@ struct gravity_props {
   /*! Long-range gravity mesh scale. */
   float r_s;
 
+  /*! Inverse of the long-range gravity mesh scale. */
+  float r_s_inv;
+
   /*! Are we dithering the particles at every rebuild? */
   int with_dithering;
 

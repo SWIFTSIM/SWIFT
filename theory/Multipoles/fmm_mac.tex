@@ -184,7 +184,7 @@ f_{\rm MAC}(r) =
   \left(\frac{9}{5}\right)^2 H^{-2} & \mbox{if} & r <
   \frac{5}{9}H,\\
   r^{-2} & \mbox{if} & \frac{5}{9}H \leq r < \frac{5}{3}r_s, \\
-  \left(\frac{3}{5}\right)^2 r_s^{-2} r^{-4} & \mbox{if} & \frac{5}{3}r_s \leq r. \\
+  \left(\frac{5}{3}\right)^2 r_s^2 r^{-4} & \mbox{if} & \frac{5}{3}r_s \leq r. \\
 \end{array}
 \right.
 \label{eq:fmm:f_mac}
@@ -202,12 +202,12 @@ acceptance criterion instead of the $1/|\mathbf{R}|$ term:
     A}\left(|\mathbf{a}_a|\right).
   \label{eq:fmm:mac_f_mac}  
 \end{equation}
-The same change is applied to the MAC used of the M2P kernel
-(eq. \ref{eq:fmm:mac_m2p}). In the non-truncated un-softened case, this
-expression reduces to \citep{Dehnen2014} one. Using this expression
-instead of the simpler Newtonian one only makes a difference in
-simulations where a lot of particles cluster below the scale of the
-softening, which is often the case for hydrodynamical simulations
-including radiative cooling processes. The use of this term over the
-simpler $1/r^2$ estimator is a runtime parameter.
+The same change is applied to the MAC used for the M2P kernel
+(eq. \ref{eq:fmm:mac_m2p}). In the non-truncated un-softened case,
+their expressions reduce to the \citep{Dehnen2014} one. Using this
+$f_{\rm MAC}$ instead of the simpler purely-Newtonian one only makes a
+difference in simulations where a lot of particles cluster below the
+scale of the softening, which is often the case for hydrodynamical
+simulations including radiative cooling processes. The use of this
+term over the simpler $1/r^2$ estimator is a runtime parameter.
 

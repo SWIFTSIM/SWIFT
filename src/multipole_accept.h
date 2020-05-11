@@ -33,22 +33,26 @@
 /**
  * @brief Compute the inverse of the force estimator entering the MAC
  *
+ * Note that in the unsofted case, the first condition is naturally
+ * never reached (as H == 0). In the non-periodic (non-truncated) case
+ * the second condition is never reached (as r_s == inf, r_s_inv == 0).
+ *
  * @param H The spline softening length.
- * @param r_s The scale of the gravity mesh.
+ * @param r_s_inv The inverse of the scale of the gravity mesh.
  * @param r2 The square of the distance between the multipoles.
  */
 __attribute__((const)) INLINE static float gravity_f_MAC_inverse(
-    const float H, const float r_s, const float r2) {
+    const float H, const float r_s_inv, const float r2) {
 
   if (r2 < (25.f / 81.f) * H * H) {
 
     /* Below softening radius */
     return (25.f / 81.f) * H * H;
 
-  } else if (r2 > (25.f / 9.f) * r_s * r_s) {
+  } else if (r_s_inv * r_s_inv * r2 > (25.f / 9.f)) {
 
     /* Above truncation radius */
-    return (25.f / 9.f) * r_s * r_s * r2 * r2;
+    return (9.f / 25.f) * r_s_inv * r_s_inv * r2 * r2;
 
   } else {
 
@@ -114,7 +118,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
 
   float f_MAC_inv;
   if (props->consider_truncation_in_MAC) {
-    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s, r2);
+    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
   } else {
     f_MAC_inv = r2;
   }
@@ -232,7 +236,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
 
   float f_MAC_inv;
   if (props->consider_truncation_in_MAC) {
-    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s, r2);
+    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
   } else {
     f_MAC_inv = r2;
   }

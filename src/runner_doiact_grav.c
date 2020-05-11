@@ -247,7 +247,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     error("Calling truncated PP function in non-periodic setup.");
 #endif
 
-  const float r_s_inv = 1. / grav_props->r_s;
+  const float r_s_inv = grav_props->r_s_inv;
 
   /* Loop over sink particles */
   for (int i = 0; i < gcount_i; ++i) {
