@@ -78,39 +78,47 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
-  /* Powers of u=r/2r_s */
+  /* Powers of u = (1/2) * (r / r_s) */
   const float u = 0.5f * r * r_s_inv;
   const float u2 = u * u;
-  const float u3 = u2 * u;
-  const float u4 = u3 * u;
+  const float u4 = u2 * u2;
 
-  /* Powers of (1/r_s) */
-  const float r_s_inv2 = r_s_inv * r_s_inv;
-  const float r_s_inv3 = r_s_inv2 * r_s_inv;
-  const float r_s_inv4 = r_s_inv3 * r_s_inv;
-  const float r_s_inv5 = r_s_inv4 * r_s_inv;
-
-  /* Derivatives of \chi */
-#ifdef GRAVITY_USE_EXACT_LONG_RANGE_MATH
-  derivs->chi_0 = erfcf(u);
-#else
-  derivs->chi_0 = approx_erfcf(u);
-#endif
-  derivs->chi_1 = -r_s_inv;
-  derivs->chi_2 = r_s_inv2 * u;
-  derivs->chi_3 = -r_s_inv3 * (u2 - 0.5f);
-  derivs->chi_4 = r_s_inv4 * (u3 - 1.5f * u);
-  derivs->chi_5 = -r_s_inv5 * (u4 - 3.f * u2 + 0.75f);
-
+  /* C = (1/sqrt(pi)) * expf(-u^2) */
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
   const float common_factor = one_over_sqrt_pi * expf(-u2);
 
-  /* Multiply in the common factors */
-  derivs->chi_1 *= common_factor;
-  derivs->chi_2 *= common_factor;
-  derivs->chi_3 *= common_factor;
-  derivs->chi_4 *= common_factor;
-  derivs->chi_5 *= common_factor;
+  /* (1/r_s)^n * C */
+  const float r_s_inv_times_C = r_s_inv * common_factor;
+  const float r_s_inv2_times_C = r_s_inv_times_C * r_s_inv;
+  const float r_s_inv3_times_C = r_s_inv2_times_C * r_s_inv;
+  const float r_s_inv4_times_C = r_s_inv3_times_C * r_s_inv;
+  const float r_s_inv5_times_C = r_s_inv4_times_C * r_s_inv;
+
+  /* Now, compute the derivatives of \chi */
+#ifdef GRAVITY_USE_EXACT_LONG_RANGE_MATH
+
+  /* erfc(u) */
+  derivs->chi_0 = erfcf(u);
+#else
+
+  /* erfc(u) */
+  derivs->chi_0 = approx_erfcf(u);
+#endif
+
+  /* (-1/r_s) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_1 = -r_s_inv_times_C;
+
+  /* (1/r_s)^2 * u * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_2 = r_s_inv2_times_C * u;
+
+  /* (1/r_s)^3 * (1/2 - u^2) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_3 = r_s_inv3_times_C * (0.5f - u2);
+
+  /* (1/r_s)^4 * (u^3 - 3/2 u) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_4 = r_s_inv4_times_C * (u2 - 1.5f) * u;
+
+  /* (1/r_s)^5 * (3/4 - 3u^2 + u^4) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_5 = r_s_inv5_times_C * (0.75f - 3.f * u2 + u4);
 
 #else
 
