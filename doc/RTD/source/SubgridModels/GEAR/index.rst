@@ -115,7 +115,7 @@ A star will be able to form if a randomly drawn number is below :math:`\frac{m_g
 Chemistry
 ~~~~~~~~~
 
-In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition.
+In the chemistry, we are using the smoothed metallicity scheme that consists in using the SPH to smooth the metallicity of each particle over the neighbors. It is worth to point the fact that we are not exchanging any metals but only smoothing it. The parameter ``GEARChemistry:initial_metallicity`` set the (non smoothed) initial mass fraction of each element for all the particles and ``GEARChemistry:scale_initial_metallicity`` use the feedback table to scale the initial metallicity of each element according the Sun's composition.
 
 .. code:: YAML
 
@@ -145,6 +145,7 @@ Initial mass function
 GEAR is using the IMF model from `Kroupa (2001) <https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract>`_.
 We have a difference of 1 in the exponent due to the usage of IMF in mass and not in number.
 We also restrict the mass of the stars to be inside :math:`[0.05, 50] M_\odot`.
+Here is the default model used, but it can be easily adapted through the initial mass function parameters:
 
 .. math::
   \xi(m) \propto m^{-\alpha_i}\, \textrm{where}\,
@@ -154,8 +155,6 @@ We also restrict the mass of the stars to be inside :math:`[0.05, 50] M_\odot`.
    \alpha_2 = 2.3,\, & 0.50 \leq m / M_\odot < 1.00, \\
    \alpha_3 = 2.3,\, & 1.00 \leq m / M_\odot,
   \end{cases}
-
-
 
 
 Lifetime
@@ -170,6 +169,7 @@ The lifetime of a star in GEAR depends only on two parameters: first its mass an
    c(Z) = -261.365 Z^2 + 17.073 Z + 9.8661
 
 where :math:`\tau` is the lifetime in years, :math:`m` is the mass of the star (in solar mass) and Z the metallicity of the star.
+The parameters previously given are the default ones, they can be modified in the parameters file.
 
 Supernovae II
 ^^^^^^^^^^^^^
@@ -214,6 +214,24 @@ Energy injection
 
 All the supernovae (type II and Ia) inject the same amount of energy into the surrounding gas (``GEARFeedback:supernovae_energy_erg``) and distribute it according to the hydro kernel.
 The same is done with the metals and the mass.
+
+
+Generating a new table
+^^^^^^^^^^^^^^^^^^^^^^
+
+The feedback table is an HDF5 file with the following structure:
+
+.. graphviz:: feedback_table.dot
+
+where the solid (dashed) squares represent a group (a dataset) with the name of the object underlined and the attributes written below. Everything is in solar mass or without units (e.g. mass fraction or unitless constant).
+In ``Data``, the attribute ``elts`` is an array of string with the element names (the last should be ``Metals``, it corresponds to the sum of all the elements), ``MeanWDMass`` is the mass of the white dwarfs
+and ``SolarMassAbundances`` is an array of float containing the mass fraction of the different element in the sun.
+In ``IMF``, ``n + 1`` is the number of part in the IMF, ``as`` are the exponent (``n+1`` elements), ``ms`` are the mass limits between each part (``n`` elements) and
+``Mmin`` (``Mmax``) is the minimal (maximal) mass of a star.
+In ``LifeTimes``, the coefficient are given in the form of a single table (``coeff_z`` with a 3x3 shape).
+In ``SNIa``, ``a`` is the exponent of the distribution of binaries, ``bb1``  and ``bb2`` are the coefficient :math:`b_i` and the other attributes follow the same names than in the SNIa formulas.
+The ``Metals`` group from the ``SNIa`` contains the name of each elements (``elts``) and the metal mass fraction ejected by each supernovae (``data``) in the same order. They must contain the same elements than in ``Data``.
+Finally for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. For the yields, the datasets required are ``Ej`` (mass fraction ejected [processed]), ``Ejnp`` (mass fraction ejected [non processed]) and one dataset for each element present in ``elts``. The datasets should all have the same size, be uniformly sampled in log and contains the attributes ``min`` (mass in log for the first element) and ``step`` (difference of mass in log between two elements).
 
 .. code:: YAML
 

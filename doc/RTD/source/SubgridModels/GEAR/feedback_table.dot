@@ -1,0 +1,178 @@
+
+digraph feedback {
+   subgraph cluster_data {
+     Data[shape="none", label=<
+     <table BORDER="0">
+     <tr>
+      <td><u>Data</u></td>
+     </tr>
+     <tr>
+      <td>elts</td>
+     </tr>
+     <tr>
+      <td>MeanWDMass</td>
+     </tr>
+     <tr>
+      <td>SolarMassAbundances</td>
+     </tr>
+     </table>>];
+   }
+
+   subgraph cluster_imf {
+      IMF[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>IMF</u></td>
+      </tr>
+      <tr>
+        <td>n</td>
+      </tr>
+      <tr>
+        <td>as</td>
+      </tr>
+      <tr>
+        <td>ms</td>
+      </tr>
+      <tr>
+        <td>Mmin</td>
+      </tr>
+      <tr>
+        <td>Mmax</td>
+      </tr></table>>];
+   }
+   subgraph cluster_lifetimes {
+      LifeTimes[label=<<u>LifeTimes</u>>,shape="none"];
+   }
+   subgraph cluster_snii {
+      SNII[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>SNII</u></td>
+      </tr>
+      <tr>
+        <td>Mmin</td>
+      </tr>
+      <tr>
+        <td>Mmax</td>
+      </tr>
+      </table>>];
+   }
+
+   subgraph cluster_snia {
+      SNIa[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>SNIa</u></td>
+      </tr>
+      <tr>
+        <td>a</td>
+      </tr>
+      <tr>
+        <td>Mpl</td>
+      </tr>
+      <tr>
+        <td>Mpu</td>
+      </tr>
+      <tr>
+        <td>Mdu1</td>
+      </tr>
+      <tr>
+        <td>Mdl1</td>
+      </tr>
+      <tr>
+        <td>bb1</td>
+      </tr>
+      <tr>
+        <td>Mdu2</td>
+      </tr>
+      <tr>
+        <td>Mdl2</td>
+      </tr>
+      <tr>
+        <td>bb2</td>
+      </tr>
+      </table>>];
+   }
+
+
+   subgraph cluster_snii_all {
+      graph[style="dotted"];
+      snii_all[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>An array per element</u></td>
+      </tr>
+      <tr>
+        <td>min</td>
+      </tr>
+      <tr>
+        <td>step</td>
+      </tr>
+      </table>>];
+   }
+
+   subgraph cluster_snii_ej {
+      graph[style="dotted"];
+      snii_ej[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>Ej</u></td>
+      </tr>
+      <tr>
+        <td>min</td>
+      </tr>
+      <tr>
+        <td>step</td>
+      </tr>
+      </table>>];
+   }
+
+   subgraph cluster_snii_ejnp {
+      graph[style="dotted"];
+      snii_ejnp[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>Ejnp</u></td>
+      </tr>
+      <tr>
+        <td>min</td>
+      </tr>
+      <tr>
+        <td>step</td>
+      </tr>
+      </table>>];
+   }
+
+   subgraph cluster_coeff_z {
+      graph[style="dotted"];
+      coeff_z[label=<<u>coeff_z</u>>, shape="none"];
+   }
+
+   subgraph cluster_snia_metals {
+      snia_metals[shape="none", label=<
+      <table BORDER="0">
+      <tr>
+        <td><u>Metals</u></td>
+      </tr>
+      <tr>
+        <td>elts</td>
+      </tr>
+      <tr>
+        <td>data</td>
+      </tr>
+      </table>>];
+   }
+
+   Data->LifeTimes;
+   Data->IMF;
+   Data->SNII;
+   Data->SNIa;
+
+   LifeTimes->coeff_z;
+
+   SNII->snii_all;
+   SNII->snii_ej;
+   SNII->snii_ejnp;
+
+   SNIa->snia_metals;
+}
