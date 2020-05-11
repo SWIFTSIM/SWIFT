@@ -31,7 +31,7 @@ using the asynchronous progression settings:
   I_MPI_ASYNC_PROGRESS_THREADS=1
 
 ```
-(note these are tested with `2019 update-4` and `2020 update-1`).
+(note these are tested with `2019 update-4` and `2020 update-1` on Mellanox).
 
 ## OpenMPI
 
