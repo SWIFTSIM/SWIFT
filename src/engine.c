@@ -3246,8 +3246,6 @@ void engine_makeproxies(struct engine *e) {
                       sqrt(min_dist_centres2) - 2. * delta_CoM;
                   const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
-                  error("MATTHIEU: Need to implement a good MAC for proxies!");
-
                   /* /\* We also assume that the softening is negligible
                    * compared */
                   /*    to the cell size *\/ */
