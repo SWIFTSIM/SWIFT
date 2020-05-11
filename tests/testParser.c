@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < nvar_result; i++) {
     printf("   %d: %s\n", i, var_result[i]);
   }
-  assert(strcmp("abcdefg", var_result[nvar_result-1]) == 0);
+  assert(strcmp("abcdefg", var_result[nvar_result - 1]) == 0);
   parser_free_param_string_array(nvar_result, var_result);
 
   /* Print the contents of the structure to stdout now used. */
