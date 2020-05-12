@@ -114,7 +114,8 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
 
   /* Get long-range correction */
   const float u_lr = r * r_s_inv;
-  const float corr_f_lr = kernel_long_grav_force_eval(u_lr);
+  float corr_f_lr, dummy;
+  kernel_long_grav_eval(u_lr, &corr_f_lr, &dummy);
   *f_ij *= corr_f_lr;
 
   /* No potential calculation */
