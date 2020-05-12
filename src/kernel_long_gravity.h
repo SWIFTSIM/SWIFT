@@ -86,7 +86,10 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   const float e = expf(-u2);
 
   /* Compute erfcf(u) using eq. 7.1.25 of
-     Abramowitz & Stegun, 1972. */
+   * Abramowitz & Stegun, 1972.
+   *
+   * This has a *relative* error of less than 4e-3 over
+   * the range of interest (0 < u <  5) */
 
   const float t = 1.f / (1.f + 0.47047f * u);
 

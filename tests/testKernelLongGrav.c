@@ -37,8 +37,10 @@ const int num_tests = 1 << 10;
 void check_value(double a, double b, const char* s, const double tol,
                  const double r, const double r_s) {
   if (fabs(a - b) / fabs(a + b) > tol)
-    error("Values are inconsistent: %12.15e %12.15e rel=%e (%s for r_s=%e r/r_s=%e)!",
-          a, b, fabs(a - b) / fabs(a + b), s, r_s, r / r_s);
+    error(
+        "Values are inconsistent: %12.15e %12.15e rel=%e (%s for r_s=%e "
+        "r/r_s=%e)!",
+        a, b, fabs(a - b) / fabs(a + b), s, r_s, r / r_s);
 }
 
 int main(int argc, char* argv[]) {
@@ -92,7 +94,7 @@ int main(int argc, char* argv[]) {
           (12. * pow(r_s, 4.) - 12. * r_s * r_s * r * r + pow(r, 4.)) *
           pow(r_s, -9.);
 
-      check_value(chi_swift.chi_0, chi_0, "chi_0", 4e-3, r, r_s);
+      check_value(chi_swift.chi_0, chi_0, "chi_0", 3.4e-3, r, r_s);
       check_value(chi_swift.chi_1, chi_1, "chi_1", 1e-5, r, r_s);
       check_value(chi_swift.chi_2, chi_2, "chi_2", 1e-5, r, r_s);
       check_value(chi_swift.chi_3, chi_3, "chi_3", 1e-4, r, r_s);
