@@ -37,8 +37,8 @@ const int num_tests = 1 << 10;
 void check_value(double a, double b, const char* s, const double tol,
                  const double r, const double r_s) {
   if (fabs(a - b) / fabs(a + b) > tol)
-    error("Values are inconsistent: %12.15e %12.15e rel=%e (%s for r/r_s=%e)!",
-          a, b, fabs(a - b) / fabs(a + b), s, r / r_s);
+    error("Values are inconsistent: %12.15e %12.15e rel=%e (%s for r_s=%e r/r_s=%e)!",
+          a, b, fabs(a - b) / fabs(a + b), s, r_s, r / r_s);
 }
 
 int main(int argc, char* argv[]) {
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
     // message("Testing r_s=%e", r_s);
 
     /* Loop over some radii */
-    for (double i = -2; i < 1; i += 0.01) {
+    for (double i = -2; i < 1; i += 0.001) {
 
       /* Get a radius in the relevant range */
       const double r = exp10(i) * r_s;
@@ -96,8 +96,8 @@ int main(int argc, char* argv[]) {
       check_value(chi_swift.chi_1, chi_1, "chi_1", 1e-5, r, r_s);
       check_value(chi_swift.chi_2, chi_2, "chi_2", 1e-5, r, r_s);
       check_value(chi_swift.chi_3, chi_3, "chi_3", 1e-4, r, r_s);
-      check_value(chi_swift.chi_4, chi_4, "chi_4", 1e-4, r, r_s);
-      check_value(chi_swift.chi_5, chi_5, "chi_5", 1e-4, r, r_s);
+      check_value(chi_swift.chi_4, chi_4, "chi_4", 4e-4, r, r_s);
+      check_value(chi_swift.chi_5, chi_5, "chi_5", 4e-4, r, r_s);
     }
   }
 
