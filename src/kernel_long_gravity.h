@@ -23,7 +23,6 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "approx_math.h"
 #include "const.h"
 #include "inline.h"
 
@@ -83,7 +82,7 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   const float u2 = u * u;
   const float u4 = u2 * u2;
 
-  const float e = expf(-u2);
+  const float exp_u2 = expf(-u2);
 
   /* Compute erfcf(u) using eq. 7.1.25 of
    * Abramowitz & Stegun, 1972.
@@ -99,11 +98,11 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   a = a * t + 0.3480242f;
   a = a * t;
 
-  const float erfc_u = a * e;
+  const float erfc_u = a * exp_u2;
 
   /* C = (1/sqrt(pi)) * expf(-u^2) */
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
-  const float common_factor = one_over_sqrt_pi * e;
+  const float common_factor = one_over_sqrt_pi * exp_u2;
 
   /* (1/r_s)^n * C */
   const float r_s_inv_times_C = r_s_inv * common_factor;
@@ -177,26 +176,48 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
 }
 
 /**
- * @brief Computes the long-range correction term for the potential calculation
- * coming from FFT.
+ * @brief Computes the long-range correction terms for the potential and
+ * force calculations due to the mesh truncation.
+ *
+ * We use an approximation to the erfc() that gives a *relative* accuracy
+ * for the potential tem of 3.4e-3 and 2.4e-4 for the force term over the
+ * range [0, 5] of r_over_r_s.
+ * The accuracy is much better in the range [0, 2] (6e-5 and 2e-5 respectively).
  *
  * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
  */
-__attribute__((const)) INLINE static float kernel_long_grav_pot_eval(
-    const float u) {
+__attribute__((nonnull)) INLINE static void kernel_long_grav_eval(
+    const float r_over_r_s, float *restrict corr_f, float *restrict corr_pot) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
-  const float arg1 = u * 0.5f;
-#ifdef GRAVITY_USE_EXACT_LONG_RANGE_MATH
-  return erfcf(arg1);
-#else
-  return approx_erfcf(arg1);
-#endif
+  const float two_over_sqrt_pi = ((float)M_2_SQRTPI);
+
+  const float u = 0.5f * r_over_r_s;
+  const float u2 = u * u;
+  const float exp_u2 = expf(-u2);
+
+  /* Compute erfcf(u) using eq. 7.1.25 of
+   * Abramowitz & Stegun, 1972.
+   *
+   * This has a *relative* error of less than 4e-3 over
+   * the range of interest (0 < u <  5) */
+
+  const float t = 1.f / (1.f + 0.47047f * u);
+
+  /* 0.3480242 * t - 0.0958798 * t^2 + 0.7478556 * t^3 */
+  float a = 0.7478556f;
+  a = a * t - 0.0958798f;
+  a = a * t + 0.3480242f;
+  a = a * t;
+
+  const float erfc_u = a * exp_u2;
+
+  *corr_pot = erfc_u;
+  *corr_f = erfc_u + two_over_sqrt_pi * u * exp_u2;
 
 #else
-
-  const float x = 2.f * u;
+  const float x = 2.f * r_over_r_s;
   const float exp_x = expf(x);  // good_approx_expf(x);
   const float alpha = 1.f / (1.f + exp_x);
 
@@ -204,47 +225,15 @@ __attribute__((const)) INLINE static float kernel_long_grav_pot_eval(
   float W = 1.f - alpha * exp_x;
   W = W * 2.f;
 
-  return W;
-#endif
-}
-
-/**
- * @brief Computes the long-range correction term for the force calculation
- * coming from FFT.
- *
- * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
- */
-__attribute__((const)) INLINE static float kernel_long_grav_force_eval(
-    const float u) {
-
-#ifdef GADGET2_LONG_RANGE_CORRECTION
-
-  static const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
-
-  const float arg1 = u * 0.5f;
-  const float arg2 = -arg1 * arg1;
-
-#ifdef GRAVITY_USE_EXACT_LONG_RANGE_MATH
-  const float term1 = erfcf(arg1);
-#else
-  const float term1 = approx_erfcf(arg1);
-#endif
-  const float term2 = u * one_over_sqrt_pi * expf(arg2);
-
-  return term1 + term2;
-#else
-
-  const float x = 2.f * u;
-  const float exp_x = expf(x);  // good_approx_expf(x);
-  const float alpha = 1.f / (1.f + exp_x);
+  *corr_pot = W;
 
   /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
-  float W = 1.f - alpha;
+  W = 1.f - alpha;
   W = W * x - exp_x;
   W = W * alpha + 1.f;
   W = W * 2.f;
 
-  return W;
+  *corr_f = W;
 #endif
 }
 

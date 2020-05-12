@@ -100,6 +100,17 @@ int main(int argc, char* argv[]) {
       check_value(chi_swift.chi_3, chi_3, "chi_3", 1e-4, r, r_s);
       check_value(chi_swift.chi_4, chi_4, "chi_4", 4e-4, r, r_s);
       check_value(chi_swift.chi_5, chi_5, "chi_5", 4e-4, r, r_s);
+
+      /* Compute the expression for individual particles */
+      float swift_corr_f_lr, swift_corr_pot_lr;
+      kernel_long_grav_eval(r / r_s, &swift_corr_f_lr, &swift_corr_pot_lr);
+
+      /* And the exact ones */
+      const double corr_pot = erfc(u);
+      const double corr_f = erfc(u) + M_2_SQRTPI * u * exp(-u * u);
+
+      check_value(swift_corr_pot_lr, corr_pot, "corr_pot", 3.4e-3, r, r_s);
+      check_value(swift_corr_f_lr, corr_f, "corr_f", 2.4e-4, r, r_s);
     }
   }
 
