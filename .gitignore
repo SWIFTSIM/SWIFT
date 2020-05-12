@@ -116,6 +116,7 @@ tests/testTimeIntegration
 tests/testSPHStep
 tests/testKernel
 tests/testKernelGrav
+tests/testKernelLongGrav
 tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh

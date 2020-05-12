@@ -20,7 +20,7 @@ AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testKernel \
+TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing \
@@ -33,7 +33,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel \
         testAtomic testGravitySpeed
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading testTimeIntegration \
+check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom \
                  testSymmetry testThreadpool testRandomSpacing \
@@ -95,6 +95,8 @@ test125cells_SOURCES = test125cells.c
 testParser_SOURCES = testParser.c
 
 testKernel_SOURCES = testKernel.c
+
+testKernelLongGrav_SOURCES = testKernelLongGrav.c
 
 testFFT_SOURCES = testFFT.c
 

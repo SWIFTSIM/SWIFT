@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
   /* Construct gravity properties */
   struct gravity_props grav_props;
   bzero(&grav_props, sizeof(struct gravity_props));
-  grav_props.use_advanced_mac = 1;
+  grav_props.use_advanced_MAC = 1;
   grav_props.use_adaptive_tolerance = 1;
   grav_props.adaptive_tolerance = 1e-4;
   grav_props.theta_crit = 0.5;
