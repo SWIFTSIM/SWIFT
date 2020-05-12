@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
     // message("Testing r_s=%e", r_s);
 
     /* Loop over some radii */
-    for (double i = -2; i < 1; i += 0.001) {
+    for (double i = -4; i < 1; i += 0.001) {
 
       /* Get a radius in the relevant range */
       const double r = exp10(i) * r_s;

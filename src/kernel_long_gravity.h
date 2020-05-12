@@ -83,9 +83,24 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   const float u2 = u * u;
   const float u4 = u2 * u2;
 
+  const float e = expf(-u2);
+
+  /* Compute erfcf(u) using eq. 7.1.25 of
+     Abramowitz & Stegun, 1972. */
+
+  const float t = 1.f / (1.f + 0.47047f * u);
+
+  /* 0.3480242 * t - 0.0958798 * t^2 + 0.7478556 * t^3 */
+  float a = 0.7478556f;
+  a = a * t - 0.0958798f;
+  a = a * t + 0.3480242f;
+  a = a * t;
+
+  const float erfc_u = a * e;
+
   /* C = (1/sqrt(pi)) * expf(-u^2) */
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
-  const float common_factor = one_over_sqrt_pi * expf(-u2);
+  const float common_factor = one_over_sqrt_pi * e;
 
   /* (1/r_s)^n * C */
   const float r_s_inv_times_C = r_s_inv * common_factor;
@@ -102,7 +117,7 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
 #else
 
   /* erfc(u) */
-  derivs->chi_0 = approx_erfcf(u);
+  derivs->chi_0 = erfc_u;
 #endif
 
   /* (-1/r_s) * (1/sqrt(pi)) * expf(-u^2) */
