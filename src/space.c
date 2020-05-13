@@ -259,9 +259,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.mesh = NULL;
     c->grav.end_force = NULL;
     c->top = c;
-    c->super = c;
-    c->hydro.super = c;
-    c->grav.super = c;
+    c->super = NULL;
+    c->hydro.super = NULL;
+    c->grav.super = NULL;
     c->hydro.parts = NULL;
     c->hydro.xparts = NULL;
     c->grav.parts = NULL;
@@ -608,9 +608,9 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.count = 0;
           c->stars.count = 0;
           c->top = c;
-          c->super = c;
-          c->hydro.super = c;
-          c->grav.super = c;
+          c->super = NULL;
+          c->hydro.super = NULL;
+          c->grav.super = NULL;
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
           c->stars.ti_old_part = ti_current;
