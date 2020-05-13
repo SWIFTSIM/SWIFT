@@ -2829,7 +2829,6 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->hydro.sorts");
 #endif
     scheduler_activate(s, c->hydro.sorts);
-    if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
@@ -2841,7 +2840,6 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parents->hydro.sorts");
 #endif
         scheduler_activate(s, parent->hydro.sorts);
-        if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
       }
     }
@@ -2888,9 +2886,6 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->stars.sorts");
 #endif
     scheduler_activate(s, c->stars.sorts);
-    if (c->nodeID == engine_rank) {
-      cell_activate_drift_spart(c, s);
-    }
   } else {
 
     /* Climb up the tree and set the flags */
@@ -2908,7 +2903,6 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
         scheduler_activate(s, parent->stars.sorts);
-        if (parent->nodeID == engine_rank) cell_activate_drift_spart(parent, s);
         break;
       }
     }
