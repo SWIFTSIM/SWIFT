@@ -188,8 +188,8 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Co-moving densities of the gas around the particles");
 
   list[8] = io_make_output_field(
-      "GasSoundSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 1.5f * hydro_gamma_minus_one,
-      bparts, sound_speed_gas,
+      "GasSoundSpeeds", FLOAT, 1, UNIT_CONV_SPEED,
+      -1.5f * hydro_gamma_minus_one, bparts, sound_speed_gas,
       "Co-moving sound-speeds of the gas around the particles");
 
   list[9] = io_make_output_field(
