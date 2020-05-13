@@ -98,6 +98,9 @@ int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 /*! Maximal depth at which the stars resort task can be pushed */
 int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 
+/*! Maximal depth of the sort task below the super level */
+int engine_sort_task_subdepth = engine_sort_task_subdepth_default;
+
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -5831,6 +5834,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                        "engine_star_resort_task_depth",
                        "engine_star_resort_task_depth");
+  restart_write_blocks(&engine_sort_task_subdepth, sizeof(int), 1, stream,
+                       "engine_sort_task_subdepth",
+                       "engine_sort_task_subdepth");
 
   /* More things to write. */
   if (s->nr_parts > 0) {
@@ -5895,6 +5901,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "engine_max_parts_per_ghost");
   restart_read_blocks(&engine_max_sparts_per_ghost, sizeof(int), 1, stream,
                       NULL, "engine_max_sparts_per_ghost");
+  restart_read_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
+                      NULL, "engine_star_resort_task_depth");
   restart_read_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                       NULL, "engine_star_resort_task_depth");
 
