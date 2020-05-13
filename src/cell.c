@@ -2861,6 +2861,9 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
         cell_activate_hydro_sorts_up(finger, s);
       }
       finger->hydro.sorted = 0;
+
+      /* No need to go above the super level */
+      if (c->hydro.super == c) break;
     }
   }
 
@@ -2925,6 +2928,9 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
         cell_activate_stars_sorts_up(finger, s);
       }
       finger->stars.sorted = 0;
+
+      /* No need to go above the super level */
+      if (c->hydro.super == c) break;
     }
   }
 
