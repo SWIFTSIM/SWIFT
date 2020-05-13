@@ -64,4 +64,6 @@ char *trim_leading(char *s);
 char *trim_trailing(char *s);
 char *trim_both(char *s);
 
+void safe_checkdir(const char *dir, int create);
+
 #endif /* SWIFT_TOOL_H */

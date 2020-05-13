@@ -111,8 +111,15 @@ struct bpart {
   /*! Total number of BH merger events (i.e. not including all progenies) */
   int number_of_mergers;
 
+  /*! Total number of gas particles that have been swallowed */
+  int number_of_gas_swallows;
+
   /*! Total (physical) angular momentum accumulated by swallowing particles */
   float swallowed_angular_momentum[3];
+
+  /*! Total number of times this BH was repositioned (not including progenies)
+   */
+  int number_of_repositions;
 
   /*! Union for the last high Eddington ratio point in time */
   union {

@@ -74,12 +74,6 @@ pressure_floor_get_comoving_pressure(const struct part* p,
   /* Compute the pressure floor */
   float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
                 pressure_floor_props.constants * cosmo->a_inv;
-
-  /* Add the velocity dispersion */
-  const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a2_inv;
-  if (sigma2 < floor) {
-    floor -= sigma2;
-  }
   floor *= a_coef * rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_comoving, floor);
@@ -145,12 +139,7 @@ __attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void pressure_floor_end_density(
-    struct part* restrict p, const struct cosmology* cosmo) {
-
-  /* To finish the turbulence estimation we devide by the density */
-  p->pressure_floor_data.sigma2 /=
-      pow_dimension(p->h) * hydro_get_comoving_density(p);
-}
+    struct part* restrict p, const struct cosmology* cosmo) {}
 
 /**
  * @brief Sets all the pressure floor fields to sensible values when the #part
@@ -163,11 +152,7 @@ __attribute__((always_inline)) INLINE static void pressure_floor_end_density(
 __attribute__((always_inline)) INLINE static void
 pressure_floor_part_has_no_neighbours(struct part* restrict p,
                                       struct xpart* restrict xp,
-                                      const struct cosmology* cosmo) {
-
-  /* If part has 0 neighbours, the estimation of turbulence is 0 */
-  p->pressure_floor_data.sigma2 = 0.f;
-}
+                                      const struct cosmology* cosmo) {}
 
 /**
  * @brief Sets the pressure_floor properties of the (x-)particles to a valid
@@ -177,9 +162,7 @@ pressure_floor_part_has_no_neighbours(struct part* restrict p,
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void pressure_floor_init_part(
-    struct part* restrict p, struct xpart* restrict xp) {
-  p->pressure_floor_data.sigma2 = 0.f;
-}
+    struct part* restrict p, struct xpart* restrict xp) {}
 
 /**
  * @brief Sets the pressure_floor properties of the (x-)particles to a valid

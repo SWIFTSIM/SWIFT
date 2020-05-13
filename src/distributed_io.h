@@ -16,13 +16,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PRESSURE_FLOOR_PART_GEAR_H
-#define SWIFT_PRESSURE_FLOOR_PART_GEAR_H
+#ifndef SWIFT_DISTRIBUTED_IO_H
+#define SWIFT_DISTRIBUTED_IO_H
 
-/**
- * Structure containing the required variables for the pressure
- * floor in the density loop.
- */
-struct pressure_floor_part_data {};
+/* Config parameters. */
+#include "../config.h"
 
-#endif  // SWIFT_PRESSURE_FLOOR_PART_GEAR_H
+#if defined(HAVE_HDF5) && defined(WITH_MPI)
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
+struct engine;
+struct unit_system;
+
+void write_output_distributed(struct engine* e,
+                              const struct unit_system* internal_units,
+                              const struct unit_system* snapshot_units,
+                              int mpi_rank, int mpi_size, MPI_Comm comm,
+                              MPI_Info info);
+
+#endif /* HAVE_HDF5 && WITH_MPI */
+
+#endif /* SWIFT_DISTRIBUTED_IO_H */

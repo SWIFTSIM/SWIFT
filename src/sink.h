@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,13 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PRESSURE_FLOOR_PART_GEAR_H
-#define SWIFT_PRESSURE_FLOOR_PART_GEAR_H
+#ifndef SWIFT_SINK_H
+#define SWIFT_SINK_H
 
-/**
- * Structure containing the required variables for the pressure
- * floor in the density loop.
- */
-struct pressure_floor_part_data {};
+/* Config parameters. */
+#include "../config.h"
 
-#endif  // SWIFT_PRESSURE_FLOOR_PART_GEAR_H
+/* Select the correct sink model */
+#if defined(SINK_NONE)
+#include "./sink/Default/sink.h"
+#else
+#error "Invalid choice of sink model"
+#endif
+
+#endif

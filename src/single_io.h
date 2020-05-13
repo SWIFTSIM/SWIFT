@@ -24,11 +24,11 @@
 
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
-/* Includes. */
-#include "engine.h"
-#include "io_properties.h"
+/* Local includes */
 #include "part.h"
-#include "units.h"
+
+struct engine;
+struct unit_system;
 
 void read_ic_single(const char* fileName,
                     const struct unit_system* internal_units, double dim[3],
@@ -40,15 +40,9 @@ void read_ic_single(const char* fileName,
                     int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
                     double h, double a, int nr_threads, int dry_run);
 
-void write_output_single(struct engine* e, const char* baseName,
+void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units);
-
-void writeArray(const struct engine* e, hid_t grp, char* fileName,
-                FILE* xmfFile, char* partTypeGroupName,
-                const struct io_props props, size_t N,
-                const struct unit_system* internal_units,
-                const struct unit_system* snapshot_units);
 
 #endif /* HAVE_HDF5 && !WITH_MPI */
 

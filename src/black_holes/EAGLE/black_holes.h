@@ -62,12 +62,14 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->formation_time = -1.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
+  bp->number_of_gas_swallows = 0;
   bp->last_high_Eddington_fraction_scale_factor = -1.f;
   bp->last_minor_merger_time = -1.;
   bp->last_major_merger_time = -1.;
   bp->swallowed_angular_momentum[0] = 0.f;
   bp->swallowed_angular_momentum[1] = 0.f;
   bp->swallowed_angular_momentum[2] = 0.f;
+  bp->number_of_repositions = 0;
 
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
@@ -155,6 +157,9 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
     bp->reposition.delta_x[1] = -FLT_MAX;
     bp->reposition.delta_x[2] = -FLT_MAX;
     bp->reposition.min_potential = FLT_MAX;
+
+    /* Count the jump */
+    bp->number_of_repositions++;
   }
 }
 
@@ -234,6 +239,10 @@ black_holes_bpart_has_no_neighbours(struct bpart* bp,
   /* Re-set problematic values */
   bp->density.wcount = kernel_root * h_inv_dim;
   bp->density.wcount_dh = 0.f;
+
+  bp->velocity_gas[0] = FLT_MAX;
+  bp->velocity_gas[1] = FLT_MAX;
+  bp->velocity_gas[2] = FLT_MAX;
 }
 
 /**
@@ -264,8 +273,8 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
 
   /* Physical distance between the particles */
   const float dx[3] = {(bp->x[0] - p->x[0]) * cosmo->a,
-                       (bp->x[0] - p->x[0]) * cosmo->a,
-                       (bp->x[0] - p->x[0]) * cosmo->a};
+                       (bp->x[1] - p->x[1]) * cosmo->a,
+                       (bp->x[2] - p->x[2]) * cosmo->a};
 
   /* Collect the swallowed angular momentum */
   bp->swallowed_angular_momentum[0] +=
@@ -287,10 +296,20 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   bp->gpart->v_full[1] = bp->v[1];
   bp->gpart->v_full[2] = bp->v[2];
 
+  const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  message(
+      "BH %lld swallowing gas particle %lld "
+      "(Delta_v = [%f, %f, %f] U_V, Delta_v_rad = %f)",
+      bp->id, p->id, dv[0], dv[1], dv[2],
+      (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
+
   /* Update the BH metal masses */
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
   chemistry_add_part_to_bpart(bp_chem, p_chem, gas_mass);
+
+  /* This BH swallowed a gas particle */
+  bp->number_of_gas_swallows++;
 
   /* This BH lost a neighbour */
   bp->num_ngbs--;
@@ -366,6 +385,9 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
   /* Add up all the BH seeds */
   bpi->cumulative_number_seeds += bpj->cumulative_number_seeds;
 
+  /* Add up all the gas particles we swallowed */
+  bpi->number_of_gas_swallows += bpj->number_of_gas_swallows;
+
   /* We had another merger */
   bpi->number_of_mergers++;
 }
@@ -387,7 +409,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     const struct phys_const* constants, const struct cosmology* cosmo,
     const double time, const int with_cosmology, const double dt) {
 
-  if (dt == 0.) return;
+  if (dt == 0. || bp->rho_gas == 0.) return;
 
   /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;
@@ -449,17 +471,19 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                       denominator_inv * denominator_inv * denominator_inv;
 
   /* Compute the reduction factor from Rosas-Guevara et al. (2015) */
-  const double Bondi_radius = G * BH_mass / gas_c_phys2;
-  const double Bondi_time = Bondi_radius / gas_c_phys;
-  const double r_times_v_tang = Bondi_radius * tangential_velocity;
-  const double r_times_v_tang_3 =
-      r_times_v_tang * r_times_v_tang * r_times_v_tang;
-  const double viscous_time = 2. * M_PI * r_times_v_tang_3 /
-                              (1e-6 * alpha_visc * G * G * BH_mass * BH_mass);
-  const double f_visc = max(Bondi_time / viscous_time, 1.);
+  if (props->with_angmom_limiter) {
+    const double Bondi_radius = G * BH_mass / gas_c_phys2;
+    const double Bondi_time = Bondi_radius / gas_c_phys;
+    const double r_times_v_tang = Bondi_radius * tangential_velocity;
+    const double r_times_v_tang_3 =
+        r_times_v_tang * r_times_v_tang * r_times_v_tang;
+    const double viscous_time = 2. * M_PI * r_times_v_tang_3 /
+                                (1e-6 * alpha_visc * G * G * BH_mass * BH_mass);
+    const double f_visc = min(Bondi_time / viscous_time, 1.);
 
-  /* Limit the Bondi rate by the Bondi viscuous time ratio */
-  Bondi_rate *= f_visc;
+    /* Limit the Bondi rate by the Bondi viscuous time ratio */
+    Bondi_rate *= f_visc;
+  }
 
   /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =
@@ -643,6 +667,10 @@ INLINE static void black_holes_create_from_gas(
   bp->total_accreted_mass = 0.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
+  bp->number_of_gas_swallows = 0;
+
+  /* We haven't repositioned yet */
+  bp->number_of_repositions = 0;
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);

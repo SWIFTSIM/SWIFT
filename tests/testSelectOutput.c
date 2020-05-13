@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  const char *base_name = "testSelectOutput";
+  // const char *base_name = "testSelectOutput";
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
   int flag_entropy_ICs = -1;
   int periodic = 1;
@@ -146,6 +146,8 @@ int main(int argc, char *argv[]) {
   /* pseudo initialization of the engine */
   message("Initialization of the engine.");
   struct engine e;
+  e.physical_constants = &prog_const;
+  sprintf(e.snapshot_base_name, "testSelectOutput");
   sprintf(e.run_name, "Select Output Test");
   select_output_engine_init(&e, &s, &cosmo, &param_file, &cooling,
                             &hydro_properties);
@@ -158,7 +160,7 @@ int main(int argc, char *argv[]) {
 
   /* write output file */
   message("Writing output.");
-  write_output_single(&e, base_name, &us, &us);
+  write_output_single(&e, &us, &us);
 
   /* Clean-up */
   message("Cleaning memory.");

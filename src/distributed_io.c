@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +20,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5) && !defined(WITH_MPI)
+#if defined(HAVE_HDF5) && defined(WITH_MPI)
 
 /* Some standard headers. */
 #include <hdf5.h>
@@ -30,10 +29,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 
 /* This object's header. */
-#include "single_io.h"
+#include "distributed_io.h"
 
 /* Local includes. */
 #include "black_holes_io.h"
@@ -54,162 +54,11 @@
 #include "part_type.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
+#include "tools.h"
 #include "tracers_io.h"
 #include "units.h"
 #include "velociraptor_io.h"
 #include "xmf.h"
-
-/**
- * @brief Reads a data array from a given HDF5 group.
- *
- * @param h_grp The group from which to read.
- * @param prop The #io_props of the field to read
- * @param N The number of particles.
- * @param internal_units The #unit_system used internally
- * @param ic_units The #unit_system used in the ICs
- * @param cleanup_h Are we removing h-factors from the ICs?
- * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
- * IC velocities?
- * @param h The value of the reduced Hubble constant.
- * @param a The current value of the scale-factor.
- *
- * @todo A better version using HDF5 hyper-slabs to read the file directly into
- * the part array will be written once the structures have been stabilized.
- */
-void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
-                       const struct unit_system* internal_units,
-                       const struct unit_system* ic_units, int cleanup_h,
-                       int cleanup_sqrt_a, double h, double a) {
-
-  const size_t typeSize = io_sizeof_type(props.type);
-  const size_t copySize = typeSize * props.dimension;
-  const size_t num_elements = N * props.dimension;
-
-  /* Check whether the dataspace exists or not */
-  const htri_t exist = H5Lexists(h_grp, props.name, 0);
-  if (exist < 0) {
-    error("Error while checking the existence of data set '%s'.", props.name);
-  } else if (exist == 0) {
-    if (props.importance == COMPULSORY) {
-      error("Compulsory data set '%s' not present in the file.", props.name);
-    } else {
-      /* message("Optional data set '%s' not present. Zeroing this particle
-       * props...", name);	   */
-
-      for (size_t i = 0; i < N; ++i)
-        memset(props.field + i * props.partSize, 0, copySize);
-
-      return;
-    }
-  }
-
-  /* message("Reading %s '%s' array...", */
-  /*         props.importance == COMPULSORY ? "compulsory" : "optional  ", */
-  /*         props.name); */
-
-  /* Open data space */
-  const hid_t h_data = H5Dopen(h_grp, props.name, H5P_DEFAULT);
-  if (h_data < 0) error("Error while opening data space '%s'.", props.name);
-
-  /* Allocate temporary buffer */
-  void* temp = malloc(num_elements * typeSize);
-  if (temp == NULL) error("Unable to allocate memory for temporary buffer");
-
-  /* Read HDF5 dataspace in temporary buffer */
-  /* Dirty version that happens to work for vectors but should be improved */
-  /* Using HDF5 dataspaces would be better */
-  const hid_t h_err = H5Dread(h_data, io_hdf5_type(props.type), H5S_ALL,
-                              H5S_ALL, H5P_DEFAULT, temp);
-  if (h_err < 0) error("Error while reading data array '%s'.", props.name);
-
-  /* Unit conversion if necessary */
-  const double unit_factor =
-      units_conversion_factor(ic_units, internal_units, props.units);
-  if (unit_factor != 1. && exist != 0) {
-
-    /* message("Converting ! factor=%e", factor); */
-
-    if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= unit_factor;
-
-    } else {
-      float* temp_f = (float*)temp;
-
-#ifdef SWIFT_DEBUG_CHECKS
-      float maximum = 0.f;
-      float minimum = FLT_MAX;
-#endif
-
-      /* Loop that converts the Units */
-      for (size_t i = 0; i < num_elements; ++i) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Find the absolute minimum and maximum values */
-        const float abstemp_f = fabsf(temp_f[i]);
-        if (abstemp_f != 0.f) {
-          maximum = max(maximum, abstemp_f);
-          minimum = min(minimum, abstemp_f);
-        }
-#endif
-
-        /* Convert the float units */
-        temp_f[i] *= unit_factor;
-      }
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* The two possible errors: larger than float or smaller
-       * than float precision. */
-      if (unit_factor * maximum > FLT_MAX) {
-        error("Unit conversion results in numbers larger than floats");
-      } else if (unit_factor * minimum < FLT_MIN) {
-        error("Numbers smaller than float precision");
-      }
-#endif
-    }
-  }
-
-  /* Clean-up h if necessary */
-  const float h_factor_exp = units_h_factor(internal_units, props.units);
-  if (cleanup_h && h_factor_exp != 0.f && exist != 0) {
-
-    /* message("Multipltying '%s' by h^%f=%f", props.name, h_factor_exp,
-     * h_factor); */
-
-    if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
-      const double h_factor = pow(h, h_factor_exp);
-      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= h_factor;
-    } else {
-      float* temp_f = (float*)temp;
-      const float h_factor = pow(h, h_factor_exp);
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= h_factor;
-    }
-  }
-
-  /* Clean-up a if necessary */
-  if (cleanup_sqrt_a && a != 1. && (strcmp(props.name, "Velocities") == 0)) {
-
-    if (io_is_double_precision(props.type)) {
-      double* temp_d = (double*)temp;
-      const double vel_factor = sqrt(a);
-      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= vel_factor;
-    } else {
-      float* temp_f = (float*)temp;
-      const float vel_factor = sqrt(a);
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= vel_factor;
-    }
-  }
-
-  /* Copy temporary buffer to particle data */
-  char* temp_c = (char*)temp;
-  for (size_t i = 0; i < N; ++i)
-    memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
-
-  /* Free and close everything */
-  free(temp);
-  H5Dclose(h_data);
-}
 
 /**
  * @brief Writes a data array in given HDF5 group.
@@ -228,11 +77,12 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void write_array_single(const struct engine* e, hid_t grp, char* fileName,
-                        FILE* xmfFile, char* partTypeGroupName,
-                        const struct io_props props, size_t N,
-                        const struct unit_system* internal_units,
-                        const struct unit_system* snapshot_units) {
+void write_distributed_array(const struct engine* e, hid_t grp,
+                             const char* fileName,
+                             const char* partTypeGroupName,
+                             const struct io_props props, const size_t N,
+                             const struct unit_system* internal_units,
+                             const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -249,7 +99,12 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
   io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
 
   /* Create data space */
-  const hid_t h_space = H5Screate(H5S_SIMPLE);
+  hid_t h_space;
+  if (N > 0)
+    h_space = H5Screate(H5S_SIMPLE);
+  else
+    h_space = H5Screate(H5S_NULL);
+
   if (h_space < 0)
     error("Error while creating data space for field '%s'.", props.name);
 
@@ -282,28 +137,32 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
   /* Dataset properties */
   const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
-  /* Set chunk size */
-  h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
-  if (h_err < 0)
-    error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-          chunk_shape[0], chunk_shape[1], props.name);
+  /* Create filters and set compression level if we have something to write */
+  if (N > 0) {
 
-  /* Impose check-sum to verify data corruption */
-  h_err = H5Pset_fletcher32(h_prop);
-  if (h_err < 0)
-    error("Error while setting checksum options for field '%s'.", props.name);
-
-  /* Impose data compression */
-  if (e->snapshot_compression > 0) {
-    h_err = H5Pset_shuffle(h_prop);
+    /* Set chunk size */
+    h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
-      error("Error while setting shuffling options for field '%s'.",
-            props.name);
+      error("Error while setting chunk size (%llu, %llu) for field '%s'.",
+            chunk_shape[0], chunk_shape[1], props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+    /* Impose check-sum to verify data corruption */
+    h_err = H5Pset_fletcher32(h_prop);
     if (h_err < 0)
-      error("Error while setting compression options for field '%s'.",
-            props.name);
+      error("Error while setting checksum options for field '%s'.", props.name);
+
+    /* Impose data compression */
+    if (e->snapshot_compression > 0) {
+      h_err = H5Pset_shuffle(h_prop);
+      if (h_err < 0)
+        error("Error while setting shuffling options for field '%s'.",
+              props.name);
+
+      h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+      if (h_err < 0)
+        error("Error while setting compression options for field '%s'.",
+              props.name);
+    }
   }
 
   /* Create dataset */
@@ -315,11 +174,6 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_space, H5S_ALL,
                    H5P_DEFAULT, temp);
   if (h_err < 0) error("Error while writing data array '%s'.", props.name);
-
-  /* Write XMF description for this data set */
-  if (xmfFile != NULL)
-    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N,
-                   props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
@@ -364,364 +218,29 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
 }
 
 /**
- * @brief Reads an HDF5 initial condition file (GADGET-3 type)
- *
- * @param fileName The file to read.
- * @param internal_units The system units used internally
- * @param dim (output) The dimension of the volume.
- * @param parts (output) Array of #part particles.
- * @param gparts (output) Array of #gpart particles.
- * @param sparts (output) Array of #spart particles.
- * @param bparts (output) Array of #bpart particles.
- * @param Ngas (output) number of Gas particles read.
- * @param Ngparts (output) The number of #gpart read.
- * @param Nstars (output) The number of #spart read.
- * @param Nblackholes (output) The number of #bpart read.
- * @param flag_entropy (output) 1 if the ICs contained Entropy in the
- * InternalEnergy field
- * @param with_hydro Are we reading gas particles ?
- * @param with_gravity Are we reading/creating #gpart arrays ?
- * @param with_stars Are we reading star particles ?
- * @param with_black_hole Are we reading black hole particles ?
- * @param with_cosmology Are we running with cosmology ?
- * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
- * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
- * IC velocities?
- * @param h The value of the reduced Hubble constant to use for correction.
- * @param a The current value of the scale-factor.
- * @prarm n_threads The number of threads to use for the temporary threadpool.
- * @param dry_run If 1, don't read the particle. Only allocates the arrays.
- *
- * Opens the HDF5 file fileName and reads the particles contained
- * in the parts array. N is the returned number of particles found
- * in the file.
- *
- * @warning Can not read snapshot distributed over more than 1 file !!!
- * @todo Read snapshots distributed in more than one file.
- */
-void read_ic_single(const char* fileName,
-                    const struct unit_system* internal_units, double dim[3],
-                    struct part** parts, struct gpart** gparts,
-                    struct spart** sparts, struct bpart** bparts, size_t* Ngas,
-                    size_t* Ngparts, size_t* Ngparts_background, size_t* Nstars,
-                    size_t* Nblackholes, int* flag_entropy, int with_hydro,
-                    int with_gravity, int with_stars, int with_black_holes,
-                    int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
-                    double h, double a, int n_threads, int dry_run) {
-
-  hid_t h_file = 0, h_grp = 0;
-  /* GADGET has only cubic boxes (in cosmological mode) */
-  double boxSize[3] = {0.0, -1.0, -1.0};
-  /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
-  long long numParticles[swift_type_count] = {0};
-  long long numParticles_highWord[swift_type_count] = {0};
-  size_t N[swift_type_count] = {0};
-  int dimension = 3; /* Assume 3D if nothing is specified */
-  size_t Ndm = 0;
-  size_t Ndm_background = 0;
-
-  /* Initialise counters */
-  *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0;
-
-  /* Open file */
-  /* message("Opening file '%s' as IC.", fileName); */
-  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
-  if (h_file < 0) error("Error while opening file '%s'.", fileName);
-
-  /* Open header to read simulation properties */
-  /* message("Reading file header..."); */
-  h_grp = H5Gopen(h_file, "/Header", H5P_DEFAULT);
-  if (h_grp < 0) error("Error while opening file header\n");
-
-  /* Check the dimensionality of the ICs (if the info exists) */
-  const hid_t hid_dim = H5Aexists(h_grp, "Dimension");
-  if (hid_dim < 0)
-    error("Error while testing existance of 'Dimension' attribute");
-  if (hid_dim > 0) io_read_attribute(h_grp, "Dimension", INT, &dimension);
-  if (dimension != hydro_dimension)
-    error("ICs dimensionality (%dD) does not match code dimensionality (%dD)",
-          dimension, (int)hydro_dimension);
-
-  /* Check whether the number of files is specified (if the info exists) */
-  const hid_t hid_files = H5Aexists(h_grp, "NumFilesPerSnapshot");
-  int num_files = 1;
-  if (hid_files < 0)
-    error(
-        "Error while testing the existance of 'NumFilesPerSnapshot' attribute");
-  if (hid_files > 0)
-    io_read_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files);
-  if (num_files != 1)
-    error(
-        "ICs are split over multiples files (%d). SWIFT cannot handle this "
-        "case. The script /tools/combine_ics.py is availalbe in the repository "
-        "to combine files into a valid input file.",
-        num_files);
-
-  /* Read the relevant information and print status */
-  int flag_entropy_temp[6];
-  io_read_attribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
-  *flag_entropy = flag_entropy_temp[0];
-  io_read_attribute(h_grp, "BoxSize", DOUBLE, boxSize);
-  io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
-  io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
-                    numParticles_highWord);
-
-  /* Check that the user is not doing something silly when they e.g. restart
-   * from a snapshot by asserting that the current scale-factor (from
-   * parameter file) and the redshift in the header are consistent */
-  if (with_cosmology) {
-    io_assert_valid_header_cosmology(h_grp, a);
-  }
-
-  for (int ptype = 0; ptype < swift_type_count; ++ptype)
-    N[ptype] = (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);
-
-  /* Get the box size if not cubic */
-  dim[0] = boxSize[0];
-  dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
-  dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
-
-  /* Change box size in the 1D and 2D case */
-  if (hydro_dimension == 2)
-    dim[2] = min(dim[0], dim[1]);
-  else if (hydro_dimension == 1)
-    dim[2] = dim[1] = dim[0];
-
-  /* Convert the box size if we want to clean-up h-factors */
-  if (cleanup_h) {
-    dim[0] /= h;
-    dim[1] /= h;
-    dim[2] /= h;
-  }
-
-  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
-  /* 	  *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]);  */
-
-  /* Close header */
-  H5Gclose(h_grp);
-
-  /* Read the unit system used in the ICs */
-  struct unit_system* ic_units =
-      (struct unit_system*)malloc(sizeof(struct unit_system));
-  if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
-  io_read_unit_system(h_file, ic_units, internal_units, 0);
-
-  /* Tell the user if a conversion will be needed */
-  if (units_are_equal(ic_units, internal_units)) {
-
-    message("IC and internal units match. No conversion needed.");
-
-  } else {
-
-    message("Conversion needed from:");
-    message("(ICs) Unit system: U_M =      %e g.", ic_units->UnitMass_in_cgs);
-    message("(ICs) Unit system: U_L =      %e cm.",
-            ic_units->UnitLength_in_cgs);
-    message("(ICs) Unit system: U_t =      %e s.", ic_units->UnitTime_in_cgs);
-    message("(ICs) Unit system: U_I =      %e A.",
-            ic_units->UnitCurrent_in_cgs);
-    message("(ICs) Unit system: U_T =      %e K.",
-            ic_units->UnitTemperature_in_cgs);
-    message("to:");
-    message("(internal) Unit system: U_M = %e g.",
-            internal_units->UnitMass_in_cgs);
-    message("(internal) Unit system: U_L = %e cm.",
-            internal_units->UnitLength_in_cgs);
-    message("(internal) Unit system: U_t = %e s.",
-            internal_units->UnitTime_in_cgs);
-    message("(internal) Unit system: U_I = %e A.",
-            internal_units->UnitCurrent_in_cgs);
-    message("(internal) Unit system: U_T = %e K.",
-            internal_units->UnitTemperature_in_cgs);
-  }
-
-  /* Convert the dimensions of the box */
-  for (int j = 0; j < 3; j++)
-    dim[j] *=
-        units_conversion_factor(ic_units, internal_units, UNIT_CONV_LENGTH);
-
-  /* Allocate memory to store SPH particles */
-  if (with_hydro) {
-    *Ngas = N[swift_type_gas];
-    if (swift_memalign("parts", (void**)parts, part_align,
-                       *Ngas * sizeof(struct part)) != 0)
-      error("Error while allocating memory for SPH particles");
-    bzero(*parts, *Ngas * sizeof(struct part));
-  }
-
-  /* Allocate memory to store star particles */
-  if (with_stars) {
-    *Nstars = N[swift_type_stars];
-    if (swift_memalign("sparts", (void**)sparts, spart_align,
-                       *Nstars * sizeof(struct spart)) != 0)
-      error("Error while allocating memory for stars particles");
-    bzero(*sparts, *Nstars * sizeof(struct spart));
-  }
-
-  /* Allocate memory to store black hole particles */
-  if (with_black_holes) {
-    *Nblackholes = N[swift_type_black_hole];
-    if (swift_memalign("bparts", (void**)bparts, bpart_align,
-                       *Nblackholes * sizeof(struct bpart)) != 0)
-      error("Error while allocating memory for stars particles");
-    bzero(*bparts, *Nblackholes * sizeof(struct bpart));
-  }
-
-  /* Allocate memory to store all gravity particles */
-  if (with_gravity) {
-    Ndm = N[swift_type_dark_matter];
-    Ndm_background = N[swift_type_dark_matter_background];
-    *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
-               N[swift_type_dark_matter] +
-               N[swift_type_dark_matter_background] +
-               (with_stars ? N[swift_type_stars] : 0) +
-               (with_black_holes ? N[swift_type_black_hole] : 0);
-    *Ngparts_background = Ndm_background;
-    if (swift_memalign("gparts", (void**)gparts, gpart_align,
-                       *Ngparts * sizeof(struct gpart)) != 0)
-      error("Error while allocating memory for gravity particles");
-    bzero(*gparts, *Ngparts * sizeof(struct gpart));
-  }
-
-  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
-   * (1024.*1024.)); */
-
-  /* message("BoxSize = %lf", dim[0]); */
-  /* message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts); */
-
-  /* Loop over all particle types */
-  for (int ptype = 0; ptype < swift_type_count; ptype++) {
-
-    /* Don't do anything if no particle of this kind */
-    if (N[ptype] == 0) continue;
-
-    /* Open the particle group in the file */
-    char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
-    snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
-             ptype);
-    h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
-    if (h_grp < 0)
-      error("Error while opening particle group %s.", partTypeGroupName);
-
-    int num_fields = 0;
-    struct io_props list[100];
-    size_t Nparticles = 0;
-
-    /* Read particle fields into the structure */
-    switch (ptype) {
-
-      case swift_type_gas:
-        if (with_hydro) {
-          Nparticles = *Ngas;
-          hydro_read_particles(*parts, list, &num_fields);
-          num_fields += chemistry_read_particles(*parts, list + num_fields);
-        }
-        break;
-
-      case swift_type_dark_matter:
-        if (with_gravity) {
-          Nparticles = Ndm;
-          darkmatter_read_particles(*gparts, list, &num_fields);
-        }
-        break;
-
-      case swift_type_dark_matter_background:
-        if (with_gravity) {
-          Nparticles = Ndm_background;
-          darkmatter_read_particles(*gparts + Ndm, list, &num_fields);
-        }
-        break;
-
-      case swift_type_stars:
-        if (with_stars) {
-          Nparticles = *Nstars;
-          stars_read_particles(*sparts, list, &num_fields);
-        }
-        break;
-
-      case swift_type_black_hole:
-        if (with_black_holes) {
-          Nparticles = *Nblackholes;
-          black_holes_read_particles(*bparts, list, &num_fields);
-        }
-        break;
-
-      default:
-        message("Particle Type %d not yet supported. Particles ignored", ptype);
-    }
-
-    /* Read everything */
-    if (!dry_run)
-      for (int i = 0; i < num_fields; ++i)
-        read_array_single(h_grp, list[i], Nparticles, internal_units, ic_units,
-                          cleanup_h, cleanup_sqrt_a, h, a);
-
-    /* Close particle group */
-    H5Gclose(h_grp);
-  }
-
-  /* Duplicate the parts for gravity */
-  if (!dry_run && with_gravity) {
-
-    /* Let's initialise a bit of thread parallelism here */
-    struct threadpool tp;
-    threadpool_init(&tp, n_threads);
-
-    /* Prepare the DM particles */
-    io_prepare_dm_gparts(&tp, *gparts, Ndm);
-
-    /* Prepare the DM background particles */
-    io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
-
-    /* Duplicate the hydro particles into gparts */
-    if (with_hydro)
-      io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas,
-                                Ndm + Ndm_background);
-
-    /* Duplicate the star particles into gparts */
-    if (with_stars)
-      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars,
-                                Ndm + Ndm_background + *Ngas);
-
-    /* Duplicate the black hole particles into gparts */
-    if (with_black_holes)
-      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
-                                      Ndm + Ndm_background + *Ngas + *Nstars);
-
-    threadpool_clean(&tp);
-  }
-
-  /* message("Done Reading particles..."); */
-
-  /* Clean up */
-  free(ic_units);
-
-  /* Close file */
-  H5Fclose(h_file);
-}
-
-/**
- * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
+ * @brief Writes a snapshot distributed into multiple files.
  *
  * @param e The engine containing all the system.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
+ * @param mpi_rank The rank number of the calling MPI rank.
+ * @param mpi_size the number of MPI ranks.
+ * @param comm The communicator used by the MPI ranks.
+ * @param info The MPI information object.
  *
- * Creates an HDF5 output file and writes the particles contained
- * in the engine. If such a file already exists, it is erased and replaced
- * by the new one.
+ * Creates a series of HDF5 output files (1 per MPI node) as a snapshot.
+ * Writes the particles contained in the engine.
+ * If such files already exist, it is erased and replaced by the new one.
  * The companion XMF file is also updated accordingly.
- *
- * Calls #error() if an error occurs.
- *
  */
-void write_output_single(struct engine* e,
-                         const struct unit_system* internal_units,
-                         const struct unit_system* snapshot_units) {
+void write_output_distributed(struct engine* e,
+                              const struct unit_system* internal_units,
+                              const struct unit_system* snapshot_units,
+                              const int mpi_rank, const int mpi_size,
+                              MPI_Comm comm, MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
-  int numFiles = 1;
+  int numFiles = mpi_size;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
@@ -745,15 +264,13 @@ void write_output_single(struct engine* e,
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nblackholes = e->s->nr_bparts;
-  // const size_t Nbaryons = Ngas + Nstars;
-  // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
   size_t Ndm_background = 0;
   if (with_DM_background) {
     Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
   }
 
-  /* Number of particles that we will write
+  /* Number of particles that we will write in this file.
    * Recall that background particles are never inhibited and have no extras */
   const size_t Ntot_written =
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
@@ -768,29 +285,53 @@ void write_output_single(struct engine* e,
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
-  /* Format things in a Gadget-friendly array */
-  long long N_total[swift_type_count] = {
-      (long long)Ngas_written,   (long long)Ndm_written,
-      (long long)Ndm_background, 0,
-      (long long)Nstars_written, (long long)Nblackholes_written};
+  int snap_count = -1;
+  if (e->snapshot_int_time_label_on)
+    snap_count = (int)round(e->time);
+  else if (e->snapshot_invoke_stf)
+    snap_count = e->stf_output_count;
+  else
+    snap_count = e->snapshot_output_count;
 
-  /* File name */
-  char fileName[FILENAME_BUFFER_SIZE];
-  char xmfFileName[FILENAME_BUFFER_SIZE];
-  io_get_snapshot_filename(fileName, xmfFileName, e->snapshot_int_time_label_on,
-                           e->snapshot_invoke_stf, e->time, e->stf_output_count,
-                           e->snapshot_output_count, e->snapshot_subdir,
-                           e->snapshot_base_name);
+  int number_digits = -1;
+  if (e->snapshot_int_time_label_on)
+    number_digits = 6;
+  else
+    number_digits = 4;
 
-  /* First time, we need to create the XMF file */
-  if (e->snapshot_output_count == 0) xmf_create_file(xmfFileName);
+  /* Directory and file name */
+  char dirName[1024];
+  char fileName[1024];
 
-  /* Prepare the XMF file for the new entry */
-  FILE* xmfFile = 0;
-  xmfFile = xmf_prepare_file(xmfFileName);
+  if (strnlen(e->snapshot_subdir, PARSER_MAX_LINE_SIZE) > 0) {
+    sprintf(dirName, "%s/%s_%0*d", e->snapshot_subdir, e->snapshot_base_name,
+            number_digits, snap_count);
 
-  /* Write the part corresponding to this specific output */
-  xmf_write_outputheader(xmfFile, fileName, e->time);
+    sprintf(fileName, "%s/%s_%0*d/%s_%0*d.%d.hdf5", e->snapshot_subdir,
+            e->snapshot_base_name, number_digits, snap_count,
+            e->snapshot_base_name, number_digits, snap_count, mpi_rank);
+
+  } else {
+    sprintf(dirName, "%s_%0*d", e->snapshot_base_name, number_digits,
+            snap_count);
+
+    sprintf(fileName, "%s_%0*d/%s_%0*d.%d.hdf5", e->snapshot_base_name,
+            number_digits, snap_count, e->snapshot_base_name, number_digits,
+            snap_count, mpi_rank);
+  }
+
+  /* Create the directory */
+  if (mpi_rank == 0) safe_checkdir(dirName, /*create=*/1);
+  MPI_Barrier(comm);
+
+  /* Compute offset in the file and total number of particles */
+  const long long N[swift_type_count] = {Ngas_written,   Ndm_written,
+                                         Ndm_background, 0,
+                                         Nstars_written, Nblackholes_written};
+
+  /* Gather the total number of particles to write */
+  long long N_total[swift_type_count] = {0};
+  MPI_Allreduce(N, N_total, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
 
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
@@ -837,8 +378,7 @@ void write_output_single(struct engine* e,
     numParticles[ptype] = (unsigned int)N_total[ptype];
     numParticlesHighWord[ptype] = (unsigned int)(N_total[ptype] >> 32);
   }
-  io_write_attribute(h_grp, "NumPart_ThisFile", LONGLONG, N_total,
-                     swift_type_count);
+  io_write_attribute(h_grp, "NumPart_ThisFile", LONGLONG, N, swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total", UINT, numParticles,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
@@ -849,8 +389,8 @@ void write_output_single(struct engine* e,
   flagEntropy[0] = writeEntropyFlag();
   io_write_attribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
                      swift_type_count);
-  io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
-  io_write_attribute_i(h_grp, "ThisFile", 0);
+  io_write_attribute_i(h_grp, "NumFilesPerSnapshot", numFiles);
+  io_write_attribute_i(h_grp, "ThisFile", mpi_rank);
 
   /* Close header */
   H5Gclose(h_grp);
@@ -858,15 +398,18 @@ void write_output_single(struct engine* e,
   /* Write all the meta-data */
   io_write_meta_data(h_file, e, internal_units, snapshot_units);
 
-  /* Now write the top-level cell structure */
+  /* Now write the top-level cell structure
+   * We use a global offset of 0 here. This means that the cells will write
+   * their offset with respect to the start of the file they belong to and
+   * not a global offset */
   long long global_offsets[swift_type_count] = {0};
   h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating cells group");
 
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp, e->s->cdim, e->s->dim, e->s->pos_dithering,
-                        e->s->cells_top, e->s->nr_cells, e->s->width, e->nodeID,
-                        /*distributed=*/0, N_total, global_offsets,
+                        e->s->cells_top, e->s->nr_cells, e->s->width, mpi_rank,
+                        /*distributed=*/1, N_total, global_offsets,
                         internal_units, snapshot_units);
   H5Gclose(h_grp);
 
@@ -875,10 +418,6 @@ void write_output_single(struct engine* e,
 
     /* Don't do anything if no particle of this kind */
     if (numParticles[ptype] == 0) continue;
-
-    /* Add the global information for that particle type to the XMF meta-file */
-    xmf_write_groupheader(xmfFile, fileName, numParticles[ptype],
-                          (enum part_type)ptype);
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -897,11 +436,11 @@ void write_output_single(struct engine* e,
     if (h_err < 0) error("Error while creating alias for particle group.\n");
 
     /* Write the number of particles as an attribute */
-    io_write_attribute_l(h_grp, "NumberOfParticles", numParticles[ptype]);
+    io_write_attribute_l(h_grp, "NumberOfParticles", N[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];
-    size_t N = 0;
+    size_t Nparticles = 0;
 
     struct part* parts_written = NULL;
     struct xpart* xparts_written = NULL;
@@ -917,7 +456,7 @@ void write_output_single(struct engine* e,
         if (Ngas == Ngas_written) {
 
           /* No inhibted particles: easy case */
-          N = Ngas;
+          Nparticles = Ngas;
           hydro_write_particles(parts, xparts, list, &num_fields);
           num_fields += chemistry_write_particles(parts, list + num_fields);
           if (with_cooling || with_temperature) {
@@ -939,7 +478,7 @@ void write_output_single(struct engine* e,
         } else {
 
           /* Ok, we need to fish out the particles we want */
-          N = Ngas_written;
+          Nparticles = Ngas_written;
 
           /* Allocate temporary arrays */
           if (swift_memalign("parts_written", (void**)&parts_written,
@@ -984,7 +523,7 @@ void write_output_single(struct engine* e,
         if (Ntot == Ndm_written) {
 
           /* This is a DM-only run without background or inhibited particles */
-          N = Ntot;
+          Nparticles = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
           if (with_fof) {
             num_fields += fof_write_gparts(gparts, list + num_fields);
@@ -996,7 +535,7 @@ void write_output_single(struct engine* e,
         } else {
 
           /* Ok, we need to fish out the particles we want */
-          N = Ndm_written;
+          Nparticles = Ndm_written;
 
           /* Allocate temporary array */
           if (swift_memalign("gparts_written", (void**)&gparts_written,
@@ -1034,7 +573,7 @@ void write_output_single(struct engine* e,
       case swift_type_dark_matter_background: {
 
         /* Ok, we need to fish out the particles we want */
-        N = Ndm_background;
+        Nparticles = Ndm_background;
 
         /* Allocate temporary array */
         if (swift_memalign("gparts_written", (void**)&gparts_written,
@@ -1072,13 +611,11 @@ void write_output_single(struct engine* e,
         if (Nstars == Nstars_written) {
 
           /* No inhibted particles: easy case */
-          N = Nstars;
+          Nparticles = Nstars;
           stars_write_particles(sparts, list, &num_fields, with_cosmology);
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
-          num_fields +=
-              star_formation_write_sparticles(sparts, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_sparts(sparts, list + num_fields);
           }
@@ -1088,7 +625,7 @@ void write_output_single(struct engine* e,
         } else {
 
           /* Ok, we need to fish out the particles we want */
-          N = Nstars_written;
+          Nparticles = Nstars_written;
 
           /* Allocate temporary arrays */
           if (swift_memalign("sparts_written", (void**)&sparts_written,
@@ -1107,8 +644,6 @@ void write_output_single(struct engine* e,
               chemistry_write_sparticles(sparts_written, list + num_fields);
           num_fields += tracers_write_sparticles(
               sparts_written, list + num_fields, with_cosmology);
-          num_fields += star_formation_write_sparticles(sparts_written,
-                                                        list + num_fields);
           if (with_fof) {
             num_fields += fof_write_sparts(sparts_written, list + num_fields);
           }
@@ -1123,7 +658,7 @@ void write_output_single(struct engine* e,
         if (Nblackholes == Nblackholes_written) {
 
           /* No inhibted particles: easy case */
-          N = Nblackholes;
+          Nparticles = Nblackholes;
           black_holes_write_particles(bparts, list, &num_fields,
                                       with_cosmology);
           num_fields += chemistry_write_bparticles(bparts, list + num_fields);
@@ -1136,7 +671,7 @@ void write_output_single(struct engine* e,
         } else {
 
           /* Ok, we need to fish out the particles we want */
-          N = Nblackholes_written;
+          Nparticles = Nblackholes_written;
 
           /* Allocate temporary arrays */
           if (swift_memalign("bparts_written", (void**)&bparts_written,
@@ -1177,8 +712,8 @@ void write_output_single(struct engine* e,
       int should_write = parser_get_opt_param_int(params, field, 1);
 
       if (should_write)
-        write_array_single(e, h_grp, fileName, xmfFile, partTypeGroupName,
-                           list[i], N, internal_units, snapshot_units);
+        write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],
+                                Nparticles, internal_units, snapshot_units);
     }
 
     /* Free temporary arrays */
@@ -1192,13 +727,7 @@ void write_output_single(struct engine* e,
 
     /* Close particle group */
     H5Gclose(h_grp);
-
-    /* Close this particle group in the XMF file as well */
-    xmf_write_groupfooter(xmfFile, (enum part_type)ptype);
   }
-
-  /* Write LXMF file descriptor */
-  xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
 
   /* message("Done writing particles..."); */
 
@@ -1209,4 +738,4 @@ void write_output_single(struct engine* e,
   if (e->snapshot_invoke_stf) e->stf_output_count++;
 }
 
-#endif /* HAVE_HDF5 && !WITH_MPI */
+#endif /* HAVE_HDF5 && WITH_MPI */

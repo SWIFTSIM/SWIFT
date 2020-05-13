@@ -165,7 +165,20 @@ The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
 
 Each group contains a series of arrays corresponding to each field of the
-particles stored in the snapshots.
+particles stored in the snapshots. The exact list of fields depends on what
+compile time options were used and what module was activated. A full list can be
+obtained by running SWIFT with the ``-o`` runtime option (See
+:ref:`Output_selection_label` for details). Each field contains a short
+description attribute giving a brief summary of what the quantity represents.
+
+All the individual arrays created by SWIFT have had the Fletcher 32 check-sum
+filter applied by the HDF5 library when writing them. This means that any
+eventual data corruption on the disks will be detected and reported by the
+library when attempting to read the data.
+
+Additionally, some compression filter may have been applied to the fields. See
+the :ref:`Parameters_snapshots` section of the parameter file description for
+more details.
 
 Unit information for individual fields
 --------------------------------------
@@ -263,16 +276,29 @@ the simulation volume. Both the cell sizes and positions of the centres are
 expressed in the unit system used for the snapshots (see above) and are hence
 consistent with the particle positions themselves. 
 
-Once the cell(s) containing the region of interest has been located, users can
-use the ``/Cells/Offsets/PartTypeN/Counts`` and
-``/Cells/Offsets/PartTypeN/Offsets`` to retrieve the location of the particles
-of type ``N`` in the ``/PartTypeN`` arrays. The cells, offsets and counts are
-sorted spatiall using C-style ordering. That is we first loop over the z axis
-then y axis and x is the slowest varying dimension.
+Once the cell(s) containing the region of interest has been located,
+users can use the ``/Cells/Offsets/PartTypeN/Files``,
+``/Cells/Offsets/PartTypeN/Counts`` and
+``/Cells/Offsets/PartTypeN/OffsetsInFile`` to retrieve the location of
+the particles of type ``N`` in the ``/PartTypeN`` arrays.  These
+contain information about which file contains the particles of a given
+cell. It also gives the offset from the start of the ``/PartTypeN``
+array *in that file* at which the particles of that cell are located
+and how many particles are in the cell. This allows to read a single
+contiguous section of the whole array by directly reading the slab
+starting at the offset and with the given length.
+
+The cells, files, offsets in file and counts arrays are sorted
+spatially using C-style ordering. That means the inner-most loop runs
+over the z axis, then y axis and x is the slowest varying dimension.
+
+In the case of a single-file snapshot, the ``Files`` array is just an array of
+zeroes since all the particles will be in the 0-th file. Note also that in the
+case of a multi-files snapshot, a cell is always contained in a single file.
 
 As an example, if one is interested in retriving all the densities of the gas
-particles in the cell around the position `[1, 1, 1]` one could use a piece of
-code similar to:
+particles in the cell around the position `[1, 1, 1]` in a single-file
+snapstshot one could use a piece of code similar to:
 
 .. code-block:: python
    :linenos:
@@ -307,7 +333,7 @@ code similar to:
    print("Centre of the cell:", centre)
 
    # Retrieve the offset and counts
-   my_offset = snapshot_file["/Cells/Offsets/PartType0"][my_cell]
+   my_offset = snapshot_file["/Cells/OffsetsInFile/PartType0"][my_cell]
    my_count = snapshot_file["/Cells/Counts/PartType0"][my_cell]
 
    # Get the densities of the particles in this cell
