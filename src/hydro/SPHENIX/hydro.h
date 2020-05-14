@@ -901,17 +901,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
-  /* Check against entropy floor */
-  const float floor_A = entropy_floor(p, cosmo, floor_props);
-  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
-
-  /* Check against absolute minimum */
-  const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-
-  p->u = max(p->u, floor_u);
-  p->u = max(p->u, min_u);
-
   const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
@@ -931,6 +920,18 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const float expf_exact = expf(w2);
     p->rho *= expf_exact;
   }
+
+  /* Check against entropy floor - explicitly do this after drifting the
+   * density as this has a density dependence. */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  p->u = max(p->u, floor_u);
+  p->u = max(p->u, min_u);
 
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
