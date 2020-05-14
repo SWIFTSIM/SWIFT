@@ -2823,27 +2823,26 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
  * @brief Activate the sorts up a cell hierarchy.
  */
 void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
-  if (c == c->hydro.super) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->hydro.sorts == NULL)
-      error("Trying to activate un-existing c->hydro.sorts");
-#endif
-    scheduler_activate(s, c->hydro.sorts);
-  } else {
-    for (struct cell *parent = c->parent;
-         parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
-         parent = parent->parent) {
-      cell_set_flag(parent, cell_flag_do_hydro_sub_sort);
-      if (parent == c->hydro.super) {
-#ifdef SWIFT_DEBUG_CHECKS
-        if (parent->hydro.sorts == NULL)
-          error("Trying to activate un-existing parents->hydro.sorts");
-#endif
-        scheduler_activate(s, parent->hydro.sorts);
-        break;
-      }
-    }
+
+  /* Anything to activate at this level? */
+  if (c->hydro.sorts) scheduler_activate(s, c->hydro.sorts);
+
+  for (struct cell *parent = c->parent;
+       parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
+       parent = parent->parent) {
+
+    /* Demand a sub-sort */
+    cell_set_flag(parent, cell_flag_do_hydro_sub_sort);
+
+    /* Activate the task */
+    if (parent->hydro.sorts != NULL) scheduler_activate(s, parent->hydro.sorts);
+
+    /* Abort when reaching the super level */
+    if (parent == c->hydro.super) break;
   }
+
+  /* Also activate the super-level task */
+  scheduler_activate(s, c->hydro.super->hydro.sorts);
 }
 
 /**
@@ -2856,15 +2855,13 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
       if (finger->hydro.requires_sorts) {
         atomic_or(&finger->hydro.do_sort, finger->hydro.requires_sorts);
+        cell_activate_hydro_sorts_up(finger, s);
       }
       finger->hydro.sorted = 0;
 
       /* No need to go above the super level */
-      if (c->hydro.super == c) break;
+      if (finger->hydro.super == finger) break;
     }
-
-    /* Do the actual activation */
-    cell_activate_hydro_sorts_up(c, s);
   }
 
   /* Has this cell been sorted at all for the given sid? */
@@ -2879,34 +2876,25 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
  */
 void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
-  if (c == c->hydro.super) {
+  /* Anything to activate at this level? */
+  if (c->stars.sorts) scheduler_activate(s, c->stars.sorts);
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->stars.sorts == NULL)
-      error("Trying to activate un-existing c->stars.sorts");
-#endif
-    scheduler_activate(s, c->stars.sorts);
-  } else {
+  for (struct cell *parent = c->parent;
+       parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
+       parent = parent->parent) {
 
-    /* Climb up the tree and set the flags */
-    for (struct cell *parent = c->parent;
-         parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
-         parent = parent->parent) {
+    /* Demand a sub-sort */
+    cell_set_flag(parent, cell_flag_do_stars_sub_sort);
 
-      cell_set_flag(parent, cell_flag_do_stars_sub_sort);
+    /* Activate the task */
+    if (parent->stars.sorts != NULL) scheduler_activate(s, parent->stars.sorts);
 
-      /* Reached the super-level? Activate the task and abort */
-      if (parent == c->hydro.super) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (parent->stars.sorts == NULL)
-          error("Trying to activate un-existing parents->stars.sorts");
-#endif
-        scheduler_activate(s, parent->stars.sorts);
-        break;
-      }
-    }
+    /* Abort when reaching the super level */
+    if (parent == c->hydro.super) break;
   }
+
+  /* Also activate the super-level task */
+  scheduler_activate(s, c->hydro.super->stars.sorts);
 }
 
 /**
@@ -2921,15 +2909,13 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
       if (finger->stars.requires_sorts) {
         atomic_or(&finger->stars.do_sort, finger->stars.requires_sorts);
+        cell_activate_stars_sorts_up(finger, s);
       }
       finger->stars.sorted = 0;
 
       /* No need to go above the super level */
-      if (c->hydro.super == c) break;
+      if (finger->hydro.super == finger) break;
     }
-
-    /* Do the actual activation */
-    cell_activate_stars_sorts_up(c, s);
   }
 
   /* Has this cell been sorted at all for the given sid? */
