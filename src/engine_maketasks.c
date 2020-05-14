@@ -1493,6 +1493,42 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 }
 
 /**
+ * @brief Creates all the task dependencies for the sort tasks
+ *
+ * @param map_data The array of tasks.
+ * @param num_elements The number of tasks.
+ * @param extra_data The #engine.
+ */
+void engine_link_sort_tasks_mapper(void *map_data, int num_elements,
+                                   void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *const sched = &e->sched;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &((struct task *)map_data)[ind];
+
+    /* Link sort tasks to all the higher sort task. */
+    if (t->type == task_type_sort) {
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent) {
+        if (finger->hydro.sorts != NULL) {
+          scheduler_addunlock(sched, t, finger->hydro.sorts);
+        }
+      }
+
+      /* Link stars sort tasks to all the higher sort task. */
+    } else if (t->type == task_type_stars_sort) {
+      for (struct cell *finger = t->ci->parent; finger != NULL;
+           finger = finger->parent) {
+        if (finger->stars.sorts != NULL)
+          scheduler_addunlock(sched, t, finger->stars.sorts);
+      }
+    }
+  }
+}
+
+/**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
  * For each hydrodynamic and gravity task, construct the links with
@@ -1503,7 +1539,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  struct scheduler *const sched = &e->sched;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &((struct task *)map_data)[ind];
@@ -1513,24 +1548,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    /* Link sort tasks to all the higher sort task. */
-    if (t_type == task_type_sort) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent) {
-        if (finger->hydro.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->hydro.sorts);
-      }
-
-      /* Link stars sort tasks to all the higher sort task. */
-    } else if (t_type == task_type_stars_sort) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent) {
-        if (finger->stars.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->stars.sorts);
-      }
-
-      /* Link self tasks to cells. */
-    } else if (t_type == task_type_self) {
+    /* Link self tasks to cells. */
+    if (t_type == task_type_self) {
       atomic_inc(&ci->nr_tasks);
 
       if (t_subtype == task_subtype_density) {
@@ -3332,6 +3351,17 @@ void engine_maketasks(struct engine *e) {
 
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Add the sorting dependencies */
+  threadpool_map(&e->threadpool, engine_link_sort_tasks_mapper, sched->tasks,
+                 sched->nr_tasks, sizeof(struct task),
+                 threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Linking sort tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
