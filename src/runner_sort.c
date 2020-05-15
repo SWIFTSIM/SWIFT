@@ -214,6 +214,12 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
 
+  /* Abort early ? */
+  if (c->hydro.count == 0) {
+    cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
+    return;
+  }
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
   if (cleanup) {
@@ -449,6 +455,12 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
+
+  /* Abort early ? */
+  if (c->stars.count == 0) {
+    cell_clear_flag(c, cell_flag_do_stars_sub_sort);
+    return;
+  }
 
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->stars.do_sort;
