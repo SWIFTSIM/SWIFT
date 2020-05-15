@@ -2825,20 +2825,25 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
 
   /* Anything to activate at this level? */
-  if (c->hydro.sorts) scheduler_activate(s, c->hydro.sorts);
+  if (c->hydro.sorts) {
+    scheduler_activate(s, c->hydro.sorts);
 
-  for (struct cell *parent = c->parent;
-       parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
-       parent = parent->parent) {
+  } else {
 
-    /* Demand a sub-sort */
-    cell_set_flag(parent, cell_flag_do_hydro_sub_sort);
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
+         parent = parent->parent) {
 
-    /* Activate the task */
-    if (parent->hydro.sorts != NULL) scheduler_activate(s, parent->hydro.sorts);
+      /* Demand a sub-sort */
+      cell_set_flag(parent, cell_flag_do_hydro_sub_sort);
 
-    /* Abort when reaching the super level */
-    if (parent == c->hydro.super) break;
+      /* Activate the task */
+      if (parent->hydro.sorts != NULL)
+        scheduler_activate(s, parent->hydro.sorts);
+
+      /* Abort when reaching the super level */
+      if (parent == c->hydro.super) break;
+    }
   }
 
   /* Also activate the super-level task */
@@ -2877,20 +2882,24 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
 void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
   /* Anything to activate at this level? */
-  if (c->stars.sorts) scheduler_activate(s, c->stars.sorts);
+  if (c->stars.sorts) {
+    scheduler_activate(s, c->stars.sorts);
+  } else {
 
-  for (struct cell *parent = c->parent;
-       parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
-       parent = parent->parent) {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
+         parent = parent->parent) {
 
-    /* Demand a sub-sort */
-    cell_set_flag(parent, cell_flag_do_stars_sub_sort);
+      /* Demand a sub-sort */
+      cell_set_flag(parent, cell_flag_do_stars_sub_sort);
 
-    /* Activate the task */
-    if (parent->stars.sorts != NULL) scheduler_activate(s, parent->stars.sorts);
+      /* Activate the task */
+      if (parent->stars.sorts != NULL)
+        scheduler_activate(s, parent->stars.sorts);
 
-    /* Abort when reaching the super level */
-    if (parent == c->hydro.super) break;
+      /* Abort when reaching the super level */
+      if (parent == c->hydro.super) break;
+    }
   }
 
   /* Also activate the super-level task */
