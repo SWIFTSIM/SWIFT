@@ -831,8 +831,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   const double dim[3] = {e->s->dim[0] * factor_length,
                          e->s->dim[1] * factor_length,
                          e->s->dim[2] * factor_length};
-
-  /* Print the relevant information and print status */
+  
   io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
   io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
   const int dimension = (int)hydro_dimension;
@@ -841,8 +840,26 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
-  io_write_attribute(h_grp, "TotalPartsInAllSightlines", UINT,
-          &total_num_parts_in_los, 1);
+  const int num_files_per_snapshot = 1;
+  io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files_per_snapshot, 1);
+  io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
+
+  /* GADGET-2 legacy values */
+  /* Number of particles of each type */
+  long long N_total[swift_type_count] = {0};
+  N_total[0] = total_num_parts_in_los;
+  unsigned int numParticles[swift_type_count] = {0};
+  unsigned int numParticlesHighWord[swift_type_count] = {0};
+  for (int ptype = 0; ptype < swift_type_count; ++ptype) {
+    numParticles[ptype] = (unsigned int)N_total[ptype];
+    numParticlesHighWord[ptype] = (unsigned int)(N_total[ptype] >> 32);
+  }
+  io_write_attribute(h_grp, "NumPart_ThisFile", LONGLONG, N_total,
+                     swift_type_count);
+  io_write_attribute(h_grp, "NumPart_Total", UINT, numParticles,
+                     swift_type_count);
+  io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
+                     numParticlesHighWord, swift_type_count);
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
