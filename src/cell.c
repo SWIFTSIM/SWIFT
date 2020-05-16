@@ -4523,7 +4523,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
 
   /* Check that we are actually going to move forward. */
-  if (ti_current < ti_old_part) error("Attempt to drift to the past ti_current=%lld < ti_old_part=%lld", ti_current, ti_old_part);
+  if (ti_current < ti_old_part)
+    error("Attempt to drift to the past ti_current=%lld < ti_old_part=%lld",
+          ti_current, ti_old_part);
 #endif
 
   /* Early abort? */

@@ -489,7 +489,7 @@ struct engine {
   char stf_this_timestep;
 
   /* Line of sight properties. */
-  struct los_props* los_properties;
+  struct los_props *los_properties;
 
   /* Line of sight outputs information. */
   struct output_list *output_list_los;

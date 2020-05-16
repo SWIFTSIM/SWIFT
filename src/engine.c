@@ -3848,7 +3848,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry,
-                 struct fof_props *fof_properties, struct los_props *los_properties) {
+                 struct fof_props *fof_properties,
+                 struct los_props *los_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -5150,8 +5151,8 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   /* Deal with line of sight */
   double los_time_first;
   e->output_list_los = NULL;
-  output_list_init(&e->output_list_los, e, "LineOfSight",
-                   &e->delta_time_los, &los_time_first);
+  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los,
+                   &los_time_first);
 
   if (e->output_list_los) {
     if (e->policy & engine_policy_cosmology)
