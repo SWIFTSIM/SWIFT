@@ -73,28 +73,28 @@ struct line_of_sight {
 
 struct los_props {
   /* Number of sightlines shooting down simulation z axis. */
-  int num_along_xy;
+  int num_along_z;
 
   /* Number of sightlines shooting down simulation x axis. */
-  int num_along_yz;
+  int num_along_x;
 
   /* Number of sightlines shooting down simulation y axis. */
-  int num_along_xz;
+  int num_along_y;
 
   /* Total number of sightlines. */
   int num_tot;
 
   /* The min--max range along the simulation x axis random sightlines are
    * allowed. */
-  double xmin, xmax;
+  double allowed_losrange_x[2];
 
   /* The min--max range along the simulation y axis random sightlines are
    * allowed. */
-  double ymin, ymax;
+  double allowed_losrange_y[2];
 
   /* The min--max range along the simulation z axis random sightlines are
    * allowed. */
-  double zmin, zmax;
+  double allowed_losrange_z[2];
 
   /* Basename for line of sight HDF5 files. */
   char basename[200];

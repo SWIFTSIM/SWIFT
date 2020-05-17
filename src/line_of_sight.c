@@ -53,30 +53,31 @@
 void los_init(double dim[3], struct los_props *los_params,
               struct swift_params *params) {
   /* How many line of sights in each plane. */
-  los_params->num_along_xy =
-      parser_get_opt_param_int(params, "LineOfSight:num_along_xy", 0);
-  los_params->num_along_yz =
-      parser_get_opt_param_int(params, "LineOfSight:num_along_yz", 0);
-  los_params->num_along_xz =
-      parser_get_opt_param_int(params, "LineOfSight:num_along_xz", 0);
+  los_params->num_along_z =
+      parser_get_opt_param_int(params, "LineOfSight:num_along_z", 0);
+  los_params->num_along_x =
+      parser_get_opt_param_int(params, "LineOfSight:num_along_x", 0);
+  los_params->num_along_y =
+      parser_get_opt_param_int(params, "LineOfSight:num_along_y", 0);
 
-  /* Min/max range across x,y and z where random LOS's are allowed. */
-  los_params->xmin =
-      parser_get_opt_param_double(params, "LineOfSight:xmin", 0.);
-  los_params->xmax =
-      parser_get_opt_param_double(params, "LineOfSight:xmax", dim[0]);
-  los_params->ymin =
-      parser_get_opt_param_double(params, "LineOfSight:ymin", 0.);
-  los_params->ymax =
-      parser_get_opt_param_double(params, "LineOfSight:ymax", dim[1]);
-  los_params->zmin =
-      parser_get_opt_param_double(params, "LineOfSight:zmin", 0.);
-  los_params->zmax =
-      parser_get_opt_param_double(params, "LineOfSight:zmax", dim[2]);
+  /* Min/max range across x,y and z (simulation axes) where random 
+   * LOS's are allowed. */
+  los_params->allowed_losrange_x[0] = 0.;
+  los_params->allowed_losrange_x[1] = dim[0];
+  parser_get_opt_param_double_array(params, "LineOfSight:allowed_los_range_x",
+                                    2, los_params->allowed_losrange_x);
+  los_params->allowed_losrange_y[0] = 0.;
+  los_params->allowed_losrange_y[1] = dim[1];
+  parser_get_opt_param_double_array(params, "LineOfSight:allowed_los_range_y",
+                                    2, los_params->allowed_losrange_y);
+  los_params->allowed_losrange_z[0] = 0.;
+  los_params->allowed_losrange_z[1] = dim[2];
+  parser_get_opt_param_double_array(params, "LineOfSight:allowed_los_range_z",
+                                    2, los_params->allowed_losrange_z);
 
   /* Compute total number of sightlines. */
-  los_params->num_tot = los_params->num_along_xy + los_params->num_along_yz +
-                        los_params->num_along_xz;
+  los_params->num_tot = los_params->num_along_z + los_params->num_along_x +
+                        los_params->num_along_y;
 
   /* Where are we saving them? */
   parser_get_param_string(params, "LineOfSight:basename", los_params->basename);
@@ -100,33 +101,33 @@ void generate_sightlines(struct line_of_sight *Los,
   double Xpos, Ypos;
 
   /* Sightlines in XY plane, shoots down Z. */
-  for (int i = 0; i < params->num_along_xy; i++) {
-    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
-           params->xmin;
-    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
-           params->ymin;
+  for (int i = 0; i < params->num_along_z; i++) {
+    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->allowed_losrange_x[1] - params->allowed_losrange_x[0])) +
+           params->allowed_losrange_x[0];
+    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->allowed_losrange_y[1] - params->allowed_losrange_y[0])) +
+           params->allowed_losrange_y[0];
     create_sightline(Xpos, Ypos, simulation_x_axis, simulation_y_axis,
                      simulation_z_axis, periodic, dim, &Los[count]);
     count += 1;
   }
 
   /* Sightlines in YZ plane, shoots down X. */
-  for (int i = 0; i < params->num_along_yz; i++) {
-    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->ymax - params->ymin)) +
-           params->ymin;
-    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
-           params->zmin;
+  for (int i = 0; i < params->num_along_x; i++) {
+    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->allowed_losrange_y[1] - params->allowed_losrange_y[0])) +
+           params->allowed_losrange_y[0];
+    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->allowed_losrange_z[1] - params->allowed_losrange_z[0])) +
+           params->allowed_losrange_z[0];
     create_sightline(Xpos, Ypos, simulation_y_axis, simulation_z_axis,
                      simulation_x_axis, periodic, dim, &Los[count]);
     count += 1;
   }
 
   /* Sightlines in XZ plane, shoots down Y. */
-  for (int i = 0; i < params->num_along_xz; i++) {
-    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->xmax - params->xmin)) +
-           params->xmin;
-    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->zmax - params->zmin)) +
-           params->zmin;
+  for (int i = 0; i < params->num_along_y; i++) {
+    Xpos = ((float)rand() / (float)(RAND_MAX) * (params->allowed_losrange_x[1] - params->allowed_losrange_x[0])) +
+           params->allowed_losrange_x[0];
+    Ypos = ((float)rand() / (float)(RAND_MAX) * (params->allowed_losrange_z[1] - params->allowed_losrange_z[0])) +
+           params->allowed_losrange_z[0];
     create_sightline(Xpos, Ypos, simulation_x_axis, simulation_z_axis,
                      simulation_y_axis, periodic, dim, &Los[count]);
     count += 1;
@@ -901,16 +902,13 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   if (h_grp < 0) error("Error while creating LOS group");
 
   /* Record this LOS attributes */
-  io_write_attribute(h_grp, "NumAlongXY", INT, &LOS_params->num_along_xy, 1);
-  io_write_attribute(h_grp, "NumAlongYZ", INT, &LOS_params->num_along_yz, 1);
-  io_write_attribute(h_grp, "NumAlongXZ", INT, &LOS_params->num_along_xz, 1);
-  io_write_attribute(h_grp, "NumLineOfSight", INT, &LOS_params->num_tot, 1);
-  io_write_attribute(h_grp, "Minx", DOUBLE, &LOS_params->xmin, 1);
-  io_write_attribute(h_grp, "Maxx", DOUBLE, &LOS_params->xmax, 1);
-  io_write_attribute(h_grp, "Miny", DOUBLE, &LOS_params->ymin, 1);
-  io_write_attribute(h_grp, "Maxy", DOUBLE, &LOS_params->ymax, 1);
-  io_write_attribute(h_grp, "Minz", DOUBLE, &LOS_params->zmin, 1);
-  io_write_attribute(h_grp, "Maxz", DOUBLE, &LOS_params->zmax, 1);
+  const int num_los_per_axis[3] = {LOS_params->num_along_x, LOS_params->num_along_y,
+                                   LOS_params->num_along_z};
+  io_write_attribute(h_grp, "NumLineOfSight_PerAxis", INT, num_los_per_axis, 3);
+  io_write_attribute(h_grp, "NumLineOfSight_Total", INT, &LOS_params->num_tot, 1);
+  io_write_attribute(h_grp, "AllowedLOSRangeX", DOUBLE, LOS_params->allowed_losrange_x, 2);
+  io_write_attribute(h_grp, "AllowedLOSRangeY", DOUBLE, LOS_params->allowed_losrange_y, 2);
+  io_write_attribute(h_grp, "AllowedLOSRangeZ", DOUBLE, LOS_params->allowed_losrange_z, 2);
   H5Gclose(h_grp);
 }
 
