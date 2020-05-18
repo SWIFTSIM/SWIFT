@@ -114,6 +114,7 @@ tests/testReading
 tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
+tests/testExp
 tests/testKernel
 tests/testKernelGrav
 tests/testKernelLongGrav

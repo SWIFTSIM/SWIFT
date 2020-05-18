@@ -21,7 +21,7 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS
 
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
-        testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
+        testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
@@ -35,7 +35,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-                 testKernel testFFT testInteractions testMaths testRandom \
+                 testKernel testFFT testInteractions testMaths testRandom testExp \
                  testSymmetry testThreadpool testRandomSpacing \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
@@ -123,6 +123,8 @@ testThreadpool_SOURCES = testThreadpool.c
 testDump_SOURCES = testDump.c
 
 testLogger_SOURCES = testLogger.c
+
+testExp_SOURCES = testExp.c
 
 testGravityDerivatives_SOURCES = testGravityDerivatives.c
 

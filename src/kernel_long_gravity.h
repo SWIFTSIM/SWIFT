@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "const.h"
+#include "exp.h"
 #include "inline.h"
 
 /* Standard headers */
@@ -82,7 +83,7 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   const float u2 = u * u;
   const float u4 = u2 * u2;
 
-  const float exp_u2 = expf(-u2);
+  const float exp_u2 = optimized_expf(-u2);
 
   /* Compute erfcf(u) using eq. 7.1.25 of
    * Abramowitz & Stegun, 1972.
@@ -195,7 +196,7 @@ __attribute__((nonnull)) INLINE static void kernel_long_grav_eval(
 
   const float u = 0.5f * r_over_r_s;
   const float u2 = u * u;
-  const float exp_u2 = expf(-u2);
+  const float exp_u2 = optimized_expf(-u2);
 
   /* Compute erfcf(u) using eq. 7.1.25 of
    * Abramowitz & Stegun, 1972.
