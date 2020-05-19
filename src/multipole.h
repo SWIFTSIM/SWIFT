@@ -2993,7 +2993,6 @@ __attribute__((nonnull)) INLINE static void gravity_L2P(
 #endif
 
   /* Update the particle */
-  swift_particle_lock_lock(gp);
   accumulate_add_f(&gp->a_grav[0], a_grav[0]);
   accumulate_add_f(&gp->a_grav[1], a_grav[1]);
   accumulate_add_f(&gp->a_grav[2], a_grav[2]);
@@ -3004,7 +3003,6 @@ __attribute__((nonnull)) INLINE static void gravity_L2P(
   accumulate_add_f(&gp->a_grav_m2l[1], a_grav[1]);
   accumulate_add_f(&gp->a_grav_m2l[2], a_grav[2]);
 #endif
-  swift_particle_lock_unlock(gp);
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
