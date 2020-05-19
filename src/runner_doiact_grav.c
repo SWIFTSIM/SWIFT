@@ -99,6 +99,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
+    /* Lock the cell for the particle updates */
+    lock_lock(&c->grav.plock);
+
     /* Cell properties */
     struct gpart *gparts = c->grav.parts;
     const int gcount = c->grav.count;
@@ -133,6 +136,9 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         gravity_L2P(pot, CoM, gp);
       }
     }
+
+    /* All done -> unlock the cell */
+    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
   }
 
   if (timer) TIMER_TOC(timer_dograv_down);
@@ -229,12 +235,10 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     }
 
     /* Store values back in the particle */
-    swift_particle_lock_lock(gpi);
     accumulate_add_f(&gpi->a_grav[0], a_x);
     accumulate_add_f(&gpi->a_grav[1], a_y);
     accumulate_add_f(&gpi->a_grav[2], a_z);
     gravity_add_comoving_potential(gpi, pot);
-    swift_particle_lock_unlock(gpi);
   }
 }
 
@@ -343,12 +347,10 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     }
 
     /* Store values back in the particle */
-    swift_particle_lock_lock(gpi);
     accumulate_add_f(&gpi->a_grav[0], a_x);
     accumulate_add_f(&gpi->a_grav[1], a_y);
     accumulate_add_f(&gpi->a_grav[2], a_z);
     gravity_add_comoving_potential(gpi, pot);
-    swift_particle_lock_unlock(gpi);
   }
 }
 
@@ -1150,10 +1152,19 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     }
   }
 
-  /* Write back to the particles */
-  if (ci_active) gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
-  if (cj_active && symmetric)
+  /* Write back to the particles in ci */
+  if (ci_active) {
+    lock_lock(&ci->grav.plock);
+    gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
+  }
+
+  /* Write back to the particles in cj */
+  if (cj_active && symmetric) {
+    lock_lock(&cj->grav.plock);
     gravity_cache_write_back(cj_cache, cj->grav.parts, gcount_j);
+    if (lock_unlock(&cj->grav.plock) != 0) error("Error unlocking cell");
+  }
 
   TIMER_TOC(timer_dopair_grav_pp);
 }
@@ -1556,7 +1567,9 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   }
 
   /* Write back to the particles */
+  lock_lock(&c->grav.plock);
   gravity_cache_write_back(ci_cache, c->grav.parts, gcount);
+  if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
 
   TIMER_TOC(timer_doself_grav_pp);
 }
@@ -1860,7 +1873,9 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     }
 
     /* Write back to the particles */
+    lock_lock(&ci->grav.plock);
     gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
   }
 }
 

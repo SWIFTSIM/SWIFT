@@ -487,12 +487,10 @@ INLINE static void gravity_cache_write_back(const struct gravity_cache *c,
   /* Write stuff back to the particles */
   for (int i = 0; i < gcount; ++i) {
     if (active[i]) {
-      swift_particle_lock_lock(&gparts[i]);
       accumulate_add_f(&gparts[i].a_grav[0], a_x[i]);
       accumulate_add_f(&gparts[i].a_grav[1], a_y[i]);
       accumulate_add_f(&gparts[i].a_grav[2], a_z[i]);
       gravity_add_comoving_potential(&gparts[i], pot[i]);
-      swift_particle_lock_unlock(&gparts[i]);
     }
   }
 }

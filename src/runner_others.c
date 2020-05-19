@@ -131,7 +131,9 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
   } else {
 
     /* Get the forces from the gravity mesh */
+    lock_lock(&c->grav.plock);
     pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
+    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
   }
 
   if (timer) TIMER_TOC(timer_dograv_mesh);
