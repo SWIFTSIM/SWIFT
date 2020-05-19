@@ -25,6 +25,9 @@
 /* Local headers. */
 #include "inline.h"
 
+/* Standard headers */
+#include <math.h>
+
 /**
  * @brief Compute the exponential of a number.
  *
