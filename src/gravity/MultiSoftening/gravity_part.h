@@ -20,6 +20,7 @@
 #define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
 #include "fof_struct.h"
+#include "part_lock.h"
 
 /* Gravity particle. */
 struct gpart {
@@ -57,6 +58,9 @@ struct gpart {
 
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
+
+  /*! Lock for the particle in parallel task sections */
+  swift_particle_lock_t lock;
 
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */

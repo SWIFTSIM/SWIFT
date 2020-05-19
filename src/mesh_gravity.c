@@ -336,6 +336,7 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
   /* ---- */
 
   /* Store things back */
+  swift_particle_lock_lock(gp);
   accumulate_add_f(&gp->a_grav[0], fac * a[0]);
   accumulate_add_f(&gp->a_grav[1], fac * a[1]);
   accumulate_add_f(&gp->a_grav[2], fac * a[2]);
@@ -346,6 +347,7 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
   gp->a_grav_PM[1] = fac * a[1];
   gp->a_grav_PM[2] = fac * a[2];
 #endif
+  swift_particle_lock_unlock(gp);
 }
 
 /**

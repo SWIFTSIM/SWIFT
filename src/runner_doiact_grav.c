@@ -229,10 +229,12 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     }
 
     /* Store values back in the particle */
+    swift_particle_lock_lock(gpi);
     accumulate_add_f(&gpi->a_grav[0], a_x);
     accumulate_add_f(&gpi->a_grav[1], a_y);
     accumulate_add_f(&gpi->a_grav[2], a_z);
     gravity_add_comoving_potential(gpi, pot);
+    swift_particle_lock_unlock(gpi);
   }
 }
 
@@ -341,10 +343,12 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     }
 
     /* Store values back in the particle */
+    swift_particle_lock_lock(gpi);
     accumulate_add_f(&gpi->a_grav[0], a_x);
     accumulate_add_f(&gpi->a_grav[1], a_y);
     accumulate_add_f(&gpi->a_grav[2], a_z);
     gravity_add_comoving_potential(gpi, pot);
+    swift_particle_lock_unlock(gpi);
   }
 }
 

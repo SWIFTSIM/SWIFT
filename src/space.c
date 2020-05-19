@@ -56,6 +56,7 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "part_lock.h"
 #include "pressure_floor.h"
 #include "proxy.h"
 #include "restart.h"
@@ -4426,6 +4427,11 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
     gp[k].x[1] = gp[k].x[2] = 0.f;
     gp[k].v_full[1] = gp[k].v_full[2] = 0.f;
 #endif
+  }
+
+  /* Initialise the particle-carried locks */
+  for (int k = 0; k < count; k++) {
+    swift_particle_lock_init(&gp[k]);
   }
 
   /* Initialise the rest */
