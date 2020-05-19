@@ -69,6 +69,9 @@ struct line_of_sight {
 
   /* How many top level cells does ths LOS intersect? */
   int num_intersecting_top_level_cells;
+
+  /* The min--max range to consider for parts in LOS. */
+  double range_when_shooting_down_axis[2];
 };
 
 struct los_props {
@@ -96,6 +99,10 @@ struct los_props {
    * allowed. */
   double allowed_losrange_z[2];
 
+  /* The min--max range to consider when LOS is shooting down each
+   * simulation axis. */
+  double range_when_shooting_down_axis[3][2];
+
   /* Basename for line of sight HDF5 files. */
   char basename[200];
 };
@@ -119,7 +126,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
 void create_sightline(const double Xpos, const double Ypos,
                       enum los_direction xaxis, enum los_direction yaxis,
                       enum los_direction zaxis, const int periodic,
-                      const double dim[3], struct line_of_sight *los);
+                      const double dim[3], struct line_of_sight *los,
+                      const double range_when_shooting_down_axis[2]);
 void los_struct_dump(const struct los_props *internal_los, FILE *stream);
 void los_struct_restore(const struct los_props *internal_los, FILE *stream);
 int does_los_intersect(const struct cell *c, const struct line_of_sight *los);
