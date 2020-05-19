@@ -32,13 +32,11 @@
  * @param b Second value
  * @param s String used to identify this check in messages
  */
-void check_value(double a, double b, const double tol,  const double x) {
+void check_value(double a, double b, const double tol, const double x) {
   if (fabs(a - b) / fabs(a + b) > tol)
-    error(
-        "Values are inconsistent: %12.15e %12.15e rel=%e (for x=%e).",
-        a, b, fabs(a - b) / fabs(a + b), x);
+    error("Values are inconsistent: %12.15e %12.15e rel=%e (for x=%e).", a, b,
+          fabs(a - b) / fabs(a + b), x);
 }
-
 
 int main(int argc, char* argv[]) {
 
@@ -58,7 +56,7 @@ int main(int argc, char* argv[]) {
 
   /* Loop over some values */
   for (float x = 0.; x < 32.; x += 0.000001) {
-    
+
     const double exact_p = exp(x);
     const double exact_n = exp(-x);
     const double swift_exp_p = optimized_expf(x);
@@ -70,4 +68,3 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
-
