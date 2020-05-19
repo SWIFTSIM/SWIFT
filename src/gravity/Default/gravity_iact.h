@@ -145,7 +145,12 @@ runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
                          float *restrict pot) {
 
   /* Use the M2P kernel */
-  struct reduced_grav_tensor l = {0.f, 0.f, 0.f, 0.f};
+  struct reduced_grav_tensor l;
+  l.F_000 = 0.f;
+  l.F_100 = 0.f;
+  l.F_010 = 0.f;
+  l.F_001 = 0.f;
+
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/0, /*rs_inv=*/0.f, &l);
 
   /* Write back */
@@ -182,7 +187,12 @@ runner_iact_grav_pm_truncated(const float r_x, const float r_y, const float r_z,
                               float *restrict f_z, float *restrict pot) {
 
   /* Use the M2P kernel */
-  struct reduced_grav_tensor l = {0.f, 0.f, 0.f, 0.f};
+  struct reduced_grav_tensor l;
+  l.F_000 = 0.f;
+  l.F_100 = 0.f;
+  l.F_010 = 0.f;
+  l.F_001 = 0.f;
+
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/1, r_s_inv, &l);
 
   /* Write back */
