@@ -125,7 +125,8 @@ const char *engine_policy_names[] = {"none",
                                      "fof search",
                                      "time-step limiter",
                                      "time-step sync",
-                                     "logger"};
+                                     "logger",
+                                     "line of sight"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -2760,6 +2761,7 @@ void engine_step(struct engine *e) {
 void engine_check_for_dumps(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
+  const int with_los = (e->policy & engine_policy_line_of_sight);
 
   /* What kind of output are we getting? */
   enum output_type {
@@ -2804,10 +2806,12 @@ void engine_check_for_dumps(struct engine *e) {
   }
 
   /* Do we want to write a line of sight file? */
-  if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
-    if (e->ti_next_los < ti_output) {
-      ti_output = e->ti_next_los;
-      type = output_los;
+  if (with_los) {
+    if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
+      if (e->ti_next_los < ti_output) {
+        ti_output = e->ti_next_los;
+        type = output_los;
+      }
     }
   }
 
@@ -2941,10 +2945,12 @@ void engine_check_for_dumps(struct engine *e) {
     }
 
     /* Do line of sight ? */
-    if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
-      if (e->ti_next_los < ti_output) {
-        ti_output = e->ti_next_los;
-        type = output_los;
+    if (with_los) {
+      if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
+        if (e->ti_next_los < ti_output) {
+          ti_output = e->ti_next_los;
+          type = output_los;
+        }
       }
     }
 
@@ -4007,6 +4013,16 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "StructureFinding:delta_time", -1.);
   }
 
+  /* Initialise line of sight output. */
+  if (e->policy & engine_policy_line_of_sight) {
+    e->time_first_los =
+        parser_get_opt_param_double(params, "LineOfSight:time_first", 0.);
+    e->a_first_los = parser_get_opt_param_double(
+        params, "LineOfSight:scale_factor_first", 0.1);
+    e->delta_time_los =
+        parser_get_opt_param_double(params, "LineOfSight:delta_time", -1.);
+  }
+
   /* Initialise FoF calls frequency. */
   if (e->policy & engine_policy_fof) {
 
@@ -4489,7 +4505,9 @@ void engine_config(int restart, int fof, struct engine *e,
     engine_compute_next_statistics_time(e);
 
     /* Find the time of the first line of sight output */
-    engine_compute_next_los_time(e);
+    if (e->policy & engine_policy_line_of_sight) {
+      engine_compute_next_los_time(e);
+    }
 
     /* Find the time of the first stf output */
     if (e->policy & engine_policy_structure_finding) {
@@ -5151,14 +5169,14 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   /* Deal with line of sight */
   double los_time_first;
   e->output_list_los = NULL;
-  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los,
-                   &los_time_first);
+  output_list_init(&e->output_list_los, e, "LineOfSight",
+                   &e->delta_time_los, &los_time_first);
 
   if (e->output_list_los) {
     if (e->policy & engine_policy_cosmology)
-      e->a_first_los = stf_time_first;
+      e->a_first_los = los_time_first;
     else
-      e->time_first_los = stf_time_first;
+      e->time_first_los = los_time_first;
   }
 }
 
