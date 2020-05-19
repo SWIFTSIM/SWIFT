@@ -1158,8 +1158,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TOC(timer_dopair_grav_pp);
 }
 
-void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *ci,
-                                    struct cell *cj, const int symmetric) {
+void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
+                                    const struct cell *restrict cj) {
 
   /* Recover some useful constants */
   const struct engine *e = r->e;
@@ -1170,45 +1170,32 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *ci,
   /* Record activity status */
   const int ci_active =
       cell_is_active_gravity(ci, e) && (ci->nodeID == e->nodeID);
-  const int cj_active =
-      cell_is_active_gravity(cj, e) && (cj->nodeID == e->nodeID);
 
   /* Anything to do here? */
-  if (!ci_active && !cj_active) return;
-  if (!ci_active && !symmetric) return;
+  if (!ci_active) return;
+  if (ci->grav.count == 0 || cj->grav.count == 0) return;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Let's start by checking things are drifted */
-  if (!cell_are_gpart_drifted(ci, e)) error("Un-drifted gparts");
-  if (!cell_are_gpart_drifted(cj, e)) error("Un-drifted gparts");
-#endif
+  /* Recurse? */
+  if (ci->split) {
 
-  /* Can we use the Newtonian version or do we need the truncated one ? */
-  if (!periodic) {
-
-    /* Let's updated the active cell(s) only */
-    if (ci_active) {
-      runner_dopair_grav_pp_full_no_cache(ci->grav.parts, ci->grav.count,
-                                          cj->grav.parts, cj->grav.count, e,
-                                          e->gravity_properties);
-    }
-    if (cj_active && symmetric) {
-      runner_dopair_grav_pp_full_no_cache(cj->grav.parts, cj->grav.count,
-                                          ci->grav.parts, ci->grav.count, e,
-                                          e->gravity_properties);
+    for (int k = 0; k < 8; ++k) {
+      if (ci->progeny[k] != NULL) {
+        runner_dopair_grav_pp_no_cache(r, ci->progeny[k], cj);
+      }
     }
 
   } else {
 
-    /* Let's updated the active cell(s) only */
-    if (ci_active) {
+    /* Can we use the Newtonian version or do we need the truncated one ? */
+    if (!periodic) {
+
+      runner_dopair_grav_pp_full_no_cache(ci->grav.parts, ci->grav.count,
+                                          cj->grav.parts, cj->grav.count, e,
+                                          e->gravity_properties);
+    } else {
+
       runner_dopair_grav_pp_truncated_no_cache(ci->grav.parts, ci->grav.count,
                                                cj->grav.parts, cj->grav.count,
-                                               dim, e, e->gravity_properties);
-    }
-    if (cj_active && symmetric) {
-      runner_dopair_grav_pp_truncated_no_cache(cj->grav.parts, cj->grav.count,
-                                               ci->grav.parts, ci->grav.count,
                                                dim, e, e->gravity_properties);
     }
   }
@@ -1979,7 +1966,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   if (ci->grav.count < VEC_SIZE || cj->grav.count < VEC_SIZE) {
 
     /* We have two cheap cells. Go P-P. */
-    runner_dopair_grav_pp_no_cache(r, ci, cj, /*symmetric=*/1);
+    runner_dopair_grav_pp_no_cache(r, ci, cj);
+    runner_dopair_grav_pp_no_cache(r, cj, ci);
 
     /* Can we use M-M interactions ? */
   } else if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
