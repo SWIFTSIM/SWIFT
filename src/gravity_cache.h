@@ -225,6 +225,9 @@ INLINE static void gravity_cache_populate(
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */
+#ifndef SWIFT_DEBUG_CHECKS
+#pragma omp simd
+#endif
   for (int i = 0; i < gcount; ++i) {
 
     x[i] = (float)(gparts[i].x[0] - shift[0]);

@@ -699,6 +699,9 @@ static INLINE void runner_dopair_grav_pm_full(
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
   /* Loop over all particles in ci... */
+#ifndef SWIFT_DEBUG_CHECKS
+#pragma omp simd
+#endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
 
     /* Skip inactive particles */
@@ -837,6 +840,9 @@ static INLINE void runner_dopair_grav_pm_truncated(
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
   /* Loop over all particles in ci... */
+#ifndef SWIFT_DEBUG_CHECKS
+#pragma omp simd
+#endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
 
     /* Skip inactive particles */
