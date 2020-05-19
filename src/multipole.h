@@ -2246,7 +2246,7 @@ __attribute__((nonnull)) INLINE static void gravity_P2L(
  * @param rs_inv The inverse of the gravity mesh-smoothing scale.
  * @param l (return) The #reduced_grav_tensor to compute.
  */
-__attribute__((nonnull)) INLINE static void gravity_M2P(
+__attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
     const struct multipole *const m, const float r_x, const float r_y,
     const float r_z, const float r2, const float eps, const int periodic,
     const float rs_inv, struct reduced_grav_tensor *const l) {
