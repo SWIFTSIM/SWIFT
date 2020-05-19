@@ -50,23 +50,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_mass(
 __attribute__((always_inline)) INLINE static float gravity_get_softening(
     const struct gpart* gp, const struct gravity_props* restrict grav_props) {
 
-  switch (gp->type) {
-    case swift_type_dark_matter:
-      return grav_props->epsilon_DM_cur;
-    case swift_type_stars:
-      return grav_props->epsilon_baryon_cur;
-    case swift_type_gas:
-      return grav_props->epsilon_baryon_cur;
-    case swift_type_black_hole:
-      return grav_props->epsilon_baryon_cur;
-    case swift_type_dark_matter_background:
-      return grav_props->epsilon_background_fac * cbrtf(gp->mass);
-    default:
-#ifdef SWIFT_DEBUG_CHECKS
-      error("Invalid gpart type!");
-#endif
-      return 0.f;
-  }
+  return gp->epsilon;
 }
 
 /**
@@ -240,6 +224,41 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 }
 
 /**
+ * @brief Update the #gpart after a drift step.
+ *
+ * This is typically used to update the softening lengths.
+ *
+ * @param gp The particle to act upon
+ * @param grav_props The global properties of the gravity calculation.
+ */
+__attribute__((always_inline)) INLINE static void gravity_predict_extra(
+    struct gpart* gp, const struct gravity_props* grav_props) {
+
+  switch (gp->type) {
+    case swift_type_dark_matter:
+      gp->epsilon = grav_props->epsilon_DM_cur;
+      break;
+    case swift_type_stars:
+      gp->epsilon = grav_props->epsilon_baryon_cur;
+      break;
+    case swift_type_gas:
+      gp->epsilon = grav_props->epsilon_baryon_cur;
+      break;
+    case swift_type_black_hole:
+      gp->epsilon = grav_props->epsilon_baryon_cur;
+      break;
+    case swift_type_dark_matter_background:
+      gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass);
+      break;
+    default:
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Invalid gpart type!");
+#endif
+      break;
+  }
+}
+
+/**
  * @brief Kick the additional variables
  *
  * @param gp The particle to act upon
@@ -271,6 +290,29 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 
   gp->time_bin = 0;
   gp->old_a_grav_norm = 0.f;
+
+  switch (gp->type) {
+    case swift_type_dark_matter:
+      gp->epsilon = grav_props->epsilon_DM_cur;
+      break;
+    case swift_type_stars:
+      gp->epsilon = grav_props->epsilon_baryon_cur;
+      break;
+    case swift_type_gas:
+      gp->epsilon = grav_props->epsilon_baryon_cur;
+      break;
+    case swift_type_black_hole:
+      gp->epsilon = grav_props->epsilon_baryon_cur;
+      break;
+    case swift_type_dark_matter_background:
+      gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass);
+      break;
+    default:
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Invalid gpart type!");
+#endif
+      break;
+  }
 
   gravity_init_gpart(gp);
 }

@@ -213,6 +213,17 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 }
 
 /**
+ * @brief Update the #gpart after a drift step.
+ *
+ * This is typically used to update the softening lengths.
+ *
+ * @param gp The particle to act upon
+ * @param grav_props The global properties of the gravity calculation.
+ */
+__attribute__((always_inline)) INLINE static void gravity_predict_extra(
+    struct gpart* gp, const struct gravity_props* grav_props) {}
+
+/**
  * @brief Kick the additional variables
  *
  * @param gp The particle to act upon

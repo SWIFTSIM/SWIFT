@@ -46,6 +46,9 @@ struct gpart {
   /*! Norm of the acceleration at the previous step. */
   float old_a_grav_norm;
 
+  /*! Current co-moving spline softening of the particle */
+  float epsilon;
+
   /*! Particle FoF properties (group ID, group size, ...) */
   struct fof_gpart_data fof_data;
 

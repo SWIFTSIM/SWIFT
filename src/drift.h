@@ -43,7 +43,7 @@
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
     struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current) {
+    integertime_t ti_current, const struct gravity_props *grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_drift != ti_old)
@@ -60,6 +60,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->x[0] += gp->v_full[0] * dt_drift;
   gp->x[1] += gp->v_full[1] * dt_drift;
   gp->x[2] += gp->v_full[2] * dt_drift;
+
+  gravity_predict_extra(gp, grav_props);
 }
 
 /**
