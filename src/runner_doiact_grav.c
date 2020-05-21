@@ -194,7 +194,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 
     /* Can we use the Mulipole here? */
     if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-					   /*periodic=*/1)) {
+                                           /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -364,7 +364,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 
     /* Can we use the Mulipole here? */
     if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-					   /*periodic=*/1)) {
+                                           /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
