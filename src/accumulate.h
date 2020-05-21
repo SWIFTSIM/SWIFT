@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static void accumulate_add_ll(
  * @param x The value to add to *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_add_f(
-    volatile float *const address, const float x) {
+    float *const address, const float x) {  // MATTHIEU: removed volatile
 
 #if 1  // SWIFT_TASKS_WITHOUT_ATOMICS
   *address += x;

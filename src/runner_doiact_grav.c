@@ -147,7 +147,12 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 static INLINE void runner_dopair_grav_pp_full_no_cache(
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct gpart *restrict gparts_j, const int gcount_j,
-    const struct engine *e, const struct gravity_props *grav_props) {
+    const struct engine *e, const struct gravity_props *grav_props,
+    struct gravity_cache *cache_i, struct cell *ci) {
+
+  /* Prepare the i cache */
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  gravity_cache_zero_output(cache_i, gcount_padded_i);
 
   /* Loop over sink particles */
   for (int i = 0; i < gcount_i; ++i) {
@@ -234,19 +239,25 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #endif
     }
 
-    /* Store values back in the particle */
-    accumulate_add_f(&gpi->a_grav[0], a_x);
-    accumulate_add_f(&gpi->a_grav[1], a_y);
-    accumulate_add_f(&gpi->a_grav[2], a_z);
-    gravity_add_comoving_potential(gpi, pot);
+    /* Store everything back in cache */
+    cache_i->a_x[i] += a_x;
+    cache_i->a_y[i] += a_y;
+    cache_i->a_z[i] += a_z;
+    cache_i->pot[i] += pot;
   }
+
+  /* Write back to the particle data */
+  lock_lock(&ci->grav.plock);
+  gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
+  if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 }
 
 static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct gpart *restrict gparts_j, const int gcount_j,
     const float dim[3], const struct engine *e,
-    const struct gravity_props *grav_props) {
+    const struct gravity_props *grav_props, struct gravity_cache *cache_i,
+    struct cell *ci) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -254,6 +265,10 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #endif
 
   const float r_s_inv = grav_props->r_s_inv;
+
+  /* Prepare the i cache */
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  gravity_cache_zero_output(cache_i, gcount_padded_i);
 
   /* Loop over sink particles */
   for (int i = 0; i < gcount_i; ++i) {
@@ -346,12 +361,17 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #endif
     }
 
-    /* Store values back in the particle */
-    accumulate_add_f(&gpi->a_grav[0], a_x);
-    accumulate_add_f(&gpi->a_grav[1], a_y);
-    accumulate_add_f(&gpi->a_grav[2], a_z);
-    gravity_add_comoving_potential(gpi, pot);
+    /* Store everything back in cache */
+    cache_i->a_x[i] += a_x;
+    cache_i->a_y[i] += a_y;
+    cache_i->a_z[i] += a_z;
+    cache_i->pot[i] += pot;
   }
+
+  /* Write back to the particle data */
+  lock_lock(&ci->grav.plock);
+  gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
+  if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 }
 
 /**
@@ -1200,14 +1220,14 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {
 
-      runner_dopair_grav_pp_full_no_cache(ci->grav.parts, ci->grav.count,
-                                          cj->grav.parts, cj->grav.count, e,
-                                          e->gravity_properties);
+      runner_dopair_grav_pp_full_no_cache(
+          ci->grav.parts, ci->grav.count, cj->grav.parts, cj->grav.count, e,
+          e->gravity_properties, &r->ci_gravity_cache, ci);
     } else {
 
-      runner_dopair_grav_pp_truncated_no_cache(ci->grav.parts, ci->grav.count,
-                                               cj->grav.parts, cj->grav.count,
-                                               dim, e, e->gravity_properties);
+      runner_dopair_grav_pp_truncated_no_cache(
+          ci->grav.parts, ci->grav.count, cj->grav.parts, cj->grav.count, dim,
+          e, e->gravity_properties, &r->ci_gravity_cache, ci);
     }
   }
 }
