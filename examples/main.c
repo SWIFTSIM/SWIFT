@@ -660,7 +660,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-    /* Check that we can write the line of sight files by testing if the
+  /* Check that we can write the line of sight files by testing if the
    * output directory exists and is searchable and writable. */
   if (with_line_of_sight) {
     char losbasename[PARSER_MAX_LINE_SIZE];
@@ -1205,8 +1205,7 @@ int main(int argc, char *argv[]) {
       engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_logger) engine_policies |= engine_policy_logger;
-    if (with_line_of_sight)
-      engine_policies |= engine_policy_line_of_sight;
+    if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);

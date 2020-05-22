@@ -5169,8 +5169,8 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
   /* Deal with line of sight */
   double los_time_first;
   e->output_list_los = NULL;
-  output_list_init(&e->output_list_los, e, "LineOfSight",
-                   &e->delta_time_los, &los_time_first);
+  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los,
+                   &los_time_first);
 
   if (e->output_list_los) {
     if (e->policy & engine_policy_cosmology)
