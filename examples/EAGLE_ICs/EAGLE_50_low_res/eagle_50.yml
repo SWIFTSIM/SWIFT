@@ -1,6 +1,6 @@
 # Define some meta-data about the simulation
 MetaData:
-  run_name:   EAGLE-L0025N0376-Ref
+  run_name:   EAGLE-L0050N0376-Ref
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
@@ -40,12 +40,12 @@ Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
   theta:                  0.7       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       128
-  comoving_DM_softening:         0.003320 # Comoving softening for DM (3.32 ckpc)
-  max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)
-  comoving_baryon_softening:     0.001790 # Comoving softening for baryons (1.79 ckpc)
-  max_physical_baryon_softening: 0.000700 # Physical softening for baryons (0.70 pkpc)
+  comoving_DM_softening:         0.006640 # Comoving softening for DM (6.67 ckpc)
+  max_physical_DM_softening:     0.002600 # Physical softening for DM (2.60 pkpc)
+  comoving_baryon_softening:     0.003580 # Comoving softening for baryons (3.58 ckpc)
+  max_physical_baryon_softening: 0.001400 # Physical softening for baryons (1.40 pkpc)
   dithering:             0
-  
+
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
@@ -55,7 +55,7 @@ SPH:
   minimal_temperature:               100.0    # (internal units)
   initial_temperature:               268.7    # (internal units)
   particle_splitting:                1        # Particle splitting is ON
-  particle_splitting_mass_threshold: 7e-4     # (internal units, i.e. 7e6 Msun ~ 4x initial gas particle mass)
+  particle_splitting_mass_threshold: 5.6e-3   # (internal units, i.e. 5.6e7 Msun ~ 4x initial gas particle mass)
 
 # Parameters of the stars neighbour search
 Stars:
@@ -65,7 +65,7 @@ Stars:
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs.
-  min_group_size:                  256         # The minimum no. of particles required for a group.
+  min_group_size:                  32         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   scale_factor_first:              0.05        # Scale-factor of first FoF black hole seeding calls.
@@ -78,13 +78,10 @@ Scheduler:
 Restarts:
   onexit:       1
   delta_hours:  6.0
-  max_run_time: 71.5                 # Three days minus fergie time
-  resubmit_on_exit:   1
-  resubmit_command:   ./resub.sh
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  EAGLE_L0025N0376_ICs.hdf5
+  file_name:  EAGLE_L0050N0376_ICs.hdf5
   periodic:   1
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget

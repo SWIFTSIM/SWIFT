@@ -21,6 +21,7 @@ Words:
   list: ['xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, once-again]
   nonstdlist: 'xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, once-again
   long: [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]
+  unfinished: [a, b, c, d, e, f, g, h, i, j, 'abcdefg
 
 #  Spelling mistake, should go into unused list.
 Box:

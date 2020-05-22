@@ -29,8 +29,6 @@
  * @brief do pressure_floor computation after the runner_iact_density (symmetric
  * version)
  *
- * Compute the velocity dispersion follow eq. 2 in Revaz & Jablonka 2018.
- *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -42,28 +40,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_pressure_floor(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
-
-  float wi;
-  float wj;
-  /* Evaluation of the SPH kernel */
-  kernel_eval(sqrt(r2) / hi, &wi);
-  kernel_eval(sqrt(r2) / hj, &wj);
-
-  /* Delta v */
-  float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1], pi->v[2] - pj->v[2]};
-
-  /* Compute the velocity dispersion */
-  const float a2H = a * a * H;
-  const float sigma[3] = {dv[0] + a2H * dx[0], dv[1] + a2H * dx[1],
-                          dv[2] + a2H * dx[2]};
-  const float sigma2 =
-      sigma[0] * sigma[0] + sigma[1] * sigma[1] + sigma[2] * sigma[2];
-
-  /* Compute the velocity dispersion */
-  pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
-  pj->pressure_floor_data.sigma2 += sigma2 * wj * hydro_get_mass(pi);
-}
+    struct part *restrict pj, float a, float H) {}
 
 /**
  * @brief do pressure_floor computation after the runner_iact_density (non
@@ -82,23 +59,6 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_pressure_floor(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pi,
                                   const struct part *restrict pj, float a,
-                                  float H) {
-  float wi;
-  /* Evaluation of the SPH kernel */
-  kernel_eval(sqrt(r2) / hi, &wi);
-
-  /* Delta v */
-  float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1], pi->v[2] - pj->v[2]};
-
-  /* Compute the velocity dispersion */
-  const float a2H = a * a * H;
-  const float sigma[3] = {dv[0] + a2H * dx[0], dv[1] + a2H * dx[1],
-                          dv[2] + a2H * dx[2]};
-  const float sigma2 =
-      sigma[0] * sigma[0] + sigma[1] * sigma[1] + sigma[2] * sigma[2];
-
-  /* Compute the velocity dispersion */
-  pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
-}
+                                  float H) {}
 
 #endif /* SWIFT_GEAR_PRESSURE_FLOOR_IACT_H */

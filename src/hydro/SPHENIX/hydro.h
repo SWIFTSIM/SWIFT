@@ -746,26 +746,33 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Construct the source term for the AV; if shock detected this is _positive_
    * as div_v_dt should be _negative_ before the shock hits */
-  const float S = kernel_support_physical * kernel_support_physical *
-                  max(0.f, -1.f * div_v_dt);
-  /* 0.25 factor comes from our definition of v_sig (sum of soundspeeds rather
-   * than mean). */
-  /* Note this is v_sig_physical squared, not comoving */
-  const float v_sig_square = 0.25 * v_sig_physical * v_sig_physical;
+  /* Source term is only activated if flow is converging (i.e. in the pre-
+   * shock region) */
+  const float S = p->viscosity.div_v < 0.f
+                      ? kernel_support_physical * kernel_support_physical *
+                            max(0.f, -1.f * div_v_dt)
+                      : 0.f;
+
+  /* We want the decay to occur based on the thermodynamic properties
+   * of the gas - hence use the soundspeed instead of the signal velocity */
+  const float soundspeed_square = soundspeed_physical * soundspeed_physical;
 
   /* Calculate the current appropriate value of the AV based on the above */
   const float alpha_loc =
-      hydro_props->viscosity.alpha_max * S / (v_sig_square + S);
+      hydro_props->viscosity.alpha_max * S / (soundspeed_square + S);
 
   if (alpha_loc > p->viscosity.alpha) {
     /* Reset the value of alpha to the appropriate value */
     p->viscosity.alpha = alpha_loc;
   } else {
     /* Integrate the alpha forward in time to decay back to alpha = alpha_loc */
-    p->viscosity.alpha =
-        alpha_loc + (p->viscosity.alpha - alpha_loc) *
-                        expf(-dt_alpha * sound_crossing_time_inverse *
-                             hydro_props->viscosity.length);
+    /* This type of integration is stable w.r.t. different time-step lengths
+     * (Price 2018) */
+    const float timescale_ratio =
+        dt_alpha * sound_crossing_time_inverse * hydro_props->viscosity.length;
+
+    p->viscosity.alpha += alpha_loc * timescale_ratio;
+    p->viscosity.alpha /= (1.f + timescale_ratio);
   }
 
   /* Check that we did not hit the minimum */
@@ -901,17 +908,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
-  /* Check against entropy floor */
-  const float floor_A = entropy_floor(p, cosmo, floor_props);
-  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
-
-  /* Check against absolute minimum */
-  const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-
-  p->u = max(p->u, floor_u);
-  p->u = max(p->u, min_u);
-
   const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
@@ -931,6 +927,18 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const float expf_exact = expf(w2);
     p->rho *= expf_exact;
   }
+
+  /* Check against entropy floor - explicitly do this after drifting the
+   * density as this has a density dependence. */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  p->u = max(p->u, floor_u);
+  p->u = max(p->u, min_u);
 
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);

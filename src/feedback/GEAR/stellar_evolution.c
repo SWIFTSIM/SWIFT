@@ -156,8 +156,6 @@ void stellar_evolution_compute_continuous_feedback_properties(
     /* Convert it to total mass */
     sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
 
-    sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
-
     /* Add the Supernovae Ia */
     sp->feedback_data.metal_mass_ejected[i] +=
         snia_yields[i] * number_snia_f * phys_const->const_solar_mass;
