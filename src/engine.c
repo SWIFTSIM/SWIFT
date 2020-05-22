@@ -2902,8 +2902,11 @@ void engine_check_for_dumps(struct engine *e) {
         break;
 
       case output_los:
+
+        /* Compute the LoS */
         do_line_of_sight(e);
 
+        /* Move on */
         engine_compute_next_los_time(e);
 
         break;

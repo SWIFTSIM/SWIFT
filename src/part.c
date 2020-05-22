@@ -31,7 +31,6 @@
 /* Local headers */
 #include "error.h"
 #include "hydro.h"
-#include "line_of_sight.h"
 #include "threadpool.h"
 
 /**

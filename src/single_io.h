@@ -29,6 +29,7 @@
 
 struct engine;
 struct unit_system;
+struct io_props;
 
 void read_ic_single(const char* fileName,
                     const struct unit_system* internal_units, double dim[3],
@@ -47,13 +48,12 @@ void write_output_single(struct engine* e,
 #endif /* HAVE_HDF5 && !WITH_MPI */
 
 #ifdef HAVE_HDF5
-#include "io_properties.h"
-
 void write_array_single(const struct engine* e, hid_t grp, char* fileName,
                         FILE* xmfFile, char* partTypeGroupName,
                         const struct io_props props, size_t N,
                         const struct unit_system* internal_units,
                         const struct unit_system* snapshot_units);
-#endif
+
+#endif /* HAVE_HDF5 */
 
 #endif /* SWIFT_SINGLE_IO_H */
