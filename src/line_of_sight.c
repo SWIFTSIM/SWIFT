@@ -488,17 +488,19 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                          e->s->dim[2] * factor_length};
 
   io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
-  io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
-  const int dimension = (int)hydro_dimension;
-  io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
-  io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
-  io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
+  io_write_attribute_d(h_grp, "Time", dblTime);
+  io_write_attribute_d(h_grp, "Dimension", (int)hydro_dimension);
+  io_write_attribute_d(h_grp, "Redshift", e->cosmology->z);
+  io_write_attribute_d(h_grp, "Scale-factor", e->cosmology->a);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
-  const int num_files_per_snapshot = 1;
-  io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files_per_snapshot,
-                     1);
-  io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
+
+  /* Store the time at which the snapshot was written */
+  time_t tm = time(NULL);
+  struct tm *timeinfo = localtime(&tm);
+  char snapshot_date[64];
+  strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
+  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
@@ -516,13 +518,9 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
-
-  /* Store the time at which the snapshot was written */
-  time_t tm = time(NULL);
-  struct tm *timeinfo = localtime(&tm);
-  char snapshot_date[64];
-  strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
-  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+  io_write_attribute_i(h_grp, "NumFilesPerSnapshot", 1);
+  io_write_attribute_i(h_grp, "ThisFile", 0);
+  io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
 
   /* Close group */
   H5Gclose(h_grp);
