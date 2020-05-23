@@ -755,8 +755,7 @@ void do_line_of_sight(struct engine *e) {
 
     struct part *parts = s->parts;
     const size_t nr_parts = s->nr_parts;
-    const size_t old_particles_in_los_local =
-        LOS_list[j].particles_in_los_local;
+    const int old_particles_in_los_local = LOS_list[j].particles_in_los_local;
     LOS_list[j].particles_in_los_local = 0;
 
     /* Count all parts that intersect with this line of sight. */
@@ -766,7 +765,7 @@ void do_line_of_sight(struct engine *e) {
 
     /* Make sure we get the same answer as above. */
     if (old_particles_in_los_local != LOS_list[j].particles_in_los_local)
-      error("Space vs cells don't match s:%li != c:%li",
+      error("Space vs cells don't match s:%d != c:%d",
             LOS_list[j].particles_in_los_local, old_particles_in_los_local);
 #endif
 
