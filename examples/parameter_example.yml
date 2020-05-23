@@ -212,11 +212,28 @@ StructureFinding:
   config_file_name:     stf_input.cfg # Name of the STF config file.
   basename:             haloes        # Common part of the name of output files.
   subdir_per_output:    stf           # (Optional) Sub-directory (within Snapshots:subdir) to use for each invocation of STF. Defaults to "" (i.e. no sub-directory) 
-  scale_factor_first:   0.92          # (Optional) Scale-factor of the first snaphot (cosmological run)
+  scale_factor_first:   0.92          # (Optional) Scale-factor of the first structure finding (cosmological run)
   time_first:           0.01          # (Optional) Time of the first structure finding output (in internal units).
   delta_time:           1.10          # (Optional) Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
-  output_list_on:       0   	      # (Optional) Enable the output list
+  output_list_on:       0   	      # (Optional) Enable the use of an output list
   output_list:          stflist.txt   # (Optional) File containing the output times (see documentation in "Parameter File" section)
+
+# Parameters related to the Line-Of-Sight (SpecWizard) outputs
+LineOfSight:
+  basename:            los     # Basename of the files
+  scale_factor_first:  0.02    # (Optional) Scale-factor of the first line-of-sight (cosmological run)
+  time_first:          0.01    # (Optional) Time of the first line-of-sight output (in internal units).
+  delta_time:          1.02    # (Optional) Time difference between consecutive line-of-sight outputs (in internal units) in simulation time intervals.
+  output_list_on:       0      # (Optional) Enable the use of an output list
+  num_along_x:         0       # Number of sight-lines along the x-axis
+  num_along_y:         0       # Number of sight-lines along the y-axis
+  num_along_z:         100     # Number of sight-lines along the z-axis
+  allowed_los_range_x: [0, 100.]   # (Optional) Range along the x-axis where LoS along Y or Z are allowed (Defaults to the box size).
+  allowed_los_range_y: [0, 100.]   # (Optional) Range along the y-axis where LoS along X or Z are allowed (Defaults to the box size).
+  allowed_los_range_z: [0, 100.]   # (Optional) Range along the z-axis where LoS along X or Y are allowed (Defaults to the box size).
+  range_when_shooting_down_x: 100. # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
+  range_when_shooting_down_y: 100. # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
+  range_when_shooting_down_z: 100. # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
 
 # Parameters related to the equation of state ------------------------------------------
 
