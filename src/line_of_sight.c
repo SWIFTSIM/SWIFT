@@ -109,12 +109,12 @@ void los_init(const double dim[3], struct los_props *los_params,
               struct swift_params *params) {
 
   /* How many line of sights in each plane. */
-  los_params->num_along_z =
-      parser_get_param_int(params, "LineOfSight:num_along_z");
   los_params->num_along_x =
       parser_get_param_int(params, "LineOfSight:num_along_x");
   los_params->num_along_y =
       parser_get_param_int(params, "LineOfSight:num_along_y");
+  los_params->num_along_z =
+      parser_get_param_int(params, "LineOfSight:num_along_z");
 
   /* Min/max range across x,y and z (simulation axes) where random
    * LOS's are allowed. */
