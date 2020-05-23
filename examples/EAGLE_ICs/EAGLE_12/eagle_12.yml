@@ -91,6 +91,15 @@ InitialConditions:
   generate_gas_in_ics: 1             # Generate gas particles from the DM-only ICs
   cleanup_smoothing_lengths: 1       # Since we generate gas, make use of the (expensive) cleaning-up procedure.
 
+# Parameters of the line-of-sight outputs
+LineOfSight:
+  basename:            eagle_los
+  num_along_x:         0
+  num_along_y:         0
+  num_along_z:         100
+  scale_factor_first:  0.1
+  delta_time:          1.1
+
 # Impose primoridal metallicity
 EAGLEChemistry:
   init_abundance_metal:     0.
@@ -104,6 +113,7 @@ EAGLEChemistry:
   init_abundance_Silicon:   0.0
   init_abundance_Iron:      0.0
 
+# EAGLE cooling parameters
 EAGLECooling:
   dir_name:                ./coolingtables/
   H_reion_z:               7.5                 # Planck 2018
