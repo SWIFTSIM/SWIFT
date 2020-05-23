@@ -226,6 +226,8 @@ int main(int argc, char *argv[]) {
           NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "line-of-sight", &with_line_of_sight,
+                  "Run with line-of-sight outputs.", NULL, 0, 0),
       OPT_BOOLEAN(0, "limiter", &with_timestep_limiter,
                   "Run with time-step limiter.", NULL, 0, 0),
       OPT_BOOLEAN(0, "sync", &with_timestep_sync,
@@ -234,8 +236,6 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "logger", &with_logger, "Run with the particle logger.",
                   NULL, 0, 0),
-      OPT_BOOLEAN(0, "line-of-sight", &with_line_of_sight,
-                  "Run with line of sight.", NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
       OPT_BOOLEAN(0, "quick-lyman-alpha", &with_qla,
@@ -514,6 +514,16 @@ int main(int argc, char *argv[]) {
       printf(
           "\nError: Cannot process black holes without gas, --hydro must be "
           "chosen.\n");
+    }
+    return 1;
+  }
+
+  if (!with_hydro && with_line_of_sight) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot use line-of-sight outputs without gas, --hydro must "
+          "be chosen.\n");
     }
     return 1;
   }
