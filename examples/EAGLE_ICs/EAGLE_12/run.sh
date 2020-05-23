@@ -11,7 +11,7 @@ fi
 if [ ! -e yieldtables ]
 then
     echo "Fetching EAGLE yield tables..."
-    ../getEagleYieldtable.sh
+    ../getEagleYieldTable.sh
 fi
 
 if [ ! -e coolingtables ]
