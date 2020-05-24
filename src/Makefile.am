@@ -53,7 +53,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h \
     multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h \
-    star_formation_struct.h star_formation.h star_formation_iact.h part_lock.h \
+    star_formation_struct.h star_formation.h star_formation_iact.h \
     star_formation_logger.h star_formation_logger_struct.h \
     pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h \
     velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h \
