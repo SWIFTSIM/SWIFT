@@ -1147,8 +1147,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
           gcount_j);
 #endif
 
-  const int allow_multipole_i = allow_mpole && ci->grav.count > VEC_SIZE;
-  const int allow_multipole_j = allow_mpole && cj->grav.count > VEC_SIZE;
+  const int allow_multipole_i = allow_mpole && ci->grav.count > 1;
+  const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
 
   /* Fill the caches */
   gravity_cache_populate(e->max_active_bin, allow_multipole_j, periodic, dim,
@@ -2104,7 +2104,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   /* OK, we actually need to compute this pair. Let's find the cheapest
    * option... */
 
-  if (ci->grav.count < VEC_SIZE || cj->grav.count < VEC_SIZE) {
+  if (ci->grav.count <= 1 || cj->grav.count <= 1) {
 
     /* We have two cheap cells. Go P-P. */
     runner_dopair_grav_pp_no_cache(r, ci, cj);
