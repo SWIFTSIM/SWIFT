@@ -490,9 +490,9 @@ INLINE static void gravity_cache_write_back(const struct gravity_cache *c,
 #endif
   for (int i = 0; i < gcount; ++i) {
     if (active[i]) {
-      accumulate_add_f(&gparts[i].a_grav[0], a_x[i]);
-      accumulate_add_f(&gparts[i].a_grav[1], a_y[i]);
-      accumulate_add_f(&gparts[i].a_grav[2], a_z[i]);
+      gparts[i].a_grav[0] += a_x[i];
+      gparts[i].a_grav[1] += a_y[i];
+      gparts[i].a_grav[2] += a_z[i];
       gravity_add_comoving_potential(&gparts[i], pot[i]);
     }
   }

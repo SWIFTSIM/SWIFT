@@ -155,6 +155,10 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
   gravity_cache_zero_output(cache_i, gcount_padded_i);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->split) error("Using function above leaf level!");
+#endif
+
   /* Loop over sink particles */
   for (int i = 0; i < gcount_i; ++i) {
 
@@ -219,9 +223,9 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
-      accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
-      accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
-      accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
+      gparts_i[i].a_grav_m2p[0] += f_x;
+      gparts_i[i].a_grav_m2p[1] += f_y;
+      gparts_i[i].a_grav_m2p[2] += f_z;
 #endif
 
     } else {
@@ -283,9 +287,9 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         /* Update the p2p interaction counter */
         accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
+        gparts_i[i].a_grav_p2p[0] += a_x;
+        gparts_i[i].a_grav_p2p[1] += a_y;
+        gparts_i[i].a_grav_p2p[2] += a_z;
 #endif
       }
     }
@@ -312,6 +316,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
     error("Calling truncated PP function in non-periodic setup.");
+
+  if (ci->split) error("Using function above leaf level!");
 #endif
 
   const float r_s_inv = grav_props->r_s_inv;
@@ -389,9 +395,9 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
       /* Update the M2P interaction counter and forces. */
       accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
                         multi_j->m_pole.num_gpart);
-      accumulate_add_f(&gparts_i[i].a_grav_m2p[0], f_x);
-      accumulate_add_f(&gparts_i[i].a_grav_m2p[1], f_y);
-      accumulate_add_f(&gparts_i[i].a_grav_m2p[2], f_z);
+      gparts_i[i].a_grav_m2p[0] += f_x;
+      gparts_i[i].a_grav_m2p[1] += f_y;
+      gparts_i[i].a_grav_m2p[2] += f_z;
 #endif
 
     } else {
@@ -458,9 +464,9 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         /* Update the p2p interaction counter */
         accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
+        gparts_i[i].a_grav_p2p[0] += a_x;
+        gparts_i[i].a_grav_p2p[1] += a_y;
+        gparts_i[i].a_grav_p2p[2] += a_z;
 #endif
       }
     }
@@ -621,9 +627,9 @@ static INLINE void runner_dopair_grav_pp_full(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[2], a_z);
+    gparts_i[pid].a_grav_p2p[0] += a_x;
+    gparts_i[pid].a_grav_p2p[1] += a_y;
+    gparts_i[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }
@@ -777,9 +783,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[2], a_z);
+    gparts_i[pid].a_grav_p2p[0] += a_x;
+    gparts_i[pid].a_grav_p2p[1] += a_y;
+    gparts_i[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }
@@ -910,9 +916,9 @@ static INLINE void runner_dopair_grav_pm_full(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
+      gparts_i[pid].a_grav_m2p[0] += f_x;
+      gparts_i[pid].a_grav_m2p[1] += f_y;
+      gparts_i[pid].a_grav_m2p[2] += f_z;
     }
 #endif
   }
@@ -1049,9 +1055,9 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
+      gparts_i[pid].a_grav_m2p[0] += f_x;
+      gparts_i[pid].a_grav_m2p[1] += f_y;
+      gparts_i[pid].a_grav_m2p[2] += f_z;
     }
 #endif
   }
@@ -1459,9 +1465,9 @@ static INLINE void runner_doself_grav_pp_full(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[2], a_z);
+    gparts[pid].a_grav_p2p[0] += a_x;
+    gparts[pid].a_grav_p2p[1] += a_y;
+    gparts[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }
@@ -1598,9 +1604,9 @@ static INLINE void runner_doself_grav_pp_truncated(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[2], a_z);
+    gparts[pid].a_grav_p2p[0] += a_x;
+    gparts[pid].a_grav_p2p[1] += a_y;
+    gparts[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }

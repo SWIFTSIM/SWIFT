@@ -28,7 +28,6 @@
 #include "mesh_gravity.h"
 
 /* Local includes. */
-#include "accumulate.h"
 #include "active.h"
 #include "debug.h"
 #include "engine.h"
@@ -336,9 +335,9 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
   /* ---- */
 
   /* Store things back */
-  accumulate_add_f(&gp->a_grav[0], fac * a[0]);
-  accumulate_add_f(&gp->a_grav[1], fac * a[1]);
-  accumulate_add_f(&gp->a_grav[2], fac * a[2]);
+  gp->a_grav[0] += fac * a[0];
+  gp->a_grav[1] += fac * a[1];
+  gp->a_grav[2] += fac * a[2];
   gravity_add_comoving_potential(gp, p);
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = p;
