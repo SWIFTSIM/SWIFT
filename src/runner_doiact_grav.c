@@ -144,6 +144,22 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_dograv_down);
 }
 
+/**
+ * @brief Compute the fully Newtoning gravitational forces from particles
+ * one array onto the particles in another array
+ *
+ * This function *must* be called at the leaf level for particles i.
+ *
+ * @param gparts_i The particles receiving forces (at leaf level).
+ * @param gcount_i The number of particles receiving forces.
+ * @param gparts_j The particles giving forces (at any level).
+ * @param gcount_j The number of particles giving forces.
+ * @param e The @engine structure.
+ * @param grav_props The properties of the gravity scheme.
+ * @param cache_i The gravity cache to use to store the results in i.
+ * @param ci The (leaf-)cell containing the particles i.
+ * @param multi_j The multipole in cell j.
+ */
 static INLINE void runner_dopair_grav_pp_full_no_cache(
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct gpart *restrict gparts_j, const int gcount_j,
@@ -306,6 +322,23 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
   if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 }
 
+/**
+ * @brief Compute the long-range truncated gravitational forces from particles
+ * one array onto the particles in another array
+ *
+ * This function *must* be called at the leaf level for particles i.
+ *
+ * @param gparts_i The particles receiving forces (at leaf level).
+ * @param gcount_i The number of particles receiving forces.
+ * @param gparts_j The particles giving forces (at any level).
+ * @param gcount_j The number of particles giving forces.
+ * @param dim The size of the computational domain.
+ * @param e The @engine structure.
+ * @param grav_props The properties of the gravity scheme.
+ * @param cache_i The gravity cache to use to store the results in i.
+ * @param ci The (leaf-)cell containing the particles i.
+ * @param multi_j The multipole in cell j.
+ */
 static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct gpart *restrict gparts_j, const int gcount_j,
@@ -1299,6 +1332,19 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TOC(timer_dopair_grav_pp);
 }
 
+/**
+ * @brief Compute the gravitational forces from particles in #cell cj onto
+ * particles in #cell ci without using a cache for cj.
+ *
+ * This function does not update the particles in cj. It also does not
+ * make use of the field tensors in ci.
+ * The function recurses to the leaf level in ci (not cj!) and then either uses
+ * M2P or P2P when too close.
+ *
+ * @param r The #runner object.
+ * @param ci The cell containing particles to update.
+ * @param cj The cell containing the particles sourcing the gravity.
+ */
 void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
                                     const struct cell *restrict cj) {
 
