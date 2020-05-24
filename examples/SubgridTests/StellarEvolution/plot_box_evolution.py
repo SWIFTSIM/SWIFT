@@ -157,12 +157,6 @@ for i in range(n_snapshots):
 # running SWIFT (can be specified in yml file)
 filename = "./StellarEvolutionSolution/Z_%.4f/StellarEvolutionTotal.txt"%Z_star
 
-file = open("forPeter.txt", "w")
-file.write("# Z_star=%.4f\n"%Z_star)
-file.write("# Age [Gyr]   Mass [-]\n")
-for i in range(np.size(t)):
-        file.write("%e %e\n"%(t[i] * unit_time_in_cgs / Gyr_in_cgs, swift_box_star_mass[i] / swift_box_star_mass[0]))
-
 # Read EAGLE test output
 data = loadtxt(filename)
 eagle_time_Gyr = data[:,0]
