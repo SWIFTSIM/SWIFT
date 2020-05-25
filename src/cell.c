@@ -6379,6 +6379,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
+ * The two cells have to be different!
+ *
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param e The #engine.
@@ -6386,9 +6388,9 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
  * @param use_rebuild_data Are we considering the data at the last tree-build
  * (1) or current data (0)?
  */
-int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
-                         const struct engine *e, const struct space *s,
-                         const int use_rebuild_data) {
+int cell_can_use_pair_mm(const struct cell *restrict ci,
+                         const struct cell *restrict cj, const struct engine *e,
+                         const struct space *s, const int use_rebuild_data) {
 
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
@@ -6399,8 +6401,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   if (cj->grav.count <= 1) return 0;
 
   /* Recover the multipole information */
-  const struct gravity_tensors *const multi_i = ci->grav.multipole;
-  const struct gravity_tensors *const multi_j = cj->grav.multipole;
+  const struct gravity_tensors *restrict multi_i = ci->grav.multipole;
+  const struct gravity_tensors *restrict multi_j = cj->grav.multipole;
 
   double dx, dy, dz;
 
