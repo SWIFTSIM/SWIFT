@@ -2357,12 +2357,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
-  /* Recover the top-level multipole (for distance checks) */
-  struct gravity_tensors *const multi_top = top->grav.multipole;
-  const double CoM_rebuild_top[3] = {multi_top->CoM_rebuild[0],
-                                     multi_top->CoM_rebuild[1],
-                                     multi_top->CoM_rebuild[2]};
-
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
   for (int n = 0; n < nr_cells_with_particles; ++n) {
@@ -2407,23 +2401,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       }
     }
 
-    /* Get the distance between the CoMs at the last rebuild*/
-    double dx_r = CoM_rebuild_top[0] - multi_j->CoM_rebuild[0];
-    double dy_r = CoM_rebuild_top[1] - multi_j->CoM_rebuild[1];
-    double dz_r = CoM_rebuild_top[2] - multi_j->CoM_rebuild[2];
-
-    /* Apply BC */
-    if (periodic) {
-      dx_r = nearest(dx_r, dim[0]);
-      dy_r = nearest(dy_r, dim[1]);
-      dz_r = nearest(dz_r, dim[2]);
-    }
-    const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
-
-    /* Are we in charge of this cell pair? */
-    if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_top, multi_j,
-                                     r2_rebuild, /*use_rebuild_sizes=*/1,
-                                     periodic)) {
+    if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1)) {
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
