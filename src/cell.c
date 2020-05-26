@@ -3328,7 +3328,8 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Can we use multipoles ? */
-    if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_data=*/0)) {
+    if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_data=*/0,
+                             /*is_top_level=*/0)) {
       /* Ok, no need to drift anything */
       return;
     }
@@ -6390,11 +6391,16 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
  */
 int cell_can_use_pair_mm(const struct cell *restrict ci,
                          const struct cell *restrict cj, const struct engine *e,
-                         const struct space *s, const int use_rebuild_data) {
+                         const struct space *s, const int use_rebuild_data,
+                         const int is_top_level) {
 
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  /* Check for trivial cases */
+  if (!is_top_level && ci->grav.count <= 1) return 0;
+  if (!is_top_level && cj->grav.count <= 1) return 0;
 
   /* Recover the multipole information */
   const struct gravity_tensors *restrict multi_i = ci->grav.multipole;
