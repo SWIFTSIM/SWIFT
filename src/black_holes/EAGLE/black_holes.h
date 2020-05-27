@@ -497,7 +497,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure that the denominator is strictly positive */
     if (denominator2 <= 0)
-      error("Invalid denominator for gas particle %lld", pj->id);
+      error("Invalid denominator for black hole particle %lld in Bondi rate "
+            "calculation.", bp->id);
 #endif
     const double denominator_inv = 1. / sqrt(denominator2);
     Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * gas_rho_phys *
