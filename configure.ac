@@ -1382,6 +1382,17 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 fi
 
+# Check if we have native sincos and sincosf functions. If not failback to our
+# implementations. On Apple/CLANG we have __sincos, so also check for that
+# if the compiler is clang.
+AC_CHECK_LIB([m],[sincos], [AC_DEFINE([HAVE_SINCOS],1,[The sincos function is present.])])
+AC_CHECK_LIB([m],[sincosf], [AC_DEFINE([HAVE_SINCOSF],1,[The sincosf function is present.])])
+if test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
+      AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
+fi
+
+
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
 # become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
