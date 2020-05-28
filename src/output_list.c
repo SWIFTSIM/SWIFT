@@ -58,11 +58,15 @@ void output_list_read_file(struct output_list *output_list,
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
   output_list->times = (double *)malloc(sizeof(double) * output_list->size);
-  if (!output_list->times)
+  output_list->select_output =
+      (char **)malloc(sizeof(char *) * output_list->size);
+
+  if ((!output_list->times) || (!output_list->select_output)) {
     error(
         "Unable to malloc output_list. "
         "Try reducing the number of lines in %s",
         filename);
+  }
 
   /* Read header */
   if (getline(&line, &len, file) == -1)
@@ -73,16 +77,28 @@ void output_list_read_file(struct output_list *output_list,
 
   /* Find type of data in file */
   int type = -1;
+  output_list->select_output_on = 0;
 
   trim_trailing(line);
-  if (strcasecmp(line, "# Redshift") == 0)
+
+  if (strcasecmp(line, "# Redshift") == 0) {
     type = OUTPUT_LIST_REDSHIFT;
-  else if (strcasecmp(line, "# Time") == 0)
+  } else if (strcasecmp(line, "# Time") == 0) {
     type = OUTPUT_LIST_AGE;
-  else if (strcasecmp(line, "# Scale Factor") == 0)
+  } else if (strcasecmp(line, "# Scale Factor") == 0) {
     type = OUTPUT_LIST_SCALE_FACTOR;
-  else
+  } else if (strcasecmp(line, "# Redshift, Select Output") == 0) {
+    type = OUTPUT_LIST_REDSHIFT;
+    output_list->select_output_on = 1;
+  } else if (strcasecmp(line, "# Time, Select Output") == 0) {
+    type = OUTPUT_LIST_AGE;
+    output_list->select_output_on = 1;
+  } else if (strcasecmp(line, "# Scale Factor, Select Output") == 0) {
+    type = OUTPUT_LIST_SCALE_FACTOR;
+    output_list->select_output_on = 1;
+  } else {
     error("Unable to interpret the header (%s) in file '%s'", line, filename);
+  }
 
   if (!cosmo &&
       (type == OUTPUT_LIST_SCALE_FACTOR || type == OUTPUT_LIST_REDSHIFT))
@@ -93,20 +109,38 @@ void output_list_read_file(struct output_list *output_list,
 
   /* Read file */
   size_t ind = 0;
+  int read_successfully = 0;
+  char select_output_buffer[PARSER_MAX_LINE_SIZE] = "Default";
   while (getline(&line, &len, file) != -1) {
     double *time = &output_list->times[ind];
     /* Write data to output_list */
-    if (sscanf(line, "%lf", time) != 1)
+    if (output_list->select_output_on) {
+      read_successfully =
+          sscanf(line, "%lf, %s", time, select_output_buffer) == 2;
+    } else {
+      read_successfully = sscanf(line, "%lf", time) == 1;
+    }
+
+    if (!read_successfully) {
       error(
-          "Tried parsing double but found '%s' with illegal double "
+          "Tried parsing output_list but found '%s' with illegal "
           "characters in file '%s'.",
           line, filename);
+    }
 
     /* Transform input into correct time (e.g. ages or scale factor) */
     if (type == OUTPUT_LIST_REDSHIFT) *time = 1. / (1. + *time);
 
     if (cosmo && type == OUTPUT_LIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);
+
+    /* Create the storage space for the select output options */
+    output_list->select_output[ind] =
+        (char *)malloc(sizeof(char) * PARSER_MAX_LINE_SIZE);
+    if (!output_list->select_output[ind]) {
+      error("Unable to malloc output_list. Try reducing the number of lines.");
+    }
+    strcpy(output_list->select_output[ind], select_output_buffer);
 
     /* Update size */
     ind += 1;
@@ -223,8 +257,8 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
  * @param e The #engine
  * @param name The name of the section in params
  * @param delta_time updated to the initial delta time
- * @param time_first updated to the time of first output (scale factor or cosmic
- * time)
+ * @param time_first updated to the time of first output (scale factor or
+ * cosmic time)
  */
 void output_list_init(struct output_list **list, const struct engine *e,
                       const char *name, double *delta_time,
@@ -276,9 +310,11 @@ void output_list_print(const struct output_list *output_list) {
   printf("Number of Line: %zu\n", output_list->size);
   for (size_t ind = 0; ind < output_list->size; ind++) {
     if (ind == output_list->cur_ind)
-      printf("\t%lf <-- Current\n", output_list->times[ind]);
+      printf("\t%lf, %s <-- Current\n", output_list->times[ind],
+             output_list->select_output[ind]);
     else
-      printf("\t%lf\n", output_list->times[ind]);
+      printf("\t%lf, %s\n", output_list->times[ind],
+             output_list->select_output[ind]);
   }
 }
 

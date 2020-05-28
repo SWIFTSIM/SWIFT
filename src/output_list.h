@@ -44,11 +44,17 @@ struct output_list {
   /* Time array */
   double *times;
 
-  /* Size of the time array */
+  /* Select output arrays */
+  char **select_output;
+
+  /* Size of the time array (i.e. number of outputs) */
   size_t size;
 
   /* Current index */
   size_t cur_ind;
+
+  /* Was the Select Output option used? */
+  int select_output_on;
 
   /* Dump on final timestep? */
   int final_step_dump;
