@@ -306,7 +306,7 @@ void output_list_init(struct output_list **list, const struct engine *e,
  */
 void output_list_print(const struct output_list *output_list) {
 
-  printf("/*\t Time Array\t */\n");
+  printf("/*\t Time Array, Select Output \t */\n");
   printf("Number of Line: %zu\n", output_list->size);
   for (size_t ind = 0; ind < output_list->size; ind++) {
     if (ind == output_list->cur_ind)
@@ -324,6 +324,10 @@ void output_list_print(const struct output_list *output_list) {
 void output_list_clean(struct output_list **output_list) {
   if (*output_list) {
     free((*output_list)->times);
+    for (int ind = 0; ind < (int)(*output_list)->size; ind++) {
+      free((*output_list)->select_output[ind]);
+    }
+    free((*output_list)->select_output);
     free(*output_list);
     *output_list = NULL;
   }
@@ -338,6 +342,15 @@ void output_list_struct_dump(struct output_list *list, FILE *stream) {
 
   restart_write_blocks(list->times, list->size, sizeof(double), stream,
                        "output_list", "times");
+
+  /* Because the section selections are stored as a pointer to a string,
+   * we must dump each string individually. */
+  char block_name[PARSER_MAX_LINE_SIZE];
+  for (int ind = 0; ind < (int)list->size; ind++) {
+    sprintf(block_name, "select output %d", ind);
+    restart_write_blocks(list->select_output[ind], PARSER_MAX_LINE_SIZE,
+                         sizeof(char), stream, "output_list", block_name);
+  }
 }
 
 /**
@@ -350,4 +363,16 @@ void output_list_struct_restore(struct output_list *list, FILE *stream) {
   list->times = (double *)malloc(sizeof(double) * list->size);
   restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL,
                       "times");
+
+  list->select_output = (char **)malloc(sizeof(char *) * list->size);
+  /* Because the section selections are stored as a pointer to a string,
+   * we must read each string individually. */
+  char block_name[PARSER_MAX_LINE_SIZE];
+  for (int ind = 0; ind < (int)list->size; ind++) {
+    sprintf(block_name, "select output %d", ind);
+    list->select_output[ind] =
+        (char *)malloc(sizeof(char) * PARSER_MAX_LINE_SIZE);
+    restart_read_blocks(list->select_output[ind], PARSER_MAX_LINE_SIZE,
+                        sizeof(char), stream, NULL, block_name);
+  }
 }
