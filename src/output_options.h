@@ -21,6 +21,16 @@
 
 #include "parser.h"
 
+/* Compression level names */
+#define compression_do_not_write "off"
+#define compression_write_lossless "on"
+#define compression_write_low_lossy "low"
+#define compression_write_med_lossy "med"
+#define compression_write_high_lossy "high"
+
+/* Default value for SelectOutput */
+#define compression_level_default compression_write_lossless
+
 /**
  * @brief Output selection properties, including the parsed files.
  **/
@@ -29,8 +39,7 @@ struct output_options {
   /*! Select output file, parsed */
   struct swift_params* select_output;
 
-  /*! Compression output file, parsed */
-  struct swift_params* compression_options;
+  /* Pass-through struct for now but may need more later. */
 };
 
 /* Create and destroy */
@@ -43,5 +52,10 @@ void output_options_struct_dump(struct output_options* output_options,
                                 FILE* stream);
 void output_options_struct_restore(struct output_options* output_options,
                                    FILE* stream);
+
+/* Logic functions */
+int output_options_should_write_field(struct output_options* output_options,
+                                      char* snapshot_type, char* field_name,
+                                      int part_type);
 
 #endif

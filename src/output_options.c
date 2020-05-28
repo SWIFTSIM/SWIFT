@@ -26,6 +26,7 @@
 
 #include "output_options.h"
 #include "parser.h"
+#include "part_type.h"
 #include "swift.h"
 
 /**
@@ -67,34 +68,6 @@ void output_options_init(struct swift_params* parameter_file, int mpi_rank,
 #endif
 
   output_options->select_output = select_output;
-
-  /* Repeat the same process for the compression_options file */
-  struct swift_params* compression_options =
-      (struct swift_params*)malloc(sizeof(struct swift_params));
-  if (compression_options == NULL)
-    error("Error allocating memory for compression options parameters.");
-
-  if (mpi_rank == 0) {
-    const int compression_options_on = parser_get_opt_param_int(
-        parameter_file, "Snapshots:compression_options_on", 0);
-
-    if (compression_options_on) {
-      char select_param_filename[PARSER_MAX_LINE_SIZE];
-      parser_get_param_string(parameter_file, "Snapshots:compression_options",
-                              select_param_filename);
-      message("Reading select output parameters from file '%s'",
-              select_param_filename);
-      parser_read_file(select_param_filename, compression_options);
-      parser_print_params(compression_options);
-    }
-  }
-
-#ifdef WITH_MPI
-  MPI_Bcast(compression_options, sizeof(struct swift_params), MPI_BYTE, 0,
-            MPI_COMM_WORLD);
-#endif
-
-  output_options->compression_options = compression_options;
 }
 
 /**
@@ -106,7 +79,6 @@ void output_options_init(struct swift_params* parameter_file, int mpi_rank,
 void output_options_clean(struct output_options** output_options) {
   if (*output_options) {
     free((void*)(*output_options)->select_output);
-    free((void*)(*output_options)->compression_options);
     *output_options = NULL;
   }
 }
@@ -120,7 +92,6 @@ void output_options_clean(struct output_options** output_options) {
 void output_options_struct_dump(struct output_options* output_options,
                                 FILE* stream) {
   parser_struct_dump(output_options->select_output, stream);
-  parser_struct_dump(output_options->compression_options, stream);
 }
 
 /**
@@ -135,10 +106,39 @@ void output_options_struct_restore(struct output_options* output_options,
       (struct swift_params*)malloc(sizeof(struct swift_params));
   parser_struct_restore(select_output, stream);
 
-  struct swift_params* compression_options =
-      (struct swift_params*)malloc(sizeof(struct swift_params));
-  parser_struct_restore(compression_options, stream);
-
   output_options->select_output = select_output;
-  output_options->compression_options = compression_options;
+}
+
+/**
+ * @brief Decides whether or not a given field should be written. Returns
+ *        a truthy value if yes, falsey if not.
+ *
+ * @param output_options pointer to the output options struct
+ * @param snapshot_type pointer to a char array containing the type of
+ *        output (i.e. top level section in the yaml).
+ * @param field_name pointer to a char array containing the name of the
+ *        relevant field.
+ * @param part_type integer particle type
+ *
+ * @return should_write integer determining whether this field should be
+ *         written
+ **/
+int output_options_should_write_field(struct output_options* output_options,
+                                      char* snapshot_type, char* field_name,
+                                      int part_type) {
+  /* Full name for the field path */
+  char field[PARSER_MAX_LINE_SIZE];
+  sprintf(field, "%s:%.*s_%s", snapshot_type, FIELD_BUFFER_SIZE, field_name,
+          part_type_names[part_type]);
+
+  char compression_level[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(output_options->select_output, field,
+                              compression_level, compression_level_default);
+
+  int should_write = strcmp(compression_do_not_write, compression_level);
+
+  message("Determining if %s is to be written. Returning %d from %s.", field,
+          should_write, compression_level);
+
+  return should_write;
 }

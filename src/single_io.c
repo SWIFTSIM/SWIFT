@@ -728,7 +728,7 @@ void write_output_single(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
-  struct swift_params* select_output = e->output_options->select_output;
+  struct output_options* output_options = e->output_options;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -1172,14 +1172,14 @@ void write_output_single(struct engine* e,
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
-      char field[PARSER_MAX_LINE_SIZE];
-      sprintf(field, "Default:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
-              part_type_names[ptype]);
-      int should_write = parser_get_opt_param_int(select_output, field, 1);
+      message("Hello world");
+      int should_write = output_options_should_write_field(
+          output_options, "Default", list[i].name, ptype);
 
-      if (should_write)
+      if (should_write) {
         write_array_single(e, h_grp, fileName, xmfFile, partTypeGroupName,
                            list[i], N, internal_units, snapshot_units);
+      }
     }
 
     /* Free temporary arrays */
