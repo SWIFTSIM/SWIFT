@@ -50,6 +50,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "memuse.h"
+#include "output_list.h"
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
@@ -729,6 +730,7 @@ void write_output_single(struct engine* e,
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
   struct output_options* output_options = e->output_options;
+  struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -1041,7 +1043,7 @@ void write_output_single(struct engine* e,
         if (swift_memalign("gparts_written", (void**)&gparts_written,
                            gpart_align,
                            Ndm_background * sizeof(struct gpart)) != 0)
-          error("Error while allocating temporart memory for gparts");
+          error("Error while allocating temporary memory for gparts");
 
         if (with_stf) {
           if (swift_memalign(
@@ -1049,7 +1051,7 @@ void write_output_single(struct engine* e,
                   gpart_align,
                   Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
             error(
-                "Error while allocating temporart memory for gparts STF "
+                "Error while allocating temporary memory for gparts STF "
                 "data");
         }
 
@@ -1072,7 +1074,7 @@ void write_output_single(struct engine* e,
       case swift_type_stars: {
         if (Nstars == Nstars_written) {
 
-          /* No inhibted particles: easy case */
+          /* No inhibited particles: easy case */
           N = Nstars;
           stars_write_particles(sparts, list, &num_fields, with_cosmology);
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
@@ -1123,7 +1125,7 @@ void write_output_single(struct engine* e,
       case swift_type_black_hole: {
         if (Nblackholes == Nblackholes_written) {
 
-          /* No inhibted particles: easy case */
+          /* No inhibited particles: easy case */
           N = Nblackholes;
           black_holes_write_particles(bparts, list, &num_fields,
                                       with_cosmology);
@@ -1169,12 +1171,21 @@ void write_output_single(struct engine* e,
     }
 
     /* Write everything that is not cancelled */
+
+    char current_selection_name[OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH] =
+        "Default";
+    if (output_list->output_list_on) {
+      /* Users could have specified a different Select Output scheme for each
+       * snapshot. */
+      output_list_get_current_select_output(output_list,
+                                            &current_selection_name[0]);
+    }
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
-      message("Hello world");
-      int should_write = output_options_should_write_field(
-          output_options, "Default", list[i].name, ptype);
+      const int should_write = output_options_should_write_field(
+          output_options, current_selection_name, list[i].name, ptype);
+      message("Current selection: %s", current_selection_name);
 
       if (should_write) {
         write_array_single(e, h_grp, fileName, xmfFile, partTypeGroupName,
