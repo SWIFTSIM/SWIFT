@@ -212,11 +212,28 @@ StructureFinding:
   config_file_name:     stf_input.cfg # Name of the STF config file.
   basename:             haloes        # Common part of the name of output files.
   subdir_per_output:    stf           # (Optional) Sub-directory (within Snapshots:subdir) to use for each invocation of STF. Defaults to "" (i.e. no sub-directory) 
-  scale_factor_first:   0.92          # (Optional) Scale-factor of the first snaphot (cosmological run)
+  scale_factor_first:   0.92          # (Optional) Scale-factor of the first structure finding (cosmological run)
   time_first:           0.01          # (Optional) Time of the first structure finding output (in internal units).
   delta_time:           1.10          # (Optional) Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
-  output_list_on:       0   	      # (Optional) Enable the output list
+  output_list_on:       0   	      # (Optional) Enable the use of an output list
   output_list:          stflist.txt   # (Optional) File containing the output times (see documentation in "Parameter File" section)
+
+# Parameters related to the Line-Of-Sight (SpecWizard) outputs
+LineOfSight:
+  basename:            los     # Basename of the files
+  scale_factor_first:  0.02    # (Optional) Scale-factor of the first line-of-sight (cosmological run)
+  time_first:          0.01    # (Optional) Time of the first line-of-sight output (in internal units).
+  delta_time:          1.02    # (Optional) Time difference between consecutive line-of-sight outputs (in internal units) in simulation time intervals.
+  output_list_on:       0      # (Optional) Enable the use of an output list
+  num_along_x:         0       # Number of sight-lines along the x-axis
+  num_along_y:         0       # Number of sight-lines along the y-axis
+  num_along_z:         100     # Number of sight-lines along the z-axis
+  allowed_los_range_x: [0, 100.]   # (Optional) Range along the x-axis where LoS along Y or Z are allowed (Defaults to the box size).
+  allowed_los_range_y: [0, 100.]   # (Optional) Range along the y-axis where LoS along X or Z are allowed (Defaults to the box size).
+  allowed_los_range_z: [0, 100.]   # (Optional) Range along the z-axis where LoS along X or Y are allowed (Defaults to the box size).
+  range_when_shooting_down_x: 100. # (Optional) Range along the x-axis of LoS along x (Defaults to the box size).
+  range_when_shooting_down_y: 100. # (Optional) Range along the y-axis of LoS along y (Defaults to the box size).
+  range_when_shooting_down_z: 100. # (Optional) Range along the z-axis of LoS along z (Defaults to the box size).
 
 # Parameters related to the equation of state ------------------------------------------
 
@@ -478,14 +495,27 @@ GEARFeedback:
   
 # EAGLE AGN model
 EAGLEAGN:
-  subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
-  max_eddington_fraction:           1.         # Maximal allowed accretion rate in units of the Eddington rate.
-  eddington_fraction_for_recording: 0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
-  viscous_alpha:                    1e6        # Normalisation constant of the Bondi viscuous time-scale accretion reduction term
-  radiative_efficiency:             0.1        # Fraction of the accreted mass that gets radiated.
-  coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
-  AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
-  AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
-  max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.
-  threshold_major_merger:           0.333      # Mass ratio threshold to consider a BH merger as 'major'
-  threshold_minor_merger:           0.1        # Mass ratio threshold to consider a BH merger as 'minor'
+  subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
+  use_subgrid_mass_from_ics:          1          # (Optional) Use subgrid masses specified in ICs [1, default], or initialise them to particle masses [0]?
+  with_subgrid_mass_check:            1          # (Optional) Verify that initial black hole subgrid masses are positive [1, default]. Only used if use_subgrid_mass_from_ics is 1.
+  multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
+  with_angmom_limiter:                1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
+  viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
+  radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.
+  max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
+  eddington_fraction_for_recording:   0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
+  coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
+  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
+  max_reposition_mass:                2e8        # Maximal BH mass considered for BH repositioning in solar masses.
+  max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
+  with_reposition_velocity_threshold: 1          # Should we only reposition to particles that move slowly w.r.t. the black hole?
+  max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_ratio is 1.
+  min_reposition_velocity_threshold: -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_ratio is 1.
+  set_reposition_speed:               0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
+  reposition_coefficient_upsilon:     0.0001     # Repositioning speed normalisation [km/s/M_sun]. Only meaningful if set_reposition_speed is 1.
+  reposition_exponent_xi:             1.0        # (Optional) Scaling of repositioning velocity with BH subgrid mass (default: 1.0, linear). Only meaningful if set_reposition_speed is 1.
+  threshold_major_merger:             0.333      # Mass ratio threshold to consider a BH merger as 'major'
+  threshold_minor_merger:             0.1        # Mass ratio threshold to consider a BH merger as 'minor'
+  merger_threshold_type:              2          # Type of velocity threshold for BH mergers (0: v_circ at kernel edge, 1: v_esc at actual distance, with softening, 2: v_esc at actual distance, no softening).
+  merger_max_distance_ratio:          3.0        # Maximal distance over which two BHs can merge, in units of the softening length.

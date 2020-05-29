@@ -80,8 +80,9 @@ enum engine_policy {
   engine_policy_timestep_limiter = (1 << 21),
   engine_policy_timestep_sync = (1 << 22),
   engine_policy_logger = (1 << 23),
+  engine_policy_line_of_sight = (1 << 24),
 };
-#define engine_maxpolicy 24
+#define engine_maxpolicy 25
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -492,6 +493,17 @@ struct engine {
   /* Has there been an stf this timestep? */
   char stf_this_timestep;
 
+  /* Line of sight properties. */
+  struct los_props *los_properties;
+
+  /* Line of sight outputs information. */
+  struct output_list *output_list_los;
+  double a_first_los;
+  double time_first_los;
+  double delta_time_los;
+  integertime_t ti_next_los;
+  int los_output_count;
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run brute force checks only on steps when all gparts active? */
   int force_checks_only_all_active;
@@ -514,6 +526,7 @@ void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
+void engine_compute_next_los_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_unskip_timestep_communications(struct engine *e);
@@ -543,7 +556,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry,
-                 struct fof_props *fof_properties);
+                 struct fof_props *fof_properties,
+                 struct los_props *los_properties);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,

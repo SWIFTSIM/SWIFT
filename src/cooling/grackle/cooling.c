@@ -752,11 +752,6 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   /* Nothing to do here? */
   if (dt == 0.) return;
 
-  /* Is the cooling turn off */
-  if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
-    return;
-  }
-
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
@@ -773,8 +768,15 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   }
 
   /* Calculate energy after dt */
-  gr_float u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props,
-                                      cooling, p, xp, dt, dt_therm);
+  gr_float u_new = 0;
+
+  /* Is the cooling turn off */
+  if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
+    u_new = u_ad_before;
+  } else {
+    u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props, cooling, p,
+                               xp, dt, dt_therm);
+  }
 
   /* Get the change in internal energy due to hydro forces */
   float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);

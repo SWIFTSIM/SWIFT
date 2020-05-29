@@ -131,8 +131,6 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            message("BH %lld swallowing gas particle %lld", bp->id, p->id);
-
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
@@ -321,9 +319,6 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
       /* Get the ID of the black holes that will swallow this bpart */
       const long long swallow_id =
           black_holes_get_bpart_swallow_id(&cell_bp->merger_data);
-
-      /* message("OO id=%lld swallow_id = %lld", cell_bp->id, */
-      /* 	      swallow_id); */
 
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {

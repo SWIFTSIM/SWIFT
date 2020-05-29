@@ -1382,6 +1382,17 @@ if test "$ax_cv_c_compiler_vendor" = "clang"; then
       AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
 fi
 
+# Check if we have native sincos and sincosf functions. If not failback to our
+# implementations. On Apple/CLANG we have __sincos, so also check for that
+# if the compiler is clang.
+AC_CHECK_LIB([m],[sincos], [AC_DEFINE([HAVE_SINCOS],1,[The sincos function is present.])])
+AC_CHECK_LIB([m],[sincosf], [AC_DEFINE([HAVE_SINCOSF],1,[The sincosf function is present.])])
+if test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AC_CHECK_LIB([m],[__sincos], [AC_DEFINE([HAVE___SINCOS],1,[The __sincos function is present.])])
+      AC_CHECK_LIB([m],[__sincosf], [AC_DEFINE([HAVE___SINCOSF],1,[The __sincosf function is present.])])
+fi
+
+
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
 # become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
@@ -1493,7 +1504,7 @@ case "$with_subgrid" in
 	with_subgrid_feedback=GEAR
 	with_subgrid_black_holes=none
 	with_subgrid_task_order=GEAR
-  with_subgrid_sink=none
+  	with_subgrid_sink=none
 	enable_fof=no
    ;;
    QLA)
@@ -1506,7 +1517,7 @@ case "$with_subgrid" in
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
 	with_subgrid_task_order=default
-  with_subgrid_sink=none
+  	with_subgrid_sink=none
 	enable_fof=no
    ;;
    EAGLE)
@@ -1519,7 +1530,7 @@ case "$with_subgrid" in
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
 	with_subgrid_task_order=EAGLE
-  with_subgrid_sink=none
+  	with_subgrid_sink=none
 	enable_fof=yes
    ;;
    *)
@@ -2025,62 +2036,62 @@ case "$with_black_holes" in
    ;;
 esac
 
-# sink model.
+# Sink model.
 AC_ARG_WITH([sink],
-[AS_HELP_STRING([--with-sink=<model>],
-[Sink particle model to use @<:@none, default: none@:>@]
-)],
-[with_sink="$withval"],
-[with_sink="none"]
+   [AS_HELP_STRING([--with-sink=<model>],
+      [Sink particle model to use @<:@none, default: none@:>@]
+   )],
+   [with_sink="$withval"],
+   [with_sink="none"]
 )
 
 if test "$with_subgrid" != "none"; then
-if test "$with_sink" != "none"; then
-AC_MSG_ERROR([Cannot provide with-subgrid and with-sink together])
-else
-with_sink="$with_subgrid_sink"
-fi
+   if test "$with_sink" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-sink together])
+   else
+      with_sink="$with_subgrid_sink"
+   fi
 fi
 
 case "$with_sink" in
-none)
-AC_DEFINE([SINK_NONE], [1], [No sink particle model])
-;;
-*)
-AC_MSG_ERROR([Unknown sink particle model model: $with_sink])
-;;
+   none)
+      AC_DEFINE([SINK_NONE], [1], [No sink particle model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown sink particle model model: $with_sink])
+   ;;
 esac
 
 # Task order
 AC_ARG_WITH([task-order],
-[AS_HELP_STRING([--with-task-order=<model>],
-[Task order to use @<:@default, EAGLE, GEAR default: default@:>@]
-)],
-[with_task_order="$withval"],
-[with_task_order="default"]
+   [AS_HELP_STRING([--with-task-order=<model>],
+       [Task order to use @<:@default, EAGLE, GEAR default: default@:>@]
+   )],
+   [with_task_order="$withval"],
+   [with_task_order="default"]
 )
 
 if test "$with_subgrid" != "none"; then
-if test "$with_task_order" != "default"; then
-AC_MSG_ERROR([Cannot provide with-subgrid and with-task-order together])
-else
-with_task_order="$with_subgrid_task_order"
-fi
+   if test "$with_task_order" != "default"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-task-order together])
+   else
+      with_task_order="$with_subgrid_task_order"
+   fi
 fi
 
 case "$with_task_order" in
-EAGLE)
-AC_DEFINE([TASK_ORDER_EAGLE], [1], [EAGLE task order])
-;;
-default)
-AC_DEFINE([TASK_ORDER_DEFAULT], [1], [Default (i.e. EAGLE/OWLS) task order])
-;;
-GEAR)
-AC_DEFINE([TASK_ORDER_GEAR], [1], [GEAR task order])
-;;
-*)
-AC_MSG_ERROR([Unknown task ordering: $with_task_order])
-;;
+   EAGLE)
+       AC_DEFINE([TASK_ORDER_EAGLE], [1], [EAGLE task order])
+   ;;
+   default)
+       AC_DEFINE([TASK_ORDER_DEFAULT], [1], [Default (i.e. EAGLE/OWLS) task order])
+   ;;
+   GEAR)
+       AC_DEFINE([TASK_ORDER_GEAR], [1], [GEAR task order])
+   ;;
+   *)
+       AC_MSG_ERROR([Unknown task ordering: $with_task_order])
+   ;;
 esac
 
 #  External potential

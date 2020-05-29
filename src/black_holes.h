@@ -30,7 +30,7 @@
 #include "./black_holes/EAGLE/black_holes.h"
 #include "./black_holes/EAGLE/black_holes_iact.h"
 #else
-#error "Invalid choice of star model"
+#error "Invalid choice of black hole model"
 #endif
 
 #endif

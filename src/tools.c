@@ -84,9 +84,10 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   int i, j, k, count = 0;
   // int mj, mk;
   // double maxratio = 1.0;
-  double r2, dx[3], rho = 0.0;
+  double r2, rho = 0.0;
   double rho_max = 0.0, rho_min = 100;
   float a = 1.f, H = 0.f;
+  float dx[3];
 
   /* Loop over all particle pairs. */
   for (j = 0; j < N; j++) {
@@ -106,7 +107,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
       }
       r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
       if (r2 < parts[j].h * parts[j].h || r2 < parts[k].h * parts[k].h) {
-        runner_iact_density(r2, NULL, parts[j].h, parts[k].h, &parts[j],
+        runner_iact_density(r2, dx, parts[j].h, parts[k].h, &parts[j],
                             &parts[k], a, H);
         /* if ( parts[j].h / parts[k].h > maxratio )
             {

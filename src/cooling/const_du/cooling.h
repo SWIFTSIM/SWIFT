@@ -41,6 +41,7 @@
 #include <math.h>
 
 /* Local includes. */
+#include "cosmology.h"
 #include "entropy_floor.h"
 #include "hydro.h"
 #include "parser.h"

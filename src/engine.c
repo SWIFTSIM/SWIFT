@@ -70,6 +70,7 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "line_of_sight.h"
 #include "logger.h"
 #include "logger_io.h"
 #include "map.h"
@@ -125,7 +126,8 @@ const char *engine_policy_names[] = {"none",
                                      "fof search",
                                      "time-step limiter",
                                      "time-step sync",
-                                     "logger"};
+                                     "logger",
+                                     "line of sight"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -2758,9 +2760,9 @@ void engine_step(struct engine *e) {
  * @param e The #engine.
  */
 void engine_check_for_dumps(struct engine *e) {
-
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
+  const int with_los = (e->policy & engine_policy_line_of_sight);
 
   /* What kind of output are we getting? */
   enum output_type {
@@ -2768,6 +2770,7 @@ void engine_check_for_dumps(struct engine *e) {
     output_snapshot,
     output_statistics,
     output_stf,
+    output_los,
   };
 
   /* What kind of output do we want? And at which time ?
@@ -2799,6 +2802,16 @@ void engine_check_for_dumps(struct engine *e) {
       if (e->ti_next_stf < ti_output) {
         ti_output = e->ti_next_stf;
         type = output_stf;
+      }
+    }
+  }
+
+  /* Do we want to write a line of sight file? */
+  if (with_los) {
+    if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
+      if (e->ti_next_los < ti_output) {
+        ti_output = e->ti_next_los;
+        type = output_los;
       }
     }
   }
@@ -2889,6 +2902,16 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         break;
 
+      case output_los:
+
+        /* Compute the LoS */
+        do_line_of_sight(e);
+
+        /* Move on */
+        engine_compute_next_los_time(e);
+
+        break;
+
       default:
         error("Invalid dump type");
     }
@@ -2921,6 +2944,16 @@ void engine_check_for_dumps(struct engine *e) {
         if (e->ti_next_stf < ti_output) {
           ti_output = e->ti_next_stf;
           type = output_stf;
+        }
+      }
+    }
+
+    /* Do line of sight ? */
+    if (with_los) {
+      if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
+        if (e->ti_next_los < ti_output) {
+          ti_output = e->ti_next_los;
+          type = output_los;
         }
       }
     }
@@ -3827,7 +3860,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry,
-                 struct fof_props *fof_properties) {
+                 struct fof_props *fof_properties,
+                 struct los_props *los_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -3876,6 +3910,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
   e->stf_output_count = 0;
+  e->los_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
@@ -3909,6 +3944,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->parameter_file = params;
   e->output_options = output_options;
   e->stf_this_timestep = 0;
+  e->los_properties = los_properties;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
   e->systime_last_step = 0.0;
@@ -3982,6 +4018,16 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         params, "StructureFinding:scale_factor_first", 0.1);
     e->delta_time_stf =
         parser_get_opt_param_double(params, "StructureFinding:delta_time", -1.);
+  }
+
+  /* Initialise line of sight output. */
+  if (e->policy & engine_policy_line_of_sight) {
+    e->time_first_los =
+        parser_get_opt_param_double(params, "LineOfSight:time_first", 0.);
+    e->a_first_los = parser_get_opt_param_double(
+        params, "LineOfSight:scale_factor_first", 0.1);
+    e->delta_time_los =
+        parser_get_opt_param_double(params, "LineOfSight:delta_time", -1.);
   }
 
   /* Initialise FoF calls frequency. */
@@ -4465,6 +4511,11 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Find the time of the first statistics output */
     engine_compute_next_statistics_time(e);
 
+    /* Find the time of the first line of sight output */
+    if (e->policy & engine_policy_line_of_sight) {
+      engine_compute_next_los_time(e);
+    }
+
     /* Find the time of the first stf output */
     if (e->policy & engine_policy_structure_finding) {
       engine_compute_next_stf_time(e);
@@ -4878,6 +4929,77 @@ void engine_compute_next_statistics_time(struct engine *e) {
 }
 
 /**
+ * @brief Computes the next time (on the time line) for a line of sight dump
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_los_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_los) {
+    output_list_read_next_time(e->output_list_los, e, "line of sights",
+                               &e->ti_next_los);
+    return;
+  }
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_los;
+  else
+    time_end = e->time_end + e->delta_time_los;
+
+  /* Find next los above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_los;
+  else
+    time = e->time_first_los;
+
+  int found_los_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_los = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_los = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_los > e->ti_current) {
+      found_los_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_los;
+    else
+      time += e->delta_time_los;
+  }
+
+  /* Deal with last line of sight */
+  if (!found_los_time) {
+    e->ti_next_los = -1;
+    if (e->verbose) message("No further LOS output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const double next_los_time =
+          exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time for line of sight set to a=%e.",
+                next_los_time);
+    } else {
+      const double next_los_time =
+          e->ti_next_los * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time for line of sight set to t=%e.",
+                next_los_time);
+    }
+  }
+}
+
+/**
  * @brief Computes the next time (on the time line) for structure finding
  *
  * @param e The #engine.
@@ -5049,6 +5171,19 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
       e->a_first_stf_output = stf_time_first;
     else
       e->time_first_stf_output = stf_time_first;
+  }
+
+  /* Deal with line of sight */
+  double los_time_first;
+  e->output_list_los = NULL;
+  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los,
+                   &los_time_first);
+
+  if (e->output_list_los) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_los = los_time_first;
+    else
+      e->time_first_los = los_time_first;
   }
 }
 
@@ -5268,12 +5403,14 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 #ifdef WITH_FOF
     free((void *)e->fof_properties);
 #endif
+    free((void *)e->los_properties);
 #ifdef WITH_MPI
     free((void *)e->reparttype);
 #endif
     if (e->output_list_snapshots) free((void *)e->output_list_snapshots);
     if (e->output_list_stats) free((void *)e->output_list_stats);
     if (e->output_list_stf) free((void *)e->output_list_stf);
+    if (e->output_list_los) free((void *)e->output_list_los);
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) free((void *)e->logger);
 #endif
@@ -5322,6 +5459,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
 #endif
+  los_struct_dump(e->los_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
   if (e->output_list_snapshots)
@@ -5329,6 +5467,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   if (e->output_list_stats)
     output_list_struct_dump(e->output_list_stats, stream);
   if (e->output_list_stf) output_list_struct_dump(e->output_list_stf, stream);
+  if (e->output_list_los) output_list_struct_dump(e->output_list_los, stream);
 
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
@@ -5454,6 +5593,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->fof_properties = fof_props;
 #endif
 
+  struct los_props *los_properties =
+      (struct los_props *)malloc(sizeof(struct los_props));
+  los_struct_restore(los_properties, stream);
+  e->los_properties = los_properties;
+
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
@@ -5483,6 +5627,13 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
         (struct output_list *)malloc(sizeof(struct output_list));
     output_list_struct_restore(output_list_stf, stream);
     e->output_list_stf = output_list_stf;
+  }
+
+  if (e->output_list_los) {
+    struct output_list *output_list_los =
+        (struct output_list *)malloc(sizeof(struct output_list));
+    output_list_struct_restore(output_list_los, stream);
+    e->output_list_los = output_list_los;
   }
 
 #ifdef WITH_LOGGER

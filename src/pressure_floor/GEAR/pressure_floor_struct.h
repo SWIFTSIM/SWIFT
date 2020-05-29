@@ -23,10 +23,6 @@
  * Structure containing the required variables for the pressure
  * floor in the density loop.
  */
-struct pressure_floor_part_data {
-  /*! Estimation of local turbulence (squared)
-   * Units: length^2 / time^2 (comoving) */
-  float sigma2;
-};
+struct pressure_floor_part_data {};
 
 #endif  // SWIFT_PRESSURE_FLOOR_PART_GEAR_H
