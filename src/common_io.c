@@ -2412,7 +2412,7 @@ void io_write_output_field_parameter(const char* filename) {
   units_init_cgs(&snapshot_units);
 
   /* Loop over all particle types */
-  fprintf(file, "SelectOutput:\n");
+  fprintf(file, "Default:\n");
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
     int num_fields = 0;
@@ -2480,10 +2480,8 @@ void io_write_output_field_parameter(const char* filename) {
       units_cgs_conversion_string(buffer, &snapshot_units, list[i].units,
                                   list[i].scale_factor_exponent);
 
-      fprintf(file,
-              "  %s_%s: %*d \t # %s. ::: Conversion to physical CGS: %s\n",
-              list[i].name, part_type_names[ptype],
-              (int)(28 - strlen(list[i].name)), 1, list[i].description, buffer);
+      fprintf(file, "  %s_%s: %s  # %s : %s\n", list[i].name,
+              part_type_names[ptype], "on", list[i].description, buffer);
     }
 
     fprintf(file, "\n");
