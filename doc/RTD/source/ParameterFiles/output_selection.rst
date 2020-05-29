@@ -142,4 +142,6 @@ follows::
   ...
 
 This will enable your simulation to perform partial dumps only at the outputs
-labelled as ``Snipshot``.
+labelled as ``Snipshot``. The name of the output selection that corresponds
+to your choice in the output list will be written to the snapshot header as
+``Header/SelectOutput``.
