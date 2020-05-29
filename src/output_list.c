@@ -58,10 +58,10 @@ void output_list_read_file(struct output_list *output_list,
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
   output_list->times = (double *)malloc(sizeof(double) * output_list->size);
-  output_list->select_output_indicies =
+  output_list->select_output_indices =
       (int *)malloc(sizeof(int) * output_list->size);
 
-  if ((!output_list->times) || (!output_list->select_output_indicies)) {
+  if ((!output_list->times) || (!output_list->select_output_indices)) {
     error(
         "Unable to malloc output_list. "
         "Try reducing the number of lines in %s",
@@ -145,7 +145,7 @@ void output_list_read_file(struct output_list *output_list,
       if (!strcmp(select_output_buffer,
                   output_list->select_output_names[select_output_index])) {
         /* We already have this select output list string in the buffer! */
-        output_list->select_output_indicies[ind] = select_output_index;
+        output_list->select_output_indices[ind] = select_output_index;
         found_select_output = 1;
       }
     }
@@ -156,7 +156,7 @@ void output_list_read_file(struct output_list *output_list,
           output_list
               ->select_output_names[output_list->select_output_number_of_names],
           select_output_buffer);
-      output_list->select_output_indicies[ind] =
+      output_list->select_output_indices[ind] =
           output_list->select_output_number_of_names;
       output_list->select_output_number_of_names += 1;
     }
@@ -279,7 +279,7 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
 void output_list_get_current_select_output(struct output_list *t,
                                            char *select_output_name) {
   strcpy(select_output_name,
-         t->select_output_names[t->select_output_indicies[t->cur_ind]]);
+         t->select_output_names[t->select_output_indices[t->cur_ind]]);
 }
 
 /**
@@ -353,12 +353,12 @@ void output_list_print(const struct output_list *output_list) {
       printf(
           "\t %lf, %s <-- Current\n", output_list->times[ind],
           output_list
-              ->select_output_names[output_list->select_output_indicies[ind]]);
+              ->select_output_names[output_list->select_output_indices[ind]]);
     else
       printf(
           "\t %lf, %s\n", output_list->times[ind],
           output_list
-              ->select_output_names[output_list->select_output_indicies[ind]]);
+              ->select_output_names[output_list->select_output_indices[ind]]);
   }
 }
 
@@ -368,7 +368,7 @@ void output_list_print(const struct output_list *output_list) {
 void output_list_clean(struct output_list **output_list) {
   if (*output_list) {
     free((*output_list)->times);
-    free((*output_list)->select_output_indicies);
+    free((*output_list)->select_output_indices);
     free(*output_list);
     *output_list = NULL;
   }
@@ -384,8 +384,8 @@ void output_list_struct_dump(struct output_list *list, FILE *stream) {
   restart_write_blocks(list->times, list->size, sizeof(double), stream,
                        "output_list", "times");
 
-  restart_write_blocks(list->select_output_indicies, list->size, sizeof(int),
-                       stream, "output_list", "select_output_indicies");
+  restart_write_blocks(list->select_output_indices, list->size, sizeof(int),
+                       stream, "output_list", "select_output_indices");
 }
 
 /**
@@ -399,9 +399,9 @@ void output_list_struct_restore(struct output_list *list, FILE *stream) {
   restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL,
                       "times");
 
-  list->select_output_indicies = (int *)malloc(sizeof(int) * list->size);
-  restart_read_blocks(list->select_output_indicies, list->size, sizeof(int),
-                      stream, NULL, "select_output_indicies");
+  list->select_output_indices = (int *)malloc(sizeof(int) * list->size);
+  restart_read_blocks(list->select_output_indices, list->size, sizeof(int),
+                      stream, NULL, "select_output_indices");
 
   output_list_print(list);
   error();

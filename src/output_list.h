@@ -51,10 +51,10 @@ struct output_list {
   /* Time array */
   double *times;
 
-  /* Select output indicies - each index corresponds to a string
+  /* Select output indices - each index corresponds to a string
    * in select_output. Chosen to be this instead of an array of
    * pointers because of restarts. */
-  int *select_output_indicies;
+  int *select_output_indices;
 
   /* Total number of currently used select output names */
   int select_output_number_of_names;
