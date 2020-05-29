@@ -2476,12 +2476,25 @@ void io_write_output_field_parameter(const char* filename) {
     /* Write all the fields of this particle type */
     for (int i = 0; i < num_fields; ++i) {
 
-      char buffer[FIELD_BUFFER_SIZE] = {0};
-      units_cgs_conversion_string(buffer, &snapshot_units, list[i].units,
+      char unit_buffer[FIELD_BUFFER_SIZE] = {0};
+      units_cgs_conversion_string(unit_buffer, &snapshot_units, list[i].units,
                                   list[i].scale_factor_exponent);
 
+      /* Need to buffer with a maximal size - otherwise we can't read in again
+       * because comments are too long */
+      char comment_write_buffer[PARSER_MAX_LINE_SIZE / 2];
+
+      snprintf(comment_write_buffer, PARSER_MAX_LINE_SIZE / 2, "%s",
+               list[i].description);
+
+      /* If our string is too long, replace the last few characters (before
+       * \0) with ... for 'fancy printing' */
+      if (strlen(comment_write_buffer) > PARSER_MAX_LINE_SIZE / 2 - 3) {
+        strcpy(&comment_write_buffer[PARSER_MAX_LINE_SIZE / 2 - 4], "...");
+      }
+
       fprintf(file, "  %s_%s: %s  # %s : %s\n", list[i].name,
-              part_type_names[ptype], "on", list[i].description, buffer);
+              part_type_names[ptype], "on", comment_write_buffer, unit_buffer);
     }
 
     fprintf(file, "\n");
