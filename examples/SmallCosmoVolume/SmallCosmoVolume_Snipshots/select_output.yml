@@ -1,0 +1,47 @@
+Snapshot:
+  # Particle Type Gas
+  Coordinates_Gas: on  # Co-moving positions of the particles : a U_L  [ cm ]
+  Velocities_Gas: on  # Peculiar velocities of the stars. This is (a * dx/dt) where x is the co-moving positions of the particles : U_L U_t^-1  [ cm s^-1 ]
+  Masses_Gas: on  # Masses of the particles : U_M  [ g ]
+  SmoothingLengths_Gas: on  # Co-moving smoothing lengths (FWHM of the kernel) of the particles : a U_L  [ cm ]
+  Entropies_Gas: on  # Co-moving entropies per unit mass of the particles : U_M^-1.6667 U_L^4 U_t^-2  [ g^-1.6667 cm^4 s^-2 ]
+  ParticleIDs_Gas: on  # Unique IDs of the particles : [ - ] 
+  Densities_Gas: on  # Co-moving mass densities of the particles : a^-3 U_M U_L^-3  [ g cm^-3 ]
+  InternalEnergies_Gas: on  # Co-moving thermal energies per unit mass of the particles : a^-2 U_L^2 U_t^-2  [ cm^2 s^-2 ]
+  Pressures_Gas: on  # Co-moving pressures of the particles : a^-5 U_M U_L^-1 U_t^-2  [ g cm^-1 s^-2 ]
+  Potentials_Gas: on  # Co-moving gravitational potential at position of the particles : a^-1 U_L^2 U_t^-2  [ cm^2 s^-2 ]
+  Temperatures_Gas: on  # Temperature of the particles : U_T  [ K ]
+  VELOCIraptorGroupIDs_Gas: on  # Group IDs of the particles in the VELOCIraptor catalogue : [ - ] 
+
+  # Particle Type DM
+  Coordinates_DM: on  # Co-moving position of the particles : a U_L  [ cm ]
+  Velocities_DM: on  # Peculiar velocities of the stars. This is a * dx/dt where x is the co-moving position of the particles. : U_L U_t^-1  [ cm s^-1 ]
+  Masses_DM: on  # Masses of the particles : U_M  [ g ]
+  ParticleIDs_DM: on  # Unique ID of the particles : [ - ] 
+  Softenings_DM: on  # Co-moving Plummer-equivalent softening lengths of the particles. : a U_L  [ cm ]
+  VELOCIraptorGroupIDs_DM: on  # Group IDs of the particles in the VELOCIraptor catalogue : [ - ] 
+
+
+Snipshot:
+  # Particle Type Gas
+  Coordinates_Gas: on  # Co-moving positions of the particles : a U_L  [ cm ]
+  Velocities_Gas: on  # Peculiar velocities of the stars. This is (a * dx/dt) where x is the co-moving positions of the particles : U_L U_t^-1  [ cm s^-1 ]
+  Masses_Gas: on  # Masses of the particles : U_M  [ g ]
+  SmoothingLengths_Gas: on  # Co-moving smoothing lengths (FWHM of the kernel) of the particles : a U_L  [ cm ]
+  Entropies_Gas: off  # Co-moving entropies per unit mass of the particles : U_M^-1.6667 U_L^4 U_t^-2  [ g^-1.6667 cm^4 s^-2 ]
+  ParticleIDs_Gas: on  # Unique IDs of the particles : [ - ] 
+  Densities_Gas: off  # Co-moving mass densities of the particles : a^-3 U_M U_L^-3  [ g cm^-3 ]
+  InternalEnergies_Gas: off  # Co-moving thermal energies per unit mass of the particles : a^-2 U_L^2 U_t^-2  [ cm^2 s^-2 ]
+  Pressures_Gas: off  # Co-moving pressures of the particles : a^-5 U_M U_L^-1 U_t^-2  [ g cm^-1 s^-2 ]
+  Potentials_Gas: off  # Co-moving gravitational potential at position of the particles : a^-1 U_L^2 U_t^-2  [ cm^2 s^-2 ]
+  Temperatures_Gas: off  # Temperature of the particles : U_T  [ K ]
+  VELOCIraptorGroupIDs_Gas: off  # Group IDs of the particles in the VELOCIraptor catalogue : [ - ] 
+
+  # Particle Type DM
+  Coordinates_DM: on  # Co-moving position of the particles : a U_L  [ cm ]
+  Velocities_DM: on  # Peculiar velocities of the stars. This is a * dx/dt where x is the co-moving position of the particles. : U_L U_t^-1  [ cm s^-1 ]
+  Masses_DM: off  # Masses of the particles : U_M  [ g ]
+  ParticleIDs_DM: on  # Unique ID of the particles : [ - ] 
+  Softenings_DM: off  # Co-moving Plummer-equivalent softening lengths of the particles. : a U_L  [ cm ]
+  VELOCIraptorGroupIDs_DM: off # Group IDs of the particles in the VELOCIraptor catalogue : [ - ] 
+
