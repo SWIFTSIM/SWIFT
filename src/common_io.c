@@ -2484,8 +2484,8 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology) {
        * because comments are too long */
       char comment_write_buffer[PARSER_MAX_LINE_SIZE / 2];
 
-      snprintf(comment_write_buffer, PARSER_MAX_LINE_SIZE / 2, "%s",
-               list[i].description);
+      sprintf(comment_write_buffer, "%.*s", PARSER_MAX_LINE_SIZE / 2 - 1,
+              list[i].description);
 
       /* If our string is too long, replace the last few characters (before
        * \0) with ... for 'fancy printing' */
