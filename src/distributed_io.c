@@ -246,7 +246,8 @@ void write_output_distributed(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
-  struct swift_params* params = e->parameter_file;
+  struct output_options* output_options = e->output_options;
+  struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -704,13 +705,20 @@ void write_output_distributed(struct engine* e,
     }
 
     /* Write everything that is not cancelled */
+
+    char current_selection_name[OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH] =
+        "Default";
+    if (output_list->output_list_on) {
+      /* Users could have specified a different Select Output scheme for each
+       * snapshot. */
+      output_list_get_current_select_output(output_list,
+                                            &current_selection_name[0]);
+    }
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
-      char field[PARSER_MAX_LINE_SIZE];
-      sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
-              part_type_names[ptype]);
-      int should_write = parser_get_opt_param_int(params, field, 1);
+      const int should_write = output_options_should_write_field(
+          output_options, current_selection_name, list[i].name, ptype);
 
       if (should_write)
         write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],
