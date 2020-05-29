@@ -346,7 +346,7 @@ int main(int argc, char *argv[]) {
 
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
-    io_write_output_field_parameter(output_parameters_filename);
+    io_write_output_field_parameter(output_parameters_filename, with_cosmology);
     printf("End of run.\n");
     return 0;
   }
@@ -1090,7 +1090,8 @@ int main(int argc, char *argv[]) {
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0)
-      io_check_output_fields(output_options->select_output, N_total);
+      io_check_output_fields(output_options->select_output, N_total,
+                             with_cosmology);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);

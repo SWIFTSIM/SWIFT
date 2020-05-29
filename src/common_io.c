@@ -2274,9 +2274,11 @@ void io_collect_gparts_background_to_write(
  * @param params The #swift_params instance corresponding to the select_output
  *               file.
  * @param N_total The total number of each particle type.
+ * @param with_cosmolgy Ran with cosmology?
  */
 void io_check_output_fields(const struct swift_params* params,
-                            const long long N_total[swift_type_count]) {
+                            const long long N_total[swift_type_count],
+                            int with_cosmology) {
 
   /* Loop over all particle types to check the fields */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
@@ -2296,7 +2298,7 @@ void io_check_output_fields(const struct swift_params* params,
         num_fields +=
             cooling_write_particles(NULL, NULL, list + num_fields, NULL);
         num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
-                                              /*with_cosmology=*/1);
+                                              with_cosmology);
         num_fields +=
             star_formation_write_particles(NULL, NULL, list + num_fields);
         num_fields += fof_write_parts(NULL, NULL, list + num_fields);
@@ -2316,18 +2318,17 @@ void io_check_output_fields(const struct swift_params* params,
         break;
 
       case swift_type_stars:
-        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        stars_write_particles(NULL, list, &num_fields, with_cosmology);
         num_fields += chemistry_write_sparticles(NULL, list + num_fields);
-        num_fields += tracers_write_sparticles(NULL, list + num_fields,
-                                               /*with_cosmology=*/1);
+        num_fields +=
+            tracers_write_sparticles(NULL, list + num_fields, with_cosmology);
         num_fields += star_formation_write_sparticles(NULL, list + num_fields);
         num_fields += fof_write_sparts(NULL, list + num_fields);
         num_fields += velociraptor_write_sparts(NULL, list + num_fields);
         break;
 
       case swift_type_black_hole:
-        black_holes_write_particles(NULL, list, &num_fields,
-                                    /*with_cosmology=*/1);
+        black_holes_write_particles(NULL, list, &num_fields, with_cosmology);
         num_fields += chemistry_write_bparticles(NULL, list + num_fields);
         num_fields += fof_write_bparts(NULL, list + num_fields);
         num_fields += velociraptor_write_bparts(NULL, list + num_fields);
@@ -2400,8 +2401,9 @@ void io_check_output_fields(const struct swift_params* params,
  * @brief Write the output field parameters file
  *
  * @param filename The file to write.
+ * @param with_cosmology Use cosmological name variant?
  */
-void io_write_output_field_parameter(const char* filename) {
+void io_write_output_field_parameter(const char* filename, int with_cosmology) {
 
   FILE* file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
@@ -2426,7 +2428,7 @@ void io_write_output_field_parameter(const char* filename) {
         num_fields +=
             cooling_write_particles(NULL, NULL, list + num_fields, NULL);
         num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
-                                              /*with_cosmology=*/1);
+                                              with_cosmology);
         num_fields +=
             star_formation_write_particles(NULL, NULL, list + num_fields);
         num_fields += fof_write_parts(NULL, NULL, list + num_fields);
@@ -2446,18 +2448,17 @@ void io_write_output_field_parameter(const char* filename) {
         break;
 
       case swift_type_stars:
-        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        stars_write_particles(NULL, list, &num_fields, with_cosmology);
         num_fields += chemistry_write_sparticles(NULL, list + num_fields);
-        num_fields += tracers_write_sparticles(NULL, list + num_fields,
-                                               /*with_cosmology=*/1);
+        num_fields +=
+            tracers_write_sparticles(NULL, list + num_fields, with_cosmology);
         num_fields += star_formation_write_sparticles(NULL, list + num_fields);
         num_fields += fof_write_sparts(NULL, list + num_fields);
         num_fields += velociraptor_write_sparts(NULL, list + num_fields);
         break;
 
       case swift_type_black_hole:
-        black_holes_write_particles(NULL, list, &num_fields,
-                                    /*with_cosmology=*/1);
+        black_holes_write_particles(NULL, list, &num_fields, with_cosmology);
         num_fields += chemistry_write_bparticles(NULL, list + num_fields);
         num_fields += fof_write_bparts(NULL, list + num_fields);
         num_fields += velociraptor_write_bparts(NULL, list + num_fields);
