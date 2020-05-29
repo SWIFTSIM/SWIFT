@@ -2337,62 +2337,61 @@ void io_check_output_fields(const struct swift_params* params,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* loop over each parameter */
-    for (int param_id = 0; param_id < params->paramCount; param_id++) {
-      const char* param_name = params->data[param_id].name;
-      message("%s", param_name);
-
+    /* Loop over each section */
+    for (int section_id = 0; section_id < params->sectionCount; section_id++) {
       char section_name[PARSER_MAX_LINE_SIZE];
+      sprintf(section_name, "%s", params->section[section_id].name);
 
-      /* Skip if wrong section */
-      sprintf(section_name, "SelectOutput:");
-      if (strstr(param_name, section_name) != NULL) {
-        message("%s %s", param_name, section_name);
-        error(
-            "Output selection files no longer require the use of top level "
-            "SelectOutput");
-        continue;
-      }
+      /* Loop over each parameter */
+      for (int param_id = 0; param_id < params->paramCount; param_id++) {
+        const char* param_name = params->data[param_id].name;
 
-      /* Skip if top-levle section */
-      sprintf(section_name, "Default:");
-      if (strstr(param_name, section_name) == NULL) continue;
+        char comparison_section_name[PARSER_MAX_LINE_SIZE];
 
-      /* Skip if wrong particle type */
-      sprintf(section_name, "_%s", part_type_names[ptype]);
-      if (strstr(param_name, section_name) == NULL) continue;
-
-      int found = 0;
-
-      /* loop over each possible output field */
-      for (int field_id = 0; field_id < num_fields; field_id++) {
-        char field_name[PARSER_MAX_LINE_SIZE];
-        sprintf(field_name, "Default:%.*s_%s", FIELD_BUFFER_SIZE,
-                list[field_id].name, part_type_names[ptype]);
-
-        if (strcmp(param_name, field_name) == 0) {
-          found = 1;
-          /* check if correct input */
-          int retParam = 0;
-          char str[PARSER_MAX_LINE_SIZE];
-          sscanf(params->data[param_id].value, "%d%s", &retParam, str);
-
-          /* Check that we have a 0 or 1 */
-          if (retParam != 0 && retParam != 1)
-            message(
-                "WARNING: Unexpected input for %s. Received %i but expect 0 or "
-                "1. ",
-                field_name, retParam);
-
-          /* Found it, so move to the next one. */
-          break;
+        /* Skip if wrong section */
+        sprintf(comparison_section_name, "%s", "SelectOutput:");
+        if (strstr(param_name, comparison_section_name) != NULL) {
+          error(
+              "Output selection files no longer require the use of top level "
+              "SelectOutput; see the documentation for changes.");
+          continue;
         }
+
+        /* Skip if top-level section */
+        sprintf(comparison_section_name, "%s", section_name);
+        if (strstr(param_name, comparison_section_name) == NULL) continue;
+
+        /* Skip if wrong particle type */
+        sprintf(comparison_section_name, "_%s", part_type_names[ptype]);
+        if (strstr(param_name, section_name) == NULL) continue;
+
+        int found = 0;
+
+        /* loop over each possible output field */
+        for (int field_id = 0; field_id < num_fields; field_id++) {
+          char field_name[PARSER_MAX_LINE_SIZE];
+          /* Note that section_name includes a : */
+          sprintf(field_name, "%s%.*s_%s", section_name, FIELD_BUFFER_SIZE,
+                  list[field_id].name, part_type_names[ptype]);
+
+          if (strcmp(param_name, field_name) == 0) {
+            found = 1;
+
+            /* No longer check for correctness as there are many valid
+             * strings. Could come back to this, but for now added
+             * complexity is not worth it.*/
+
+            /* Found it, so move to the next one. */
+            break;
+          }
+        }
+        if (!found)
+          message(
+              "WARNING: Trying to dump particle field '%s' (read from '%s') "
+              "that does not exist. This may because you are not running with "
+              "all of the physics taht you compiled the code with.",
+              param_name, params->fileName);
       }
-      if (!found)
-        message(
-            "WARNING: Trying to dump particle field '%s' (read from '%s') that "
-            "does not exist.",
-            param_name, params->fileName);
     }
   }
 }
