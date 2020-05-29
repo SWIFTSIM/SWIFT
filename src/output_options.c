@@ -137,8 +137,10 @@ int output_options_should_write_field(struct output_options* output_options,
 
   int should_write = strcmp(compression_do_not_write, compression_level);
 
+#ifdef SWIFT_DEBUG_CHECKS
   message("Determining if %s is to be written. Returning %d from %s.", field,
           should_write, compression_level);
+#endif
 
   return should_write;
 }
