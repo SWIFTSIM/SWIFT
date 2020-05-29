@@ -969,6 +969,16 @@ void write_output_serial(struct engine* e,
                            e->s->dim[1] * factor_length,
                            e->s->dim[2] * factor_length};
 
+    /* Determine if we are writing a reduced snapshot, and if so which
+     * output selection type to use */
+    char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
+    if (output_list) {
+      /* Users could have specified a different Select Output scheme for each
+       * snapshot. */
+      output_list_get_current_select_output(output_list,
+                                            &current_selection_name[0]);
+    }
+
     /* Print the relevant information and print status */
     io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
     io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
@@ -1009,6 +1019,7 @@ void write_output_serial(struct engine* e,
     io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
     io_write_attribute_i(h_grp, "ThisFile", 0);
     io_write_attribute_s(h_grp, "OutputType", "Snapshot");
+    io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
 
     /* Close header */
     H5Gclose(h_grp);
@@ -1389,13 +1400,6 @@ void write_output_serial(struct engine* e,
 
         /* Write everything that is not cancelled */
 
-        char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
-        if (output_list) {
-          /* Users could have specified a different Select Output scheme for
-           * each snapshot. */
-          output_list_get_current_select_output(output_list,
-                                                &current_selection_name[0]);
-        }
         for (int i = 0; i < num_fields; ++i) {
 
           /* Did the user cancel this field? */
