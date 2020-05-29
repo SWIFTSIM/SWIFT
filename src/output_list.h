@@ -23,10 +23,10 @@
 #include "../config.h"
 
 /* Local includes */
+#include "common_io.h"
 #include "cosmology.h"
 
 #define OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES 8
-#define OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH 64
 
 struct engine;
 
@@ -46,7 +46,7 @@ struct output_list {
 
   /* Select output names. */
   char select_output_names[OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES]
-                          [OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH];
+                          [FIELD_BUFFER_SIZE];
 
   /* Time array */
   double *times;
