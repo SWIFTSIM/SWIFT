@@ -706,8 +706,7 @@ void write_output_distributed(struct engine* e,
 
     /* Write everything that is not cancelled */
 
-    char current_selection_name[OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH] =
-        "Default";
+    char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
     if (output_list->output_list_on) {
       /* Users could have specified a different Select Output scheme for each
        * snapshot. */
