@@ -1174,7 +1174,7 @@ void write_output_single(struct engine* e,
     /* Write everything that is not cancelled */
 
     char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
-    if (output_list->output_list_on) {
+    if (output_list) {
       /* Users could have specified a different Select Output scheme for each
        * snapshot. */
       output_list_get_current_select_output(output_list,
