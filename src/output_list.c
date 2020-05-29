@@ -58,10 +58,10 @@ void output_list_read_file(struct output_list *output_list,
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
   output_list->times = (double *)malloc(sizeof(double) * output_list->size);
-  output_list->select_output =
-      (char **)malloc(sizeof(char *) * output_list->size);
+  output_list->select_output_indicies =
+      (int *)malloc(sizeof(int) * output_list->size);
 
-  if ((!output_list->times) || (!output_list->select_output)) {
+  if ((!output_list->times) || (!output_list->select_output_indicies)) {
     error(
         "Unable to malloc output_list. "
         "Try reducing the number of lines in %s",
@@ -110,7 +110,8 @@ void output_list_read_file(struct output_list *output_list,
   /* Read file */
   size_t ind = 0;
   int read_successfully = 0;
-  char select_output_buffer[PARSER_MAX_LINE_SIZE] = "Default";
+  int found_select_output = 0;
+  char select_output_buffer[OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH] = "Default";
   while (getline(&line, &len, file) != -1) {
     double *time = &output_list->times[ind];
     /* Write data to output_list */
@@ -134,13 +135,31 @@ void output_list_read_file(struct output_list *output_list,
     if (cosmo && type == OUTPUT_LIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);
 
-    /* Create the storage space for the select output options */
-    output_list->select_output[ind] =
-        (char *)malloc(sizeof(char) * PARSER_MAX_LINE_SIZE);
-    if (!output_list->select_output[ind]) {
-      error("Unable to malloc output_list. Try reducing the number of lines.");
+    /* Search to find index for select output - select_output_index is the index
+     * in the select_output_names array that corresponds to this select output
+     * name. */
+    found_select_output = 0;
+    for (int select_output_index = 0;
+         select_output_index < output_list->select_output_number_of_names;
+         select_output_index++) {
+      if (!strcmp(select_output_buffer,
+                  output_list->select_output_names[select_output_index])) {
+        /* We already have this select output list string in the buffer! */
+        output_list->select_output_indicies[ind] = select_output_index;
+        found_select_output = 1;
+      }
     }
-    strcpy(output_list->select_output[ind], select_output_buffer);
+    /* If we did not assign it above, we haven't encountered this name before
+     * and we need to create this name in the array */
+    if (!found_select_output) {
+      strcpy(
+          output_list
+              ->select_output_names[output_list->select_output_number_of_names],
+          select_output_buffer);
+      output_list->select_output_indicies[ind] =
+          output_list->select_output_number_of_names;
+      output_list->select_output_number_of_names += 1;
+    }
 
     /* Update size */
     ind += 1;
@@ -196,7 +215,7 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
   else
     time_end = e->time_end;
 
-  /* Find next snasphot above current time */
+  /* Find next snapshot above current time */
   double time = t->times[t->cur_ind];
   size_t ind = t->cur_ind;
   while (time <= time_end) {
@@ -306,15 +325,25 @@ void output_list_init(struct output_list **list, const struct engine *e,
  */
 void output_list_print(const struct output_list *output_list) {
 
-  printf("/*\t Time Array, Select Output \t */\n");
-  printf("Number of Line: %zu\n", output_list->size);
+  printf("/*\t Total number of Select Output options: %d \t */\n",
+         output_list->select_output_number_of_names);
+  printf("/*\t Select Output options found in output list: \t */\n");
+  for (int i = 0; i < output_list->select_output_number_of_names; i++) {
+    printf("\t Index: %d, Name: %s\n", i, output_list->select_output_names[i]);
+  }
+  printf("\n/*\t Time Array, Select Output \t */\n");
+  printf("Number of Lines: %zu\n", output_list->size);
   for (size_t ind = 0; ind < output_list->size; ind++) {
     if (ind == output_list->cur_ind)
-      printf("\t%lf, %s <-- Current\n", output_list->times[ind],
-             output_list->select_output[ind]);
+      printf(
+          "\t %lf, %s <-- Current\n", output_list->times[ind],
+          output_list
+              ->select_output_names[output_list->select_output_indicies[ind]]);
     else
-      printf("\t%lf, %s\n", output_list->times[ind],
-             output_list->select_output[ind]);
+      printf(
+          "\t %lf, %s\n", output_list->times[ind],
+          output_list
+              ->select_output_names[output_list->select_output_indicies[ind]]);
   }
 }
 
@@ -324,10 +353,7 @@ void output_list_print(const struct output_list *output_list) {
 void output_list_clean(struct output_list **output_list) {
   if (*output_list) {
     free((*output_list)->times);
-    for (int ind = 0; ind < (int)(*output_list)->size; ind++) {
-      free((*output_list)->select_output[ind]);
-    }
-    free((*output_list)->select_output);
+    free((*output_list)->select_output_indicies);
     free(*output_list);
     *output_list = NULL;
   }
@@ -343,14 +369,8 @@ void output_list_struct_dump(struct output_list *list, FILE *stream) {
   restart_write_blocks(list->times, list->size, sizeof(double), stream,
                        "output_list", "times");
 
-  /* Because the section selections are stored as a pointer to a string,
-   * we must dump each string individually. */
-  char block_name[PARSER_MAX_LINE_SIZE];
-  for (int ind = 0; ind < (int)list->size; ind++) {
-    sprintf(block_name, "select output %d", ind);
-    restart_write_blocks(list->select_output[ind], PARSER_MAX_LINE_SIZE,
-                         sizeof(char), stream, "output_list", block_name);
-  }
+  restart_write_blocks(list->select_output_indicies, list->size, sizeof(int),
+                       stream, "output_list", "select_output_indicies");
 }
 
 /**
@@ -364,15 +384,10 @@ void output_list_struct_restore(struct output_list *list, FILE *stream) {
   restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL,
                       "times");
 
-  list->select_output = (char **)malloc(sizeof(char *) * list->size);
-  /* Because the section selections are stored as a pointer to a string,
-   * we must read each string individually. */
-  char block_name[PARSER_MAX_LINE_SIZE];
-  for (int ind = 0; ind < (int)list->size; ind++) {
-    sprintf(block_name, "select output %d", ind);
-    list->select_output[ind] =
-        (char *)malloc(sizeof(char) * PARSER_MAX_LINE_SIZE);
-    restart_read_blocks(list->select_output[ind], PARSER_MAX_LINE_SIZE,
-                        sizeof(char), stream, NULL, block_name);
-  }
+  list->select_output_indicies = (int *)malloc(sizeof(int) * list->size);
+  restart_read_blocks(list->select_output_indicies, list->size, sizeof(int),
+                      stream, NULL, "select_output_indicies");
+
+  output_list_print(list);
+  error();
 }

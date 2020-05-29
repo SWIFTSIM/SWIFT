@@ -25,6 +25,9 @@
 /* Local includes */
 #include "cosmology.h"
 
+#define OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_TYPES 8
+#define OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH 64
+
 struct engine;
 
 /**
@@ -41,11 +44,20 @@ enum output_list_type {
  */
 struct output_list {
 
+  /* Select output names. */
+  char select_output_names[OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_TYPES]
+                          [OUTPUT_LIST_SELECT_OUTPUT_MAX_LENGTH];
+
   /* Time array */
   double *times;
 
-  /* Select output arrays */
-  char **select_output;
+  /* Select output indicies - each index corresponds to a string
+   * in select_output. Chosen to be this instead of an array of
+   * pointers because of restarts. */
+  int *select_output_indicies;
+
+  /* Total number of currently used select output names */
+  int select_output_number_of_names;
 
   /* Size of the time array (i.e. number of outputs) */
   size_t size;
