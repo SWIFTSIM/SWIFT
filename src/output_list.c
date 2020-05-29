@@ -270,6 +270,19 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
 }
 
 /**
+ * @brief Copys the string describing the current output name into the
+ *        buffer described by select_output_name.
+ *
+ * @param t The #output_list
+ * @param select_output_name updated to the current Select Output choice.
+ **/
+void output_list_get_current_select_output(struct output_list *t,
+                                           char *select_output_name) {
+  strcpy(select_output_name,
+         t->select_output_names[t->select_output_indicies[t->cur_ind]]);
+}
+
+/**
  * @brief initialize an output list
  *
  * @param list The output list to initialize
@@ -318,6 +331,8 @@ void output_list_init(struct output_list **list, const struct engine *e,
     *delta_time = (*list)->times[1] - (*list)->times[0];
     *time_first = (*list)->times[0];
   }
+
+  (*list)->output_list_on = output_list_on;
 }
 
 /**

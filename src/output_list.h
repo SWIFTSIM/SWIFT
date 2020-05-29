@@ -68,6 +68,9 @@ struct output_list {
   /* Was the Select Output option used? */
   int select_output_on;
 
+  /* Is this output list activated? */
+  int output_list_on;
+
   /* Dump on final timestep? */
   int final_step_dump;
 };
@@ -76,6 +79,8 @@ void output_list_read_file(struct output_list *output_list,
                            const char *filename, struct cosmology *cosmo);
 void output_list_read_next_time(struct output_list *t, const struct engine *e,
                                 const char *name, integertime_t *ti_next);
+void output_list_get_current_select_output(struct output_list *t,
+                                           char *select_output_name);
 void output_list_init(struct output_list **list, const struct engine *e,
                       const char *name, double *delta_time, double *time_first);
 void output_list_print(const struct output_list *output_list);
