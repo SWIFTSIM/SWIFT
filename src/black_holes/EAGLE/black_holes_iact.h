@@ -124,7 +124,7 @@ runner_iact_nonsym_bh_gas_density(
       error(
           "Invalid denominator for BH particle %lld and gas particle "
           "%lld in Bondi rate calculation.",
-          bp->id, pj->id);
+          bi->id, pj->id);
 #endif
     const double denominator_inv = 1. / sqrt(denominator2);
 
