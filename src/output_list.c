@@ -333,6 +333,7 @@ void output_list_init(struct output_list **list, const struct engine *e,
   }
 
   (*list)->output_list_on = output_list_on;
+  (*list)->select_output_number_of_names = 0;
 }
 
 /**
