@@ -680,8 +680,13 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
   /* File name */
   char file_name_swift[100];
+#ifdef WITH_MPI
+  sprintf(file_name_swift, "gravity_checks_swift_step%.4d_order%d.rank%d.dat", e->step,
+          SELF_GRAVITY_MULTIPOLE_ORDER, engine_rank);
+#else
   sprintf(file_name_swift, "gravity_checks_swift_step%.4d_order%d.dat", e->step,
           SELF_GRAVITY_MULTIPOLE_ORDER);
+#endif
 
   /* Creare files and write header */
   FILE *file_swift = fopen(file_name_swift, "w");
@@ -741,6 +746,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   /* Be nice */
   fclose(file_swift);
 
+#ifndef WITH_MPI
   if (!gravity_exact_force_file_exits(e)) {
 
     char file_name_exact[100];
@@ -799,6 +805,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     /* Be nice */
     fclose(file_exact);
   }
+#endif
 #else
   error("Gravity checking function called without the corresponding flag.");
 #endif
