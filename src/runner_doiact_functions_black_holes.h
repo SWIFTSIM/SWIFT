@@ -102,7 +102,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
         if (r2 < hig2) {
           IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-                      e->gravity_properties, ti_current, e->time);
+                      e->gravity_properties, e->black_holes_properties,
+                      ti_current, e->time);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -157,7 +158,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
       if (r2 < hig2) {
         IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
-                   ti_current);
+                   e->black_holes_properties, ti_current);
       }
     } /* loop over the bparts in ci. */
   }   /* loop over the bparts in ci. */
@@ -255,7 +256,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
         if (r2 < hig2) {
           IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-                      e->gravity_properties, ti_current, e->time);
+                      e->gravity_properties, e->black_holes_properties,
+                      ti_current, e->time);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the bparts in ci. */
@@ -310,7 +312,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
       if (r2 < hig2) {
         IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
-                   ti_current);
+                   e->black_holes_properties, ti_current);
       }
     } /* loop over the bparts in cj. */
   }   /* loop over the bparts in ci. */
@@ -422,7 +424,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
         IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
-                    e->gravity_properties, ti_current, e->time);
+                    e->gravity_properties, e->black_holes_properties,
+                    ti_current, e->time);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -499,7 +502,8 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
         IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
-                    e->gravity_properties, ti_current, e->time);
+                    e->gravity_properties, e->black_holes_properties,
+                    ti_current, e->time);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */

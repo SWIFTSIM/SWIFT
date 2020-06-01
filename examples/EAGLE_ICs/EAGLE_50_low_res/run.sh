@@ -1,9 +1,9 @@
 #!/bin/bash
 
  # Generate the initial conditions if they are not present.
-if [ ! -e EAGLE_L0050N0752_ICs.hdf5 ]
+if [ ! -e EAGLE_L0050N0376_ICs.hdf5 ]
 then
-    echo "Fetching initial conditions for the EAGLE 50Mpc example..."
+    echo "Fetching initial conditions for the EAGLE 50Mpc low-res. example..."
     ./getIC.sh
 fi
 

@@ -1,5 +1,6 @@
+# Define some meta-data about the simulation
 MetaData:
-  run_name:   EAGLE-L0050N0752-Ref
+  run_name:   EAGLE-L0050N0376-Ref
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
@@ -12,94 +13,107 @@ InternalUnitSystem:
 # Cosmological parameters
 Cosmology:
   h:              0.6777        # Reduced Hubble constant
-  a_begin:        0.9090909     # Initial scale-factor of the simulation
+  a_begin:        0.0078125     # Initial scale-factor of the simulation
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
   Omega_b:        0.0482519     # Baryon density parameter
-  
+
 # Parameters governing the time integration
 TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e-2  # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
-
-Scheduler:
-  max_top_level_cells: 16
-
+  
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
-  scale_factor_first:  0.91  # Scale-factor of the first snaphot (cosmological run)
-  time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
-  delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
+  output_list_on:      1
+  output_list:         ./output_list.txt
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first:  0.92 # Scale-factor of the first stat dump (cosmological run)
-  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
-  delta_time:          1.05 # Time between statistics output
+  delta_time:           1.02
+  scale_factor_first:   0.05
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025    # Constant dimensionless multiplier for time integration.
-  theta:                  0.7      # Opening angle (Multipole acceptance criterion)
+  eta:                    0.025     # Constant dimensionless multiplier for time integration.
+  theta:                  0.7       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       128
-  dithering:              0
-  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
-  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
-  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
-  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
+  comoving_DM_softening:         0.006640 # Comoving softening for DM (6.67 ckpc)
+  max_physical_DM_softening:     0.002600 # Physical softening for DM (2.60 pkpc)
+  comoving_baryon_softening:     0.003580 # Comoving softening for baryons (3.58 ckpc)
+  max_physical_baryon_softening: 0.001400 # Physical softening for baryons (1.40 pkpc)
+  dithering:             0
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348           # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  h_min_ratio:           0.1              # Minimal smoothing length in units of softening.
-  h_max:                 0.5              # Maximal smoothing length in co-moving internal units.
-  CFL_condition:         0.2              # Courant-Friedrich-Levy condition for time integration.
-  minimal_temperature:   100              # (internal units)
-  particle_splitting:    1
-  particle_splitting_mass_threshold: 7e-4 # Internal units (i.e. 7e6 Msun ~ 4 times the initial gas mass)
+  resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_min_ratio:                       0.1      # Minimal smoothing length in units of softening.
+  h_max:                             0.5      # Maximal smoothing length in co-moving internal units.
+  CFL_condition:                     0.2      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:               100.0    # (internal units)
+  initial_temperature:               268.7    # (internal units)
+  particle_splitting:                1        # Particle splitting is ON
+  particle_splitting_mass_threshold: 5.6e-3   # (internal units, i.e. 5.6e7 Msun ~ 4x initial gas particle mass)
 
 # Parameters of the stars neighbour search
 Stars:
   resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
   h_tolerance:           7e-3
-  overwrite_birth_time:  1
-  birth_time:            0.33333  # Pretend all the stars were born at z = 2
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs.
-  min_group_size:                  256         # The minimum no. of particles required for a group.
+  min_group_size:                  32         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
-  scale_factor_first:              0.91        # Scale-factor of first FoF black hole seeding calls.
-  delta_time:                      1.005       # Scale-factor ratio between consecutive FoF black hole seeding calls.
+  scale_factor_first:              0.05        # Scale-factor of first FoF black hole seeding calls.
+  delta_time:                      1.00751     # Scale-factor ratio between consecutive FoF black hole seeding calls.
+
+Scheduler:
+  max_top_level_cells:   16
+  cell_split_size:       200
+  
+Restarts:
+  onexit:       1
+  delta_hours:  6.0
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./EAGLE_ICs_50.hdf5     # The file to read
+  file_name:  EAGLE_L0050N0376_ICs.hdf5
   periodic:   1
-  cleanup_h_factors: 1                # Remove the h-factors inherited from Gadget
-  cleanup_velocity_factors: 1         # Remove the sqrt(a) factor in the velocities inherited from Gadget
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+  generate_gas_in_ics: 1             # Generate gas particles from the DM-only ICs
+  cleanup_smoothing_lengths: 1       # Since we generate gas, make use of the (expensive) cleaning-up procedure.
 
-EAGLEChemistry: 	     # Solar abundances
-  init_abundance_metal:      0.014
-  init_abundance_Hydrogen:   0.70649785
-  init_abundance_Helium:     0.28055534
-  init_abundance_Carbon:     2.0665436e-3
-  init_abundance_Nitrogen:   8.3562563e-4
-  init_abundance_Oxygen:     5.4926244e-3
-  init_abundance_Neon:       1.4144605e-3
-  init_abundance_Magnesium:  5.907064e-4
-  init_abundance_Silicon:    6.825874e-4
-  init_abundance_Iron:       1.1032152e-3
-  
+# Parameters of the line-of-sight outputs
+LineOfSight:
+  basename:            eagle_los
+  num_along_x:         0
+  num_along_y:         0
+  num_along_z:         100
+  scale_factor_first:  0.1
+  delta_time:          1.1
+
+# Impose primoridal metallicity
+EAGLEChemistry:
+  init_abundance_metal:     0.
+  init_abundance_Hydrogen:  0.752
+  init_abundance_Helium:    0.248
+  init_abundance_Carbon:    0.0
+  init_abundance_Nitrogen:  0.0
+  init_abundance_Oxygen:    0.0
+  init_abundance_Neon:      0.0
+  init_abundance_Magnesium: 0.0
+  init_abundance_Silicon:   0.0
+  init_abundance_Iron:      0.0
+
+# EAGLE cooling parameters
 EAGLECooling:
   dir_name:                ./coolingtables/
-  H_reion_z:               11.5 
+  H_reion_z:               7.5                 # Planck 2018
   H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
@@ -142,10 +156,9 @@ EAGLEFeedback:
   filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
   IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
   IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-  SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII stars in solar masses.
+  SNII_min_mass_Msun:               8.0             # Minimal mass considered for SNII stars in solar masses.
   SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII stars in solar masses.
-  SNII_sampled_delay:               0               # Sample the SNII lifetimes to do feedback.
-  SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
+  SNII_sampled_delay:               1               # Sample the SNII lifetimes to do feedback.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
   SNII_energy_fraction_min:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
@@ -154,9 +167,10 @@ EAGLEFeedback:
   SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution.
+  SNIa_DTD:                         Exponential     # Functional form of the SNIa delay time distribution.
   SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
-  SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
+  SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the exponential decay of the SNIa rates in Gyr.
+  SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalisation of the SNIa rates in inverse solar masses.
   SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
   AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
   stellar_evolution_age_cut_Gyr:    0.1             # Stellar age in Gyr above which the enrichment is down-sampled.

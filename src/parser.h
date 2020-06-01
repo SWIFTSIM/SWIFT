@@ -32,7 +32,7 @@
 
 /* Some constants. */
 #define PARSER_MAX_LINE_SIZE 256
-#define PARSER_MAX_NO_OF_PARAMS 512
+#define PARSER_MAX_NO_OF_PARAMS 600
 #define PARSER_MAX_NO_OF_SECTIONS 64
 
 /* A parameter in the input file */

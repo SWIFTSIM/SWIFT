@@ -26,6 +26,8 @@
  * @file EAGLE/black_holes_parameters.h
  * @brief Parameters of the EAGLE black holes
  *        model that need to be defined at compile time.
+ *
+ * @note In this branch, these properties are not used anywhere!
  */
 
 /*! Maximal distance for merging particles in units of the (spline not Plummer)
