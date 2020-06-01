@@ -51,6 +51,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "memuse.h"
+#include "output_list.h"
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
