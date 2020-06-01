@@ -921,6 +921,17 @@ void write_output_serial(struct engine* e,
                            e->snapshot_output_count, e->snapshot_subdir,
                            e->snapshot_base_name);
 
+  /* Determine if we are writing a reduced snapshot, and if so which
+   * output selection type to use. Can just create a copy of this on
+   * each rank. */
+  char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
+  if (output_list) {
+    /* Users could have specified a different Select Output scheme for each
+     * snapshot. */
+    output_list_get_current_select_output(output_list,
+                                          &current_selection_name[0]);
+  }
+
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
                                 Ndm_background, 0,
@@ -968,16 +979,6 @@ void write_output_serial(struct engine* e,
     const double dim[3] = {e->s->dim[0] * factor_length,
                            e->s->dim[1] * factor_length,
                            e->s->dim[2] * factor_length};
-
-    /* Determine if we are writing a reduced snapshot, and if so which
-     * output selection type to use */
-    char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
-    if (output_list) {
-      /* Users could have specified a different Select Output scheme for each
-       * snapshot. */
-      output_list_get_current_select_output(output_list,
-                                            &current_selection_name[0]);
-    }
 
     /* Print the relevant information and print status */
     io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
