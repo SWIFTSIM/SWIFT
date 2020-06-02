@@ -2276,99 +2276,102 @@ void io_collect_gparts_background_to_write(
  * @param N_total The total number of each particle type.
  * @param with_cosmolgy Ran with cosmology?
  */
-void io_check_output_fields(const struct swift_params* params,
+void io_check_output_fields(struct swift_params* params,
                             const long long N_total[swift_type_count],
                             int with_cosmology) {
 
-  /* Loop over all particle types to check the fields */
-  for (int ptype = 0; ptype < swift_type_count; ptype++) {
+  /* Loop over each section */
+  for (int section_id = 0; section_id < params->sectionCount; section_id++) {
+    char section_name[PARSER_MAX_LINE_SIZE];
+    sprintf(section_name, "%s", params->section[section_id].name);
 
-    int num_fields = 0;
-    struct io_props list[100];
+    /* Loop over each parameter */
+    for (int param_id = 0; param_id < params->paramCount; param_id++) {
 
-    /* Don't do anything if no particle of this kind */
-    if (N_total[ptype] == 0) continue;
+      const char* param_name = params->data[param_id].name;
 
-    /* Gather particle fields from the particle structures */
-    switch (ptype) {
+      char comparison_section_name[PARSER_MAX_LINE_SIZE];
 
-      case swift_type_gas:
-        hydro_write_particles(NULL, NULL, list, &num_fields);
-        num_fields += chemistry_write_particles(NULL, list + num_fields);
-        num_fields +=
-            cooling_write_particles(NULL, NULL, list + num_fields, NULL);
-        num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
-                                              with_cosmology);
-        num_fields +=
-            star_formation_write_particles(NULL, NULL, list + num_fields);
-        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
-        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
-        break;
+      /* Skip if wrong section */
+      sprintf(comparison_section_name, "%s", "SelectOutput:");
+      if (strstr(param_name, comparison_section_name) != NULL) {
+        error(
+            "Output selection files no longer require the use of top level "
+            "SelectOutput; see the documentation for changes.");
+        continue;
+      }
 
-      case swift_type_dark_matter:
-        darkmatter_write_particles(NULL, list, &num_fields);
-        num_fields += fof_write_gparts(NULL, list + num_fields);
-        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
-        break;
+      /* Skip if top-level section */
+      sprintf(comparison_section_name, "%s", section_name);
+      if (strstr(param_name, comparison_section_name) == NULL) continue;
 
-      case swift_type_dark_matter_background:
-        darkmatter_write_particles(NULL, list, &num_fields);
-        num_fields += fof_write_gparts(NULL, list + num_fields);
-        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
-        break;
-
-      case swift_type_stars:
-        stars_write_particles(NULL, list, &num_fields, with_cosmology);
-        num_fields += chemistry_write_sparticles(NULL, list + num_fields);
-        num_fields +=
-            tracers_write_sparticles(NULL, list + num_fields, with_cosmology);
-        num_fields += star_formation_write_sparticles(NULL, list + num_fields);
-        num_fields += fof_write_sparts(NULL, list + num_fields);
-        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
-        break;
-
-      case swift_type_black_hole:
-        black_holes_write_particles(NULL, list, &num_fields, with_cosmology);
-        num_fields += chemistry_write_bparticles(NULL, list + num_fields);
-        num_fields += fof_write_bparts(NULL, list + num_fields);
-        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
-        break;
-
-      default:
-        error("Particle Type %d not yet supported. Aborting", ptype);
-    }
-
-    /* Loop over each section */
-    for (int section_id = 0; section_id < params->sectionCount; section_id++) {
-      char section_name[PARSER_MAX_LINE_SIZE];
-      sprintf(section_name, "%s", params->section[section_id].name);
-
-      /* Loop over each parameter */
-      for (int param_id = 0; param_id < params->paramCount; param_id++) {
-        const char* param_name = params->data[param_id].name;
-
-        char comparison_section_name[PARSER_MAX_LINE_SIZE];
-
-        /* Skip if wrong section */
-        sprintf(comparison_section_name, "%s", "SelectOutput:");
-        if (strstr(param_name, comparison_section_name) != NULL) {
-          error(
-              "Output selection files no longer require the use of top level "
-              "SelectOutput; see the documentation for changes.");
-          continue;
-        }
-
-        /* Skip if top-level section */
-        sprintf(comparison_section_name, "%s", section_name);
-        if (strstr(param_name, comparison_section_name) == NULL) continue;
+      /* Loop over all particle types to check the fields */
+      int found = 0;
+      for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
         /* Skip if wrong particle type */
         sprintf(comparison_section_name, "_%s", part_type_names[ptype]);
         if (strstr(param_name, section_name) == NULL) continue;
 
-        int found = 0;
+        int num_fields = 0;
+        struct io_props list[100];
 
-        /* loop over each possible output field */
+        /* Don't do anything if no particle of this kind */
+        if (N_total[ptype] == 0) continue;
+
+        /* Gather particle fields from the particle structures */
+        switch (ptype) {
+
+          case swift_type_gas:
+            hydro_write_particles(NULL, NULL, list, &num_fields);
+            num_fields += chemistry_write_particles(NULL, list + num_fields);
+            num_fields +=
+                cooling_write_particles(NULL, NULL, list + num_fields, NULL);
+            num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
+                                                  with_cosmology);
+            num_fields +=
+                star_formation_write_particles(NULL, NULL, list + num_fields);
+            num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+            num_fields +=
+                velociraptor_write_parts(NULL, NULL, list + num_fields);
+            break;
+
+          case swift_type_dark_matter:
+            darkmatter_write_particles(NULL, list, &num_fields);
+            num_fields += fof_write_gparts(NULL, list + num_fields);
+            num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+            break;
+
+          case swift_type_dark_matter_background:
+            darkmatter_write_particles(NULL, list, &num_fields);
+            num_fields += fof_write_gparts(NULL, list + num_fields);
+            num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+            break;
+
+          case swift_type_stars:
+            stars_write_particles(NULL, list, &num_fields, with_cosmology);
+            num_fields += chemistry_write_sparticles(NULL, list + num_fields);
+            num_fields += tracers_write_sparticles(NULL, list + num_fields,
+                                                   with_cosmology);
+            num_fields +=
+                star_formation_write_sparticles(NULL, list + num_fields);
+            num_fields += fof_write_sparts(NULL, list + num_fields);
+            num_fields += velociraptor_write_sparts(NULL, list + num_fields);
+            break;
+
+          case swift_type_black_hole:
+            black_holes_write_particles(NULL, list, &num_fields,
+                                        with_cosmology);
+            num_fields += chemistry_write_bparticles(NULL, list + num_fields);
+            num_fields += fof_write_bparts(NULL, list + num_fields);
+            num_fields += velociraptor_write_bparts(NULL, list + num_fields);
+            break;
+
+          default:
+            error("Particle Type %d not yet supported. Aborting", ptype);
+        }
+
+        /* For this particle type, loop over each possible output field */
         for (int field_id = 0; field_id < num_fields; field_id++) {
           char field_name[PARSER_MAX_LINE_SIZE];
           /* Note that section_name includes a : */
@@ -2378,21 +2381,39 @@ void io_check_output_fields(const struct swift_params* params,
           if (strcmp(param_name, field_name) == 0) {
             found = 1;
 
-            /* No longer check for correctness as there are many valid
-             * strings. Could come back to this, but for now added
-             * complexity is not worth it.*/
+            /* Perform a correctness check on the _value_ of that
+             * parameter */
+            char field_value[PARSER_MAX_LINE_SIZE];
+            parser_get_param_string(params, field_name, &field_value[0]);
 
-            /* Found it, so move to the next one. */
-            break;
+            int value_is_valid = 0;
+
+            for (int allowed_value_index = 0;
+                 allowed_value_index < compression_level_count;
+                 allowed_value_index++) {
+              if (strcmp(field_value,
+                         compression_level_names[allowed_value_index]) == 0) {
+                value_is_valid = 1;
+                break;
+              }
+            }
+
+            if (value_is_valid) {
+              /* Found value and it is correct, so move to the next one. */
+              break;
+            } else {
+              error("Choice of output selection parameter %s:%s is invalid.",
+                    field_name, field_value);
+            }
           }
         }
-        if (!found)
-          message(
-              "WARNING: Trying to dump particle field '%s' (read from '%s') "
-              "that does not exist. This may because you are not running with "
-              "all of the physics that you compiled the code with.",
-              param_name, params->fileName);
       }
+      if (!found)
+        message(
+            "WARNING: Trying to change behaviour of field '%s' (read from "
+            "'%s') that does not exist. This may because you are not running "
+            "with all of the physics that you compiled the code with.",
+            param_name, params->fileName);
     }
   }
 }
