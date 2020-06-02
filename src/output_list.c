@@ -313,6 +313,7 @@ void output_list_init(struct output_list **list, const struct engine *e,
 
   /* Read output_list for snapshots */
   *list = (struct output_list *)malloc(sizeof(struct output_list));
+  (*list)->output_list_on = output_list_on;
 
   /* Read filename */
   char filename[PARSER_MAX_LINE_SIZE];
@@ -333,9 +334,6 @@ void output_list_init(struct output_list **list, const struct engine *e,
     *delta_time = (*list)->times[1] - (*list)->times[0];
     *time_first = (*list)->times[0];
   }
-
-  (*list)->output_list_on = output_list_on;
-  (*list)->select_output_number_of_names = 0;
 }
 
 /**
