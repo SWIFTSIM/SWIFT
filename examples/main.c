@@ -1572,6 +1572,7 @@ int main(int argc, char *argv[]) {
   if (with_feedback) feedback_clean(e.feedback_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
+  free(output_options);
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

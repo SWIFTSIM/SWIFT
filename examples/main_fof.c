@@ -709,6 +709,7 @@ int main(int argc, char *argv[]) {
   pm_mesh_clean(&mesh);
   engine_clean(&e, /*fof=*/1, /*restart=*/0);
   free(params);
+  free(output_options);
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
