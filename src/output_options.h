@@ -19,6 +19,7 @@
 #ifndef SWIFT_OUTPUT_OPTIONS_H
 #define SWIFT_OUTPUT_OPTIONS_H
 
+#include "config.h"
 #include "parser.h"
 #include "part_type.h"
 
