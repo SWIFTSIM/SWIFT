@@ -1,3 +1,5 @@
+# All fields are written by default so in some sense the repeated 'on's are
+# unnecessary, but they are included for completeness.
 Snapshot:
   # Particle Type Gas
   Coordinates_Gas: on  # Co-moving positions of the particles : a U_L  [ cm ]
@@ -37,6 +39,7 @@ Snipshot:
   Temperatures_Gas: off  # Temperature of the particles : U_T  [ K ]
   VELOCIraptorGroupIDs_Gas: off  # Group IDs of the particles in the VELOCIraptor catalogue : [ - ] 
 
+
   # Particle Type DM
   Coordinates_DM: on  # Co-moving position of the particles : a U_L  [ cm ]
   Velocities_DM: on  # Peculiar velocities of the stars. This is a * dx/dt where x is the co-moving position of the particles. : U_L U_t^-1  [ cm s^-1 ]
@@ -44,4 +47,3 @@ Snipshot:
   ParticleIDs_DM: on  # Unique ID of the particles : [ - ] 
   Softenings_DM: off  # Co-moving Plummer-equivalent softening lengths of the particles. : a U_L  [ cm ]
   VELOCIraptorGroupIDs_DM: off # Group IDs of the particles in the VELOCIraptor catalogue : [ - ] 
-
