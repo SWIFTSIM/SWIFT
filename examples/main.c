@@ -1088,11 +1088,6 @@ int main(int argc, char *argv[]) {
     const int with_DM_background_particles =
         N_total[swift_type_dark_matter_background] > 0;
 
-    /* Verify that the fields to dump actually exist */
-    if (myrank == 0)
-      io_check_output_fields(output_options->select_output, N_total,
-                             with_cosmology);
-
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
@@ -1161,6 +1156,12 @@ int main(int argc, char *argv[]) {
     N_total[swift_type_stars] = s.nr_sparts;
     N_total[swift_type_black_hole] = s.nr_bparts;
 #endif
+
+    /* Verify that the fields to dump actually exist - this must be done after
+     * space_init so we know whether or not we have gas particles. */
+    if (myrank == 0)
+      io_check_output_fields(output_options->select_output, N_total,
+                             with_cosmology);
 
     /* Say a few nice things about the space we just created. */
     if (myrank == 0) {
