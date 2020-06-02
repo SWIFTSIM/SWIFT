@@ -111,7 +111,8 @@ void output_list_read_file(struct output_list *output_list,
   size_t ind = 0;
   int read_successfully = 0;
   int found_select_output = 0;
-  char select_output_buffer[FIELD_BUFFER_SIZE] = "Default";
+  char select_output_buffer[FIELD_BUFFER_SIZE] =
+      select_output_header_default_name;
   while (getline(&line, &len, file) != -1) {
     double *time = &output_list->times[ind];
     /* Write data to output_list */

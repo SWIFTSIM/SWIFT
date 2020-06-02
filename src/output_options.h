@@ -36,6 +36,9 @@ enum compression_levels {
 /* Default value for SelectOutput */
 #define compression_level_default compression_write_lossless
 
+/* Default name for the SelectOutput header */
+#define select_output_header_default_name "Default"
+
 /**
  * @brief Names of the compression levels, used in the select_output.yml
  *        parameter file.

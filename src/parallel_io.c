@@ -1105,7 +1105,8 @@ void prepare_file(struct engine* e, const char* fileName,
 
   /* Determine if we are writing a reduced snapshot, and if so which
    * output selection type to use */
-  char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
+  char current_selection_name[FIELD_BUFFER_SIZE] =
+      select_output_header_default_name;
   if (output_list) {
     /* Users could have specified a different Select Output scheme for each
      * snapshot. */
@@ -1781,7 +1782,8 @@ void write_output_parallel(struct engine* e,
     }
 
     /* Write everything that is not cancelled */
-    char current_selection_name[FIELD_BUFFER_SIZE] = "Default";
+    char current_selection_name[FIELD_BUFFER_SIZE] =
+        select_output_header_default_name;
     if (output_list) {
       /* Users could have specified a different Select Output scheme for each
        * snapshot. */
