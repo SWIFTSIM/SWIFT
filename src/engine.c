@@ -5343,7 +5343,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
 
-  output_options_clean(&e->output_options);
+  output_options_clean(e->output_options);
 
   swift_free("links", e->links);
 #if defined(WITH_LOGGER)

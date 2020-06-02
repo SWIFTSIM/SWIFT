@@ -60,7 +60,7 @@ struct output_options {
 /* Create and destroy */
 void output_options_init(struct swift_params* parameter_file, int mpi_rank,
                          struct output_options* output_options);
-void output_options_clean(struct output_options** output_options);
+void output_options_clean(struct output_options* output_options);
 
 /* Restart files */
 void output_options_struct_dump(struct output_options* output_options,
