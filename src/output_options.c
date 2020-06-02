@@ -148,8 +148,10 @@ int output_options_should_write_field(struct output_options* output_options,
                             compression_level);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  message("Determining if %s is to be written. Returning %d from %s.", field,
-          should_write, compression_level);
+  message(
+      "Check for whether %s should be written returned %s from a provided "
+      "value of \"%s\"",
+      field, should_write ? "True" : "False", compression_level);
 #endif
 
   return should_write;
