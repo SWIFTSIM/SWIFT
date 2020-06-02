@@ -67,7 +67,6 @@ void output_options_init(struct swift_params* parameter_file, int mpi_rank,
       message("Reading select output parameters from file '%s'",
               select_param_filename);
       parser_read_file(select_param_filename, select_output);
-      parser_print_params(select_output);
     }
   }
 
