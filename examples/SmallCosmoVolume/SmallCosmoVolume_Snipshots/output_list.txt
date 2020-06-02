@@ -1,6 +1,5 @@
 # Scale Factor, Select Output
 0.019607843137254943, Snapshot
-0.020, NoDM
 0.02352941176470591, Snipshot
 0.027450980392156876, Snipshot
 0.03137254901960784, Snipshot
