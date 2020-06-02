@@ -87,6 +87,7 @@ void output_options_init(struct swift_params* parameter_file, int mpi_rank,
 void output_options_clean(struct output_options** output_options) {
   if (*output_options) {
     free((void*)(*output_options)->select_output);
+    free(*output_options);
     *output_options = NULL;
   }
 }
