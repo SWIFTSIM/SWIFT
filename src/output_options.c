@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Josh Borrow (josh.borrow@durham.ac.uk)
@@ -17,14 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
 #include <stdlib.h>
 
+/* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif
 
+/* This object's header. */
 #include "output_options.h"
+
+/* Local headers. */
 #include "parser.h"
 #include "part_type.h"
 #include "swift.h"
