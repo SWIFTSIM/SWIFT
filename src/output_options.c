@@ -130,7 +130,7 @@ void output_options_struct_restore(struct output_options* output_options,
  **/
 int output_options_should_write_field(struct output_options* output_options,
                                       char* snapshot_type, char* field_name,
-                                      int part_type) {
+                                      enum part_type part_type) {
   /* Full name for the field path */
   char field[PARSER_MAX_LINE_SIZE];
   sprintf(field, "%s:%.*s_%s", snapshot_type, FIELD_BUFFER_SIZE, field_name,

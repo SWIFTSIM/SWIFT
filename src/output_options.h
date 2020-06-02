@@ -20,6 +20,7 @@
 #define SWIFT_OUTPUT_OPTIONS_H
 
 #include "parser.h"
+#include "part_type.h"
 
 /* Compression level names */
 #define compression_do_not_write "off"
@@ -56,6 +57,6 @@ void output_options_struct_restore(struct output_options* output_options,
 /* Logic functions */
 int output_options_should_write_field(struct output_options* output_options,
                                       char* snapshot_type, char* field_name,
-                                      int part_type);
+                                      enum part_type part_type);
 
 #endif
