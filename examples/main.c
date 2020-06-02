@@ -1275,7 +1275,9 @@ int main(int argc, char *argv[]) {
 
 /* Initialise the table of Ewald corrections for the gravity checks */
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
+#ifndef WITH_MPI
   if (s.periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
+#endif
 #endif
 
   if (!restart) {
