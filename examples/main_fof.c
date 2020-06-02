@@ -346,6 +346,13 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* "Read" the Select Output file - this should actually do nothing, but
+   * we need to mock the struct up for passing to `engine_init` */
+
+  struct output_options *output_options =
+      (struct output_options *)malloc(sizeof(struct output_options));
+  output_options_init(params, myrank, output_options);
+
   /* Check that we can write the snapshots by testing if the output
    * directory exists and is searchable and writable. */
   char basename[PARSER_MAX_LINE_SIZE];
@@ -581,16 +588,17 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
-  engine_init(
-      &e, &s, params, N_total[swift_type_gas], N_total[swift_type_count],
-      N_total[swift_type_stars], N_total[swift_type_black_hole],
-      N_total[swift_type_dark_matter_background], engine_policies, talking,
-      &reparttype, &us, &prog_const, &cosmo,
-      /*hydro_properties=*/NULL, /*entropy_floor=*/NULL, &gravity_properties,
-      /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
-      /*feedback_properties=*/NULL, &mesh, /*potential=*/NULL,
-      /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
-      &fof_properties, /*los_properties=*/NULL);
+  engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
+              N_total[swift_type_count], N_total[swift_type_stars],
+              N_total[swift_type_black_hole],
+              N_total[swift_type_dark_matter_background], engine_policies,
+              talking, &reparttype, &us, &prog_const, &cosmo,
+              /*hydro_properties=*/NULL, /*entropy_floor=*/NULL,
+              &gravity_properties,
+              /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
+              /*feedback_properties=*/NULL, &mesh, /*potential=*/NULL,
+              /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
+              &fof_properties, /*los_properties=*/NULL);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
                 nr_threads, with_aff, talking, NULL);
 
