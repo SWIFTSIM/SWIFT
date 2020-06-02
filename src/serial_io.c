@@ -930,8 +930,7 @@ void write_output_serial(struct engine* e,
   if (output_list) {
     /* Users could have specified a different Select Output scheme for each
      * snapshot. */
-    output_list_get_current_select_output(output_list,
-                                          &current_selection_name[0]);
+    output_list_get_current_select_output(output_list, current_selection_name);
   }
 
   /* Compute offset in the file and total number of particles */

@@ -1110,8 +1110,7 @@ void prepare_file(struct engine* e, const char* fileName,
   if (output_list) {
     /* Users could have specified a different Select Output scheme for each
      * snapshot. */
-    output_list_get_current_select_output(output_list,
-                                          &current_selection_name[0]);
+    output_list_get_current_select_output(output_list, current_selection_name);
   }
 
   /* Print the relevant information and print status */
@@ -1788,7 +1787,7 @@ void write_output_parallel(struct engine* e,
       /* Users could have specified a different Select Output scheme for each
        * snapshot. */
       output_list_get_current_select_output(output_list,
-                                            &current_selection_name[0]);
+                                            current_selection_name);
     }
     for (int i = 0; i < num_fields; ++i) {
 

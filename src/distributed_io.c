@@ -363,8 +363,7 @@ void write_output_distributed(struct engine* e,
   if (output_list) {
     /* Users could have specified a different Select Output scheme for each
      * snapshot. */
-    output_list_get_current_select_output(output_list,
-                                          &current_selection_name[0]);
+    output_list_get_current_select_output(output_list, current_selection_name);
   }
 
   /* Print the relevant information and print status */
