@@ -2390,7 +2390,7 @@ void io_check_output_fields(const struct swift_params* params,
           message(
               "WARNING: Trying to dump particle field '%s' (read from '%s') "
               "that does not exist. This may because you are not running with "
-              "all of the physics taht you compiled the code with.",
+              "all of the physics that you compiled the code with.",
               param_name, params->fileName);
       }
     }
