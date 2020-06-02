@@ -78,6 +78,7 @@ void output_list_read_file(struct output_list *output_list,
   /* Find type of data in file */
   int type = -1;
   output_list->select_output_on = 0;
+  output_list->select_output_number_of_names = 0;
 
   trim_trailing(line);
 
