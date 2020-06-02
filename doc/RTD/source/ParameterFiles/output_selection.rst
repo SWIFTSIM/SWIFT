@@ -117,6 +117,7 @@ A typical use case for such a scenario is the dumping of 'snapshots' and
 so-called 'snipshots', containing less information than their full snapshot
 cousins. To do this, we will define two top-level sections in our
 ``select_output.yml`` file as follows:
+
 .. code:: YAML
 
   # Only turn off DM masses in snapshots, everything else is turned on
