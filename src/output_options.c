@@ -34,6 +34,10 @@
 #include "part_type.h"
 #include "swift.h"
 
+/* Compression level names. */
+const char* compression_level_names[compression_level_count] = {
+    "off", "on", "low", "med", "high"};
+
 /**
  * @brief Initialise the output options struct with the information read
  *        from file. Only rank 0 reads from file; this data is then broadcast
@@ -137,10 +141,12 @@ int output_options_should_write_field(struct output_options* output_options,
           part_type_names[part_type]);
 
   char compression_level[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(output_options->select_output, field,
-                              compression_level, compression_level_default);
+  parser_get_opt_param_string(
+      output_options->select_output, field, compression_level,
+      compression_level_names[compression_level_default]);
 
-  int should_write = strcmp(compression_do_not_write, compression_level);
+  int should_write = strcmp(compression_level_names[compression_do_not_write],
+                            compression_level);
 
 #ifdef SWIFT_DEBUG_CHECKS
   message("Determining if %s is to be written. Returning %d from %s.", field,

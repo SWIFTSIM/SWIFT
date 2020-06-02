@@ -23,14 +23,24 @@
 #include "part_type.h"
 
 /* Compression level names */
-#define compression_do_not_write "off"
-#define compression_write_lossless "on"
-#define compression_write_low_lossy "low"
-#define compression_write_med_lossy "med"
-#define compression_write_high_lossy "high"
+enum compression_levels {
+  compression_do_not_write = 0,
+  compression_write_lossless,
+  compression_write_low_lossy,
+  compression_write_med_lossy,
+  compression_write_high_lossy,
+  /* Counter, always leave last */
+  compression_level_count,
+};
 
 /* Default value for SelectOutput */
 #define compression_level_default compression_write_lossless
+
+/**
+ * @brief Names of the compression levels, used in the select_output.yml
+ *        parameter file.
+ **/
+extern const char* compression_level_names[];
 
 /**
  * @brief Output selection properties, including the parsed files.
