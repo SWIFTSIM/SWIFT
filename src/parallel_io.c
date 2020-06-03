@@ -1276,7 +1276,8 @@ void prepare_file(struct engine* e, const char* fileName,
 
       /* Did the user cancel this field? */
       const int should_write = output_options_should_write_field(
-          output_options, current_selection_name, list[i].name, ptype);
+          output_options, current_selection_name, list[i].name,
+          (enum part_type)ptype);
 
       if (should_write)
         prepare_array_parallel(e, h_grp, fileName, xmfFile, partTypeGroupName,
@@ -1793,7 +1794,8 @@ void write_output_parallel(struct engine* e,
 
       /* Did the user cancel this field? */
       const int should_write = output_options_should_write_field(
-          output_options, current_selection_name, list[i].name, ptype);
+          output_options, current_selection_name, list[i].name,
+          (enum part_type)ptype);
 
       if (should_write)
         write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],

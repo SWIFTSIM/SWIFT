@@ -723,7 +723,8 @@ void write_output_distributed(struct engine* e,
 
       /* Did the user cancel this field? */
       const int should_write = output_options_should_write_field(
-          output_options, current_selection_name, list[i].name, ptype);
+          output_options, current_selection_name, list[i].name,
+          (enum part_type)ptype);
 
       if (should_write)
         write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],
