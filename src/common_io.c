@@ -2282,7 +2282,7 @@ void io_check_output_fields(struct swift_params* params,
 
   /* Loop over each section */
   for (int section_id = 0; section_id < params->sectionCount; section_id++) {
-    char section_name[PARSER_MAX_LINE_SIZE];
+    char section_name[FIELD_BUFFER_SIZE];
     sprintf(section_name, "%s", params->section[section_id].name);
 
     /* Loop over each parameter */
@@ -2290,7 +2290,7 @@ void io_check_output_fields(struct swift_params* params,
 
       const char* param_name = params->data[param_id].name;
 
-      char comparison_section_name[PARSER_MAX_LINE_SIZE];
+      char comparison_section_name[FIELD_BUFFER_SIZE];
 
       /* Skip if wrong section */
       sprintf(comparison_section_name, "%s", "SelectOutput:");
@@ -2375,15 +2375,15 @@ void io_check_output_fields(struct swift_params* params,
         for (int field_id = 0; field_id < num_fields; field_id++) {
           char field_name[PARSER_MAX_LINE_SIZE];
           /* Note that section_name includes a : */
-          sprintf(field_name, "%s%.*s_%s", section_name, FIELD_BUFFER_SIZE,
-                  list[field_id].name, part_type_names[ptype]);
+          sprintf(field_name, "%s%s_%s", section_name, list[field_id].name,
+                  part_type_names[ptype]);
 
           if (strcmp(param_name, field_name) == 0) {
             found = 1;
 
             /* Perform a correctness check on the _value_ of that
              * parameter */
-            char field_value[PARSER_MAX_LINE_SIZE];
+            char field_value[FIELD_BUFFER_SIZE];
             parser_get_param_string(params, field_name, &field_value[0]);
 
             int value_is_valid = 0;
