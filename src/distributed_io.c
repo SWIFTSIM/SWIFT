@@ -404,7 +404,7 @@ void write_output_distributed(struct engine* e,
                      swift_type_count);
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", numFiles);
   io_write_attribute_i(h_grp, "ThisFile", mpi_rank);
-  io_write_attribute_s(h_grp, "OutputType", "Snapshot");
+  io_write_attribute_s(h_grp, "OutputType", "FullVolume");
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
 
   /* Close header */

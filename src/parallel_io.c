@@ -1152,7 +1152,7 @@ void prepare_file(struct engine* e, const char* fileName,
                      swift_type_count);
   io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
   io_write_attribute_i(h_grp, "ThisFile", 0);
-  io_write_attribute_s(h_grp, "OutputType", "Snapshot");
+  io_write_attribute_s(h_grp, "OutputType", "FullVolume");
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
 
   /* Close header */
