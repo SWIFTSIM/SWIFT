@@ -134,10 +134,10 @@ int output_options_should_write_field(struct output_options* output_options,
                                       enum part_type part_type) {
   /* Full name for the field path */
   char field[PARSER_MAX_LINE_SIZE];
-  sprintf(field, "%s:%.*s_%s", snapshot_type, FIELD_BUFFER_SIZE, field_name,
-          part_type_names[part_type]);
+  sprintf(field, "%.*s:%.*s_%s", FIELD_BUFFER_SIZE, snapshot_type,
+          FIELD_BUFFER_SIZE, field_name, part_type_names[part_type]);
 
-  char compression_level[PARSER_MAX_LINE_SIZE];
+  char compression_level[FIELD_BUFFER_SIZE];
   parser_get_opt_param_string(
       output_options->select_output, field, compression_level,
       compression_level_names[compression_level_default]);
