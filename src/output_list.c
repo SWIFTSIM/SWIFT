@@ -238,7 +238,11 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
     t->cur_ind = ind;
   }
 
-  /* Do we need to do a dump at the end of the last timestep? */
+  /* Do we need to do a dump at the end of the last timestep?
+   * Note that what this really does is given that a t=t_max, z=0,
+   * or a=1 is found in output_list.txt set the flag `final_step_dump`
+   * to 1 - this is not special behaviour that is controlled by a
+   * parameter file flag. */
   if (time == time_end) {
     t->final_step_dump = 1;
     if (e->verbose) {
