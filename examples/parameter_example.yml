@@ -142,6 +142,8 @@ Snapshots:
   UnitTemp_in_cgs:     1  # (Optional) Unit system for the outputs (Kelvin)
   output_list_on:      0  # (Optional) Enable the output list
   output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  select_output_on:    0  # (Optional) Enable the output selection behaviour
+  select_output:       selectoutput.yml # (Optional) File containing information to select outputs with (see documentation in the "Output Selection" section)
 
 # Parameters governing the logger snapshot system
 Logger:

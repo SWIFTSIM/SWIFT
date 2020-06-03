@@ -77,7 +77,8 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "mpiuse.h"
-#include "outputlist.h"
+#include "output_list.h"
+#include "output_options.h"
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
@@ -3818,6 +3819,7 @@ static void engine_dumper_init(struct engine *e) {
  * @param e The #engine.
  * @param s The #space in which this #runner will run.
  * @param params The parsed parameter file.
+ * @param output_options Output options for snapshots.
  * @param Ngas total number of gas particles in the simulation.
  * @param Ngparts total number of gravity particles in the simulation.
  * @param Nstars total number of star particles in the simulation.
@@ -3843,9 +3845,10 @@ static void engine_dumper_init(struct engine *e) {
  * @param fof_properties The #fof_props.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
-                 long long Ngas, long long Ngparts, long long Nstars,
-                 long long Nblackholes, long long Nbackground_gparts,
-                 int policy, int verbose, struct repartition *reparttype,
+                 struct output_options *output_options, long long Ngas,
+                 long long Ngparts, long long Nstars, long long Nblackholes,
+                 long long Nbackground_gparts, int policy, int verbose,
+                 struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
@@ -3939,6 +3942,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->chemistry = chemistry;
   e->fof_properties = fof_properties;
   e->parameter_file = params;
+  e->output_options = output_options;
   e->stf_this_timestep = 0;
   e->los_properties = los_properties;
 #ifdef WITH_MPI
@@ -4790,7 +4794,7 @@ void engine_print_policy(struct engine *e) {
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
 
-  /* Do outputlist file case */
+  /* Do output_list file case */
   if (e->output_list_snapshots) {
     output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
                                &e->ti_next_snapshot);
@@ -5339,6 +5343,8 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
 
+  output_options_clean(e->output_options);
+
   swift_free("links", e->links);
 #if defined(WITH_LOGGER)
   if (e->policy & engine_policy_logger) {
@@ -5379,6 +5385,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
      in engine_struct_restore() */
   if (restart) {
     free((void *)e->parameter_file);
+    free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
     free((void *)e->stars_properties);
@@ -5454,6 +5461,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 #endif
   los_struct_dump(e->los_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
+  output_options_struct_dump(e->output_options, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
   if (e->output_list_stats)
@@ -5594,6 +5602,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_struct_restore(parameter_file, stream);
   e->parameter_file = parameter_file;
+
+  struct output_options *output_options =
+      (struct output_options *)malloc(sizeof(struct output_options));
+  output_options_struct_restore(output_options, stream);
+  e->output_options = output_options;
 
   if (e->output_list_snapshots) {
     struct output_list *output_list_snapshots =
