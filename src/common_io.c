@@ -2375,8 +2375,8 @@ void io_check_output_fields(struct swift_params* params,
         for (int field_id = 0; field_id < num_fields; field_id++) {
           char field_name[PARSER_MAX_LINE_SIZE];
           /* Note that section_name includes a : */
-          sprintf(field_name, "%s%s_%s", section_name, list[field_id].name,
-                  part_type_names[ptype]);
+          sprintf(field_name, "%s%.*s_%s", section_name, FIELD_BUFFER_SIZE,
+                  list[field_id].name, part_type_names[ptype]);
 
           if (strcmp(param_name, field_name) == 0) {
             found = 1;
