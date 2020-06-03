@@ -257,8 +257,12 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
   /* Deal with last statistics */
   if (*ti_next >= max_nr_timesteps || ind == t->size || time >= time_end) {
     *ti_next = -1;
-    if (e->verbose && t->final_step_dump != 1)
+    if (e->verbose && t->final_step_dump != 1) {
       message("No further output time for %s.", name);
+
+      /* Do not print anything about the output style (below) */
+      return;
+    }
   } else {
 
     /* Be nice, talk... */
@@ -271,6 +275,15 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
       const double next_time = *ti_next * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next output time for %s set to t=%e.", name, next_time);
+    }
+  }
+
+  /* Finally, talk if we are a snapshot and we are using SelectOutput */
+  if (e->verbose) {
+    if (t->select_output_number_of_names > 1) {
+      char select_output_style[FIELD_BUFFER_SIZE];
+      output_list_get_current_select_output(t, select_output_style);
+      message("Next output style for %s set to %s.", name, select_output_style);
     }
   }
 }
