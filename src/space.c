@@ -67,6 +67,7 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
+#include "zoom_region.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -491,6 +492,9 @@ void space_regrid(struct space *s, int verbose) {
   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
+  /* Construct the zoom region. */
+  if (s->with_zoom_region) construct_zoom_region(s, verbose);
+
   /* Do we need to re-build the upper-level cells? */
   // tic = getticks();
   if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
@@ -528,6 +532,10 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
+    if (s->with_zoom_region) {
+      s->tot_cells *= 2;
+      s->nr_cells *= 2;
+    }
 
     if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
@@ -590,44 +598,129 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for star formation (spart).");
     }
 
-    /* Set the cell location and sizes. */
-    for (int i = 0; i < cdim[0]; i++)
-      for (int j = 0; j < cdim[1]; j++)
-        for (int k = 0; k < cdim[2]; k++) {
-          const size_t cid = cell_getid(cdim, i, j, k);
-          struct cell *restrict c = &s->cells_top[cid];
-          c->loc[0] = i * s->width[0];
-          c->loc[1] = j * s->width[1];
-          c->loc[2] = k * s->width[2];
-          c->width[0] = s->width[0];
-          c->width[1] = s->width[1];
-          c->width[2] = s->width[2];
-          c->dmin = dmin;
-          c->depth = 0;
-          c->split = 0;
-          c->hydro.count = 0;
-          c->grav.count = 0;
-          c->stars.count = 0;
-          c->top = c;
-          c->super = c;
-          c->hydro.super = c;
-          c->grav.super = c;
-          c->hydro.ti_old_part = ti_current;
-          c->grav.ti_old_part = ti_current;
-          c->stars.ti_old_part = ti_current;
-          c->black_holes.ti_old_part = ti_current;
-          c->grav.ti_old_multipole = ti_current;
+    int zoom_cell_count = 0;
+    double zoom_region_bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
+    const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
+
+    /* Loop over top level cells twice, second time is for the zoom region. */
+    for (int n = 0; n < 2; n++) {
+      if (n == 1 && !s->with_zoom_region) continue;
+
+      /* Set the cell location and sizes. */
+      for (int i = 0; i < cdim[0]; i++)
+        for (int j = 0; j < cdim[1]; j++)
+          for (int k = 0; k < cdim[2]; k++) {
+            const size_t cid = cell_getid(cdim, i, j, k);
+
+            struct cell *restrict c;
+            if (n == 0) {
+              /* Natural top level cells. */
+              c = &s->cells_top[cid];
+              c->loc[0] = i * s->width[0];
+              c->loc[1] = j * s->width[1];
+              c->loc[2] = k * s->width[2];
+              c->width[0] = s->width[0];
+              c->width[1] = s->width[1];
+              c->width[2] = s->width[2];
+              if (s->with_self_gravity)
+                c->grav.multipole = &s->multipoles_top[cid];
+              c->tl_cell_type = tl_cell;
+            } else {
+              /* Zoom region top level cells. */
+              c = &s->cells_top[cid + zoom_cell_offset];
+              c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
+              c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
+              c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
+              c->width[0] = s->zoom_props->width[0];
+              c->width[1] = s->zoom_props->width[1];
+              c->width[2] = s->zoom_props->width[2];
+              if (s->with_self_gravity)
+                c->grav.multipole = &s->multipoles_top[cid + zoom_cell_offset];
+              c->tl_cell_type = zoom_tl_cell;
+            }
+            c->dmin = dmin;  // STU CHECK
+            c->depth = 0;
+            c->split = 0;
+            c->hydro.count = 0;
+            c->grav.count = 0;
+            c->stars.count = 0;
+            c->top = c;
+            c->super = c;
+            c->hydro.super = c;
+            c->grav.super = c;
+            c->hydro.ti_old_part = ti_current;
+            c->grav.ti_old_part = ti_current;
+            c->stars.ti_old_part = ti_current;
+            c->black_holes.ti_old_part = ti_current;
+            c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
-          c->mpi.tag = -1;
-          c->mpi.recv = NULL;
-          c->mpi.send = NULL;
-#endif  // WITH_MPI
-          if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-          c->cellID = -last_cell_id;
-          last_cell_id++;
+            c->mpi.tag = -1;
+            c->mpi.recv = NULL;
+            c->mpi.send = NULL;
 #endif
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+            c->cellID = -last_cell_id;
+            last_cell_id++;
+#endif
+            /* Only do what comes next first time round. */
+            if (n == 1) continue;
+
+            /* Is this top level cell within the zoom region? */
+            if (s->with_zoom_region &&
+                (c->loc[0] + c->width[0] >
+                 s->zoom_props->loc[0] - s->zoom_props->dim[0] / 2.) &&
+                (c->loc[0] <
+                 s->zoom_props->loc[0] + s->zoom_props->dim[0] / 2.) &&
+                (c->loc[1] + c->width[1] >
+                 s->zoom_props->loc[1] - s->zoom_props->dim[1] / 2.) &&
+                (c->loc[1] <
+                 s->zoom_props->loc[1] + s->zoom_props->dim[1] / 2.) &&
+                (c->loc[2] + c->width[2] >
+                 s->zoom_props->loc[2] - s->zoom_props->dim[2] / 2.) &&
+                (c->loc[2] <
+                 s->zoom_props->loc[2] + s->zoom_props->dim[2] / 2.)) {
+
+              /* Tag this top level cell as part of the zoom region. */
+              zoom_cell_count++;
+              c->tl_cell_type = void_tl_cell;
+
+              /* Update the bounds of the zoom region. */
+              if (c->loc[0] < zoom_region_bounds[0])
+                zoom_region_bounds[0] = c->loc[0];
+              if (c->loc[0] + c->width[0] > zoom_region_bounds[1])
+                zoom_region_bounds[1] = c->loc[0] + c->width[0];
+              if (c->loc[1] < zoom_region_bounds[2])
+                zoom_region_bounds[2] = c->loc[1];
+              if (c->loc[1] + c->width[1] > zoom_region_bounds[3])
+                zoom_region_bounds[3] = c->loc[1] + c->width[1];
+              if (c->loc[2] < zoom_region_bounds[4])
+                zoom_region_bounds[4] = c->loc[2];
+              if (c->loc[2] + c->width[2] > zoom_region_bounds[5])
+                zoom_region_bounds[5] = c->loc[2] + c->width[2];
+            }
+          }
+
+      /* Compute size of top level zoom cells on first iteration. */
+      if (n == 1) continue;
+      if (s->with_zoom_region) {
+        s->zoom_props->dim[0] = zoom_region_bounds[1] - zoom_region_bounds[0];
+        s->zoom_props->dim[1] = zoom_region_bounds[3] - zoom_region_bounds[2];
+        s->zoom_props->dim[2] = zoom_region_bounds[5] - zoom_region_bounds[4];
+
+        for (int l = 0; l < 3; l++) {
+          s->zoom_props->width[l] = s->zoom_props->dim[l] / cdim[l];
+          s->zoom_props->iwidth[l] = 1 / s->zoom_props->width[l];
+          s->zoom_props->cdim[l] = cdim[l];
         }
+
+        for (int l = 0; l < 6; l++)
+          s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
+        s->zoom_props->tl_cell_offset = zoom_cell_offset;
+      }
+    }
+
+    /* Make sure the zoom region is ok. */
+    if (s->with_zoom_region) check_zoom_region(s, verbose);
 
     /* Be verbose about the change. */
     if (verbose)
@@ -1839,9 +1932,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
-    g_index[k] =
+    if (s->with_zoom_region) {
+      g_index[k] = cell_getid_zoom(cdim, p->x[0], p->x[1], p->x[2], s->zoom_props,
+              (int)(p->x[0] * ih[0]), (int)(p->x[1] * ih[1]), (int)(p->x[2] * ih[2]));
+    } else {
+      g_index[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cell_gpart_counts[g_index[k]]++;
+    }
+	cell_gpart_counts[g_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[g_index[k]].nodeID != s->e->nodeID)
       error("Received g-part that does not belong to me (nodeID=%i).",
@@ -1870,16 +1968,23 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
+  int new_gind;
+
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
 
     if (gp->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
 
-    /* New cell index */
-    const int new_gind =
-        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
-                   gp->x[2] * s->iwidth[2]);
+	/* New cell index */
+    if (!s->with_zoom_region) {
+      new_gind = cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
+                            gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
+    } else {
+      new_gind = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s->zoom_props,
+              (int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]),
+              (int)(gp->x[2] * s->iwidth[2]));
+    }
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_gind];
@@ -2323,6 +2428,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   float sum_vel_norm = 0.f;
   size_t count_inhibited_gpart = 0;
   size_t count_extra_gpart = 0;
+  int index;
 
   for (int k = 0; k < nr_gparts; k++) {
 
@@ -2362,12 +2468,16 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     if (pos_y == dim_y) pos_y = 0.0;
     if (pos_z == dim_z) pos_z = 0.0;
 
-    /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+	/* Get its cell index */
+    if (s->with_zoom_region) {
+      index = cell_getid_zoom(cdim, pos_x, pos_y, pos_z, s->zoom_props,
+              (int)(pos_x * ih_x), (int)(pos_y * ih_y), (int)(pos_z * ih_z));
+    } else {
+      index = cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+    if (index < 0 || index >= s->nr_cells)
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -5119,6 +5229,9 @@ void space_init(struct space *s, struct swift_params *params,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   last_cell_id = 1;
 #endif
+
+  /* Initialise the zoom region. */
+  zoom_region_init(params, s);
 
   /* Do we want any spare particles for on the fly creation? */
   if (!star_formation || !swift_star_formation_model_creates_stars) {

@@ -1096,15 +1096,14 @@ int main(int argc, char *argv[]) {
                with_star_formation, with_DM_background_particles, talking,
                dry_run, nr_nodes);
 
-    /* Initialise the line of sight properties. */
-    if (with_line_of_sight) los_init(s.dim, &los_properties, params);
-
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
               clocks_getunit());
       fflush(stdout);
     }
+    /* Initialise the line of sight properties. */
+    if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
@@ -1299,15 +1298,14 @@ int main(int argc, char *argv[]) {
     engine_split(&e, &initial_partition);
     /* Turn off the logger to avoid writing the communications */
     if (with_logger) e.policy &= ~engine_policy_logger;
-
+    
     engine_redistribute(&e);
     /* Turn it back on */
     if (with_logger) e.policy |= engine_policy_logger;
 #endif
-
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
-
+    
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
     if (e.policy & engine_policy_logger) {
@@ -1324,7 +1322,7 @@ int main(int argc, char *argv[]) {
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
   }
-
+  
   /* Legend */
   if (myrank == 0) {
     printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",

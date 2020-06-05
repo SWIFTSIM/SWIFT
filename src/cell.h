@@ -311,6 +311,15 @@ enum cell_flags {
 };
 
 /**
+ * @brief What kind of top level cell is this cell?
+ *
+ * 0 = A standard top level cell.
+ * 1 = An ignored top level cell (as it is within the zoom region).
+ * 2 = A top level zoom cell.
+ */
+enum tl_cell_types { tl_cell, void_tl_cell, zoom_tl_cell };
+
+/**
  * @brief Cell within the tree structure.
  *
  * Contains particles, links to tasks, a multipole object and counters.
@@ -815,6 +824,9 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
+  /*! What kind of top level cell is this ? */
+  enum tl_cell_types tl_cell_type;
+
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
   int cellID;
@@ -990,11 +1002,11 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
-  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
-  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
-#endif
+//#ifdef SWIFT_DEBUG_CHECKS // STU CHECK
+//  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+//  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+//  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+//#endif
 
   const double cix_min = ci->loc[0];
   const double ciy_min = ci->loc[1];
