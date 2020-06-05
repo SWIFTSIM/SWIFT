@@ -141,11 +141,11 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y, const dou
         cell_getid(cdim, (x - zoom_region_bounds[0]) * ih_x_zoom,
                    (y - zoom_region_bounds[2]) * ih_y_zoom,
                    (z - zoom_region_bounds[4]) * ih_z_zoom);
+    cell_id = zoom_cell_offset + zoom_index;
 #ifdef SWIFT_DEBUG_CHECKS
   if (zoom_index < 0 || zoom_index >= cdim[0]*cdim[1]*cdim[2])
     error("zoom_index out of range %i (%f %f %f)", cell_id, x, y, z);
 #endif
-    cell_id = zoom_cell_offset + zoom_index;
   } else {
     cell_id = cell_getid(cdim, i, j, k);
 #ifdef SWIFT_DEBUG_CHECKS
