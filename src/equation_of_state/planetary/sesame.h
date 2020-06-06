@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SESAME_EQUATION_OF_STATE_H //### or aneos?
+#ifndef SWIFT_SESAME_EQUATION_OF_STATE_H
 #define SWIFT_SESAME_EQUATION_OF_STATE_H
 
 /**
@@ -32,6 +32,7 @@
 
 /* Some standard headers. */
 #include <math.h>
+#include <float.h>
 
 /* Local headers. */
 #include "adiabatic_index.h"
@@ -176,11 +177,9 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
     }
   }
 
-  // Tiny pressure and soundspeed, initialise in the middle
-  mat->P_tiny =
-      mat->table_P_rho_T[mat->num_rho / 2 * mat->num_T + mat->num_T / 2];
-  mat->c_tiny =
-      mat->table_c_rho_T[mat->num_rho / 2 * mat->num_T + mat->num_T / 2];
+  // Initialise tiny pressure and soundspeed
+  mat->P_tiny = FLT_MAX;
+  mat->c_tiny = FLT_MAX;
 
   // Enforce that the 1D arrays of u (at each rho) are monotonic
   // This is necessary because, for some high-density u slices at very low T,
@@ -385,13 +384,11 @@ INLINE static float SESAME_pressure_from_internal_energy(
   if (P_2 <= 0.f) num_non_pos++;
   if (P_3 <= 0.f) num_non_pos++;
   if (P_4 <= 0.f) num_non_pos++;
-  if (num_non_pos > 2) {
-    return 0.f;
-  }
-  // If just one or two are non-positive then replace them with a tiny value
-  else if (num_non_pos > 0) {
+  if (num_non_pos > 0) {
+    // If just one or two are non-positive then replace them with a tiny value
     // Unless already trying to extrapolate in which case return zero
-    if ((intp_rho < 0.f) || (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
+    if ((num_non_pos > 2) || (mat->P_tiny == 0.f) || (intp_rho < 0.f) || 
+        (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
       return 0.f;
     }
     if (P_1 <= 0.f) P_1 = mat->P_tiny;
