@@ -166,98 +166,95 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval_force_double(
 /* Derivatives of softening kernel used for FMM */
 /************************************************/
 
-__attribute__((const)) INLINE static float D_soft_1(const float u,
-                                                    const float u_inv) {
+__attribute__((const)) INLINE static float D_soft_1(const float u) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   error("Invalid choice of softening kernel shape");
 #endif
 
-  /* phi(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
-  float phi = 3.f * u - 15.f;
-  phi = phi * u + 28.f;
-  phi = phi * u - 21.f;
+  /* -3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3 */
+  float phi = -3.f * u + 15.f;
+  phi = phi * u - 28.f;
+  phi = phi * u + 21.f;
   phi = phi * u;
-  phi = phi * u + 7.f;
+  phi = phi * u - 7.f;
   phi = phi * u;
-  phi = phi * u - 3.f;
+  phi = phi * u + 3.f;
 
   return phi;
 }
 
-__attribute__((const)) INLINE static float D_soft_3(const float u,
-                                                    const float u_inv) {
+__attribute__((const)) INLINE static float D_soft_2(const float u) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   error("Invalid choice of softening kernel shape");
 #endif
 
-  /* phi'(u)/u = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
-  float phi = 21.f * u - 90.f;
-  phi = phi * u + 140.f;
-  phi = phi * u - 84.f;
+  /* -21u^6 + 90u^5 - 140u^4 + 84u^3 - 14u */
+  float phi = -21.f * u + 90.f;
+  phi = phi * u - 140.f;
+  phi = phi * u + 84.f;
   phi = phi * u;
-  phi = phi * u + 14.f;
+  phi = phi * u - 14.f;
+  phi = phi * u;
 
   return phi;
 }
 
-__attribute__((const)) INLINE static float D_soft_5(const float u,
-                                                    const float u_inv) {
+__attribute__((const)) INLINE static float D_soft_3(const float u) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   error("Invalid choice of softening kernel shape");
 #endif
 
-  /* (phi'(u)/u)'/u = 35u^3 - 120u^2 + 140u - 56 */
-  float phi = 35.f * u - 120.f;
-  phi = phi * u + 140.f;
-  phi = phi * u - 56.f;
+  /* -105u^5 + 360u^4 - 420u^3 + 168u^2 */
+  float phi = -105.f * u + 360.f;
+  phi = phi * u - 420.f;
+  phi = phi * u + 168.f;
+  phi = phi * u;
+  phi = phi * u;
 
   return phi;
 }
 
-__attribute__((const)) INLINE static float D_soft_7(const float u,
-                                                    const float u_inv) {
-#ifdef GADGET2_SOFTENING_CORRECTION
-  error("Invalid choice of softening kernel shape");
-#endif
-
-  /* 21 u - 48 + 28 u^-1 */
-  /* 21 u - 48 + 28 u_inv */
-  return 21.f * u - 48.f + 28.f * u_inv;
-}
-
-__attribute__((const)) INLINE static float D_soft_9(const float u,
-                                                    const float u_inv) {
+__attribute__((const)) INLINE static float D_soft_4(const float u) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   error("Invalid choice of softening kernel shape");
 #endif
 
-  /* 3 u^-1 - 4 u^-3 */
-  /* 3 u_inv - 4 u_inv^3 */
-  float phi = -4.f * u_inv;
-  phi = phi * u_inv + 3.f;
-  phi = phi * u_inv;
+  /* -315u^4 + 720u^3 - 420u^2 */
+  float phi = -315.f * u + 720.f;
+  phi = phi * u - 420.f;
+  phi = phi * u;
+  phi = phi * u;
 
   return phi;
 }
 
-__attribute__((const)) INLINE static float D_soft_11(const float u,
-                                                     const float u_inv) {
+__attribute__((const)) INLINE static float D_soft_5(const float u) {
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   error("Invalid choice of softening kernel shape");
 #endif
 
-  /* (1/3) u^-3 - (4/3) u^-5 */
-  /* (1/3) u_inv^3 - (4/3) u_inv^5 */
-  float phi = -1.3333333f * u_inv;
-  phi = phi * u_inv + 0.3333333f;
-  phi = phi * u_inv;
-  phi = phi * u_inv;
-  phi = phi * u_inv;
+  /* -315u^3 + 420u */
+  float phi = -315.f * u;
+  phi = phi * u + 420.f;
+  phi = phi * u;
+
+  return phi;
+}
+
+__attribute__((const)) INLINE static float D_soft_6(const float u) {
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+  error("Invalid choice of softening kernel shape");
+#endif
+
+  /* 315u^2 - 1260 */
+  float phi = 315 * u;
+  phi = phi * u - 1260.f;
 
   return phi;
 }

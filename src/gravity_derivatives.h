@@ -222,19 +222,19 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 
   float Dt_1;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  float Dt_3;
+  float Dt_2;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  float Dt_5;
+  float Dt_3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  float Dt_7;
+  float Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  float Dt_9;
+  float Dt_5;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-  float Dt_11;
+  float Dt_6;
 #endif
 
   /* Softened case */
@@ -242,30 +242,28 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 
     const float eps_inv = 1.f / eps;
     const float r = r2 * r_inv;
-    const float u = max(r * eps_inv, 0.01f);
-    const float u_inv = min(r_inv * eps, 100.f);
+    const float u = r * eps_inv;
 
-    Dt_1 = -eps_inv * D_soft_1(u, u_inv);
+    Dt_1 = eps_inv * D_soft_1(u);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
     const float eps_inv2 = eps_inv * eps_inv;
-    const float eps_inv3 = eps_inv * eps_inv2;
-    Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
+    Dt_2 = eps_inv2 * D_soft_2(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float eps_inv5 = eps_inv3 * eps_inv2;
-    Dt_5 = -eps_inv5 * D_soft_5(u, u_inv);
+    const float eps_inv3 = eps_inv2 * eps_inv;
+    Dt_3 = eps_inv3 * D_soft_3(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float eps_inv7 = eps_inv5 * eps_inv2;
-    Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
+    const float eps_inv4 = eps_inv3 * eps_inv;
+    Dt_4 = eps_inv4 * D_soft_4(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float eps_inv9 = eps_inv7 * eps_inv2;
-    Dt_9 = -eps_inv9 * D_soft_9(u, u_inv);
+    const float eps_inv5 = eps_inv4 * eps_inv;
+    Dt_5 = eps_inv5 * D_soft_5(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-    const float eps_inv11 = eps_inv9 * eps_inv2;
-    Dt_11 = -eps_inv11 * D_soft_11(u, u_inv);
+    const float eps_inv6 = eps_inv5 * eps_inv;
+    Dt_7 = eps_inv6 * D_soft_6(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -274,22 +272,21 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
     /* Un-truncated un-softened case (Newtonian potential) */
   } else if (!periodic) {
 
-    Dt_1 = r_inv;
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float r_inv2 = r_inv * r_inv;
-    Dt_3 = -1.f * Dt_1 * r_inv2; /* -1 / r^3 */
+    Dt_1 = r_inv; /* 1 / r */
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+    Dt_2 = -1.f * Dt_1 * r_inv; /* -1 / r^2 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    Dt_5 = -3.f * Dt_3 * r_inv2; /* 3 / r^5 */
+    Dt_3 = -3.f * Dt_2 * r_inv; /* 3 / r^3 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    Dt_7 = -5.f * Dt_5 * r_inv2; /* -15 / r^7 */
+    Dt_4 = -5.f * Dt_3 * r_inv; /* -15 / r^4 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    Dt_9 = -7.f * Dt_7 * r_inv2; /* 105 / r^9 */
+    Dt_5 = -7.f * Dt_4 * r_inv; /* 105 / r^5 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-    Dt_11 = -9.f * Dt_9 * r_inv2; /* -945 / r^11 */
+    Dt_6 = -9.f * Dt_5 * r_inv; /* -945 / r^6 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -304,37 +301,37 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
     kernel_long_grav_derivatives(r, r_s_inv, &derivs);
 
     Dt_1 = derivs.chi_0 * r_inv;
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
     const float r_inv2 = r_inv * r_inv;
-    const float r_inv3 = r_inv2 * r_inv;
-    Dt_3 = (r * derivs.chi_1 - derivs.chi_0) * r_inv3;
+    Dt_2 = (r * derivs.chi_1 - derivs.chi_0) * r_inv2;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float r_inv5 = r_inv2 * r_inv3;
-    Dt_5 =
+    const float r_inv3 = r_inv2 * r_inv;
+    Dt_3 =
         (r * r * derivs.chi_2 - 3.f * r * derivs.chi_1 + 3.f * derivs.chi_0) *
-        r_inv5;
+        r_inv3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float r_inv7 = r_inv2 * r_inv5;
-    Dt_7 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
+    const float r_inv4 = r_inv3 * r_inv;
+    Dt_4 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
             15.f * r * derivs.chi_1 - 15.f * derivs.chi_0) *
-           r_inv7;
+           r_inv4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float r_inv9 = r_inv2 * r_inv7;
-    Dt_9 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
+    const float r_inv5 = r_inv4 * r_inv;
+    Dt_5 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
             45.f * r * r * derivs.chi_2 - 105.f * r * derivs.chi_1 +
             105.f * derivs.chi_0) *
-           r_inv9;
+           r_inv5;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-    const float r_inv11 = r_inv2 * r_inv9;
-    Dt_11 = (r * r * r * r * r * derivs.chi_5 -
-             15.f * r * r * r * r * derivs.chi_4 +
-             105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
-             945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
-            r_inv11;
+    const float r_inv6 = r_inv5 * r_inv;
+    Dt_6 = (r * r * r * r * r * derivs.chi_5 -
+            15.f * r * r * r * r * derivs.chi_4 +
+            105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
+            945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
+           r_inv6;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -343,112 +340,135 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 
 /* Alright, let's get the full terms */
 
-/* Compute some powers of r_x, r_y and r_z */
+    /* Compute some powers of (r_x / r), (r_y / r) and (r_z / r) */
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+  const float rx_r = r_x * r_inv;
+  const float ry_r = r_y * r_inv;
+  const float rz_r = r_z * r_inv;
+#endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  const float r_x2 = r_x * r_x;
-  const float r_y2 = r_y * r_y;
-  const float r_z2 = r_z * r_z;
+  const float rx_r2 = rx_r * rx_r;
+  const float ry_r2 = ry_r * ry_r;
+  const float rz_r2 = rz_r * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  const float r_x3 = r_x2 * r_x;
-  const float r_y3 = r_y2 * r_y;
-  const float r_z3 = r_z2 * r_z;
+  const float rx_r3 = rx_r2 * rx_r;
+  const float ry_r3 = ry_r2 * ry_r;
+  const float rz_r3 = rz_r2 * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  const float r_x4 = r_x3 * r_x;
-  const float r_y4 = r_y3 * r_y;
-  const float r_z4 = r_z3 * r_z;
+  const float rx_r4 = rx_r3 * rx_r;
+  const float ry_r4 = ry_r3 * ry_r;
+  const float rz_r4 = rz_r3 * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-  const float r_x5 = r_x4 * r_x;
-  const float r_y5 = r_y4 * r_y;
-  const float r_z5 = r_z4 * r_z;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
-#error "Missing implementation for order >5"
+  const float rx_r5 = rx_r4 * rx_r;
+  const float ry_r5 = ry_r4 * ry_r;
+  const float rz_r5 = rz_r4 * rz_r;
 #endif
 
   /* Get the 0th order term */
   pot->D_000 = Dt_1;
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  /* 1st order derivatives */
-  pot->D_100 = r_x * Dt_3;
-  pot->D_010 = r_y * Dt_3;
-  pot->D_001 = r_z * Dt_3;
-#endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+  /* 1st order derivatives */
+  pot->D_100 = rx_r * Dt_2;
+  pot->D_010 = ry_r * Dt_2;
+  pot->D_001 = rz_r * Dt_2;
+#endif
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  Dt_2 *= r_inv;
+
   /* 2nd order derivatives */
-  pot->D_200 = r_x2 * Dt_5 + Dt_3;
-  pot->D_020 = r_y2 * Dt_5 + Dt_3;
-  pot->D_002 = r_z2 * Dt_5 + Dt_3;
-  pot->D_110 = r_x * r_y * Dt_5;
-  pot->D_101 = r_x * r_z * Dt_5;
-  pot->D_011 = r_y * r_z * Dt_5;
+  pot->D_200 = rx_r2 * Dt_3 + Dt_2;
+  pot->D_020 = ry_r2 * Dt_3 + Dt_2;
+  pot->D_002 = rz_r2 * Dt_3 + Dt_2;
+  pot->D_110 = rx_r * ry_r * Dt_3;
+  pot->D_101 = rx_r * rz_r * Dt_3;
+  pot->D_011 = ry_r * rz_r * Dt_3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  Dt_3 *= r_inv;
+
   /* 3rd order derivatives */
-  pot->D_300 = r_x3 * Dt_7 + 3.f * r_x * Dt_5;
-  pot->D_030 = r_y3 * Dt_7 + 3.f * r_y * Dt_5;
-  pot->D_003 = r_z3 * Dt_7 + 3.f * r_z * Dt_5;
-  pot->D_210 = r_x2 * r_y * Dt_7 + r_y * Dt_5;
-  pot->D_201 = r_x2 * r_z * Dt_7 + r_z * Dt_5;
-  pot->D_120 = r_y2 * r_x * Dt_7 + r_x * Dt_5;
-  pot->D_021 = r_y2 * r_z * Dt_7 + r_z * Dt_5;
-  pot->D_102 = r_z2 * r_x * Dt_7 + r_x * Dt_5;
-  pot->D_012 = r_z2 * r_y * Dt_7 + r_y * Dt_5;
-  pot->D_111 = r_x * r_y * r_z * Dt_7;
+  pot->D_300 = rx_r3 * Dt_4 + 3.f * rx_r * Dt_3;
+  pot->D_030 = ry_r3 * Dt_4 + 3.f * ry_r * Dt_3;
+  pot->D_003 = rz_r3 * Dt_4 + 3.f * rz_r * Dt_3;
+  pot->D_210 = rx_r2 * ry_r * Dt_4 + ry_r * Dt_3;
+  pot->D_201 = rx_r2 * rz_r * Dt_4 + rz_r * Dt_3;
+  pot->D_120 = ry_r2 * rx_r * Dt_4 + rx_r * Dt_3;
+  pot->D_021 = ry_r2 * rz_r * Dt_4 + rz_r * Dt_3;
+  pot->D_102 = rz_r2 * rx_r * Dt_4 + rx_r * Dt_3;
+  pot->D_012 = rz_r2 * ry_r * Dt_4 + ry_r * Dt_3;
+  pot->D_111 = rx_r * ry_r * rz_r * Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  Dt_3 *= r_inv;
+  Dt_4 *= r_inv;
+
   /* 4th order derivatives */
-  pot->D_400 = r_x4 * Dt_9 + 6.f * r_x2 * Dt_7 + 3.f * Dt_5;
-  pot->D_040 = r_y4 * Dt_9 + 6.f * r_y2 * Dt_7 + 3.f * Dt_5;
-  pot->D_004 = r_z4 * Dt_9 + 6.f * r_z2 * Dt_7 + 3.f * Dt_5;
-  pot->D_310 = r_x3 * r_y * Dt_9 + 3.f * r_x * r_y * Dt_7;
-  pot->D_301 = r_x3 * r_z * Dt_9 + 3.f * r_x * r_z * Dt_7;
-  pot->D_130 = r_y3 * r_x * Dt_9 + 3.f * r_y * r_x * Dt_7;
-  pot->D_031 = r_y3 * r_z * Dt_9 + 3.f * r_y * r_z * Dt_7;
-  pot->D_103 = r_z3 * r_x * Dt_9 + 3.f * r_z * r_x * Dt_7;
-  pot->D_013 = r_z3 * r_y * Dt_9 + 3.f * r_z * r_y * Dt_7;
-  pot->D_220 = r_x2 * r_y2 * Dt_9 + r_x2 * Dt_7 + r_y2 * Dt_7 + Dt_5;
-  pot->D_202 = r_x2 * r_z2 * Dt_9 + r_x2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
-  pot->D_022 = r_y2 * r_z2 * Dt_9 + r_y2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
-  pot->D_211 = r_x2 * r_y * r_z * Dt_9 + r_y * r_z * Dt_7;
-  pot->D_121 = r_y2 * r_x * r_z * Dt_9 + r_x * r_z * Dt_7;
-  pot->D_112 = r_z2 * r_x * r_y * Dt_9 + r_x * r_y * Dt_7;
+  pot->D_400 = rx_r4 * Dt_5 + 6.f * rx_r2 * Dt_4 + 3.f * Dt_3;
+  pot->D_040 = ry_r4 * Dt_5 + 6.f * ry_r2 * Dt_4 + 3.f * Dt_3;
+  pot->D_004 = rz_r4 * Dt_5 + 6.f * rz_r2 * Dt_4 + 3.f * Dt_3;
+  pot->D_310 = rx_r3 * ry_r * Dt_5 + 3.f * rx_r * ry_r * Dt_4;
+  pot->D_301 = rx_r3 * rz_r * Dt_5 + 3.f * rx_r * rz_r * Dt_4;
+  pot->D_130 = ry_r3 * rx_r * Dt_5 + 3.f * ry_r * rx_r * Dt_4;
+  pot->D_031 = ry_r3 * rz_r * Dt_5 + 3.f * ry_r * rz_r * Dt_4;
+  pot->D_103 = rz_r3 * rx_r * Dt_5 + 3.f * rz_r * rx_r * Dt_4;
+  pot->D_013 = rz_r3 * ry_r * Dt_5 + 3.f * rz_r * ry_r * Dt_4;
+  pot->D_220 = rx_r2 * ry_r2 * Dt_5 + rx_r2 * Dt_4 + ry_r2 * Dt_4 + Dt_3;
+  pot->D_202 = rx_r2 * rz_r2 * Dt_5 + rx_r2 * Dt_4 + rz_r2 * Dt_4 + Dt_3;
+  pot->D_022 = ry_r2 * rz_r2 * Dt_5 + ry_r2 * Dt_4 + rz_r2 * Dt_4 + Dt_3;
+  pot->D_211 = rx_r2 * ry_r * rz_r * Dt_5 + ry_r * rz_r * Dt_4;
+  pot->D_121 = ry_r2 * rx_r * rz_r * Dt_5 + rx_r * rz_r * Dt_4;
+  pot->D_112 = rz_r2 * rx_r * ry_r * Dt_5 + rx_r * ry_r * Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+
+  Dt_4 *= r_inv;
+  Dt_5 *= r_inv;
+
   /* 5th order derivatives */
-  pot->D_500 = r_x5 * Dt_11 + 10.f * r_x3 * Dt_9 + 15.f * r_x * Dt_7;
-  pot->D_050 = r_y5 * Dt_11 + 10.f * r_y3 * Dt_9 + 15.f * r_y * Dt_7;
-  pot->D_005 = r_z5 * Dt_11 + 10.f * r_z3 * Dt_9 + 15.f * r_z * Dt_7;
-  pot->D_410 = r_x4 * r_y * Dt_11 + 6.f * r_x2 * r_y * Dt_9 + 3.f * r_y * Dt_7;
-  pot->D_401 = r_x4 * r_z * Dt_11 + 6.f * r_x2 * r_z * Dt_9 + 3.f * r_z * Dt_7;
-  pot->D_140 = r_y4 * r_x * Dt_11 + 6.f * r_y2 * r_x * Dt_9 + 3.f * r_x * Dt_7;
-  pot->D_041 = r_y4 * r_z * Dt_11 + 6.f * r_y2 * r_z * Dt_9 + 3.f * r_z * Dt_7;
-  pot->D_104 = r_z4 * r_x * Dt_11 + 6.f * r_z2 * r_x * Dt_9 + 3.f * r_x * Dt_7;
-  pot->D_014 = r_z4 * r_y * Dt_11 + 6.f * r_z2 * r_y * Dt_9 + 3.f * r_y * Dt_7;
-  pot->D_320 = r_x3 * r_y2 * Dt_11 + r_x3 * Dt_9 + 3.f * r_x * r_y2 * Dt_9 +
-               3.f * r_x * Dt_7;
-  pot->D_302 = r_x3 * r_z2 * Dt_11 + r_x3 * Dt_9 + 3.f * r_x * r_z2 * Dt_9 +
-               3.f * r_x * Dt_7;
-  pot->D_230 = r_y3 * r_x2 * Dt_11 + r_y3 * Dt_9 + 3.f * r_y * r_x2 * Dt_9 +
-               3.f * r_y * Dt_7;
-  pot->D_032 = r_y3 * r_z2 * Dt_11 + r_y3 * Dt_9 + 3.f * r_y * r_z2 * Dt_9 +
-               3.f * r_y * Dt_7;
-  pot->D_203 = r_z3 * r_x2 * Dt_11 + r_z3 * Dt_9 + 3.f * r_z * r_x2 * Dt_9 +
-               3.f * r_z * Dt_7;
-  pot->D_023 = r_z3 * r_y2 * Dt_11 + r_z3 * Dt_9 + 3.f * r_z * r_y2 * Dt_9 +
-               3.f * r_z * Dt_7;
-  pot->D_311 = r_x3 * r_y * r_z * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
-  pot->D_131 = r_y3 * r_x * r_z * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
-  pot->D_113 = r_z3 * r_x * r_y * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
-  pot->D_122 = r_x * r_y2 * r_z2 * Dt_11 + r_x * r_y2 * Dt_9 +
-               r_x * r_z2 * Dt_9 + r_x * Dt_7;
-  pot->D_212 = r_y * r_x2 * r_z2 * Dt_11 + r_y * r_x2 * Dt_9 +
-               r_y * r_z2 * Dt_9 + r_y * Dt_7;
-  pot->D_221 = r_z * r_x2 * r_y2 * Dt_11 + r_z * r_x2 * Dt_9 +
-               r_z * r_y2 * Dt_9 + r_z * Dt_7;
+  pot->D_500 = rx_r5 * Dt_6 + 10.f * rx_r3 * Dt_5 + 15.f * rx_r * Dt_4;
+  pot->D_050 = ry_r5 * Dt_6 + 10.f * ry_r3 * Dt_5 + 15.f * ry_r * Dt_4;
+  pot->D_005 = rz_r5 * Dt_6 + 10.f * rz_r3 * Dt_5 + 15.f * rz_r * Dt_4;
+  pot->D_410 =
+      rx_r4 * ry_r * Dt_6 + 6.f * rx_r2 * ry_r * Dt_5 + 3.f * ry_r * Dt_4;
+  pot->D_401 =
+      rx_r4 * rz_r * Dt_6 + 6.f * rx_r2 * rz_r * Dt_5 + 3.f * rz_r * Dt_4;
+  pot->D_140 =
+      ry_r4 * rx_r * Dt_6 + 6.f * ry_r2 * rx_r * Dt_5 + 3.f * rx_r * Dt_4;
+  pot->D_041 =
+      ry_r4 * rz_r * Dt_6 + 6.f * ry_r2 * rz_r * Dt_5 + 3.f * rz_r * Dt_4;
+  pot->D_104 =
+      rz_r4 * rx_r * Dt_6 + 6.f * rz_r2 * rx_r * Dt_5 + 3.f * rx_r * Dt_4;
+  pot->D_014 =
+      rz_r4 * ry_r * Dt_6 + 6.f * rz_r2 * ry_r * Dt_5 + 3.f * ry_r * Dt_4;
+  pot->D_320 = rx_r3 * ry_r2 * Dt_6 + rx_r3 * Dt_5 + 3.f * rx_r * ry_r2 * Dt_5 +
+               3.f * rx_r * Dt_4;
+  pot->D_302 = rx_r3 * rz_r2 * Dt_6 + rx_r3 * Dt_5 + 3.f * rx_r * rz_r2 * Dt_5 +
+               3.f * rx_r * Dt_4;
+  pot->D_230 = ry_r3 * rx_r2 * Dt_6 + ry_r3 * Dt_5 + 3.f * ry_r * rx_r2 * Dt_5 +
+               3.f * ry_r * Dt_4;
+  pot->D_032 = ry_r3 * rz_r2 * Dt_6 + ry_r3 * Dt_5 + 3.f * ry_r * rz_r2 * Dt_5 +
+               3.f * ry_r * Dt_4;
+  pot->D_203 = rz_r3 * rx_r2 * Dt_6 + rz_r3 * Dt_5 + 3.f * rz_r * rx_r2 * Dt_5 +
+               3.f * rz_r * Dt_4;
+  pot->D_023 = rz_r3 * ry_r2 * Dt_6 + rz_r3 * Dt_5 + 3.f * rz_r * ry_r2 * Dt_5 +
+               3.f * rz_r * Dt_4;
+  pot->D_311 = rx_r3 * ry_r * rz_r * Dt_6 + 3.f * rx_r * ry_r * rz_r * Dt_5;
+  pot->D_131 = ry_r3 * rx_r * rz_r * Dt_6 + 3.f * rx_r * ry_r * rz_r * Dt_5;
+  pot->D_113 = rz_r3 * rx_r * ry_r * Dt_6 + 3.f * rx_r * ry_r * rz_r * Dt_5;
+  pot->D_122 = rx_r * ry_r2 * rz_r2 * Dt_6 + rx_r * ry_r2 * Dt_5 +
+               rx_r * rz_r2 * Dt_5 + rx_r * Dt_4;
+  pot->D_212 = ry_r * rx_r2 * rz_r2 * Dt_6 + ry_r * rx_r2 * Dt_5 +
+               ry_r * rz_r2 * Dt_5 + ry_r * Dt_4;
+  pot->D_221 = rz_r * rx_r2 * ry_r2 * Dt_6 + rz_r * rx_r2 * Dt_5 +
+               rz_r * ry_r2 * Dt_5 + rz_r * Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for orders >5"
@@ -480,18 +500,18 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   struct potential_derivatives_M2P *pot) {
 
   float Dt_1;
-  float Dt_3;
+  float Dt_2;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  float Dt_5;
+  float Dt_3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  float Dt_7;
+  float Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  float Dt_9;
+  float Dt_5;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  float Dt_11;
+  float Dt_6;
 #endif
 
   /* Softened case */
@@ -499,47 +519,45 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
 
     const float eps_inv = 1.f / eps;
     const float r = r2 * r_inv;
-    const float u = max(r * eps_inv, 0.01f);
-    const float u_inv = min(r_inv * eps, 100.f);
+    const float u = r * eps_inv;
 
-    Dt_1 = -eps_inv * D_soft_1(u, u_inv);
+    Dt_1 = eps_inv * D_soft_1(u);
+
     const float eps_inv2 = eps_inv * eps_inv;
-    const float eps_inv3 = eps_inv * eps_inv2;
-    Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
+    Dt_2 = eps_inv2 * D_soft_2(u);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float eps_inv5 = eps_inv3 * eps_inv2;
-    Dt_5 = -eps_inv5 * D_soft_5(u, u_inv);
+    const float eps_inv3 = eps_inv2 * eps_inv;
+    Dt_3 = eps_inv3 * D_soft_3(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float eps_inv7 = eps_inv5 * eps_inv2;
-    Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
+    const float eps_inv4 = eps_inv3 * eps_inv;
+    Dt_4 = eps_inv4 * D_soft_4(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float eps_inv9 = eps_inv7 * eps_inv2;
-    Dt_9 = -eps_inv9 * D_soft_9(u, u_inv);
+    const float eps_inv5 = eps_inv4 * eps_inv;
+    Dt_5 = eps_inv5 * D_soft_5(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float eps_inv11 = eps_inv9 * eps_inv2;
-    Dt_11 = -eps_inv11 * D_soft_11(u, u_inv);
+    const float eps_inv6 = eps_inv5 * eps_inv;
+    Dt_6 = eps_inv6 * D_soft_6(u);
 #endif
 
     /* Un-truncated un-softened case (Newtonian potential) */
   } else if (!periodic) {
 
-    const float r_inv2 = r_inv * r_inv;
-    Dt_1 = r_inv;
-    Dt_3 = -1.f * Dt_1 * r_inv2; /* -1 / r^3 */
+    Dt_1 = r_inv;               /* 1 / r */
+    Dt_2 = -1.f * Dt_1 * r_inv; /* -1 / r^2 */
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    Dt_5 = -3.f * Dt_3 * r_inv2; /* 3 / r^5 */
+    Dt_3 = -3.f * Dt_2 * r_inv; /* 3 / r^3 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    Dt_7 = -5.f * Dt_5 * r_inv2; /* -15 / r^7 */
+    Dt_4 = -5.f * Dt_3 * r_inv; /* -15 / r^4 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    Dt_9 = -7.f * Dt_7 * r_inv2; /* 105 / r^9 */
+    Dt_5 = -7.f * Dt_4 * r_inv; /* 105 / r^5 */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    Dt_11 = -9.f * Dt_9 * r_inv2; /* -945 / r^11 */
+    Dt_6 = -9.f * Dt_5 * r_inv; /* -945 / r^6 */
 #endif
 
     /* Truncated case (long-range) */
@@ -550,143 +568,167 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
     struct chi_derivatives derivs;
     kernel_long_grav_derivatives(r, r_s_inv, &derivs);
 
-    const float r_inv2 = r_inv * r_inv;
-    const float r_inv3 = r_inv2 * r_inv;
     Dt_1 = derivs.chi_0 * r_inv;
-    Dt_3 = (r * derivs.chi_1 - derivs.chi_0) * r_inv3;
+
+    const float r_inv2 = r_inv * r_inv;
+    Dt_2 = (r * derivs.chi_1 - derivs.chi_0) * r_inv2;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float r_inv5 = r_inv2 * r_inv3;
-    Dt_5 =
+    const float r_inv3 = r_inv2 * r_inv;
+    Dt_3 =
         (r * r * derivs.chi_2 - 3.f * r * derivs.chi_1 + 3.f * derivs.chi_0) *
-        r_inv5;
+        r_inv3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float r_inv7 = r_inv2 * r_inv5;
-    Dt_7 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
+    const float r_inv4 = r_inv3 * r_inv;
+    Dt_4 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
             15.f * r * derivs.chi_1 - 15.f * derivs.chi_0) *
-           r_inv7;
+           r_inv4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float r_inv9 = r_inv2 * r_inv7;
-    Dt_9 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
+    const float r_inv5 = r_inv4 * r_inv;
+    Dt_5 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
             45.f * r * r * derivs.chi_2 - 105.f * r * derivs.chi_1 +
             105.f * derivs.chi_0) *
-           r_inv9;
+           r_inv5;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float r_inv11 = r_inv2 * r_inv9;
-    Dt_11 = (r * r * r * r * r * derivs.chi_5 -
-             15.f * r * r * r * r * derivs.chi_4 +
-             105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
-             945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
-            r_inv11;
+    const float r_inv6 = r_inv5 * r_inv;
+    Dt_6 = (r * r * r * r * r * derivs.chi_5 -
+            15.f * r * r * r * r * derivs.chi_4 +
+            105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
+            945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
+           r_inv6;
 #endif
   }
 
-/* Alright, let's get the full terms */
+  /* Alright, let's get the full terms */
 
-/* Compute some powers of r_x, r_y and r_z */
+  /* Compute some powers of (r_x / r), (r_y / r) and (r_z / r) */
+  const float rx_r = r_x * r_inv;
+  const float ry_r = r_y * r_inv;
+  const float rz_r = r_z * r_inv;
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  const float r_x2 = r_x * r_x;
-  const float r_y2 = r_y * r_y;
-  const float r_z2 = r_z * r_z;
+  const float rx_r2 = rx_r * rx_r;
+  const float ry_r2 = ry_r * ry_r;
+  const float rz_r2 = rz_r * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  const float r_x3 = r_x2 * r_x;
-  const float r_y3 = r_y2 * r_y;
-  const float r_z3 = r_z2 * r_z;
+  const float rx_r3 = rx_r2 * rx_r;
+  const float ry_r3 = ry_r2 * ry_r;
+  const float rz_r3 = rz_r2 * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  const float r_x4 = r_x3 * r_x;
-  const float r_y4 = r_y3 * r_y;
-  const float r_z4 = r_z3 * r_z;
+  const float rx_r4 = rx_r3 * rx_r;
+  const float ry_r4 = ry_r3 * ry_r;
+  const float rz_r4 = rz_r3 * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  const float r_x5 = r_x4 * r_x;
-  const float r_y5 = r_y4 * r_y;
-  const float r_z5 = r_z4 * r_z;
+  const float rx_r5 = rx_r4 * rx_r;
+  const float ry_r5 = ry_r4 * ry_r;
+  const float rz_r5 = rz_r4 * rz_r;
 #endif
 
   /* Get the 0th order term */
   pot->D_000 = Dt_1;
 
   /* 1st order derivatives */
-  pot->D_100 = r_x * Dt_3;
-  pot->D_010 = r_y * Dt_3;
-  pot->D_001 = r_z * Dt_3;
+  pot->D_100 = rx_r * Dt_2;
+  pot->D_010 = ry_r * Dt_2;
+  pot->D_001 = rz_r * Dt_2;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+
+  Dt_2 *= r_inv;
+
   /* 2nd order derivatives */
-  pot->D_200 = r_x2 * Dt_5 + Dt_3;
-  pot->D_020 = r_y2 * Dt_5 + Dt_3;
-  pot->D_002 = r_z2 * Dt_5 + Dt_3;
-  pot->D_110 = r_x * r_y * Dt_5;
-  pot->D_101 = r_x * r_z * Dt_5;
-  pot->D_011 = r_y * r_z * Dt_5;
+  pot->D_200 = rx_r2 * Dt_3 + Dt_2;
+  pot->D_020 = ry_r2 * Dt_3 + Dt_2;
+  pot->D_002 = rz_r2 * Dt_3 + Dt_2;
+  pot->D_110 = rx_r * ry_r * Dt_3;
+  pot->D_101 = rx_r * rz_r * Dt_3;
+  pot->D_011 = ry_r * rz_r * Dt_3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+  Dt_3 *= r_inv;
+
   /* 3rd order derivatives */
-  pot->D_300 = r_x3 * Dt_7 + 3.f * r_x * Dt_5;
-  pot->D_030 = r_y3 * Dt_7 + 3.f * r_y * Dt_5;
-  pot->D_003 = r_z3 * Dt_7 + 3.f * r_z * Dt_5;
-  pot->D_210 = r_x2 * r_y * Dt_7 + r_y * Dt_5;
-  pot->D_201 = r_x2 * r_z * Dt_7 + r_z * Dt_5;
-  pot->D_120 = r_y2 * r_x * Dt_7 + r_x * Dt_5;
-  pot->D_021 = r_y2 * r_z * Dt_7 + r_z * Dt_5;
-  pot->D_102 = r_z2 * r_x * Dt_7 + r_x * Dt_5;
-  pot->D_012 = r_z2 * r_y * Dt_7 + r_y * Dt_5;
-  pot->D_111 = r_x * r_y * r_z * Dt_7;
+  pot->D_300 = rx_r3 * Dt_4 + 3.f * rx_r * Dt_3;
+  pot->D_030 = ry_r3 * Dt_4 + 3.f * ry_r * Dt_3;
+  pot->D_003 = rz_r3 * Dt_4 + 3.f * rz_r * Dt_3;
+  pot->D_210 = rx_r2 * ry_r * Dt_4 + ry_r * Dt_3;
+  pot->D_201 = rx_r2 * rz_r * Dt_4 + rz_r * Dt_3;
+  pot->D_120 = ry_r2 * rx_r * Dt_4 + rx_r * Dt_3;
+  pot->D_021 = ry_r2 * rz_r * Dt_4 + rz_r * Dt_3;
+  pot->D_102 = rz_r2 * rx_r * Dt_4 + rx_r * Dt_3;
+  pot->D_012 = rz_r2 * ry_r * Dt_4 + ry_r * Dt_3;
+  pot->D_111 = rx_r * ry_r * rz_r * Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+
+  Dt_3 *= r_inv;
+  Dt_4 *= r_inv;
+
   /* 4th order derivatives */
-  pot->D_400 = r_x4 * Dt_9 + 6.f * r_x2 * Dt_7 + 3.f * Dt_5;
-  pot->D_040 = r_y4 * Dt_9 + 6.f * r_y2 * Dt_7 + 3.f * Dt_5;
-  pot->D_004 = r_z4 * Dt_9 + 6.f * r_z2 * Dt_7 + 3.f * Dt_5;
-  pot->D_310 = r_x3 * r_y * Dt_9 + 3.f * r_x * r_y * Dt_7;
-  pot->D_301 = r_x3 * r_z * Dt_9 + 3.f * r_x * r_z * Dt_7;
-  pot->D_130 = r_y3 * r_x * Dt_9 + 3.f * r_y * r_x * Dt_7;
-  pot->D_031 = r_y3 * r_z * Dt_9 + 3.f * r_y * r_z * Dt_7;
-  pot->D_103 = r_z3 * r_x * Dt_9 + 3.f * r_z * r_x * Dt_7;
-  pot->D_013 = r_z3 * r_y * Dt_9 + 3.f * r_z * r_y * Dt_7;
-  pot->D_220 = r_x2 * r_y2 * Dt_9 + r_x2 * Dt_7 + r_y2 * Dt_7 + Dt_5;
-  pot->D_202 = r_x2 * r_z2 * Dt_9 + r_x2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
-  pot->D_022 = r_y2 * r_z2 * Dt_9 + r_y2 * Dt_7 + r_z2 * Dt_7 + Dt_5;
-  pot->D_211 = r_x2 * r_y * r_z * Dt_9 + r_y * r_z * Dt_7;
-  pot->D_121 = r_y2 * r_x * r_z * Dt_9 + r_x * r_z * Dt_7;
-  pot->D_112 = r_z2 * r_x * r_y * Dt_9 + r_x * r_y * Dt_7;
+  pot->D_400 = rx_r4 * Dt_5 + 6.f * rx_r2 * Dt_4 + 3.f * Dt_3;
+  pot->D_040 = ry_r4 * Dt_5 + 6.f * ry_r2 * Dt_4 + 3.f * Dt_3;
+  pot->D_004 = rz_r4 * Dt_5 + 6.f * rz_r2 * Dt_4 + 3.f * Dt_3;
+  pot->D_310 = rx_r3 * ry_r * Dt_5 + 3.f * rx_r * ry_r * Dt_4;
+  pot->D_301 = rx_r3 * rz_r * Dt_5 + 3.f * rx_r * rz_r * Dt_4;
+  pot->D_130 = ry_r3 * rx_r * Dt_5 + 3.f * ry_r * rx_r * Dt_4;
+  pot->D_031 = ry_r3 * rz_r * Dt_5 + 3.f * ry_r * rz_r * Dt_4;
+  pot->D_103 = rz_r3 * rx_r * Dt_5 + 3.f * rz_r * rx_r * Dt_4;
+  pot->D_013 = rz_r3 * ry_r * Dt_5 + 3.f * rz_r * ry_r * Dt_4;
+  pot->D_220 = rx_r2 * ry_r2 * Dt_5 + rx_r2 * Dt_4 + ry_r2 * Dt_4 + Dt_3;
+  pot->D_202 = rx_r2 * rz_r2 * Dt_5 + rx_r2 * Dt_4 + rz_r2 * Dt_4 + Dt_3;
+  pot->D_022 = ry_r2 * rz_r2 * Dt_5 + ry_r2 * Dt_4 + rz_r2 * Dt_4 + Dt_3;
+  pot->D_211 = rx_r2 * ry_r * rz_r * Dt_5 + ry_r * rz_r * Dt_4;
+  pot->D_121 = ry_r2 * rx_r * rz_r * Dt_5 + rx_r * rz_r * Dt_4;
+  pot->D_112 = rz_r2 * rx_r * ry_r * Dt_5 + rx_r * ry_r * Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  Dt_4 *= r_inv;
+  Dt_5 *= r_inv;
+
   /* 5th order derivatives */
-  pot->D_500 = r_x5 * Dt_11 + 10.f * r_x3 * Dt_9 + 15.f * r_x * Dt_7;
-  pot->D_050 = r_y5 * Dt_11 + 10.f * r_y3 * Dt_9 + 15.f * r_y * Dt_7;
-  pot->D_005 = r_z5 * Dt_11 + 10.f * r_z3 * Dt_9 + 15.f * r_z * Dt_7;
-  pot->D_410 = r_x4 * r_y * Dt_11 + 6.f * r_x2 * r_y * Dt_9 + 3.f * r_y * Dt_7;
-  pot->D_401 = r_x4 * r_z * Dt_11 + 6.f * r_x2 * r_z * Dt_9 + 3.f * r_z * Dt_7;
-  pot->D_140 = r_y4 * r_x * Dt_11 + 6.f * r_y2 * r_x * Dt_9 + 3.f * r_x * Dt_7;
-  pot->D_041 = r_y4 * r_z * Dt_11 + 6.f * r_y2 * r_z * Dt_9 + 3.f * r_z * Dt_7;
-  pot->D_104 = r_z4 * r_x * Dt_11 + 6.f * r_z2 * r_x * Dt_9 + 3.f * r_x * Dt_7;
-  pot->D_014 = r_z4 * r_y * Dt_11 + 6.f * r_z2 * r_y * Dt_9 + 3.f * r_y * Dt_7;
-  pot->D_320 = r_x3 * r_y2 * Dt_11 + r_x3 * Dt_9 + 3.f * r_x * r_y2 * Dt_9 +
-               3.f * r_x * Dt_7;
-  pot->D_302 = r_x3 * r_z2 * Dt_11 + r_x3 * Dt_9 + 3.f * r_x * r_z2 * Dt_9 +
-               3.f * r_x * Dt_7;
-  pot->D_230 = r_y3 * r_x2 * Dt_11 + r_y3 * Dt_9 + 3.f * r_y * r_x2 * Dt_9 +
-               3.f * r_y * Dt_7;
-  pot->D_032 = r_y3 * r_z2 * Dt_11 + r_y3 * Dt_9 + 3.f * r_y * r_z2 * Dt_9 +
-               3.f * r_y * Dt_7;
-  pot->D_203 = r_z3 * r_x2 * Dt_11 + r_z3 * Dt_9 + 3.f * r_z * r_x2 * Dt_9 +
-               3.f * r_z * Dt_7;
-  pot->D_023 = r_z3 * r_y2 * Dt_11 + r_z3 * Dt_9 + 3.f * r_z * r_y2 * Dt_9 +
-               3.f * r_z * Dt_7;
-  pot->D_311 = r_x3 * r_y * r_z * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
-  pot->D_131 = r_y3 * r_x * r_z * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
-  pot->D_113 = r_z3 * r_x * r_y * Dt_11 + 3.f * r_x * r_y * r_z * Dt_9;
-  pot->D_122 = r_x * r_y2 * r_z2 * Dt_11 + r_x * r_y2 * Dt_9 +
-               r_x * r_z2 * Dt_9 + r_x * Dt_7;
-  pot->D_212 = r_y * r_x2 * r_z2 * Dt_11 + r_y * r_x2 * Dt_9 +
-               r_y * r_z2 * Dt_9 + r_y * Dt_7;
-  pot->D_221 = r_z * r_x2 * r_y2 * Dt_11 + r_z * r_x2 * Dt_9 +
-               r_z * r_y2 * Dt_9 + r_z * Dt_7;
+  pot->D_500 = rx_r5 * Dt_6 + 10.f * rx_r3 * Dt_5 + 15.f * rx_r * Dt_4;
+  pot->D_050 = ry_r5 * Dt_6 + 10.f * ry_r3 * Dt_5 + 15.f * ry_r * Dt_4;
+  pot->D_005 = rz_r5 * Dt_6 + 10.f * rz_r3 * Dt_5 + 15.f * rz_r * Dt_4;
+  pot->D_410 =
+      rx_r4 * ry_r * Dt_6 + 6.f * rx_r2 * ry_r * Dt_5 + 3.f * ry_r * Dt_4;
+  pot->D_401 =
+      rx_r4 * rz_r * Dt_6 + 6.f * rx_r2 * rz_r * Dt_5 + 3.f * rz_r * Dt_4;
+  pot->D_140 =
+      ry_r4 * rx_r * Dt_6 + 6.f * ry_r2 * rx_r * Dt_5 + 3.f * rx_r * Dt_4;
+  pot->D_041 =
+      ry_r4 * rz_r * Dt_6 + 6.f * ry_r2 * rz_r * Dt_5 + 3.f * rz_r * Dt_4;
+  pot->D_104 =
+      rz_r4 * rx_r * Dt_6 + 6.f * rz_r2 * rx_r * Dt_5 + 3.f * rx_r * Dt_4;
+  pot->D_014 =
+      rz_r4 * ry_r * Dt_6 + 6.f * rz_r2 * ry_r * Dt_5 + 3.f * ry_r * Dt_4;
+  pot->D_320 = rx_r3 * ry_r2 * Dt_6 + rx_r3 * Dt_5 + 3.f * rx_r * ry_r2 * Dt_5 +
+               3.f * rx_r * Dt_4;
+  pot->D_302 = rx_r3 * rz_r2 * Dt_6 + rx_r3 * Dt_5 + 3.f * rx_r * rz_r2 * Dt_5 +
+               3.f * rx_r * Dt_4;
+  pot->D_230 = ry_r3 * rx_r2 * Dt_6 + ry_r3 * Dt_5 + 3.f * ry_r * rx_r2 * Dt_5 +
+               3.f * ry_r * Dt_4;
+  pot->D_032 = ry_r3 * rz_r2 * Dt_6 + ry_r3 * Dt_5 + 3.f * ry_r * rz_r2 * Dt_5 +
+               3.f * ry_r * Dt_4;
+  pot->D_203 = rz_r3 * rx_r2 * Dt_6 + rz_r3 * Dt_5 + 3.f * rz_r * rx_r2 * Dt_5 +
+               3.f * rz_r * Dt_4;
+  pot->D_023 = rz_r3 * ry_r2 * Dt_6 + rz_r3 * Dt_5 + 3.f * rz_r * ry_r2 * Dt_5 +
+               3.f * rz_r * Dt_4;
+  pot->D_311 = rx_r3 * ry_r * rz_r * Dt_6 + 3.f * rx_r * ry_r * rz_r * Dt_5;
+  pot->D_131 = ry_r3 * rx_r * rz_r * Dt_6 + 3.f * rx_r * ry_r * rz_r * Dt_5;
+  pot->D_113 = rz_r3 * rx_r * ry_r * Dt_6 + 3.f * rx_r * ry_r * rz_r * Dt_5;
+  pot->D_122 = rx_r * ry_r2 * rz_r2 * Dt_6 + rx_r * ry_r2 * Dt_5 +
+               rx_r * rz_r2 * Dt_5 + rx_r * Dt_4;
+  pot->D_212 = ry_r * rx_r2 * rz_r2 * Dt_6 + ry_r * rx_r2 * Dt_5 +
+               ry_r * rz_r2 * Dt_5 + ry_r * Dt_4;
+  pot->D_221 = rz_r * rx_r2 * ry_r2 * Dt_6 + rz_r * rx_r2 * Dt_5 +
+               rz_r * ry_r2 * Dt_5 + rz_r * Dt_4;
 #endif
 }
 
