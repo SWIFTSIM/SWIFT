@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SESAME_EQUATION_OF_STATE_H
+#ifndef SWIFT_SESAME_EQUATION_OF_STATE_H //### or aneos?
 #define SWIFT_SESAME_EQUATION_OF_STATE_H
 
 /**
@@ -73,6 +73,11 @@ INLINE static void set_SESAME_water(struct SESAME_params *mat,
 INLINE static void set_SS08_water(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Senft & Stewart (2008)
+  mat->mat_id = mat_id;
+}
+INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
+                                        enum eos_planetary_material_id mat_id) {
+  // Stewart et al. (2019)
   mat->mat_id = mat_id;
 }
 

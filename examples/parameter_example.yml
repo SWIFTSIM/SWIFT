@@ -248,25 +248,26 @@ LineOfSight:
 EoS:
   isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
 
-  planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EOS
-  planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EOS
-  planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
-  planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
+  planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EoS
+  planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EoS
+  planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EoS
+  planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EoS
                             # (Optional) Table file paths
-  planetary_HM80_HHe_table_file:        ./EoSTables/planetary_HM80_HHe.txt
-  planetary_HM80_ice_table_file:        ./EoSTables/planetary_HM80_ice.txt
-  planetary_HM80_rock_table_file:       ./EoSTables/planetary_HM80_rock.txt
-  planetary_SESAME_iron_table_file:     ./EoSTables/planetary_SESAME_iron_2140.txt
-  planetary_SESAME_basalt_table_file:   ./EoSTables/planetary_SESAME_basalt_7530.txt
-  planetary_SESAME_water_table_file:    ./EoSTables/planetary_SESAME_water_7154.txt
-  planetary_SS08_water_table_file:      ./EoSTables/planetary_SS08_water.txt
+  planetary_HM80_HHe_table_file:            ./EoSTables/HM80_HHe.txt
+  planetary_HM80_ice_table_file:            ./EoSTables/HM80_ice.txt
+  planetary_HM80_rock_table_file:           ./EoSTables/HM80_rock.txt
+  planetary_SESAME_iron_table_file:         ./EoSTables/SESAME_iron_2140.txt
+  planetary_SESAME_basalt_table_file:       ./EoSTables/SESAME_basalt_7530.txt
+  planetary_SESAME_water_table_file:        ./EoSTables/SESAME_water_7154.txt
+  planetary_SS08_water_table_file:          ./EoSTables/SS08_water.txt
+  planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
 
 # Parameters related to external potentials --------------------------------------------
 
 # Point mass external potentials
 PointMassPotential:
   useabspos:       0                   # 0 -> positions based on centre, 1 -> absolute positions 
-  position:        [50.,50.0,50.]      # location of external point mass (internal units)
+  position:        [50.,50.,50.]       # location of external point mass (internal units)
   mass:            1e10                # mass of external point mass (internal units)
   timestep_mult:   0.03                # Dimensionless pre-factor for the time-step condition
   softening:       0.05                # For point-mass-softened option
@@ -421,9 +422,9 @@ GEARChemistry:
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
-  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
-  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
-  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EoS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EoS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EoS assumed for the star-forming gas.
   gas_fraction:                      0.25      # (Optional) The gas fraction used internally by the model (Defaults to 1).
   KS_normalisation:                  1.515e-4  # Normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # Exponent of the Kennicutt-Schmidt law.
@@ -431,7 +432,7 @@ EAGLEStarFormation:
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
   KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
-  EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
+  EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EoS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
