@@ -150,7 +150,21 @@ In the case $u<1$ and using $f(u)$ given by \ref{eq:fmm:potential}, we can simpl
   \mathsf{\tilde{D}}_{5} &= (-315u^3 + 420u) \times H^{-5}, \nonumber \\
   \mathsf{\tilde{D}}_{6} &= (315u^2 - 1260) \times H^{-6}. \nonumber 
 \end{align}
-We can now write out all the derivatives used in the M2L and M2P kernels:
+These expressions only use low powers of $u$ and, in particular, no terms
+involving $1/u$ as would be the case when using a cubic spline kernel for
+$f(u)$. This makes this choice of softening kernel much faster to evaluate than
+ones using divisions. Similarly, the expressions in the periodic case for $u>1$
+can be simplified to:
+\begin{align}
+  \mathsf{\tilde{D}}_{1} &= \chi r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{2} &= -\chi r^{-2} + \chi' r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{3} &= 3\chi r^{-3} - 3\chi' r^{-2} + \chi'' r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{4} &= -15\chi r^{-4} + 15\chi' r^{-3} - 6\chi''r^{-2} + \chi^{(3)} r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{5} &= 105\chi r^{-5} -105\chi' r^{-4} + 45\chi''r^{-3} - 10\chi^{(3)} r^{-2} + \chi^{(4)} r^{-1}\nonumber, \\
+  \mathsf{\tilde{D}}_{6} &= -945\chi r^{-6} + 945 \chi' r^{-5} -420 \chi'' r^{-4} + 105 \chi^{(3)} r^{-3} - 15\chi^{(4)} r^{-2} +  \chi^{(5)} r^{-1}. \nonumber
+\end{align}
+We can now write out all the derivatives used in the M2L and
+M2P kernels:
 \begin{align}
   \mathsf{D}_{000}(\mathbf{r}) = \varphi (\mathbf{r}, r_s, H) =
     \mathsf{\tilde{D}}_{1} \nonumber

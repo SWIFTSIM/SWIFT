@@ -303,35 +303,55 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
     Dt_1 = derivs.chi_0 * r_inv;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float r_inv2 = r_inv * r_inv;
-    Dt_2 = (r * derivs.chi_1 - derivs.chi_0) * r_inv2;
+
+    /* -chi^0 r_i^2 + chi^1 r_i^1 */
+    Dt_2 = derivs.chi_1 - derivs.chi_0 * r_inv;
+    Dt_2 = Dt_2 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float r_inv3 = r_inv2 * r_inv;
-    Dt_3 =
-        (r * r * derivs.chi_2 - 3.f * r * derivs.chi_1 + 3.f * derivs.chi_0) *
-        r_inv3;
+
+    /* 3chi^0 r_i^3 - 3 chi^1 r_i^2 + chi^2 r_i^1 */
+    Dt_3 = derivs.chi_0 * r_inv - derivs.chi_1;
+    Dt_3 = Dt_3 * 3.f;
+    Dt_3 = Dt_3 * r_inv + derivs.chi_2;
+    Dt_3 = Dt_3 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float r_inv4 = r_inv3 * r_inv;
-    Dt_4 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
-            15.f * r * derivs.chi_1 - 15.f * derivs.chi_0) *
-           r_inv4;
+
+    /* -15chi^0 r_i^4 + 15 chi^1 r_i^3 - 6 chi^2 r_i^2  + chi^3 r_i^1 */
+    Dt_4 = -derivs.chi_0 * r_inv + derivs.chi_1;
+    Dt_4 = Dt_4 * 15.f;
+    Dt_4 = Dt_4 * r_inv - 6.f * derivs.chi_2;
+    Dt_4 = Dt_4 * r_inv + derivs.chi_3;
+    Dt_4 = Dt_4 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float r_inv5 = r_inv4 * r_inv;
-    Dt_5 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
-            45.f * r * r * derivs.chi_2 - 105.f * r * derivs.chi_1 +
-            105.f * derivs.chi_0) *
-           r_inv5;
+
+    /* 105chi^0 r_i^5 - 105 chi^1 r_i^4 + 45 chi^2 r_i^3 - 10 chi^3 r_i^2 +
+     * chi^4 r_i^1 */
+    Dt_5 = derivs.chi_0 * r_inv - derivs.chi_1;
+    Dt_5 = Dt_5 * 105.f;
+    Dt_5 = Dt_5 * r_inv + 45.f * derivs.chi_2;
+    Dt_5 = Dt_5 * r_inv - 10.f * derivs.chi_3;
+    Dt_5 = Dt_5 * r_inv + derivs.chi_4;
+    Dt_5 = Dt_5 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-    const float r_inv6 = r_inv5 * r_inv;
-    Dt_6 = (r * r * r * r * r * derivs.chi_5 -
-            15.f * r * r * r * r * derivs.chi_4 +
-            105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
-            945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
-           r_inv6;
+
+    /* -945chi^0 r_i^6 + 945 chi^1 r_i^5 - 420 chi^2 r_i^4 + 105 chi^3 r_i^3 -
+     * 15 chi^4 r_i^2 + chi^5 r_i^1 */
+    Dt_6 = -derivs.chi_0 * r_inv + derivs.chi_1;
+    Dt_6 = Dt_6 * 945.f;
+    Dt_6 = Dt_6 * r_inv - 420.f * derivs.chi_2;
+    Dt_6 = Dt_6 * r_inv + 105.f * derivs.chi_3;
+    Dt_6 = Dt_6 * r_inv - 15.f * derivs.chi_4;
+    Dt_6 = Dt_6 * r_inv + derivs.chi_5;
+    Dt_6 = Dt_6 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -570,34 +590,53 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
 
     Dt_1 = derivs.chi_0 * r_inv;
 
-    const float r_inv2 = r_inv * r_inv;
-    Dt_2 = (r * derivs.chi_1 - derivs.chi_0) * r_inv2;
+    /* -chi^0 r_i^2 + chi^1 r_i^1 */
+    Dt_2 = derivs.chi_1 - derivs.chi_0 * r_inv;
+    Dt_2 = Dt_2 * r_inv;
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float r_inv3 = r_inv2 * r_inv;
-    Dt_3 =
-        (r * r * derivs.chi_2 - 3.f * r * derivs.chi_1 + 3.f * derivs.chi_0) *
-        r_inv3;
+
+    /* 3chi^0 r_i^3 - 3 chi^1 r_i^2 + chi^2 r_i^1 */
+    Dt_3 = derivs.chi_0 * r_inv - derivs.chi_1;
+    Dt_3 = Dt_3 * 3.f;
+    Dt_3 = Dt_3 * r_inv + derivs.chi_2;
+    Dt_3 = Dt_3 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float r_inv4 = r_inv3 * r_inv;
-    Dt_4 = (r * r * r * derivs.chi_3 - 6.f * r * r * derivs.chi_2 +
-            15.f * r * derivs.chi_1 - 15.f * derivs.chi_0) *
-           r_inv4;
+
+    /* -15chi^0 r_i^4 + 15 chi^1 r_i^3 - 6 chi^2 r_i^2  + chi^3 r_i^1 */
+    Dt_4 = -derivs.chi_0 * r_inv + derivs.chi_1;
+    Dt_4 = Dt_4 * 15.f;
+    Dt_4 = Dt_4 * r_inv - 6.f * derivs.chi_2;
+    Dt_4 = Dt_4 * r_inv + derivs.chi_3;
+    Dt_4 = Dt_4 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float r_inv5 = r_inv4 * r_inv;
-    Dt_5 = (r * r * r * r * derivs.chi_4 - 10.f * r * r * r * derivs.chi_3 +
-            45.f * r * r * derivs.chi_2 - 105.f * r * derivs.chi_1 +
-            105.f * derivs.chi_0) *
-           r_inv5;
+
+    /* 105chi^0 r_i^5 - 105 chi^1 r_i^4 + 45 chi^2 r_i^3 - 10 chi^3 r_i^2 +
+     * chi^4 r_i^1 */
+    Dt_5 = derivs.chi_0 * r_inv - derivs.chi_1;
+    Dt_5 = Dt_5 * 105.f;
+    Dt_5 = Dt_5 * r_inv + 45.f * derivs.chi_2;
+    Dt_5 = Dt_5 * r_inv - 10.f * derivs.chi_3;
+    Dt_5 = Dt_5 * r_inv + derivs.chi_4;
+    Dt_5 = Dt_5 * r_inv;
+
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float r_inv6 = r_inv5 * r_inv;
-    Dt_6 = (r * r * r * r * r * derivs.chi_5 -
-            15.f * r * r * r * r * derivs.chi_4 +
-            105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
-            945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
-           r_inv6;
+
+    /* -945chi^0 r_i^6 + 945 chi^1 r_i^5 - 420 chi^2 r_i^4 + 105 chi^3 r_i^3 -
+     * 15 chi^4 r_i^2 + chi^5 r_i^1 */
+    Dt_6 = -derivs.chi_0 * r_inv + derivs.chi_1;
+    Dt_6 = Dt_6 * 945.f;
+    Dt_6 = Dt_6 * r_inv - 420.f * derivs.chi_2;
+    Dt_6 = Dt_6 * r_inv + 105.f * derivs.chi_3;
+    Dt_6 = Dt_6 * r_inv - 15.f * derivs.chi_4;
+    Dt_6 = Dt_6 * r_inv + derivs.chi_5;
+    Dt_6 = Dt_6 * r_inv;
+
 #endif
   }
 
