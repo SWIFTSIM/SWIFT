@@ -29,7 +29,8 @@ enum partition_type {
   INITPART_VECTORIZE,
   INITPART_METIS_WEIGHT,
   INITPART_METIS_NOWEIGHT,
-  INITPART_METIS_WEIGHT_EDGE
+  INITPART_METIS_WEIGHT_EDGE,
+  INITPART_PEANO
 };
 
 /* Simple descriptions of types for reports. */

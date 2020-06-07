@@ -58,17 +58,20 @@
 #include "engine.h"
 #include "error.h"
 #include "partition.h"
+#include "peano.h"
 #include "restart.h"
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "zoom_region.h"
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
-    "memory and edge balanced cells using particle weights"};
+    "memory and edge balanced cells using particle weights",
+    "peano-hilbert cell ordering"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
@@ -1907,6 +1910,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
  */
 void partition_initial_partition(struct partition *initial_partition,
                                  int nodeID, int nr_nodes, struct space *s) {
+#ifdef WITH_MPI
   ticks tic = getticks();
 
   /* Geometric grid partitioning. */
@@ -1955,7 +1959,7 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
              initial_partition->type == INITPART_METIS_NOWEIGHT) {
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#if (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
     /* Simple k-way partition selected by METIS using cell particle
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
@@ -2023,7 +2027,6 @@ void partition_initial_partition(struct partition *initial_partition,
 
   } else if (initial_partition->type == INITPART_VECTORIZE) {
 
-#if defined(WITH_MPI)
     /* Vectorised selection, guaranteed to work for samples less than the
      * number of cells, but not very clumpy in the selection of regions. */
     int *samplecells = NULL;
@@ -2042,20 +2045,111 @@ void partition_initial_partition(struct partition *initial_partition,
     /* And apply to our cells */
     split_vector(s, nr_nodes, samplecells);
     free(samplecells);
-#else
-    error("SWIFT was not compiled with MPI support");
-#endif
+  } else if (initial_partition->type == INITPART_PEANO) {
+    /* Sort the top level cells onto a Peano-Hilbert curve.
+     * Assign an equal number of top level cells to each node.
+     * This is not weighted in any way, it is purley a spacial ordering. */
+
+    const int nr_cells = s->nr_cells;
+    const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+    const int nbits = 14;
+    const int max_nbits = pow(2, nbits) - 1;
+    struct peano_hilbert_data *peano_keys = NULL;
+    if ((peano_keys = (struct peano_hilbert_data *)malloc(
+             sizeof(struct peano_hilbert_data) * nr_cells)) == NULL)
+      error("Failed to allocate peano keys array.");
+
+    /* Loop over each top level cell and find its Peano-Hilbert key. */
+    for (int n = 0; n < nr_cells; n++) {
+      const struct cell *ci = &s->cells_top[n];
+      const int i = (ci->loc[0] / dim[0]) * max_nbits;
+      const int j = (ci->loc[1] / dim[1]) * max_nbits;
+      const int k = (ci->loc[2] / dim[2]) * max_nbits;
+
+      struct peano_hilbert_data *peano = &peano_keys[n];
+
+      peano->key = peano_hilbert_key(i, j, k, nbits);
+      peano->index = n;
+    }
+
+    /* Count the number of gparts in each top level cell. */
+    const size_t nr_gparts = s->nr_gparts;
+    const size_t total_nr_gparts = s->e->total_nr_gparts;
+    int *gcounts = NULL;
+    if ((gcounts = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+              error("Failed to allocate gcounts buffer.");
+    bzero(gcounts, sizeof(int) * nr_cells);
+
+    int cid;
+    for (size_t k = 0; k < nr_gparts; k++) {
+      const struct gpart *gp = &s->gparts[k];
+
+      if (s->with_zoom_region) {
+        cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2],
+          s->zoom_props, (int)(gp->x[0] * s->iwidth[0]),
+          (int)(gp->x[1] * s->iwidth[1]),
+          (int)(gp->x[2] * s->iwidth[2]));
+      } else {
+        cid =
+          cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
+                     gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
+      }
+      gcounts[cid]++;
+    }
+
+    /* Get all the counts from all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, nr_cells, MPI_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell gpart weights.");
+
+    size_t gcounts_total = 0;
+    for (size_t k = 0; k < nr_cells; k++) {
+      gcounts_total += gcounts[k];
+    }
+    if (gcounts_total != total_nr_gparts) error("Didn't count all gparts");
+
+    /* Sort the top level cells by their Peano-Hilbert key. */
+    qsort(peano_keys, nr_cells, sizeof(struct peano_hilbert_data),
+          peano_compare);
+
+    /* Assign an equal number of top level cells per node. */
+    int count = 0;
+    int current_nodeid = 0;
+    const int step = total_nr_gparts / nr_nodes;
+    struct cell *c;
+    
+    for (int n = 0; n < nr_cells; n++) {
+      const struct peano_hilbert_data *peano = &peano_keys[n];
+      c = &s->cells_top[peano->index];
+
+      c->nodeID = current_nodeid;
+
+      /* Can we move on to the next node? */
+      if (count > step) {
+        count = 0;
+        current_nodeid++;
+      }
+      //if (c->tl_cell_type == void_tl_cell) continue;
+      //count += (int)(gcounts[peano->index]);
+      count += gcounts[peano->index];
+    }
+    free(peano_keys);
+  
   }
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+
+#else
+      error("SWIFT was not compiled with MPI support");
+#endif
 }
 
 /**
  * @brief Initialises the partition and re-partition scheme from the parameter
  *        file.
- *
+ *  
  * @param partition The #partition scheme to initialise.
  * @param repartition The #repartition scheme to initialise.
  * @param params The parsed parameter file.
@@ -2093,6 +2187,9 @@ void partition_init(struct partition *partition,
       break;
     case 'v':
       partition->type = INITPART_VECTORIZE;
+      break;
+    case 'p':
+      partition->type = INITPART_PEANO;
       break;
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
     case 'r':

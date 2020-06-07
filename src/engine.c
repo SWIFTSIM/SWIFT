@@ -3124,30 +3124,30 @@ void engine_makeproxies(struct engine *e) {
 
   /* Some info about the domain */
   //const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-                                cells[0].width[2]};
+  //const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+  //                              cells[0].width[2]};
 
   /* Get some info about the physics */
   //const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   //const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  //const double theta_crit2 = e->gravity_properties->theta_crit2;
   //const double max_mesh_dist = e->mesh->r_cut_max;
   //const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
   /* Distance between centre of the cell and corners */
-  const double r_diag2 = cell_width[0] * cell_width[0] +
-                         cell_width[1] * cell_width[1] +
-                         cell_width[2] * cell_width[2];
-  const double r_diag = 0.5 * sqrt(r_diag2);
+  //const double r_diag2 = cell_width[0] * cell_width[0] +
+  //                       cell_width[1] * cell_width[1] +
+  //                       cell_width[2] * cell_width[2];
+  //const double r_diag = 0.5 * sqrt(r_diag2);
 
   /* Maximal distance from a shifted CoM to centre of cell */
-  const double delta_CoM = engine_max_proxy_centre_frac * r_diag;
+  //const double delta_CoM = engine_max_proxy_centre_frac * r_diag;
 
   /* Maximal distance from shifted CoM to any corner */
-  const double r_max = r_diag + 2. * delta_CoM;
+  //const double r_max = r_diag + 2. * delta_CoM;
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -3165,11 +3165,11 @@ void engine_makeproxies(struct engine *e) {
     /* Loop over all other cells. */
     for (int j = 0; j < nr_cells; j++) {
 
+      /* Early abort  */
+      if (i >= j) continue;
+
       /* Get the cell. */
       struct cell *cj = &cells[j];
-
-      /* Early abort  */
-      if (i == j) continue;
 
       /* Early abort (both same node) */
       if (ci->nodeID == nodeID && cj->nodeID == nodeID)
@@ -3185,18 +3185,18 @@ void engine_makeproxies(struct engine *e) {
       if (with_gravity) {
 
         /* Minimal distance between any two points in the cells */
-        const double min_dist_centres2 = cell_min_dist2_same_size(
-            ci, cj, periodic, dim);
+        //const double min_dist_centres2 = cell_min_dist2_same_size(
+        //    ci, cj, periodic, dim);
 
-        /* Let's now assume the CoMs will shift a bit */
-        const double min_dist_CoM =
-            sqrt(min_dist_centres2) - 2. * delta_CoM;
-        const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
+        ///* Let's now assume the CoMs will shift a bit */
+        //const double min_dist_CoM =
+        //    sqrt(min_dist_centres2) - 2. * delta_CoM;
+        //const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
-        /* We also assume that the softening is negligible compared
-           to the cell size */
-        const double epsilon_i = 0.;
-        const double epsilon_j = 0.;
+        ///* We also assume that the softening is negligible compared
+        //   to the cell size */
+        //const double epsilon_i = 0.;
+        //const double epsilon_j = 0.;
 
         /* Are we beyond the distance where the truncated forces are 0
          * but not too far such that M2L can be used? */
@@ -3210,9 +3210,9 @@ void engine_makeproxies(struct engine *e) {
 
         } else {
 
-          if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                  min_dist_CoM2, epsilon_i,
-                                  epsilon_j))
+          //if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
+          //                        min_dist_CoM2, epsilon_i,
+          //                        epsilon_j))
             proxy_type |= (int)proxy_cell_type_gravity;
         }
       }
