@@ -23,7 +23,7 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRandom testRandomSpacing \
+        testAdiabaticIndex testRandom testRandomSpacing testErfc \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
@@ -36,7 +36,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom testExp \
-                 testSymmetry testThreadpool testRandomSpacing \
+                 testSymmetry testThreadpool testRandomSpacing testErfc \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
@@ -125,6 +125,8 @@ testDump_SOURCES = testDump.c
 testLogger_SOURCES = testLogger.c
 
 testExp_SOURCES = testExp.c
+
+testErfc_SOURCES = testErfc.c
 
 testGravityDerivatives_SOURCES = testGravityDerivatives.c
 

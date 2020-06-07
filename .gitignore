@@ -115,6 +115,7 @@ tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
 tests/testExp
+tests/testErfc
 tests/testKernel
 tests/testKernelGrav
 tests/testKernelLongGrav

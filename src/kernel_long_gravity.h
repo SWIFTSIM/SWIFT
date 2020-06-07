@@ -85,18 +85,28 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
 
   const float exp_u2 = expf(-u2);
 
-  /* Compute erfcf(u) using eq. 7.1.25 of
+  /* Compute erfcf(u) using eq. 7.1.26 of
    * Abramowitz & Stegun, 1972.
    *
    * This has a *relative* error of less than 4e-3 over
-   * the range of interest (0 < u <  5) */
+   * the range of interest (0 < u < 5)
+   *
+   * This is a good approximation to use since we already
+   * need exp(-u2) */
 
-  const float t = 1.f / (1.f + 0.47047f * u);
+  const float t = 1.f / (1.f + 0.3275911f * u);
 
-  /* 0.3480242 * t - 0.0958798 * t^2 + 0.7478556 * t^3 */
-  float a = 0.7478556f;
-  a = a * t - 0.0958798f;
-  a = a * t + 0.3480242f;
+  const float a1 = 0.254829592f;
+  const float a2 = -0.284496736f;
+  const float a3 = 1.421413741f;
+  const float a4 = -1.453152027;
+  const float a5 = 1.061405429f;
+
+  /* a1 * t + a2 * t^2 + a3 * t^3 + a4 * t^4 + a5 * t^5 */
+  float a = a5 * t + a4;
+  a = a * t + a3;
+  a = a * t + a2;
+  a = a * t + a1;
   a = a * t;
 
   const float erfc_u = a * exp_u2;
@@ -199,18 +209,28 @@ kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,
   const float u2 = u * u;
   const float exp_u2 = expf(-u2);
 
-  /* Compute erfcf(u) using eq. 7.1.25 of
+  /* Compute erfcf(u) using eq. 7.1.26 of
    * Abramowitz & Stegun, 1972.
    *
    * This has a *relative* error of less than 4e-3 over
-   * the range of interest (0 < u <  5) */
+   * the range of interest (0 < u < 5)\
+   *
+   * This is a good approximation to use since we already
+   * need exp(-u2) */
 
-  const float t = 1.f / (1.f + 0.47047f * u);
+  const float t = 1.f / (1.f + 0.3275911f * u);
 
-  /* 0.3480242 * t - 0.0958798 * t^2 + 0.7478556 * t^3 */
-  float a = 0.7478556f;
-  a = a * t - 0.0958798f;
-  a = a * t + 0.3480242f;
+  const float a1 = 0.254829592f;
+  const float a2 = -0.284496736f;
+  const float a3 = 1.421413741f;
+  const float a4 = -1.453152027;
+  const float a5 = 1.061405429f;
+
+  /* a1 * t + a2 * t^2 + a3 * t^3 + a4 * t^4 + a5 * t^5 */
+  float a = a5 * t + a4;
+  a = a * t + a3;
+  a = a * t + a2;
+  a = a * t + a1;
   a = a * t;
 
   const float erfc_u = a * exp_u2;
