@@ -747,6 +747,23 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
+  internal_energy_ratio *= p->u;
+
+  /* Now we can use this to 'update' the value of the smoothed pressure. To
+   * truly update this variable, we would need another loop over neighbours
+   * using the new internal energies of everyone, but that's not feasible. */
+  p->pressure_bar *= internal_energy_ratio;
+
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  p->u = max(p->u, floor_u);
+  p->u = max(p->u, min_u);
 
   const float h_inv = 1.f / p->h;
 
@@ -769,26 +786,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf_exact;
     p->pressure_bar *= expf_exact;
   }
-
-  /* Check against entropy floor */
-  const float floor_A = entropy_floor(p, cosmo, floor_props);
-  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
-
-  /* Check against absolute minimum */
-  const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-
-  p->u = max(p->u, floor_u);
-  p->u = max(p->u, min_u);
-
-  /* Now that p->u has been properly bounded, we can use it to apply the
-   * drift for the pressure */
-  internal_energy_ratio *= p->u;
-
-  /* Now we can use this to 'update' the value of the smoothed pressure. To
-   * truly update this variable, we would need another loop over neighbours
-   * using the new internal energies of everyone, but that's not feasible. */
-  p->pressure_bar *= internal_energy_ratio;
 
   /* Compute the new sound speed */
   const float soundspeed =

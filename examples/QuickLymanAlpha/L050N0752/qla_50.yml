@@ -62,7 +62,7 @@ Scheduler:
 
 Restarts:
   onexit:       1
-  delta_hours:  6.0
+  delta_hours:  2.0
   
 # Parameters related to the initial conditions
 InitialConditions:
@@ -72,15 +72,6 @@ InitialConditions:
   cleanup_velocity_factors: 1               # Remove the sqrt(a) factor in the velocities inherited from Gadget
   generate_gas_in_ics: 1                    # Generate gas particles from the DM-only ICs
   cleanup_smoothing_lengths: 1              # Since we generate gas, make use of the (expensive) cleaning-up procedure.
-
-# Parameters of the line-of-sight outputs
-LineOfSight:
-  basename:            los
-  num_along_x:         0
-  num_along_y:         0
-  num_along_z:         100
-  scale_factor_first:  0.1
-  delta_time:          1.1
 
 # Quick Lyman-alpha cooling (EAGLE with fixed primoridal Z)
 QLACooling:

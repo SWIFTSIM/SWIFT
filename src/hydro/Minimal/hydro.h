@@ -705,24 +705,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
-  const float h_inv = 1.f / p->h;
-
-  /* Predict smoothing length */
-  const float w1 = p->force.h_dt * h_inv * dt_drift;
-  if (fabsf(w1) < 0.2f) {
-    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-  } else {
-    p->h *= expf(w1);
-  }
-
-  /* Predict density */
-  const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f) {
-    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-  } else {
-    p->rho *= expf(w2);
-  }
-
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
   const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
@@ -733,6 +715,22 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->u = max(p->u, floor_u);
   p->u = max(p->u, min_u);
+
+  const float h_inv = 1.f / p->h;
+
+  /* Predict smoothing length */
+  const float w1 = p->force.h_dt * h_inv * dt_drift;
+  if (fabsf(w1) < 0.2f)
+    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    p->h *= expf(w1);
+
+  /* Predict density */
+  const float w2 = -hydro_dimension * w1;
+  if (fabsf(w2) < 0.2f)
+    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
+  else
+    p->rho *= expf(w2);
 
   /* Compute the new pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);

@@ -683,6 +683,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict the entropy */
   p->entropy += p->entropy_dt * dt_therm;
 
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+
+  /* Check against absolute minimum */
+  const float min_u = hydro_props->minimal_internal_energy;
+  const float min_A =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, min_u);
+
+  p->entropy = max(p->entropy, floor_A);
+  p->entropy = max(p->entropy, min_A);
+
   const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
@@ -701,17 +712,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
     p->rho_bar *= expf(w2);
   }
-
-  /* Check against entropy floor */
-  const float floor_A = entropy_floor(p, cosmo, floor_props);
-
-  /* Check against absolute minimum */
-  const float min_u = hydro_props->minimal_internal_energy;
-  const float min_A =
-      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, min_u);
-
-  p->entropy = max(p->entropy, floor_A);
-  p->entropy = max(p->entropy, min_A);
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho_bar, p->entropy);

@@ -35,7 +35,6 @@
 
 /* Local includes */
 #include "cooling.h"
-#include "engine.h"
 #include "io_properties.h"
 
 #ifdef HAVE_HDF5

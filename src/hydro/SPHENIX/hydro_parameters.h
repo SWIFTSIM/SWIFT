@@ -71,7 +71,7 @@
 #define hydro_props_default_viscosity_alpha_max 2.0f
 
 /*! Decay length for the viscosity scheme. This is scheme dependent. */
-#define hydro_props_default_viscosity_length 0.05f
+#define hydro_props_default_viscosity_length 0.25f
 
 /* Diffusion parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 

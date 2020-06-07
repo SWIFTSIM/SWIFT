@@ -37,7 +37,6 @@
 
 /* Local includes. */
 #include "const.h"
-#include "cosmology.h"
 #include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"

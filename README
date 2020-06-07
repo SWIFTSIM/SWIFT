@@ -40,7 +40,6 @@ Parameters:
     -u, --fof                         Run Friends-of-Friends algorithm and 
                                       black holes seeding.
     -x, --velociraptor                Run with structure finding.
-    --line-of-sight                   Run with line-of-sight outputs.
     --limiter                         Run with time-step limiter.
     --sync                            Run with time-step synchronization
                                       of particles hit by feedback events.

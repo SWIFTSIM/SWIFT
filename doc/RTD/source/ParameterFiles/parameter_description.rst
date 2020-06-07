@@ -742,8 +742,7 @@ full section would be:
      delta_time:          1.02
      invoke_stf:          1
 
-Showing all the parameters for a basic non-cosmological hydro test-case, one
-would have:
+Showing all the parameters for a basic hydro test-case, one would have:
 
 .. code:: YAML
 
@@ -767,36 +766,6 @@ following pages:
 
 * :ref:`Output_list_label` (to have snapshots not evenly spaced in time),
 * :ref:`Output_selection_label` (to select what particle fields to write).
-
-.. _Parameters_line_of_sight:
-
-Line-of-sight outputs
----------------------
-
-The ``LineOfSight`` section of the parameter file contains all the options related to
-the dump of simulation outputs in the form of HDF5 :ref:`line_of_sight` data to
-be processed by the ``SpecWizard`` tool
-(See `Theuns et al. 1998 <https://ui.adsabs.harvard.edu/abs/1998MNRAS.301..478T/>`_,
-`Tepper-Garcia et al. 2011
-<https://ui.adsabs.harvard.edu/abs/2011MNRAS.413..190T/>`_). The parameters are:
-
-.. code:: YAML
-
-   LineOfSight:
-     basename:            los
-     scale_factor_first:  0.02    # Only used when running in cosmological mode
-     delta_time:          1.02
-     time_first:          0.01    # Only used when running in non-cosmological mode
-     output_list_on:      0       # Overwrite the regular output times with a list of output times
-     num_along_x:         0
-     num_along_y:         0
-     num_along_z:         100
-     allowed_los_range_x: [0, 100.]   # Range along the x-axis where LoS along Y or Z are allowed
-     allowed_los_range_y: [0, 100.]   # Range along the y-axis where LoS along X or Z are allowed
-     allowed_los_range_z: [0, 100.]   # Range along the z-axis where LoS along X or Y are allowed
-     range_when_shooting_down_x: 100. # Range along the x-axis of LoS along x
-     range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
-     range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
 
 .. _Parameters_fof:
 

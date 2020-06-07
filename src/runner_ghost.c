@@ -827,6 +827,10 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 
       if (bpart_is_active(bp, e)) {
 
+        /* Compute the final operations for repositioning of this BH */
+        black_holes_end_reposition(bp, e->black_holes_properties,
+                                   e->physical_constants, e->cosmology);
+
         /* Get particle time-step */
         double dt;
         if (with_cosmology) {
@@ -839,10 +843,6 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
         } else {
           dt = get_timestep(bp->time_bin, e->time_base);
         }
-
-        /* Compute the final operations for repositioning of this BH */
-        black_holes_end_reposition(bp, e->black_holes_properties,
-                                   e->physical_constants, e->cosmology, dt);
 
         /* Compute variables required for the feedback loop */
         black_holes_prepare_feedback(bp, e->black_holes_properties,

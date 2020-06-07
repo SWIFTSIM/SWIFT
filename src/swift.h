@@ -50,7 +50,6 @@
 #include "hashmap.h"
 #include "hydro.h"
 #include "hydro_properties.h"
-#include "line_of_sight.h"
 #include "lock.h"
 #include "logger.h"
 #include "logger_io.h"
