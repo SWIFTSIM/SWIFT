@@ -598,9 +598,10 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for star formation (spart).");
     }
 
-    int zoom_cell_count = 0;
+    /* Properties related to the zoom region. */
     double zoom_region_bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
     const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
+    float dmin_zoom = 0.f;
 
     /* Loop over top level cells twice, second time is for the zoom region. */
     for (int n = 0; n < 2; n++) {
@@ -625,6 +626,7 @@ void space_regrid(struct space *s, int verbose) {
               if (s->with_self_gravity)
                 c->grav.multipole = &s->multipoles_top[cid];
               c->tl_cell_type = tl_cell;
+              c->dmin = dmin;
             } else {
               /* Zoom region top level cells. */
               c = &s->cells_top[cid + zoom_cell_offset];
@@ -637,8 +639,8 @@ void space_regrid(struct space *s, int verbose) {
               if (s->with_self_gravity)
                 c->grav.multipole = &s->multipoles_top[cid + zoom_cell_offset];
               c->tl_cell_type = zoom_tl_cell;
+              c->dmin = dmin_zoom;
             }
-            c->dmin = dmin;  // STU CHECK
             c->depth = 0;
             c->split = 0;
             c->hydro.count = 0;
@@ -681,7 +683,6 @@ void space_regrid(struct space *s, int verbose) {
                  s->zoom_props->loc[2] + s->zoom_props->dim[2] / 2.)) {
 
               /* Tag this top level cell as part of the zoom region. */
-              zoom_cell_count++;
               c->tl_cell_type = void_tl_cell;
 
               /* Update the bounds of the zoom region. */
@@ -716,6 +717,8 @@ void space_regrid(struct space *s, int verbose) {
         for (int l = 0; l < 6; l++)
           s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
         s->zoom_props->tl_cell_offset = zoom_cell_offset;
+        dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
+                s->zoom_props->width[2]);
       }
     }
 
