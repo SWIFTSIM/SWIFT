@@ -1525,20 +1525,48 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
 }
 
 /** Set the given flag for the given cell. */
-__attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
-                                                                uint32_t flag) {
+__attribute__((always_inline)) INLINE static void cell_set_flag(
+    struct cell *c, const uint32_t flag) {
   atomic_or(&c->flags, flag);
+}
+
+INLINE static void cell_recursively_set_flag(struct cell *c,
+                                             const uint32_t flag) {
+
+  /* Set */
+  cell_set_flag(c, flag);
+
+  /* And recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) cell_recursively_set_flag(c->progeny[k], flag);
+    }
+  }
 }
 
 /** Clear the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static void cell_clear_flag(
-    struct cell *c, uint32_t flag) {
+    struct cell *c, const uint32_t flag) {
   atomic_and(&c->flags, ~flag);
+}
+
+INLINE static void cell_recursively_clear_flag(struct cell *c,
+                                               const uint32_t flag) {
+  /* Clear */
+  cell_clear_flag(c, flag);
+
+  /* And recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL)
+        cell_recursively_clear_flag(c->progeny[k], flag);
+    }
+  }
 }
 
 /** Get the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
-    const struct cell *c, uint32_t flag) {
+    const struct cell *c, const uint32_t flag) {
   return (c->flags & flag) > 0;
 }
 

@@ -216,7 +216,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   /* Abort early ? */
   if (c->hydro.count == 0) {
-    cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
+    cell_recursively_clear_flag(c, cell_flag_do_hydro_sub_sort);
     return;
   }
 
@@ -458,7 +458,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
   /* Abort early ? */
   if (c->stars.count == 0) {
-    cell_clear_flag(c, cell_flag_do_stars_sub_sort);
+    cell_recursively_clear_flag(c, cell_flag_do_stars_sub_sort);
     return;
   }
 
