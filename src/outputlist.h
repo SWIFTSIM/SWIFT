@@ -23,10 +23,7 @@
 #include "../config.h"
 
 /* Local includes */
-#include "common_io.h"
 #include "cosmology.h"
-
-#define OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES 8
 
 struct engine;
 
@@ -44,47 +41,27 @@ enum output_list_type {
  */
 struct output_list {
 
-  /* Select output names. */
-  char select_output_names[OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES]
-                          [FIELD_BUFFER_SIZE];
-
   /* Time array */
   double *times;
 
-  /* Select output indices - each index corresponds to a string
-   * in select_output. Chosen to be this instead of an array of
-   * pointers because of restarts. */
-  int *select_output_indices;
-
-  /* Total number of currently used select output names */
-  int select_output_number_of_names;
-
-  /* Size of the time array (i.e. number of outputs) */
+  /* Size of the time array */
   size_t size;
 
   /* Current index */
   size_t cur_ind;
 
-  /* Was the Select Output option used? */
-  int select_output_on;
-
-  /* Is this output list activated? */
-  int output_list_on;
-
   /* Dump on final timestep? */
   int final_step_dump;
 };
 
-void output_list_read_file(struct output_list *output_list,
-                           const char *filename, struct cosmology *cosmo);
+void output_list_read_file(struct output_list *outputlist, const char *filename,
+                           struct cosmology *cosmo);
 void output_list_read_next_time(struct output_list *t, const struct engine *e,
                                 const char *name, integertime_t *ti_next);
-void output_list_get_current_select_output(struct output_list *t,
-                                           char *select_output_name);
 void output_list_init(struct output_list **list, const struct engine *e,
                       const char *name, double *delta_time, double *time_first);
-void output_list_print(const struct output_list *output_list);
-void output_list_clean(struct output_list **output_list);
+void output_list_print(const struct output_list *outputlist);
+void output_list_clean(struct output_list **outputlist);
 void output_list_struct_dump(struct output_list *list, FILE *stream);
 void output_list_struct_restore(struct output_list *list, FILE *stream);
 int output_list_check_duplicates(const struct output_list *list_a,

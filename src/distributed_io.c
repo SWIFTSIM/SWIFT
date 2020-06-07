@@ -50,8 +50,6 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "memuse.h"
-#include "output_list.h"
-#include "output_options.h"
 #include "part.h"
 #include "part_type.h"
 #include "star_formation_io.h"
@@ -248,8 +246,7 @@ void write_output_distributed(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
-  struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
+  struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -356,16 +353,6 @@ void write_output_distributed(struct engine* e,
                          e->s->dim[1] * factor_length,
                          e->s->dim[2] * factor_length};
 
-  /* Determine if we are writing a reduced snapshot, and if so which
-   * output selection type to use */
-  char current_selection_name[FIELD_BUFFER_SIZE] =
-      select_output_header_default_name;
-  if (output_list) {
-    /* Users could have specified a different Select Output scheme for each
-     * snapshot. */
-    output_list_get_current_select_output(output_list, current_selection_name);
-  }
-
   /* Print the relevant information and print status */
   io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
   io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
@@ -404,8 +391,7 @@ void write_output_distributed(struct engine* e,
                      swift_type_count);
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", numFiles);
   io_write_attribute_i(h_grp, "ThisFile", mpi_rank);
-  io_write_attribute_s(h_grp, "OutputType", "FullVolume");
-  io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
+  io_write_attribute_s(h_grp, "OutputType", "Snapshot");
 
   /* Close header */
   H5Gclose(h_grp);
@@ -718,13 +704,13 @@ void write_output_distributed(struct engine* e,
     }
 
     /* Write everything that is not cancelled */
-
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
-      const int should_write = output_options_should_write_field(
-          output_options, current_selection_name, list[i].name,
-          (enum part_type)ptype);
+      char field[PARSER_MAX_LINE_SIZE];
+      sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
+              part_type_names[ptype]);
+      int should_write = parser_get_opt_param_int(params, field, 1);
 
       if (should_write)
         write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],

@@ -26,14 +26,12 @@
 void select_output_engine_init(struct engine *e, struct space *s,
                                struct cosmology *cosmo,
                                struct swift_params *params,
-                               struct output_options *output,
                                struct cooling_function_data *cooling,
                                struct hydro_props *hydro_properties) {
   /* set structures */
   e->s = s;
   e->cooling_func = cooling;
   e->parameter_file = params;
-  e->output_options = output;
   e->cosmology = cosmo;
   e->policy = engine_policy_hydro;
   e->hydro_properties = hydro_properties;
@@ -98,11 +96,8 @@ int main(int argc, char *argv[]) {
   /* parse parameters */
   message("Reading parameters.");
   struct swift_params param_file;
-  const char *input_file = "selectOutputParameters.yml";
+  const char *input_file = "selectOutput.yml";
   parser_read_file(input_file, &param_file);
-
-  struct output_options output_options;
-  output_options_init(&param_file, 0, &output_options);
 
   /* Default unit system */
   message("Initialization of the unit system.");
@@ -154,14 +149,14 @@ int main(int argc, char *argv[]) {
   e.physical_constants = &prog_const;
   sprintf(e.snapshot_base_name, "testSelectOutput");
   sprintf(e.run_name, "Select Output Test");
-  select_output_engine_init(&e, &s, &cosmo, &param_file, &output_options,
-                            &cooling, &hydro_properties);
+  select_output_engine_init(&e, &s, &cosmo, &param_file, &cooling,
+                            &hydro_properties);
 
   /* check output selection */
   message("Checking output parameters.");
   long long N_total[swift_type_count] = {
       (long long)Ngas, (long long)Ngpart, 0, 0, (long long)Nspart, 0};
-  io_check_output_fields(&param_file, N_total, /*with_cosmology=*/0);
+  io_check_output_fields(&param_file, N_total);
 
   /* write output file */
   message("Writing output.");

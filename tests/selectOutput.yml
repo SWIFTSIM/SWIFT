@@ -1,7 +1,12 @@
-Default:
+SelectOutput:
   # Particle Type 0
-  Coordinates_Gas: on   # check if written when specified
-  Velocities_Gas:  off   # check if not written when specified
-  Pot_Gas:         on   # check warning if wrong name
+  Coordinates_Gas: 1   # check if written when specified
+  Velocities_Gas:  0   # check if not written when specified
+  Masses_Gas:     -5   # check warning if not 0 or 1 and if written
+  Pot_Gas:         1   # check warning if wrong name
   # Density_Gas:   1   # check if written when not specified
 
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.

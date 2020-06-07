@@ -51,8 +51,6 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "memuse.h"
-#include "output_list.h"
-#include "output_options.h"
 #include "part.h"
 #include "part_type.h"
 #include "star_formation_io.h"
@@ -870,8 +868,7 @@ void write_output_serial(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
-  struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
+  struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -921,17 +918,6 @@ void write_output_serial(struct engine* e,
                            e->snapshot_invoke_stf, e->time, e->stf_output_count,
                            e->snapshot_output_count, e->snapshot_subdir,
                            e->snapshot_base_name);
-
-  /* Determine if we are writing a reduced snapshot, and if so which
-   * output selection type to use. Can just create a copy of this on
-   * each rank. */
-  char current_selection_name[FIELD_BUFFER_SIZE] =
-      select_output_header_default_name;
-  if (output_list) {
-    /* Users could have specified a different Select Output scheme for each
-     * snapshot. */
-    output_list_get_current_select_output(output_list, current_selection_name);
-  }
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
@@ -1020,8 +1006,7 @@ void write_output_serial(struct engine* e,
                        swift_type_count);
     io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
     io_write_attribute_i(h_grp, "ThisFile", 0);
-    io_write_attribute_s(h_grp, "OutputType", "FullVolume");
-    io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
+    io_write_attribute_s(h_grp, "OutputType", "Snapshot");
 
     /* Close header */
     H5Gclose(h_grp);
@@ -1401,13 +1386,13 @@ void write_output_serial(struct engine* e,
         }
 
         /* Write everything that is not cancelled */
-
         for (int i = 0; i < num_fields; ++i) {
 
           /* Did the user cancel this field? */
-          const int should_write = output_options_should_write_field(
-              output_options, current_selection_name, list[i].name,
-              (enum part_type)ptype);
+          char field[PARSER_MAX_LINE_SIZE];
+          sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE,
+                  list[i].name, part_type_names[ptype]);
+          int should_write = parser_get_opt_param_int(params, field, 1);
 
           if (should_write)
             write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
