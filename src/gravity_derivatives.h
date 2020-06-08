@@ -263,7 +263,7 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
     const float eps_inv6 = eps_inv5 * eps_inv;
-    Dt_7 = eps_inv6 * D_soft_6(u);
+    Dt_6 = eps_inv6 * D_soft_6(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
