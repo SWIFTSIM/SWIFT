@@ -125,7 +125,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   /* Are we allowing tree use below softening? */
   p->use_tree_below_softening =
-      parser_get_opt_param_int(params, "Gravity:use_tree_below_softening", 1);
+      parser_get_opt_param_int(params, "Gravity:use_tree_below_softening", 0);
 
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (p->use_tree_below_softening)
