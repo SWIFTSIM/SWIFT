@@ -38,16 +38,20 @@
  * @param bi First particle (black hole).
  * @param pj Second particle (gas, not updated).
  * @param xpj The extended data of the second particle (not updated).
+ * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param bh_props The properties of the BH scheme
  * @param ti_current Current integer time value (for random numbers).
+ * @param time Current physical time in the simulation.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_density(
     const float r2, const float *dx, const float hi, const float hj,
     struct bpart *bi, const struct part *pj, const struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props, const integertime_t ti_current,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props, const integertime_t ti_current,
     const double time) {
 
   float wi, wi_dx;
@@ -83,19 +87,55 @@ runner_iact_nonsym_bh_gas_density(
   /* Contribution to the smoothed sound speed */
   bi->sound_speed_gas += mj * cj * wi;
 
-  /* Neighbour peculiar drifted velocity */
-  const float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
+  /* Neighbour's (drifted) velocity in the frame of the black hole
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the black hole) */
+  const float dv[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
+                       pj->v[2] - bi->v[2]};
 
-  /* Contribution to the smoothed velocity */
-  bi->velocity_gas[0] += mj * vj[0] * wi;
-  bi->velocity_gas[1] += mj * vj[1] * wi;
-  bi->velocity_gas[2] += mj * vj[2] * wi;
+  /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
+  bi->velocity_gas[0] += mj * dv[0] * wi;
+  bi->velocity_gas[1] += mj * dv[1] * wi;
+  bi->velocity_gas[2] += mj * dv[2] * wi;
 
-  /* Contribution to the circular valocity */
-  const float dv[3] = {bi->v[0] - vj[0], bi->v[1] - vj[1], bi->v[2] - vj[2]};
+  /* Contribution to the specific angular momentum of gas, which is later
+   * converted to the circular velocity at the smoothing length */
   bi->circular_velocity_gas[0] += mj * wi * (dx[1] * dv[2] - dx[2] * dv[1]);
   bi->circular_velocity_gas[1] += mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
   bi->circular_velocity_gas[2] += mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
+
+  if (bh_props->multi_phase_bondi) {
+    /* Contribution to BH accretion rate
+     *
+     * i) Calculate denominator in Bondi formula */
+    const double gas_v_phys[3] = {dv[0] * cosmo->a_inv, dv[1] * cosmo->a_inv,
+                                  dv[2] * cosmo->a_inv};
+    const double gas_v_norm2 = gas_v_phys[0] * gas_v_phys[0] +
+                               gas_v_phys[1] * gas_v_phys[1] +
+                               gas_v_phys[2] * gas_v_phys[2];
+
+    const double gas_c_phys = cj * cosmo->a_factor_sound_speed;
+    const double gas_c_phys2 = gas_c_phys * gas_c_phys;
+    const double denominator2 = gas_v_norm2 + gas_c_phys2;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure that the denominator is strictly positive */
+    if (denominator2 <= 0)
+      error(
+          "Invalid denominator for BH particle %lld and gas particle "
+          "%lld in Bondi rate calculation.",
+          bi->id, pj->id);
+#endif
+    const double denominator_inv = 1. / sqrt(denominator2);
+
+    /* ii) Contribution of gas particle to the BH accretion rate
+     *     (without constant pre-factor)
+     *     N.B.: rhoj is the weighted contribution to BH gas density. */
+    const float rhoj = mj * wi * cosmo->a3_inv;
+    bi->accretion_rate +=
+        rhoj * denominator_inv * denominator_inv * denominator_inv;
+
+  } /* End of accretion contribution calculation */
 
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
@@ -120,9 +160,12 @@ runner_iact_nonsym_bh_gas_density(
  * @param bi First particle (black hole).
  * @param pj Second particle (gas)
  * @param xpj The extended data of the second particle.
+ * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param bh_props The properties of the BH scheme
  * @param ti_current Current integer time value (for random numbers).
+ * @param time Current physical time in the simulation.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
@@ -131,6 +174,7 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
                                   struct xpart *xpj, const int with_cosmology,
                                   const struct cosmology *cosmo,
                                   const struct gravity_props *grav_props,
+                                  const struct black_holes_props *bh_props,
                                   const integertime_t ti_current,
                                   const double time) {
 
@@ -152,26 +196,46 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
       kernel_gravity_softening_plummer_equivalent_inv *
-      const_max_repositioning_distance_ratio *
-      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      bh_props->max_reposition_distance_ratio *
+      bh_props->max_reposition_distance_ratio * grav_props->epsilon_baryon_cur *
       grav_props->epsilon_baryon_cur;
 
-  /* This gas neighbour is close enough that we can consider it's potential
-     for repositioning */
+  /* Is this gas neighbour close enough that we can consider its potential
+     for repositioning? */
   if (r2 < max_dist_repos2) {
 
-    /* Compute relative peculiar velocity between the two BHs
-     * Recall that in SWIFT v is (v_pec * a) */
-    const float delta_v[3] = {bi->v[0] - pj->v[0], bi->v[1] - pj->v[1],
-                              bi->v[2] - pj->v[2]};
-    const float v2 = delta_v[0] * delta_v[0] + delta_v[1] * delta_v[1] +
-                     delta_v[2] * delta_v[2];
+    /* Flag to check whether neighbour is slow enough to be considered
+     * as repositioning target. Always true if velocity cut is switched off. */
+    int neighbour_is_slow_enough = 1;
+    if (bh_props->with_reposition_velocity_threshold) {
 
-    const float v2_pec = v2 * cosmo->a2_inv;
+      /* Compute relative peculiar velocity between the two BHs
+       * Recall that in SWIFT v is (v_pec * a) */
+      const float delta_v[3] = {bi->v[0] - pj->v[0], bi->v[1] - pj->v[1],
+                                bi->v[2] - pj->v[2]};
+      const float v2 = delta_v[0] * delta_v[0] + delta_v[1] * delta_v[1] +
+                       delta_v[2] * delta_v[2];
+      const float v2_pec = v2 * cosmo->a2_inv;
 
-    /* Check the velocity criterion */
-    if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
+      /* Compute the maximum allowed velocity */
+      float v2_max = bh_props->max_reposition_velocity_ratio *
+                     bh_props->max_reposition_velocity_ratio *
+                     bi->sound_speed_gas * bi->sound_speed_gas;
 
+      /* If desired, limit the value of the threshold (v2_max) to be no
+       * smaller than a user-defined value */
+      if (bh_props->min_reposition_velocity_threshold > 0) {
+        const float v2_min_thresh =
+            bh_props->min_reposition_velocity_threshold *
+            bh_props->min_reposition_velocity_threshold;
+        v2_max = max(v2_max, v2_min_thresh);
+      }
+
+      /* Is the neighbour too fast to jump to? */
+      if (v2_pec >= v2_max) neighbour_is_slow_enough = 0;
+    }
+
+    if (neighbour_is_slow_enough) {
       const float potential = pj->black_holes_data.potential;
 
       /* Is the potential lower? */
@@ -235,6 +299,7 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
  * @param bj Second particle (black hole)
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param bh_props The properties of the BH scheme
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
@@ -243,6 +308,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  struct bpart *bi, struct bpart *bj,
                                  const struct cosmology *cosmo,
                                  const struct gravity_props *grav_props,
+                                 const struct black_holes_props *bh_props,
                                  const integertime_t ti_current) {
 
   /* Compute relative peculiar velocity between the two BHs
@@ -258,17 +324,38 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
       kernel_gravity_softening_plummer_equivalent_inv *
-      const_max_repositioning_distance_ratio *
-      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      bh_props->max_reposition_distance_ratio *
+      bh_props->max_reposition_distance_ratio * grav_props->epsilon_baryon_cur *
       grav_props->epsilon_baryon_cur;
 
-  /* This BH neighbour is close enough that we can consider it's potential
-     for repositioning */
+  /* Is this BH neighbour close enough that we can consider its potential
+     for repositioning? */
   if (r2 < max_dist_repos2) {
 
-    /* Check the velocity criterion */
-    if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
+    /* Flag to check whether neighbour is slow enough to be considered
+     * as repositioning target. Always true if velocity cut switched off */
+    int neighbour_is_slow_enough = 1;
+    if (bh_props->with_reposition_velocity_threshold) {
 
+      /* Compute the maximum allowed velocity */
+      float v2_max = bh_props->max_reposition_velocity_ratio *
+                     bh_props->max_reposition_velocity_ratio *
+                     bi->sound_speed_gas * bi->sound_speed_gas;
+
+      /* If desired, limit the value of the threshold (v2_max) to be no
+       * smaller than a user-defined value */
+      if (bh_props->min_reposition_velocity_threshold > 0) {
+        const float v2_min_thresh =
+            bh_props->min_reposition_velocity_threshold *
+            bh_props->min_reposition_velocity_threshold;
+        v2_max = max(v2_max, v2_min_thresh);
+      }
+
+      /* Is the neighbour too fast to jump to? */
+      if (v2_pec >= v2_max) neighbour_is_slow_enough = 0;
+    }
+
+    if (neighbour_is_slow_enough) {
       const float potential = bj->reposition.potential;
 
       /* Is the potential lower? */
@@ -285,16 +372,19 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   /* Find the most massive of the two BHs */
   float M = bi->subgrid_mass;
+  float h = hi;
   if (bj->subgrid_mass > M) {
     M = bj->subgrid_mass;
+    h = hj;
   }
 
   /* (Square of) max swallowing distance allowed based on the softening */
   const float max_dist_merge2 =
       kernel_gravity_softening_plummer_equivalent_inv *
       kernel_gravity_softening_plummer_equivalent_inv *
-      const_max_merging_distance_ratio * const_max_merging_distance_ratio *
-      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
+      bh_props->max_merging_distance_ratio *
+      bh_props->max_merging_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
 
   const float G_Newton = grav_props->G_Newton;
 
@@ -305,10 +395,40 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
   if ((bj->subgrid_mass < bi->subgrid_mass) ||
       (bj->subgrid_mass == bi->subgrid_mass && bj->id < bi->id)) {
 
-    /* Maximum velocity difference between BHs allowed to merge */
-    const float v2_threshold = 2.f * G_Newton * M / sqrt(r2);
+    /* Merge if gravitationally bound AND if within max distance
+     * Note that we use the kernel support here as the size and not just the
+     * smoothing length */
 
-    /* Merge if gravitationally bound AND if within max distance */
+    /* Maximum velocity difference between BHs allowed to merge */
+    float v2_threshold;
+
+    if (bh_props->merger_threshold_type == 0) {
+
+      /* 'Old-style' merger threshold using circular velocity at the
+       * edge of the more massive BH's kernel */
+      v2_threshold = G_Newton * M / (kernel_gamma * h);
+    } else {
+
+      /* Arguably better merger threshold using the escape velocity at
+       * the distance of the lower-mass BH */
+      const float r_12 = sqrt(r2);
+
+      if ((bh_props->merger_threshold_type == 1) &&
+          (r_12 < grav_props->epsilon_baryon_cur)) {
+
+        /* If BHs are within softening range, take this into account */
+        float w_grav;
+        kernel_grav_pot_eval(r_12 / grav_props->epsilon_baryon_cur, &w_grav);
+        const float r_mod = w_grav / grav_props->epsilon_baryon_cur;
+        v2_threshold = 2.f * G_Newton * M / (r_mod);
+
+      } else {
+
+        /* Standard formula if BH interactions are not softened */
+        v2_threshold = 2.f * G_Newton * M / (r_12);
+      }
+    } /* Ends sections for different merger thresholds */
+
     if ((v2_pec < v2_threshold) && (r2 < max_dist_merge2)) {
 
       /* This particle is swallowed by the BH with the largest ID of all the
@@ -346,6 +466,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param with_cosmology Are we doing a cosmological run?
  * @param cosmo The cosmological model.
  * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param bh_props The properties of the BH scheme
  * @param ti_current Current integer time value (for random numbers).
  * @param time current physical time in the simulation
  */
@@ -356,6 +477,7 @@ runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
                                    struct xpart *xpj, const int with_cosmology,
                                    const struct cosmology *cosmo,
                                    const struct gravity_props *grav_props,
+                                   const struct black_holes_props *bh_props,
                                    const integertime_t ti_current,
                                    const double time) {
 

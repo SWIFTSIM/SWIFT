@@ -4,7 +4,7 @@ and phases are the same as used in the original suite. The only
 difference is the file format, adapted for SWIFT.
 
 Compared to the original EAGLE runs of Schaye et al. 2015),
-the following changes have been made:
+the following changes have been made (at standard resolution):
 
  - The dark matter softening lengths have been increased to 1.3
    pkpc and 3.32 ckpc. The comoving baryon softening lengths have
@@ -23,6 +23,9 @@ the following changes have been made:
    distribution and not using a fixed delay of 30 Myr any more.
  - The black hole accretion rate is now limited to 100% of the
    Eddington rate (from 100/h = 150 %).
+ - The circular velocity threshold for BH mergers is measured
+   at the actual distance linking the BHs not at the kernel support
+   length any more.
 
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided

@@ -118,6 +118,7 @@ labels = [
     ["fof_search_tree:", 2],
     ["engine_launch: \(fof\)", 2],
     ["engine_launch: \(fof comms\)", 2],
+    ["do_line_of_sight:", 0],
 ]
 times = np.zeros(len(labels))
 counts = np.zeros(len(labels))
