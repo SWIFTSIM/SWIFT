@@ -879,6 +879,8 @@ static INLINE void runner_dopair_grav_pm_full(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
+  const float multi_epsilon = multi_j->max_softening;
+
   /* Loop over all particles in ci... */
 #ifndef SWIFT_DEBUG_CHECKS
 #pragma omp simd
@@ -915,7 +917,7 @@ static INLINE void runner_dopair_grav_pm_full(
     const float z_i = z[pid];
 
     /* Some powers of the softening length */
-    const float h_i = epsilon[pid];
+    const float h_i = max(epsilon[pid], multi_epsilon);
     const float h_inv_i = 1.f / h_i;
 
     /* Distance to the Multipole */
@@ -1020,6 +1022,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
+  const float multi_epsilon = multi_j->max_softening;
+
   /* Loop over all particles in ci... */
 #ifndef SWIFT_DEBUG_CHECKS
 #pragma omp simd
@@ -1056,7 +1060,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float z_i = z[pid];
 
     /* Some powers of the softening length */
-    const float h_i = epsilon[pid];
+    const float h_i = max(epsilon[pid], multi_epsilon);
     const float h_inv_i = 1.f / h_i;
 
     /* Distance to the Multipole */
