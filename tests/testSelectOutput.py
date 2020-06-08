@@ -1,22 +1,22 @@
 ###############################################################################
- # This file is part of SWIFT.
- # Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
- #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- # 
- # This program is free software: you can redistribute it and/or modify
- # it under the terms of the GNU Lesser General Public License as published
- # by the Free Software Foundation, either version 3 of the License, or
- # (at your option) any later version.
- # 
- # This program is distributed in the hope that it will be useful,
- # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- # GNU General Public License for more details.
- # 
- # You should have received a copy of the GNU Lesser General Public License
- # along with this program.  If not, see <http://www.gnu.org/licenses/>.
- # 
- ##############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+#                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
 
 # Check the output done with swift
 
@@ -47,8 +47,8 @@ if "Densities" not in part0:
 with open(log_filename, "r") as f:
     data = f.read()
 
-if "SelectOutput:Masses_Gas" not in data:
-    raise Exception("Input error in `SelectOuput:Masses_Gas` not detected")
+if "Default:Masses_Gas" not in data:
+    raise Exception("Input error in `Default:Masses_Gas` not detected")
 
-if "SelectOutput:Pot_Gas" not in data:
+if "Default:Pot_Gas" not in data:
     raise Exception("Parameter name error not detected for `SelectOutput:Pot_Gas`")
