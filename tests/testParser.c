@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_string(&param_file, "MetaData:run_name", run_name_1,
                               "Untitled SWIFT simulation");
   parser_get_opt_param_string(&param_file, "MetaData:run_name", run_name_2,
-                              "banana");
+                              "Untitled SWIFT simulation");
   assert(strcmp(run_name_1, run_name_2) == 0);
 
   return 0;
