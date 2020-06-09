@@ -2532,11 +2532,13 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology) {
 /**
  * @brief Create the subdirectory for snapshots if the user demanded one.
  *
+ * Does nothing if the directory is '.'
+ *
  * @param dirname The name of the directory.
  */
 void io_make_snapshot_subdir(const char* dirname) {
 
-  if (strnlen(dirname, PARSER_MAX_LINE_SIZE) > 0) {
+  if (strcmp(dirname, ".") != 0 && strnlen(dirname, PARSER_MAX_LINE_SIZE) > 0) {
     safe_checkdir(dirname, /*create=*/1);
   }
 }
