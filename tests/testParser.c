@@ -208,7 +208,6 @@ int main(int argc, char *argv[]) {
   assert(haveoptwords1 == 0);
   assert(haveoptwords2 == 1);
 
-
   /* Issue 681, parser_get_opt_param_string returns same value. */
   char run_name_1[80];
   char run_name_2[80];
