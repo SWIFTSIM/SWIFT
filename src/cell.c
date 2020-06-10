@@ -5467,6 +5467,43 @@ void cell_check_sort_flags(const struct cell *c) {
 }
 
 /**
+ * @brief Checks that a cell and all its progenies have cleared their drift
+ * flags.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param c The #cell to check.
+ */
+void cell_check_drift_flags(const struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const int do_hydro_drift = cell_get_flag(c, cell_flag_do_hydro_drift);
+  const int do_hydro_sub_drift = cell_get_flag(c, cell_flag_do_hydro_sub_drift);
+  const int do_stars_sub_drift = cell_get_flag(c, cell_flag_do_stars_sub_drift);
+
+  if (do_hydro_drift)
+    error("cell %d has a hydro drift flag set. Node=%d depth=%d maxdepth=%d",
+          c->cellID, c->nodeID, c->depth, c->maxdepth);
+
+  if (do_hydro_sub_drift)
+    error(
+        "cell %d has a hydro sub_drift flag set. Node=%d depth=%d maxdepth=%d",
+        c->cellID, c->nodeID, c->depth, c->maxdepth);
+
+  if (do_stars_sub_drift)
+    error(
+        "cell %d has a stars sub_drift flag set. Node=%d depth=%d maxdepth=%d",
+        c->cellID, c->nodeID, c->depth, c->maxdepth);
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) cell_check_drift_flags(c->progeny[k]);
+    }
+  }
+#endif
+}
+
+/**
  * @brief Recursively update the pointer and counter for #spart after the
  * addition of a new particle.
  *

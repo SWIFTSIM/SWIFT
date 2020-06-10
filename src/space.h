@@ -374,6 +374,7 @@ void space_check_timesteps(const struct space *s);
 void space_check_limiter(struct space *s);
 void space_check_swallow(struct space *s);
 void space_check_sort_flags(struct space *s);
+void space_check_drift_flags(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         const int periodic, const int with_DM_background,

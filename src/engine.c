@@ -1814,6 +1814,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
   }
 
+  space_check_drift_flags(e->s);
   space_check_sort_flags(e->s);
 #endif
 
@@ -2704,6 +2705,7 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
+  space_check_drift_flags(e->s);
   space_check_sort_flags(e->s);
   space_check_swallow(e->s);
 #endif
