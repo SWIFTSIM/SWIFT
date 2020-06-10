@@ -2848,6 +2848,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
 
   /* Also activate the super-level task */
   scheduler_activate(s, c->hydro.super->hydro.sorts);
+  if (c->nodeID == engine_rank) cell_activate_drift_part(c->hydro.super, s);
 }
 
 /**
@@ -2904,6 +2905,7 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
   /* Also activate the super-level task */
   scheduler_activate(s, c->hydro.super->stars.sorts);
+  if (c->nodeID == engine_rank) cell_activate_drift_spart(c->hydro.super, s);
 }
 
 /**
