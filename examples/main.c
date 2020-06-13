@@ -1298,14 +1298,14 @@ int main(int argc, char *argv[]) {
     engine_split(&e, &initial_partition);
     /* Turn off the logger to avoid writing the communications */
     if (with_logger) e.policy &= ~engine_policy_logger;
-    
+
     engine_redistribute(&e);
     /* Turn it back on */
     if (with_logger) e.policy |= engine_policy_logger;
 #endif
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
-    
+
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
     if (e.policy & engine_policy_logger) {
@@ -1322,7 +1322,7 @@ int main(int argc, char *argv[]) {
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
   }
-  
+
   /* Legend */
   if (myrank == 0) {
     printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",

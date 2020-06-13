@@ -3,10 +3,10 @@
 
 #include <float.h>
 
-#include "engine.h"
-#include "space.h"
 #include "cell.h"
+#include "engine.h"
 #include "proxy.h"
+#include "space.h"
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -71,7 +71,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[2], 1, MPI_DOUBLE, MPI_MIN,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[3], 1, MPI_DOUBLE, MPI_MAX,
-                MPI_COMM_WORLD);   
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[4], 1, MPI_DOUBLE, MPI_MIN,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[5], 1, MPI_DOUBLE, MPI_MAX,
@@ -101,15 +101,15 @@ void construct_zoom_region(struct space *s, int verbose) {
 
   if (verbose)
     message("zoom loc: [%f %f %f] zoom dim: [%f %f %f]", s->zoom_props->loc[0],
-            s->zoom_props->loc[1], s->zoom_props->loc[2],
-            s->zoom_props->dim[0], s->zoom_props->dim[1],
-            s->zoom_props->dim[2]);
+            s->zoom_props->loc[1], s->zoom_props->loc[2], s->zoom_props->dim[0],
+            s->zoom_props->dim[1], s->zoom_props->dim[2]);
 }
 
 void check_zoom_region(const struct space *s, const int verbose) {
   if (verbose) {
-    message("top level zoom cell dimensions [ %i %i %i ].", s->zoom_props->cdim[0],
-			s->zoom_props->cdim[1], s->zoom_props->cdim[2]);
+    message("top level zoom cell dimensions [ %i %i %i ].",
+            s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+            s->zoom_props->cdim[2]);
     message(
         "zoom region centered on [ %.3f %.3f %.3f ] with dimensions [ %.3f "
         "%.3f %.3f ]",
@@ -118,9 +118,10 @@ void check_zoom_region(const struct space *s, const int verbose) {
   }
 }
 
-int cell_getid_zoom(const int cdim[3], const double x, const double y, const double z,
-	const struct zoom_region_properties *zoom_props,
-	const int i, const int j, const int k) {
+int cell_getid_zoom(const int cdim[3], const double x, const double y,
+                    const double z,
+                    const struct zoom_region_properties *zoom_props,
+                    const int i, const int j, const int k) {
 
   /* Properties of the zoom region. */
   const int zoom_cell_offset = zoom_props->tl_cell_offset;
@@ -144,14 +145,14 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y, const dou
                    (z - zoom_region_bounds[4]) * ih_z_zoom);
     cell_id = zoom_cell_offset + zoom_index;
 #ifdef SWIFT_DEBUG_CHECKS
-  if (zoom_index < 0 || zoom_index >= cdim[0]*cdim[1]*cdim[2])
-    error("zoom_index out of range %i (%f %f %f)", cell_id, x, y, z);
+    if (zoom_index < 0 || zoom_index >= cdim[0] * cdim[1] * cdim[2])
+      error("zoom_index out of range %i (%f %f %f)", cell_id, x, y, z);
 #endif
   } else {
     cell_id = cell_getid(cdim, i, j, k);
 #ifdef SWIFT_DEBUG_CHECKS
-  if (cell_id < 0 || cell_id >= cdim[0]*cdim[1]*cdim[2])
-    error("cell_id out of range %i (i:%i j:%i k:%i) (x:%f y:%f z:%f)",
+    if (cell_id < 0 || cell_id >= cdim[0] * cdim[1] * cdim[2])
+      error("cell_id out of range %i (i:%i j:%i k:%i) (x:%f y:%f z:%f)",
             cell_id, i, j, k, x, y, z);
 #endif
   }
@@ -169,23 +170,24 @@ void makeproxies_between_top_levels(struct engine *e) {
   const struct space *s = e->s;
 
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  //const int periodic = s->periodic; 
+  // const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
   const int nr_cells = cdim[0] * cdim[1] * cdim[2];
-  const int nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
+  const int nr_zoom_cells =
+      s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
 
   struct proxy *proxies = e->proxies;
-//
-//  /* Some info about the domain */
-//  //const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-//  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-//  const int periodic = s->periodic;
-//  //const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-//  //                              cells[0].width[2]};
-//
+  //
+  //  /* Some info about the domain */
+  //  //const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  //  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  //  const int periodic = s->periodic;
+  //  //const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+  //  //                              cells[0].width[2]};
+  //
   /* Get some info about the physics */
-//  //const int with_hydro = (e->policy & engine_policy_hydro);
-  //const int with_gravity = (e->policy & engine_policy_self_gravity);
+  //  //const int with_hydro = (e->policy & engine_policy_hydro);
+  // const int with_gravity = (e->policy & engine_policy_self_gravity);
   int proxy_type = (int)proxy_cell_type_gravity;
 
   /* Prepare the proxies and the proxy index. */
@@ -195,7 +197,7 @@ void makeproxies_between_top_levels(struct engine *e) {
   for (int i = 0; i < nr_zoom_cells; i++) {
 
     /* Get the zoom top level cell. */
-    struct cell *ci = &cells[i+s->zoom_props->tl_cell_offset];
+    struct cell *ci = &cells[i + s->zoom_props->tl_cell_offset];
 
     /* Loop over all non top level zoom cells. */
     for (int j = 0; j < nr_cells; j++) {
@@ -206,12 +208,10 @@ void makeproxies_between_top_levels(struct engine *e) {
       if (cj->tl_cell_type != tl_cell_neighbour) continue;
 
       /* Early abort (both same node) */
-      if (ci->nodeID == nodeID && cj->nodeID == nodeID)
-        continue;
+      if (ci->nodeID == nodeID && cj->nodeID == nodeID) continue;
 
       /* Early abort (both foreign node) */
-      if (ci->nodeID != nodeID && cj->nodeID != nodeID)
-        continue;
+      if (ci->nodeID != nodeID && cj->nodeID != nodeID) continue;
 
       /* Add to proxies? */
       if (ci->nodeID == nodeID && cj->nodeID != nodeID) {
@@ -222,8 +222,7 @@ void makeproxies_between_top_levels(struct engine *e) {
             error("Maximum number of proxies exceeded.");
 
           /* Ok, start a new proxy for this pair of nodes */
-          proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                     cj->nodeID);
+          proxy_init(&proxies[e->nr_proxies], e->nodeID, cj->nodeID);
 
           /* Store the information */
           e->proxy_ind[cj->nodeID] = e->nr_proxies;
@@ -253,8 +252,7 @@ void makeproxies_between_top_levels(struct engine *e) {
             error("Maximum number of proxies exceeded.");
 
           /* Ok, start a new proxy for this pair of nodes */
-          proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                     ci->nodeID);
+          proxy_init(&proxies[e->nr_proxies], e->nodeID, ci->nodeID);
 
           /* Store the information */
           e->proxy_ind[ci->nodeID] = e->nr_proxies;
@@ -288,19 +286,23 @@ void makeproxies_between_top_levels(struct engine *e) {
 #endif
 }
 
-double cell_min_dist2_diff_size(
-    const struct cell *restrict ci, const struct cell *restrict cj,
-    const int periodic, const double dim[3]) {
+double cell_min_dist2_diff_size(const struct cell *restrict ci,
+                                const struct cell *restrict cj,
+                                const int periodic, const double dim[3]) {
 
-  const double cix = ci->loc[0] + ci->width[0]/2.;
-  const double ciy = ci->loc[1] + ci->width[1]/2.;
-  const double ciz = ci->loc[2] + ci->width[2]/2.;
-  const double ci_diag2 = ci->width[0]/2. * ci->width[0]/2. + ci->width[1]/2. * ci->width[1]/2. + ci->width[2]/2. * ci->width[2]/2.;
+  const double cix = ci->loc[0] + ci->width[0] / 2.;
+  const double ciy = ci->loc[1] + ci->width[1] / 2.;
+  const double ciz = ci->loc[2] + ci->width[2] / 2.;
+  const double ci_diag2 = ci->width[0] / 2. * ci->width[0] / 2. +
+                          ci->width[1] / 2. * ci->width[1] / 2. +
+                          ci->width[2] / 2. * ci->width[2] / 2.;
 
-  const double cjx = cj->loc[0] + cj->width[0]/2.;
-  const double cjy = cj->loc[1] + cj->width[1]/2.;
-  const double cjz = cj->loc[2] + cj->width[2]/2.;
-  const double cj_diag2 = cj->width[0]/2. * cj->width[0]/2. + cj->width[1]/2. * cj->width[1]/2. + cj->width[2]/2. * cj->width[2]/2.;
+  const double cjx = cj->loc[0] + cj->width[0] / 2.;
+  const double cjy = cj->loc[1] + cj->width[1] / 2.;
+  const double cjz = cj->loc[2] + cj->width[2] / 2.;
+  const double cj_diag2 = cj->width[0] / 2. * cj->width[0] / 2. +
+                          cj->width[1] / 2. * cj->width[1] / 2. +
+                          cj->width[2] / 2. * cj->width[2] / 2.;
 
   if (periodic) {
 
@@ -321,15 +323,16 @@ double cell_min_dist2_diff_size(
   }
 }
 
-double cell_min_dist2(
-    const struct cell *restrict ci, const struct cell *restrict cj,
-    const int periodic, const double dim[3]) {
+double cell_min_dist2(const struct cell *restrict ci,
+                      const struct cell *restrict cj, const int periodic,
+                      const double dim[3]) {
 
   double dist2;
 
   if (ci->tl_cell_type <= 1 && cj->tl_cell_type <= 1) {
     dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
-  } else if (ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == zoom_tl_cell){
+  } else if (ci->tl_cell_type == zoom_tl_cell &&
+             cj->tl_cell_type == zoom_tl_cell) {
     dist2 = cell_min_dist2_same_size(ci, cj, 0, dim);
   } else {
     dist2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
@@ -338,8 +341,9 @@ double cell_min_dist2(
   return dist2;
 }
 
-void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data, int num_elements,
-                                           void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
+                                                             int num_elements,
+                                                             void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -374,8 +378,7 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data, int
       if (cj->tl_cell_type != tl_cell_neighbour) continue;
 
       /* Avoid duplicates, empty cells and completely foreign pairs */
-      if (cj->grav.count == 0 ||
-          (ci->nodeID != nodeID && cj->nodeID != nodeID))
+      if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
 
       /* Recover the multipole information */
@@ -388,7 +391,8 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data, int
         error("Multipole of cj was not exchanged properly via the proxies");
 
       /* Minimal distance between any pair of particles */
-      const double min_radius2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
+      const double min_radius2 =
+          cell_min_dist2_diff_size(ci, cj, periodic, dim);
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (periodic && min_radius2 > max_distance2) continue;
@@ -398,52 +402,52 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data, int
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
-            /* Let's cross-check that we had a proxy for that cell */
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+        /* Let's cross-check that we had a proxy for that cell */
+        if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[cj->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", cj->nodeID);
+          /* Find the proxy for this node */
+          const int proxy_id = e->proxy_ind[cj->nodeID];
+          if (proxy_id < 0)
+            error("No proxy exists for that foreign node %d!", cj->nodeID);
 
-              const struct proxy *p = &e->proxies[proxy_id];
+          const struct proxy *p = &e->proxies[proxy_id];
 
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == cj) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cjd);
-            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[ci->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == ci) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cid);
+          /* Check whether the cell exists in the proxy */
+          int n = 0;
+          for (; n < p->nr_cells_in; n++)
+            if (p->cells_in[n] == cj) {
+              break;
             }
+          if (n == p->nr_cells_in)
+            error(
+                "Cell %d not found in the proxy but trying to construct "
+                "grav task!",
+                cjd);
+        } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+          /* Find the proxy for this node */
+          const int proxy_id = e->proxy_ind[ci->nodeID];
+          if (proxy_id < 0)
+            error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+          const struct proxy *p = &e->proxies[proxy_id];
+
+          /* Check whether the cell exists in the proxy */
+          int n = 0;
+          for (; n < p->nr_cells_in; n++)
+            if (p->cells_in[n] == ci) {
+              break;
+            }
+          if (n == p->nr_cells_in)
+            error(
+                "Cell %d not found in the proxy but trying to construct "
+                "grav task!",
+                cid);
+        }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
 
-        //message("%i adding task", nodeID);
+        // message("%i adding task", nodeID);
         /* Ok, we need to add a direct pair calculation */
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj);
@@ -452,8 +456,9 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data, int
   }
 }
 
-void engine_make_self_gravity_tasks_mapper_zoom(void *map_data, int num_elements,
-                                           void *extra_data) {
+void engine_make_self_gravity_tasks_mapper_zoom(void *map_data,
+                                                int num_elements,
+                                                void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
@@ -464,13 +469,13 @@ void engine_make_self_gravity_tasks_mapper_zoom(void *map_data, int num_elements
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
   const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
-  //const double theta_crit = e->gravity_properties->theta_crit;
+  // const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
   const int offset = s->zoom_props->tl_cell_offset;
   const double cell_width[3] = {cells[offset].width[0], cells[offset].width[1],
-      cells[offset].width[2]};
-  const double dmin = cells[offset].dmin; 
+                                cells[offset].width[2]};
+  const double dmin = cells[offset].dmin;
 
   /* Distance between centre of the cell and corners */
   const double r_diag2 = cell_width[0] * cell_width[0] +
@@ -621,7 +626,7 @@ void engine_make_self_gravity_tasks_mapper_zoom(void *map_data, int num_elements
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
-                                                 ci, cj);
+                              ci, cj);
           }
         }
       }

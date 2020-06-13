@@ -1437,7 +1437,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
             /* Ok, we need to add a direct pair calculation */
             scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
-                                                  ci, cj);
+                              ci, cj);
           }
         }
       }
@@ -3225,10 +3225,11 @@ void engine_maketasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
     if (s->with_zoom_region) {
-      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
-      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_between_toplevels, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom,
+                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool,
+                     engine_make_self_gravity_tasks_mapper_between_toplevels,
+                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
     }
   }
 

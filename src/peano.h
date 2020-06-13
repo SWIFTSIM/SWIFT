@@ -1,5 +1,5 @@
 #include "../config.h"
-  
+
 #include <stdlib.h>
 
 struct peano_hilbert_data {
@@ -9,4 +9,4 @@ struct peano_hilbert_data {
 };
 
 size_t peano_hilbert_key(int x, int y, int z, int bits);
-int peano_compare( const void* a, const void* b);
+int peano_compare(const void* a, const void* b);

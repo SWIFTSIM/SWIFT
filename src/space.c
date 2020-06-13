@@ -718,7 +718,7 @@ void space_regrid(struct space *s, int verbose) {
           s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
         s->zoom_props->tl_cell_offset = zoom_cell_offset;
         dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
-                s->zoom_props->width[2]);
+                         s->zoom_props->width[2]);
       }
     }
 
@@ -726,7 +726,7 @@ void space_regrid(struct space *s, int verbose) {
     if (s->with_zoom_region) check_zoom_region(s, verbose);
 
     if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
-    
+
     /* Be verbose about the change. */
     if (verbose)
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
@@ -1938,13 +1938,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
     if (s->with_zoom_region) {
-      g_index[k] = cell_getid_zoom(cdim, p->x[0], p->x[1], p->x[2], s->zoom_props,
-              (int)(p->x[0] * ih[0]), (int)(p->x[1] * ih[1]), (int)(p->x[2] * ih[2]));
+      g_index[k] =
+          cell_getid_zoom(cdim, p->x[0], p->x[1], p->x[2], s->zoom_props,
+                          (int)(p->x[0] * ih[0]), (int)(p->x[1] * ih[1]),
+                          (int)(p->x[2] * ih[2]));
     } else {
       g_index[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+          cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     }
-	cell_gpart_counts[g_index[k]]++;
+    cell_gpart_counts[g_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[g_index[k]].nodeID != s->e->nodeID)
       error("Received g-part that does not belong to me (nodeID=%i).",
@@ -1981,14 +1983,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (gp->time_bin == time_bin_inhibited)
       error("Inhibited particle sorted into a cell!");
 
-	/* New cell index */
+    /* New cell index */
     if (!s->with_zoom_region) {
       new_gind = cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
                             gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
     } else {
-      new_gind = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s->zoom_props,
-              (int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]),
-              (int)(gp->x[2] * s->iwidth[2]));
+      new_gind = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2],
+                                 s->zoom_props, (int)(gp->x[0] * s->iwidth[0]),
+                                 (int)(gp->x[1] * s->iwidth[1]),
+                                 (int)(gp->x[2] * s->iwidth[2]));
     }
 
     /* New cell of this gpart */
@@ -2112,7 +2115,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (s->with_self_gravity)
     for (int k = 0; k < s->nr_cells; k++)
       cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
-      
+
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -2474,10 +2477,11 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     if (pos_y == dim_y) pos_y = 0.0;
     if (pos_z == dim_z) pos_z = 0.0;
 
-	/* Get its cell index */
+    /* Get its cell index */
     if (s->with_zoom_region) {
       index = cell_getid_zoom(cdim, pos_x, pos_y, pos_z, s->zoom_props,
-              (int)(pos_x * ih_x), (int)(pos_y * ih_y), (int)(pos_z * ih_z));
+                              (int)(pos_x * ih_x), (int)(pos_y * ih_y),
+                              (int)(pos_z * ih_z));
     } else {
       index = cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     }

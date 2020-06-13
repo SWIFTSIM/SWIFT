@@ -67,7 +67,8 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "axis aligned grids of cells", "vectorized point associated cells",
+    "axis aligned grids of cells",
+    "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
     "similar sized regions, using unweighted cells",
     "memory and edge balanced cells using particle weights",
@@ -1924,7 +1925,7 @@ void partition_initial_partition(struct partition *initial_partition,
                         initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
-	/* Run through the cells and set their nodeID. */
+    /* Run through the cells and set their nodeID. */
     for (k = 0; k < s->nr_cells; k++) {
       c = &s->cells_top[k];
 
@@ -1940,7 +1941,7 @@ void partition_initial_partition(struct partition *initial_partition,
         for (j = 0; j < 3; j++)
           ind[j] = (c->loc[j] + c->width[j] / 2. -
                     s->zoom_props->region_bounds[j * 2]) /
-                    s->zoom_props->dim[j] * initial_partition->grid[j];
+                   s->zoom_props->dim[j] * initial_partition->grid[j];
       }
 
       c->nodeID = ind[0] + initial_partition->grid[0] *
@@ -2062,9 +2063,9 @@ void partition_initial_partition(struct partition *initial_partition,
     /* Loop over each top level cell and find its Peano-Hilbert key. */
     for (int n = 0; n < nr_cells; n++) {
       const struct cell *ci = &s->cells_top[n];
-      const int i = ((ci->loc[0]+ci->width[0]/2.) / dim[0]) * max_nbits;
-      const int j = ((ci->loc[1]+ci->width[1]/2.) / dim[1]) * max_nbits;
-      const int k = ((ci->loc[2]+ci->width[2]/2.) / dim[2]) * max_nbits;
+      const int i = ((ci->loc[0] + ci->width[0] / 2.) / dim[0]) * max_nbits;
+      const int j = ((ci->loc[1] + ci->width[1] / 2.) / dim[1]) * max_nbits;
+      const int k = ((ci->loc[2] + ci->width[2] / 2.) / dim[2]) * max_nbits;
 
       struct peano_hilbert_data *peano = &peano_keys[n];
 
@@ -2077,7 +2078,7 @@ void partition_initial_partition(struct partition *initial_partition,
     const size_t total_nr_gparts = s->e->total_nr_gparts;
     int *gcounts = NULL;
     if ((gcounts = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
-              error("Failed to allocate gcounts buffer.");
+      error("Failed to allocate gcounts buffer.");
     bzero(gcounts, sizeof(int) * nr_cells);
 
     int cid;
@@ -2086,13 +2087,12 @@ void partition_initial_partition(struct partition *initial_partition,
 
       if (s->with_zoom_region) {
         cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2],
-          s->zoom_props, (int)(gp->x[0] * s->iwidth[0]),
-          (int)(gp->x[1] * s->iwidth[1]),
-          (int)(gp->x[2] * s->iwidth[2]));
+                              s->zoom_props, (int)(gp->x[0] * s->iwidth[0]),
+                              (int)(gp->x[1] * s->iwidth[1]),
+                              (int)(gp->x[2] * s->iwidth[2]));
       } else {
-        cid =
-          cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
-                     gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
+        cid = cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
+                         gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
       }
       gcounts[cid]++;
     }
@@ -2117,7 +2117,7 @@ void partition_initial_partition(struct partition *initial_partition,
     int current_nodeid = 0;
     const size_t step = total_nr_gparts / nr_nodes;
     struct cell *c;
-    
+
     for (int n = 0; n < nr_cells; n++) {
       const struct peano_hilbert_data *peano = &peano_keys[n];
       c = &s->cells_top[peano->index];
@@ -2128,12 +2128,11 @@ void partition_initial_partition(struct partition *initial_partition,
         current_nodeid++;
       }
       c->nodeID = current_nodeid;
-      //if (c->tl_cell_type == void_tl_cell) continue;
-      //count += (int)(gcounts[peano->index]);
+      // if (c->tl_cell_type == void_tl_cell) continue;
+      // count += (int)(gcounts[peano->index]);
       count += gcounts[peano->index];
     }
     free(peano_keys);
-  
   }
 
   if (s->e->verbose)
@@ -2141,14 +2140,14 @@ void partition_initial_partition(struct partition *initial_partition,
             clocks_getunit());
 
 #else
-      error("SWIFT was not compiled with MPI support");
+  error("SWIFT was not compiled with MPI support");
 #endif
 }
 
 /**
  * @brief Initialises the partition and re-partition scheme from the parameter
  *        file.
- *  
+ *
  * @param partition The #partition scheme to initialise.
  * @param repartition The #repartition scheme to initialise.
  * @param params The parsed parameter file.

@@ -277,14 +277,14 @@ struct redist_mapper_data {
       }                                                                    \
       if (s->with_zoom_region) {                                           \
         cid = cell_getid_zoom(s->cdim, parts[k].x[0], parts[k].x[1],       \
-            parts[k].x[2], s->zoom_props,                                  \
-              (int)(parts[k].x[0] * s->iwidth[0]),                         \
-               (int)(parts[k].x[1] * s->iwidth[1]),                        \
-                (int)(parts[k].x[2] * s->iwidth[2]));                      \
+                              parts[k].x[2], s->zoom_props,                \
+                              (int)(parts[k].x[0] * s->iwidth[0]),         \
+                              (int)(parts[k].x[1] * s->iwidth[1]),         \
+                              (int)(parts[k].x[2] * s->iwidth[2]));        \
       } else {                                                             \
         cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],            \
-                                 parts[k].x[1] * s->iwidth[1],             \
-                                 parts[k].x[2] * s->iwidth[2]);            \
+                         parts[k].x[1] * s->iwidth[1],                     \
+                         parts[k].x[2] * s->iwidth[2]);                    \
       }                                                                    \
       dest[k] = s->cells_top[cid].nodeID;                                  \
       size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
@@ -895,12 +895,13 @@ void engine_redistribute(struct engine *e) {
 
     /* New cell index */
     if (s->with_zoom_region) {
-      new_cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s->zoom_props,
-              (int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]),
-              (int)(gp->x[2] * s->iwidth[2]));
+      new_cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2],
+                                s->zoom_props, (int)(gp->x[0] * s->iwidth[0]),
+                                (int)(gp->x[1] * s->iwidth[1]),
+                                (int)(gp->x[2] * s->iwidth[2]));
     } else {
-      new_cid = cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
-                   gp->x[2] * s->iwidth[2]);
+      new_cid = cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
+                           gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
     }
 
     /* New cell of this gpart */
@@ -1188,12 +1189,14 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_gparts_new; k++) {
     if (s->with_zoom_region) {
       check_cid = cell_getid_zoom(s->cdim, s->gparts[k].x[0], s->gparts[k].x[1],
-        s->gparts[k].x[2], s->zoom_props, (int)(s->gparts[k].x[0] * s->iwidth[0]),
-        (int)(s->gparts[k].x[1] * s->iwidth[1]), (int)(s->gparts[k].x[2] * s->iwidth[2]));
+                                  s->gparts[k].x[2], s->zoom_props,
+                                  (int)(s->gparts[k].x[0] * s->iwidth[0]),
+                                  (int)(s->gparts[k].x[1] * s->iwidth[1]),
+                                  (int)(s->gparts[k].x[2] * s->iwidth[2]));
     } else {
       check_cid = cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
-                               s->gparts[k].x[1] * s->iwidth[1],
-                               s->gparts[k].x[2] * s->iwidth[2]);
+                             s->gparts[k].x[1] * s->iwidth[1],
+                             s->gparts[k].x[2] * s->iwidth[2]);
     }
     if (cells[check_cid].nodeID != nodeID)
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
@@ -1246,9 +1249,8 @@ void engine_redistribute(struct engine *e) {
   // STU CHECK
   for (int i = 0; i < s->nr_cells; i++) {
     const struct cell *c = &s->cells_top[i];
-    if (c->tl_cell_type == void_tl_cell && c->grav.count != 0)
-        error("wut");
-  }  
+    if (c->tl_cell_type == void_tl_cell && c->grav.count != 0) error("wut");
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
