@@ -261,6 +261,8 @@ EoS:
   planetary_SESAME_water_table_file:        ./EoSTables/SESAME_water_7154.txt
   planetary_SS08_water_table_file:          ./EoSTables/SS08_water.txt
   planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
+  planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
+  planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
 
 # Parameters related to external potentials --------------------------------------------
 

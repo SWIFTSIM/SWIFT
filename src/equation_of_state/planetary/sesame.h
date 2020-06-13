@@ -23,10 +23,8 @@
 /**
  * @file equation_of_state/planetary/sesame.h
  *
- * Contains the SESAME EOS functions for
+ * Contains the SESAME and ANEOS-in-SESAME-style EOS functions for
  * equation_of_state/planetary/equation_of_state.h
- *
- *              WORK IN PROGRESS!
  *
  */
 
@@ -79,6 +77,16 @@ INLINE static void set_SS08_water(struct SESAME_params *mat,
 INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
                                         enum eos_planetary_material_id mat_id) {
   // Stewart et al. (2019)
+  mat->mat_id = mat_id;
+}
+INLINE static void set_ANEOS_iron(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Stewart (2020)
+  mat->mat_id = mat_id;
+}
+INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
+                                      enum eos_planetary_material_id mat_id) {
+  // Stewart (2020)
   mat->mat_id = mat_id;
 }
 
