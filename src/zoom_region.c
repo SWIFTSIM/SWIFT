@@ -177,17 +177,6 @@ void makeproxies_between_top_levels(struct engine *e) {
       s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
 
   struct proxy *proxies = e->proxies;
-  //
-  //  /* Some info about the domain */
-  //  //const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  //  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  //  const int periodic = s->periodic;
-  //  //const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-  //  //                              cells[0].width[2]};
-  //
-  /* Get some info about the physics */
-  //  //const int with_hydro = (e->policy & engine_policy_hydro);
-  // const int with_gravity = (e->policy & engine_policy_self_gravity);
   int proxy_type = (int)proxy_cell_type_gravity;
 
   /* Prepare the proxies and the proxy index. */
@@ -447,7 +436,6 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
 
-        // message("%i adding task", nodeID);
         /* Ok, we need to add a direct pair calculation */
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj);
@@ -576,6 +564,7 @@ void engine_make_self_gravity_tasks_mapper_zoom(void *map_data,
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm_rebuild(ci, cj, e, s, periodic)) {
+
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
@@ -687,5 +676,6 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
     }
   }
 
-  if (verbose) message("%i neighbour cells found", neighbour_count);
+  if (verbose)
+    message("%i cells neighbouring the zoom region", neighbour_count);
 }
