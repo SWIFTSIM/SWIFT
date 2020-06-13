@@ -3117,6 +3117,8 @@ void engine_makeproxies(struct engine *e) {
   /* Useful local information */
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
@@ -3138,8 +3140,8 @@ void engine_makeproxies(struct engine *e) {
   e->nr_proxies = 0;
 
   /* Prepare some variables. */
-  int cdim[3], periodic, cell_offset;
-  double dim[3], cell_width[3], dmin;
+  int periodic, cell_offset;
+  double cell_width[3], dmin;
 
   /* Loop over the top level cell space twice. Second time is for the top level zoom cells. */
   for (int n = 0; n < 2; n++) {
@@ -3147,24 +3149,15 @@ void engine_makeproxies(struct engine *e) {
 
     /* Natural top level cells. */
     if (n == 0) {
-      /* Some info about the domain */
-      for (int l = 0; l < 3; l++) {
-         cdim[l] = s->cdim[l];
-         dim[l] = s->dim[l];
-         cell_width[l] = cells[0].width[l];
-      }
+      for (int l = 0; l < 3; l++) cell_width[l] = cells[0].width[l];
       periodic = s->periodic;
       dmin = cells[0].dmin;
       cell_offset = 0;
 
     /* Zoom top level cells. */
     } else {
-      /* Some info about the domain */
-      for (int l = 0; l < 3; l++) {
-         cdim[l] = s->zoom_props->cdim[l];
-         dim[l] = s->zoom_props->dim[l];
-         cell_width[l] = cells[s->zoom_props->tl_cell_offset].width[l];
-      }
+      for (int l = 0; l < 3; l++)
+        cell_width[l] = cells[s->zoom_props->tl_cell_offset].width[l];
       periodic = 0;
       dmin = cells[s->zoom_props->tl_cell_offset].dmin;
       cell_offset = s->zoom_props->tl_cell_offset;
@@ -3211,16 +3204,15 @@ void engine_makeproxies(struct engine *e) {
       if (n == 0) {
         message(
             "Looking for proxies up to %d top-level cells away (delta_m=%d "
-            "delta_p=%d)",
-            delta_cells, delta_m, delta_p);
+            "delta_p=%d) (cell_width=%f) (dmim=%f)",
+            delta_cells, delta_m, delta_p, cell_width[0], dmin);
       } else {
         message(
             "Looking for zoom region proxies up to %d top-level cells away (delta_m=%d "
-            "delta_p=%d)",
-            delta_cells, delta_m, delta_p);
+            "delta_p=%d) (cell_width=%f) (dmim=%f)",
+            delta_cells, delta_m, delta_p, cell_width[0], dmin);
       }
     }  
-
     int cid, cjd;
 
     /* Loop over each cell in the space. */
@@ -3230,7 +3222,8 @@ void engine_makeproxies(struct engine *e) {
   
           /* Get the cell ID. */
           cid = cell_getid(cdim, i, j, k);
-  
+          cid += cell_offset;
+
           /* Loop over all its neighbours neighbours in range. */
           for (int ii = -delta_m; ii <= delta_p; ii++) {
             int iii = i + ii;
@@ -3244,14 +3237,13 @@ void engine_makeproxies(struct engine *e) {
                 int kkk = k + kk;
                 if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
                 kkk = (kkk + cdim[2]) % cdim[2];
-  
+ 
                 /* Get the cell ID. */
                 cjd = cell_getid(cdim, iii, jjj, kkk);
-  
+ 
                 /* Early abort  */
-                if (cid >= cjd) continue;
+                if (cid - cell_offset >= cjd) continue;
   
-                cid += cell_offset;
                 cjd += cell_offset;
 
                 /* Early abort (both same node) */
@@ -3295,10 +3287,10 @@ void engine_makeproxies(struct engine *e) {
                         abs(j - jjj + cdim[1]) <= 1) &&
                        (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
                         abs(k - kkk + cdim[2]) <= 1))) {
-  
+ 
                     proxy_type |= (int)proxy_cell_type_gravity;
                   } else {
-  
+ 
                     /* We don't have multipoles yet (or there CoMs) so we will
                        have to cook up something based on cell locations only. We
                        hence need an upper limit on the distance that the CoMs in
@@ -3323,7 +3315,7 @@ void engine_makeproxies(struct engine *e) {
   
                     /* Are we beyond the distance where the truncated forces are 0
                      * but not too far such that M2L can be used? */
-                    if (periodic) {
+                    if (s->periodic) {
   
                       if ((min_dist_CoM2 < max_mesh_dist2) &&
                           (!gravity_M2L_accept(r_max, r_max, theta_crit2,

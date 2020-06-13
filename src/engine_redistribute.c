@@ -261,6 +261,7 @@ struct redist_mapper_data {
     struct redist_mapper_data *mydata =                                    \
         (struct redist_mapper_data *)extra_data;                           \
     struct space *s = mydata->s;                                           \
+    int cid;                                                               \
     int *dest =                                                            \
         mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
     int *lcounts = NULL;                                                   \
@@ -274,9 +275,17 @@ struct redist_mapper_data {
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
       }                                                                    \
-      const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],    \
+      if (s->with_zoom_region) {                                           \
+        cid = cell_getid_zoom(s->cdim, parts[k].x[0], parts[k].x[1],       \
+            parts[k].x[2], s->zoom_props,                                  \
+              (int)(parts[k].x[0] * s->iwidth[0]),                         \
+               (int)(parts[k].x[1] * s->iwidth[1]),                        \
+                (int)(parts[k].x[2] * s->iwidth[2]));                      \
+      } else {                                                             \
+        cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],            \
                                  parts[k].x[1] * s->iwidth[1],             \
                                  parts[k].x[2] * s->iwidth[2]);            \
+      }                                                                    \
       dest[k] = s->cells_top[cid].nodeID;                                  \
       size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
       lcounts[ind] += 1;                                                   \
@@ -873,6 +882,8 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
+  int new_cid;
+
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
 
@@ -883,9 +894,14 @@ void engine_redistribute(struct engine *e) {
       error("Inhibited particle found after sorting!");
 
     /* New cell index */
-    const int new_cid =
-        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
+    if (s->with_zoom_region) {
+      new_cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s->zoom_props,
+              (int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]),
+              (int)(gp->x[2] * s->iwidth[2]));
+    } else {
+      new_cid = cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
                    gp->x[2] * s->iwidth[2]);
+    }
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_cid];
@@ -1168,13 +1184,20 @@ void engine_redistribute(struct engine *e) {
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
   }
+  int check_cid;
   for (size_t k = 0; k < nr_gparts_new; k++) {
-    const int cid = cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
+    if (s->with_zoom_region) {
+      check_cid = cell_getid_zoom(s->cdim, s->gparts[k].x[0], s->gparts[k].x[1],
+        s->gparts[k].x[2], s->zoom_props, (int)(s->gparts[k].x[0] * s->iwidth[0]),
+        (int)(s->gparts[k].x[1] * s->iwidth[1]), (int)(s->gparts[k].x[2] * s->iwidth[2]));
+    } else {
+      check_cid = cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
                                s->gparts[k].x[1] * s->iwidth[1],
                                s->gparts[k].x[2] * s->iwidth[2]);
-    if (cells[cid].nodeID != nodeID)
+    }
+    if (cells[check_cid].nodeID != nodeID)
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
-            k, cells[cid].nodeID);
+            k, cells[check_cid].nodeID);
   }
   for (size_t k = 0; k < nr_sparts_new; k++) {
     const int cid = cell_getid(s->cdim, s->sparts[k].x[0] * s->iwidth[0],
@@ -1219,6 +1242,13 @@ void engine_redistribute(struct engine *e) {
 
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;
+
+  // STU CHECK
+  for (int i = 0; i < s->nr_cells; i++) {
+    const struct cell *c = &s->cells_top[i];
+    if (c->tl_cell_type == void_tl_cell && c->grav.count != 0)
+        error("wut");
+  }  
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

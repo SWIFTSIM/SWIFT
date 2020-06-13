@@ -725,6 +725,8 @@ void space_regrid(struct space *s, int verbose) {
     /* Make sure the zoom region is ok. */
     if (s->with_zoom_region) check_zoom_region(s, verbose);
 
+    if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
+    
     /* Be verbose about the change. */
     if (verbose)
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
@@ -2110,6 +2112,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (s->with_self_gravity)
     for (int k = 0; k < s->nr_cells; k++)
       cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
+      
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -6162,7 +6165,7 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
           c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-  fprintf(f, "%g, %g\n", c->hydro.h_max, c->stars.h_max);
+  fprintf(f, "%g, %g, %i\n", c->hydro.h_max, c->stars.h_max, c->tl_cell_type);
 
   /* Write children */
   for (int i = 0; i < 8; i++) {

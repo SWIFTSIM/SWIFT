@@ -6447,9 +6447,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
  */
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
                                  const struct engine *e,
-                                 const struct space *s) {
+                                 const struct space *s, const int periodic) {
   const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Recover the multipole information */

@@ -2062,9 +2062,9 @@ void partition_initial_partition(struct partition *initial_partition,
     /* Loop over each top level cell and find its Peano-Hilbert key. */
     for (int n = 0; n < nr_cells; n++) {
       const struct cell *ci = &s->cells_top[n];
-      const int i = (ci->loc[0] / dim[0]) * max_nbits;
-      const int j = (ci->loc[1] / dim[1]) * max_nbits;
-      const int k = (ci->loc[2] / dim[2]) * max_nbits;
+      const int i = ((ci->loc[0]+ci->width[0]/2.) / dim[0]) * max_nbits;
+      const int j = ((ci->loc[1]+ci->width[1]/2.) / dim[1]) * max_nbits;
+      const int k = ((ci->loc[2]+ci->width[2]/2.) / dim[2]) * max_nbits;
 
       struct peano_hilbert_data *peano = &peano_keys[n];
 
@@ -2113,22 +2113,21 @@ void partition_initial_partition(struct partition *initial_partition,
           peano_compare);
 
     /* Assign an equal number of top level cells per node. */
-    int count = 0;
+    size_t count = 0;
     int current_nodeid = 0;
-    const int step = total_nr_gparts / nr_nodes;
+    const size_t step = total_nr_gparts / nr_nodes;
     struct cell *c;
     
     for (int n = 0; n < nr_cells; n++) {
       const struct peano_hilbert_data *peano = &peano_keys[n];
       c = &s->cells_top[peano->index];
 
-      c->nodeID = current_nodeid;
-
       /* Can we move on to the next node? */
       if (count > step) {
         count = 0;
         current_nodeid++;
       }
+      c->nodeID = current_nodeid;
       //if (c->tl_cell_type == void_tl_cell) continue;
       //count += (int)(gcounts[peano->index]);
       count += gcounts[peano->index];

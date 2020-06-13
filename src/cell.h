@@ -43,6 +43,7 @@
 #include "star_formation_logger_struct.h"
 #include "task.h"
 #include "timeline.h"
+#include "zoom_region.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
@@ -317,7 +318,7 @@ enum cell_flags {
  * 1 = An ignored top level cell (as it is within the zoom region).
  * 2 = A top level zoom cell.
  */
-enum tl_cell_types { tl_cell, void_tl_cell, zoom_tl_cell };
+enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell };
 
 /**
  * @brief Cell within the tree structure.
@@ -839,6 +840,7 @@ struct cell {
 
   /*! The list of sub-tasks that have been executed on this cell */
   char subtasks_executed[64];
+
 #endif
 
 } SWIFT_STRUCT_ALIGN;
@@ -987,7 +989,8 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
-                                 const struct engine *e, const struct space *s);
+                                 const struct engine *e, const struct space *s,
+                                 const int periodic);
 
 /**
  * @brief Compute the square of the minimal distance between any two points in
@@ -998,15 +1001,16 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
  * @param periodic Are we using periodic BCs?
  * @param dim The dimensions of the simulation volume
  */
+
 __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
 
-//#ifdef SWIFT_DEBUG_CHECKS // STU CHECK
-//  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
-//  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
-//  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
-//#endif
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
+  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+#endif
 
   const double cix_min = ci->loc[0];
   const double ciy_min = ci->loc[1];
