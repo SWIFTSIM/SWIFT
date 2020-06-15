@@ -42,6 +42,7 @@
 /**
  * @brief Returns the comoving internal energy of a particle at the last
  * time the particle was kicked.
+ * *** not used in weakly compressible flow ***
  *
  * @param p The particle of interest
  * @param xp The extended data of the particle of interest.
@@ -49,13 +50,14 @@
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy(const struct part *restrict p,
                                    const struct xpart *restrict xp) {
-
-  return xp->u_full;
+  error("internal energy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
  * @brief Returns the physical internal energy of a particle at the last
  * time the particle was kicked.
+ * *** not used in weakly compressible flow ***
  *
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
@@ -66,24 +68,25 @@ hydro_get_physical_internal_energy(const struct part *restrict p,
                                    const struct xpart *restrict xp,
                                    const struct cosmology *cosmo) {
 
-  return xp->u_full * cosmo->a_factor_internal_energy;
+  error("internal energy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
  * @brief Returns the comoving internal energy of a particle drifted to the
- * current time.
+ * current time.  *** not used ***
  *
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_comoving_internal_energy(const struct part *restrict p) {
-
-  return p->u;
+  error("internal energy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
  * @brief Returns the physical internal energy of a particle drifted to the
- * current time.
+ * current time. *** not used ***
  *
  * @param p The particle of interest.
  * @param cosmo The cosmological model.
@@ -91,8 +94,8 @@ hydro_get_drifted_comoving_internal_energy(const struct part *restrict p) {
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
                                            const struct cosmology *cosmo) {
-
-  return p->u * cosmo->a_factor_internal_energy;
+  error("internal energy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
@@ -126,20 +129,20 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
 
 /**
  * @brief Returns the comoving entropy of a particle at the last
- * time the particle was kicked.
+ * time the particle was kicked.  ***  not used ***
  *
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
     const struct part *restrict p, const struct xpart *restrict xp) {
-
-  return gas_entropy_from_internal_energy(p->rho, xp->u_full);
+  error("entropy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
  * @brief Returns the physical entropy of a particle at the last
- * time the particle was kicked.
+ * time the particle was kicked.  *** not used ***
  *
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
@@ -151,24 +154,25 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return gas_entropy_from_internal_energy(p->rho, xp->u_full);
+  error("entropy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
  * @brief Returns the comoving entropy of a particle drifted to the
- * current time.
+ * current time. *** not used ***
  *
  * @param p The particle of interest.
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_comoving_entropy(const struct part *restrict p) {
-
-  return gas_entropy_from_internal_energy(p->rho, p->u);
+  error("entropy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
  * @brief Returns the physical entropy of a particle drifted to the
- * current time.
+ * current time. *** not used ***
  *
  * @param p The particle of interest.
  * @param cosmo The cosmological model.
@@ -179,22 +183,23 @@ hydro_get_drifted_physical_entropy(const struct part *restrict p,
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return gas_entropy_from_internal_energy(p->rho, p->u);
+  error("entropy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
- * @brief Returns the comoving sound speed of a particle
+ * @brief Returns the comoving sound speed of a particle. RGB no need to store sound speed of each particle.
  *
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_soundspeed(const struct part *restrict p) {
-
-  return p->force.soundspeed;
+  const float dummy = 0.f;  /* does not depend on particle properties */
+  return gas_soundspeed_from_internal_energy( dummy, dummy );
 }
 
 /**
- * @brief Returns the physical sound speed of a particle
+ * @brief Returns the physical sound speed of a particle. RGB no need to store sound speed of each particle.
  *
  * @param p The particle of interest
  * @param cosmo The cosmological model.
@@ -202,8 +207,8 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_soundspeed(const struct part *restrict p,
                               const struct cosmology *cosmo) {
-
-  return cosmo->a_factor_sound_speed * p->force.soundspeed;
+  const float dummy = 0.f;  /* does not depend on particle properties */
+  return cosmo->a_factor_sound_speed * gas_soundspeed_from_internal_energy( dummy, dummy );
 }
 
 /**
@@ -276,20 +281,20 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 /**
  * @brief Returns the time derivative of co-moving internal energy of a particle
  *
- * We assume a constant density.
+ * We assume a constant density.  *** not used ***
  *
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy_dt(const struct part *restrict p) {
-
-  return p->u_dt;
+  error("internal energy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
  * @brief Returns the time derivative of internal energy of a particle
  *
- * We assume a constant density.
+ * We assume a constant density. *** not used ***
  *
  * @param p The particle of interest
  * @param cosmo Cosmology data structure
@@ -297,8 +302,8 @@ hydro_get_comoving_internal_energy_dt(const struct part *restrict p) {
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy_dt(const struct part *restrict p,
                                       const struct cosmology *cosmo) {
-
-  return p->u_dt * cosmo->a_factor_internal_energy;
+  error("internal energy is not defined in weakly copressible EOS");
+  return 0.f;
 }
 
 /**
@@ -312,14 +317,13 @@ hydro_get_physical_internal_energy_dt(const struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
-
-  p->u_dt = du_dt;
+  error("internal energy is not defined in weakly copressible EOS");
 }
 
 /**
  * @brief Returns the time derivative of internal energy of a particle
  *
- * We assume a constant density.
+ * We assume a constant density.  *** not used ***
  *
  * @param p The particle of interest.
  * @param cosmo Cosmology data structure
@@ -329,12 +333,11 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy_dt(struct part *restrict p,
                                       const struct cosmology *cosmo,
                                       float du_dt) {
-
-  p->u_dt = du_dt / cosmo->a_factor_internal_energy;
+  error("internal energy is not defined in weakly copressible EOS");
 }
 
 /**
- * @brief Sets the physical entropy of a particle
+ * @brief Sets the physical entropy of a particle  *** not used ***
  *
  * @param p The particle of interest.
  * @param xp The extended particle data.
@@ -344,14 +347,11 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
 __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const float entropy) {
-
-  /* Note there is no conversion from physical to comoving entropy */
-  const float comoving_entropy = entropy;
-  xp->u_full = gas_internal_energy_from_entropy(p->rho, comoving_entropy);
+  error("internal energy is not defined in weakly copressible EOS");
 }
 
 /**
- * @brief Sets the physical internal energy of a particle
+ * @brief Sets the physical internal energy of a particle *** not used ***
  *
  * @param p The particle of interest.
  * @param xp The extended particle data.
@@ -362,12 +362,12 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
                                    const struct cosmology *cosmo,
                                    const float u) {
-
-  xp->u_full = u / cosmo->a_factor_internal_energy;
+  error("internal energy is not defined in weakly copressible EOS");
 }
 
 /**
- * @brief Sets the drifted physical internal energy of a particle
+ * @brief Sets the drifted physical internal energy of a particle.
+ *  RGB: Although internal energy is not used, the other quantities need to be set here.
  *
  * @param p The particle of interest.
  * @param cosmo Cosmology data structure
@@ -377,10 +377,10 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
                                            const float u) {
-
-  p->u = u / cosmo->a_factor_internal_energy;
-
-  /* Now recompute the extra quantities */
+  /* internal energy is not used */
+  // p->u = u / cosmo->a_factor_internal_energy; 
+  
+  /* Now recompute the extra quantities *** this is still required *** */
 
   /* Compute the sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
@@ -388,9 +388,9 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Update variables. */
   p->force.pressure = pressure;
-  p->force.soundspeed = soundspeed;
+  // p->force.soundspeed = soundspeed; RGB: this is a EOS constant.
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);  //RGB v_sig may require modifaction later.
 }
 
 /**
@@ -456,21 +456,22 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * Zeroes all the relevant arrays in preparation for the sums taking place in
  * the various density loop over neighbours. Typically, all fields of the
  * density sub-structure of a particle get zeroed in here.
+ * Many quantities are not used in Minimal_Engineering
  *
  * @param p The particle to act upon
- * @param hs #hydro_space containing hydro specific space information.
+ * @param hs #hydro_space containing hydro specific space information. 
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
-  p->density.wcount = 0.f;
-  p->density.wcount_dh = 0.f;
+  p->density.wcount = 0.f;       // not required, but neightbour cound may be useful.
+  //p->density.wcount_dh = 0.f;  // h is fixed and not adaptive.
   p->rho = 0.f;
-  p->density.rho_dh = 0.f;
+  //p->density.rho_dh = 0.f;     // h is fixed and not adaptive.
   p->density.div_v = 0.f;
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
+  //p->density.rot_v[0] = 0.f;   // curl v is not needed.
+  //p->density.rot_v[1] = 0.f;
+  //p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -480,6 +481,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * and add the self-contribution term.
  * Additional quantities such as velocity gradients will also get the final
  * terms added to them here.
+ * Many quantities are not used in Minimal_Engineering
  *
  * Also adds/multiplies the cosmological terms if need be.
  *
@@ -489,7 +491,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 __attribute__((always_inline)) INLINE static void hydro_end_density(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  //RGB for weakly compressible, just compute density by continuity equation.
+  /*RGB for weakly compressible, just compute density by continuity equation.
+    h should not vary, but left as a particle property fro now. */
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -501,26 +504,26 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float rho_inv = 1.f / p->rho;
   const float a_inv2 = cosmo->a2_inv;
   p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->rho = - p->rho * p->density.div_v ;
+  p->rho = - p->rho * p->density.div_v ;   //RGB: density updated based on div V [** check this! **]
 
-  // RGB these parts are not needed
+  // RGB these parts are not needed (keep wcount for debugging for now).
   /* Final operation on the density (add self-contribution). */
   //p->rho += p->mass * kernel_root;
   //p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
-  //p->density.wcount += kernel_root;
+  p->density.wcount += kernel_root;
   //p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   //p->rho *= h_inv_dim;
   //p->density.rho_dh *= h_inv_dim_plus_one;
-  //p->density.wcount *= h_inv_dim;
+  p->density.wcount *= h_inv_dim;
   //p->density.wcount_dh *= h_inv_dim_plus_one;
 
-  //RGB this would be needed if a Balsara switch is applied.
+  //RGB not required as no Balsara switch is applied.
   /* Finish calculation of the (physical) velocity curl components */
-  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  //p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  //p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  //p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
 }
 
@@ -530,6 +533,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * In the desperate case where a particle has no neighbours (likely because
  * of the h_max ceiling), set the particle fields to something sensible to avoid
  * NaNs in the next calculations.
+ *  *** this should not happend in weakly compressible fluid. throw an error. ***
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -539,20 +543,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo) {
 
-  /* Some smoothing length multiples. */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
-  /* Re-set problematic values */
-  p->rho = p->mass * kernel_root * h_inv_dim;
-  p->density.wcount = kernel_root * h_inv_dim;
-  p->density.rho_dh = 0.f;
-  p->density.wcount_dh = 0.f;
-  p->density.div_v = 0.f;
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
+  error("a particle has no neighbours! This cannot happen in weakly compressible fluid.");
 }
 
 /**
@@ -564,6 +555,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * sub-structure and written to the force sub-structure.
  * Examples of calculations done here include the calculation of viscosity term
  * constants, thermal conduction terms, hydro conversions, etc.
+ * *** RGB: many quantitites not need to weakly compressible flow ***
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -577,19 +569,20 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
+  // RGB: no balsara switvch.
+  // const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
   /* Inverse of the smoothing length */
   const float h_inv = 1.f / p->h;
 
   /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                             p->density.rot_v[1] * p->density.rot_v[1] +
-                             p->density.rot_v[2] * p->density.rot_v[2]);
+  // const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+  //                           p->density.rot_v[1] * p->density.rot_v[1] +
+  //                           p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the norm of div v including the Hubble flow term */
-  const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
-  const float abs_div_physical_v = fabsf(div_physical_v);
+  // const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
+  // const float abs_div_physical_v = fabsf(div_physical_v);
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
@@ -611,16 +604,16 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the Balsara switch */
   /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
    * functions */
-  const float balsara = hydro_props->viscosity.alpha * abs_div_physical_v /
-                        (abs_div_physical_v + curl_v +
-                         0.0001f * fac_Balsara_eps * soundspeed * h_inv);
+  //const float balsara = hydro_props->viscosity.alpha * abs_div_physical_v /
+  //                      (abs_div_physical_v + curl_v +
+  //                       0.0001f * fac_Balsara_eps * soundspeed * h_inv);
 
   /* Update variables. */
   //RGB not needed... p->force.f = grad_h_term;
   p->force.f = 0.;
   p->force.pressure = pressure;
-  p->force.soundspeed = soundspeed;
-  p->force.balsara = balsara;
+  //p->force.soundspeed = soundspeed;
+  //p->force.balsara = balsara;
 }
 
 /**
@@ -628,6 +621,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  *
  * Resets all hydro acceleration and time derivative fields in preparation
  * for the sums taking  place in the various force tasks.
+ * RGB: in weakly compressible limit, some quantities are not required.
  *
  * @param p The particle to act upon
  */
@@ -640,14 +634,15 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[2] = 0.0f;
 
   /* Reset the time derivatives. */
-  p->u_dt = 0.0f;
-  p->force.h_dt = 0.0f;
-  p->force.v_sig = 2.f * p->force.soundspeed;
+  //p->u_dt = 0.0f;
+  //p->force.h_dt = 0.0f;
+  const float dummy = 0.f;
+  p->force.v_sig = 2.f * gas_soundspeed_from_internal_energy( dummy, dummy);  // does not depend on properties of particle. Remove particle property later.
 }
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
- * kick time
+ * kick time.  *** RGB: many quantities are not used in weakly compressible flow ***
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
@@ -663,18 +658,19 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[2] = xp->v_full[2];
 
   /* Re-set the entropy */
-  p->u = xp->u_full;
+  // p->u = xp->u_full;
 
   /* Re-compute the pressure */
   // RGB for WC-SPH compute the pressure from the density via EOS. Routine has same name, but internal energy is not used.
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float dummy = 0.f;
+  const float pressure = gas_pressure_from_internal_energy(p->rho, dummy);
 
   /* Compute the new sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Update variables */
   p->force.pressure = pressure;
-  p->force.soundspeed = soundspeed;
+  //p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
@@ -687,6 +683,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  *
  * Note the different time-step sizes used for the different quantities as they
  * include cosmological factors.
+ * RGB: mnay properties are not required for weakly compressible flow.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
@@ -703,45 +700,47 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const struct entropy_floor_properties *floor_props) {
 
   /* Predict the internal energy */
-  p->u += p->u_dt * dt_therm;
+  //p->u += p->u_dt * dt_therm;
 
   const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
-  const float w1 = p->force.h_dt * h_inv * dt_drift;
-  if (fabsf(w1) < 0.2f) {
-    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-  } else {
-    p->h *= expf(w1);
-  }
+  //const float w1 = p->force.h_dt * h_inv * dt_drift;
+  //if (fabsf(w1) < 0.2f) {
+  //  p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  //} else {
+  //  p->h *= expf(w1);
+  //}
 
   /* Predict density */
-  const float w2 = -hydro_dimension * w1;
-  if (fabsf(w2) < 0.2f) {
-    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-  } else {
-    p->rho *= expf(w2);
-  }
+  // RGB: assume we do not predict the density... Is this appropriate?.
+  //const float w2 = -hydro_dimension * w1;
+  //if (fabsf(w2) < 0.2f) {
+  //  p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
+  //} else {
+  //  p->rho *= expf(w2);
+  //}
 
   /* Check against entropy floor */
-  const float floor_A = entropy_floor(p, cosmo, floor_props);
-  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+  //const float floor_A = entropy_floor(p, cosmo, floor_props);
+  //const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
 
   /* Check against absolute minimum */
-  const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  //const float min_u =
+  //    hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
-  p->u = max(p->u, floor_u);
-  p->u = max(p->u, min_u);
+  //p->u = max(p->u, floor_u);
+  //p->u = max(p->u, min_u);
 
   /* Compute the new pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float dummy = 0.f ;
+  const float pressure = gas_pressure_from_internal_energy(p->rho, dummy);
 
   /* Compute the new sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   p->force.pressure = pressure;
-  p->force.soundspeed = soundspeed;
+  //p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
@@ -751,7 +750,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  *
  * Multiplies the force and accelerations by the appropiate constants
  * and add the self-contribution term. In most cases, there is little
- * to do here.
+ * to do here. RGB: nothing for Minimal_Engineering.
  *
  * Cosmological terms are also added/multiplied here.
  *
@@ -761,7 +760,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  p->force.h_dt *= p->h * hydro_dimension_inv;
+  //p->force.h_dt *= p->h * hydro_dimension_inv;
 }
 
 /**
@@ -769,6 +768,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  *
  * Additional hydrodynamic quantites are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
+ * RGB: many variables are not used in Minimal_Engineering
  *
  * @param p The particle to act upon.
  * @param xp The particle extended data to act upon.
@@ -787,26 +787,26 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct entropy_floor_properties *floor_props) {
 
   /* Integrate the internal energy forward in time */
-  const float delta_u = p->u_dt * dt_therm;
+  //const float delta_u = p->u_dt * dt_therm;
 
   /* Do not decrease the energy by more than a factor of 2*/
-  xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
+  //xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
 
   /* Check against entropy floor */
-  const float floor_A = entropy_floor(p, cosmo, floor_props);
-  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+  //const float floor_A = entropy_floor(p, cosmo, floor_props);
+  //const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
 
   /* Check against absolute minimum */
-  const float min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  //const float min_u =
+  //    hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
   /* Take highest of both limits */
-  const float energy_min = max(min_u, floor_u);
+  //const float energy_min = max(min_u, floor_u);
 
-  if (xp->u_full < energy_min) {
-    xp->u_full = energy_min;
-    p->u_dt = 0.f;
-  }
+  //if (xp->u_full < energy_min) {
+  //  xp->u_full = energy_min;
+  //  p->u_dt = 0.f;
+  //}
 }
 
 /**
@@ -816,6 +816,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * routine (at the start of a calculation) after the densities of
  * particles have been computed.
  * This can be used to convert internal energy into entropy for instance.
+ * RGB: many properties do not need to be set in Minimal_Engineering.
  *
  * @param p The particle to act upon
  * @param xp The extended particle to act upon
@@ -828,27 +829,28 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Convert the physcial internal energy to the comoving one. */
   /* u' = a^(3(g-1)) u */
-  const float factor = 1.f / cosmo->a_factor_internal_energy;
-  p->u *= factor;
-  xp->u_full = p->u;
+  //const float factor = 1.f / cosmo->a_factor_internal_energy;
+  //p->u *= factor;
+  //xp->u_full = p->u;
 
   /* Apply the minimal energy limit */
-  const float min_comoving_energy =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  if (xp->u_full < min_comoving_energy) {
-    xp->u_full = min_comoving_energy;
-    p->u = min_comoving_energy;
-    p->u_dt = 0.f;
-  }
+  //const float min_comoving_energy =
+  //    hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  //if (xp->u_full < min_comoving_energy) {
+  //  xp->u_full = min_comoving_energy;
+  //  p->u = min_comoving_energy;
+  //  p->u_dt = 0.f;
+  //}
 
   /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float dummy = 0.f ;
+  const float pressure = gas_pressure_from_internal_energy(p->rho, dummy);
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
+  //const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
 
   p->force.pressure = pressure;
-  p->force.soundspeed = soundspeed;
+  //p->force.soundspeed = soundspeed;
 }
 
 /**
@@ -857,6 +859,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * This function is called only once just after the ICs have been
  * read in to do some conversions or assignments between the particle
  * and extended particle fields.
+ * RGB: for Minimal_engineering, many properties do not need to be set.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -871,7 +874,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->a_grav[0] = 0.f;
   xp->a_grav[1] = 0.f;
   xp->a_grav[2] = 0.f;
-  xp->u_full = p->u;
+  //xp->u_full = p->u;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
@@ -884,14 +887,15 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * internal energy but gets converted later, we must overwrite that
  * field. The conversion to the actual variable happens later after
  * the initial fake time-step.
+ * ***not used*** for Minimal_Engineering
  *
  * @param p The #part to write to.
  * @param u_init The new initial internal energy.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_init_internal_energy(struct part *p, float u_init) {
-
-  p->u = u_init;
+  error("internal energy is not used in Minimal Engineering hydro");
+  //p->u = u_init;
 }
 
 /**
