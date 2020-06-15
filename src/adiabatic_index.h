@@ -24,6 +24,7 @@
  * @file adiabatic_index.h
  * @brief Defines the adiabatic index (polytropix index) \f$\gamma\f$ of the
  * problem and (fast) mathematical functions involving it.
+ * RGB: updated to include gamma = 1 option, for Morris et al EOS in weakly compressible flow.
  */
 
 /* Config parameters. */
@@ -97,6 +98,20 @@
 #define hydro_gamma_minus_one_over_two 0.5f
 #define hydro_two_gamma_over_gamma_minus_one 4.f
 #define hydro_one_over_gamma 0.5f
+
+#elif defined(HYDRO_GAMMA_1_1)
+#define hydro_gamma 1.f
+#define hydro_gamma_minus_one 0.f
+#define hydro_gamma_plus_one 2.f
+#define hydro_one_over_gamma_minus_one nan   /* RGB this should never be called */
+#define hydro_gamma_plus_one_over_two_gamma 1.0f
+#define hydro_gamma_minus_one_over_two_gamma 0.0f
+#define hydro_gamma_minus_one_over_gamma_plus_one 0.0f
+#define hydro_two_over_gamma_plus_one 1.0f
+#define hydro_two_over_gamma_minus_one nan  /* RGB this should never be called */
+#define hydro_gamma_minus_one_over_two 0.0f
+#define hydro_two_gamma_over_gamma_minus_one nan /* RGB this should never be called */
+#define hydro_one_over_gamma 1.0f
 
 #else
 
