@@ -21,15 +21,12 @@
 
 /**
  * @file Minimal/hydro_part.h
- * @brief Minimal conservative implementation of SPH (Particle definition)
+ * @brief Minimal weakly compressible implementation of SPH 
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
+ * Simple constant viscosity term without switches is implemented. No thermal conduction
  * term is implemented.
  *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * Implementation taken from MOrris, Fox & Zhu, 1997. J. Comp. Phys. 136, 214
  */
 
 #include "black_holes_struct.h"
@@ -62,19 +59,19 @@ struct xpart {
   float a_grav[3];
 
   /*! Internal energy at the last full step. */
-  float u_full;
+  // no internal energy in weakly compressible flow.  float u_full;
 
   /*! Additional data used to record cooling information */
-  struct cooling_xpart_data cooling_data;
+  // no cooling in weakly compressible case, struct cooling_xpart_data cooling_data;
 
   /* Additional data used by the tracers */
-  struct tracers_xpart_data tracers_data;
+  // no tracer information in this case.  struct tracers_xpart_data tracers_data;
 
   /* Additional data used by the tracers */
-  struct star_formation_xpart_data sf_data;
+  // no star formation in this case.  struct star_formation_xpart_data sf_data;
 
   /* Additional data used by the feedback */
-  struct feedback_part_data feedback_data;
+  // no feedback in this case.  struct feedback_part_data feedback_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -106,13 +103,13 @@ struct part {
   float mass;
 
   /*! Particle smoothing length. */
-  float h;
+  // not used in this case.   float h;
 
   /*! Particle internal energy. */
-  float u;
+  // not used in this case.  float u;
 
   /*! Time derivative of the internal energy. */
-  float u_dt;
+  // not used in this case.  float u_dt;
 
   /*! Particle density. */
   float rho;
@@ -133,16 +130,16 @@ struct part {
       float wcount;
 
       /*! Derivative of the neighbour number with respect to h. */
-      float wcount_dh;
+      // not used in this case...  float wcount_dh;
 
       /*! Derivative of density with respect to h */
-      float rho_dh;
+      // not used in this case... float rho_dh;
 
       /*! Velocity divergence */
       float div_v;
 
       /*! Velocity curl */
-      float rot_v[3];
+      // not used in this case... float rot_v[3];
 
     } density;
 
@@ -162,25 +159,25 @@ struct part {
       float pressure;
 
       /*! Particle soundspeed. */
-      float soundspeed;
+      // not used in this case... float soundspeed;
 
       /*! Particle signal velocity */
       float v_sig;
 
       /*! Time derivative of smoothing length  */
-      float h_dt;
+      // not used in this case....  float h_dt;
 
       /*! Balsara switch */
-      float balsara;
+      // not used in this case... float balsara;
 
     } force;
   };
 
   /*! Chemistry information */
-  struct chemistry_part_data chemistry_data;
+  // not used ... struct chemistry_part_data chemistry_data;
 
   /*! Black holes information (e.g. swallowing ID) */
-  struct black_holes_part_data black_holes_data;
+  // not used... struct black_holes_part_data black_holes_data;
 
   /*! Time-step length */
   timebin_t time_bin;
