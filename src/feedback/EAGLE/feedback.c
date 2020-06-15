@@ -1171,7 +1171,7 @@ void feedback_props_init(struct feedback_props* fp,
   if (!fp->SNII_sampled_delay &&
       fp->stellar_evolution_age_cut < fp->SNII_wind_delay)
     error(
-        "Time at which the enrichment downsampling stars is lower than the "
+        "Time at which the enrichment downsampling starts is lower than the "
         "SNII wind delay!");
 
   /* Gather common conversion factors --------------------------------------- */

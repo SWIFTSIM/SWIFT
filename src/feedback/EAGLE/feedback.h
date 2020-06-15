@@ -297,7 +297,7 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Feedback Model", "EAGLE");
-};
+}
 #endif  // HAVE_HDF5
 
 #endif /* SWIFT_FEEDBACK_EAGLE_H */
