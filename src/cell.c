@@ -233,6 +233,7 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 #endif
 
   c->grav.parts = gparts;
+  c->grav.parts_rebuild = gparts;
 
   /* Fill the progeny recursively, depth-first. */
   if (c->split) {
@@ -1154,7 +1155,12 @@ int cell_pack_sf_counts(struct cell *restrict c,
   pcells[0].stars.count = c->stars.count;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
 
+  /* Pack this cell's data. */
+  pcells[0].grav.delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
+  pcells[0].grav.count = c->grav.count;
+
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Stars */
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
 
@@ -1162,6 +1168,16 @@ int cell_pack_sf_counts(struct cell *restrict c,
     error("Stars part pointer moved in the wrong direction!");
 
   if (pcells[0].stars.delta_from_rebuild > 0 && c->depth == 0)
+    error("Shifting the top-level pointer is not allowed!");
+
+  /* Grav */
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
+
+  if (pcells[0].grav.delta_from_rebuild < 0)
+    error("Grav part pointer moved in the wrong direction!");
+
+  if (pcells[0].grav.delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
 #endif
 
@@ -1198,12 +1214,17 @@ int cell_unpack_sf_counts(struct cell *restrict c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL!");
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav particles array at rebuild is NULL!");
 #endif
 
   /* Unpack this cell's data. */
   c->stars.count = pcells[0].stars.count;
   c->stars.parts = c->stars.parts_rebuild + pcells[0].stars.delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].stars.dx_max_part;
+
+  c->grav.count = pcells[0].grav.count;
+  c->grav.parts = c->grav.parts_rebuild + pcells[0].grav.delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -1967,6 +1988,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     c->progeny[k]->grav.count = bucket_count[k];
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
+    c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
   }
 }
 
@@ -5593,11 +5615,12 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   lock_lock(&top->stars.star_formation_lock);
 
   /* Are there any extra particles left? */
-  if (top->stars.count == top->stars.count_total - 1) {
+  if (top->stars.count >= top->stars.count_total - 1) {
     /* Release the local lock before exiting. */
     if (lock_unlock(&top->stars.star_formation_lock) != 0)
       error("Failed to unlock the top-level cell.");
-    message("We ran out of star particles!");
+    if (top->stars.count == top->stars.count_total - 1)
+      message("We ran out of star particles!");
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
@@ -5725,11 +5748,12 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
   lock_lock(&top->grav.star_formation_lock);
 
   /* Are there any extra particles left? */
-  if (top->grav.count == top->grav.count_total - 1) {
+  if (top->grav.count >= top->grav.count_total - 1) {
     /* Release the local lock before exiting. */
     if (lock_unlock(&top->grav.star_formation_lock) != 0)
       error("Failed to unlock the top-level cell.");
-    message("We ran out of gravity particles!");
+    if (top->grav.count == top->grav.count_total - 1)
+      message("We ran out of gravity particles!");
     atomic_inc(&e->forcerebuild);
     return NULL;
   }

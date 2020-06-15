@@ -273,6 +273,17 @@ struct pcell_sf {
     float dx_max_part;
 
   } stars;
+
+  /*! Grav. variables */
+  struct {
+
+    /* Distance by which the gpart pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+  } grav;
 };
 
 /**
@@ -460,6 +471,9 @@ struct cell {
 
     /*! Pointer to the #gpart data. */
     struct gpart *parts;
+
+    /*! Pointer to the #spart data at rebuild time. */
+    struct gpart *parts_rebuild;
 
     /*! This cell's multipole. */
     struct gravity_tensors *multipole;

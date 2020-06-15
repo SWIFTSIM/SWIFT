@@ -51,6 +51,8 @@ Statistics:
 Scheduler:
   max_top_level_cells: 8
   cell_split_size:     50
+  cell_extra_gparts:         100         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts:         100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   
 # Parameters related to the initial conditions
 InitialConditions:
@@ -96,22 +98,40 @@ EAGLEEntropyFloor:
   Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
-  
-# Cooling with Grackle 3.0
-GrackleCooling:
-  cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 1                   # Enable or not the UV background
-  redshift: -1                           # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1                   # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0      # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0        # (optional) User provide specific heating rates
-  self_shielding_method: 0                # (optional) Grackle (<= 3) or Gear self shielding method
-  max_steps: 10000                       # (optional) Max number of step when computing the initial composition
-  convergence_limit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
-  thermal_time_myr: 5
-
-GEARChemistry:
-  initial_metallicity: 0.01295
 
 GEARPressureFloor:
   jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
+
+# Cooling with Grackle 3.0
+GrackleCooling:
+  cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 1                        # Enable or not the UV background
+  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                        # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
+  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
+  max_steps: 10000                             # (optional) Max number of step when computing the initial composition
+  convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+  thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
+  self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
+  self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+
+
+# GEAR chemistry model (Revaz and Jablonka 2018)
+GEARChemistry:
+  initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
+  scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
+
+  # GEAR star formation model (Revaz and Jablonka 2018)
+GEARStarFormation:
+  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+  n_stars_per_particle: 4
+  min_mass_frac: 0.5
+
+# GEAR feedback model
+GEARFeedback:
+  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
+  discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
