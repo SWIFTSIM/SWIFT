@@ -32,6 +32,11 @@
 /* Starformation struct */
 struct star_formation {};
 
+/* Does the star formation model move the hydro particles?
+   This will update the c->hydro.dx_max_part and
+   c->hydro.dx_max_sort after forming a star. */
+#define star_formation_need_update_dx_max 0
+
 /**
  * @brief Calculate if the gas has the potential of becoming
  * a star.
