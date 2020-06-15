@@ -21,15 +21,13 @@
 
 /**
  * @file Minimal/hydro_iact.h
- * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
+ * @brief Minimal Enginering implementation of weakly compressible SPH (Morris et al 1997)
  *
  * The thermal variable is the internal energy (u). Simple constant
  * viscosity term without switches is implemented. No thermal conduction
  * term is implemented.
  *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * Implementation taken from MOrris, Fox & Zhu, 1997. J. Comp. Phys. 136, 214
  */
 
 #include "adiabatic_index.h"
@@ -39,6 +37,7 @@
 
 /**
  * @brief Density interaction between two particles.
+ *  in weakly compressible flow density is determined from div v.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -79,7 +78,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   //pi->rho += mj * wi;
   //pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+  //pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
@@ -90,7 +89,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   //pj->rho += mi * wj;
   //pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+  //pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   /* Compute dv dot r */
   float dv[3], curlvr[3];
@@ -107,21 +106,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.div_v -= facj * dvdr;
 
   /* Compute dv cross r */
-  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+  //curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  //curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  //curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  pi->density.rot_v[0] += faci * curlvr[0];
-  pi->density.rot_v[1] += faci * curlvr[1];
-  pi->density.rot_v[2] += faci * curlvr[2];
+  //pi->density.rot_v[0] += faci * curlvr[0];
+  //pi->density.rot_v[1] += faci * curlvr[1];
+  //pi->density.rot_v[2] += faci * curlvr[2];
 
-  pj->density.rot_v[0] += facj * curlvr[0];
-  pj->density.rot_v[1] += facj * curlvr[1];
-  pj->density.rot_v[2] += facj * curlvr[2];
+  //pj->density.rot_v[0] += facj * curlvr[0];
+  //pj->density.rot_v[1] += facj * curlvr[1];
+  //pj->density.rot_v[2] += facj * curlvr[2];
 }
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
+ *  in weakly compressible flow density is determined from div v.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -175,17 +175,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.div_v -= faci * dvdr;
 
   /* Compute dv cross r */
-  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
-  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
-  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+  //curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  //curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  //curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  pi->density.rot_v[0] += faci * curlvr[0];
-  pi->density.rot_v[1] += faci * curlvr[1];
-  pi->density.rot_v[2] += faci * curlvr[2];
+  //pi->density.rot_v[0] += faci * curlvr[0];
+  //pi->density.rot_v[1] += faci * curlvr[1];
+  //pi->density.rot_v[2] += faci * curlvr[2];
 }
 
 /**
- * @brief Force interaction between two particles.
+ * @brief Force interaction between two particles. 
+ * For weakly compressible flow, some quiantities are not used.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -256,17 +257,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  // sound speed is a property of the equation of state.
+  const float dummy = 0.f ;
+  const float ci = gas_soundspeed_from_internal_energy( dummy, dummy );
+  const float cj = gas_soundspeed_from_internal_energy( dummy, dummy );
   const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Grab balsara switches */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
+  //const float balsara_i = pi->force.balsara;
+  //const float balsara_j = pj->force.balsara;
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -288,19 +291,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
+  //const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  //const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
+  //const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
-  const float du_dt_j = sph_du_term_j + visc_du_term;
+  //const float du_dt_i = sph_du_term_i + visc_du_term;
+  //const float du_dt_j = sph_du_term_j + visc_du_term;
 
   /* Internal energy time derivatibe */
-  pi->u_dt += du_dt_i * mj;
-  pj->u_dt += du_dt_j * mi;
+  //pi->u_dt += du_dt_i * mj;
+  //pj->u_dt += du_dt_j * mi;
 
   // RGB for weakly compressible case, do not update h.
   /* Get the time derivative for h. */
@@ -314,6 +317,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
 /**
  * @brief Force interaction between two particles (non-symmetric).
+ * For weakly compressible flow, some quiantities are not used.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -384,17 +388,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  const float dummy = 0.f ;
+  const float ci = gas_soundspeed_from_internal_energy( dummy, dummy );
+  const float cj = gas_soundspeed_from_internal_energy( dummy, dummy );
   const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Grab balsara switches */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
+  //const float balsara_i = pi->force.balsara;
+  //const float balsara_j = pj->force.balsara;
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -412,19 +417,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  //const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
+  //const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
+  //const float du_dt_i = sph_du_term_i + visc_du_term;
 
   /* Internal energy time derivatibe */
-  pi->u_dt += du_dt_i * mj;
+  //pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  //pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
