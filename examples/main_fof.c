@@ -516,8 +516,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
-  space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
-             Ngpart, Nspart, Nbpart, periodic, replicate,
+  space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
+             sparts, bparts, Ngas, Ngpart, Nspart, Nbpart, periodic, replicate,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, with_DM_background_particles, talking,
              /*dry_run=*/0, nr_nodes);

@@ -42,6 +42,7 @@ struct cell;
 struct cosmology;
 struct gravity_props;
 struct star_formation;
+struct hydro_props;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
@@ -316,7 +317,8 @@ void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                struct part *parts, struct gpart *gparts, struct spart *sparts,
+                const struct hydro_props *hydro_properties, struct part *parts,
+                struct gpart *gparts, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int gravity,
@@ -376,6 +378,7 @@ void space_check_swallow(struct space *s);
 void space_check_sort_flags(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
+                        const struct hydro_props *hydro_properties,
                         const int periodic, const int with_DM_background,
                         const double dim[3], const int verbose);
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
