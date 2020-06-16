@@ -177,7 +177,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  */
 void engine_repartition(struct engine *e) {
 
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
+#ifdef WITH_MPI
 
   ticks tic = getticks();
 
@@ -197,11 +197,13 @@ void engine_repartition(struct engine *e) {
    * bug that doesn't handle this case well. */
   if (e->nr_nodes == 1) return;
 
+#if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
   /* Generate the fixed costs include file. */
   if (e->step > 3 && e->reparttype->trigger <= 1.f) {
     task_dump_stats("partition_fixed_costs.h", e, /* header = */ 1,
                     /* allranks = */ 1);
   }
+#endif
 
   /* Do the repartitioning. */
   partition_repartition(e->reparttype, e->nodeID, e->nr_nodes, e->s,
@@ -248,7 +250,7 @@ void engine_repartition(struct engine *e) {
             clocks_getunit());
 #else
   if (e->reparttype->type != REPART_NONE)
-    error("SWIFT was not compiled with MPI and METIS or ParMETIS support.");
+    error("SWIFT was not compiled with MPI support.");
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;
@@ -278,7 +280,7 @@ void engine_repartition_trigger(struct engine *e) {
     /* If we have fixed costs available and this is step 2 or we are forcing
      * repartitioning then we do a forced fixed costs repartition regardless. */
     int forced = 0;
-    if (e->reparttype->type != REPART_NONE) {
+    if (e->reparttype->type != REPART_NONE && e->reparttype->type != REPART_PEANO) {
       if (e->reparttype->trigger > 1 ||
           (e->step == 2 && e->reparttype->use_fixed_costs)) {
         if (e->reparttype->trigger > 1) {

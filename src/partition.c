@@ -78,10 +78,12 @@ const char *initial_partition_name[] = {
 const char *repartition_name[] = {
     "none", "edge and vertex task cost weights", "task cost edge weights",
     "memory balanced, using particle vertex weights",
-    "vertex task costs and edge delta timebin weights"};
+    "vertex task costs and edge delta timebin weights",
+    "peano-hilbert cell ordering"};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
+void do_peano_partition(int nodeID, int nr_nodes, struct space *s);
 
 /*
  * Repartition fixed costs per type/subtype. These are determined from the
@@ -1859,11 +1861,16 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                            int nr_nodes, struct space *s, struct task *tasks,
                            int nr_tasks) {
 
-#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+#ifdef WITH_MPI
 
   ticks tic = getticks();
 
-  if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
+  if (reparttype->type == REPART_PEANO) {
+    if (s->with_zoom_region) space_regrid(s, s->e->verbose);
+    do_peano_partition(nodeID, nr_nodes, s);
+
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
+  } else if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
     repart_edge_metis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
                       nr_tasks);
 
@@ -1877,7 +1884,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
     repart_memory_metis(reparttype, nodeID, nr_nodes, s);
-
+#endif
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
 
@@ -1889,7 +1896,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 #else
-  error("SWIFT was not compiled with METIS or ParMETIS support.");
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -2047,98 +2054,106 @@ void partition_initial_partition(struct partition *initial_partition,
     split_vector(s, nr_nodes, samplecells);
     free(samplecells);
   } else if (initial_partition->type == INITPART_PEANO) {
+
     /* Sort the top level cells onto a Peano-Hilbert curve.
-     * Assign an equal number of top level cells to each node.
-     * This is not weighted in any way, it is purley a spacial ordering. */
+     * Attempts to assign an equal of particles to each node within top level
+     * cells that are spatially close to one another. */
 
-    const int nr_cells = s->nr_cells;
-    const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-    const int nbits = 14;
-    const int max_nbits = pow(2, nbits) - 1;
-    struct peano_hilbert_data *peano_keys = NULL;
-    if ((peano_keys = (struct peano_hilbert_data *)malloc(
-             sizeof(struct peano_hilbert_data) * nr_cells)) == NULL)
-      error("Failed to allocate peano keys array.");
-
-    /* Loop over each top level cell and find its Peano-Hilbert key. */
-    for (int n = 0; n < nr_cells; n++) {
-      const struct cell *ci = &s->cells_top[n];
-      const int i = ((ci->loc[0] + ci->width[0] / 2.) / dim[0]) * max_nbits;
-      const int j = ((ci->loc[1] + ci->width[1] / 2.) / dim[1]) * max_nbits;
-      const int k = ((ci->loc[2] + ci->width[2] / 2.) / dim[2]) * max_nbits;
-
-      struct peano_hilbert_data *peano = &peano_keys[n];
-
-      peano->key = peano_hilbert_key(i, j, k, nbits);
-      peano->index = n;
-    }
-
-    /* Count the number of gparts in each top level cell. */
-    const size_t nr_gparts = s->nr_gparts;
-    const size_t total_nr_gparts = s->e->total_nr_gparts;
-    int *gcounts = NULL;
-    if ((gcounts = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
-      error("Failed to allocate gcounts buffer.");
-    bzero(gcounts, sizeof(int) * nr_cells);
-
-    int cid;
-    for (size_t k = 0; k < nr_gparts; k++) {
-      const struct gpart *gp = &s->gparts[k];
-
-      if (s->with_zoom_region) {
-        cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2],
-                              s->zoom_props, (int)(gp->x[0] * s->iwidth[0]),
-                              (int)(gp->x[1] * s->iwidth[1]),
-                              (int)(gp->x[2] * s->iwidth[2]));
-      } else {
-        cid = cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
-                         gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
-      }
-      gcounts[cid]++;
-    }
-
-    /* Get all the counts from all the nodes. */
-    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, nr_cells, MPI_INT, MPI_SUM,
-                      MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to allreduce particle cell gpart weights.");
-
-    size_t gcounts_total = 0;
-    for (size_t k = 0; k < nr_cells; k++) {
-      gcounts_total += gcounts[k];
-    }
-    if (gcounts_total != total_nr_gparts) error("Didn't count all gparts");
-
-    /* Sort the top level cells by their Peano-Hilbert key. */
-    qsort(peano_keys, nr_cells, sizeof(struct peano_hilbert_data),
-          peano_compare);
-
-    /* Assign an equal number of top level cells per node. */
-    size_t count = 0;
-    int current_nodeid = 0;
-    const size_t step = total_nr_gparts / nr_nodes;
-    struct cell *c;
-
-    for (int n = 0; n < nr_cells; n++) {
-      const struct peano_hilbert_data *peano = &peano_keys[n];
-      c = &s->cells_top[peano->index];
-
-      /* Can we move on to the next node? */
-      if (count > step) {
-        count = 0;
-        current_nodeid++;
-      }
-      c->nodeID = current_nodeid;
-      // if (c->tl_cell_type == void_tl_cell) continue;
-      // count += (int)(gcounts[peano->index]);
-      count += gcounts[peano->index];
-    }
-    free(peano_keys);
+    do_peano_partition(nodeID, nr_nodes, s);
   }
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
+#else
+  error("SWIFT was not compiled with MPI support");
+#endif
+}
+
+void do_peano_partition(int nodeID, int nr_nodes, struct space *s) {
+
+#ifdef WITH_MPI
+  const int nr_cells = s->nr_cells;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int nbits = 14;
+  const int max_nbits = pow(2, nbits) - 1;
+  struct peano_hilbert_data *peano_keys = NULL;
+  if ((peano_keys = (struct peano_hilbert_data *)malloc(
+           sizeof(struct peano_hilbert_data) * nr_cells)) == NULL)
+    error("Failed to allocate peano keys array.");
+
+  /* Loop over each top level cell and find its Peano-Hilbert key. */
+  for (int n = 0; n < nr_cells; n++) {
+    const struct cell *ci = &s->cells_top[n];
+    const int i = ((ci->loc[0] + ci->width[0] / 2.) / dim[0]) * max_nbits;
+    const int j = ((ci->loc[1] + ci->width[1] / 2.) / dim[1]) * max_nbits;
+    const int k = ((ci->loc[2] + ci->width[2] / 2.) / dim[2]) * max_nbits;
+
+    struct peano_hilbert_data *peano = &peano_keys[n];
+
+    peano->key = peano_hilbert_key(i, j, k, nbits);
+    peano->index = n;
+  }
+
+  /* Count the number of gparts in each top level cell. */
+  const size_t nr_gparts = s->nr_gparts;
+  const size_t total_nr_gparts = s->e->total_nr_gparts;
+  int *gcounts = NULL;
+  if ((gcounts = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+    error("Failed to allocate gcounts buffer.");
+  bzero(gcounts, sizeof(int) * nr_cells);
+
+  int cid;
+  for (size_t k = 0; k < nr_gparts; k++) {
+    const struct gpart *gp = &s->gparts[k];
+
+    if (s->with_zoom_region) {
+      cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2],
+                            s->zoom_props, (int)(gp->x[0] * s->iwidth[0]),
+                            (int)(gp->x[1] * s->iwidth[1]),
+                            (int)(gp->x[2] * s->iwidth[2]));
+    } else {
+      cid = cell_getid(s->cdim, gp->x[0] * s->iwidth[0],
+                       gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
+    }
+    gcounts[cid]++;
+  }
+
+  /* Get all the counts from all the nodes. */
+  if (MPI_Allreduce(MPI_IN_PLACE, gcounts, nr_cells, MPI_INT, MPI_SUM,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to allreduce particle cell gpart weights.");
+
+  size_t gcounts_total = 0;
+  for (size_t k = 0; k < nr_cells; k++) {
+    gcounts_total += gcounts[k];
+  }
+  if (gcounts_total != total_nr_gparts) error("Didn't count all gparts");
+
+  /* Sort the top level cells by their Peano-Hilbert key. */
+  qsort(peano_keys, nr_cells, sizeof(struct peano_hilbert_data),
+        peano_compare);
+
+  /* Assign an equal number of top level cells per node. */
+  size_t count = 0;
+  int current_nodeid = 0;
+  const size_t step = total_nr_gparts / nr_nodes;
+  struct cell *c;
+
+  for (int n = 0; n < nr_cells; n++) {
+    const struct peano_hilbert_data *peano = &peano_keys[n];
+    c = &s->cells_top[peano->index];
+
+    /* Can we move on to the next node? */
+    if (count > step) {
+      count = 0;
+      current_nodeid++;
+    }
+    c->nodeID = current_nodeid;
+    count += gcounts[peano->index];
+  }
+  free(peano_keys);
 #else
   error("SWIFT was not compiled with MPI support");
 #endif
@@ -2226,6 +2241,8 @@ void partition_init(struct partition *partition,
   if (strcmp("none", part_type) == 0) {
     repartition->type = REPART_NONE;
 
+  } else if (strcmp("peano", part_type) == 0) {
+    repartition->type = REPART_PEANO;
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   } else if (strcmp("fullcosts", part_type) == 0) {
     repartition->type = REPART_METIS_VERTEX_EDGE_COSTS;
@@ -2248,7 +2265,7 @@ void partition_init(struct partition *partition,
   } else {
     message("Invalid choice of re-partition type '%s'.", part_type);
     error(
-        "Permitted values are: 'none' when compiled without "
+        "Permitted values are: 'none' or 'peano' when compiled without "
         "METIS or ParMETIS.");
 #endif
   }
