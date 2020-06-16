@@ -5615,12 +5615,14 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   lock_lock(&top->stars.star_formation_lock);
 
   /* Are there any extra particles left? */
-  if (top->stars.count >= top->stars.count_total - 1) {
+  if (top->stars.count == top->stars.count_total) {
+
+    message("We ran out of free star particles!");
+
     /* Release the local lock before exiting. */
     if (lock_unlock(&top->stars.star_formation_lock) != 0)
       error("Failed to unlock the top-level cell.");
-    if (top->stars.count == top->stars.count_total - 1)
-      message("We ran out of star particles!");
+
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
@@ -5748,12 +5750,14 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
   lock_lock(&top->grav.star_formation_lock);
 
   /* Are there any extra particles left? */
-  if (top->grav.count >= top->grav.count_total - 1) {
+  if (top->grav.count == top->grav.count_total) {
+
+    message("We ran out of free gravity particles!");
+
     /* Release the local lock before exiting. */
     if (lock_unlock(&top->grav.star_formation_lock) != 0)
       error("Failed to unlock the top-level cell.");
-    if (top->grav.count == top->grav.count_total - 1)
-      message("We ran out of gravity particles!");
+
     atomic_inc(&e->forcerebuild);
     return NULL;
   }

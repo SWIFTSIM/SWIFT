@@ -5125,6 +5125,13 @@ void space_init(struct space *s, struct swift_params *params,
     space_extra_sparts = 0;
   }
 
+  if (star_formation && swift_star_formation_model_creates_stars &&
+      space_extra_sparts == 0) {
+    error(
+        "Running with star formation but without spare star particles. "
+        "Increase 'Scheduler:cell_extra_sparts'.");
+  }
+
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
 
