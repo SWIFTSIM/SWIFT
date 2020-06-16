@@ -1090,10 +1090,11 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
-               Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
-               with_hydro, with_self_gravity, with_star_formation,
-               with_DM_background_particles, talking, dry_run, nr_nodes);
+    space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts,
+               sparts, bparts, Ngas, Ngpart, Nspart, Nbpart, periodic,
+               replicate, generate_gas_in_ics, with_hydro, with_self_gravity,
+               with_star_formation, with_DM_background_particles, talking,
+               dry_run, nr_nodes);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);

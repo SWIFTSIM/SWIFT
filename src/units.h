@@ -100,7 +100,10 @@ enum unit_conversion_factor {
   UNIT_CONV_INV_VOLUME,
   UNIT_CONV_SFR,
   UNIT_CONV_SSFR,
-  UNIT_CONV_MASS_PER_UNIT_TIME
+  UNIT_CONV_DIFF_RATE,
+  UNIT_CONV_DIFF_COEFF,
+  UNIT_CONV_MASS_PER_UNIT_TIME,
+  UNIT_CONV_VELOCITY_SQUARED
 };
 
 void units_init_cgs(struct unit_system*);

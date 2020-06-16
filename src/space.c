@@ -265,6 +265,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.parts = NULL;
     c->hydro.xparts = NULL;
     c->grav.parts = NULL;
+    c->grav.parts_rebuild = NULL;
     c->stars.parts = NULL;
     c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;
@@ -1954,6 +1955,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
       /* Store the state at rebuild time */
       c->stars.parts_rebuild = c->stars.parts;
+      c->grav.parts_rebuild = c->grav.parts;
 
       c->hydro.count_total = c->hydro.count + space_extra_parts;
       c->grav.count_total = c->grav.count + space_extra_gparts;
@@ -4806,6 +4808,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param params The parsed parameter file.
  * @param cosmo The current cosmological model.
  * @param dim Spatial dimensions of the domain.
+ * @param hydro_properties The properties of the hydro scheme.
  * @param parts Array of Gas particles.
  * @param gparts Array of Gravity particles.
  * @param sparts Array of stars particles.
@@ -4832,7 +4835,8 @@ void space_convert_quantities(struct space *s, int verbose) {
  */
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                struct part *parts, struct gpart *gparts, struct spart *sparts,
+                const struct hydro_props *hydro_properties, struct part *parts,
+                struct gpart *gparts, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int self_gravity,
@@ -4886,7 +4890,8 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, periodic, DM_background, dim, verbose);
+    space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background, dim,
+                       verbose);
     parts = s->parts;
     gparts = s->gparts;
     Npart = s->nr_parts;
@@ -5121,6 +5126,13 @@ void space_init(struct space *s, struct swift_params *params,
     space_extra_sparts = 0;
   }
 
+  if (star_formation && swift_star_formation_model_creates_stars &&
+      space_extra_sparts == 0) {
+    error(
+        "Running with star formation but without spare star particles. "
+        "Increase 'Scheduler:cell_extra_sparts'.");
+  }
+
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
 
@@ -5291,12 +5303,14 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  *
  * @param s The #space to create the particles in.
  * @param cosmo The current #cosmology model.
+ * @param hydro_properties The properties of the hydro scheme.
  * @param periodic Are we using periodic boundary conditions?
  * @param with_background Are we using background DM particles?
  * @param dim The size of the box (for periodic wrapping).
  * @param verbose Are we talkative?
  */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
+                        const struct hydro_props *hydro_properties,
                         const int periodic, const int with_background,
                         const double dim[3], const int verbose) {
 
@@ -5321,6 +5335,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
   if (s->nr_bparts != 0)
     error("Generating gas particles from DM but BHs already exists!");
+
+  /* Pull out information about particle splitting */
+  const int particle_splitting = hydro_properties->particle_splitting;
+  const float splitting_mass_threshold =
+      hydro_properties->particle_splitting_mass_threshold;
 
   /* Start by counting the number of background and zoom DM particles */
   size_t nr_background_gparts = 0;
@@ -5406,6 +5425,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       gp_dm->mass *= (1. - mass_ratio);
       gp_gas->mass *= mass_ratio;
       hydro_set_mass(p, gp_gas->mass);
+
+      /* Verify that we are not generating a gas particle larger than the
+         threashold for particle splitting */
+      if (particle_splitting && gp_gas->mass > splitting_mass_threshold)
+        error("Generating a gas particle above the threshold for splitting");
 
       /* Set the new positions */
       gp_dm->x[0] += shift_dm;

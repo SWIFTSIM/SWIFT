@@ -208,5 +208,14 @@ int main(int argc, char *argv[]) {
   assert(haveoptwords1 == 0);
   assert(haveoptwords2 == 1);
 
+  /* Issue 681, parser_get_opt_param_string returns same value. */
+  char run_name_1[80];
+  char run_name_2[80];
+  parser_get_opt_param_string(&param_file, "MetaData:run_name", run_name_1,
+                              "Untitled SWIFT simulation");
+  parser_get_opt_param_string(&param_file, "MetaData:run_name", run_name_2,
+                              "Untitled SWIFT simulation");
+  assert(strcmp(run_name_1, run_name_2) == 0);
+
   return 0;
 }

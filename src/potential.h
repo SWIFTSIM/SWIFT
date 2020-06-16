@@ -38,6 +38,8 @@
 #include "./potential/hernquist/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_NFW)
 #include "./potential/nfw/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_NFW_MN)
+#include "./potential/nfw_mn/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_DISC_PATCH)
 #include "./potential/disc_patch/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_SINE_WAVE)

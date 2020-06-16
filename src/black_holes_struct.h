@@ -35,7 +35,7 @@
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_struct.h"
 #else
-#error "Invalid choice of black holes function."
+#error "Invalid choice of black hole model."
 #endif
 
 #endif /* SWIFT_BLACK_HOLES_STRUCT_H */

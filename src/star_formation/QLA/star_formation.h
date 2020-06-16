@@ -34,6 +34,8 @@
  * @brief Star formation model used in the EAGLE model
  */
 
+#define star_formation_need_update_dx_max 0
+
 /**
  * @brief Properties of the EAGLE star formation model.
  */

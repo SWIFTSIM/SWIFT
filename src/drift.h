@@ -175,7 +175,7 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
 #ifdef SWIFT_DEBUG_CHECKS
   if (bp->ti_drift != ti_old)
     error(
-        "s-particle has not been drifted to the current time "
+        "b-particle has not been drifted to the current time "
         "bp->ti_drift=%lld, "
         "c->ti_old=%lld, ti_current=%lld",
         bp->ti_drift, ti_old, ti_current);

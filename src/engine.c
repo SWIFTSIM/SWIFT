@@ -2658,9 +2658,7 @@ void engine_step(struct engine *e) {
 #ifdef WITH_MPI
   double start_usertime = 0.0;
   double start_systime = 0.0;
-  if (e->reparttype->type != REPART_NONE) {
-    clocks_get_cputimes_used(&start_usertime, &start_systime);
-  }
+  clocks_get_cputimes_used(&start_usertime, &start_systime);
 #endif
 
   /* Start all the tasks. */

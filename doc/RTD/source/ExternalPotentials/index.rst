@@ -1,5 +1,6 @@
 .. External potentials in SWIFT
    Folkert Nobels, 25th October 2018
+   Alejandro Benitez-Llambay, October 2019
    
 External Potentials 
 ===================
@@ -38,9 +39,17 @@ give a short overview of the potentials that are implemented in the code:
 
    This potential has as free parameters the concentration of the DM halo, the
    virial mass (:math:`M_{200}`) and the critical density.
-7. Sine wave (sine-wave)
-8. Point mass ring (point-mass-ring)
-9. Disc Patch (disc-patch)
+7. NFW poential + Miyamoto-Nagai potential (nfw_mn): This includes and NFW potential (identical to nfw)
+   plus an axisymmetric Miyamoto-Nagai potential. The Miyamoto-Nagai potential is given by:
+
+   :math:`\Phi(R,z) = - \frac{G M_{d}}{\sqrt{R^2 + \left ( R_d + \sqrt{z^2 + Z_d^2} \right )^2}}`,
+
+   where :math:`R^2 = x^2 + y^2` is the projected radius and :math:`M_d`, :math:`R_d`, :math:`Z_d` are the 
+   mass, scalelength and scaleheight of the disk (in internal units), respectively. 
+   
+8. Sine wave (sine-wave)
+9. Point mass ring (point-mass-ring)
+10. Disc Patch (disc-patch)
 
 
 How to implement your own potential
