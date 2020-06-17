@@ -1044,11 +1044,14 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
  *
  * @param e The #engine.
  * @param N_total The total number of particles of each type to write.
+ * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
 void prepare_file(struct engine* e, const char* fileName,
-                  const char* xmfFileName, long long N_total[6],
+                  const char* xmfFileName, long long N_total[swift_type_count],
+                  const int numFields[swift_type_count],
+                  char current_selection_name[FIELD_BUFFER_SIZE],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
@@ -1058,7 +1061,6 @@ void prepare_file(struct engine* e, const char* fileName,
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
   struct output_options* output_options = e->output_options;
-  struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
@@ -1102,16 +1104,6 @@ void prepare_file(struct engine* e, const char* fileName,
   const double dim[3] = {e->s->dim[0] * factor_length,
                          e->s->dim[1] * factor_length,
                          e->s->dim[2] * factor_length};
-
-  /* Determine if we are writing a reduced snapshot, and if so which
-   * output selection type to use */
-  char current_selection_name[FIELD_BUFFER_SIZE] =
-      select_output_header_default_name;
-  if (output_list) {
-    /* Users could have specified a different Select Output scheme for each
-     * snapshot. */
-    output_list_get_current_select_output(output_list, current_selection_name);
-  }
 
   /* Print the relevant information and print status */
   io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
@@ -1164,8 +1156,9 @@ void prepare_file(struct engine* e, const char* fileName,
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-    /* Don't do anything if no particle of this kind */
-    if (N_total[ptype] == 0) continue;
+    /* Don't do anything if there are (a) no particles of this kind, or (b)
+     * if we have disabled every field of this particle type. */
+    if (N_total[ptype] == 0 || numFields[ptype] == 0) continue;
 
     /* Add the global information for that particle type to
      * the XMF meta-file */
@@ -1191,6 +1184,7 @@ void prepare_file(struct engine* e, const char* fileName,
 
     /* Write the number of particles as an attribute */
     io_write_attribute_l(h_grp, "NumberOfParticles", N_total[ptype]);
+    io_write_attribute_i(h_grp, "NumberOfFields", numFields[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];
@@ -1270,19 +1264,33 @@ void prepare_file(struct engine* e, const char* fileName,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Prepare everything that is not cancelled */
+    /* Did the user specify a non-standard default for the entire particle
+     * type? */
+    const enum compression_levels compression_level_current_default =
+        output_options_get_ptype_default(output_options->select_output,
+                                         current_selection_name,
+                                         (enum part_type)ptype);
 
+    /* Prepare everything that is not cancelled */
+    int num_fields_written = 0;
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
       const int should_write = output_options_should_write_field(
           output_options, current_selection_name, list[i].name,
-          (enum part_type)ptype);
+          (enum part_type)ptype, compression_level_current_default);
 
-      if (should_write)
+      if (should_write) {
         prepare_array_parallel(e, h_grp, fileName, xmfFile, partTypeGroupName,
                                list[i], N_total[ptype], snapshot_units);
+        num_fields_written++;
+      }
     }
+#ifdef SWIFT_DEBUG_CHECKS
+    if (num_fields_written != numFields[ptype])
+      error("Wrote %d fields for particle type %s, but expected to write %d.",
+            num_fields_written, part_type_names[ptype], numFields[ptype]);
+#endif
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -1399,10 +1407,25 @@ void write_output_parallel(struct engine* e,
                            e->snapshot_output_count, e->snapshot_subdir,
                            e->snapshot_base_name);
 
+  char current_selection_name[FIELD_BUFFER_SIZE] =
+      select_output_header_default_name;
+  if (output_list) {
+    /* Users could have specified a different Select Output scheme for each
+     * snapshot. */
+    output_list_get_current_select_output(output_list, current_selection_name);
+  }
+
+  /* Total number of fields to write per ptype */
+  int numFields[swift_type_count] = {0};
+  for (int ptype = 0; ptype < swift_type_count; ++ptype) {
+    numFields[ptype] = output_options_get_num_fields_to_write(
+        output_options, current_selection_name, ptype);
+  }
+
   /* Rank 0 prepares the file */
   if (mpi_rank == 0)
-    prepare_file(e, fileName, xmfFileName, N_total, internal_units,
-                 snapshot_units);
+    prepare_file(e, fileName, xmfFileName, N_total, numFields,
+                 current_selection_name, internal_units, snapshot_units);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1432,8 +1455,8 @@ void write_output_parallel(struct engine* e,
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->pos_dithering,
                         e->s->cells_top, e->s->nr_cells, e->s->width, mpi_rank,
-                        /*distributed=*/0, N_total, offset, internal_units,
-                        snapshot_units);
+                        /*distributed=*/0, N_total, offset, numFields,
+                        internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
@@ -1781,21 +1804,20 @@ void write_output_parallel(struct engine* e,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
+    /* Did the user specify a non-standard default for the entire particle
+     * type? */
+    const enum compression_levels compression_level_current_default =
+        output_options_get_ptype_default(output_options->select_output,
+                                         current_selection_name,
+                                         (enum part_type)ptype);
+
     /* Write everything that is not cancelled */
-    char current_selection_name[FIELD_BUFFER_SIZE] =
-        select_output_header_default_name;
-    if (output_list) {
-      /* Users could have specified a different Select Output scheme for each
-       * snapshot. */
-      output_list_get_current_select_output(output_list,
-                                            current_selection_name);
-    }
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
       const int should_write = output_options_should_write_field(
           output_options, current_selection_name, list[i].name,
-          (enum part_type)ptype);
+          (enum part_type)ptype, compression_level_current_default);
 
       if (should_write)
         write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],

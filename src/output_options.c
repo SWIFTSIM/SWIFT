@@ -20,6 +20,7 @@
 
 /* Some standard headers. */
 #include <stdlib.h>
+#include <string.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -30,9 +31,9 @@
 #include "output_options.h"
 
 /* Local headers. */
+#include "common_io.h"
+#include "error.h"
 #include "parser.h"
-#include "part_type.h"
-#include "swift.h"
 
 /* Compression level names. */
 const char* compression_level_names[compression_level_count] = {
@@ -125,13 +126,17 @@ void output_options_struct_restore(struct output_options* output_options,
  * @param field_name pointer to a char array containing the name of the
  *        relevant field.
  * @param part_type integer particle type
+ * @param compression_level_current_default The default output strategy
+ *.       based on the snapshot_type and part_type.
  *
  * @return should_write integer determining whether this field should be
  *         written
  **/
-int output_options_should_write_field(struct output_options* output_options,
-                                      char* snapshot_type, char* field_name,
-                                      enum part_type part_type) {
+int output_options_should_write_field(
+    const struct output_options* output_options, const char* snapshot_type,
+    const char* field_name, const enum part_type part_type,
+    const enum compression_levels compression_level_current_default) {
+
   /* Full name for the field path */
   char field[PARSER_MAX_LINE_SIZE];
   sprintf(field, "%.*s:%.*s_%s", FIELD_BUFFER_SIZE, snapshot_type,
@@ -140,7 +145,7 @@ int output_options_should_write_field(struct output_options* output_options,
   char compression_level[FIELD_BUFFER_SIZE];
   parser_get_opt_param_string(
       output_options->select_output, field, compression_level,
-      compression_level_names[compression_level_default]);
+      compression_level_names[compression_level_current_default]);
 
   int should_write = strcmp(compression_level_names[compression_do_not_write],
                             compression_level);
@@ -153,4 +158,103 @@ int output_options_should_write_field(struct output_options* output_options,
 #endif
 
   return should_write;
+}
+
+/**
+ * @brief Return the default output strategy of a given particle type.
+ *
+ * This can only be "on" or "off". No lossy compression strategy can be
+ * applied at the level of an entire particle type.
+ *
+ * @param output_params The parsed select output file.
+ * @param snapshot_type The type of snapshot we are writing
+ * @param part_type The #part_type we are considering.
+ */
+enum compression_levels output_options_get_ptype_default(
+    struct swift_params* output_params, const char* snapshot_type,
+    const enum part_type part_type) {
+
+  /* Full name for the default path */
+  char field[PARSER_MAX_LINE_SIZE];
+  sprintf(field, "%.*s:Standard_%s", FIELD_BUFFER_SIZE, snapshot_type,
+          part_type_names[part_type]);
+
+  char compression_level[FIELD_BUFFER_SIZE];
+  parser_get_opt_param_string(
+      output_params, field, compression_level,
+      compression_level_names[compression_level_default]);
+
+  /* Need to find out which of the entries this corresponds to... */
+  int level_index;
+  for (level_index = 0; level_index < compression_level_count; level_index++) {
+    if (!strcmp(compression_level_names[level_index], compression_level)) break;
+  }
+
+  /* Make sure that the supplied default option is either on or off, not a
+   * compression strategy (these should only be set on a per-field basis) */
+  if (!(level_index == compression_do_not_write ||
+        level_index == compression_write_lossless))
+    error(
+        "A lossy default compression strategy was specified for snapshot "
+        "type %s and particle type %d. This is not allowed, lossy "
+        "compression must be set on a field-by-field basis.",
+        snapshot_type, part_type);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check whether we could translate the level string to a known entry. */
+  if (level_index >= compression_level_count)
+    error(
+        "Could not resolve compression level \"%s\" as default compression "
+        "level of particle type %s in snapshot type %s.",
+        compression_level, part_type_names[part_type], snapshot_type);
+
+  message(
+      "Determined default compression level of %s in snapshot type %s "
+      "as \"%s\", corresponding to level code %d",
+      part_type_names[part_type], snapshot_type, compression_level,
+      level_index);
+#endif
+
+  return (enum compression_levels)level_index;
+}
+
+/**
+ * @brief Return the number of fields to be written for a ptype.
+ *
+ * @param output_options The output_options struct.
+ * @param selection_name The current output selection name.
+ * @param ptype The particle type index.
+ */
+int output_options_get_num_fields_to_write(
+    const struct output_options* output_options, const char* selection_name,
+    const int ptype) {
+
+  /* Get the ID of the output selection in the structure */
+  int selection_id =
+      parser_get_section_id(output_options->select_output, selection_name);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* The only situation where we might legitimately not find the selection
+   * name is if it is the default. Everything else means trouble. */
+  if (strcmp(selection_name, select_output_header_default_name) &&
+      selection_id < 0)
+    error(
+        "Output selection '%s' could not be located in output_options "
+        "structure. Please investigate.",
+        selection_name);
+
+  /* While we're at it, make sure the selection ID is not impossibly high */
+  if (selection_id >= output_options->select_output->sectionCount)
+    error(
+        "Output selection '%s' was apparently located in index %d of the "
+        "output_options structure, but this only has %d sections.",
+        selection_name, selection_id,
+        output_options->select_output->sectionCount);
+#endif
+
+  /* Special treatment for absent `Default` section */
+  if (selection_id < 0)
+    selection_id = output_options->select_output->sectionCount;
+
+  return output_options->num_fields_to_write[selection_id][ptype];
 }
