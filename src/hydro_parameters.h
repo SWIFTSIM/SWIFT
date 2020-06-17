@@ -28,6 +28,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Local includes */
+#include "parser.h"
+
 /* Import the right hydro header */
 #if defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_parameters.h"

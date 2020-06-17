@@ -27,6 +27,7 @@
 #include "error.h"
 #include "inline.h"
 #include "part.h"
+#include "units.h"
 
 /* Standard includes. */
 #include <string.h>
