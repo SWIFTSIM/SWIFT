@@ -67,8 +67,8 @@ Gravity:
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
-  use_tree_below_softening:      1         # Can the gravity code use the multipole interactions below the softening scale?
-  allow_truncation_in_MAC:       1         # Can the Multipole acceptance criterion use the truncated force estimator?
+  use_tree_below_softening:      0         # (Optional) Can the gravity code use the multipole interactions below the softening scale?
+  allow_truncation_in_MAC:       0         # (Optional) Can the Multipole acceptance criterion use the truncated force estimator?
   comoving_DM_softening:         0.0026994 # Comoving Plummer-equivalent softening length for DM particles (in internal units).
   max_physical_DM_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
   comoving_baryon_softening:     0.0026994 # Comoving Plummer-equivalent softening length for baryon particles (in internal units).

@@ -121,7 +121,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Consider truncated forces in the MAC? */
   if (p->use_adaptive_tolerance)
     p->consider_truncation_in_MAC =
-        parser_get_param_int(params, "Gravity:allow_truncation_in_MAC");
+        parser_get_opt_param_int(params, "Gravity:allow_truncation_in_MAC", 0);
 
   /* Are we allowing tree use below softening? */
   p->use_tree_below_softening =

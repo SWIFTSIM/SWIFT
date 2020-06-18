@@ -45,9 +45,10 @@ GEARPressureFloor:
 
   # Parameters for the self-gravity scheme
 Gravity:
-  mesh_side_length:              12       # Number of cells along each axis for the periodic gravity mesh.
-  eta:                           2.5     # Constant dimensionless multiplier for time integration.
-  theta:                         0.7       # Opening angle (Multipole acceptance criterion).
-  max_physical_DM_softening:     0.5    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
-  max_physical_baryon_softening: 0.5    # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
-  softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
+  mesh_side_length:              16       # Number of cells along each axis for the periodic gravity mesh.
+  eta:                           0.025    # Constant dimensionless multiplier for time integration.
+  MAC:                           geometric
+  theta_cr:                      0.7      # Opening angle (Multipole acceptance criterion).
+  max_physical_DM_softening:     0.5      # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
+  max_physical_baryon_softening: 0.5      # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
+  softening_ratio_background:    0.04     # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.

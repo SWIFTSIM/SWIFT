@@ -47,8 +47,10 @@ Scheduler:
   
 Gravity:
   mesh_side_length:   32
-  eta: 0.025
-  theta: 0.3
+  eta:                0.025
+  MAC:                adaptive
+  theta_cr:           0.5
+  epsilon_fmm:        0.0001
   comoving_DM_softening: 0.08	# 80 kpc = 1/25 of mean inter-particle separation
   max_physical_DM_softening: 0.08  # 80 kpc = 1/25 of mean inter-particle separation
   comoving_baryon_softening: 0.08	# 80 kpc = 1/25 of mean inter-particle separation
