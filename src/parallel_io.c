@@ -1524,7 +1524,7 @@ void write_output_parallel(struct engine* e,
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
     /* Don't do anything if no particle of this kind */
-    if (N_total[ptype] == 0) continue;
+    if (N_total[ptype] == 0 || numFields[ptype] == 0) continue;
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
