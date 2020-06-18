@@ -1184,7 +1184,6 @@ void prepare_file(struct engine* e, const char* fileName,
 
     /* Write the number of particles as an attribute */
     io_write_attribute_l(h_grp, "NumberOfParticles", N_total[ptype]);
-    io_write_attribute_i(h_grp, "NumberOfFields", numFields[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];
@@ -1286,11 +1285,9 @@ void prepare_file(struct engine* e, const char* fileName,
         num_fields_written++;
       }
     }
-#ifdef SWIFT_DEBUG_CHECKS
-    if (num_fields_written != numFields[ptype])
-      error("Wrote %d fields for particle type %s, but expected to write %d.",
-            num_fields_written, part_type_names[ptype], numFields[ptype]);
-#endif
+
+    /* Only write this now that we know exactly how many fields there are. */
+    io_write_attribute_i(h_grp, "NumberOfFields", num_fields_written);
 
     /* Close particle group */
     H5Gclose(h_grp);
