@@ -2278,12 +2278,11 @@ void io_collect_gparts_background_to_write(
  *
  * @param params The #swift_params instance corresponding to the select_output
  *               file.
- * @param N_total The total number of each particle type.
  * @param with_cosmolgy Ran with cosmology?
  */
 void io_check_output_fields(struct output_options* output_options,
-                            const long long N_total[swift_type_count],
-                            const int with_cosmology) {
+                            const int with_cosmology, const int with_fof,
+                            const int with_stf) {
 
   const int MAX_NUM_PTYPE_FIELDS = 100;
 
@@ -2295,8 +2294,8 @@ void io_check_output_fields(struct output_options* output_options,
   struct io_props field_list[swift_type_count][MAX_NUM_PTYPE_FIELDS];
 
   for (int ptype = 0; ptype < swift_type_count; ptype++)
-    ptype_num_fields_total[ptype] =
-        get_ptype_fields(ptype, field_list[ptype], with_cosmology);
+    ptype_num_fields_total[ptype] = get_ptype_fields(
+        ptype, field_list[ptype], with_cosmology, with_fof, with_stf);
 
   /* Check for whether we have a `Default` section */
   int have_default = 0;
@@ -2377,7 +2376,10 @@ void io_check_output_fields(struct output_options* output_options,
         if (strcmp(param_name, field_name) == 0) break;
       }
 
-      if (field_id == ptype_num_fields_total[param_ptype])
+      int param_is_known = 0; /* Update below if it is a known one */
+      if (field_id < ptype_num_fields_total[param_ptype])
+        param_is_known = 1;
+      else
         message(
             "WARNING: Trying to change behaviour of field '%s' (read from "
             "'%s') that does not exist. This may be because you are not "
@@ -2385,32 +2387,34 @@ void io_check_output_fields(struct output_options* output_options,
             param_name, params->fileName);
 
       /* Perform a correctness check on the _value_ of the parameter */
-      char field_value[FIELD_BUFFER_SIZE];
-      parser_get_param_string(params, field_name, field_value);
+      char param_value[FIELD_BUFFER_SIZE];
+      parser_get_param_string(params, param_name, param_value);
 
       int value_id = 0;
       for (value_id = 0; value_id < compression_level_count; value_id++)
-        if (strcmp(field_value, compression_level_names[value_id]) == 0) break;
+        if (strcmp(param_value, compression_level_names[value_id]) == 0) break;
 
       if (value_id == compression_level_count)
         error("Choice of output selection parameter %s ('%s') is invalid.",
-              field_name, field_value);
+              param_name, param_value);
 
       /* Adjust number of fields to be written for param_ptype, if this field's
-       * status is different from default */
-      const int is_on =
-          strcmp(field_value,
-                 compression_level_names[compression_do_not_write]) != 0;
+       * status is different from default and it is a known one. */
+      if (param_is_known) {
+        const int is_on =
+            strcmp(param_value,
+                   compression_level_names[compression_do_not_write]) != 0;
 
-      if (is_on && !ptype_default_write_status[param_ptype]) {
-        /* Particle should be written even though default is off:
-         * increase field count */
-        ptype_num_fields_to_write[param_ptype] += 1;
-      }
-      if (!is_on && ptype_default_write_status[param_ptype]) {
-        /* Particle should not be written, even though default is on:
-         * decrease field count */
-        ptype_num_fields_to_write[param_ptype] -= 1;
+        if (is_on && !ptype_default_write_status[param_ptype]) {
+          /* Particle should be written even though default is off:
+           * increase field count */
+          ptype_num_fields_to_write[param_ptype] += 1;
+        }
+        if (!is_on && ptype_default_write_status[param_ptype]) {
+          /* Particle should not be written, even though default is on:
+           * decrease field count */
+          ptype_num_fields_to_write[param_ptype] -= 1;
+        }
       }
     } /* ends loop over parameters */
 
@@ -2459,7 +2463,8 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology) {
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
     struct io_props list[100];
-    int num_fields = get_ptype_fields(ptype, list, with_cosmology);
+    int num_fields = get_ptype_fields(ptype, list, with_cosmology,
+                                      /*with_fof=*/1, /*with_stf=*/1);
 
     if (num_fields == 0) continue;
 
@@ -2566,11 +2571,14 @@ void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
  * @param ptype The index of the particle type under consideration.
  * @param list An io_props list that will hold the individual fields.
  * @param with_cosmology Use cosmological name variant?
+ * @param with_fof Include FoF related fields?
+ * @param with_stf Include STF related fields?
  *
  * @return The total number of fields that can be written for the ptype.
  */
 int get_ptype_fields(const int ptype, struct io_props* list,
-                     const int with_cosmology) {
+                     const int with_cosmology, const int with_fof,
+                     const int with_stf) {
 
   int num_fields = 0;
 
@@ -2585,20 +2593,24 @@ int get_ptype_fields(const int ptype, struct io_props* list,
                                             with_cosmology);
       num_fields +=
           star_formation_write_particles(NULL, NULL, list + num_fields);
-      num_fields += fof_write_parts(NULL, NULL, list + num_fields);
-      num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
+      if (with_fof)
+        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+      if (with_stf)
+        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
       break;
 
     case swift_type_dark_matter:
       darkmatter_write_particles(NULL, list, &num_fields);
-      num_fields += fof_write_gparts(NULL, list + num_fields);
-      num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+      if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
+      if (with_stf)
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
       break;
 
     case swift_type_dark_matter_background:
       darkmatter_write_particles(NULL, list, &num_fields);
-      num_fields += fof_write_gparts(NULL, list + num_fields);
-      num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+      if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
+      if (with_stf)
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
       break;
 
     case 3:
@@ -2610,15 +2622,17 @@ int get_ptype_fields(const int ptype, struct io_props* list,
       num_fields +=
           tracers_write_sparticles(NULL, list + num_fields, with_cosmology);
       num_fields += star_formation_write_sparticles(NULL, list + num_fields);
-      num_fields += fof_write_sparts(NULL, list + num_fields);
-      num_fields += velociraptor_write_sparts(NULL, list + num_fields);
+      if (with_fof) num_fields += fof_write_sparts(NULL, list + num_fields);
+      if (with_stf)
+        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
       break;
 
     case swift_type_black_hole:
       black_holes_write_particles(NULL, list, &num_fields, with_cosmology);
       num_fields += chemistry_write_bparticles(NULL, list + num_fields);
-      num_fields += fof_write_bparts(NULL, list + num_fields);
-      num_fields += velociraptor_write_bparts(NULL, list + num_fields);
+      if (with_fof) num_fields += fof_write_bparts(NULL, list + num_fields);
+      if (with_stf)
+        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
       break;
 
     default:

@@ -1061,7 +1061,6 @@ void write_output_serial(struct engine* e,
 
       /* Write the number of particles as an attribute */
       io_write_attribute_l(h_grp, "NumberOfParticles", N_total[ptype]);
-      io_write_attribute_i(h_grp, "NumberOfFields", numFields[ptype]);
 
       /* Close particle group */
       H5Gclose(h_grp);
@@ -1433,12 +1432,12 @@ void write_output_serial(struct engine* e,
             num_fields_written++;
           }
         }
-#ifdef SWIFT_DEBUG_CHECKS
-        if (num_fields_written != numFields[ptype])
-          error(
-              "Wrote %d fields for particle type %s, but expected to write %d.",
-              num_fields_written, part_type_names[ptype], numFields[ptype]);
-#endif
+
+        if (mpi_rank == 0) {
+          /* Only write this now that we know exactly how many fields there are.
+           */
+          io_write_attribute_i(h_grp, "NumberOfFields", num_fields_written);
+        }
 
         /* Free temporary array */
         if (parts_written) swift_free("parts_written", parts_written);
