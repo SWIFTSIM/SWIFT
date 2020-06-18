@@ -99,6 +99,11 @@ void output_options_clean(struct output_options* output_options) {
 void output_options_struct_dump(struct output_options* output_options,
                                 FILE* stream) {
   parser_struct_dump(output_options->select_output, stream);
+
+  const size_t count =
+      (OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1) * swift_type_count;
+  restart_write_blocks(output_options->num_fields_to_write, count * sizeof(int),
+                       1, stream, "output_options", "output options");
 }
 
 /**
@@ -114,6 +119,11 @@ void output_options_struct_restore(struct output_options* output_options,
   parser_struct_restore(select_output, stream);
 
   output_options->select_output = select_output;
+
+  const size_t count =
+      (OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1) * swift_type_count;
+  restart_read_blocks(output_options->num_fields_to_write, count * sizeof(int),
+                      1, stream, NULL, "output options");
 }
 
 /**
