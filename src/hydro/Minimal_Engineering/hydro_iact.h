@@ -23,11 +23,10 @@
  * @file Minimal/hydro_iact.h
  * @brief Minimal Enginering implementation of weakly compressible SPH (Morris et al 1997)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
+ * Simple constant viscosity term without switches is implemented. No thermal conduction
  * term is implemented.
  *
- * Implementation taken from MOrris, Fox & Zhu, 1997. J. Comp. Phys. 136, 214
+ * Implementation taken from Morris, Fox & Zhu, 1997. J. Comp. Phys. 136, 214
  */
 
 #include "adiabatic_index.h"

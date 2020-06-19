@@ -36,7 +36,7 @@
 
 /**
  * @file Minimal/hydro_parameters.h
- * @brief Minimal conservative implementation of SPH . (default parameters)
+ * @brief Minimal conservative implementation of weakly compressible SPH . (default parameters)
  *
  *        This file defines a number of things that are used in
  *        hydro_properties.c as defaults for run-time parameters

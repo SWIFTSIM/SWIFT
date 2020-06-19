@@ -21,16 +21,16 @@
 
 /**
  * @file Minimal/hydro_io.h
- * @brief Minimal conservative implementation of SPH (i/o routines)
+ * @brief Minimal weakly compressible implementation of SPH (i/o routines)
  *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
+ * Simple constant viscosity term without switches is implemented. No thermal conduction
  * term is implemented.
  *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * Implementation taken from Morris, Fox & Zhu, 1997. J. Comp. Phys. 136, 214
+ *
+ * RGB: for the moment, we keep the particle data structure unchanged, so that this routine is the same as normal SPH
+ * at a later point it will no longer read the particle properties that are not used in this SPH flavour.
+ * 
  */
 
 #include "adiabatic_index.h"
@@ -41,7 +41,8 @@
 #include "./hydro_parameters.h"
 
 /**
- * @brief Specifies which particle fields to read from a dataset
+ * @brief Specifies which particle fields to read from a dataset.
+ * many quantities are not used for weakly compresisble flow.
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.

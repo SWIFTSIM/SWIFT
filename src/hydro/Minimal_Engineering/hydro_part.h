@@ -27,6 +27,10 @@
  * term is implemented.
  *
  * Implementation taken from MOrris, Fox & Zhu, 1997. J. Comp. Phys. 136, 214
+ *
+ * RGB: for the moment, we keep the particle data structure unchanged, so that this routine is the same as normal SPH
+ * at a later point it will no longer read the particle properties that are not used in this SPH flavour.
+ *
  */
 
 #include "black_holes_struct.h"
