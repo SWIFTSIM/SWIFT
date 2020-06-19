@@ -604,6 +604,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the Balsara switch */
   /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
    * functions */
+  //RGB: argh this complicates things. For now keep this as a particle property. BUt use only the alpha.
+  const float balsara = hydro_props->viscosity.alpha ;
   //const float balsara = hydro_props->viscosity.alpha * abs_div_physical_v /
   //                      (abs_div_physical_v + curl_v +
   //                       0.0001f * fac_Balsara_eps * soundspeed * h_inv);
@@ -612,8 +614,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   //RGB not needed... p->force.f = grad_h_term;
   p->force.f = 0.;
   p->force.pressure = pressure;
-  //p->force.soundspeed = soundspeed;
-  //p->force.balsara = balsara;
+  // p->force.soundspeed = soundspeed;
+  p->force.balsara = balsara;
 }
 
 /**
