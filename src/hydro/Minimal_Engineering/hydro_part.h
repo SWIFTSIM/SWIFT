@@ -110,10 +110,12 @@ struct part {
   float mass;
 
   /*! Particle smoothing length. */
-  // not used in this case.   float h;
+  // RGB for now include h per, but it is a constant
+  float h;
 
   /*! Particle internal energy. */
-  // not used in this case.  float u;
+  // kept for now to simplyify reading ICs
+  float u;
 
   /*! Time derivative of the internal energy. */
   // not used in this case.  float u_dt;
@@ -137,7 +139,7 @@ struct part {
       float wcount;
 
       /*! Derivative of the neighbour number with respect to h. */
-      // not used in this case...  float wcount_dh;
+      float wcount_dh;  // RGB needed for compatibility with other routines. delete later
 
       /*! Derivative of density with respect to h */
       // not used in this case... float rho_dh;
@@ -175,8 +177,10 @@ struct part {
       // not used in this case....  float h_dt;
 
       /*! Balsara switch */
-      // not used in this case... float balsara;
+      // RGB kept for now to input the viscosity alpha..
+      float balsara;
 
+      
     } force;
   };
 
@@ -184,7 +188,7 @@ struct part {
   // not used ... struct chemistry_part_data chemistry_data;
 
   /*! Black holes information (e.g. swallowing ID) */
-  // not used... struct black_holes_part_data black_holes_data;
+  struct black_holes_part_data black_holes_data;
 
   /*! Time-step length */
   timebin_t time_bin;

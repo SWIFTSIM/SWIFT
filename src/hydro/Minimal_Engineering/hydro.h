@@ -107,8 +107,8 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
-
-  return gas_pressure_from_internal_energy(p->rho, p->u);
+  const float dummy = 0.f;
+  return gas_pressure_from_internal_energy(p->rho, dummy);
 }
 
 /**
@@ -123,8 +123,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
+  const float dummy = 0.f;
   return cosmo->a_factor_pressure *
-         gas_pressure_from_internal_energy(p->rho, p->u);
+         gas_pressure_from_internal_energy(p->rho, dummy);
 }
 
 /**
@@ -465,7 +466,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
   p->density.wcount = 0.f;       // not required, but neightbour cound may be useful.
-  //p->density.wcount_dh = 0.f;  // h is fixed and not adaptive.
+  p->density.wcount_dh = 0.f;  // h is fixed and not adaptive. Entry still needed for neighbour search - for now!
   // RGB  we want to use the exisiting density and update it...  p->rho = 0.f;
   //p->density.rho_dh = 0.f;     // h is fixed and not adaptive.
   p->density.div_v = 0.f;
@@ -512,13 +513,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   //p->rho += p->mass * kernel_root;
   //p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->density.wcount += kernel_root;
-  //p->density.wcount_dh -= hydro_dimension * kernel_root;
+  p->density.wcount_dh -= hydro_dimension * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   //p->rho *= h_inv_dim;
   //p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= h_inv_dim;
-  //p->density.wcount_dh *= h_inv_dim_plus_one;
+  p->density.wcount_dh *= h_inv_dim_plus_one;
 
   //RGB not required as no Balsara switch is applied.
   /* Finish calculation of the (physical) velocity curl components */
@@ -574,7 +575,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   // const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
   /* Inverse of the smoothing length */
-  const float h_inv = 1.f / p->h;
+  // const float h_inv = 1.f / p->h;
 
   /* Compute the norm of the curl */
   // const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
@@ -586,10 +587,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   // const float abs_div_physical_v = fabsf(div_physical_v);
 
   /* Compute the pressure */
-  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float dummy=0.f;
+  const float pressure = gas_pressure_from_internal_energy(p->rho, dummy);
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  //const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   //RGB not required in Engineering version since we compute density from div v
   /* Compute the "grad h" term */
@@ -712,7 +714,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* RGB: Predict the density */
   // is the - sign correct here? yes: cancels -= in loop calculation to give Morris eq 6.
   // but note that we have taken sum over both i and j derivatives.
-  p->rho += - p->rho * p->denisty.div_v * dt_drift;
+  p->rho += - p->rho * p->density.div_v * dt_drift;
   
   //const float h_inv = 1.f / p->h;
 
@@ -798,9 +800,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  /* Integrate the internal energy forward in time */
-  //const float delta_u = p->u_dt * dt_therm;
-
+  /* Integrate the density forward in time */
+  const float delta_rho = - p->rho * p->density.div_v * dt_hydro;
+  xp->rho_full = xp->rho_full + delta_rho;
+  
   /* Do not decrease the energy by more than a factor of 2*/
   //xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
 
@@ -886,7 +889,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->a_grav[0] = 0.f;
   xp->a_grav[1] = 0.f;
   xp->a_grav[2] = 0.f;
-  //xp->u_full = p->u;
+  xp->rho_full = p->rho;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
