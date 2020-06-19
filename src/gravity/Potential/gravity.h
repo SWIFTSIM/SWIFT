@@ -23,7 +23,6 @@
 #include <float.h>
 
 /* Local includes. */
-#include "accumulate.h"
 #include "cosmology.h"
 #include "gravity_properties.h"
 #include "kernel_gravity.h"
@@ -64,7 +63,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 __attribute__((always_inline)) INLINE static void
 gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
 
-  accumulate_add_f(&gp->potential, pot);
+  gp->potential += pot;
 }
 
 /**
@@ -194,6 +193,17 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->initialised = 0; /* Ready for next step */
 #endif
 }
+
+/**
+ * @brief Update the #gpart after a drift step.
+ *
+ * This is typically used to update the softening lengths.
+ *
+ * @param gp The particle to act upon
+ * @param grav_props The global properties of the gravity calculation.
+ */
+__attribute__((always_inline)) INLINE static void gravity_predict_extra(
+    struct gpart* gp, const struct gravity_props* grav_props) {}
 
 /**
  * @brief Kick the additional variables

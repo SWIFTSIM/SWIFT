@@ -179,29 +179,49 @@ the other kernels:
   a_x(\mathbf{x}_a) &= G\sum_{\mathbf{m}}^p \mathsf{M}_{\mathbf{m}} \mathsf{D}_{\mathbf{m}+\left(1,0,0\right)}(\mathbf{R}).
   \label{eq:fmm:M2P}
 \end{align}
-A traditional tree-code uses solely that kernel to obtain the forces
-from the multipoles (or often just monopoles, i.e. setting $p=0$ throughout)
-to the particles.\\
-All the kernels (Eqs.~\ref{eq:fmm:P2M}-\ref{eq:fmm:M2P}) are rather
-straightforward to evaluate as they are only made of additions and
-multiplications (provided $\mathsf{D}$ can be evaluated quickly),
-which are extremely efficient instructions on modern architectures
-(see Appendix \ref{sec:pot_derivatives} for the full
-expressions). However, the fully expanded sums can lead to rather
-large and prone to typo expressions. To avoid any mishaps, we use a
-\texttt{python} script to generate C code in which all the sums are
-unrolled and correct by construction. In \swift, we implemented the
-kernels up to order $p=5$, as it proved to be accurate enough for our
-purpose, but this could be extended to higher order easily. This
-implies storing $56$ numbers per cell for each $\textsf{M}$ and
-$\textsf{F}$ plus three numbers for the location of the centre of
-mass. For leaf-cells with large numbers of particles, as in \swift,
-this is a small memory overhead. One further small improvement
-consists in choosing $\mathbf{z}_A$ to be the centre of mass of cell
-$A$ rather than its geometrical centre. The first order multipoles
+A traditional tree-code uses solely that kernel to obtain the forces from
+the multipoles (or often just monopoles, i.e. setting $p=0$ throughout) to
+the particles. Similarly, the field tensor of a cell can receive the
+contribution from a single particle at a distance $\mathbf{R} \equiv
+\mathbf{z}_A - \mathbf{x}_b$ via the P2L kernel:
+\begin{equation}
+  \mathsf{F}_{\mathbf{n}}(\mathbf{z}_A) = G m_b
+  \mathsf{D}_{\mathbf{n}}(\mathbf{R}).
+  \label{eq:fmm:P2L}
+\end{equation}
+The M2P and P2L kernels can be used to speed up the calculations
+involving only as single particle.  All the kernels
+(Eqs.~\ref{eq:fmm:P2M}-\ref{eq:fmm:P2L}) are rather straightforward to
+evaluate as they are only made of additions and multiplications
+(provided $\mathsf{D}$ can be evaluated quickly), which are extremely
+efficient instructions on modern architectures (see Appendix
+\ref{sec:pot_derivatives} for the full expressions). However, the
+fully expanded sums can lead to rather large and prone to typo
+expressions. To avoid any mishaps, we use a \texttt{python} script to
+generate C code in which all the sums are unrolled and correct by
+construction. In \swift, we implemented the kernels up to order $p=5$,
+as it proved to be accurate enough for our purpose, but this could be
+extended to higher order easily. This implies storing $56$ numbers per
+cell for each $\textsf{M}$ and $\textsf{F}$ plus three numbers for the
+location of the centre of mass. For leaf-cells with large numbers of
+particles, as in \swift, this is a small memory overhead. One further
+small improvement consists in choosing $\mathbf{z}_A$ to be the centre
+of mass of cell $A$ rather than its geometrical centre. The first
+order multipoles
 ($\mathsf{M}_{100},\mathsf{M}_{010},\mathsf{M}_{001}$) then vanish by
 construction. This allows us to simplify some of the expressions and
 helps reduce, albeit by a small fraction, the memory footprint of the
 tree structure.
 
-\subsubsection{The Multipole acceptance criterion}
+\subsubsection{Computing the accelerations via a tree-walk}
+
+We define the maximal distance between a centre of mass of a cell $B$ and
+any particle in that cell as
+
+\begin{equation}
+  \rho_B = \max_{b \in B}(|\mathbf{r}_b|)
+\end{equation}
+\\
+\textcolor{red}{MORE WORDS HERE}
+
+

@@ -39,63 +39,63 @@
 #endif /* GADGET2_SOFTENING_CORRECTION */
 
 /**
- * @brief Computes the gravity softening function for potential.
+ * @brief Computes the gravity softening kernel for the potential.
  *
  * This functions assumes 0 < u < 1.
  *
- * @param u The ratio of the distance to the softening length $u = x/h$.
- * @param W (return) The value of the kernel function $W(x,h)$.
+ * @param u The ratio of the distance to the spline softening length $u = x/H$.
  */
-__attribute__((always_inline, nonnull)) INLINE static void kernel_grav_pot_eval(
-    const float u, float *const W) {
+__attribute__((const)) INLINE static float kernel_grav_pot_eval(const float u) {
 
+  float W;
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5f)
-    *W = -2.8f + u * u * (5.333333333333f + u * u * (6.4f * u - 9.6f));
+    W = -2.8f + u * u * (5.333333333333f + u * u * (6.4f * u - 9.6f));
   else
-    *W =
-        -3.2f + 0.066666666667f / u +
+    W = -3.2f + 0.066666666667f / u +
         u * u *
             (10.666666666667f + u * (-16.f + u * (9.6f - 2.133333333333f * u)));
 #else
 
   /* W(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
-  *W = 3.f * u - 15.f;
-  *W = *W * u + 28.f;
-  *W = *W * u - 21.f;
-  *W = *W * u;
-  *W = *W * u + 7.f;
-  *W = *W * u;
-  *W = *W * u - 3.f;
+  W = 3.f * u - 15.f;
+  W = W * u + 28.f;
+  W = W * u - 21.f;
+  W = W * u;
+  W = W * u + 7.f;
+  W = W * u;
+  W = W * u - 3.f;
 #endif
+  return W;
 }
 
 /**
- * @brief Computes the gravity softening function for forces.
+ * @brief Computes the gravity softening kernel for the forces.
  *
  * This functions assumes 0 < u < 1.
  *
- * @param u The ratio of the distance to the softening length $u = x/h$.
- * @param W (return) The value of the kernel function $W(x,h)$.
+ * @param u The ratio of the distance to the spline softening length $u = x/H$.
  */
-__attribute__((always_inline, nonnull)) INLINE static void
-kernel_grav_force_eval(const float u, float *const W) {
+__attribute__((const)) INLINE static float kernel_grav_force_eval(
+    const float u) {
 
+  float W;
 #ifdef GADGET2_SOFTENING_CORRECTION
   if (u < 0.5f)
-    *W = 10.6666667f + u * u * (32.f * u - 38.4f);
+    W = 10.6666667f + u * u * (32.f * u - 38.4f);
   else
-    *W = 21.3333333f - 48.f * u + 38.4f * u * u - 10.6666667f * u * u * u -
-         0.06666667f / (u * u * u);
+    W = 21.3333333f - 48.f * u + 38.4f * u * u - 10.6666667f * u * u * u -
+        0.06666667f / (u * u * u);
 #else
 
   /* W(u) = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
-  *W = 21.f * u - 90.f;
-  *W = *W * u + 140.f;
-  *W = *W * u - 84.f;
-  *W = *W * u;
-  *W = *W * u + 14.f;
+  W = 21.f * u - 90.f;
+  W = W * u + 140.f;
+  W = W * u - 84.f;
+  W = W * u;
+  W = W * u + 14.f;
 #endif
+  return W;
 }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -162,64 +162,101 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval_force_double(
 }
 #endif /* SWIFT_GRAVITY_FORCE_CHECKS */
 
-#undef GADGET2_SOFTENING_CORRECTION
-
 /************************************************/
 /* Derivatives of softening kernel used for FMM */
 /************************************************/
 
-__attribute__((always_inline)) INLINE static float D_soft_1(float u,
-                                                            float u_inv) {
+__attribute__((const)) INLINE static float D_soft_1(const float u) {
 
-  /* phi(u) = 3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3 */
-  float phi = 3.f * u - 15.f;
-  phi = phi * u + 28.f;
-  phi = phi * u - 21.f;
+#ifdef GADGET2_SOFTENING_CORRECTION
+  error("Invalid choice of softening kernel shape");
+#endif
+
+  /* -3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3 */
+  float phi = -3.f * u + 15.f;
+  phi = phi * u - 28.f;
+  phi = phi * u + 21.f;
   phi = phi * u;
-  phi = phi * u + 7.f;
+  phi = phi * u - 7.f;
   phi = phi * u;
-  phi = phi * u - 3.f;
+  phi = phi * u + 3.f;
 
   return phi;
 }
 
-__attribute__((always_inline)) INLINE static float D_soft_3(float u,
-                                                            float u_inv) {
+__attribute__((const)) INLINE static float D_soft_2(const float u) {
 
-  /* phi'(u)/u = 21u^5 - 90u^4 + 140u^3 - 84u^2 + 14 */
-  float phi = 21.f * u - 90.f;
-  phi = phi * u + 140.f;
-  phi = phi * u - 84.f;
+#ifdef GADGET2_SOFTENING_CORRECTION
+  error("Invalid choice of softening kernel shape");
+#endif
+
+  /* -21u^6 + 90u^5 - 140u^4 + 84u^3 - 14u */
+  float phi = -21.f * u + 90.f;
+  phi = phi * u - 140.f;
+  phi = phi * u + 84.f;
   phi = phi * u;
-  phi = phi * u + 14.f;
+  phi = phi * u - 14.f;
+  phi = phi * u;
 
   return phi;
 }
 
-__attribute__((always_inline)) INLINE static float D_soft_5(float u,
-                                                            float u_inv) {
+__attribute__((const)) INLINE static float D_soft_3(const float u) {
 
-  /* (phi'(u)/u)'/u = 105u^3 - 360u^2 + 420u - 168 */
-  float phi = 105.f * u - 360.f;
+#ifdef GADGET2_SOFTENING_CORRECTION
+  error("Invalid choice of softening kernel shape");
+#endif
+
+  /* -105u^5 + 360u^4 - 420u^3 + 168u^2 */
+  float phi = -105.f * u + 360.f;
+  phi = phi * u - 420.f;
+  phi = phi * u + 168.f;
+  phi = phi * u;
+  phi = phi * u;
+
+  return phi;
+}
+
+__attribute__((const)) INLINE static float D_soft_4(const float u) {
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+  error("Invalid choice of softening kernel shape");
+#endif
+
+  /* -315u^4 + 720u^3 - 420u^2 */
+  float phi = -315.f * u + 720.f;
+  phi = phi * u - 420.f;
+  phi = phi * u;
+  phi = phi * u;
+
+  return phi;
+}
+
+__attribute__((const)) INLINE static float D_soft_5(const float u) {
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+  error("Invalid choice of softening kernel shape");
+#endif
+
+  /* -315u^3 + 420u */
+  float phi = -315.f * u;
   phi = phi * u + 420.f;
-  phi = phi * u - 168.f;
+  phi = phi * u;
 
   return phi;
 }
 
-__attribute__((always_inline)) INLINE static float D_soft_7(float u,
-                                                            float u_inv) {
-  return 0.f;
-}
+__attribute__((const)) INLINE static float D_soft_6(const float u) {
 
-__attribute__((always_inline)) INLINE static float D_soft_9(float u,
-                                                            float u_inv) {
-  return 0.f;
-}
+#ifdef GADGET2_SOFTENING_CORRECTION
+  error("Invalid choice of softening kernel shape");
+#endif
 
-__attribute__((always_inline)) INLINE static float D_soft_11(float u,
-                                                             float u_inv) {
-  return 0.f;
+  /* 315u^2 - 1260 */
+  float phi = 315 * u;
+  phi = phi * u - 1260.f;
+
+  return phi;
 }
 
 #endif /* SWIFT_KERNEL_GRAVITY_H */

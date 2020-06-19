@@ -61,9 +61,7 @@ runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
 
     const float r = r2 * r_inv;
     const float ui = r * h_inv;
-
-    float W_f_ij;
-    kernel_grav_force_eval(ui, &W_f_ij);
+    const float W_f_ij = kernel_grav_force_eval(ui);
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
@@ -108,9 +106,7 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
   } else {
 
     const float ui = r * h_inv;
-    float W_f_ij;
-
-    kernel_grav_force_eval(ui, &W_f_ij);
+    const float W_f_ij = kernel_grav_force_eval(ui);
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
@@ -118,8 +114,8 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
 
   /* Get long-range correction */
   const float u_lr = r * r_s_inv;
-  float corr_f_lr;
-  kernel_long_grav_force_eval(u_lr, &corr_f_lr);
+  float corr_f_lr, dummy;
+  kernel_long_grav_eval(u_lr, &corr_f_lr, &dummy);
   *f_ij *= corr_f_lr;
 
   /* No potential calculation */
@@ -149,7 +145,12 @@ runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
                          float *restrict pot) {
 
   /* Use the M2P kernel */
-  struct reduced_grav_tensor l = {0.f, 0.f, 0.f, 0.f};
+  struct reduced_grav_tensor l;
+  l.F_000 = 0.f;
+  l.F_100 = 0.f;
+  l.F_010 = 0.f;
+  l.F_001 = 0.f;
+
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/0, /*rs_inv=*/0.f, &l);
 
   /* Write back */
@@ -186,7 +187,12 @@ runner_iact_grav_pm_truncated(const float r_x, const float r_y, const float r_z,
                               float *restrict f_z, float *restrict pot) {
 
   /* Use the M2P kernel */
-  struct reduced_grav_tensor l = {0.f, 0.f, 0.f, 0.f};
+  struct reduced_grav_tensor l;
+  l.F_000 = 0.f;
+  l.F_100 = 0.f;
+  l.F_010 = 0.f;
+  l.F_001 = 0.f;
+
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/1, r_s_inv, &l);
 
   /* Write back */

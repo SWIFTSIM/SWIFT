@@ -99,6 +99,11 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 
     if (!cell_are_gpart_drifted(c, e)) error("Un-drifted gparts");
 
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    /* Lock the cell for the particle updates */
+    lock_lock(&c->grav.plock);
+#endif
+
     /* Cell properties */
     struct gpart *gparts = c->grav.parts;
     const int gcount = c->grav.count;
@@ -133,9 +138,395 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
         gravity_L2P(pot, CoM, gp);
       }
     }
+
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    /* All done -> unlock the cell */
+    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
+#endif
   }
 
   if (timer) TIMER_TOC(timer_dograv_down);
+}
+
+/**
+ * @brief Compute the fully Newtoning gravitational forces from particles
+ * one array onto the particles in another array
+ *
+ * This function *must* be called at the leaf level for particles i.
+ *
+ * @param gparts_i The particles receiving forces (at leaf level).
+ * @param gcount_i The number of particles receiving forces.
+ * @param gparts_j The particles giving forces (at any level).
+ * @param gcount_j The number of particles giving forces.
+ * @param e The @engine structure.
+ * @param grav_props The properties of the gravity scheme.
+ * @param cache_i The gravity cache to use to store the results in i.
+ * @param ci The (leaf-)cell containing the particles i.
+ * @param multi_j The multipole in cell j.
+ */
+static INLINE void runner_dopair_grav_pp_full_no_cache(
+    struct gpart *restrict gparts_i, const int gcount_i,
+    const struct gpart *restrict gparts_j, const int gcount_j,
+    const struct engine *e, const struct gravity_props *grav_props,
+    struct gravity_cache *cache_i, struct cell *ci,
+    const struct gravity_tensors *multi_j) {
+
+  /* Prepare the i cache */
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  gravity_cache_zero_output(cache_i, gcount_padded_i);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->split) error("Using function above leaf level!");
+#endif
+
+  /* Loop over sink particles */
+  for (int i = 0; i < gcount_i; ++i) {
+
+    struct gpart *gpi = &gparts_i[i];
+
+    /* Ignore inactive particles */
+    if (!gpart_is_active(gpi, e)) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that particles have been drifted to the current time */
+    if (gpi->ti_drift != e->ti_current)
+      error("gpi not drifted to current time");
+
+    /* Check that the particle was initialised */
+    if (gpi->initialised == 0)
+      error("Adding forces to an un-initialised gpart.");
+#endif
+
+    const float x_i = gpi->x[0];
+    const float y_i = gpi->x[1];
+    const float z_i = gpi->x[2];
+    const float h_i = gravity_get_softening(gpi, grav_props);
+
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+
+    /* Now, we can start the interactions for that particle */
+
+    /* Distance to the Multipole */
+    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    const float dx_multi = CoM_j[0] - x_i;
+    const float dy_multi = CoM_j[1] - y_i;
+    const float dz_multi = CoM_j[2] - z_i;
+
+    const float r2_multi =
+        dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
+
+    /* Can we use the Mulipole here? */
+    if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
+                                           /*periodic=*/1)) {
+
+      const float h_inv_i = 1.f / h_i;
+
+      /* Interact! */
+      float f_x, f_y, f_z, pot_ij;
+      runner_iact_grav_pm_full(dx_multi, dy_multi, dz_multi, r2_multi, h_i,
+                               h_inv_i, &multi_j->m_pole, &f_x, &f_y, &f_z,
+                               &pot_ij);
+
+      /* Store it back */
+      a_x += f_x;
+      a_y += f_y;
+      a_z += f_z;
+      pot += pot_ij;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Update the interaction counter */
+      accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+      /* Update the M2P interaction counter and forces. */
+      accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
+                        multi_j->m_pole.num_gpart);
+      gparts_i[i].a_grav_m2p[0] += f_x;
+      gparts_i[i].a_grav_m2p[1] += f_y;
+      gparts_i[i].a_grav_m2p[2] += f_z;
+#endif
+
+    } else {
+
+      /* Loop over source particles */
+      for (int j = 0; j < gcount_j; ++j) {
+
+        const struct gpart *gpj = &gparts_j[j];
+
+        /* Ignore inhibited particles */
+        if (gpart_is_inhibited(gpj, e)) continue;
+
+        /* Get info about j */
+        const float x_j = gpj->x[0];
+        const float y_j = gpj->x[1];
+        const float z_j = gpj->x[2];
+        const float mass_j = gpj->mass;
+        const float h_j = gravity_get_softening(gpj, grav_props);
+
+        /* Compute the pairwise distance.
+           Note: no need for box wrap here! This is non-periodic */
+        const float dx = x_j - x_i;
+        const float dy = y_j - y_i;
+        const float dz = z_j - z_i;
+
+        const float r2 = dx * dx + dy * dy + dz * dz;
+
+        /* Pick the maximal softening length of i and j */
+        const float h = max(h_i, h_j);
+        const float h2 = h * h;
+        const float h_inv = 1.f / h;
+        const float h_inv_3 = h_inv * h_inv * h_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (r2 == 0.f && h2 == 0.)
+          error("Interacting particles with 0 distance and 0 softening.");
+
+        /* Check that particles have been drifted to the current time */
+        if (gpj->ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
+#endif
+
+        /* Interact! */
+        float f_ij, pot_ij;
+        runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij,
+                                 &pot_ij);
+
+        /* Store it back */
+        a_x += f_ij * dx;
+        a_y += f_ij * dy;
+        a_z += f_ij * dz;
+        pot += pot_ij;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Update the interaction counter */
+        accumulate_inc_ll(&gparts_i[i].num_interacted);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+        /* Update the p2p interaction counter */
+        accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+        gparts_i[i].a_grav_p2p[0] += a_x;
+        gparts_i[i].a_grav_p2p[1] += a_y;
+        gparts_i[i].a_grav_p2p[2] += a_z;
+#endif
+      }
+    }
+    /* Store everything back in cache */
+    cache_i->a_x[i] += a_x;
+    cache_i->a_y[i] += a_y;
+    cache_i->a_z[i] += a_z;
+    cache_i->pot[i] += pot;
+  }
+
+    /* Write back to the particle data */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+  lock_lock(&ci->grav.plock);
+#endif
+  gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+  if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
+#endif
+}
+
+/**
+ * @brief Compute the long-range truncated gravitational forces from particles
+ * one array onto the particles in another array
+ *
+ * This function *must* be called at the leaf level for particles i.
+ *
+ * @param gparts_i The particles receiving forces (at leaf level).
+ * @param gcount_i The number of particles receiving forces.
+ * @param gparts_j The particles giving forces (at any level).
+ * @param gcount_j The number of particles giving forces.
+ * @param dim The size of the computational domain.
+ * @param e The @engine structure.
+ * @param grav_props The properties of the gravity scheme.
+ * @param cache_i The gravity cache to use to store the results in i.
+ * @param ci The (leaf-)cell containing the particles i.
+ * @param multi_j The multipole in cell j.
+ */
+static INLINE void runner_dopair_grav_pp_truncated_no_cache(
+    struct gpart *restrict gparts_i, const int gcount_i,
+    const struct gpart *restrict gparts_j, const int gcount_j,
+    const float dim[3], const struct engine *e,
+    const struct gravity_props *grav_props, struct gravity_cache *cache_i,
+    struct cell *ci, const struct gravity_tensors *multi_j) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!e->s->periodic)
+    error("Calling truncated PP function in non-periodic setup.");
+
+  if (ci->split) error("Using function above leaf level!");
+#endif
+
+  const float r_s_inv = grav_props->r_s_inv;
+
+  /* Prepare the i cache */
+  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+  gravity_cache_zero_output(cache_i, gcount_padded_i);
+
+  /* Loop over sink particles */
+  for (int i = 0; i < gcount_i; ++i) {
+
+    struct gpart *gpi = &gparts_i[i];
+
+    /* Ignore inactive particles */
+    if (!gpart_is_active(gpi, e)) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that particles have been drifted to the current time */
+    if (gpi->ti_drift != e->ti_current)
+      error("gpi not drifted to current time");
+
+    /* Check that the particle was initialised */
+    if (gpi->initialised == 0)
+      error("Adding forces to an un-initialised gpart.");
+#endif
+
+    const float x_i = gpi->x[0];
+    const float y_i = gpi->x[1];
+    const float z_i = gpi->x[2];
+    const float h_i = gravity_get_softening(gpi, grav_props);
+
+    /* Local accumulators for the acceleration and potential */
+    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+
+    /* Now, we can start the interactions for that particle */
+
+    /* Distance to the Multipole */
+    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    float dx_multi = CoM_j[0] - x_i;
+    float dy_multi = CoM_j[1] - y_i;
+    float dz_multi = CoM_j[2] - z_i;
+
+    /* Apply periodic BCs */
+    dx_multi = nearestf(dx_multi, dim[0]);
+    dy_multi = nearestf(dy_multi, dim[1]);
+    dz_multi = nearestf(dz_multi, dim[2]);
+
+    const float r2_multi =
+        dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
+
+    /* Can we use the Mulipole here? */
+    if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
+                                           /*periodic=*/1)) {
+
+      const float h_inv_i = 1.f / h_i;
+
+      /* Interact! */
+      float f_x, f_y, f_z, pot_ij;
+      runner_iact_grav_pm_truncated(dx_multi, dy_multi, dz_multi, r2_multi, h_i,
+                                    h_inv_i, r_s_inv, &multi_j->m_pole, &f_x,
+                                    &f_y, &f_z, &pot_ij);
+
+      /* Store it back */
+      a_x += f_x;
+      a_y += f_y;
+      a_z += f_z;
+      pot += pot_ij;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Update the interaction counter */
+      accumulate_add_ll(&gparts_i[i].num_interacted, multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+      /* Update the M2P interaction counter and forces. */
+      accumulate_add_ll(&gparts_i[i].num_interacted_m2p,
+                        multi_j->m_pole.num_gpart);
+      gparts_i[i].a_grav_m2p[0] += f_x;
+      gparts_i[i].a_grav_m2p[1] += f_y;
+      gparts_i[i].a_grav_m2p[2] += f_z;
+#endif
+
+    } else {
+
+      /* Loop over source particles */
+      for (int j = 0; j < gcount_j; ++j) {
+
+        const struct gpart *gpj = &gparts_j[j];
+
+        /* Ignore inhibited particles */
+        if (gpart_is_inhibited(gpj, e)) continue;
+
+        /* Get info about j */
+        const float x_j = gpj->x[0];
+        const float y_j = gpj->x[1];
+        const float z_j = gpj->x[2];
+        const float mass_j = gpj->mass;
+        const float h_j = gravity_get_softening(gpj, grav_props);
+
+        /* Compute the pairwise distance.
+           Note: no need for box wrap here! This is non-periodic */
+        float dx = x_j - x_i;
+        float dy = y_j - y_i;
+        float dz = z_j - z_i;
+
+        /* Correct for periodic BCs */
+        dx = nearestf(dx, dim[0]);
+        dy = nearestf(dy, dim[1]);
+        dz = nearestf(dz, dim[2]);
+
+        const float r2 = dx * dx + dy * dy + dz * dz;
+
+        /* Pick the maximal softening length of i and j */
+        const float h = max(h_i, h_j);
+        const float h2 = h * h;
+        const float h_inv = 1.f / h;
+        const float h_inv_3 = h_inv * h_inv * h_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (r2 == 0.f && h2 == 0.)
+          error("Interacting particles with 0 distance and 0 softening.");
+
+        /* Check that particles have been drifted to the current time */
+        if (gpj->ti_drift != e->ti_current)
+          error("gpj not drifted to current time");
+#endif
+
+        /* Interact! */
+        float f_ij, pot_ij;
+        runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+                                      &f_ij, &pot_ij);
+
+        /* Store it back */
+        a_x += f_ij * dx;
+        a_y += f_ij * dy;
+        a_z += f_ij * dz;
+        pot += pot_ij;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Update the interaction counter */
+        accumulate_inc_ll(&gparts_i[i].num_interacted);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+        /* Update the p2p interaction counter */
+        accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+        gparts_i[i].a_grav_p2p[0] += a_x;
+        gparts_i[i].a_grav_p2p[1] += a_y;
+        gparts_i[i].a_grav_p2p[2] += a_z;
+#endif
+      }
+    }
+
+    /* Store everything back in cache */
+    cache_i->a_x[i] += a_x;
+    cache_i->a_y[i] += a_y;
+    cache_i->a_z[i] += a_z;
+    cache_i->pot[i] += pot;
+  }
+
+    /* Write back to the particle data */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+  lock_lock(&ci->grav.plock);
+#endif
+  gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+  if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
+#endif
 }
 
 /**
@@ -281,9 +672,9 @@ static INLINE void runner_dopair_grav_pp_full(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[2], a_z);
+    gparts_i[pid].a_grav_p2p[0] += a_x;
+    gparts_i[pid].a_grav_p2p[1] += a_y;
+    gparts_i[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }
@@ -437,9 +828,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts_i[pid].a_grav_p2p[2], a_z);
+    gparts_i[pid].a_grav_p2p[0] += a_x;
+    gparts_i[pid].a_grav_p2p[1] += a_y;
+    gparts_i[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }
@@ -488,7 +879,12 @@ static INLINE void runner_dopair_grav_pm_full(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
+  const float multi_epsilon = multi_j->max_softening;
+
   /* Loop over all particles in ci... */
+#ifndef SWIFT_DEBUG_CHECKS
+#pragma omp simd
+#endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
 
     /* Skip inactive particles */
@@ -521,7 +917,7 @@ static INLINE void runner_dopair_grav_pm_full(
     const float z_i = z[pid];
 
     /* Some powers of the softening length */
-    const float h_i = epsilon[pid];
+    const float h_i = max(epsilon[pid], multi_epsilon);
     const float h_inv_i = 1.f / h_i;
 
     /* Distance to the Multipole */
@@ -539,16 +935,9 @@ static INLINE void runner_dopair_grav_pm_full(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const float r_max_j = cj->grav.multipole->r_max;
-    const float r_max2 = r_max_j * r_max_j;
-    const float theta_crit2 = e->gravity_properties->theta_crit2;
-
-    /* Note: 0.99 and 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
-      error(
-          "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
-          "%e], rmax=%e r=%e epsilon=%e",
-          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j, sqrtf(r2), h_i);
+    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+                            cj->grav.multipole, r2 * 1.01, periodic))
+      error("use_mpole[i] set when M2P accept fails");
 #endif
 
     /* Interact! */
@@ -574,9 +963,9 @@ static INLINE void runner_dopair_grav_pm_full(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
+      gparts_i[pid].a_grav_m2p[0] += f_x;
+      gparts_i[pid].a_grav_m2p[1] += f_y;
+      gparts_i[pid].a_grav_m2p[2] += f_z;
     }
 #endif
   }
@@ -633,7 +1022,12 @@ static INLINE void runner_dopair_grav_pm_truncated(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
+  const float multi_epsilon = multi_j->max_softening;
+
   /* Loop over all particles in ci... */
+#ifndef SWIFT_DEBUG_CHECKS
+#pragma omp simd
+#endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
 
     /* Skip inactive particles */
@@ -666,7 +1060,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float z_i = z[pid];
 
     /* Some powers of the softening length */
-    const float h_i = epsilon[pid];
+    const float h_i = max(epsilon[pid], multi_epsilon);
     const float h_inv_i = 1.f / h_i;
 
     /* Distance to the Multipole */
@@ -682,16 +1076,9 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    const float r_max_j = cj->grav.multipole->r_max;
-    const float r_max2 = r_max_j * r_max_j;
-    const float theta_crit2 = e->gravity_properties->theta_crit2;
-
-    /* 0.99 and 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
-      error(
-          "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
-          "%e], rmax=%e",
-          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j);
+    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+                            cj->grav.multipole, r2 * 1.01, /*periodic=*/1))
+      error("use_mpole[i] set when M2P accept fails");
 #endif
 
     /* Interact! */
@@ -717,9 +1104,9 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (pid < gcount_i) {
       accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
                         cj->grav.multipole->m_pole.num_gpart);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], f_x);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], f_y);
-      accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], f_z);
+      gparts_i[pid].a_grav_m2p[0] += f_x;
+      gparts_i[pid].a_grav_m2p[1] += f_y;
+      gparts_i[pid].a_grav_m2p[2] += f_z;
     }
 #endif
   }
@@ -742,7 +1129,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
  * @param ci The first #cell.
  * @param cj The other #cell.
  * @param symmetric Are we updating both cells (1) or just ci (0) ?
- * @param allow_mpole Are we allowing the use of P2M interactions ?
+ * @param allow_mpole Are we allowing the use of M2P interactions ?
  */
 void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                            const int symmetric, const int allow_mpole) {
@@ -767,6 +1154,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   if (!ci_active && !cj_active) return;
   if (!ci_active && !symmetric) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that we are not doing something stupid */
   if (ci->split || cj->split) error("Running P-P on splitable cells");
 
@@ -777,6 +1165,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     error("Un-drifted multipole");
   if (ci_active && cj->grav.ti_old_multipole != e->ti_current)
     error("Un-drifted multipole");
+#endif
 
   /* Caches to play with */
   struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
@@ -789,8 +1178,6 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   /* Recover the multipole info and shift the CoM locations */
   const float rmax_i = ci->grav.multipole->r_max;
   const float rmax_j = cj->grav.multipole->r_max;
-  const float rmax2_i = rmax_i * rmax_i;
-  const float rmax2_j = rmax_j * rmax_j;
   const struct multipole *multi_i = &ci->grav.multipole->m_pole;
   const struct multipole *multi_j = &cj->grav.multipole->m_pole;
   const float CoM_i[3] = {(float)(ci->grav.multipole->CoM[0] - shift_i[0]),
@@ -815,13 +1202,18 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
           gcount_j);
 #endif
 
+  const int allow_multipole_i = allow_mpole && ci->grav.count > 1;
+  const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
+
   /* Fill the caches */
-  gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
+  gravity_cache_populate(e->max_active_bin, allow_multipole_j, periodic, dim,
                          ci_cache, ci->grav.parts, gcount_i, gcount_padded_i,
-                         shift_i, CoM_j, rmax2_j, ci, e->gravity_properties);
-  gravity_cache_populate(e->max_active_bin, allow_mpole, periodic, dim,
+                         shift_i, CoM_j, cj->grav.multipole, ci,
+                         e->gravity_properties);
+  gravity_cache_populate(e->max_active_bin, allow_multipole_i, periodic, dim,
                          cj_cache, cj->grav.parts, gcount_j, gcount_padded_j,
-                         shift_j, CoM_i, rmax2_i, cj, e->gravity_properties);
+                         shift_j, CoM_i, ci->grav.multipole, cj,
+                         e->gravity_properties);
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -837,7 +1229,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                                  ci->grav.parts, cj->grav.parts);
 
       /* Then the M2P */
-      if (allow_mpole)
+      if (allow_multipole_j)
         runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
                                    periodic, dim, e, ci->grav.parts, gcount_i,
                                    cj);
@@ -850,7 +1242,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                                  cj->grav.parts, ci->grav.parts);
 
       /* Then the M2P */
-      if (allow_mpole)
+      if (allow_multipole_i)
         runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
                                    periodic, dim, e, cj->grav.parts, gcount_j,
                                    ci);
@@ -859,8 +1251,14 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   } else { /* Periodic BC */
 
     /* Get the relative distance between the CoMs */
-    const double dx[3] = {CoM_j[0] - CoM_i[0], CoM_j[1] - CoM_i[1],
-                          CoM_j[2] - CoM_i[2]};
+    double dx[3] = {CoM_j[0] - CoM_i[0], CoM_j[1] - CoM_i[1],
+                    CoM_j[2] - CoM_i[2]};
+
+    /* Correct for periodic BCs */
+    dx[0] = nearestf(dx[0], dim[0]);
+    dx[1] = nearestf(dx[1], dim[1]);
+    dx[2] = nearestf(dx[2], dim[2]);
+
     const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Get the maximal distance between any two particles */
@@ -880,7 +1278,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                                         ci->grav.parts, cj->grav.parts);
 
         /* Then the M2P */
-        if (allow_mpole)
+        if (allow_multipole_j)
           runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
                                           multi_j, dim, r_s_inv, e,
                                           ci->grav.parts, gcount_i, cj);
@@ -893,7 +1291,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                                         cj->grav.parts, ci->grav.parts);
 
         /* Then the M2P */
-        if (allow_mpole)
+        if (allow_multipole_i)
           runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
                                           multi_i, dim, r_s_inv, e,
                                           cj->grav.parts, gcount_j, ci);
@@ -912,7 +1310,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                                    ci->grav.parts, cj->grav.parts);
 
         /* Then the M2P */
-        if (allow_mpole)
+        if (allow_multipole_j)
           runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
                                      periodic, dim, e, ci->grav.parts, gcount_i,
                                      cj);
@@ -925,7 +1323,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                                    cj->grav.parts, ci->grav.parts);
 
         /* Then the M2P */
-        if (allow_mpole)
+        if (allow_multipole_i)
           runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
                                      periodic, dim, e, cj->grav.parts, gcount_j,
                                      ci);
@@ -933,12 +1331,87 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     }
   }
 
-  /* Write back to the particles */
-  if (ci_active) gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
-  if (cj_active && symmetric)
+  /* Write back to the particles in ci */
+  if (ci_active) {
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    lock_lock(&ci->grav.plock);
+#endif
+    gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
+#endif
+  }
+
+  /* Write back to the particles in cj */
+  if (cj_active && symmetric) {
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    lock_lock(&cj->grav.plock);
+#endif
     gravity_cache_write_back(cj_cache, cj->grav.parts, gcount_j);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    if (lock_unlock(&cj->grav.plock) != 0) error("Error unlocking cell");
+#endif
+  }
 
   TIMER_TOC(timer_dopair_grav_pp);
+}
+
+/**
+ * @brief Compute the gravitational forces from particles in #cell cj onto
+ * particles in #cell ci without using a cache for cj.
+ *
+ * This function does not update the particles in cj. It also does not
+ * make use of the field tensors in ci.
+ * The function recurses to the leaf level in ci (not cj!) and then either uses
+ * M2P or P2P when too close.
+ *
+ * @param r The #runner object.
+ * @param ci The cell containing particles to update.
+ * @param cj The cell containing the particles sourcing the gravity.
+ */
+void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
+                                    const struct cell *restrict cj) {
+
+  /* Recover some useful constants */
+  const struct engine *e = r->e;
+  const int periodic = e->mesh->periodic;
+  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
+                        (float)e->mesh->dim[2]};
+
+  /* Record activity status */
+  const int ci_active =
+      cell_is_active_gravity(ci, e) && (ci->nodeID == e->nodeID);
+
+  /* Anything to do here? */
+  if (!ci_active) return;
+  if (ci->grav.count == 0 || cj->grav.count == 0) return;
+
+  /* Recurse? */
+  if (ci->split) {
+
+    for (int k = 0; k < 8; ++k) {
+      if (ci->progeny[k] != NULL) {
+        runner_dopair_grav_pp_no_cache(r, ci->progeny[k], cj);
+      }
+    }
+
+  } else {
+
+    /* Can we use the Newtonian version or do we need the truncated one ? */
+    if (!periodic) {
+
+      runner_dopair_grav_pp_full_no_cache(
+          ci->grav.parts, ci->grav.count, cj->grav.parts, cj->grav.count, e,
+          e->gravity_properties, &r->ci_gravity_cache, ci, cj->grav.multipole);
+
+    } else {
+
+      runner_dopair_grav_pp_truncated_no_cache(
+          ci->grav.parts, ci->grav.count, cj->grav.parts, cj->grav.count, dim,
+          e, e->gravity_properties, &r->ci_gravity_cache, ci,
+          cj->grav.multipole);
+    }
+  }
 }
 
 /**
@@ -1062,9 +1535,9 @@ static INLINE void runner_doself_grav_pp_full(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[2], a_z);
+    gparts[pid].a_grav_p2p[0] += a_x;
+    gparts[pid].a_grav_p2p[1] += a_y;
+    gparts[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }
@@ -1201,9 +1674,9 @@ static INLINE void runner_doself_grav_pp_truncated(
     ci_cache->pot[pid] += pot;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    accumulate_add_f(&gparts[pid].a_grav_p2p[0], a_x);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[1], a_y);
-    accumulate_add_f(&gparts[pid].a_grav_p2p[2], a_z);
+    gparts[pid].a_grav_p2p[0] += a_x;
+    gparts[pid].a_grav_p2p[1] += a_y;
+    gparts[pid].a_grav_p2p[2] += a_z;
 #endif
   }
 }
@@ -1295,8 +1768,14 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
     }
   }
 
-  /* Write back to the particles */
+    /* Write back to the particles */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+  lock_lock(&c->grav.plock);
+#endif
   gravity_cache_write_back(ci_cache, c->grav.parts, gcount);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+  if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
+#endif
 
   TIMER_TOC(timer_doself_grav_pp);
 }
@@ -1571,15 +2050,19 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
     /* Recover the multipole info and the CoM locations */
     const struct multipole *multi_j = &cj->grav.multipole->m_pole;
-    const float r_max = cj->grav.multipole->r_max;
     const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
                             (float)(cj->grav.multipole->CoM[1]),
                             (float)(cj->grav.multipole->CoM[2])};
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cj->grav.count == 1)
+      error("Constructing cache for M2P interaction with multipole of size 0!");
+#endif
+
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
         e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-        gcount_padded_i, ci, CoM_j, r_max * r_max, e->gravity_properties);
+        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties);
 
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {
@@ -1595,8 +2078,14 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
                                       cj);
     }
 
-    /* Write back to the particles */
+      /* Write back to the particles */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    lock_lock(&ci->grav.plock);
+#endif
     gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
+#endif
   }
 }
 
@@ -1616,14 +2105,13 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
  * @param gettimer Are we timing this ?
  */
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
-                                  struct cell *cj, int gettimer) {
+                                  struct cell *cj, const int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
   const double max_distance = e->mesh->r_cut_max;
 
   /* Anything to do here? */
@@ -1700,18 +2188,25 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   /* OK, we actually need to compute this pair. Let's find the cheapest
    * option... */
 
-  /* Can we use M-M interactions ? */
-  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
-                         multi_i->m_pole.max_softening,
-                         multi_j->m_pole.max_softening)) {
+  if (ci->grav.count <= 1 || cj->grav.count <= 1) {
+
+    /* We have two cheap cells. Go P-P. */
+    runner_dopair_grav_pp_no_cache(r, ci, cj);
+    runner_dopair_grav_pp_no_cache(r, cj, ci);
+
+    /* Can we use M-M interactions ? */
+  } else if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
+                                          multi_j, r2,
+                                          /* use_rebuild_sizes=*/0, periodic)) {
 
     /* Go M-M */
     runner_dopair_grav_mm(r, ci, cj);
 
+    /* Did we reach the bottom? */
   } else if (!ci->split && !cj->split) {
 
     /* We have two leaves. Go P-P. */
-    runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles*/ 1);
+    runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
 
   } else {
 
@@ -1783,7 +2278,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
  * @param gettimer Are we timing this ?
  */
 void runner_doself_recursive_grav(struct runner *r, struct cell *c,
-                                  int gettimer) {
+                                  const int gettimer) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1834,13 +2329,13 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
  * @param ci The #cell of interest.
  * @param timer Are we timing this ?
  */
-void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
+void runner_do_grav_long_range(struct runner *r, struct cell *ci,
+                               const int timer) {
 
   /* Some constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
   const double max_distance2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
 
   TIMER_TIC;
@@ -1865,12 +2360,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
   /* Find this cell's top-level (great-)parent */
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
-
-  /* Recover the top-level multipole (for distance checks) */
-  struct gravity_tensors *const multi_top = top->grav.multipole;
-  const double CoM_rebuild_top[3] = {multi_top->CoM_rebuild[0],
-                                     multi_top->CoM_rebuild[1],
-                                     multi_top->CoM_rebuild[2]};
 
   /* Loop over all the top-level cells and go for a M-M interaction if
    * well-separated */
@@ -1916,24 +2405,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer) {
       }
     }
 
-    /* Get the distance between the CoMs at the last rebuild*/
-    double dx_r = CoM_rebuild_top[0] - multi_j->CoM_rebuild[0];
-    double dy_r = CoM_rebuild_top[1] - multi_j->CoM_rebuild[1];
-    double dz_r = CoM_rebuild_top[2] - multi_j->CoM_rebuild[2];
-
-    /* Apply BC */
-    if (periodic) {
-      dx_r = nearest(dx_r, dim[0]);
-      dy_r = nearest(dy_r, dim[1]);
-      dz_r = nearest(dz_r, dim[2]);
-    }
-    const double r2_rebuild = dx_r * dx_r + dy_r * dy_r + dz_r * dz_r;
-
-    /* Are we in charge of this cell pair? */
-    if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,
-                           theta_crit2, r2_rebuild,
-                           multi_top->m_pole.max_softening,
-                           multi_j->m_pole.max_softening)) {
+    if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0)) {
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);

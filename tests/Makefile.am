@@ -15,35 +15,35 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(OPENMP_CFLAGS)
 
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testKernel \
-        testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
+TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
+        testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRandom testRandomSpacing \
+        testAdiabaticIndex testRandom testRandomSpacing testErfc \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
 	testCbrt testCosmology testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic
+        testAtomic testGravitySpeed
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading testTimeIntegration \
+check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-                 testKernel testFFT testInteractions testMaths testRandom \
-                 testSymmetry testThreadpool testRandomSpacing \
+                 testKernel testFFT testInteractions testMaths testRandom testExp \
+                 testSymmetry testThreadpool testRandomSpacing testErfc \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
-                 testAtomic testHydroMPIrules
+                 testAtomic testHydroMPIrules testGravitySpeed
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -96,6 +96,8 @@ testParser_SOURCES = testParser.c
 
 testKernel_SOURCES = testKernel.c
 
+testKernelLongGrav_SOURCES = testKernelLongGrav.c
+
 testFFT_SOURCES = testFFT.c
 
 testInteractions_SOURCES = testInteractions.c
@@ -122,7 +124,13 @@ testDump_SOURCES = testDump.c
 
 testLogger_SOURCES = testLogger.c
 
+testExp_SOURCES = testExp.c
+
+testErfc_SOURCES = testErfc.c
+
 testGravityDerivatives_SOURCES = testGravityDerivatives.c
+
+testGravitySpeed_SOURCES = testGravitySpeed.c
 
 testPotentialSelf_SOURCES = testPotentialSelf.c
 

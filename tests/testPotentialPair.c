@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
   e.mesh = &mesh;
 
   struct gravity_props props;
-  props.theta_crit2 = 0.;
+  props.theta_crit = 0.;
   props.epsilon_DM_cur = eps;
   props.epsilon_baryon_cur = eps;
   e.gravity_properties = &props;
@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
   /**********************************/
 
   /* Set an opening angle that allows P-M interactions */
-  props.theta_crit2 = 1.;
+  props.theta_crit = 1.;
 
   ci.grav.parts[0].mass = 0.;
   ci.grav.multipole->CoM[0] = 0.;

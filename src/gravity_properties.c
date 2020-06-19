@@ -23,6 +23,7 @@
 /* Standard headers */
 #include <float.h>
 #include <math.h>
+#include <string.h>
 
 /* Local headers. */
 #include "adiabatic_index.h"
@@ -32,6 +33,7 @@
 #include "gravity.h"
 #include "kernel_gravity.h"
 #include "kernel_long_gravity.h"
+#include "restart.h"
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
@@ -43,7 +45,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct cosmology *cosmo, const int with_cosmology,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
-                        const int is_zoom_simulation, const int periodic) {
+                        const int is_zoom_simulation, const int periodic,
+                        const double dim[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -63,6 +66,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     p->r_cut_min_ratio = parser_get_opt_param_float(
         params, "Gravity:r_cut_min", gravity_props_default_r_cut_min);
 
+    p->r_s = p->a_smooth * dim[0] / p->mesh_size;
+    p->r_s_inv = 1. / p->r_s;
+
     /* Some basic checks of what we read */
     if (p->mesh_size % 2 != 0)
       error("The mesh side-length must be an even number.");
@@ -76,6 +82,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   } else {
     p->mesh_size = 0;
     p->a_smooth = 0.f;
+    p->r_s = FLT_MAX;
+    p->r_s_inv = 0.f;
     p->r_cut_min_ratio = 0.f;
     p->r_cut_max_ratio = 0.f;
   }
@@ -83,16 +91,53 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Time integration */
   p->eta = parser_get_param_float(params, "Gravity:eta");
 
-  /* Opening angle */
-  p->theta_crit = parser_get_param_double(params, "Gravity:theta");
+  /* Read the choice of multipole acceptance criterion */
+  char buffer[32] = {0};
+  parser_get_param_string(params, "Gravity:MAC", buffer);
+
+  if (strcmp(buffer, "adaptive") == 0) {
+    p->use_adaptive_tolerance = 1;
+  } else if (strcmp(buffer, "geometric") == 0) {
+    p->use_adaptive_tolerance = 0;
+  } else {
+    error(
+        "Invalid choice of multipole acceptance criterion: '%s'. Should be "
+        "'adaptive' or 'geometric'",
+        buffer);
+  }
+
+  /* We always start with the geometric MAC */
+  p->use_advanced_MAC = 0;
+
+  /* Geometric opening angle */
+  p->theta_crit = parser_get_param_double(params, "Gravity:theta_cr");
   if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
-  p->theta_crit2 = p->theta_crit * p->theta_crit;
-  p->theta_crit_inv = 1. / p->theta_crit;
+
+  /* Adaptive opening angle tolerance */
+  if (p->use_adaptive_tolerance)
+    p->adaptive_tolerance =
+        parser_get_param_float(params, "Gravity:epsilon_fmm");
+
+  /* Consider truncated forces in the MAC? */
+  if (p->use_adaptive_tolerance)
+    p->consider_truncation_in_MAC =
+        parser_get_opt_param_int(params, "Gravity:allow_truncation_in_MAC", 0);
+
+  /* Are we allowing tree use below softening? */
+  p->use_tree_below_softening =
+      parser_get_opt_param_int(params, "Gravity:use_tree_below_softening", 0);
+
+#ifdef GADGET2_SOFTENING_CORRECTION
+  if (p->use_tree_below_softening)
+    error(
+        "Cannot solve gravity via the tree below softening with the "
+        "Gadget2-type softening kernel");
+#endif
 
   /* Mesh dithering */
   if (periodic && !with_external_potential) {
     p->with_dithering =
-        parser_get_opt_param_int(params, "Gravity:dithering", 1);
+        parser_get_opt_param_int(params, "Gravity:dithering", 0);
     if (p->with_dithering) {
       p->dithering_ratio =
           parser_get_opt_param_double(params, "Gravity:dithering_ratio", 1.0);
@@ -166,6 +211,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   /* Set the softening to the current time */
   gravity_props_update(p, cosmo);
+}
+
+void gravity_props_update_MAC_choice(struct gravity_props *p) {
+
+  /* Now that we have run initial accelerations,
+   * switch to the better MAC */
+  if (p->use_adaptive_tolerance) p->use_advanced_MAC = 1;
 }
 
 void gravity_props_update(struct gravity_props *p,

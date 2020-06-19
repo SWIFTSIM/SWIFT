@@ -42,7 +42,9 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                    0.025         
-  theta:                  0.5          
+  MAC:                    adaptive
+  theta_cr:               0.7
+  epsilon_fmm:            0.001
   comoving_DM_softening:     0.0208333  # 20.8333 kpc = 1/25 mean inter-particle separation
   max_physical_DM_softening: 0.0208333  # 20.8333 kpc = 1/25 mean inter-particle separation
   mesh_side_length:       512

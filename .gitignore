@@ -114,8 +114,11 @@ tests/testReading
 tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
+tests/testExp
+tests/testErfc
 tests/testKernel
 tests/testKernelGrav
+tests/testKernelLongGrav
 tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh
@@ -154,6 +157,7 @@ tests/testDump
 tests/testLogger
 tests/benchmarkInteractions
 tests/testGravityDerivatives
+tests/testGravitySpeed
 tests/testPotentialSelf
 tests/testPotentialPair
 tests/testEOS
@@ -184,6 +188,7 @@ theory/Multipoles/potential.pdf
 theory/Multipoles/potential_long.pdf
 theory/Multipoles/potential_short.pdf
 theory/Multipoles/force_short.pdf
+theory/Multipoles/mac_potential.pdf
 theory/Cosmology/cosmology.pdf
 theory/Cooling/eagle_cooling.pdf
 theory/Gizmo/gizmo-implementation-details/gizmo-implementation-details.pdf

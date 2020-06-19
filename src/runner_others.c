@@ -130,8 +130,14 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
   } else {
 
-    /* Get the forces from the gravity mesh */
+  /* Get the forces from the gravity mesh */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    lock_lock(&c->grav.plock);
+#endif
     pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
+#endif
   }
 
   if (timer) TIMER_TOC(timer_dograv_mesh);

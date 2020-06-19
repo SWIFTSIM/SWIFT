@@ -443,7 +443,6 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
-    case task_type_grav_mesh:
     case task_type_end_grav_force:
       cell_gunlocktree(ci);
       break;
@@ -538,6 +537,12 @@ void task_unlock(struct task *t) {
 #endif
       break;
 
+    case task_type_grav_mesh:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+      cell_gunlocktree(ci);
+#endif
+      break;
+
     case task_type_star_formation:
       cell_unlocktree(ci);
       cell_sunlocktree(ci);
@@ -623,7 +628,6 @@ int task_lock(struct task *t) {
 
     case task_type_drift_gpart:
     case task_type_end_grav_force:
-    case task_type_grav_mesh:
       if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
@@ -797,6 +801,14 @@ int task_lock(struct task *t) {
         cell_munlocktree(ci);
         return 0;
       }
+#endif
+      break;
+
+    case task_type_grav_mesh:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+      /* Lock the gparts */
+      if (ci->grav.phold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
 #endif
       break;
 
