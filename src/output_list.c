@@ -330,6 +330,7 @@ void output_list_init(struct output_list **list, const struct engine *e,
 
   /* Read output_list for snapshots */
   *list = (struct output_list *)malloc(sizeof(struct output_list));
+  bzero(*list, sizeof(struct output_list));
   (*list)->output_list_on = output_list_on;
 
   /* Read filename */
