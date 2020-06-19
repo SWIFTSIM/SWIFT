@@ -65,6 +65,9 @@ struct xpart {
   /*! Internal energy at the last full step. */
   // no internal energy in weakly compressible flow.  float u_full;
 
+  /* for eakly compressible fluid, density is an advected quantity */
+  float rho_full;
+  
   /*! Additional data used to record cooling information */
   // no cooling in weakly compressible case, struct cooling_xpart_data cooling_data;
 

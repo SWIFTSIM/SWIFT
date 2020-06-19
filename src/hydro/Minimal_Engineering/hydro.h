@@ -466,7 +466,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->density.wcount = 0.f;       // not required, but neightbour cound may be useful.
   //p->density.wcount_dh = 0.f;  // h is fixed and not adaptive.
-  p->rho = 0.f;
+  // RGB  we want to use the exisiting density and update it...  p->rho = 0.f;
   //p->density.rho_dh = 0.f;     // h is fixed and not adaptive.
   p->density.div_v = 0.f;
   //p->density.rot_v[0] = 0.f;   // curl v is not needed.
@@ -504,7 +504,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float rho_inv = 1.f / p->rho;
   const float a_inv2 = cosmo->a2_inv;
   p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
-  p->rho = - p->rho * p->density.div_v ;   //RGB: density updated based on div V [** check this! **]
+  // RGB: wrong place to do this... it should be predicted (incase we use multi-dt) similar to the usual treatment of internal energy.
+  //p->rho -= p->rho * p->density.div_v * dt;   //RGB: density updated based on div V [** check this! **]
 
   // RGB these parts are not needed (keep wcount for debugging for now).
   /* Final operation on the density (add self-contribution). */
@@ -645,6 +646,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time.  *** RGB: many quantities are not used in weakly compressible flow ***
+ * but we need to treat density similarly to the internal energy of original scheme.
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
@@ -659,6 +661,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[1] = xp->v_full[1];
   p->v[2] = xp->v_full[2];
 
+  /* RGB: reset the density */
+  p->rho = xp->rho_full;
+  
   /* Re-set the entropy */
   // p->u = xp->u_full;
 
@@ -704,7 +709,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Predict the internal energy */
   //p->u += p->u_dt * dt_therm;
 
-  const float h_inv = 1.f / p->h;
+  /* RGB: Predict the density */
+  // is the - sign correct here? yes: cancels -= in loop calculation to give Morris eq 6.
+  // but note that we have taken sum over both i and j derivatives.
+  p->rho += - p->rho * p->denisty.div_v * dt_drift;
+  
+  //const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
   //const float w1 = p->force.h_dt * h_inv * dt_drift;
