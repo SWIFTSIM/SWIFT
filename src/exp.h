@@ -31,7 +31,7 @@
 /**
  * @brief Compute the exponential of a number.
  *
- * This function has a relative accuracy of 1.618e-6 over the input
+ * This function has a relative accuracy of 2.1e-6 over the input
  * range [-32., 32.].
  *
  * @param x The number to take the exponential of.

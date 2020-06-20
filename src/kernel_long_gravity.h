@@ -88,7 +88,7 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   /* Compute erfcf(u) using eq. 7.1.26 of
    * Abramowitz & Stegun, 1972.
    *
-   * This has a *relative* error of less than 4e-3 over
+   * This has a *relative* error of less than 3.4e-3 over
    * the range of interest (0 < u < 5)
    *
    * This is a good approximation to use since we already
@@ -212,7 +212,7 @@ kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,
   /* Compute erfcf(u) using eq. 7.1.26 of
    * Abramowitz & Stegun, 1972.
    *
-   * This has a *relative* error of less than 4e-3 over
+   * This has a *relative* error of less than 3.4e-3 over
    * the range of interest (0 < u < 5)\
    *
    * This is a good approximation to use since we already

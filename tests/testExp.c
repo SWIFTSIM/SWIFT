@@ -62,8 +62,8 @@ int main(int argc, char* argv[]) {
     const double swift_exp_p = optimized_expf(x);
     const double swift_exp_n = optimized_expf(-x);
 
-    check_value(exact_p, swift_exp_p, 1.618e-6, x);
-    check_value(exact_n, swift_exp_n, 1.618e-6, x);
+    check_value(exact_p, swift_exp_p, 2.1e-6, x);
+    check_value(exact_n, swift_exp_n, 2.1e-6, x);
   }
 
   return 0;

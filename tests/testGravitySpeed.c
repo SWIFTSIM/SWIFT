@@ -60,7 +60,7 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
   /* Create the particles */
   c->grav.count = N;
   c->grav.count_total = N;
-  c->grav.parts = malloc(N * sizeof(struct gpart));
+  c->grav.parts = (struct gpart *)malloc(N * sizeof(struct gpart));
   bzero(c->grav.parts, N * sizeof(struct gpart));
   for (int i = 0.; i < N; ++i) {
 
@@ -74,7 +74,8 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
   }
 
   /* Create the multipoles */
-  c->grav.multipole = malloc(sizeof(struct gravity_tensors));
+  c->grav.multipole =
+      (struct gravity_tensors *)malloc(sizeof(struct gravity_tensors));
   gravity_reset(c->grav.multipole);
   gravity_P2M(c->grav.multipole, c->grav.parts, N, grav_props);
   gravity_multipole_compute_power(&c->grav.multipole->m_pole);
@@ -140,10 +141,10 @@ int main(int argc, char *argv[]) {
   message("Number of runs: %d", num_M2L_runs);
 
   /* Construct arrays of multipoles to prevent too much optimization */
-  struct gravity_tensors *tensors_i =
-      malloc(num_M2L_runs * sizeof(struct gravity_tensors));
-  struct gravity_tensors *tensors_j =
-      malloc(num_M2L_runs * sizeof(struct gravity_tensors));
+  struct gravity_tensors *tensors_i = (struct gravity_tensors *)malloc(
+      num_M2L_runs * sizeof(struct gravity_tensors));
+  struct gravity_tensors *tensors_j = (struct gravity_tensors *)malloc(
+      num_M2L_runs * sizeof(struct gravity_tensors));
   for (int n = 0; n < num_M2L_runs; ++n) {
 
     memcpy(&tensors_i[n], ci.grav.multipole, sizeof(struct gravity_tensors));

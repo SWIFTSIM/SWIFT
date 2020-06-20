@@ -29,7 +29,7 @@
  * Compute erfcf(u) using eq. 7.1.26 of
  * Abramowitz & Stegun, 1972.
  *
- * This has a *relative* error of less than 4e-3 over
+ * This has a *relative* error of less than 3.4e-3 over
  * the range of interest (0 < x < 5)
  */
 float optimized_erfcf(const float x) {
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
     const double exact = erfc(x);
     const double swift_erfcf = optimized_erfcf(x);
 
-    check_value(exact, swift_erfcf, 3.358e-3, 6e-7, x);
+    check_value(exact, swift_erfcf, 3.358e-3, 6.1e-7, x);
   }
 
   return 0;
