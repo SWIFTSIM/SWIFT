@@ -1095,12 +1095,14 @@ void task_dump_all(struct engine *e, int step) {
  *
  * @param dumpfile name of the file for the output.
  * @param e the #engine
+ * @param dump_task_threshold Fraction of the step time above whic any task
+ * triggers a call to task_dump_all().
  * @param header whether to write a header include file.
  * @param allranks do the statistics over all ranks, if not just the current
  *                 one, only used if header is false.
  */
-void task_dump_stats(const char *dumpfile, struct engine *e, int header,
-                     int allranks) {
+void task_dump_stats(const char *dumpfile, struct engine *e,
+                     float dump_tasks_threshold, int header, int allranks) {
 
   const ticks function_tic = getticks();
 
@@ -1127,6 +1129,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
 
   double stepdt = (double)e->toc_step - (double)e->tic_step;
   double total[1] = {0.0};
+  int dumped_plot_data = 0;
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
@@ -1155,10 +1158,21 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
       total[0] += dt;
 
       /* Check if this is a problematic task and make a report. */
-      if (e->verbose)
-        if (dt / stepdt > 0.05)
-          message("Long running task detected: %s/%s using %.1f%% of step runtime", taskID_names[type],
-                  subtaskID_names[subtype], dt / stepdt * 100.0);
+      if (dump_tasks_threshold > 0. && dt / stepdt > dump_tasks_threshold) {
+
+        if (e->verbose)
+          message(
+              "Long running task detected: %s/%s using %.1f%% of step runtime",
+              taskID_names[type], subtaskID_names[subtype],
+              dt / stepdt * 100.0);
+
+        if (!dumped_plot_data) {
+#ifdef SWIFT_DEBUG_TASKS
+          task_dump_all(e, e->step + 1);
+#endif
+          dumped_plot_data = 1;
+        }
+      }
     }
   }
 

@@ -183,6 +183,7 @@ int main(int argc, char *argv[]) {
   char *param_filename = NULL;
   char restart_file[200] = "";
   unsigned long long cpufreq = 0;
+  float dump_tasks_threshold = 0.f;
   struct cmdparams cmdps;
   cmdps.nparam = 0;
   cmdps.param[0] = NULL;
@@ -304,6 +305,10 @@ int main(int argc, char *argv[]) {
       OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool,
                   "Time-step frequency at which threadpool tasks are dumped.",
                   NULL, 0, 0),
+      OPT_FLOAT(0, "dump-tasks-threshold", &dump_tasks_threshold,
+                "Fraction of the total step's time spent in a task to trigger "
+                "a dump of the task plot on this step",
+                NULL, 0, 0),
       OPT_END(),
   };
   struct argparse argparse;
@@ -1410,13 +1415,14 @@ int main(int argc, char *argv[]) {
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef SWIFT_DEBUG_TASKS
-      task_dump_all(&e, j + 1);
+      if (dump_tasks_threshold == 0.) task_dump_all(&e, j + 1);
 #endif
 
       /* Generate the task statistics. */
       char dumpfile[40];
       snprintf(dumpfile, 40, "thread_stats-step%d.dat", e.step + 1);
-      task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
+      task_dump_stats(dumpfile, &e, dump_tasks_threshold,
+                      /* header = */ 0, /* allranks = */ 1);
     }
 
 #ifdef SWIFT_CELL_GRAPH
