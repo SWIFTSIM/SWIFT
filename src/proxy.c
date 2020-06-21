@@ -323,40 +323,6 @@ void proxy_cells_exchange_first_mapper(void *map_data, int num_elements,
   }
 }
 
-struct unpack_mapper_data {
-
-  struct space *s;
-  const int with_gravity;
-  MPI_Request *reqs_in;
-  struct proxy *proxies;
-};
-
-void proxy_cells_wait_and_unpack_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
-
-  MPI_Request *reqs = (MPI_Request *)map_data;
-  struct unpack_mapper_data *data = (struct unpack_mapper_data *)extra_data;
-  struct space *s = data->s;
-  const int with_gravity = data->with_gravity;
-  MPI_Request *reqs_in = data->reqs_in;
-  struct proxy *proxies = data->proxies;
-
-  for (int k = 0; k < num_elements; ++k) {
-
-    /* Wait for the data to arrive */
-    MPI_Status status;
-    if (MPI_Wait(&reqs[k], &status) != MPI_SUCCESS) error("MPI_Wait failed!");
-
-    const int i = &reqs[k] - reqs_in;
-
-    /* Un-pack the cells received in this proxy */
-    int count = 0;
-    for (int j = 0; j < proxies[i].nr_cells_in; j++)
-      count += cell_unpack(&proxies[i].pcells_in[count], proxies[i].cells_in[j],
-                           s, with_gravity);
-  }
-}
-
 #endif  // WITH_MPI
 
 /**
@@ -451,12 +417,18 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   tic2 = getticks();
 
-  /* Wait for each pcell array to come in from the proxies
-   * and unpack the cells. */
-  struct unpack_mapper_data unpack_data = {s, with_gravity, reqs_in, proxies};
-  threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper, reqs_in,
-                 num_proxies, sizeof(MPI_Request), /*chunk_size=*/1,
-                 /*extra_data=*/&unpack_data);
+  /* Wait for each pcell array to come in from the proxies. */
+  for (int k = 0; k < num_proxies; k++) {
+    int pid = MPI_UNDEFINED;
+    MPI_Status status;
+    if (MPI_Waitany(num_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
+        pid == MPI_UNDEFINED)
+      error("MPI_Waitany failed.");
+    // message( "cell data from proxy %i has arrived." , pid );
+    for (int count = 0, j = 0; j < proxies[pid].nr_cells_in; j++)
+      count += cell_unpack(&proxies[pid].pcells_in[count],
+                           proxies[pid].cells_in[j], s, with_gravity);
+  }
 
   if (s->e->verbose)
     message("Un-packing cells took %.3f %s.",
