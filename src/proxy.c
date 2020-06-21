@@ -323,50 +323,6 @@ void proxy_cells_exchange_first_mapper(void *map_data, int num_elements,
   }
 }
 
-struct wait_and_unpack_mapper_data {
-  struct space *s;
-  int num_proxies;
-  MPI_Request *reqs_in;
-  struct proxy *proxies;
-  int with_gravity;
-  swift_lock_type lock;
-};
-
-void proxy_cells_wait_and_unpack_mapper(void *unused_map_data, int num_elements,
-                                        void *extra_data) {
-
-  // MATTHIEU: This is currently unused. Scalar (non-threadpool) version is
-  // faster but we still need to explore why this happens.
-
-  struct wait_and_unpack_mapper_data *data =
-      (struct wait_and_unpack_mapper_data *)extra_data;
-
-  for (int k = 0; k < num_elements; k++) {
-    int pid = MPI_UNDEFINED;
-    MPI_Status status;
-    int res;
-
-    /* We need a lock to prevent concurrent calls to MPI_Waitany on
-       the same array of requests since this is not supported in the MPI
-       standard (v3.1). This is not really a problem since the threads
-       would block inside MPI_Waitany anyway. */
-    lock_lock(&data->lock);
-    if ((res = MPI_Waitany(data->num_proxies, data->reqs_in, &pid, &status)) !=
-            MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      mpi_error(res, "MPI_Waitany failed.");
-    if (lock_unlock(&data->lock) != 0) {
-      error("Failed to release lock.");
-    }
-
-    // message( "cell data from proxy %i has arrived." , pid );
-    for (int count = 0, j = 0; j < data->proxies[pid].nr_cells_in; j++)
-      count += cell_unpack(&data->proxies[pid].pcells_in[count],
-                           data->proxies[pid].cells_in[j], data->s,
-                           data->with_gravity);
-  }
-}
-
 #endif  // WITH_MPI
 
 /**
