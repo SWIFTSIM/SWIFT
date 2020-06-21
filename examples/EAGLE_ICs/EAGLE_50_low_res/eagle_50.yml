@@ -37,14 +37,15 @@ Statistics:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025     # Constant dimensionless multiplier for time integration.
-  theta:                  0.7       # Opening angle (Multipole acceptance criterion)
-  mesh_side_length:       128
+  eta:                         0.025     # Constant dimensionless multiplier for time integration.
+  MAC:                         geometric # Use the geometric opening angle condition
+  theta_cr:                    0.7       # Opening angle (Multipole acceptance criterion)
+  use_tree_below_softening:    1
+  mesh_side_length:            128
   comoving_DM_softening:         0.006640 # Comoving softening for DM (6.67 ckpc)
   max_physical_DM_softening:     0.002600 # Physical softening for DM (2.60 pkpc)
   comoving_baryon_softening:     0.003580 # Comoving softening for baryons (3.58 ckpc)
   max_physical_baryon_softening: 0.001400 # Physical softening for baryons (1.40 pkpc)
-  dithering:             0
 
 # Parameters for the hydrodynamics scheme
 SPH:
