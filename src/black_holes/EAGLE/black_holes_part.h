@@ -48,6 +48,9 @@ struct bpart {
   /*! Black hole mass */
   float mass;
 
+  /*! Black hole mass at the start of each step, prior to any nibbling */
+  float mass_at_start_of_step;
+
   /* Particle cutoff radius. */
   float h;
 
@@ -115,6 +118,9 @@ struct bpart {
    * radius (calculated as j_gas / h_BH, where j is specific ang. mom.) */
   float circular_velocity_gas[3];
 
+  /*! Specific angular momentum of the gas around the black hole */
+  float spec_angular_momentum_gas[3];
+
   /*! Multiplicative factor for accretion rates, from Rosas-Guevara et al.
    * (2015) angular momentum based accretion disc model */
   float f_visc;
@@ -153,6 +159,9 @@ struct bpart {
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */
   float swallowed_angular_momentum[3];
+
+  /*! Total (physical) angular momentum accumulated from subgrid accretion */
+  float accreted_angular_momentum[3];
 
   /*! Union for the last high Eddington ratio point in time */
   union {
