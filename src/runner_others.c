@@ -555,7 +555,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
       if (gpart_is_active(gp, e)) {
 
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton, potential_normalisation, periodic);
+        gravity_end_force(gp, G_newton, potential_normalisation, periodic,
+                          with_self_gravity);
 
 #ifdef SWIFT_MAKE_GRAVITY_GLASS
 

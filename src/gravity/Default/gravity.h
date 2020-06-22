@@ -187,10 +187,11 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * @param const_G Newton's constant in internal units.
  * @param potential_normalisation Term to be added to all the particles.
  * @param periodic Are we using periodic BCs?
+ * @param with_self_gravity Are we running with self-gravity?
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, float const_G, const float potential_normalisation,
-    const int periodic) {
+    struct gpart* gp, const float const_G, const float potential_normalisation,
+    const int periodic, const int with_self_gravity) {
 
   /* Record the norm of the acceleration for the adaptive opening criteria.
    * Will always be an (active) timestep behind. */
@@ -201,7 +202,8 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->old_a_grav_norm = sqrtf(gp->old_a_grav_norm);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (gp->old_a_grav_norm == 0.f) error("Old acceleration is 0!");
+  if (with_self_gravity && gp->old_a_grav_norm == 0.f)
+    error("Old acceleration is 0!");
 #endif
 
   /* Let's get physical... */

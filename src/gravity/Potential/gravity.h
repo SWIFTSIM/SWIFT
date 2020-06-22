@@ -168,10 +168,11 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * @param gp The particle to act upon
  * @param const_G Newton's constant in internal units.
  * @param potential_normalisation Term to be added to all the particles.
+ * @param with_self_gravity Are we running with self-gravity?
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, float const_G, const float potential_normalisation,
-    const int periodic) {
+    struct gpart* gp, const float const_G, const float potential_normalisation,
+    const int periodic, const int with_self_gravity) {
 
   /* Apply the periodic correction to the peculiar potential */
   if (periodic) gp->potential += potential_normalisation;
@@ -185,7 +186,8 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->old_a_grav_norm = sqrtf(gp->old_a_grav_norm);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (gp->old_a_grav_norm == 0.f) error("Old acceleration is 0!");
+  if (with_self_gravity && gp->old_a_grav_norm == 0.f)
+    error("Old acceleration is 0!");
 #endif
 
   /* Let's get physical... */
