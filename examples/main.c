@@ -840,9 +840,8 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-    /* Verify that the fields to dump actually exist */
-    if (myrank == 0)
-      io_check_output_fields(output_options, with_cosmology, with_fof,
+    /* Prepare and verify the selection of outputs */
+    io_prepare_output_fields(output_options, with_cosmology, with_fof,
                              with_structure_finding);
 
     /* Not restarting so look for the ICs. */

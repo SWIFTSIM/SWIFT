@@ -51,6 +51,7 @@ const char* compression_level_names[compression_level_count] = {
 void output_options_init(struct swift_params* parameter_file, int mpi_rank,
                          struct output_options* output_options) {
 
+  /* Start by zero-ing everything */
   bzero(output_options, sizeof(struct output_options));
 
   /* Load select_output */
@@ -82,7 +83,7 @@ void output_options_init(struct swift_params* parameter_file, int mpi_rank,
 }
 
 /**
- * @breif Destroys an output_options instance.
+ * @brief Destroys an output_options instance.
  *
  * @param output_options the output_options struct to free the contents of.
  **/

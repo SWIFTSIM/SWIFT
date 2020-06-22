@@ -39,11 +39,14 @@ struct gpart {
   /*! Particle acceleration. */
   float a_grav[3];
 
+  /*! Gravitational potential */
+  float potential;
+
   /*! Particle mass. */
   float mass;
 
-  /*! Gravitational potential */
-  float potential;
+  /*! Norm of the acceleration at the previous step. */
+  float old_a_grav_norm;
 
   /*! Particle FoF properties (group ID, group size, ...) */
   struct fof_gpart_data fof_data;

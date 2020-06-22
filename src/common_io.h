@@ -172,9 +172,9 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
                                      struct gpart* const gparts, size_t Nstars,
                                      size_t Ndm);
 
-void io_check_output_fields(struct output_options* output_options,
-                            const int with_cosmology, const int with_fof,
-                            const int with_stf);
+void io_prepare_output_fields(struct output_options* output_options,
+                              const int with_cosmology, const int with_fof,
+                              const int with_stf);
 
 void io_write_output_field_parameter(const char* filename, int with_cosmology);
 

@@ -27,4 +27,4 @@ ytick.direction: in
 axes.axisbelow: False
 
 # Setup colours
-axes.prop_cycle: cycler('color', ['00AEFF','FF8C40','CC4314',  '5766B3', '68246D'])
+ axes.prop_cycle: cycler('color', ['5EEA8C', '00AEFF','FF8C40', 'A646FF', 'CC4314', '5766B3', '68246D'])

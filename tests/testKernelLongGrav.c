@@ -33,6 +33,9 @@ const int num_tests = 1 << 10;
  * @param a First value
  * @param b Second value
  * @param s String used to identify this check in messages
+ * @param tol Relative tolerance.
+ * @param r Distance tested (for error messages).
+ * @param r_s Mesh size tested (for error messages).
  */
 void check_value(double a, double b, const char* s, const double tol,
                  const double r, const double r_s) {

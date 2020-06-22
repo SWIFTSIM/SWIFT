@@ -186,8 +186,10 @@ void create_sightline(const double Xpos, const double Ypos,
  *
  * Independent sightlines are made for the XY, YZ and XZ planes.
  *
- * @param LOS Structure to store sightlines.
+ * @param Los Structure to store sightlines.
  * @param params Sightline parameters.
+ * @param periodic Is this calculation using periodic BCs.
+ * @param dim The dimension of the volume along the three axis.
  */
 void generate_sightlines(struct line_of_sight *Los,
                          const struct los_props *params, const int periodic,
@@ -253,9 +255,10 @@ void generate_sightlines(struct line_of_sight *Los,
 }
 
 /**
- * @brief Print line_of_sight information.
+ * @brief Print #line_of_sight information.
  *
  * @param Los Structure to print.
+ * @param i The index of the #line_of_sight to dump.
  */
 void print_los_info(const struct line_of_sight *Los, const int i) {
 
@@ -269,7 +272,7 @@ void print_los_info(const struct line_of_sight *Los, const int i) {
 /**
  * @brief Writes dataset for a given part attribute.
  *
- * @param p io_props dataset for this attribute.
+ * @param props dataset for this attribute.
  * @param N number of parts in this line of sight.
  * @param j Line of sight ID.
  * @param e The engine.
@@ -467,6 +470,7 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
  * @param h_file HDF5 file reference.
  * @param e The engine.
  * @param LOS_params The line of sight params.
+ * @param total_num_parts_in_los The total number of particles in all the LoS.
  */
 void write_hdf5_header(hid_t h_file, const struct engine *e,
                        const struct los_props *LOS_params,
@@ -625,10 +629,18 @@ void los_first_loop_mapper(void *restrict map_data, int count,
  *
  * @param e The engine.
  * @param los The line_of_sight structure.
+ * @param los_cells_top (return) Array indicating whether this cell is
+ * intersected.
+ * @param cells The array of top-level cells.
+ * @param local_cells_with_particles The list of local non-empty top-level
+ * cells.
+ * @param nr_local_cells_with_particles The number of local non-empty top-level
+ * cells.
  */
 void find_intersecting_top_level_cells(
-    const struct engine *e, struct line_of_sight *los, int *los_cells_top,
-    const struct cell *cells, const int *local_cells_with_particles,
+    const struct engine *e, struct line_of_sight *los,
+    int *restrict los_cells_top, const struct cell *cells,
+    const int *restrict local_cells_with_particles,
     const int nr_local_cells_with_particles) {
 
   /* Keep track of how many top level cells we intersect. */
@@ -662,11 +674,11 @@ void find_intersecting_top_level_cells(
  * 1) Construct N random line of sight positions.
  * 2) Loop over each line of sight.
  *  - 2.1) Find which top level cells sightline intersects.
- * -  2.2) Loop over each part in these top level cells to see which intersect
+ *  - 2.2) Loop over each part in these top level cells to see which intersect
  * sightline.
- * -  2.3) Use this count to construct a LOS parts/xparts array.
- * -  2.4) Loop over each part and extract those in sightline to new array.
- * -  2.5) Save sightline parts to HDF5 file.
+ *  - 2.3) Use this count to construct a LOS parts/xparts array.
+ *  - 2.4) Loop over each part and extract those in sightline to new array.
+ *  - 2.5) Save sightline parts to HDF5 file.
  *
  * @param e The engine.
  */

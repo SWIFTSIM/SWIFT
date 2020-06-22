@@ -156,8 +156,8 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {
  * @param with_cosmology Are we running with cosmology?
  * @param scale_factor The current scale-factor (if running with cosmo)
  * @param time The current time (if running without cosmo)
- * @param Amount of energy injected in the feedback event (internal physical
- * units)
+ * @param delta_energy Amount of energy injected in the feedback event
+ * (internal physical units)
  */
 static INLINE void tracers_after_black_holes_feedback(
     struct xpart *xp, const int with_cosmology, const float scale_factor,

@@ -68,7 +68,6 @@
  * @param e The #engine we are writing from.
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
- * @param xmfFile The FILE used to write the XMF description
  * @param partTypeGroupName The name of the group containing the particles in
  * the HDF5 file.
  * @param props The #io_props of the field to read

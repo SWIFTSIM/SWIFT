@@ -675,7 +675,7 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
 }
 
 /**
- * @bried Allocates the potential grid to be ready for an FFT calculation
+ * @brief Allocates the potential grid to be ready for an FFT calculation
  *
  * @param mesh The #pm_mesh structure.
  */

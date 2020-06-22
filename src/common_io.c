@@ -2274,15 +2274,17 @@ void io_collect_gparts_background_to_write(
 }
 
 /**
- * @brief Verify that the output selection file is valid.
+ * @brief Prepare the output option fields according to the user's choices and
+ * verify that they are valid.
  *
- * @param params The #swift_params instance corresponding to the select_output
- *               file.
- * @param with_cosmolgy Ran with cosmology?
+ * @param output_options The #output_options for this run
+ * @param with_cosmology Ran with cosmology?
+ * @param with_fof Are we running with on-the-fly Fof?
+ * @param with_stf Are we running with on-the-fly structure finder?
  */
-void io_check_output_fields(struct output_options* output_options,
-                            const int with_cosmology, const int with_fof,
-                            const int with_stf) {
+void io_prepare_output_fields(struct output_options* output_options,
+                              const int with_cosmology, const int with_fof,
+                              const int with_stf) {
 
   const int MAX_NUM_PTYPE_FIELDS = 100;
 
