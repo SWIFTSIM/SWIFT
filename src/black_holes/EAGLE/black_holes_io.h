@@ -139,7 +139,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 30;
+  *num_fields = 32;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -334,6 +334,19 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Physical densities of the converted part at the time of birth. "
       "We store the physical density at the birth redshift, no conversion is "
       "needed.");
+
+  list[30] = io_make_output_field(      
+      "AccretedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
+      bparts, accreted_angular_momentum,
+      "Physical angular momenta that the black holes have accumulated through "
+      "subgrid accretion.");
+
+  list[31] = io_make_output_field(
+      "NumberOfGasNeighbours", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      num_ngbs,
+      "Integer number of gas neighbour particles within the black hole "
+      "kernels.");
+
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
