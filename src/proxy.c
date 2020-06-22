@@ -347,13 +347,13 @@ void proxy_cells_wait_and_unpack_mapper(void *map_data, int num_elements,
     MPI_Status status;
     if (MPI_Wait(&reqs[k], &status) != MPI_SUCCESS) error("MPI_Wait failed!");
 
-    const int i = &reqs[k] - reqs_in;
+    const ptrdiff_t i = &reqs[k] - reqs_in;
 
     /* Un-pack the cells received in this proxy */
     int count = 0;
-    for (int j = 0; j < proxies[i].nr_cells_in; j++)
-      count += cell_unpack(&proxies[i].pcells_in[count], proxies[i].cells_in[j],
-                           s, with_gravity);
+    for (int j = 0; j < (proxies + i)->nr_cells_in; j++)
+      count += cell_unpack(&(proxies + i)->pcells_in[count],
+                           (proxies + i)->cells_in[j], s, with_gravity);
   }
 }
 
