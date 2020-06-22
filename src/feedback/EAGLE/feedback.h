@@ -280,7 +280,7 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
   }
 }
 
-void feedback_clean(struct feedback_props* feedback_props);
+void feedback_clean(struct feedback_props* fp);
 
 void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
 

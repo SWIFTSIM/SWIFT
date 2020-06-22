@@ -60,7 +60,9 @@ float optimized_erfcf(const float x) {
  *
  * @param a First value
  * @param b Second value
- * @param s String used to identify this check in messages
+ * @param rel_tol Relative tolerance
+ * @param abs_tol Absolute tolerance
+ * @param x Value for which we tested the function (for error messages)
  */
 void check_value(const double a, const double b, const double rel_tol,
                  const double abs_tol, const double x) {

@@ -2278,7 +2278,7 @@ void io_collect_gparts_background_to_write(
  * verify that they are valid.
  *
  * @param output_options The #output_options for this run
- * @param with_cosmolgy Ran with cosmology?
+ * @param with_cosmology Ran with cosmology?
  * @param with_fof Are we running with on-the-fly Fof?
  * @param with_stf Are we running with on-the-fly structure finder?
  */

@@ -195,7 +195,10 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
  * range [0, 5] of r_over_r_s.
  * The accuracy is much better in the range [0, 2] (6e-5 and 2e-5 respectively).
  *
- * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
+ * @param r_over_r_s The ratio of the distance to the FFT cell scale \f$u =
+ * r/r_s\f$.
+ * @param corr_f (return) The correction for the force term.
+ * @param corr_pot (return) The correction for the potential term.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
 kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,

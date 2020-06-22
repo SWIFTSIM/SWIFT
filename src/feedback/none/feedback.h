@@ -178,9 +178,9 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
  *
  * We simply free all the arrays.
  *
- * @param feedback_props the feedback data structure.
+ * @param fp the feedback data structure.
  */
-static INLINE void feedback_clean(struct feedback_props* feedback_props) {}
+static INLINE void feedback_clean(struct feedback_props* fp) {}
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.

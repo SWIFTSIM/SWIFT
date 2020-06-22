@@ -40,6 +40,7 @@
  * @param dt_drift The drift time-step.
  * @param ti_old Integer start of time-step (for debugging checks).
  * @param ti_current Integer end of time-step (for debugging checks).
+ * @param grav_props The properties of the gravity scheme.
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
     struct gpart *restrict gp, double dt_drift, integertime_t ti_old,

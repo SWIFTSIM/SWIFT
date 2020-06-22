@@ -3835,7 +3835,8 @@ static void engine_dumper_init(struct engine *e) {
  * @param cooling_func The properties of the cooling function.
  * @param starform The #star_formation model of this run.
  * @param chemistry The chemistry information.
- * @param fof_properties The #fof_props.
+ * @param fof_properties The #fof_props of this run.
+ * @param los_properties the #los_props of this run.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct output_options *output_options, long long Ngas,

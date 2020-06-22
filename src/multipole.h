@@ -2091,7 +2091,7 @@ __attribute__((nonnull)) INLINE static void gravity_M2L_symmetric(
  * equivalent.
  *
  * @param l_b The field tensor to compute.
- * @param ga The @gpart sourcing the field.
+ * @param ga The #gpart sourcing the field.
  * @param pos_b The position of field tensor b.
  * @param props The #gravity_props of this calculation.
  * @param periodic Is the calculation periodic ?

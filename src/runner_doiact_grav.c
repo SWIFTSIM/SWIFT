@@ -158,7 +158,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
  * @param gcount_i The number of particles receiving forces.
  * @param gparts_j The particles giving forces (at any level).
  * @param gcount_j The number of particles giving forces.
- * @param e The @engine structure.
+ * @param e The #engine structure.
  * @param grav_props The properties of the gravity scheme.
  * @param cache_i The gravity cache to use to store the results in i.
  * @param ci The (leaf-)cell containing the particles i.
@@ -341,7 +341,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
  * @param gparts_j The particles giving forces (at any level).
  * @param gcount_j The number of particles giving forces.
  * @param dim The size of the computational domain.
- * @param e The @engine structure.
+ * @param e The #engine structure.
  * @param grav_props The properties of the gravity scheme.
  * @param cache_i The gravity cache to use to store the results in i.
  * @param ci The (leaf-)cell containing the particles i.

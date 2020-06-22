@@ -1277,9 +1277,10 @@ void parser_struct_restore(const struct swift_params *params, FILE *stream) {
  * If the section could not be found, -1 is returned.
  *
  * @param params The swift_params struct in which to locate the section.
- * @param section_name The section name to locate.
+ * @param name The section name to locate.
  */
 int parser_get_section_id(const struct swift_params *params, const char *name) {
+
   for (int section_id = 0; section_id < params->sectionCount; section_id++) {
     /* Get the name of current section, *without* a trailing colon */
     char section_name[FIELD_BUFFER_SIZE];
