@@ -3881,6 +3881,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->max_active_bin = num_time_bins;
   e->min_active_bin = 1;
   e->internal_units = internal_units;
+  e->output_list_snapshots = NULL;
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =
