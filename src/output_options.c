@@ -51,6 +51,9 @@ const char* compression_level_names[compression_level_count] = {
 void output_options_init(struct swift_params* parameter_file, int mpi_rank,
                          struct output_options* output_options) {
 
+  /* Start by zero-ing everything */
+  bzero(output_options, sizeof(struct output_options));
+
   /* Load select_output */
   struct swift_params* select_output =
       (struct swift_params*)malloc(sizeof(struct swift_params));
