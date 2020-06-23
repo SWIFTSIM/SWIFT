@@ -2251,22 +2251,51 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
 
     /* Compute CoM of all progenies */
     double CoM[3] = {0., 0., 0.};
+    double vel[3] = {0., 0., 0.};
+    float max_delta_vel[3] = {0.f, 0.f, 0.f};
+    float min_delta_vel[3] = {0.f, 0.f, 0.f};
     double mass = 0.;
 
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
         const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+        mass += m->m_pole.M_000;
+
         CoM[0] += m->CoM[0] * m->m_pole.M_000;
         CoM[1] += m->CoM[1] * m->m_pole.M_000;
         CoM[2] += m->CoM[2] * m->m_pole.M_000;
-        mass += m->m_pole.M_000;
+
+        vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+        vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+        vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+        max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+        max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+        max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+        min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+        min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+        min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
       }
     }
 
+    /* Final operation on the CoM and bulk velocity */
     const double mass_inv = 1. / mass;
     c->grav.multipole->CoM[0] = CoM[0] * mass_inv;
     c->grav.multipole->CoM[1] = CoM[1] * mass_inv;
     c->grav.multipole->CoM[2] = CoM[2] * mass_inv;
+    c->grav.multipole->m_pole.vel[0] = vel[0] * mass_inv;
+    c->grav.multipole->m_pole.vel[1] = vel[1] * mass_inv;
+    c->grav.multipole->m_pole.vel[2] = vel[2] * mass_inv;
+
+    /* Min max velocity along each axis */
+    c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+    c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+    c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+    c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+    c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+    c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
 
     /* Now shift progeny multipoles and add them up */
     struct multipole temp;
@@ -2310,22 +2339,17 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
 
   } else {
     if (c->grav.count > 0) {
+
       gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count, grav_props);
+
+      /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-      const double dx =
-          c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
-              ? c->grav.multipole->CoM[0] - c->loc[0]
-              : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-      const double dy =
-          c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] * 0.5
-              ? c->grav.multipole->CoM[1] - c->loc[1]
-              : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-      const double dz =
-          c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] * 0.5
-              ? c->grav.multipole->CoM[2] - c->loc[2]
-              : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-      c->grav.multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+
     } else {
+
+      /* No gparts in that leaf cell */
+
+      /* Set the values to something sensible */
       gravity_multipole_init(&c->grav.multipole->m_pole);
       c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] * 0.5;
       c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] * 0.5;
