@@ -648,7 +648,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Generate directory name for this output - start with snapshot directory, if
    * specified */
   char outputDirName[FILENAME_BUFFER_SIZE] = "";
-  if (strnlen(e->snapshot_subdir, PARSER_MAX_LINE_SIZE) > 0) {
+  if (strcmp(e->snapshot_subdir, engine_default_snapshot_subdir) != 0) {
     if (snprintf(outputDirName, FILENAME_BUFFER_SIZE, "%s/",
                  e->snapshot_subdir) >= FILENAME_BUFFER_SIZE) {
       error("FILENAME_BUFFER_SIZE is to small for snapshot directory name!");
@@ -661,10 +661,10 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Then create output-specific subdirectory if necessary */
   char subDirName[FILENAME_BUFFER_SIZE] = "";
-  if (strnlen(e->stf_subdir_per_output, PARSER_MAX_LINE_SIZE) > 0) {
+  if (strcmp(e->stf_subdir_per_output, engine_default_stf_subdir_per_output) != 0) {
     if (snprintf(subDirName, FILENAME_BUFFER_SIZE, "%s%s_%04i/", outputDirName,
                  e->stf_subdir_per_output,
-                 e->snapshot_output_count) >= FILENAME_BUFFER_SIZE) {
+                 e->stf_output_count) >= FILENAME_BUFFER_SIZE) {
       error(
           "FILENAME_BUFFER_SIZE is to small for Velociraptor directory name!");
     }
@@ -676,9 +676,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     /* Not making separate directories so subDirName=outputDirName */
     strncpy(subDirName, outputDirName, FILENAME_BUFFER_SIZE);
   }
-
-  /* What is the snapshot number? */
-  int snapnum = e->stf_output_count;
 
   /* What should the filename be? */
   char outputFileName[FILENAME_BUFFER_SIZE];
@@ -722,7 +719,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Call VELOCIraptor. */
   group_info = (struct groupinfo *)InvokeVelociraptor(
-      snapnum, outputFileName, cosmo_info, sim_info, nr_gparts, nr_parts,
+      e->stf_output_count, outputFileName, cosmo_info, sim_info, nr_gparts, nr_parts,
       nr_sparts, swift_parts, cell_node_ids, e->nr_threads, linked_with_snap,
       &num_gparts_in_groups);
 
