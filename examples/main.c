@@ -406,6 +406,16 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  if (dump_tasks_threshold > 0.f) {
+#ifndef SWIFT_DEBUG_TASKS
+    if (myrank == 0) {
+      error(
+          "Error: Dumping task plot data above a fixed time threshold is only "
+          "valid when the code is configured with --enable-task-debugging.");
+    }
+#endif
+  }
+
 #ifndef SWIFT_CELL_GRAPH
   if (dump_cells) {
     if (myrank == 0) {
