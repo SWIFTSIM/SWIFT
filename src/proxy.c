@@ -41,6 +41,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "error.h"
+#include "memswap.h"
 #include "memuse.h"
 #include "space.h"
 #include "threadpool.h"
@@ -73,41 +74,39 @@ void proxy_tags_wait_and_unpack_mapper(void *map_data, int num_elements,
   int *restrict cell_ids_in = data->cell_ids_in;
   int *restrict offset_in = data->offset_in;
 
-  /* List the proxies to process in this thread */
-  int *done = calloc(num_elements, sizeof(int));
-  int count_done = 0;
+  /* Compute index in the shared cell index array for each local request */
+  ptrdiff_t *index = (ptrdiff_t *)malloc(num_elements * sizeof(ptrdiff_t));
+  for (int k = 0; k < num_elements; ++k) index[k] = &reqs[k] - reqs_in;
 
-  /* Any proxies left to process? */
-  while (count_done < num_elements) {
+  /* Any requests left to process? */
+  while (num_elements) {
 
     for (int k = 0; k < num_elements; ++k) {
 
-      /* This proxy has not been dealt with yet */
-      if (!done[k]) {
+      /* Has the data arrived? */
+      MPI_Status status;
+      int result;
+      if (MPI_Test(&reqs[k], &result, &status) != MPI_SUCCESS)
+        error("MPI_Test failed!");
 
-        /* Has the data arrived? */
-        MPI_Status status;
-        int result;
-        if (MPI_Test(&reqs[k], &result, &status) != MPI_SUCCESS)
-          error("MPI_Test failed!");
+      /* Ok, we have data */
+      if (result) {
 
-        /* Ok, we have data */
-        if (result) {
+        const int cell_id = cell_ids_in[index[k]];
 
-          const ptrdiff_t i = &reqs[k] - reqs_in;
-          const int cell_id = cell_ids_in[i];
+        /* Un-pack the tags received in this proxy */
+        cell_unpack_tags(&tags_in[offset_in[cell_id]], &s->cells_top[cell_id]);
 
-          /* Un-pack the tags received in this proxy */
-          cell_unpack_tags(&tags_in[offset_in[cell_id]],
-                           &s->cells_top[cell_id]);
+        /* Replace this request with the one at the end of the list */
+        reqs[k] = reqs[num_elements - 1];
+        index[k] = index[num_elements - 1];
 
-          /* Mark this as done */
-          done[k] = 1;
-          count_done++;
-        }
+        /* One fewer request to process */
+        num_elements--;
       }
     }
   }
+  free(index);
 }
 #endif
 
@@ -401,45 +400,44 @@ void proxy_cells_wait_and_unpack_mapper(void *map_data, int num_elements,
   MPI_Request *reqs_in = data->reqs_in;
   struct proxy *proxies = data->proxies;
 
-  /* List the proxies to process in this thread */
-  int *done = calloc(num_elements, sizeof(int));
-  int count_done = 0;
+  /* Compute index in the shared proxy array for each local request */
+  ptrdiff_t *index = (ptrdiff_t *)malloc(num_elements * sizeof(ptrdiff_t));
+  for (int k = 0; k < num_elements; ++k) index[k] = &reqs[k] - reqs_in;
 
-  /* Any proxies left to process? */
-  while (count_done < num_elements) {
+  /* Any request left to process? */
+  while (num_elements) {
 
     for (int k = 0; k < num_elements; ++k) {
 
-      /* This proxy has not been dealt with yet */
-      if (!done[k]) {
+      /* Has the data arrived? */
+      MPI_Status status;
+      int result;
+      if (MPI_Test(&reqs[k], &result, &status) != MPI_SUCCESS)
+        error("MPI_Test failed!");
 
-        /* Has the data arrived? */
-        MPI_Status status;
-        int result;
-        if (MPI_Test(&reqs[k], &result, &status) != MPI_SUCCESS)
-          error("MPI_Test failed!");
+      /* Ok, we have data */
+      if (result) {
 
-        /* Ok, we have data */
-        if (result) {
+        /* Un-pack the cells received in this proxy */
+        int count = 0;
+        for (int j = 0; j < (proxies + index[k])->nr_cells_in; j++)
+          count +=
+              cell_unpack(&(proxies + index[k])->pcells_in[count],
+                          (proxies + index[k])->cells_in[j], s, with_gravity);
 
-          const ptrdiff_t i = &reqs[k] - reqs_in;
+        /* Replace this request with the one at the end of the list */
+        reqs[k] = reqs[num_elements - 1];
+        index[k] = index[num_elements - 1];
 
-          /* Un-pack the cells received in this proxy */
-          int count = 0;
-          for (int j = 0; j < (proxies + i)->nr_cells_in; j++)
-            count += cell_unpack(&(proxies + i)->pcells_in[count],
-                                 (proxies + i)->cells_in[j], s, with_gravity);
-
-          /* Mark this as done */
-          done[k] = 1;
-          count_done++;
-        }
+        /* One fewer request to process */
+        num_elements--;
       }
     }
   }
+  free(index);
 }
 
-#endif  // WITH_MPI
+#endif /* WITH_MPI */
 
 /**
  * @brief Exchange the cell structures with all proxies.
