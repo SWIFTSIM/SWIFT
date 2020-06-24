@@ -136,10 +136,16 @@ void threadpool_chomp(struct threadpool *tp, int tid) {
 
   /* Loop until we can't get a chunk. */
   while (1) {
-    /* Desired chunk size. */
-    size_t chunk_size =
-        (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
-    if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
+    /* Compute the desired chunk size. */
+    ptrdiff_t chunk_size;
+    if (tp->map_data_chunk == threadpool_uniform_chunk_size) {
+      chunk_size = (int)((tid + 1) * tp->map_data_size / tp->num_threads) -
+                   (int)(tid * tp->map_data_size / tp->num_threads);
+    } else {
+      chunk_size =
+          (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
+      if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
+    }
     if (chunk_size < 1) chunk_size = 1;
 
     /* Get a chunk and check its size. */
@@ -252,7 +258,10 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
  * @param N Number of elements in @c map_data.
  * @param stride Size, in bytes, of each element of @c map_data.
  * @param chunk Number of map data elements to pass to the function at a time,
- *        or #threadpool_auto_chunk_size to choose the number automatically.
+ *        or #threadpool_auto_chunk_size to choose the number dynamically
+ *        depending on the number of threads and tasks (recommended), or
+ *        #threadpool_uniform_chunk_size to spread the tasks evenly over the
+ *        threads in one go.
  * @param extra_data Addtitional pointer that will be passed to the mapping
  *        function, may contain additional data.
  */
@@ -278,11 +287,14 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->map_data_stride = stride;
   tp->map_data_size = N;
   tp->map_data_count = 0;
-  tp->map_data_chunk =
-      (chunk == threadpool_auto_chunk_size)
-          ? max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)),
-                1)
-          : chunk;
+  if (chunk == threadpool_auto_chunk_size) {
+    tp->map_data_chunk =
+        max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)), 1);
+  } else if (chunk == threadpool_uniform_chunk_size) {
+    tp->map_data_chunk = threadpool_uniform_chunk_size;
+  } else {
+    tp->map_data_chunk = chunk;
+  }
   tp->map_function = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;

@@ -199,8 +199,9 @@ void engine_repartition(struct engine *e) {
 
   /* Generate the fixed costs include file. */
   if (e->step > 3 && e->reparttype->trigger <= 1.f) {
-    task_dump_stats("partition_fixed_costs.h", e, /* header = */ 1,
-                    /* allranks = */ 1);
+    task_dump_stats("partition_fixed_costs.h", e,
+                    /* task_dump_threshold = */ 0.f,
+                    /* header = */ 1, /* allranks = */ 1);
   }
 
   /* Do the repartitioning. */
