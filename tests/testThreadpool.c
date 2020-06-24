@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (C) 2020 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -46,6 +47,27 @@ void map_function_second(void *map_data, int num_elements, void *extra_data) {
     printf("   map_function_second: got input %i.\n", input);
     fflush(stdout);
   }
+}
+
+void map_function_check_uniform(void *map_data, int num_elements,
+                                void *extra_data) {
+  const int *inputs = (int *)map_data;
+  int count = inputs[0];
+  if (num_elements == 1) {
+    /* Single element. Sum this in the extra_data counter. Should
+     * be the sum of counts when threadpool is completed. */
+    atomic_add((int *)extra_data, count);
+  } else {
+    for (int ind = 1; ind < num_elements; ind++) {
+      if (inputs[ind] != count + 1) {
+        printf("  uniform chunking not correct, out of sequence\n");
+        fflush(stdout);
+        exit(1);
+      }
+      count = inputs[ind];
+    }
+  }
+  printf("    map_function_check_uniform handled %d elements\n", num_elements);
 }
 
 int main(int argc, char *argv[]) {
@@ -94,6 +116,58 @@ int main(int argc, char *argv[]) {
     threadpool_clean(&tp);
     printf("\n");
   }
+
+  printf("# threadpool_uniform_chunk_size checks\n");
+
+  /* Check the spread of threads with threadpool_uniform_chunk_size */
+  int counts[23];
+  for (int i = 0; i < 23; i++) counts[i] = i;
+
+  struct threadpool utp;
+  int unum_thread = 7;
+  threadpool_init(&utp, unum_thread);
+
+  /* Under provision of threads. */
+  int dummy;
+  printf("# under provision\n");
+  threadpool_map(&utp, map_function_check_uniform, counts, 23, sizeof(int),
+                 threadpool_uniform_chunk_size, &dummy);
+
+  /* Over provision of threads. */
+  int sum = 0;
+  for (int i = 0; i < 5; i++) sum += i;
+  static int lsum = 0;
+  printf("# over provision\n");
+  threadpool_map(&utp, map_function_check_uniform, counts, 5, sizeof(int),
+                 threadpool_uniform_chunk_size, &lsum);
+  if (lsum != sum) {
+    printf(
+        "  uniform chunking not correct, sum of tids failed "
+        "(%d != %d).\n",
+        sum, lsum);
+    fflush(stdout);
+    exit(1);
+  }
+
+  /* Exact provision of threads. */
+  sum = 0;
+  for (int i = 0; i < unum_thread; i++) sum += i;
+  lsum = 0;
+  printf("# exact provision\n");
+  threadpool_map(&utp, map_function_check_uniform, counts, unum_thread,
+                 sizeof(int), threadpool_uniform_chunk_size, &lsum);
+  if (lsum != sum) {
+    printf(
+        "  uniform chunking not correct, sum of tids failed "
+        "(%d != %d).\n",
+        sum, lsum);
+    fflush(stdout);
+    exit(1);
+  }
+
+  threadpool_clean(&utp);
+
+  printf("# passed uniform checks\n");
 
   return 0;
 }

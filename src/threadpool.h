@@ -24,6 +24,7 @@
 
 /* Standard headers */
 #include <pthread.h>
+#include <stddef.h>
 
 /* Local includes. */
 #include "barrier.h"
@@ -33,6 +34,7 @@
 #define threadpool_log_initial_size 1000
 #define threadpool_default_chunk_ratio 7
 #define threadpool_auto_chunk_size 0
+#define threadpool_uniform_chunk_size -1
 
 /* Function type for mappings. */
 typedef void (*threadpool_map_function)(void *map_data, int num_elements,
@@ -77,8 +79,8 @@ struct threadpool {
 
   /* Current map data and count. */
   void *map_data, *map_extra_data;
-  volatile size_t map_data_count, map_data_size, map_data_stride,
-      map_data_chunk;
+  volatile size_t map_data_count, map_data_size, map_data_stride;
+  volatile ptrdiff_t map_data_chunk;
   volatile threadpool_map_function map_function;
 
   /* Number of threads in this pool. */
