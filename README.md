@@ -178,5 +178,8 @@ Parameters:
                                       are dumped. 
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.
+    --dump-tasks-threshold=<flt>      Fraction of the total step's time spent 
+                                      in a task to trigger a dump of the task plot 
+                                      on this step 
 
 See the file examples/parameter_example.yml for an example of parameter file.
