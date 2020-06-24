@@ -221,7 +221,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                                                offset_in};
   threadpool_map(&s->e->threadpool, proxy_tags_wait_and_unpack_mapper, reqs_in,
                  num_reqs_in, sizeof(MPI_Request),
-                 threadpool_uniform_chunk_size,
+                 threadpool_auto_chunk_size,
                  /*extra_data=*/&unpack_data);
 
   if (s->e->verbose)
