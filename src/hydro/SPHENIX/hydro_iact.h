@@ -381,8 +381,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
   const float sph_acc_term =
@@ -465,7 +467,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r_inv = 1.0f / r;
 
   /* Recover some data */
-  // const float mi = pi->mass;
+  const float mi = pi->mass;
   const float mj = pj->mass;
 
   const float rhoi = pi->rho;
@@ -520,8 +522,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
   const float sph_acc_term =
