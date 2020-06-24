@@ -50,6 +50,67 @@
 MPI_Datatype pcell_mpi_type;
 #endif
 
+#ifdef WITH_MPI
+
+struct unpack_tag_mapper_data {
+
+  struct space *s;
+  MPI_Request *reqs_in;
+  int *tags_in;
+  int *cell_ids_in;
+  int *offset_in;
+};
+
+void proxy_tags_wait_and_unpack_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  MPI_Request *reqs = (MPI_Request *)map_data;
+  struct unpack_tag_mapper_data *data =
+      (struct unpack_tag_mapper_data *)extra_data;
+  struct space *s = data->s;
+  MPI_Request *reqs_in = data->reqs_in;
+  int *restrict tags_in = data->tags_in;
+  int *restrict cell_ids_in = data->cell_ids_in;
+  int *restrict offset_in = data->offset_in;
+
+  /* List the proxies to process in this thread */
+  int *done = calloc(num_elements, sizeof(int));
+  int count_done = 0;
+
+  /* Any proxies left to process? */
+  while (count_done < num_elements) {
+
+    for (int k = 0; k < num_elements; ++k) {
+
+      /* This proxy has not been dealt with yet */
+      if (!done[k]) {
+
+        /* Has the data arrived? */
+        MPI_Status status;
+        int result;
+        if (MPI_Test(&reqs[k], &result, &status) != MPI_SUCCESS)
+          error("MPI_Test failed!");
+
+        /* Ok, we have data */
+        if (result) {
+
+          const ptrdiff_t i = &reqs[k] - reqs_in;
+          const int cell_id = cell_ids_in[i];
+
+          /* Un-pack the tags received in this proxy */
+          cell_unpack_tags(&tags_in[offset_in[cell_id]],
+                           &s->cells_top[cell_id]);
+
+          /* Mark this as done */
+          done[k] = 1;
+          count_done++;
+        }
+      }
+    }
+  }
+}
+#endif
+
 /**
  * @brief Exchange tags between nodes.
  *
@@ -155,16 +216,14 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
   tic2 = getticks();
 
-  /* Wait for each recv and unpack the tags into the local cells. */
-  for (int k = 0; k < num_reqs_in; k++) {
-    int pid = MPI_UNDEFINED;
-    MPI_Status status;
-    if (MPI_Waitany(num_reqs_in, reqs_in, &pid, &status) != MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
-    const int cid = cids_in[pid];
-    cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
-  }
+  /* Wait for each recv to come in from the proxies and unpack the tags of
+   * cells. */
+  struct unpack_tag_mapper_data unpack_data = {s, reqs_in, tags_in, cids_in,
+                                               offset_in};
+  threadpool_map(&s->e->threadpool, proxy_tags_wait_and_unpack_mapper, reqs_in,
+                 num_reqs_in, sizeof(MPI_Request),
+                 threadpool_uniform_chunk_size,
+                 /*extra_data=*/&unpack_data);
 
   if (s->e->verbose)
     message("Cell unpack tags took %.3f %s.",
@@ -323,7 +382,7 @@ void proxy_cells_exchange_first_mapper(void *map_data, int num_elements,
   }
 }
 
-struct unpack_mapper_data {
+struct unpack_cell_mapper_data {
 
   struct space *s;
   const int with_gravity;
@@ -335,7 +394,8 @@ void proxy_cells_wait_and_unpack_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
 
   MPI_Request *reqs = (MPI_Request *)map_data;
-  struct unpack_mapper_data *data = (struct unpack_mapper_data *)extra_data;
+  struct unpack_cell_mapper_data *data =
+      (struct unpack_cell_mapper_data *)extra_data;
   struct space *s = data->s;
   const int with_gravity = data->with_gravity;
   MPI_Request *reqs_in = data->reqs_in;
@@ -475,7 +535,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   /* Wait for each pcell array to come in from the proxies
    * and unpack the cells. */
-  struct unpack_mapper_data unpack_data = {s, with_gravity, reqs_in, proxies};
+  struct unpack_cell_mapper_data unpack_data = {s, with_gravity, reqs_in,
+                                                proxies};
   threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper, reqs_in,
                  num_proxies, sizeof(MPI_Request),
                  threadpool_uniform_chunk_size,
