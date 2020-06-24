@@ -414,6 +414,10 @@ int main(int argc, char *argv[]) {
           "valid when the code is configured with --enable-task-debugging.");
     }
 #endif
+#ifdef WITH_MPI
+    if (nr_nodes > 1)
+      error("Cannot dump tasks above a time threshold over MPI (yet).");
+#endif
   }
 
 #ifndef SWIFT_CELL_GRAPH
