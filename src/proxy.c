@@ -341,19 +341,41 @@ void proxy_cells_wait_and_unpack_mapper(void *map_data, int num_elements,
   MPI_Request *reqs_in = data->reqs_in;
   struct proxy *proxies = data->proxies;
 
-  for (int k = 0; k < num_elements; ++k) {
+  /* List the proxies to process in this thread */
+  int *done = calloc(num_elements, sizeof(int));
+  int count_done = 0;
 
-    /* Wait for the data to arrive */
-    MPI_Status status;
-    if (MPI_Wait(&reqs[k], &status) != MPI_SUCCESS) error("MPI_Wait failed!");
+  /* Any proxies left to process? */
+  while (count_done < num_elements) {
 
-    const ptrdiff_t i = &reqs[k] - reqs_in;
+    for (int k = 0; k < num_elements; ++k) {
 
-    /* Un-pack the cells received in this proxy */
-    int count = 0;
-    for (int j = 0; j < (proxies + i)->nr_cells_in; j++)
-      count += cell_unpack(&(proxies + i)->pcells_in[count],
-                           (proxies + i)->cells_in[j], s, with_gravity);
+      /* This proxy has not been dealt with yet */
+      if (!done[k]) {
+
+        /* Has the data arrived? */
+        MPI_Status status;
+        int result;
+        if (MPI_Test(&reqs[k], &result, &status) != MPI_SUCCESS)
+          error("MPI_Test failed!");
+
+        /* Ok, we have data */
+        if (result) {
+
+          const ptrdiff_t i = &reqs[k] - reqs_in;
+
+          /* Un-pack the cells received in this proxy */
+          int count = 0;
+          for (int j = 0; j < (proxies + i)->nr_cells_in; j++)
+            count += cell_unpack(&(proxies + i)->pcells_in[count],
+                                 (proxies + i)->cells_in[j], s, with_gravity);
+
+          /* Mark this as done */
+          done[k] = 1;
+          count_done++;
+        }
+      }
+    }
   }
 }
 
@@ -455,7 +477,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
    * and unpack the cells. */
   struct unpack_mapper_data unpack_data = {s, with_gravity, reqs_in, proxies};
   threadpool_map(&s->e->threadpool, proxy_cells_wait_and_unpack_mapper, reqs_in,
-                 num_proxies, sizeof(MPI_Request), /*chunk_size=*/1,
+                 num_proxies, sizeof(MPI_Request),
+                 threadpool_uniform_chunk_size,
                  /*extra_data=*/&unpack_data);
 
   if (s->e->verbose)
