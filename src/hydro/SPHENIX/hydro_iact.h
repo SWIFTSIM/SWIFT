@@ -367,6 +367,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
                       const_viscosity_beta * mu_ij;
 
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
@@ -378,11 +382,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  const float visc_acc_term =
+      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
   /* Compute gradient terms */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
@@ -422,7 +425,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
-      v_diff * (pi->u - pj->u) * (wi_dr / rhoi + wj_dr / rhoj);
+      v_diff * (pi->u - pj->u) * (f_ij * wi_dr / rhoi + f_ji * wj_dr / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -508,6 +511,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
                       const_viscosity_beta * mu_ij;
 
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
@@ -519,11 +526,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       -0.25f * alpha * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  const float visc_acc_term =
+      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
   /* Compute gradient terms */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
   const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
@@ -558,7 +564,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
-      v_diff * (pi->u - pj->u) * (wi_dr / rhoi + wj_dr / rhoj);
+      v_diff * (pi->u - pj->u) * (f_ij * wi_dr / rhoi + f_ji * wj_dr / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
