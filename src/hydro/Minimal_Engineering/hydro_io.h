@@ -75,7 +75,7 @@ INLINE static void hydro_read_particles(struct part* parts,
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
-
+  message("call to convert_S is not valid");
   ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
@@ -192,9 +192,10 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  parts, rho,
                                  "Co-moving mass densities of the particles");
 
-  list[7] = io_make_output_field_convert_part(
-      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
-      xparts, convert_S, "Co-moving entropies per unit mass of the particles");
+  list[7] = io_make_output_field(   // we want to avoid messing anything else up, so duplicate internal energy here.
+      "InternalEnergies2", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      -3.f * hydro_gamma_minus_one, parts, u,
+      "Co-moving thermal energies per unit mass of the particles");
 
   list[8] = io_make_output_field_convert_part(
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
