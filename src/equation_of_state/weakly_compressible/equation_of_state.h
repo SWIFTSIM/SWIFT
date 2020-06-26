@@ -19,8 +19,8 @@
 
 //RGB this version is suitable for weakly compressible fluids typically used in engineering. This version is based on Morris, Fox & Zhu, 1997
 
-#ifndef SWIFT_ISOTHERMAL_EQUATION_OF_STATE_H
-#define SWIFT_ISOTHERMAL_EQUATION_OF_STATE_H
+#ifndef SWIFT_WEAKLY_COMPRESSIBLE_EQUATION_OF_STATE_H
+#define SWIFT_WEAKLY_COMPRESSIBLE_EQUATION_OF_STATE_H
 
 /* Some standard headers. */
 #include <math.h>
@@ -40,7 +40,7 @@ extern struct eos_parameters eos;
 struct eos_parameters {
 
   /*! Follows Morris et al Section 2.4, Eq 10. */
-  float wc_soundspeed  /* this needs to be set by user to ensure density variations are sufficiently small */
+  float wc_soundspeed ; /* this needs to be set by user to ensure density variations are sufficiently small */
 };
 
 /**
@@ -68,7 +68,7 @@ gas_internal_energy_from_entropy(float density, float entropy) {
  */
 __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
     float density, float entropy) {
-  return eos.wc_soundspeed**2  * density ;
+  return eos.wc_soundspeed * eos.wc_soundspeed * density ;
 }
 
 /**
@@ -127,7 +127,7 @@ gas_entropy_from_internal_energy(float density, float u) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_pressure_from_internal_energy(float density, float u) {
-  return eos.wc_soundspeed**2  * density ;
+  return eos.wc_soundspeed * eos.wc_soundspeed * density ;
 }
 
 /**

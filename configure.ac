@@ -1638,6 +1638,9 @@ case "$with_hydro" in
    anarchy-pu)
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
+   minimal-engineering)
+      AC_DEFINE([MINIMAL_ENGINEERING], [1], [Minimal Engineering SPH])
+   ;;
 
 
    *)
@@ -1760,6 +1763,9 @@ case "$with_eos" in
    ;;
    planetary)
       AC_DEFINE([EOS_PLANETARY], [1], [All planetary equations of state])
+   ;;
+   weakly-compressible)
+      AC_DEFINE([EOS_WEAKLY_COMPRESSIBLE], [1], [weakly compressible (Morris 1997) equation of state])
    ;;
    *)
       AC_MSG_ERROR([Unknown equation of state: $with_eos])

@@ -36,6 +36,8 @@
 #include "./equation_of_state/isothermal/equation_of_state.h"
 #elif defined(EOS_PLANETARY)
 #include "./equation_of_state/planetary/equation_of_state.h"
+#elif defined(EOS_WEAKLY_COMPRESSIBLE)
+#include "./equation_of_state/weakly_compressible/equation_of_state.h"
 #else
 #error "Invalid choice of equation of state"
 #endif
