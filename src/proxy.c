@@ -220,8 +220,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   struct unpack_tag_mapper_data unpack_data = {s, reqs_in, tags_in, cids_in,
                                                offset_in};
   threadpool_map(&s->e->threadpool, proxy_tags_wait_and_unpack_mapper, reqs_in,
-                 num_reqs_in, sizeof(MPI_Request),
-                 threadpool_auto_chunk_size,
+                 num_reqs_in, sizeof(MPI_Request), threadpool_auto_chunk_size,
                  /*extra_data=*/&unpack_data);
 
   if (s->e->verbose)
@@ -404,6 +403,8 @@ void proxy_cells_wait_and_unpack_mapper(void *map_data, int num_elements,
   ptrdiff_t *index = (ptrdiff_t *)malloc(num_elements * sizeof(ptrdiff_t));
   for (int k = 0; k < num_elements; ++k) index[k] = &reqs[k] - reqs_in;
 
+  ticks tic = getticks();
+
   /* Any request left to process? */
   while (num_elements) {
 
@@ -418,12 +419,20 @@ void proxy_cells_wait_and_unpack_mapper(void *map_data, int num_elements,
       /* Ok, we have data */
       if (result) {
 
+        message("Waiting for data took %.3f %s.",
+                clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+        ticks tic2 = getticks();
+
         /* Un-pack the cells received in this proxy */
         int count = 0;
         for (int j = 0; j < (proxies + index[k])->nr_cells_in; j++)
           count +=
               cell_unpack(&(proxies + index[k])->pcells_in[count],
                           (proxies + index[k])->cells_in[j], s, with_gravity);
+
+        message("Unpacking data took %.3f %s.",
+                clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
         /* Replace this request with the one at the end of the list */
         reqs[k] = reqs[num_elements - 1];
