@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_ENGINEERING_H
-#define SWIFT_MINIMAL_ENGINEERING_H
+#ifndef SWIFT_MINIMAL_ENGINEERING_HYDRO_H
+#define SWIFT_MINIMAL_ENGINEERING_HYDRO_H
 
 /**
  * @file Minimal_Engineering/hydro.h
@@ -167,7 +167,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_comoving_entropy(const struct part *restrict p) {
-  error("entropy is not defined in weakly copressible EOS");
+  //RGB : need to return for statistics routines.  error("entropy is not defined in weakly copressible EOS");
   return 0.f;
 }
 
@@ -184,7 +184,7 @@ hydro_get_drifted_physical_entropy(const struct part *restrict p,
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  error("entropy is not defined in weakly copressible EOS");
+  //RGB : need to return for statistics routines.  error("entropy is not defined in weakly copressible EOS");
   return 0.f;
 }
 
@@ -468,7 +468,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;       // not required, but neightbour cound may be useful.
   p->density.wcount_dh = 0.f;  // h is fixed and not adaptive. Entry still needed for neighbour search - for now!
   // RGB  we want to use the exisiting density and update it...  p->rho = 0.f;
-  //p->density.rho_dh = 0.f;     // h is fixed and not adaptive.
+  p->density.rho_dh = 0.f;     // h is fixed and not adaptive. Entry still needed for neighbour search - for now!
   p->density.div_v = 0.f;
   //p->density.rot_v[0] = 0.f;   // curl v is not needed.
   //p->density.rot_v[1] = 0.f;
@@ -640,7 +640,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 
   /* Reset the time derivatives. */
   //p->u_dt = 0.0f;
-  //p->force.h_dt = 0.0f;
+  p->force.h_dt = 0.0f;   //RGB  this is not really required. Remove later.
   const float dummy = 0.f;
   p->force.v_sig = 2.f * gas_soundspeed_from_internal_energy( dummy, dummy);  // does not depend on properties of particle. Remove particle property later.
 }

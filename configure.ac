@@ -1639,7 +1639,7 @@ case "$with_hydro" in
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
    minimal-engineering)
-      AC_DEFINE([MINIMAL_ENGINEERING], [1], [Minimal Engineering SPH])
+      AC_DEFINE([MINIMAL_ENGINEERING_SPH], [1], [Minimal Engineering SPH])
    ;;
 
 

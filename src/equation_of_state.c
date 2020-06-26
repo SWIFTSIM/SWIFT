@@ -35,6 +35,8 @@
 struct eos_parameters eos = {.Til_iron.rho_0 = -1.f};
 #elif defined(EOS_ISOTHERMAL_GAS)
 struct eos_parameters eos = {.isothermal_internal_energy = -1.};
+#elif defined(EOS_WEAKLY_COMPRESSIBLE)
+struct eos_parameters eos = {.wc_soundspeed = 10.};
 #else
 struct eos_parameters eos;
 #endif

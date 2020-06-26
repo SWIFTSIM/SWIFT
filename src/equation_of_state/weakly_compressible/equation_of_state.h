@@ -39,7 +39,7 @@ extern struct eos_parameters eos;
  */
 struct eos_parameters {
 
-  /*! Follows Morris et al Section 2.4, Eq 10. */
+  /* Follows Morris et al Section 2.4, Eq 10. */
   float wc_soundspeed ; /* this needs to be set by user to ensure density variations are sufficiently small */
 };
 

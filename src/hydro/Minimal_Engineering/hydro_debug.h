@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_HYDRO_DEBUG_H
-#define SWIFT_MINIMAL_HYDRO_DEBUG_H
+#ifndef SWIFT_MINIMAL_ENGINEERING_HYDRO_DEBUG_H
+#define SWIFT_MINIMAL_ENGINEERING_HYDRO_DEBUG_H
 
 /**
  * @file Minimal/hydro_debug.h

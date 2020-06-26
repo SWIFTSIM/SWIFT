@@ -83,7 +83,7 @@ struct threadpool;
 #include "./hydro/AnarchyPU/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
-#elif defined(MINIMAL_ENGINEERING)
+#elif defined(MINIMAL_ENGINEERING_SPH)
 #include "./hydro/Minimal_Engineering/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #else

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_HYDRO_PART_H
-#define SWIFT_MINIMAL_HYDRO_PART_H
+#ifndef SWIFT_MINIMAL_ENGINEERING_HYDRO_PART_H
+#define SWIFT_MINIMAL_ENGINEERING_HYDRO_PART_H
 
 /**
  * @file Minimal/hydro_part.h
@@ -142,7 +142,7 @@ struct part {
       float wcount_dh;  // RGB needed for compatibility with other routines. delete later
 
       /*! Derivative of density with respect to h */
-      // not used in this case... float rho_dh;
+      float rho_dh;
 
       /*! Velocity divergence */
       float div_v;
@@ -174,7 +174,7 @@ struct part {
       float v_sig;
 
       /*! Time derivative of smoothing length  */
-      // not used in this case....  float h_dt;
+      float h_dt;  // RGB kept for now but not really required.
 
       /*! Balsara switch */
       // RGB kept for now to input the viscosity alpha..

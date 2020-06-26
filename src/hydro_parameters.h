@@ -51,7 +51,7 @@
 #include "./hydro/SPHENIX/hydro_parameters.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_parameters.h"
-#elif defined(MINIMAL_ENGINEERING)
+#elif defined(MINIMAL_ENGINEERING_SPH)
 #include "./hydro/Minimal_Engineering/hydro_parameters.h"
 #else
 #error "Invalid choice of SPH variant"

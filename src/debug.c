@@ -62,7 +62,7 @@
 #include "./hydro/SPHENIX/hydro_debug.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_debug.h"
-#elif defined(MINIMAL_ENGINEERING)
+#elif defined(MINIMAL_ENGINEERING_SPH)
 #include "./hydro/Minimal_Engineering/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"

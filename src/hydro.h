@@ -76,7 +76,7 @@
 #include "./hydro/AnarchyPU/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "ANARCHY (Pressure-Energy) SPH (Dalla Vecchia+ in prep)"
-#elif defined(MINIMAL_ENGINEERING)
+#elif defined(MINIMAL_ENGINEERING_SPH)
 #include "./hydro/Minimal_Engineering/hydro.h"
 #include "./hydro/Minimal_Engineering/hydro_iact.h"
 #define SPH_IMPLEMENTATION "weakly compressible version of SPH (Morris et al 1997)"
