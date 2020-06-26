@@ -80,7 +80,7 @@ hydro_get_physical_internal_energy(const struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_comoving_internal_energy(const struct part *restrict p) {
-  error("internal energy is not defined in weakly copressible EOS");
+  //RGB : need to return for statistics routines. error("internal energy is not defined in weakly copressible EOS");
   return 0.f;
 }
 
@@ -94,7 +94,7 @@ hydro_get_drifted_comoving_internal_energy(const struct part *restrict p) {
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
                                            const struct cosmology *cosmo) {
-  error("internal energy is not defined in weakly copressible EOS");
+  //RGB : need to return for statistics routines.  error("internal energy is not defined in weakly copressible EOS");
   return 0.f;
 }
 
