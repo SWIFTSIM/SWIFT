@@ -662,7 +662,8 @@ int main(int argc, char *argv[]) {
     /* Generate the task statistics. */
     char dumpfile[40];
     snprintf(dumpfile, 40, "thread_stats-step%d.dat", 0);
-    task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
+    task_dump_stats(dumpfile, &e, /* dump_tasks_threshold = */ 0.f,
+                    /* header = */ 0, /* allranks = */ 1);
   }
 
 #ifdef SWIFT_DEBUG_THREADPOOL
