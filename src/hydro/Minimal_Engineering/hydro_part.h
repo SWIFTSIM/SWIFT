@@ -149,6 +149,7 @@ struct part {
 
       /*! Velocity curl */
       // not used in this case... float rot_v[3];
+      float dummy ; // RGB need to keep union same size as force struct. (?)
 
     } density;
 
@@ -162,7 +163,7 @@ struct part {
     struct {
 
       /*! "Grad h" term */
-      float f;
+      float f;   //RGB is this needed?
 
       /*! Particle pressure. */
       float pressure;
