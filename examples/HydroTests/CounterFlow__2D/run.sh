@@ -3,7 +3,7 @@
  # Generate the initial conditions if they are not present.
 if [ ! -e counterFlow.hdf5 ]
 then
-    echo "Generating initial conditions for the Kelvin-Helmholtz example..."
+    echo "Generating initial conditions for the counter flow example..."
     python3 makeIC.py
 fi
 

@@ -122,7 +122,7 @@ grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFileOutputsPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [1, 0, 0, 0, 0, 0]       # we are providing internal energy.
+grp.attrs["Flag_Entropy_ICs"] = [1, 0, 0, 0, 0, 0]       # we are providing internal energy. no conversion required.
 grp.attrs["Dimension"] = 2
 
 #Units

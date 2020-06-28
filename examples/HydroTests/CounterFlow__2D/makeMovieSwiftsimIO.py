@@ -85,7 +85,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize=(1, 1), frameon=False)
     ax.axis("off")  # Remove annoying black frame.
 
-    data = load_and_extract("kelvinHelmholtz_0000.hdf5")
+    data = load_and_extract("counterFlow_0000.hdf5")
 
     mesh = project_gas_pixel_grid(data, dpi)
 

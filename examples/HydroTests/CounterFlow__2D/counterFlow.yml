@@ -15,7 +15,7 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            kelvinHelmholtz  # Common part of the name of output files
+  basename:            counterFlow  # Common part of the name of output files
   time_first:          0.               # Time of the first output (in internal units)
   delta_time:          0.01      # Time difference between consecutive outputs (in internal units)
 
@@ -30,5 +30,9 @@ SPH:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./kelvinHelmholtz.hdf5     # The file to read
+  file_name:  ./counterFlow.hdf5     # The file to read
   periodic:   1
+
+# Equation of state
+EoS:
+  wc_soundspeed: 10.   # set how compresisble the fluid is. Larger values make code slower.
