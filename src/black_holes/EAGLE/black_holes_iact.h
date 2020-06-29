@@ -273,15 +273,24 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
 
     /* Next line is equivalent to w_ij * m_j / Sum_j (w_ij * m_j) */
     const float particle_weight = hi_inv_dim * wi * pj_mass_orig / bi->rho_gas;
-    const float nibble_mass = bh_mass_deficit * particle_weight;
+    float nibble_mass = bh_mass_deficit * particle_weight;
 
     /* We radiated away some of the accreted mass, so need to take slightly
      * more from the gas than the BH gained */
     const float excess_fraction = 1.0 / (1.0 - bh_props->epsilon_r);
 
+    /* Need to check whether nibbling would push gas mass below minimum 
+     * allowed mass */
+    float new_gas_mass = pj_mass_orig - nibble_mass * excess_fraction;
+    if (new_gas_mass < bh_props->min_gas_mass_for_nibbling) {
+      new_gas_mass = bh_props->min_gas_mass_for_nibbling;
+      nibble_mass = (pj_mass_orig - bh_props->min_gas_mass_for_nibbling)
+                    / excess_fraction;
+    }
+
     /* Transfer (dynamical) mass from the gas particle to the BH */
     bi->mass += nibble_mass;
-    hydro_set_mass(pj, pj_mass_orig - nibble_mass * excess_fraction);
+    hydro_set_mass(pj, new_gas_mass);
 
     /* Add the angular momentum of the accreted gas to the BH total.
      * Note no change to gas here. The cosmological conversion factors for
