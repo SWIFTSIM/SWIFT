@@ -5716,9 +5716,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
   //if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->grav.ti_old_part != e->ti_current) {
-    for (int j = 0; j < c->grav.count; j++) {
-      if (c->grav.parts[j].ti_drift != c->grav.ti_old_part) message("ti_drift doesn't correspond to ti_old_part for part %llu, ti_drift %llu ti_old_part %llu ti_current %llu", e->s->parts[-(c->grav.parts[j].id_or_neg_offset)].id, c->grav.parts[j].ti_drift, c->grav.ti_old_part, e->ti_current);
-    }
+    //for (int j = 0; j < c->grav.count; j++) {
+    //  //if (c->grav.parts[j].ti_drift != c->grav.ti_old_part) message("ti_drift doesn't correspond to ti_old_part for part %llu, ti_drift %llu ti_old_part %llu ti_current %llu", e->s->parts[-(c->grav.parts[j].id_or_neg_offset)].id, c->grav.parts[j].ti_drift, c->grav.ti_old_part, e->ti_current);
+    //}
     error("Undrifted cell! cell %p grav.ti_old_part %llu ti_current %llu", c, c->grav.ti_old_part, e->ti_current);
   }
   if (c->split) error("Addition of spart performed above the leaf level");

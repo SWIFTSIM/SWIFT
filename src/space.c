@@ -1194,6 +1194,19 @@ void space_dither(struct space *s, int verbose) {
             s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
 }
 
+// ALEXEI: debugging function used to print number of decoupled particles in each cell
+static inline void print_nparts_decoupled(struct cell *c, int pos_flag) {
+  int n_decoupled = 0;
+  for (int i = 0; i < c->hydro.count; i++)
+    if (part_is_decoupled(&(c->hydro.parts[i]))) n_decoupled++;
+  message("position flag %d cell %p nparts_decoupled %d count decoupled %d", pos_flag, c, c->hydro.nparts_decoupled, n_decoupled);
+  if (c->hydro.nparts_decoupled != n_decoupled) 
+    error("direct count doesn't correspond to counter. counter %d direct %d", c->hydro.nparts_decoupled, n_decoupled);
+  for (int i = 0; i < 8; i++) {
+    if (c->progeny[i] != NULL) print_nparts_decoupled(c->progeny[i], pos_flag);
+  }
+}
+
 /**
  * @brief Re-build the cells as well as the tasks.
  *
@@ -1204,6 +1217,10 @@ void space_dither(struct space *s, int verbose) {
 void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   const ticks tic = getticks();
+
+  // ALEXEI: check number of decoupled particles before rebuild
+  //for (int j = 0; j < s->nr_cells; j++)
+  //  print_nparts_decoupled(&(s->cells_top[j]), 0);
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2016,6 +2033,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+  // ALEXEI: check number of decoupled particles before rebuild
+  //for (int j = 0; j < s->nr_cells; j++)
+  //  print_nparts_decoupled(&(s->cells_top[j]), 1);
 }
 
 /**
@@ -3364,7 +3384,11 @@ void space_split_recursive(struct space *s, struct cell *c,
   const integertime_t ti_current = e->ti_current;
 
   // ALEXEI: get the number of decoupled particles in this cell
-  const int nparts_decoupled = c->hydro.nparts_decoupled;
+  //int nparts_decoupled = c->hydro.nparts_decoupled;
+  // ALEXEI: temporary check of how many decoupled particles we start with
+  int start_nparts_decoupled = 0;
+  for (int i = 0; i < count; i++)
+    if (part_is_decoupled(&(c->hydro.parts[i]))) start_nparts_decoupled++;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer =
@@ -3506,8 +3530,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cp->cellID = last_cell_id++;
 #endif
-      // ALEXEI: zero the decoupled particles counter
-      //cp->hydro.nparts_decoupled = 0;
     }
 
     /* Split the cell's particle data. */
@@ -3725,7 +3747,27 @@ void space_split_recursive(struct space *s, struct cell *c,
       /* Collect SFR from the particles after rebuilt */
       star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                               &c->stars.sfh);
+      // ALEXEI: skip all the decoupled particles here and accumulate
+      if (!part_is_decoupled(&parts[k])) {
+        hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
+        hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
+        /* Collect SFR from the particles after rebuilt */
+        star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
+                                                &c->stars.sfh);
+      } else {
+	c->hydro.nparts_decoupled++;
+      }
+      h_max = max(h_max, parts[k].h);
     }
+
+    if (count == c->hydro.nparts_decoupled) {
+      hydro_time_bin_max = num_time_bins;
+    }
+    
+    // ALEXEI: debugging check that we've actually set a max time bin
+    //if (hydro_time_bin_min == num_time_bins || hydro_time_bin_max == 0) {
+    //  message("time bin not assigned. cell %p min max bins %d %d count nparts decoupled %d %d", c, hydro_time_bin_min, hydro_time_bin_max, count, c->hydro.nparts_decoupled);
+    //}
 
     /* xparts: Reset x_diff */
     for (int k = 0; k < count; k++) {
@@ -3837,6 +3879,9 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
+  // ALEXEI: update parent's decoupled particle count
+  if (c->parent != NULL) c->parent->hydro.nparts_decoupled += c->hydro.nparts_decoupled;
+
   /* Set the values for this cell. */
   c->hydro.h_max = h_max;
   c->hydro.ti_end_min = ti_hydro_end_min;
@@ -3855,7 +3900,14 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.h_max = black_holes_h_max;
   c->maxdepth = maxdepth;
   // ALEXEI: set counter of decoupled particles
-  c->hydro.nparts_decoupled = nparts_decoupled;
+  //c->hydro.nparts_decoupled = nparts_decoupled;
+  //// DEBUGGING! don't actually loop over all the particles
+  //int n_decoupled = 0;
+  //for (int i = 0; i < c->hydro.count; i++)
+  //  if (part_is_decoupled(&(c->hydro.parts[i]))) n_decoupled++;
+  //c->hydro.nparts_decoupled = n_decoupled;
+  if (start_nparts_decoupled != c->hydro.nparts_decoupled)
+    message("cell %p rebuild decoupled start new %d %d", c, start_nparts_decoupled, c->hydro.nparts_decoupled);
 
   /* Set ownership according to the start of the parts array. */
   if (s->nr_parts > 0)
@@ -3900,7 +3952,9 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    //message("n decoupled before %d", c->hydro.nparts_decoupled);
     space_split_recursive(s, c, NULL, NULL, NULL, NULL);
+    //message("n decoupled after %d", c->hydro.nparts_decoupled);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

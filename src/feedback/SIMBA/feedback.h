@@ -261,7 +261,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
 
   /* Increment cell counter of decoupled particles */
   c->hydro.nparts_decoupled++;
-  message("decoupled particle %llu n decoupled %d cell %p depth maxdepth %d %d", p->id, c->hydro.nparts_decoupled, c, c->depth, c->maxdepth);
+  //message("decoupled particle %llu n decoupled %d cell %p depth maxdepth %d %d", p->id, c->hydro.nparts_decoupled, c, c->depth, c->maxdepth);
 
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_decoupled = ti_current;

@@ -158,8 +158,8 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_hydro(
   if (c->hydro.count > 0 && c->hydro.ti_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
-        "e->ti_current=%lld",
-        c->hydro.ti_end_max, e->ti_current);
+        "e->ti_current=%lld, cell %p count %d decoupled %d",
+        c->hydro.ti_end_max, e->ti_current, c, c->hydro.count, c->hydro.nparts_decoupled);
 #endif
 
   return (c->hydro.ti_end_max == e->ti_current);
