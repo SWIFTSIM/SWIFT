@@ -301,6 +301,10 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 
+    case UNIT_CONV_TIDAL_TENSOR:
+      baseUnitsExp[UNIT_TIME] = -2.f;
+      break;
+
     case UNIT_CONV_ENERGY:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = 2.f;
