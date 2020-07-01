@@ -883,13 +883,14 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
 	  // Update counter
 	  c->hydro.nparts_decoupled--; 
 	  if (c->hydro.nparts_decoupled < 0) {
+        // ALEXEI: Debugging sanity check. remove counting of particles
 	    int n_decoupled = 0;
 	    for (int n = 0; n < c->hydro.count; n++) 
 	      if (part_is_decoupled(&(c->hydro.parts[n]))) n_decoupled++;
 	    error("negative particles decoupled %.d directly count decoupled %d cell %p", c->hydro.nparts_decoupled, n_decoupled, c);
 	  }
 	  
-	  message("recoupled particle %llu cell %p depth maxdepth %d %d ti current grav %llu %llu", p->id, c, c->depth, c->maxdepth, e->ti_current, c->grav.ti_old_part);
+	  //message("recoupled particle %llu cell %p depth maxdepth %d %d ti current grav %llu %llu", p->id, c, c->depth, c->maxdepth, e->ti_current, c->grav.ti_old_part);
 #if SWIFT_DEBUG_CHECKS
           p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
 #endif

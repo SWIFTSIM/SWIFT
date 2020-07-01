@@ -4414,7 +4414,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     p[k].limiter_data.to_be_synchronized = 0;
 
     // ALEXEI: debugging
-    if (p[k].id == SIMBA_DEBUG_ID) message("pid %llu min time bin %d", p[k].id, p[k].limiter_data.min_ngb_time_bin);
+    //if (p[k].id == SIMBA_DEBUG_ID) message("pid %llu min time bin %d", p[k].id, p[k].limiter_data.min_ngb_time_bin);
 
 #ifdef WITH_LOGGER
     logger_part_data_init(&xp[k].logger_data);

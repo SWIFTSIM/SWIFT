@@ -5655,7 +5655,7 @@ void cell_recouple(struct cell *c,
           p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
 #endif    
 	  //p->delay_time += dt_drift;
-	  message("id %llu, cell %p, level %d", p->id, c, c->depth);
+	  //message("id %llu, cell %p, level %d", p->id, c, c->depth);
 
         }
       }
@@ -5719,7 +5719,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
     //for (int j = 0; j < c->grav.count; j++) {
     //  //if (c->grav.parts[j].ti_drift != c->grav.ti_old_part) message("ti_drift doesn't correspond to ti_old_part for part %llu, ti_drift %llu ti_old_part %llu ti_current %llu", e->s->parts[-(c->grav.parts[j].id_or_neg_offset)].id, c->grav.parts[j].ti_drift, c->grav.ti_old_part, e->ti_current);
     //}
-    error("Undrifted cell! cell %p grav.ti_old_part %llu ti_current %llu", c, c->grav.ti_old_part, e->ti_current);
+    error("Undrifted cell! cell %p grav.ti_old_part %llu ti_current %llu, count %d decoupled %d", c, c->grav.ti_old_part, e->ti_current, c->hydro.count, c->hydro.nparts_decoupled);
   }
   if (c->split) error("Addition of spart performed above the leaf level");
 
