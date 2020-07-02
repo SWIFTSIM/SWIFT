@@ -2043,10 +2043,14 @@ void engine_skip_force_and_kick(struct engine *e) {
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep ||
+	t->type == task_type_kick1_in || t->type == task_type_kick2_in ||
+	t->type == task_type_kick1_out || t->type == task_type_kick2_out ||
+        t->type == task_type_timestep || t->type == task_type_timestep_in ||
+	t->type == task_type_timestep_out ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
+	t->type == task_type_cooling_in || t->type == task_type_cooling_out ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
