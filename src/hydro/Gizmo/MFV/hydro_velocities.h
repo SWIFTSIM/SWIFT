@@ -42,13 +42,13 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
 #endif
 
   /* TODO: temporary */
-  p->v[0] = MLADEN_SETVX;
-  p->v[1] = 0.f;
-  p->v[2] = 0.f;
-
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  // p->v[0] = MLADEN_SETVX;
+  // p->v[1] = 0.f;
+  // p->v[2] = 0.f;
+  //
+  // xp->v_full[0] = p->v[0];
+  // xp->v_full[1] = p->v[1];
+  // xp->v_full[2] = p->v[2];
 }
 
 /**
@@ -72,12 +72,12 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
     struct part* restrict p) {
 
   /* TODO: temporary */
-  p->v[0] = MLADEN_SETVX;
-  p->v[1] = 0.f;
-  p->v[2] = 0.f;
-  p->a_hydro[0] = 0.f;
-  p->a_hydro[1] = 0.f;
-  p->a_hydro[2] = 0.f;
+  // p->v[0] = MLADEN_SETVX;
+  // p->v[1] = 0.f;
+  // p->v[2] = 0.f;
+  // p->a_hydro[0] = 0.f;
+  // p->a_hydro[1] = 0.f;
+  // p->a_hydro[2] = 0.f;
 
 
 #ifdef GIZMO_FIX_PARTICLES
@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
   p->force.h_dt *= p->h * hydro_dimension_inv;
 #endif
   /* TODO: temporary */
-  p->force.h_dt = 0.0f;
+  // p->force.h_dt = 0.0f;
 }
 
 /**
@@ -160,9 +160,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
 
   /* TODO: temporary */
-  p->v[0] = MLADEN_SETVX;
-  p->v[1] = 0.f;
-  p->v[2] = 0.f;
+  // p->v[0] = MLADEN_SETVX;
+  // p->v[1] = 0.f;
+  // p->v[2] = 0.f;
 
 
   /* Now make sure all velocity variables are up to date. */
