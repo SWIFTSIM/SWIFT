@@ -1,0 +1,9 @@
+# Example to test the external NFW + MN external potential implementation. 
+# The gas disc is initialized so that the particles are in cicular orbit with that of the NFW + MN potential. 
+# The initial thickness of the gaseous disk is arbitrarius, so that it readjust while runnig the simulation.
+# Parameters of the MN disk should be self-explanatory from the parameter file.
+
+tested with the following options: 
+
+./configure --with-hydro=gadget2 --with-ext-potential=nfw_mn --disable-hand-vec
+

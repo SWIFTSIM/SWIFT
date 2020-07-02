@@ -36,6 +36,8 @@
 /* Local headers. */
 #include "active.h"
 #include "error.h"
+#include "kernel_gravity.h"
+#include "kernel_long_gravity.h"
 #include "threadpool.h"
 #include "version.h"
 

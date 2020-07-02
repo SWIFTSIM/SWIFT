@@ -26,10 +26,6 @@
 #include <hdf5.h>
 #endif
 
-/* Local includes. */
-#include "kernel_gravity.h"
-#include "restart.h"
-
 /* Forward declarations */
 struct cosmology;
 struct phys_const;
@@ -58,14 +54,23 @@ struct gravity_props {
 
   /* -------------- Properties of the FFM gravity ---------------------- */
 
+  /*! What MAC are we currently using? */
+  int use_advanced_MAC;
+
+  /*! Are we using the adaptive opening angle? (as read from param file) */
+  int use_adaptive_tolerance;
+
+  /*! Accuracy parameter of the advanced MAC */
+  float adaptive_tolerance;
+
   /*! Tree opening angle (Multipole acceptance criterion) */
   double theta_crit;
 
-  /*! Square of opening angle */
-  double theta_crit2;
+  /*! Are we allowing tree gravity below softening? */
+  int use_tree_below_softening;
 
-  /*! Inverse of opening angle */
-  double theta_crit_inv;
+  /*! Are we applying long-range truncation to the forces in the MAC? */
+  int consider_truncation_in_MAC;
 
   /* ------------- Properties of the softened gravity ------------------ */
 
@@ -111,11 +116,19 @@ struct gravity_props {
    * a_smooth */
   float r_cut_max_ratio;
 
+  /*! Long-range gravity mesh scale. */
+  float r_s;
+
+  /*! Inverse of the long-range gravity mesh scale. */
+  float r_s_inv;
+
   /*! Are we dithering the particles at every rebuild? */
   int with_dithering;
 
   /*! Fraction of the top-level cell size used to normalize the dithering */
   double dithering_ratio;
+
+  /* ------------- Physical constants ---------------------------------- */
 
   /*! Gravitational constant (in internal units, copied from the physical
    * constants) */
@@ -128,10 +141,11 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct cosmology *cosmo, const int with_cosmology,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
-                        const int is_zoom_simulation, const int periodic);
+                        const int is_zoom_simulation, const int periodic,
+                        const double dim[3]);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
-
+void gravity_props_update_MAC_choice(struct gravity_props *p);
 #if defined(HAVE_HDF5)
 void gravity_props_print_snapshot(hid_t h_grpsph,
                                   const struct gravity_props *p);

@@ -36,7 +36,7 @@ filename = "constantBox.hdf5"
 
 # Cosmology (must be same as param file)
 hubble_param = 0.6777  # same as in param file
-Omega_bar = 0.0455  # same as in param file
+Omega_bar = 0.0482519  # same as in param file
 
 
 # Read the glass file

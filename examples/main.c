@@ -187,6 +187,7 @@ int main(int argc, char *argv[]) {
   char *param_filename = NULL;
   char restart_file[200] = "";
   unsigned long long cpufreq = 0;
+  float dump_tasks_threshold = 0.f;
   struct cmdparams cmdps;
   cmdps.nparam = 0;
   cmdps.param[0] = NULL;
@@ -308,6 +309,10 @@ int main(int argc, char *argv[]) {
       OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool,
                   "Time-step frequency at which threadpool tasks are dumped.",
                   NULL, 0, 0),
+      OPT_FLOAT(0, "dump-tasks-threshold", &dump_tasks_threshold,
+                "Fraction of the total step's time spent in a task to trigger "
+                "a dump of the task plot on this step",
+                NULL, 0, 0),
       OPT_END(),
   };
   struct argparse argparse;
@@ -404,6 +409,20 @@ int main(int argc, char *argv[]) {
     }
   }
 #endif
+
+  if (dump_tasks_threshold > 0.f) {
+#ifndef SWIFT_DEBUG_TASKS
+    if (myrank == 0) {
+      error(
+          "Error: Dumping task plot data above a fixed time threshold is only "
+          "valid when the code is configured with --enable-task-debugging.");
+    }
+#endif
+#ifdef WITH_MPI
+    if (nr_nodes > 1)
+      error("Cannot dump tasks above a time threshold over MPI (yet).");
+#endif
+  }
 
 #ifndef SWIFT_CELL_GRAPH
   if (dump_cells) {
@@ -844,6 +863,10 @@ int main(int argc, char *argv[]) {
 
   } else {
 
+    /* Prepare and verify the selection of outputs */
+    io_prepare_output_fields(output_options, with_cosmology, with_fof,
+                             with_structure_finding);
+
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
     units_init_from_params(&us, params, "InternalUnitSystem");
@@ -1094,10 +1117,11 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
-               Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
-               with_hydro, with_self_gravity, with_star_formation,
-               with_DM_background_particles, talking, dry_run, nr_nodes);
+    space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts,
+               sparts, bparts, Ngas, Ngpart, Nspart, Nbpart, periodic,
+               replicate, generate_gas_in_ics, with_hydro, with_self_gravity,
+               with_star_formation, with_DM_background_particles, talking,
+               dry_run, nr_nodes);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
@@ -1115,7 +1139,7 @@ int main(int argc, char *argv[]) {
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
-                         with_DM_background_particles, periodic);
+                         with_DM_background_particles, periodic, s.dim);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));
@@ -1160,12 +1184,6 @@ int main(int argc, char *argv[]) {
     N_total[swift_type_stars] = s.nr_sparts;
     N_total[swift_type_black_hole] = s.nr_bparts;
 #endif
-
-    /* Verify that the fields to dump actually exist - this must be done after
-     * space_init so we know whether or not we have gas particles. */
-    if (myrank == 0)
-      io_check_output_fields(output_options->select_output, N_total,
-                             with_cosmology);
 
     /* Say a few nice things about the space we just created. */
     if (myrank == 0) {
@@ -1418,13 +1436,14 @@ int main(int argc, char *argv[]) {
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef SWIFT_DEBUG_TASKS
-      task_dump_all(&e, j + 1);
+      if (dump_tasks_threshold == 0.) task_dump_all(&e, j + 1);
 #endif
 
       /* Generate the task statistics. */
       char dumpfile[40];
       snprintf(dumpfile, 40, "thread_stats-step%d.dat", e.step + 1);
-      task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
+      task_dump_stats(dumpfile, &e, dump_tasks_threshold,
+                      /* header = */ 0, /* allranks = */ 1);
     }
 
 #ifdef SWIFT_CELL_GRAPH

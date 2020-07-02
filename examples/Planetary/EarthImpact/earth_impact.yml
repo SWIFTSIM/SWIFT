@@ -45,7 +45,10 @@ SPH:
 # Parameters for the self-gravity scheme
 Gravity:
     eta:                            0.025   # Constant dimensionless multiplier for time integration.
-    theta:                          0.7     # Opening angle (Multipole acceptance criterion)
+    MAC:                            adaptive
+    theta_cr:                       0.7     
+    epsilon_fmm:                    0.001
+    use_tree_below_softening:       1
     max_physical_baryon_softening:  0.003   # Physical softening length (in internal units).
 
 # Parameters for the task scheduling

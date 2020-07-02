@@ -410,6 +410,9 @@ print(("# Number of threads:", nthread))
 sdata = data[data[:, ticcol] != 0]
 sdata = sdata[sdata[:, toccol] != 0]
 
+if delta_t < 0.:
+    print("The time-range must be >=0!")
+    sys.exit(1)
 # Each rank can have different clocks (compute node), but we want to use the
 # same delta times range for comparisons, so we suck it up and take the hit of
 # precalculating this, unless the user knows better.

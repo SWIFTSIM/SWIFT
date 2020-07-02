@@ -516,8 +516,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
-  space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
-             Ngpart, Nspart, Nbpart, periodic, replicate,
+  space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
+             sparts, bparts, Ngas, Ngpart, Nspart, Nbpart, periodic, replicate,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, with_DM_background_particles, talking,
              /*dry_run=*/0, nr_nodes);
@@ -534,7 +534,7 @@ int main(int argc, char *argv[]) {
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                      /*with_cosmology=*/1, /*with_external_gravity=*/0,
                      with_baryon_particles, with_DM_particles,
-                     with_DM_background_particles, periodic);
+                     with_DM_background_particles, periodic, s.dim);
 
   /* Initialise the long-range gravity mesh */
   if (periodic) {
@@ -662,7 +662,8 @@ int main(int argc, char *argv[]) {
     /* Generate the task statistics. */
     char dumpfile[40];
     snprintf(dumpfile, 40, "thread_stats-step%d.dat", 0);
-    task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
+    task_dump_stats(dumpfile, &e, /* dump_tasks_threshold = */ 0.f,
+                    /* header = */ 0, /* allranks = */ 1);
   }
 
 #ifdef SWIFT_DEBUG_THREADPOOL

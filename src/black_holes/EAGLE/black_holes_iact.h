@@ -417,8 +417,8 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
           (r_12 < grav_props->epsilon_baryon_cur)) {
 
         /* If BHs are within softening range, take this into account */
-        float w_grav;
-        kernel_grav_pot_eval(r_12 / grav_props->epsilon_baryon_cur, &w_grav);
+        const float w_grav =
+            kernel_grav_pot_eval(r_12 / grav_props->epsilon_baryon_cur);
         const float r_mod = w_grav / grav_props->epsilon_baryon_cur;
         v2_threshold = 2.f * G_Newton * M / (r_mod);
 

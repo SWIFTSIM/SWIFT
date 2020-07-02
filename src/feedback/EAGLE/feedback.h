@@ -280,7 +280,7 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
   }
 }
 
-void feedback_clean(struct feedback_props* feedback_props);
+void feedback_clean(struct feedback_props* fp);
 
 void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
 
@@ -297,7 +297,7 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Feedback Model", "EAGLE");
-};
+}
 #endif  // HAVE_HDF5
 
 #endif /* SWIFT_FEEDBACK_EAGLE_H */

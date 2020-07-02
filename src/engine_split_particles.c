@@ -111,6 +111,9 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
   const ptrdiff_t offset = parts - global_parts;
   struct xpart *xparts = global_xparts + offset;
 
+  /* RNG seed for this thread's generation of new IDs */
+  unsigned int seedp = (unsigned int)offset + e->ti_current % INT_MAX;
+
   /* Loop over the chunk of the part array assigned to this thread */
   for (int i = 0; i < count; ++i) {
 
@@ -155,8 +158,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
         memcpy(&global_gparts[k_gparts], gp, sizeof(struct gpart));
       }
 
-      /* Update the IDs */
-      global_parts[k_parts].id += (long long)rand();
+      /* Update the IDs.
+       * The gas IDs are always odd, so we multiply by two here to
+       * repsect the parity. */
+      global_parts[k_parts].id += 2 * (long long)rand_r(&seedp);
 
       /* Re-link everything */
       if (with_gravity) {

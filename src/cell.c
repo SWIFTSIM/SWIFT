@@ -61,6 +61,7 @@
 #include "hydro_properties.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "multipole.h"
 #include "pressure_floor.h"
 #include "scheduler.h"
 #include "space.h"
@@ -233,6 +234,7 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 #endif
 
   c->grav.parts = gparts;
+  c->grav.parts_rebuild = gparts;
 
   /* Fill the progeny recursively, depth-first. */
   if (c->split) {
@@ -1154,7 +1156,12 @@ int cell_pack_sf_counts(struct cell *restrict c,
   pcells[0].stars.count = c->stars.count;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
 
+  /* Pack this cell's data. */
+  pcells[0].grav.delta_from_rebuild = c->grav.parts - c->grav.parts_rebuild;
+  pcells[0].grav.count = c->grav.count;
+
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Stars */
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
 
@@ -1162,6 +1169,16 @@ int cell_pack_sf_counts(struct cell *restrict c,
     error("Stars part pointer moved in the wrong direction!");
 
   if (pcells[0].stars.delta_from_rebuild > 0 && c->depth == 0)
+    error("Shifting the top-level pointer is not allowed!");
+
+  /* Grav */
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav. particles array at rebuild is NULL! c->depth=%d", c->depth);
+
+  if (pcells[0].grav.delta_from_rebuild < 0)
+    error("Grav part pointer moved in the wrong direction!");
+
+  if (pcells[0].grav.delta_from_rebuild > 0 && c->depth == 0)
     error("Shifting the top-level pointer is not allowed!");
 #endif
 
@@ -1198,12 +1215,17 @@ int cell_unpack_sf_counts(struct cell *restrict c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL!");
+  if (c->grav.parts_rebuild == NULL)
+    error("Grav particles array at rebuild is NULL!");
 #endif
 
   /* Unpack this cell's data. */
   c->stars.count = pcells[0].stars.count;
   c->stars.parts = c->stars.parts_rebuild + pcells[0].stars.delta_from_rebuild;
   c->stars.dx_max_part = pcells[0].stars.dx_max_part;
+
+  c->grav.count = pcells[0].grav.count;
+  c->grav.parts = c->grav.parts_rebuild + pcells[0].grav.delta_from_rebuild;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -1967,6 +1989,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     c->progeny[k]->grav.count = bucket_count[k];
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
+    c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
   }
 }
 
@@ -2219,6 +2242,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
   gravity_reset(c->grav.multipole);
 
   if (c->split) {
+
     /* Start by recursing */
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL)
@@ -2227,22 +2251,51 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
 
     /* Compute CoM of all progenies */
     double CoM[3] = {0., 0., 0.};
+    double vel[3] = {0., 0., 0.};
+    float max_delta_vel[3] = {0.f, 0.f, 0.f};
+    float min_delta_vel[3] = {0.f, 0.f, 0.f};
     double mass = 0.;
 
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
         const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+        mass += m->m_pole.M_000;
+
         CoM[0] += m->CoM[0] * m->m_pole.M_000;
         CoM[1] += m->CoM[1] * m->m_pole.M_000;
         CoM[2] += m->CoM[2] * m->m_pole.M_000;
-        mass += m->m_pole.M_000;
+
+        vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+        vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+        vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+        max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+        max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+        max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+        min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+        min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+        min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
       }
     }
 
+    /* Final operation on the CoM and bulk velocity */
     const double mass_inv = 1. / mass;
     c->grav.multipole->CoM[0] = CoM[0] * mass_inv;
     c->grav.multipole->CoM[1] = CoM[1] * mass_inv;
     c->grav.multipole->CoM[2] = CoM[2] * mass_inv;
+    c->grav.multipole->m_pole.vel[0] = vel[0] * mass_inv;
+    c->grav.multipole->m_pole.vel[1] = vel[1] * mass_inv;
+    c->grav.multipole->m_pole.vel[2] = vel[2] * mass_inv;
+
+    /* Min max velocity along each axis */
+    c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+    c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+    c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+    c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+    c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+    c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
 
     /* Now shift progeny multipoles and add them up */
     struct multipole temp;
@@ -2281,23 +2334,22 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
     /* Take minimum of both limits */
     c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
 
+    /* Compute the multipole power */
+    gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
   } else {
     if (c->grav.count > 0) {
+
       gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count, grav_props);
-      const double dx =
-          c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
-              ? c->grav.multipole->CoM[0] - c->loc[0]
-              : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-      const double dy =
-          c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] * 0.5
-              ? c->grav.multipole->CoM[1] - c->loc[1]
-              : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-      const double dz =
-          c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] * 0.5
-              ? c->grav.multipole->CoM[2] - c->loc[2]
-              : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-      c->grav.multipole->r_max = sqrt(dx * dx + dy * dy + dz * dz);
+
+      /* Compute the multipole power */
+      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
     } else {
+
+      /* No gparts in that leaf cell */
+
+      /* Set the values to something sensible */
       gravity_multipole_init(&c->grav.multipole->m_pole);
       c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] * 0.5;
       c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] * 0.5;
@@ -2377,6 +2429,7 @@ void cell_check_multipole(struct cell *c,
   if (c->grav.count > 0) {
     /* Brute-force calculation */
     gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
+    gravity_multipole_compute_power(&ma.m_pole);
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
@@ -3321,7 +3374,9 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     if (lock_unlock(&cj->grav.mlock) != 0) error("Impossible to unlock m-pole");
 
     /* Can we use multipoles ? */
-    if (cell_can_use_pair_mm(ci, cj, e, sp)) {
+    if (cell_can_use_pair_mm(ci, cj, e, sp, /*use_rebuild_data=*/0,
+                             /*is_tree_walk=*/1)) {
+
       /* Ok, no need to drift anything */
       return;
     }
@@ -4710,6 +4765,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   const integertime_t ti_old_gpart = c->grav.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct gpart *const gparts = c->grav.parts;
+  const struct gravity_props *grav_props = e->gravity_properties;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
@@ -4771,7 +4827,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (gpart_is_inhibited(gp, e)) continue;
 
       /* Drift... */
-      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current);
+      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -5593,11 +5649,14 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   lock_lock(&top->stars.star_formation_lock);
 
   /* Are there any extra particles left? */
-  if (top->stars.count == top->stars.count_total - 1) {
+  if (top->stars.count == top->stars.count_total) {
+
+    message("We ran out of free star particles!");
+
     /* Release the local lock before exiting. */
     if (lock_unlock(&top->stars.star_formation_lock) != 0)
       error("Failed to unlock the top-level cell.");
-    message("We ran out of star particles!");
+
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
@@ -5725,11 +5784,14 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
   lock_lock(&top->grav.star_formation_lock);
 
   /* Are there any extra particles left? */
-  if (top->grav.count == top->grav.count_total - 1) {
+  if (top->grav.count == top->grav.count_total) {
+
+    message("We ran out of free gravity particles!");
+
     /* Release the local lock before exiting. */
     if (lock_unlock(&top->grav.star_formation_lock) != 0)
       error("Failed to unlock the top-level cell.");
-    message("We ran out of gravity particles!");
+
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
@@ -6371,25 +6433,46 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?
  *
+ * The two cells have to be different!
+ *
  * @param ci The first #cell.
  * @param cj The second #cell.
  * @param e The #engine.
  * @param s The #space.
+ * @param use_rebuild_data Are we considering the data at the last tree-build
+ * (1) or current data (0)?
+ * @param is_tree_walk Are we calling this in the tree walk (1) or for the
+ * top-level task construction (0)?
  */
-int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
-                         const struct engine *e, const struct space *s) {
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+int cell_can_use_pair_mm(const struct cell *restrict ci,
+                         const struct cell *restrict cj, const struct engine *e,
+                         const struct space *s, const int use_rebuild_data,
+                         const int is_tree_walk) {
+
+  const struct gravity_props *props = e->gravity_properties;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
+  /* Check for trivial cases */
+  if (is_tree_walk && ci->grav.count <= 1) return 0;
+  if (is_tree_walk && cj->grav.count <= 1) return 0;
+
   /* Recover the multipole information */
-  const struct gravity_tensors *const multi_i = ci->grav.multipole;
-  const struct gravity_tensors *const multi_j = cj->grav.multipole;
+  const struct gravity_tensors *restrict multi_i = ci->grav.multipole;
+  const struct gravity_tensors *restrict multi_j = cj->grav.multipole;
+
+  double dx, dy, dz;
 
   /* Get the distance between the CoMs */
-  double dx = multi_i->CoM[0] - multi_j->CoM[0];
-  double dy = multi_i->CoM[1] - multi_j->CoM[1];
-  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+  if (use_rebuild_data) {
+    dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
+    dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
+    dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
+  } else {
+    dx = multi_i->CoM[0] - multi_j->CoM[0];
+    dy = multi_i->CoM[1] - multi_j->CoM[1];
+    dz = multi_i->CoM[2] - multi_j->CoM[2];
+  }
 
   /* Apply BC */
   if (periodic) {
@@ -6399,75 +6482,6 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
 
-  const double epsilon_i = multi_i->m_pole.max_softening;
-  const double epsilon_j = multi_j->m_pole.max_softening;
-
-  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
-                            epsilon_i, epsilon_j);
-}
-
-/**
- * @brief Can we use the MM interactions fo a given pair of cells?
- *
- * This function uses the information gathered in the multipole at rebuild
- * time and not the current position and radius of the multipole.
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
- * @param e The #engine.
- * @param s The #space.
- */
-int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
-                                 const struct engine *e,
-                                 const struct space *s) {
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-
-  /* Recover the multipole information */
-  const struct gravity_tensors *const multi_i = ci->grav.multipole;
-  const struct gravity_tensors *const multi_j = cj->grav.multipole;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  if (multi_i->CoM_rebuild[0] < ci->loc[0] ||
-      multi_i->CoM_rebuild[0] > ci->loc[0] + ci->width[0])
-    error("Invalid multipole position ci");
-  if (multi_i->CoM_rebuild[1] < ci->loc[1] ||
-      multi_i->CoM_rebuild[1] > ci->loc[1] + ci->width[1])
-    error("Invalid multipole position ci");
-  if (multi_i->CoM_rebuild[2] < ci->loc[2] ||
-      multi_i->CoM_rebuild[2] > ci->loc[2] + ci->width[2])
-    error("Invalid multipole position ci");
-
-  if (multi_j->CoM_rebuild[0] < cj->loc[0] ||
-      multi_j->CoM_rebuild[0] > cj->loc[0] + cj->width[0])
-    error("Invalid multipole position cj");
-  if (multi_j->CoM_rebuild[1] < cj->loc[1] ||
-      multi_j->CoM_rebuild[1] > cj->loc[1] + cj->width[1])
-    error("Invalid multipole position cj");
-  if (multi_j->CoM_rebuild[2] < cj->loc[2] ||
-      multi_j->CoM_rebuild[2] > cj->loc[2] + cj->width[2])
-    error("Invalid multipole position cj");
-
-#endif
-
-  /* Get the distance between the CoMs */
-  double dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
-  double dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
-  double dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-  const double r2 = dx * dx + dy * dy + dz * dz;
-
-  const double epsilon_i = multi_i->m_pole.max_softening;
-  const double epsilon_j = multi_j->m_pole.max_softening;
-
-  return gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
-                            theta_crit2, r2, epsilon_i, epsilon_j);
+  return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
+                                      use_rebuild_data, periodic);
 }

@@ -23,8 +23,8 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "approx_math.h"
 #include "const.h"
+#include "exp.h"
 #include "inline.h"
 
 /* Standard headers */
@@ -78,35 +78,75 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
-  /* Powers of u=r/2r_s */
+  /* Powers of u = (1/2) * (r / r_s) */
   const float u = 0.5f * r * r_s_inv;
   const float u2 = u * u;
-  const float u3 = u2 * u;
-  const float u4 = u3 * u;
+  const float u4 = u2 * u2;
 
-  /* Powers of (1/r_s) */
-  const float r_s_inv2 = r_s_inv * r_s_inv;
-  const float r_s_inv3 = r_s_inv2 * r_s_inv;
-  const float r_s_inv4 = r_s_inv3 * r_s_inv;
-  const float r_s_inv5 = r_s_inv4 * r_s_inv;
+  const float exp_u2 = expf(-u2);
 
-  /* Derivatives of \chi */
-  derivs->chi_0 = approx_erfcf(u);
-  derivs->chi_1 = -r_s_inv;
-  derivs->chi_2 = r_s_inv2 * u;
-  derivs->chi_3 = -r_s_inv3 * (u2 - 0.5f);
-  derivs->chi_4 = r_s_inv4 * (u3 - 1.5f * u);
-  derivs->chi_5 = -r_s_inv5 * (u4 - 3.f * u2 + 0.75f);
+  /* Compute erfcf(u) using eq. 7.1.26 of
+   * Abramowitz & Stegun, 1972.
+   *
+   * This has a *relative* error of less than 3.4e-3 over
+   * the range of interest (0 < u < 5)
+   *
+   * This is a good approximation to use since we already
+   * need exp(-u2) */
 
+  const float t = 1.f / (1.f + 0.3275911f * u);
+
+  const float a1 = 0.254829592f;
+  const float a2 = -0.284496736f;
+  const float a3 = 1.421413741f;
+  const float a4 = -1.453152027;
+  const float a5 = 1.061405429f;
+
+  /* a1 * t + a2 * t^2 + a3 * t^3 + a4 * t^4 + a5 * t^5 */
+  float a = a5 * t + a4;
+  a = a * t + a3;
+  a = a * t + a2;
+  a = a * t + a1;
+  a = a * t;
+
+  const float erfc_u = a * exp_u2;
+
+  /* C = (1/sqrt(pi)) * expf(-u^2) */
   const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
-  const float common_factor = one_over_sqrt_pi * expf(-u2);
+  const float common_factor = one_over_sqrt_pi * exp_u2;
 
-  /* Multiply in the common factors */
-  derivs->chi_1 *= common_factor;
-  derivs->chi_2 *= common_factor;
-  derivs->chi_3 *= common_factor;
-  derivs->chi_4 *= common_factor;
-  derivs->chi_5 *= common_factor;
+  /* (1/r_s)^n * C */
+  const float r_s_inv_times_C = r_s_inv * common_factor;
+  const float r_s_inv2_times_C = r_s_inv_times_C * r_s_inv;
+  const float r_s_inv3_times_C = r_s_inv2_times_C * r_s_inv;
+  const float r_s_inv4_times_C = r_s_inv3_times_C * r_s_inv;
+  const float r_s_inv5_times_C = r_s_inv4_times_C * r_s_inv;
+
+  /* Now, compute the derivatives of \chi */
+#ifdef GRAVITY_USE_EXACT_LONG_RANGE_MATH
+
+  /* erfc(u) */
+  derivs->chi_0 = erfcf(u);
+#else
+
+  /* erfc(u) */
+  derivs->chi_0 = erfc_u;
+#endif
+
+  /* (-1/r_s) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_1 = -r_s_inv_times_C;
+
+  /* (1/r_s)^2 * u * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_2 = r_s_inv2_times_C * u;
+
+  /* (1/r_s)^3 * (1/2 - u^2) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_3 = r_s_inv3_times_C * (0.5f - u2);
+
+  /* (1/r_s)^4 * (u^3 - 3/2 u) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_4 = r_s_inv4_times_C * (u2 - 1.5f) * u;
+
+  /* (1/r_s)^5 * (3/4 - 3u^2 + u^4) * (1/sqrt(pi)) * expf(-u^2) */
+  derivs->chi_5 = r_s_inv5_times_C * (0.75f - 3.f * u2 + u4);
 
 #else
 
@@ -147,65 +187,78 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
 }
 
 /**
- * @brief Computes the long-range correction term for the potential calculation
- * coming from FFT.
+ * @brief Computes the long-range correction terms for the potential and
+ * force calculations due to the mesh truncation.
  *
- * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
- * @param W (return) The value of the kernel function.
+ * We use an approximation to the erfc() that gives a *relative* accuracy
+ * for the potential tem of 3.4e-3 and 2.4e-4 for the force term over the
+ * range [0, 5] of r_over_r_s.
+ * The accuracy is much better in the range [0, 2] (6e-5 and 2e-5 respectively).
+ *
+ * @param r_over_r_s The ratio of the distance to the FFT cell scale \f$u =
+ * r/r_s\f$.
+ * @param corr_f (return) The correction for the force term.
+ * @param corr_pot (return) The correction for the potential term.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-kernel_long_grav_pot_eval(const float u, float *const W) {
+kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,
+                      float *restrict corr_pot) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
-  const float arg1 = u * 0.5f;
-  const float term1 = approx_erfcf(arg1);
+  const float two_over_sqrt_pi = ((float)M_2_SQRTPI);
 
-  *W = term1;
+  const float u = 0.5f * r_over_r_s;
+  const float u2 = u * u;
+  const float exp_u2 = expf(-u2);
+
+  /* Compute erfcf(u) using eq. 7.1.26 of
+   * Abramowitz & Stegun, 1972.
+   *
+   * This has a *relative* error of less than 3.4e-3 over
+   * the range of interest (0 < u < 5)\
+   *
+   * This is a good approximation to use since we already
+   * need exp(-u2) */
+
+  const float t = 1.f / (1.f + 0.3275911f * u);
+
+  const float a1 = 0.254829592f;
+  const float a2 = -0.284496736f;
+  const float a3 = 1.421413741f;
+  const float a4 = -1.453152027;
+  const float a5 = 1.061405429f;
+
+  /* a1 * t + a2 * t^2 + a3 * t^3 + a4 * t^4 + a5 * t^5 */
+  float a = a5 * t + a4;
+  a = a * t + a3;
+  a = a * t + a2;
+  a = a * t + a1;
+  a = a * t;
+
+  const float erfc_u = a * exp_u2;
+
+  *corr_pot = erfc_u;
+  *corr_f = erfc_u + two_over_sqrt_pi * u * exp_u2;
+
 #else
-
-  const float x = 2.f * u;
+  const float x = 2.f * r_over_r_s;
   const float exp_x = expf(x);  // good_approx_expf(x);
   const float alpha = 1.f / (1.f + exp_x);
 
   /* We want 2 - 2 exp(x) * alpha */
-  *W = 1.f - alpha * exp_x;
-  *W *= 2.f;
-#endif
-}
+  float W = 1.f - alpha * exp_x;
+  W = W * 2.f;
 
-/**
- * @brief Computes the long-range correction term for the force calculation
- * coming from FFT.
- *
- * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
- * @param W (return) The value of the kernel function.
- */
-__attribute__((always_inline, nonnull)) INLINE static void
-kernel_long_grav_force_eval(const float u, float *const W) {
-
-#ifdef GADGET2_LONG_RANGE_CORRECTION
-
-  const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
-
-  const float arg1 = u * 0.5f;
-  const float arg2 = -arg1 * arg1;
-
-  const float term1 = approx_erfcf(arg1);
-  const float term2 = u * one_over_sqrt_pi * expf(arg2);
-
-  *W = term1 + term2;
-#else
-
-  const float x = 2.f * u;
-  const float exp_x = expf(x);  // good_approx_expf(x);
-  const float alpha = 1.f / (1.f + exp_x);
+  *corr_pot = W;
 
   /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
-  *W = 1.f - alpha;
-  *W = *W * x - exp_x;
-  *W = *W * alpha + 1.f;
-  *W *= 2.f;
+  W = 1.f - alpha;
+  W = W * x - exp_x;
+  W = W * alpha + 1.f;
+  W = W * 2.f;
+
+  *corr_f = W;
 #endif
 }
 

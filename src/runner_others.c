@@ -130,8 +130,14 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
   } else {
 
-    /* Get the forces from the gravity mesh */
+  /* Get the forces from the gravity mesh */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    lock_lock(&c->grav.plock);
+#endif
     pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
+#endif
   }
 
   if (timer) TIMER_TOC(timer_dograv_mesh);
@@ -267,6 +273,14 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         /* Update current cell using child cells */
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+
+        /* Update the dx_max */
+        if (star_formation_need_update_dx_max) {
+          c->hydro.dx_max_part =
+              max(cp->hydro.dx_max_part, c->hydro.dx_max_part);
+          c->hydro.dx_max_sort =
+              max(cp->hydro.dx_max_sort, c->hydro.dx_max_sort);
+        }
       }
   } else {
 
@@ -358,6 +372,24 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Update the Star formation history */
               star_formation_logger_log_new_spart(sp, &c->stars.sfh);
+
+              /* Update the displacement information */
+              if (star_formation_need_update_dx_max) {
+                const float dx2_part = xp->x_diff[0] * xp->x_diff[0] +
+                                       xp->x_diff[1] * xp->x_diff[1] +
+                                       xp->x_diff[2] * xp->x_diff[2];
+                const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
+                                       xp->x_diff_sort[1] * xp->x_diff_sort[1] +
+                                       xp->x_diff_sort[2] * xp->x_diff_sort[2];
+
+                const float dx_part = sqrtf(dx2_part);
+                const float dx_sort = sqrtf(dx2_sort);
+
+                /* Note: no need to update quantities further up the tree as
+                   this task is always called at the top-level */
+                c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
+                c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
+              }
 
 #ifdef WITH_LOGGER
               /* Copy the properties back to the stellar particle */
@@ -523,7 +555,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
       if (gpart_is_active(gp, e)) {
 
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton, potential_normalisation, periodic);
+        gravity_end_force(gp, G_newton, potential_normalisation, periodic,
+                          with_self_gravity);
 
 #ifdef SWIFT_MAKE_GRAVITY_GLASS
 

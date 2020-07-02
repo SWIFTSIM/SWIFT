@@ -40,8 +40,11 @@ Statistics:
   delta_time:          1.05 # Time between statistics output
 
 Gravity:
-  eta:                    0.002    # Constant dimensionless multiplier for time integration.
-  theta:                  0.6     # Opening angle (Multipole acceptance criterion)
+  eta:                       0.002    # Constant dimensionless multiplier for time integration.
+  MAC:                       adaptive
+  theta_cr:                  0.7
+  epsilon_fmm:               0.001
+  use_tree_below_softening:  1
   comoving_DM_softening:     0.1278 # Comoving softening length (in internal units).
   max_physical_DM_softening: 0.03365    # Physical softening length (in internal units).
   comoving_baryon_softening:     0.03365 # Comoving softening length (in internal units).

@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
   e.mesh = &mesh;
 
   struct gravity_props props;
-  props.theta_crit2 = 0.;
+  props.theta_crit = 0.;
   props.epsilon_DM_cur = eps;
   props.epsilon_baryon_cur = eps;
   e.gravity_properties = &props;
@@ -204,6 +204,9 @@ int main(int argc, char *argv[]) {
     gp->time_bin = 1;
     gp->type = swift_type_dark_matter;
     gp->id_or_neg_offset = n + 1;
+#ifdef MULTI_SOFTENING_GRAVITY
+    gp->epsilon = eps;
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
     gp->ti_drift = 8;
     gp->initialised = 1;
@@ -222,6 +225,9 @@ int main(int argc, char *argv[]) {
   ci.grav.parts[0].time_bin = 1;
   ci.grav.parts[0].type = swift_type_dark_matter;
   ci.grav.parts[0].id_or_neg_offset = 1;
+#ifdef MULTI_SOFTENING_GRAVITY
+  ci.grav.parts[0].epsilon = eps;
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   ci.grav.parts[0].ti_drift = 8;
   ci.grav.parts[0].initialised = 1;
@@ -261,7 +267,7 @@ int main(int argc, char *argv[]) {
   /**********************************/
 
   /* Set an opening angle that allows P-M interactions */
-  props.theta_crit2 = 1.;
+  props.theta_crit = 1.;
 
   ci.grav.parts[0].mass = 0.;
   ci.grav.multipole->CoM[0] = 0.;
@@ -270,10 +276,11 @@ int main(int argc, char *argv[]) {
 
   bzero(&ci.grav.multipole->m_pole, sizeof(struct multipole));
   bzero(&cj.grav.multipole->m_pole, sizeof(struct multipole));
-  ci.grav.multipole->m_pole.M_000 = 1.;
+  cj.grav.multipole->m_pole.M_000 = 1.;
+  cj.grav.multipole->m_pole.max_softening = eps;
 
   /* Now compute the forces */
-  runner_dopair_grav_pp(&r, &ci, &cj, 1, 1);
+  runner_dopair_grav_pp(&r, &ci, &cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
 
   /* Verify everything */
   for (int n = 0; n < num_tests; ++n) {
@@ -379,6 +386,9 @@ int main(int argc, char *argv[]) {
     ci.grav.parts[n].time_bin = 1;
     ci.grav.parts[n].type = swift_type_dark_matter;
     ci.grav.parts[n].id_or_neg_offset = 1;
+#ifdef MULTI_SOFTENING_GRAVITY
+    ci.grav.parts[0].epsilon = eps;
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
     ci.grav.parts[n].ti_drift = 8;
     ci.grav.parts[n].initialised = 1;

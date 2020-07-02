@@ -156,6 +156,9 @@ int main(int argc, char *argv[]) {
   c.grav.parts[0].time_bin = 1;
   c.grav.parts[0].type = swift_type_dark_matter;
   c.grav.parts[0].id_or_neg_offset = 1;
+#ifdef MULTI_SOFTENING_GRAVITY
+  c.grav.parts[0].epsilon = eps;
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   c.grav.parts[0].ti_drift = 8;
   c.grav.parts[0].initialised = 1;
@@ -173,6 +176,9 @@ int main(int argc, char *argv[]) {
     gp->time_bin = 1;
     gp->type = swift_type_dark_matter;
     gp->id_or_neg_offset = n + 1;
+#ifdef MULTI_SOFTENING_GRAVITY
+    gp->epsilon = eps;
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
     gp->ti_drift = 8;
     gp->initialised = 1;

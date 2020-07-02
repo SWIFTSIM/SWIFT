@@ -250,6 +250,9 @@ void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
   if (h_space < 0)
     error("Error while creating data space for field '%s'.", props.name);
 
+  /* Decide what chunk size to use based on compression */
+  int log2_chunk_size = e->snapshot_compression > 0 ? 12 : 18;
+
   int rank = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
@@ -257,13 +260,13 @@ void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
     rank = 2;
     shape[0] = N_total;
     shape[1] = props.dimension;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
   } else {
     rank = 1;
     shape[0] = N_total;
     shape[1] = 0;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = 0;
   }
 
@@ -933,6 +936,13 @@ void write_output_serial(struct engine* e,
     output_list_get_current_select_output(output_list, current_selection_name);
   }
 
+  /* Total number of fields to write per ptype */
+  int numFields[swift_type_count] = {0};
+  for (int ptype = 0; ptype < swift_type_count; ++ptype) {
+    numFields[ptype] = output_options_get_num_fields_to_write(
+        output_options, current_selection_name, ptype);
+  }
+
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
                                 Ndm_background, 0,
@@ -998,14 +1008,14 @@ void write_output_serial(struct engine* e,
     strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
     io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
 
-    /* GADGET-2 legacy values */
-    /* Number of particles of each type */
+    /* GADGET-2 legacy values: Number of particles of each type */
     unsigned int numParticles[swift_type_count] = {0};
     unsigned int numParticlesHighWord[swift_type_count] = {0};
     for (int ptype = 0; ptype < swift_type_count; ++ptype) {
       numParticles[ptype] = (unsigned int)N_total[ptype];
       numParticlesHighWord[ptype] = (unsigned int)(N_total[ptype] >> 32);
     }
+
     io_write_attribute(h_grp, "NumPart_ThisFile", LONGLONG, N_total,
                        swift_type_count);
     io_write_attribute(h_grp, "NumPart_Total", UINT, numParticles,
@@ -1032,8 +1042,9 @@ void write_output_serial(struct engine* e,
     /* Loop over all particle types */
     for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-      /* Don't do anything if no particle of this kind */
-      if (N_total[ptype] == 0) continue;
+      /* Don't do anything if there are (a) no particles of this kind, or (b)
+       * if we have disabled every field of this particle type. */
+      if (N_total[ptype] == 0 || numFields[ptype] == 0) continue;
 
       /* Open the particle group in the file */
       char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -1080,8 +1091,8 @@ void write_output_serial(struct engine* e,
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->pos_dithering,
                         e->s->cells_top, e->s->nr_cells, e->s->width, mpi_rank,
-                        /*distributed=*/0, N_total, offset, internal_units,
-                        snapshot_units);
+                        /*distributed=*/0, N_total, offset, numFields,
+                        internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
@@ -1102,8 +1113,9 @@ void write_output_serial(struct engine* e,
       /* Loop over all particle types */
       for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-        /* Don't do anything if no particle of this kind */
-        if (N_total[ptype] == 0) continue;
+        /* Don't do anything if there are (a) no particles of this kind, or (b)
+         * if we have disabled every field of this particle type. */
+        if (N_total[ptype] == 0 || numFields[ptype] == 0) continue;
 
         /* Add the global information for that particle type to the XMF
          * meta-file */
@@ -1400,19 +1412,34 @@ void write_output_serial(struct engine* e,
             error("Particle Type %d not yet supported. Aborting", ptype);
         }
 
-        /* Write everything that is not cancelled */
+        /* Did the user specify a non-standard default for the entire particle
+         * type? */
+        const enum compression_levels compression_level_current_default =
+            output_options_get_ptype_default(output_options->select_output,
+                                             current_selection_name,
+                                             (enum part_type)ptype);
 
+        /* Write everything that is not cancelled */
+        int num_fields_written = 0;
         for (int i = 0; i < num_fields; ++i) {
 
           /* Did the user cancel this field? */
           const int should_write = output_options_should_write_field(
               output_options, current_selection_name, list[i].name,
-              (enum part_type)ptype);
+              (enum part_type)ptype, compression_level_current_default);
 
-          if (should_write)
+          if (should_write) {
             write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
                                list[i], Nparticles, N_total[ptype], mpi_rank,
                                offset[ptype], internal_units, snapshot_units);
+            num_fields_written++;
+          }
+        }
+
+        if (mpi_rank == 0) {
+          /* Only write this now that we know exactly how many fields there are.
+           */
+          io_write_attribute_i(h_grp, "NumberOfFields", num_fields_written);
         }
 
         /* Free temporary array */

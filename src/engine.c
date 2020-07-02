@@ -77,6 +77,7 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "mpiuse.h"
+#include "multipole_struct.h"
 #include "output_list.h"
 #include "output_options.h"
 #include "parallel_io.h"
@@ -201,8 +202,9 @@ void engine_repartition(struct engine *e) {
 
   /* Generate the fixed costs include file. */
   if (e->step > 3 && e->reparttype->trigger <= 1.f) {
-    task_dump_stats("partition_fixed_costs.h", e, /* header = */ 1,
-                    /* allranks = */ 1);
+    task_dump_stats("partition_fixed_costs.h", e,
+                    /* task_dump_threshold = */ 0.f,
+                    /* header = */ 1, /* allranks = */ 1);
   }
 
   /* Do the repartitioning. */
@@ -2047,19 +2049,18 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
-        t->subtype == task_subtype_force ||
-        t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
-        t->type == task_type_end_hydro_force ||
-        t->type == task_type_end_grav_force ||
-        t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_grav_down_in ||
-        t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
+        t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
+        t->type == task_type_stars_ghost ||
+        t->type == task_type_stars_ghost_in ||
+        t->type == task_type_stars_ghost_out ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
-        t->type == task_type_bh_swallow_ghost3 ||
+        t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
+        t->type == task_type_bh_out || t->subtype == task_subtype_force ||
+        t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
@@ -2075,8 +2076,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
         t->subtype == task_subtype_tend_bpart ||
-        t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart ||
-        t->subtype == task_subtype_sf_counts)
+        t->subtype == task_subtype_rho || t->subtype == task_subtype_sf_counts)
       t->skip = 1;
   }
 
@@ -2199,7 +2199,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
 
-  if (e->nodeID == 0) message("Computing initial gas densities.");
+  if (e->nodeID == 0)
+    message("Computing initial gas densities and approximate gravity.");
 
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
@@ -2270,6 +2271,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
+
+  /* Update the MAC strategy if necessary */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_props_update_MAC_choice(e->gravity_properties);
 
   /* Construct all cells again for a new round (need to update h_max) */
   engine_rebuild(e, 0, 0);
@@ -2661,9 +2666,7 @@ void engine_step(struct engine *e) {
 #ifdef WITH_MPI
   double start_usertime = 0.0;
   double start_systime = 0.0;
-  if (e->reparttype->type != REPART_NONE) {
-    clocks_get_cputimes_used(&start_usertime, &start_systime);
-  }
+  clocks_get_cputimes_used(&start_usertime, &start_systime);
 #endif
 
   /* Start all the tasks. */
@@ -3140,8 +3143,8 @@ void engine_makeproxies(struct engine *e) {
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit_inv = e->gravity_properties->theta_crit_inv;
-  const double theta_crit2 = e->gravity_properties->theta_crit2;
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
@@ -3285,26 +3288,17 @@ void engine_makeproxies(struct engine *e) {
                       sqrt(min_dist_centres2) - 2. * delta_CoM;
                   const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
-                  /* We also assume that the softening is negligible compared
-                     to the cell size */
-                  const double epsilon_i = 0.;
-                  const double epsilon_j = 0.;
-
                   /* Are we beyond the distance where the truncated forces are 0
                    * but not too far such that M2L can be used? */
                   if (periodic) {
 
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
-                        (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                             min_dist_CoM2, epsilon_i,
-                                             epsilon_j)))
+                        !(2. * r_max < theta_crit * min_dist_CoM2))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
-                    if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                            min_dist_CoM2, epsilon_i,
-                                            epsilon_j))
+                    if (!(2. * r_max < theta_crit * min_dist_CoM2))
                       proxy_type |= (int)proxy_cell_type_gravity;
                   }
                 }
@@ -3849,7 +3843,8 @@ static void engine_dumper_init(struct engine *e) {
  * @param cooling_func The properties of the cooling function.
  * @param starform The #star_formation model of this run.
  * @param chemistry The chemistry information.
- * @param fof_properties The #fof_props.
+ * @param fof_properties The #fof_props of this run.
+ * @param los_properties the #los_props of this run.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct output_options *output_options, long long Ngas,
@@ -3895,6 +3890,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->max_active_bin = num_time_bins;
   e->min_active_bin = 1;
   e->internal_units = internal_units;
+  e->output_list_snapshots = NULL;
   e->a_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:scale_factor_first", 0.1);
   e->time_first_snapshot =

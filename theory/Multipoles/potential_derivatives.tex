@@ -74,11 +74,235 @@ truncated an softened gravity field $\varphi (\mathbf{r}, r_s, H)
 %   \chi^{(5)}(r, r_s) &= \frac{32}{r_s^5} \left(240\alpha(x)^6 - 720\alpha(x)^5 + 780\alpha(x)^4 - 360\alpha(x)^3 + 62\alpha(x)^2 - 2\alpha(x) \right) \nonumber
 % \end{align}
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{1}(r, r_s, H) = % D_tilde_tilde_1 = D_tilde_1 
+  \left\lbrace\begin{array}{rcl}
+  f(u)\times  H^{-1} & \mbox{if} & u < 1,\\
+  %r^{-1} & \mbox{if} & u \geq 1,
+  \chi \times r^{-1} & \mbox{if} & u \geq 1~\mbox{and periodic}, \\
+  r^{-1} & \mbox{if} & u \geq 1~\mbox{and not periodic}. 
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{2}(r, r_s, H) = % D_tilde_tilde_3 = D_tilde_3 * r
+  \left\lbrace\begin{array}{rcl}
+  f'(u)\times  H^{-2}& \mbox{if} & u < 1,\\
+  %-1 \times r^{-3} & \mbox{if} & u \geq 1,
+  \left(r\chi' - \chi\right) \times r^{-2} & \mbox{if} & u \geq 1~\mbox{and periodic}, \\
+  -1 \times r^{-2} & \mbox{if} & u \geq 1~\mbox{and not periodic}. 
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align} 
+  \mathsf{\tilde{D}}_{3}(r, r_s, H) =  % D_tilde_tilde_5 = D_tilde_5 * r^2
+  \left\lbrace\begin{array}{rcl}
+  \left(f''(u) - u^{-1}f'(u)\right)\times  H^{-3}& \mbox{if} & u < 1,\\
+  %3\times r^{-5} & \mbox{if} & u \geq 1,
+  \left(r^2\chi'' - 3r\chi' + 3\chi \right)\times r^{-3} & \mbox{if} & u \geq 1~\mbox{and periodic}, \\
+  3 \times  r^{-3} & \mbox{if} & u \geq 1~\mbox{and not periodic}. 
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{4}(r, r_s, H) = % D_tilde_tilde_7 = D_tilde_7 * r^3
+  \left\lbrace\begin{array}{rcl}
+  \left(f^{(3)}(u)-3u^{-1}f''(u)+3u^{-2}f'(u)\right)\times  H^{-4} & \mbox{if} & u < 1,\\
+  %-15\times r^{-7} & \mbox{if} & u \geq 1,
+  \left(r^3\chi^{(3)} - 6r^2\chi''+15r\chi'-15\chi\right) \times r^{-4} & \mbox{if} & u \geq 1~\mbox{and periodic}, \\
+  -15 \times r^{-4} & \mbox{if} & u \geq 1~\mbox{and not periodic}. 
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{5}(r, r_s, H) = % D_tilde_tilde_9 = D_tilde_9 * r^4
+  \left\lbrace\begin{array}{rcl}
+  \left(f^{(4)}(u)-6u^{-1}f^{(3)}(u)+15u^{-2}f''(u)-15u^{-3}f'(u)\right)\times  H^{-5}& \mbox{if} & u < 1,\\
+  %105\times r^{-9} & \mbox{if} & u \geq 1.
+  \left(r^4\chi^{(4)} - 10r^3\chi^{(3)} + 45r^2\chi'' - 105r\chi' + 105\chi \right) \times r^{-5} & \mbox{if} & u \geq 1~\mbox{and periodic}, \\
+  105 \times r^{-5} & \mbox{if} & u \geq 1~\mbox{and not periodic}.
+  \end{array}
+  \right.\nonumber
+\end{align}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{align}
+  \mathsf{\tilde{D}}_{6}(r, r_s, H) = % D_tilde_tilde_11 = D_tilde_11 * r^4
+  \left\lbrace\begin{array}{rcl}
+  \left(f^{(5)}(u) -10u^{-1}f^{(4)}(u) +45u^{-2}f^{(3)} -105u^{-3}f''(u) + 105u^{-4}f'(u)\right)\times  H^{-6}& \mbox{if} & u < 1,\\
+  %-945\times r^{-11} & \mbox{if} & u \geq 1.
+  \left(r^5\chi^{(5)} - 15r^4\chi^{(4)} + 105r^3\chi^{(3)} - 420r^2\chi'' + 945r \chi' - 945\chi\right) \times r^{-6} & \mbox{if} & u \geq 1~\mbox{and periodic}, \\
+  -945\times r^{-6} & \mbox{if} & u \geq 1~\mbox{and not periodic}. 
+  \end{array}
+  \right.\nonumber
+\end{align}
+In the case $u<1$ and using $f(u)$ given by \ref{eq:fmm:potential}, we can simplify the expressions to get:
+\begin{align}
+  \mathsf{\tilde{D}}_{1} &= (-3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3) \times H^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{2} &= (-21u^6 + 90u^5 - 140u^4 + 84u^3 - 14u) \times H^{-2}, \nonumber \\
+  \mathsf{\tilde{D}}_{3} &= (-105u^5 + 360u^4 - 420u^3 + 168u^2) \times H^{-3}, \nonumber \\
+  \mathsf{\tilde{D}}_{4} &= (-315u^4 + 720u^3 - 420u^2) \times H^{-4}, \nonumber \\
+  \mathsf{\tilde{D}}_{5} &= (-315u^3 + 420u) \times H^{-5}, \nonumber \\
+  \mathsf{\tilde{D}}_{6} &= (315u^2 - 1260) \times H^{-6}. \nonumber 
+\end{align}
+These expressions only use low powers of $u$ and, in particular, no terms
+involving $1/u$ as would be the case when using a cubic spline kernel for
+$f(u)$. This makes this choice of softening kernel much faster to evaluate than
+ones using divisions. Similarly, the expressions in the periodic case for $u>1$
+can be simplified to:
+\begin{align}
+  \mathsf{\tilde{D}}_{1} &= \chi r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{2} &= -\chi r^{-2} + \chi' r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{3} &= 3\chi r^{-3} - 3\chi' r^{-2} + \chi'' r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{4} &= -15\chi r^{-4} + 15\chi' r^{-3} - 6\chi''r^{-2} + \chi^{(3)} r^{-1}, \nonumber \\
+  \mathsf{\tilde{D}}_{5} &= 105\chi r^{-5} -105\chi' r^{-4} + 45\chi''r^{-3} - 10\chi^{(3)} r^{-2} + \chi^{(4)} r^{-1}\nonumber, \\
+  \mathsf{\tilde{D}}_{6} &= -945\chi r^{-6} + 945 \chi' r^{-5} -420 \chi'' r^{-4} + 105 \chi^{(3)} r^{-3} - 15\chi^{(4)} r^{-2} +  \chi^{(5)} r^{-1}. \nonumber
+\end{align}
+We can now write out all the derivatives used in the M2L and
+M2P kernels:
+\begin{align}
+  \mathsf{D}_{000}(\mathbf{r}) = \varphi (\mathbf{r}, r_s, H) =
+    \mathsf{\tilde{D}}_{1} \nonumber
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+  \mathsf{D}_{100}(\mathbf{r}) = \frac{\partial}{\partial r_x} \varphi (\mathbf{r}, r_s, H) =
+    \left(\frac{r_x}{r}\right) \mathsf{\tilde{D}}_{2} \nonumber
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+\mathsf{D}_{200}(\mathbf{r}) = \frac{\partial^2}{\partial r_x^2} \varphi (\mathbf{r}, r_s, H) = 
+\left(\frac{r_x}{r}\right)^2 \mathsf{\tilde{D}}_{3} + \left(\frac{1}{r}\right)\mathsf{\tilde{D}}_{2}\nonumber
+\end{align}
+
+\begin{align}
+\mathsf{D}_{110}(\mathbf{r}) = \frac{\partial^2}{\partial r_x\partial r_y} \varphi (\mathbf{r}, r_s, H) =
+\left(\frac{r_x}{r}\right) \left(\frac{r_y}{r}\right)  \mathsf{\tilde{D}}_{3} \nonumber
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+\mathsf{D}_{300}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \varphi (\mathbf{r}, r_s, H) = 
+  \left(\frac{r_x}{r}\right)^3 \mathsf{\tilde{D}}_{4}
+  + 3 \left(\frac{r_x}{r}\right) \left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{3} \nonumber
+\end{align}
+
+\begin{align}
+\mathsf{D}_{210}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^2 r_y} \varphi (\mathbf{r}, r_s, H) = 
+  \left(\frac{r_x}{r}\right)^2 \left(\frac{r_y}{r}\right) \mathsf{\tilde{D}}_{4} + \left(\frac{r_y}{r}\right) \left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{3} \nonumber
+\end{align}
+
+\begin{align}
+\mathsf{D}_{111}(\mathbf{r}) = \frac{\partial^3}{\partial r_x\partial r_y\partial r_z} \varphi (\mathbf{r}, r_s, H) = 
+\left(\frac{r_x}{r}\right)\left(\frac{r_y}{r}\right)\left(\frac{r_z}{r}\right) \mathsf{\tilde{D}}_{4} \nonumber
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+  \mathsf{D}_{400}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^4}
+  \varphi (\mathbf{r}, r_s, H) =
+  \left(\frac{r_x}{r}\right)^4 \mathsf{\tilde{D}}_{5}+
+  6\left(\frac{r_x}{r}\right)^2 \left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{4} +
+  3 \left(\frac{1}{r}\right)^2 \mathsf{\tilde{D}}_{3}
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{310}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^3
+    \partial r_y} \varphi (\mathbf{r}, r_s, H) =
+  \left(\frac{r_x}{r}\right)^3 \left(\frac{r_y}{r}\right) \mathsf{\tilde{D}}_{5} +
+  3 \left(\frac{r_x}{r}\right) \left(\frac{r_y}{r}\right) \left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{4}
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{220}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^2
+    \partial r_y^2} \varphi (\mathbf{r}, r_s, H) =
+    \left(\frac{r_x}{r}\right)^2 \left(\frac{r_y}{r}\right)^2 \mathsf{\tilde{D}}_{5} +
+    \left(\frac{r_x}{r}\right)^2 \left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{4} +
+    \left(\frac{r_y}{r}\right)^2 \left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{4} +
+    \left(\frac{1}{r}\right)^2 \mathsf{\tilde{D}}_{3}
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{211}(\mathbf{r}) &= \frac{\partial^4}{\partial r_x^2
+    \partial r_y   \partial r_z} \varphi (\mathbf{r}, r_s, H) =
+    \left(\frac{r_x}{r}\right)^2\left(\frac{r_y}{r}\right)\left(\frac{r_z}{r}\right) \mathsf{\tilde{D}}_{5} +
+    \left(\frac{r_y}{r}\right)\left(\frac{r_z}{r}\right)\left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{4}
+  \nonumber
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\rule{6cm}{0.4pt}
+\begin{align}
+  \mathsf{D}_{500}(\mathbf{r}) &= \frac{\partial^5}{\partial r_x^5}
+  \varphi (\mathbf{r}, r_s, H) =
+  \left(\frac{r_x}{r}\right)^5 \mathsf{\tilde{D}}_{6} +
+  10\left(\frac{r_x}{r}\right)^3\left(\frac{1}{r}\right)\mathsf{\tilde{D}}_{5} +
+  15\left(\frac{r_x}{r}\right)\left(\frac{1}{r}\right)^2\mathsf{\tilde{D}}_{4}
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{410}(\mathbf{r}) &= \frac{\partial^5}{\partial r_x^4
+    \partial r_y} \varphi (\mathbf{r}, r_s, H) =
+  \left(\frac{r_x}{r}\right)^4 \left(\frac{r_y}{r}\right) \mathsf{\tilde{D}}_{6} +
+  6 \left(\frac{r_x}{r}\right)^2 \left(\frac{r_y}{r}\right)\left(\frac{1}{r}\right) \mathsf{\tilde{D}}_{5} + 
+  3 \left(\frac{r_y}{r}\right) \left(\frac{1}{r}\right)^2\mathsf{\tilde{D}}_{4}
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{320}(\mathbf{r}) &= \frac{\partial^5}{\partial r_x^3
+    \partial r_y^2} \varphi (\mathbf{r}, r_s, H) =
+  \left(\frac{r_x}{r}\right)^3 \left(\frac{r_y}{r}\right)^2 \mathsf{\tilde{D}}_{6} +
+  \left(\frac{r_x}{r}\right)^3 \left(\frac{1}{r}\right)\mathsf{\tilde{D}}_{5} +
+  3 \left(\frac{r_x}{r}\right) \left(\frac{r_y}{r}\right)^2 \left(\frac{1}{r}\right)\mathsf{\tilde{D}}_{5} + 
+  3 \left(\frac{r_x}{r}\right) \left(\frac{1}{r}\right)^2\mathsf{\tilde{D}}_{4}
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{311}(\mathbf{r}) &= \frac{\partial^5}{\partial r_x^3
+    \partial r_y \partial r_z} \varphi (\mathbf{r}, r_s, H) =
+  \left(\frac{r_x}{r}\right)^3 \left(\frac{r_y}{r}\right) \left(\frac{r_z}{r}\right) \mathsf{\tilde{D}}_{6} +
+  3 \left(\frac{r_x}{r}\right) \left(\frac{r_y}{r}\right) \left(\frac{r_z}{r}\right) \left(\frac{1}{r}\right)\mathsf{\tilde{D}}_{5}
+  \nonumber
+\end{align}
+
+\begin{align}
+  \mathsf{D}_{221}(\mathbf{r}) &= \frac{\partial^5}{\partial r_x^2
+    \partial r_y^2 \partial r_z} \varphi (\mathbf{r}, r_s, H) =
+  \left(\frac{r_x}{r}\right)^2 \left(\frac{r_y}{r}\right)^2 \left(\frac{r_z}{r}\right) \mathsf{\tilde{D}}_{6} +
+  \left(\frac{r_x}{r}\right)^2 \left(\frac{r_z}{r}\right) \left(\frac{1}{r}\right)\mathsf{\tilde{D}}_{5} +
+  \left(\frac{r_y}{r}\right)^2 \left(\frac{r_z}{r}\right) \left(\frac{1}{r}\right)\mathsf{\tilde{D}}_{5} +
+  \left(\frac{r_z}{r}\right) \left(\frac{1}{r}\right)^2\mathsf{\tilde{D}}_{4}
+  \nonumber
+\end{align}
+
+\begin{comment}
+\noindent\rule{12cm}{1pt}\\
+Old version \\
+\noindent\rule{12cm}{1pt}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{align}
   \mathsf{\tilde{D}}_{1}(r, r_s, H) =
   \left\lbrace\begin{array}{rcl}
-  \left(-3u^7 + 15u^6 - 28u^5 + 21u^4 - 7u^2 + 3\right)\times  H^{-1} & \mbox{if} & u < 1,\\
+  -\left(3u^7 - 15u^6 + 28u^5 - 21u^4 + 7u^2 - 3\right)\times  H^{-1} & \mbox{if} & u < 1,\\
   %r^{-1} & \mbox{if} & u \geq 1,
   \chi(r, r_s) \times r^{-1} & \mbox{if} & u \geq 1,
   \end{array}
@@ -98,7 +322,7 @@ truncated an softened gravity field $\varphi (\mathbf{r}, r_s, H)
 \begin{align}
   \mathsf{\tilde{D}}_{5}(r, r_s, H) =
   \left\lbrace\begin{array}{rcl}
-  \left(-105u^3 + 360u^2 - 420u + 168\right)\times  H^{-5}& \mbox{if} & u < 1,\\
+  -\left(35u^3 - 120u^2 + 140u - 56\right)\times  H^{-5}& \mbox{if} & u < 1,\\
   %3\times r^{-5} & \mbox{if} & u \geq 1,
   \left(r^2\chi''(r, r_s) - 3r\chi'(r, r_s) + 3\chi(r, r_s) \right)\times r^{-5} & \mbox{if} & u \geq 1, 
   \end{array}
@@ -108,7 +332,7 @@ truncated an softened gravity field $\varphi (\mathbf{r}, r_s, H)
 \begin{align}
   \mathsf{\tilde{D}}_{7}(r, r_s, H) =
   \left\lbrace\begin{array}{rcl}
-  -\left(315u - 720 + 420u^{-1}\right)\times  H^{-7} & \mbox{if} & u < 1,\\
+  -\left(21u - 48 + 28u^{-1}\right)\times  H^{-7} & \mbox{if} & u < 1,\\
   %-15\times r^{-7} & \mbox{if} & u \geq 1,
   \left(r^3\chi^{(3)}(r, r_s) - 6r^2\chi''(r, r_s)+15r\chi'(r, r_s)-15\chi(r, r_s)\right) \times r^{-7} & \mbox{if} & u \geq 1, 
   \end{array}
@@ -118,7 +342,7 @@ truncated an softened gravity field $\varphi (\mathbf{r}, r_s, H)
 \begin{align}
   \mathsf{\tilde{D}}_{9}(r, r_s, H) =
   \left\lbrace\begin{array}{rcl}
-  \left(-315u^{-1} + 420u^{-3}\right)\times  H^{-9}& \mbox{if} & u < 1,\\
+  -\left(3u^{-1} - 4u^{-3}\right)\times  H^{-9}& \mbox{if} & u < 1,\\
   %105\times r^{-9} & \mbox{if} & u \geq 1.
   \left(r^4\chi^{(4)}(r, r_s) - 10r^3\chi^{(3)} + 45r^2\chi''(r, r_s) - 105r\chi'(r, r_s) + 105\chi(r, r_s) \right) \times r^{-9} & \mbox{if} & u \geq 1
   \end{array}
@@ -128,7 +352,7 @@ truncated an softened gravity field $\varphi (\mathbf{r}, r_s, H)
 \begin{align}
   \mathsf{\tilde{D}}_{11}(r, r_s, H) =
   \left\lbrace\begin{array}{rcl}
-  -\left(315u^{-3} - 1260u^{-5}\right)\times  H^{-11}& \mbox{if} & u < 1,\\
+  -\left(\frac{1}{3}u^{-3} - \frac{4}{3}u^{-5}\right)\times  H^{-11}& \mbox{if} & u < 1,\\
   %-945\times r^{-11} & \mbox{if} & u \geq 1.
   \left(r^5\chi^{(5)}(r, r_s) - 15r^4\chi^{(4)}(r, r_s) + 105r^3\chi^{(3)}(r, r_s) - 420r^2\chi''(r, r_s) + 945r \chi'(r, r_s) - 945\chi(r, r_s)\right) \times r^{-11} & \mbox{if} & u \geq 1.
   \end{array}
@@ -262,117 +486,27 @@ r_y \mathsf{\tilde{D}}_{5}(r, r_s, H) \nonumber
   r_x^2 r_y^2 r_z \mathsf{\tilde{D}}_{11}(r, r_s, H) +
   r_x^2 r_z \mathsf{\tilde{D}}_{9}(r, r_s, H) +
   r_y^2 r_z \mathsf{\tilde{D}}_{9}(r, r_s, H) +
-  r_z \mathsf{\tilde{D}}_{y}(r, r_s, H)
-  \nonumber
-\end{align}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{comment}
-
-\noindent\rule{6cm}{0.4pt}
-
-\begin{align}
-\mathsf{D}_{100}(\mathbf{r}) = \frac{\partial}{\partial r_x} \varphi (\mathbf{r},H) = 
-\left\lbrace\begin{array}{rcl}
--\frac{r_x}{H^3} \left(21u^5 - 90u^4 + 140u^3 - 84u^2 + 14\right) & \mbox{if} & u < 1,\\
--\frac{r_x}{r^3} & \mbox{if} & u \geq 1, 
-\end{array}
-\right.\nonumber
-\end{align}
-
-\noindent\rule{6cm}{0.4pt}
-
-\begin{align}
-\mathsf{D}_{200}(\mathbf{r}) = \frac{\partial^2}{\partial r_x^2} \varphi (\mathbf{r},H) = 
-\left\lbrace\begin{array}{rcl}
-\frac{r_x^2}{H^5}\left(-105u^3+360u^2-420u+168\right) -
-\frac{1}{H^3} \left(21u^5 - 90u^4 + 140u^3 - 84u^2 + 14\right) & \mbox{if} & u < 1,\\
-3\frac{r_x^2}{r^5} - \frac{1}{r^3} & \mbox{if} & u \geq 1, 
-\end{array}
-\right.\nonumber
-\end{align}
-
-\begin{align}
-\mathsf{D}_{110}(\mathbf{r}) = \frac{\partial^2}{\partial r_x\partial r_y} \varphi (\mathbf{r},H) = 
-\left\lbrace\begin{array}{rcl}
-\frac{r_xr_y}{H^5}\left(-105u^3+360u^2-420u+168\right) & \mbox{if} & u < 1,\\
-3\frac{r_xr_y}{r^5} & \mbox{if} & u \geq 1, 
-\end{array}
-\right.\nonumber
-\end{align}
-
-\noindent\rule{6cm}{0.4pt}
-
-\begin{align}
-\mathsf{D}_{300}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \varphi (\mathbf{r},H) = 
-\left\lbrace\begin{array}{rcl}
--\frac{r_x^3}{H^7} \left(315u - 720 + 420u^{-1}\right) +
-\frac{3r_x}{H^5}\left(-105u^3+360u^2-420u+168\right) & \mbox{if} & u < 1,\\
--15\frac{r_x^3}{r^7} + 9 \frac{r_x}{r^5} & \mbox{if} & u \geq 1, 
-\end{array}
-\right.\nonumber
-\end{align}
-
-\begin{align}
-\mathsf{D}_{210}(\mathbf{r}) = \frac{\partial^3}{\partial r_x^3} \varphi (\mathbf{r},H) = 
-\left\lbrace\begin{array}{rcl}
--\frac{r_x^2r_y}{H^7} \left(315u - 720 + 420u^{-1}\right) +
-\frac{r_y}{H^5}\left(-105u^3+360u^2-420u+168\right) & \mbox{if} & u < 1,\\
--15\frac{r_x^2r_y}{r^7} + 3 \frac{r_y}{r^5} & \mbox{if} & u \geq 1, 
-\end{array}
-\right.\nonumber
-\end{align}
-
-
-\begin{align}
-\mathsf{D}_{111}(\mathbf{r}) = \frac{\partial^3}{\partial r_x\partial r_y\partial r_z} \varphi (\mathbf{r},H) = 
-\left\lbrace\begin{array}{rcl}
--\frac{r_xr_yr_z}{H^7} \left(315u - 720 + 420u^{-1}\right) & \mbox{if} & u < 1,\\
--15\frac{r_xr_yr_z}{r^7} & \mbox{if} & u \geq 1, 
-\end{array}
-\right.\nonumber
-\end{align}
-
-\noindent\rule{6cm}{0.4pt}
-
-\begin{align}
-  \mathsf{D}_{400}(\mathbf{r}) &=
-  \nonumber
-\end{align}
-
-\begin{align}
-  \mathsf{D}_{310}(\mathbf{r}) &=
-  \nonumber
-\end{align}
-
-\begin{align}
-  \mathsf{D}_{220}(\mathbf{r}) &=
-  \nonumber
-\end{align}
-
-\begin{align}
-  \mathsf{D}_{211}(\mathbf{r}) &=
+  r_z \mathsf{\tilde{D}}_{7}(r, r_s, H)
   \nonumber
 \end{align}
 
 \end{comment}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

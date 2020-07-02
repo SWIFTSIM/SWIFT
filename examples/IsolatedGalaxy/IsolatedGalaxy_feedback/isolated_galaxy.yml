@@ -1,3 +1,7 @@
+# Define some meta-data about the simulation
+MetaData:
+  run_name:   IsolatedGalaxy-EAGLE-Ref
+
 # Define the system of units to use internally.
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
@@ -9,7 +13,9 @@ InternalUnitSystem:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025                 # Constant dimensionless multiplier for time integration.
-  theta:        0.7                   # Opening angle (Multipole acceptance criterion).
+  MAC:          geometric
+  theta_cr:     0.7                   # Opening angle (Multipole acceptance criterion).
+  use_tree_below_softening:  1
   max_physical_DM_softening:     0.35 # Physical softening length (in internal units).
   max_physical_baryon_softening: 0.35 # Physical softening length (in internal units).
 
@@ -30,12 +36,12 @@ Snapshots:
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-2     # Time between statistics output
-  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+  time_first:              0     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
 
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:               lowres8.hdf5 # The file to read
-  periodic:                0        # Are we running with periodic ICs?
+  periodic:                0            # Are we running with periodic ICs?
   stars_smoothing_length:  0.5
   
 # Parameters for the hydrodynamics scheme
@@ -48,13 +54,15 @@ SPH:
 
 # Parameters for the stars neighbour search
 Stars:
+  resolution_eta:        1.1642  # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
   overwrite_birth_time:    1     # Make sure the stars in the ICs do not do any feedback
   birth_time:             -1.    # by setting all of their birth times to -1  
 
 # Standard EAGLE cooling options
 EAGLECooling:
   dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
-  H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
+  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization
   H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
   He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
@@ -91,7 +99,6 @@ EAGLEStarFormation:
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
-  gas_fraction:                      0.3       # The gas fraction used internally by the model.
   KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
   min_over_density:                  57.7      # The over-density above which star-formation is allowed.
@@ -124,10 +131,9 @@ EAGLEFeedback:
   filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
   IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
   IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-  SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII stars in solar masses.
+  SNII_min_mass_Msun:               8.0             # Minimal mass considered for SNII stars in solar masses.
   SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII stars in solar masses.
-  SNII_sampled_delay:               0               # Sample the SNII lifetimes to do feedback.
-  SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
+  SNII_sampled_delay:               1               # Sample the SNII lifetimes to do feedback.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
   SNII_energy_fraction_min:         1.0             # Minimal fraction of energy applied in a SNII feedback event.
@@ -136,9 +142,10 @@ EAGLEFeedback:
   SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution.
+  SNIa_DTD:                         Exponential     # Functional form of the SNIa delay time distribution.
   SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
-  SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
+  SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the exponential decay of the SNIa rates in Gyr.
+  SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalisation of the SNIa rates in inverse solar masses.
   SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
   AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
   stellar_evolution_age_cut_Gyr:    0.1             # Age in Gyr above which the enrichment is downsampled.

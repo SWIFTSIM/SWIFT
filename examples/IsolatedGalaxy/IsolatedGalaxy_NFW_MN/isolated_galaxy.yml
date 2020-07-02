@@ -1,0 +1,63 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.9891E43     # 10^10 solar masses 
+  UnitLength_in_cgs:   3.08567758E21 # 1 kpc 
+  UnitVelocity_in_cgs: 1E5           # km/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:          0.025                   # Constant dimensionless multiplier for time integration.
+  MAC:          geometric
+  theta_cr:     0.7                     # Opening angle (Multipole acceptance criterion).
+  use_tree_below_softening:  1
+  max_physical_baryon_softening: 0.100  # Physical softening length (in internal units).
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          2.    # The end time of the simulation (in internal units).
+  dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:   output      # Common part of the name of output files
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
+  
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-2     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+Scheduler:
+  max_top_level_cells:   16
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  Isolated_NFW_MN.hdf5  # The file to read
+  periodic:                    0    # Are we running with periodic ICs?
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  minimal_temperature:   1000.    # Minimum allowed gas temperature
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.2      # Courant-Friedrich-Levy condition for time integration.
+  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  h_max:                 100.
+
+
+#NFWPotential:
+NFW_MNPotential:
+  useabspos:        0          # 0 -> positions based on centre, 1 -> absolute positions 
+  position:         [0.,0.,0.] # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  timestep_mult:    0.01       # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:          0.01       # Softening size (internal units)
+  concentration:    10.0       # concentration of the Halo
+  M_200:            150.0      # M200 of the galaxy disk
+  critical_density: 1.37E-8    # Critical density of the Universe in internal units
+  Mdisk:            3.0        # Disk mass (internal units)
+  Rdisk:            4.0        # Disk size (internal units)
+  Zdisk:            0.4704911  # Disk scale-height (internal units)

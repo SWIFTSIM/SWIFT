@@ -40,10 +40,11 @@
  * @param dt_drift The drift time-step.
  * @param ti_old Integer start of time-step (for debugging checks).
  * @param ti_current Integer end of time-step (for debugging checks).
+ * @param grav_props The properties of the gravity scheme.
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
     struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current) {
+    integertime_t ti_current, const struct gravity_props *grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_drift != ti_old)
@@ -60,6 +61,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->x[0] += gp->v_full[0] * dt_drift;
   gp->x[1] += gp->v_full[1] * dt_drift;
   gp->x[2] += gp->v_full[2] * dt_drift;
+
+  gravity_predict_extra(gp, grav_props);
 }
 
 /**
@@ -173,7 +176,7 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
 #ifdef SWIFT_DEBUG_CHECKS
   if (bp->ti_drift != ti_old)
     error(
-        "s-particle has not been drifted to the current time "
+        "b-particle has not been drifted to the current time "
         "bp->ti_drift=%lld, "
         "c->ti_old=%lld, ti_current=%lld",
         bp->ti_drift, ti_old, ti_current);

@@ -9,7 +9,9 @@ InternalUnitSystem:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025                 # Constant dimensionless multiplier for time integration.
-  theta:        0.7                   # Opening angle (Multipole acceptance criterion).
+  MAC:          geometric
+  theta_cr:     0.7                 # Opening angle (Multipole acceptance criterion).
+  use_tree_below_softening:  1
   max_physical_DM_softening:     0.2  # Physical softening length (in internal units).
   max_physical_baryon_softening: 0.2  # Physical softening length (in internal units).
 

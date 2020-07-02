@@ -23,7 +23,6 @@
 #include <float.h>
 
 /* Local includes. */
-#include "accumulate.h"
 #include "cosmology.h"
 #include "gravity_properties.h"
 #include "kernel_gravity.h"
@@ -64,7 +63,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 __attribute__((always_inline)) INLINE static void
 gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
 
-  accumulate_add_f(&gp->potential, pot);
+  gp->potential += pot;
 }
 
 /**
@@ -169,13 +168,27 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * @param gp The particle to act upon
  * @param const_G Newton's constant in internal units.
  * @param potential_normalisation Term to be added to all the particles.
+ * @param with_self_gravity Are we running with self-gravity?
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, float const_G, const float potential_normalisation,
-    const int periodic) {
+    struct gpart* gp, const float const_G, const float potential_normalisation,
+    const int periodic, const int with_self_gravity) {
 
   /* Apply the periodic correction to the peculiar potential */
   if (periodic) gp->potential += potential_normalisation;
+
+  /* Record the norm of the acceleration for the adaptive opening criteria.
+   * Will always be an (active) timestep behind. */
+  gp->old_a_grav_norm = gp->a_grav[0] * gp->a_grav[0] +
+                        gp->a_grav[1] * gp->a_grav[1] +
+                        gp->a_grav[2] * gp->a_grav[2];
+
+  gp->old_a_grav_norm = sqrtf(gp->old_a_grav_norm);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (with_self_gravity && gp->old_a_grav_norm == 0.f)
+    error("Old acceleration is 0!");
+#endif
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
@@ -194,6 +207,17 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->initialised = 0; /* Ready for next step */
 #endif
 }
+
+/**
+ * @brief Update the #gpart after a drift step.
+ *
+ * This is typically used to update the softening lengths.
+ *
+ * @param gp The particle to act upon
+ * @param grav_props The global properties of the gravity calculation.
+ */
+__attribute__((always_inline)) INLINE static void gravity_predict_extra(
+    struct gpart* gp, const struct gravity_props* grav_props) {}
 
 /**
  * @brief Kick the additional variables
@@ -226,6 +250,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp, const struct gravity_props* grav_props) {
 
   gp->time_bin = 0;
+  gp->old_a_grav_norm = 0.f;
 
   gravity_init_gpart(gp);
 }

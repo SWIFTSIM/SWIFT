@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) $(OPENMP_CFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -52,7 +52,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h \
-    multipole.h multipole_struct.h sincos.h \
+    multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h sincos.h \
     star_formation_struct.h star_formation.h star_formation_iact.h \
     star_formation_logger.h star_formation_logger_struct.h \
     pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h \
@@ -118,7 +118,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
-		 gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h \
+		 gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h \
 	         runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h \
                  runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h \
 		 runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
@@ -211,7 +211,10 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 stars/GEAR/stars_debug.h stars/GEAR/stars_part.h \
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
-                 potential/sine_wave/potential.h \
+                 potential/sine_wave/potential.h potential/constant/potential.h \
+		 potential/hernquist/potential.h potential/nfw/potential.h \
+		 potential/nfw_mn/potential.h potential/point_mass_softened/potential.h \
+		 potential/point_mass_ring/potential.h \
 		 star_formation/none/star_formation.h star_formation/none/star_formation_struct.h \
 		 star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h \
 		 star_formation/QLA/star_formation.h star_formation/QLA/star_formation_struct.h \
@@ -282,9 +285,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h \
 		 pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h \
 	         task_order/GEAR/task_order.h task_order/EAGLE/task_order.h task_order/default/task_order.h \
-     sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h \
-	   sink.h sink_io.h \
-	 todo_temporary_globals.h
+		 sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h \
+		 sink.h sink_io.h \
+		 todo_temporary_globals.h
 # TODO: added temporary globals
 
 

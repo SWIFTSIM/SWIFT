@@ -301,6 +301,10 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 
+    case UNIT_CONV_TIDAL_TENSOR:
+      baseUnitsExp[UNIT_TIME] = -2.f;
+      break;
+
     case UNIT_CONV_ENERGY:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = 2.f;
@@ -308,6 +312,7 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       break;
 
     case UNIT_CONV_ENERGY_PER_UNIT_MASS:
+    case UNIT_CONV_VELOCITY_SQUARED:
       baseUnitsExp[UNIT_LENGTH] = 2.f;
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
@@ -405,6 +410,16 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
     case UNIT_CONV_SFR:
     case UNIT_CONV_MASS_PER_UNIT_TIME:
       baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+
+    case UNIT_CONV_DIFF_RATE:
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+
+    case UNIT_CONV_DIFF_COEFF:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = -1.f;
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
 

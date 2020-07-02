@@ -159,9 +159,9 @@ int main(int argc, char *argv[]) {
 
   /* check output selection */
   message("Checking output parameters.");
-  long long N_total[swift_type_count] = {
-      (long long)Ngas, (long long)Ngpart, 0, 0, (long long)Nspart, 0};
-  io_check_output_fields(&param_file, N_total, /*with_cosmology=*/0);
+  io_prepare_output_fields(&output_options, /*with_cosmology=*/0,
+                           /*with_fof=*/0,
+                           /*with_structure_finding=*/0);
 
   /* write output file */
   message("Writing output.");

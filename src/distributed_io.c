@@ -68,7 +68,6 @@
  * @param e The #engine we are writing from.
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
- * @param xmfFile The FILE used to write the XMF description
  * @param partTypeGroupName The name of the group containing the particles in
  * the HDF5 file.
  * @param props The #io_props of the field to read
@@ -110,6 +109,9 @@ void write_distributed_array(const struct engine* e, hid_t grp,
   if (h_space < 0)
     error("Error while creating data space for field '%s'.", props.name);
 
+  /* Decide what chunk size to use based on compression */
+  int log2_chunk_size = e->snapshot_compression > 0 ? 12 : 18;
+
   int rank;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
@@ -118,13 +120,13 @@ void write_distributed_array(const struct engine* e, hid_t grp,
     rank = 2;
     shape[0] = N;
     shape[1] = props.dimension;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = props.dimension;
   } else {
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
-    chunk_shape[0] = 1 << 20; /* Just a guess...*/
+    chunk_shape[0] = 1 << log2_chunk_size;
     chunk_shape[1] = 0;
   }
 
@@ -383,14 +385,21 @@ void write_output_distributed(struct engine* e,
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
   io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
 
-  /* GADGET-2 legacy values */
-  /* Number of particles of each type */
+  /* GADGET-2 legacy values:  Number of particles of each type */
   unsigned int numParticles[swift_type_count] = {0};
   unsigned int numParticlesHighWord[swift_type_count] = {0};
+
+  /* Total number of fields to write per ptype */
+  int numFields[swift_type_count] = {0};
+
   for (int ptype = 0; ptype < swift_type_count; ++ptype) {
     numParticles[ptype] = (unsigned int)N_total[ptype];
     numParticlesHighWord[ptype] = (unsigned int)(N_total[ptype] >> 32);
+
+    numFields[ptype] = output_options_get_num_fields_to_write(
+        output_options, current_selection_name, ptype);
   }
+
   io_write_attribute(h_grp, "NumPart_ThisFile", LONGLONG, N, swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total", UINT, numParticles,
                      swift_type_count);
@@ -424,15 +433,16 @@ void write_output_distributed(struct engine* e,
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp, e->s->cdim, e->s->dim, e->s->pos_dithering,
                         e->s->cells_top, e->s->nr_cells, e->s->width, mpi_rank,
-                        /*distributed=*/1, N_total, global_offsets,
+                        /*distributed=*/1, N_total, global_offsets, numFields,
                         internal_units, snapshot_units);
   H5Gclose(h_grp);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-    /* Don't do anything if no particle of this kind */
-    if (numParticles[ptype] == 0) continue;
+    /* Don't do anything if there are (a) no particles of this kind, or (b)
+     * if we have disabled every field of this particle type. */
+    if (numParticles[ptype] == 0 || numFields[ptype] == 0) continue;
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -717,19 +727,31 @@ void write_output_distributed(struct engine* e,
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
 
-    /* Write everything that is not cancelled */
+    /* Did the user specify a non-standard default for the entire particle
+     * type? */
+    const enum compression_levels compression_level_current_default =
+        output_options_get_ptype_default(output_options->select_output,
+                                         current_selection_name,
+                                         (enum part_type)ptype);
 
+    /* Write everything that is not cancelled */
+    int num_fields_written = 0;
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
       const int should_write = output_options_should_write_field(
           output_options, current_selection_name, list[i].name,
-          (enum part_type)ptype);
+          (enum part_type)ptype, compression_level_current_default);
 
-      if (should_write)
+      if (should_write) {
         write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],
                                 Nparticles, internal_units, snapshot_units);
+        num_fields_written++;
+      }
     }
+
+    /* Only write this now that we know exactly how many fields there are. */
+    io_write_attribute_i(h_grp, "NumberOfFields", num_fields_written);
 
     /* Free temporary arrays */
     if (parts_written) swift_free("parts_written", parts_written);

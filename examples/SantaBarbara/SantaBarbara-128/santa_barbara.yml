@@ -41,8 +41,11 @@ Statistics:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025  
-  theta:                  0.5
+  eta:                      0.025
+  MAC:                      adpative
+  theta_cr:                 0.7
+  epsilon_fmm:              0.001
+  use_tree_below_softening: 1
   comoving_DM_softening:         0.02    # 20 kpc = 1/25 mean inter-particle separation
   max_physical_DM_softening:     0.00526 # 20 ckpc = 5.26 pkpc at z=2.8 (EAGLE-like evolution of softening).
   comoving_baryon_softening:     0.02    # 20 kpc = 1/25 mean inter-particle separation
