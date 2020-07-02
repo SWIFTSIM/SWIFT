@@ -95,6 +95,7 @@ int space_extra_gparts = space_extra_gparts_default;
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 int engine_max_parts_per_cooling = engine_max_parts_per_cooling_default;
+int engine_max_parts_per_kick = engine_max_parts_per_kick_default;
 
 /*! Maximal depth at which the stars resort task can be pushed */
 int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
@@ -238,8 +239,14 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+    c->kick1_in = NULL;
+    c->kick1_out = NULL;
     c->kick1 = NULL;
+    c->kick2_in = NULL;
+    c->kick2_out = NULL;
     c->kick2 = NULL;
+    c->timestep_in = NULL;
+    c->timestep_out = NULL;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
     c->timestep_sync = NULL;
@@ -4988,10 +4995,12 @@ void space_init(struct space *s, struct swift_params *params,
   engine_max_sparts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_sparts_per_ghost",
                                engine_max_sparts_per_ghost_default);
-
   engine_max_parts_per_cooling =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_cooling",
                                engine_max_parts_per_cooling_default);
+  engine_max_parts_per_kick =
+      parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_kick",
+                               engine_max_parts_per_kick_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
@@ -5863,6 +5872,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(&engine_max_parts_per_cooling, sizeof(int), 1, stream,
                        "engine_max_parts_per_cooling",
                        "engine_max_parts_per_cooling");
+  restart_write_blocks(&engine_max_parts_per_kick, sizeof(int), 1, stream,
+                       "engine_max_parts_per_kick",
+                       "engine_max_parts_per_kick");
   restart_write_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                        "engine_star_resort_task_depth",
                        "engine_star_resort_task_depth");
@@ -5932,6 +5944,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       NULL, "engine_max_sparts_per_ghost");
   restart_read_blocks(&engine_max_parts_per_cooling, sizeof(int), 1, stream,
                       NULL, "engine_max_parts_per_cooling");
+  restart_read_blocks(&engine_max_parts_per_kick, sizeof(int), 1, stream, NULL,
+                      "engine_max_parts_per_kick");
   restart_read_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                       NULL, "engine_star_resort_task_depth");
 

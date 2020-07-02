@@ -779,11 +779,29 @@ struct cell {
   } mpi;
 #endif
 
+  /*! Dependency implicit task for kick1 (in->kick1->out) */
+  struct task *kick1_in;
+
+  /*! Dependency implicit task for kick1 (in->kick1->out) */
+  struct task *kick1_out;
+
   /*! The first kick task */
   struct task *kick1;
 
+  /*! Dependency implicit task for kick2 (in->kick2->out) */
+  struct task *kick2_in;
+
+  /*! Dependency implicit task for kick2 (in->kick2->out) */
+  struct task *kick2_out;
+
   /*! The second kick task */
   struct task *kick2;
+
+  /*! Dependency implicit task for timestep (in->timestep->out) */
+  struct task *timestep_in;
+
+  /*! Dependency implicit task for timestep (in->timestep->out) */
+  struct task *timestep_out;
 
   /*! The task to compute time-steps */
   struct task *timestep;
