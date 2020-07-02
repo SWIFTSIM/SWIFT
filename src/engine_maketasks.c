@@ -843,10 +843,8 @@ void engine_add_kicks(struct engine *e, struct cell *c, struct task *kick1_in,
     scheduler_addunlock(s, kick2_in, c->kick2);
     scheduler_addunlock(s, c->kick2, kick2_out);
 
-    c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none, 0,
-                                    0, c, NULL);
-    scheduler_addunlock(s, timestep_in, c->timestep);
-    scheduler_addunlock(s, c->timestep, timestep_out);
+    // scheduler_addunlock(s, timestep_in, c->timestep);
+    // scheduler_addunlock(s, c->timestep, timestep_out);
 
   } else {
     /* Keep recursing */
@@ -920,6 +918,12 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->timestep_out =
           scheduler_addtask(s, task_type_timestep_out, task_subtype_none, 0,
                             /*implicit=*/1, c, NULL);
+
+      c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
+                                      0, 0, c, NULL);
+
+      scheduler_addunlock(s, c->timestep_in, c->timestep);
+      scheduler_addunlock(s, c->timestep, c->timestep_out);
 
       /* Add the real tasks */
       engine_add_kicks(e, c, c->kick1_in, c->kick1_out, c->kick2_in,
