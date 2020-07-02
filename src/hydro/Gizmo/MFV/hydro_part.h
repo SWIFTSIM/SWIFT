@@ -146,6 +146,12 @@ struct part {
     /* Particle number density. */
     float wcount;
 
+#ifdef WITH_IVANOVA
+    /* kernel gradients: \sum_k \del W(x_i - x_k, h_i)/ \del r * (x_i - x_k)/ r */
+    /* TODO: move to geometry later? */
+    float wgrads[3];
+#endif
+
   } density;
 
   /* Quantities used during the force loop. */

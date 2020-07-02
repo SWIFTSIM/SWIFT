@@ -188,6 +188,23 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
+#ifdef WITH_IVANOVA
+  p->density.wgrads[0] = 0.0f;
+  p->density.wgrads[1] = 0.0f;
+  p->density.wgrads[2] = 0.0f;
+
+  // TODO: temporary
+  // for (int i=0; i<200; i++){
+  //   p->density.neighbour_ids[i] = 0;
+  //   p->density.neighbour_ids_grad[i] = 0;
+  // }
+  // for (int i=0; i<400; i++){
+  //   p->density.Aij[i] = 0.f;
+  //   p->density.grads_sum_contrib[i] = 0.f;
+  // }
+  // p->density.nneigh = -1;
+  // p->density.nneigh_grads = -1;
+#endif
 
   p->geometry.volume = 0.0f;
   p->geometry.matrix_E[0][0] = 0.0f;
@@ -391,6 +408,12 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 
   /* reset the centroid to disable MFV velocity corrections for this particle */
   hydro_velocities_reset_centroids(p);
+
+#ifdef WITH_IVANOVA
+  p->density.wgrads[0] = 0.0f;
+  p->density.wgrads[1] = 0.0f;
+  p->density.wgrads[2] = 0.0f;
+#endif
 }
 
 /**

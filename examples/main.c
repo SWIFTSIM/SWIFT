@@ -43,6 +43,7 @@
 /* Local headers. */
 #include "argparse.h"
 #include "swift.h"
+#include "todo_temporary_globals.h"
 
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
@@ -142,6 +143,9 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 
 #endif
+
+  // TODO:
+  mladen_setup(&e);
 
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings(/*fof=*/0);
@@ -1271,6 +1275,10 @@ int main(int argc, char *argv[]) {
           e.dt_min, e.dt_max);
       fflush(stdout);
     }
+
+  // TODO: temporary
+  mladen_setup_data_dump(N_total[swift_type_gas]);
+
   }
 
   /* Time to say good-bye if this was not a serious run. */
@@ -1573,6 +1581,9 @@ int main(int argc, char *argv[]) {
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   free(output_options);
+
+  // TODO: temp
+  mladen_cleanup();
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

@@ -110,9 +110,11 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
     hashmap.c pressure_floor.c space_unique_id.c output_options.c line_of_sight.c \
+	todo_temporary_globals.c \
     $(QLA_COOLING_SOURCES) \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
     $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
+#TODO: temporarily added globals
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -281,7 +283,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h \
 	         task_order/GEAR/task_order.h task_order/EAGLE/task_order.h task_order/default/task_order.h \
      sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h \
-	   sink.h sink_io.h
+	   sink.h sink_io.h \
+	 todo_temporary_globals.h
+# TODO: added temporary globals
 
 
 # Sources and special flags for the gravity library
