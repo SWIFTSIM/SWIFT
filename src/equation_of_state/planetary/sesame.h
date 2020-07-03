@@ -23,14 +23,13 @@
 /**
  * @file equation_of_state/planetary/sesame.h
  *
- * Contains the SESAME EOS functions for
+ * Contains the SESAME and ANEOS-in-SESAME-style EOS functions for
  * equation_of_state/planetary/equation_of_state.h
- *
- *              WORK IN PROGRESS!
  *
  */
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local headers. */
@@ -73,6 +72,21 @@ INLINE static void set_SESAME_water(struct SESAME_params *mat,
 INLINE static void set_SS08_water(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Senft & Stewart (2008)
+  mat->mat_id = mat_id;
+}
+INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
+                                        enum eos_planetary_material_id mat_id) {
+  // Stewart et al. (2019)
+  mat->mat_id = mat_id;
+}
+INLINE static void set_ANEOS_iron(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Stewart (2020)
+  mat->mat_id = mat_id;
+}
+INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
+                                      enum eos_planetary_material_id mat_id) {
+  // Stewart (2020)
   mat->mat_id = mat_id;
 }
 
@@ -171,11 +185,9 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
     }
   }
 
-  // Tiny pressure and soundspeed, initialise in the middle
-  mat->P_tiny =
-      mat->table_P_rho_T[mat->num_rho / 2 * mat->num_T + mat->num_T / 2];
-  mat->c_tiny =
-      mat->table_c_rho_T[mat->num_rho / 2 * mat->num_T + mat->num_T / 2];
+  // Initialise tiny pressure and soundspeed
+  mat->P_tiny = FLT_MAX;
+  mat->c_tiny = FLT_MAX;
 
   // Enforce that the 1D arrays of u (at each rho) are monotonic
   // This is necessary because, for some high-density u slices at very low T,
@@ -374,19 +386,24 @@ INLINE static float SESAME_pressure_from_internal_energy(
   P_3 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2];
   P_4 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2 + 1];
 
+  // If below the minimum u at this rho then just use the lowest table values
+  if ((idx_rho > 0.f) &&
+      ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (P_1 > P_2) || (P_3 > P_4))) {
+    intp_u_1 = 0;
+    intp_u_2 = 0;
+  }
+
   // If more than two table values are non-positive then return zero
   int num_non_pos = 0;
   if (P_1 <= 0.f) num_non_pos++;
   if (P_2 <= 0.f) num_non_pos++;
   if (P_3 <= 0.f) num_non_pos++;
   if (P_4 <= 0.f) num_non_pos++;
-  if (num_non_pos > 2) {
-    return 0.f;
-  }
-  // If just one or two are non-positive then replace them with a tiny value
-  else if (num_non_pos > 0) {
+  if (num_non_pos > 0) {
+    // If just one or two are non-positive then replace them with a tiny value
     // Unless already trying to extrapolate in which case return zero
-    if ((intp_rho < 0.f) || (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
+    if ((num_non_pos > 2) || (mat->P_tiny == 0.f) || (intp_rho < 0.f) ||
+        (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
       return 0.f;
     }
     if (P_1 <= 0.f) P_1 = mat->P_tiny;
