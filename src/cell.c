@@ -4626,9 +4626,9 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  */
 int cell_has_tasks(struct cell *c) {
 #ifdef WITH_MPI
-  if (c->timestep_in != NULL || c->mpi.recv != NULL) return 1;
+  if (c->timestep != NULL || c->mpi.recv != NULL) return 1;
 #else
-  if (c->timestep_in != NULL) return 1;
+  if (c->timestep != NULL) return 1;
 #endif
 
   if (c->split) {
