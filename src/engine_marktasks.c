@@ -978,8 +978,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Subgrid tasks: cooling */
-    else if (t_type == task_type_cooling || t_type == task_type_cooling_in ||
-             t_type == task_type_cooling_out) {
+    else if (t_type == task_type_cooling) {
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 

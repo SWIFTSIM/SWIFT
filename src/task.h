@@ -75,8 +75,6 @@ enum task_types {
   task_type_grav_mesh,
   task_type_end_grav_force,
   task_type_cooling,
-  task_type_cooling_in,  /* Implicit */
-  task_type_cooling_out, /* Implicit */
   task_type_star_formation,
   task_type_star_formation_in,  /* Implicit */
   task_type_star_formation_out, /* Implicit */

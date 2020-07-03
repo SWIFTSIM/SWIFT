@@ -119,7 +119,6 @@ Scheduler:
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
   engine_max_parts_per_ghost:   1000   # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:  1000   # (Optional) Maximum number of sparts per ghost.
-  engine_max_parts_per_cooling:  200   # (Optional) Maximum number of parts per cooling task.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:

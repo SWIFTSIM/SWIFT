@@ -2614,50 +2614,6 @@ void cell_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
 }
 
 /**
- * @brief Recursively activate the cooling (and implicit links) in a cell
- * hierarchy.
- *
- * @param c The #cell.
- * @param s The #scheduler.
- * @param e The #engine.
- */
-void cell_recursively_activate_cooling(struct cell *c, struct scheduler *s,
-                                       const struct engine *e) {
-  /* Early abort? */
-  if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
-
-  /* Is the ghost at this level? */
-  if (c->hydro.cooling != NULL) {
-    scheduler_activate(s, c->hydro.cooling);
-  } else {
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (!c->split)
-      error("Reached the leaf level without finding a cooling task!");
-#endif
-
-    /* Keep recursing */
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_recursively_activate_cooling(c->progeny[k], s, e);
-  }
-}
-
-/**
- * @brief Activate the cooling tasks (and implicit links) in a cell hierarchy.
- *
- * @param c The #cell.
- * @param s The #scheduler.
- * @param e The #engine.
- */
-void cell_activate_cooling(struct cell *c, struct scheduler *s,
-                           const struct engine *e) {
-  scheduler_activate(s, c->hydro.cooling_in);
-  scheduler_activate(s, c->hydro.cooling_out);
-  cell_recursively_activate_cooling(c, s, e);
-}
-
-/**
  * @brief Recurse down in a cell hierarchy until the hydro.super level is
  * reached and activate the spart drift at that level.
  *
@@ -3766,7 +3722,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
-    if (c->hydro.cooling_in != NULL) cell_activate_cooling(c, s, e);
+    if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
 #ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
 #endif

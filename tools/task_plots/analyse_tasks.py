@@ -103,8 +103,6 @@ TASKTYPES = [
     "grav_mesh",
     "grav_end_force",
     "cooling",
-    "cooling_in",
-    "cooling_out",
     "star_formation",
     "star_formation_in",
     "star_formation_out",
