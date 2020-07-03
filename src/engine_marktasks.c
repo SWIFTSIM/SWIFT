@@ -886,9 +886,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Kick ? */
-    else if (t_type == task_type_kick1 || t_type == task_type_kick2 ||
-             t_type == task_type_kick1_in || t_type == task_type_kick2_in ||
-             t_type == task_type_kick1_out || t_type == task_type_kick2_out) {
+    else if (t_type == task_type_kick1 || t_type == task_type_kick2) {
 
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
           cell_is_active_stars(t->ci, e) ||
@@ -968,8 +966,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Time-step? */
-    else if (t_type == task_type_timestep || t_type == task_type_timestep_in ||
-             t_type == task_type_timestep_out) {
+    else if (t_type == task_type_timestep) {
       t->ci->hydro.updated = 0;
       t->ci->grav.updated = 0;
       t->ci->stars.updated = 0;

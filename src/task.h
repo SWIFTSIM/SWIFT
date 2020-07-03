@@ -61,15 +61,9 @@ enum task_types {
   task_type_drift_gpart,
   task_type_drift_gpart_out, /* Implicit */
   task_type_end_hydro_force,
-  task_type_kick1_in, /* Implicit */
   task_type_kick1,
-  task_type_kick1_out, /* Implicit */
-  task_type_kick2_in,  /* Implicit */
   task_type_kick2,
-  task_type_kick2_out,   /* Implicit */
-  task_type_timestep_in, /* Implicit */
   task_type_timestep,
-  task_type_timestep_out, /* Implicit */
   task_type_timestep_limiter,
   task_type_timestep_sync,
   task_type_send,
