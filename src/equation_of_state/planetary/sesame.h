@@ -29,8 +29,8 @@
  */
 
 /* Some standard headers. */
-#include <math.h>
 #include <float.h>
+#include <math.h>
 
 /* Local headers. */
 #include "adiabatic_index.h"
@@ -385,13 +385,12 @@ INLINE static float SESAME_pressure_from_internal_energy(
   P_2 = mat->table_P_rho_T[idx_rho * mat->num_T + idx_u_1 + 1];
   P_3 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2];
   P_4 = mat->table_P_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2 + 1];
-  
+
   // If below the minimum u at this rho then just use the lowest table values
-  if ((idx_rho > 0.f) && (
-      (intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (P_1 > P_2) || (P_3 > P_4)
-  )) {
-      intp_u_1 = 0;
-      intp_u_2 = 0;
+  if ((idx_rho > 0.f) &&
+      ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (P_1 > P_2) || (P_3 > P_4))) {
+    intp_u_1 = 0;
+    intp_u_2 = 0;
   }
 
   // If more than two table values are non-positive then return zero
@@ -403,7 +402,7 @@ INLINE static float SESAME_pressure_from_internal_energy(
   if (num_non_pos > 0) {
     // If just one or two are non-positive then replace them with a tiny value
     // Unless already trying to extrapolate in which case return zero
-    if ((num_non_pos > 2) || (mat->P_tiny == 0.f) || (intp_rho < 0.f) || 
+    if ((num_non_pos > 2) || (mat->P_tiny == 0.f) || (intp_rho < 0.f) ||
         (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
       return 0.f;
     }
