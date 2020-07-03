@@ -2680,7 +2680,7 @@ void cell_recursively_activate_kicks(struct cell *c, struct scheduler *s,
   if (c->kick1 != NULL) {
     scheduler_activate(s, c->kick1);
     scheduler_activate(s, c->kick2);
-    // scheduler_activate(s, c->timestep);
+    scheduler_activate(s, c->timestep);
   } else {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2710,7 +2710,6 @@ void cell_activate_kicks(struct cell *c, struct scheduler *s,
   scheduler_activate(s, c->kick2_out);
   scheduler_activate(s, c->timestep_in);
   scheduler_activate(s, c->timestep_out);
-  scheduler_activate(s, c->timestep);
   cell_recursively_activate_kicks(c, s, e);
 }
 
