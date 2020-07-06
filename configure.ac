@@ -1534,6 +1534,19 @@ case "$with_subgrid" in
   	with_subgrid_sink=none
 	enable_fof=yes
    ;;
+   EAGLE-XL)
+	with_subgrid_cooling=COLIBRE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=EAGLE
+	with_subgrid_task_order=EAGLE
+	with_subgrid_sink=none
+	enable_fof=yes
+   ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
    ;;
@@ -1859,6 +1872,9 @@ case "$with_cooling" in
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
+   ;;
+   COLIBRE)
+      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model])
    ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
@@ -2268,6 +2284,9 @@ AM_CONDITIONAL([HAVEQLACOOLING], [test $with_cooling = "QLA"])
 
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
+
+# Check if using COLIBRE cooling
+AM_CONDITIONAL([HAVECOLIBRECOOLING], [test $with_cooling = "COLIBRE"])
 
 # Check if using EAGLE feedback
 AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test $with_feedback = "EAGLE"])

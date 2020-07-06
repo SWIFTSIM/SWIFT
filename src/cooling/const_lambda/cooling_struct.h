@@ -51,6 +51,11 @@ struct cooling_function_data {
 };
 
 /**
+ * @brief Properties of the cooling stored in the #part data.
+ */
+struct cooling_part_data {};
+
+/**
  * @brief Properties of the cooling stored in the particle data.
  */
 struct cooling_xpart_data {

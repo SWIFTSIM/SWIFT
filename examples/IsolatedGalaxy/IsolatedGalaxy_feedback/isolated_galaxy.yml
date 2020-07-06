@@ -61,12 +61,23 @@ Stars:
 
 # Standard EAGLE cooling options
 EAGLECooling:
-  dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
+  dir_name:                ./coolingtables/  # Location of the Wiersma+09 cooling tables
   H_reion_z:               7.5               # Redshift of Hydrogen re-ionization
   H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
   He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+
+# COLIBRE cooling parameters
+COLIBRECooling:
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the Ploeckinger+20 cooling tables
+  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  delta_logTEOS_subgrid_properties: 0.3      # delta log T above the EOS below which the subgrid properties use Teq assumption
+  rapid_cooling_threshold:          0.333333 # Switch to rapid cooling regime for dt / t_cool above this threshold.
 
 # Use solar abundances
 EAGLEChemistry:
@@ -104,7 +115,7 @@ EAGLEStarFormation:
   min_over_density:                  57.7      # The over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-  EOS_entropy_margin_dex:            0.5       # Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
+  EOS_entropy_margin_dex:            0.3       # Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
@@ -112,13 +123,13 @@ EAGLEStarFormation:
   
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:
-  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_density_threshold_H_p_cm3: 1e-4      # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
   Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
-  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_temperature_norm_K:        800       # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
   Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
   Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
   Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
-  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_temperature_norm_K:        10.        # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin. (NOTE: This is below the min T and hence this floor does nothing)
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
 
 # EAGLE feedback model with constant feedback energy fraction
