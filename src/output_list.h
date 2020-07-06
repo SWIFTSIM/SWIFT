@@ -33,6 +33,9 @@ struct engine;
 /*! Maximal number of output lists */
 #define OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES 8
 
+/*! How far past time_end do we check for an output time? */
+#define OUTPUT_LIST_EPS_TIME_END 1e-4
+
 /**
  * @brief the different output_list type
  */
