@@ -37,7 +37,7 @@ def generate_two_cube(num_on_side, side_length=1.0):
 
     mips = side_length / num_on_side
     
-    positions = np.concatenate([cube, cube + mips * 0.5])
+    positions = np.concatenate([cube, cube + mips])
 
     return positions
 
