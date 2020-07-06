@@ -2118,6 +2118,10 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
         (cell_is_active_gravity(cj, e) && cj->nodeID == nodeID)))
     return;
+    
+  /* Calculate DM-DM interactions */
+  runner_dopair_sidm(r, ci, cj);
+
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -2314,6 +2318,9 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
   /* If the cell is not split, then just go for it... */
   else {
+
+    /* Calculate probability of DM-DM interactions */
+    runner_doself_sidm(r, c);
 
     runner_doself_grav_pp(r, c);
   }
