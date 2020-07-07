@@ -23,6 +23,7 @@
 #include "runner_doiact_grav.h"
 
 /* Local includes. */
+#include "runner_doiact_sidm.h"
 #include "active.h"
 #include "cell.h"
 #include "gravity.h"

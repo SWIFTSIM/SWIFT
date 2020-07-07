@@ -88,6 +88,7 @@
 #include "restart.h"
 #include "runner.h"
 #include "serial_io.h"
+#include "sidm.h"
 #include "single_io.h"
 #include "sort_part.h"
 #include "star_formation.h"
@@ -129,7 +130,8 @@ const char *engine_policy_names[] = {"none",
                                      "time-step sync",
                                      "logger",
                                      "line of sight",
-                                     "sink"};
+                                     "sink",
+                                     "sidm"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -3878,6 +3880,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  const struct black_holes_props *black_holes,
                  struct feedback_props *feedback, struct pm_mesh *mesh,
+                 struct sidm_props *sidm,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
@@ -3963,6 +3966,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
+  e->sidm_properties = sidm;
   e->chemistry = chemistry;
   e->fof_properties = fof_properties;
   e->parameter_file = params;
@@ -5424,6 +5428,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->cooling_func);
     free((void *)e->star_formation);
     free((void *)e->feedback_props);
+    free((void *)e->sidm_properties);
 #ifdef WITH_FOF
     free((void *)e->fof_properties);
 #endif
@@ -5598,7 +5603,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
-
+    
+  struct sidm_props *sidm_properties =
+    (struct sidm_props *)malloc(sizeof(struct sidm_props));
+  /*sidm_struct_restore(sidm, stream);*/
+  e->sidm_properties = sidm_properties;
+   
   struct black_holes_props *black_holes_properties =
       (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
   black_holes_struct_restore(black_holes_properties, stream);
