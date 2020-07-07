@@ -20,6 +20,7 @@
 #define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
 #include "fof_struct.h"
+#include "sidm_properties.h"
 
 /* Gravity particle. */
 struct gpart {
@@ -105,6 +106,9 @@ struct gpart {
   long long num_interacted_p2p;
   long long num_interacted_pm;
 #endif
+    
+    /*! Add self-interacting DM specific stuff. */
+    struct sidm_gpart_data sidm_data;
 
 } SWIFT_STRUCT_ALIGN;
 
