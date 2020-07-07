@@ -33,30 +33,24 @@
  * @param phys_const The physical constants.
  * @param floor_props The properties of the entropy floor.
  * @param cosmo The cosmological model.
- * @param p The #part.
- * @param xp The #xpart.
- * @param log10_T The logarithm base 10 of the temperature of the particle.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param P_phys Pressure of the gas in internal physical units.
+ * @param log10_T The logarithm base 10 of the temperature of the gas.
  * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
- * to be considered on the EOS at the density of this particle.
+ * to be considered on the EOS at the density of the gas.
  */
 double compute_subgrid_HI_fraction(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
     const struct entropy_floor_properties *floor_props,
-    const struct cosmology *cosmo, const struct part *p, const struct xpart *xp,
-    const float log10_T, const float log10_T_EOS_max) {
-
-  /* Physical density of this particle */
-  const double rho_phys = hydro_get_physical_density(p, cosmo);
-
-  /* Get the total metallicity */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max) {
 
   /* Get the Hydrogen number density */
-  const float *const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_cooling(p);
-  const float XH = metal_fraction[chemistry_element_H];
   const double n_H = XH * rho_phys / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
@@ -78,8 +72,7 @@ double compute_subgrid_HI_fraction(
 
     /* We are below the EoS. Use subgrid properties assuming P equilibrium */
 
-    const float P = hydro_get_physical_pressure(p, cosmo);
-    const float P_cgs = P * cooling->pressure_to_cgs;
+    const float P_cgs = P_phys * cooling->pressure_to_cgs;
     const float log10_P_cgs = log10(P_cgs);
 
     /* Recover the maximal equilibrium pressure from the table at the current
@@ -212,30 +205,24 @@ double compute_subgrid_HI_fraction(
  * @param phys_const The physical constants.
  * @param floor_props The properties of the entropy floor.
  * @param cosmo The cosmological model.
- * @param p The #part.
- * @param xp The #xpart.
- * @param log10_T The logarithm base 10 of the temperature of the particle.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param P_phys Pressure of the gas in internal physical units.
+ * @param log10_T The logarithm base 10 of the temperature of the gas.
  * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
- * to be considered on the EOS at the density of this particle.
+ * to be considered on the EOS at the density of the gas.
  */
 double compute_subgrid_HII_fraction(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
     const struct entropy_floor_properties *floor_props,
-    const struct cosmology *cosmo, const struct part *p, const struct xpart *xp,
-    const float log10_T, const float log10_T_EOS_max) {
-
-  /* Physical density of this particle */
-  const double rho_phys = hydro_get_physical_density(p, cosmo);
-
-  /* Get the total metallicity */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max) {
 
   /* Get the Hydrogen number density */
-  const float *const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_cooling(p);
-  const float XH = metal_fraction[chemistry_element_H];
   const double n_H = XH * rho_phys / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
@@ -257,8 +244,7 @@ double compute_subgrid_HII_fraction(
 
     /* We are below the EoS. Use subgrid properties assuming P equilibrium */
 
-    const float P = hydro_get_physical_pressure(p, cosmo);
-    const float P_cgs = P * cooling->pressure_to_cgs;
+    const float P_cgs = P_phys * cooling->pressure_to_cgs;
     const float log10_P_cgs = log10(P_cgs);
 
     /* Recover the maximal equilibrium pressure from the table at the current
@@ -391,30 +377,24 @@ double compute_subgrid_HII_fraction(
  * @param phys_const The physical constants.
  * @param floor_props The properties of the entropy floor.
  * @param cosmo The cosmological model.
- * @param p The #part.
- * @param xp The #xpart.
- * @param log10_T The logarithm base 10 of the temperature of the particle.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param P_phys Pressure of the gas in internal physical units.
+ * @param log10_T The logarithm base 10 of the temperature of the gas.
  * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
- * to be considered on the EOS at the density of this particle.
+ * to be considered on the EOS at the density of the gas.
  */
 double compute_subgrid_H2_fraction(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
     const struct entropy_floor_properties *floor_props,
-    const struct cosmology *cosmo, const struct part *p, const struct xpart *xp,
-    const float log10_T, const float log10_T_EOS_max) {
-
-  /* Physical density of this particle */
-  const double rho_phys = hydro_get_physical_density(p, cosmo);
-
-  /* Get the total metallicity */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max) {
 
   /* Get the Hydrogen number density */
-  const float *const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_cooling(p);
-  const float XH = metal_fraction[chemistry_element_H];
   const double n_H = XH * rho_phys / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
@@ -436,8 +416,7 @@ double compute_subgrid_H2_fraction(
 
     /* We are below the EoS. Use subgrid properties assuming P equilibrium */
 
-    const float P = hydro_get_physical_pressure(p, cosmo);
-    const float P_cgs = P * cooling->pressure_to_cgs;
+    const float P_cgs = P_phys * cooling->pressure_to_cgs;
     const float log10_P_cgs = log10(P_cgs);
 
     /* Recover the maximal equilibrium pressure from the table at the current
@@ -569,30 +548,24 @@ double compute_subgrid_H2_fraction(
  * @param phys_const The physical constants.
  * @param floor_props The properties of the entropy floor.
  * @param cosmo The cosmological model.
- * @param p The #part.
- * @param xp The #xpart.
- * @param log10_T The logarithm base 10 of the temperature of the particle.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param P_phys Pressure of the gas in internal physical units.
+ * @param log10_T The logarithm base 10 of the temperature of the gas.
  * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
- * to be considered on the EOS at the density of this particle.
+ * to be considered on the EOS at the density of the gas.
  */
 double compute_subgrid_temperature(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
     const struct entropy_floor_properties *floor_props,
-    const struct cosmology *cosmo, const struct part *p, const struct xpart *xp,
-    const float log10_T, const float log10_T_EOS_max) {
-
-  /* Physical density of this particle */
-  const double rho_phys = hydro_get_physical_density(p, cosmo);
-
-  /* Get the total metallicity */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max) {
 
   /* Get the Hydrogen number density */
-  const float *const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_cooling(p);
-  const float XH = metal_fraction[chemistry_element_H];
   const double n_H = XH * rho_phys / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
@@ -614,8 +587,7 @@ double compute_subgrid_temperature(
 
     /* We are below the EoS. Use subgrid properties assuming P equilibrium */
 
-    const float P = hydro_get_physical_pressure(p, cosmo);
-    const float P_cgs = P * cooling->pressure_to_cgs;
+    const float P_cgs = P_phys * cooling->pressure_to_cgs;
     const float log10_P_cgs = log10(P_cgs);
 
     /* Recover the maximal equilibrium pressure from the table at the current
@@ -739,30 +711,24 @@ double compute_subgrid_temperature(
  * @param phys_const The physical constants.
  * @param floor_props The properties of the entropy floor.
  * @param cosmo The cosmological model.
- * @param p The #part.
- * @param xp The #xpart.
- * @param log10_T The logarithm base 10 of the temperature of the particle.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param P_phys Pressure of the gas in internal physical units.
+ * @param log10_T The logarithm base 10 of the temperature of the gas.
  * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
- * to be considered on the EOS at the density of this particle.
+ * to be considered on the EOS at the density of the gas.
  */
 double compute_subgrid_density(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
     const struct entropy_floor_properties *floor_props,
-    const struct cosmology *cosmo, const struct part *p, const struct xpart *xp,
-    const float log10_T, const float log10_T_EOS_max) {
-
-  /* Physical density of this particle */
-  const double rho_phys = hydro_get_physical_density(p, cosmo);
-
-  /* Get the total metallicity */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max) {
 
   /* Get the Hydrogen number density */
-  const float *const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_cooling(p);
-  const float XH = metal_fraction[chemistry_element_H];
   const double n_H = XH * rho_phys / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
@@ -783,8 +749,7 @@ double compute_subgrid_density(
 
     /* We are below the EoS. Use subgrid properties assuming P equilibrium */
 
-    const float P = hydro_get_physical_pressure(p, cosmo);
-    const float P_cgs = P * cooling->pressure_to_cgs;
+    const float P_cgs = P_phys * cooling->pressure_to_cgs;
     const float log10_P_cgs = log10(P_cgs);
     float log10_n_at_Peq;
 

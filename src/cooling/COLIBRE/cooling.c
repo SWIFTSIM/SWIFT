@@ -696,8 +696,24 @@ float cooling_get_subgrid_HI_fraction(
                                           cooling, p, xp);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_HI_fraction(cooling, phys_const, floor_props, cosmo, p,
-                                     xp, log10_T, log10_T_EOS_max);
+  /* Physical density of this particle */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the total metallicity in units of solar */
+  float dummy[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+
+  /* Get the Hydrogen abundance */
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get the particle pressure */
+  const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  return compute_subgrid_HI_fraction(cooling, phys_const, floor_props, cosmo,
+                                     rho_phys, logZZsol, XH, P_phys, log10_T,
+                                     log10_T_EOS_max);
 }
 
 /**
@@ -733,8 +749,24 @@ float cooling_get_subgrid_HII_fraction(
                                           cooling, p, xp);
   const float log10_T = log10f(T);
 
+  /* Physical density of this particle */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the total metallicity in units of solar */
+  float dummy[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+
+  /* Get the Hydrogen abundance */
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get the particle pressure */
+  const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
   return compute_subgrid_HII_fraction(cooling, phys_const, floor_props, cosmo,
-                                      p, xp, log10_T, log10_T_EOS_max);
+                                      rho_phys, logZZsol, XH, P_phys, log10_T,
+                                      log10_T_EOS_max);
 }
 
 /**
@@ -770,8 +802,24 @@ float cooling_get_subgrid_H2_fraction(
                                           cooling, p, xp);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_H2_fraction(cooling, phys_const, floor_props, cosmo, p,
-                                     xp, log10_T, log10_T_EOS_max);
+  /* Physical density of this particle */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the total metallicity in units of solar */
+  float dummy[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+
+  /* Get the Hydrogen abundance */
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get the particle pressure */
+  const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  return compute_subgrid_H2_fraction(cooling, phys_const, floor_props, cosmo,
+                                     rho_phys, logZZsol, XH, P_phys, log10_T,
+                                     log10_T_EOS_max);
 }
 
 /**
@@ -806,8 +854,24 @@ float cooling_get_subgrid_temperature(
                                           cooling, p, xp);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_temperature(cooling, phys_const, floor_props, cosmo, p,
-                                     xp, log10_T, log10_T_EOS_max);
+  /* Physical density of this particle */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the total metallicity in units of solar */
+  float dummy[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+
+  /* Get the Hydrogen abundance */
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get the particle pressure */
+  const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  return compute_subgrid_temperature(cooling, phys_const, floor_props, cosmo,
+                                     rho_phys, logZZsol, XH, P_phys, log10_T,
+                                     log10_T_EOS_max);
 }
 
 /**
@@ -844,8 +908,24 @@ float cooling_get_subgrid_density(
                                           cooling, p, xp);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_density(cooling, phys_const, floor_props, cosmo, p, xp,
-                                 log10_T, log10_T_EOS_max);
+  /* Physical density of this particle */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the total metallicity in units of solar */
+  float dummy[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+
+  /* Get the Hydrogen abundance */
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get the particle pressure */
+  const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  return compute_subgrid_density(cooling, phys_const, floor_props, cosmo,
+                                 rho_phys, logZZsol, XH, P_phys, log10_T,
+                                 log10_T_EOS_max);
 }
 
 /**
@@ -878,10 +958,27 @@ void cooling_set_subgrid_properties(
                                           cooling, p, xp);
   const float log10_T = log10f(T);
 
+  /* Physical density of this particle */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the total metallicity in units of solar */
+  float dummy[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+
+  /* Get the Hydrogen abundance */
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get the particle pressure */
+  const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
   p->cooling_data.subgrid_temp = compute_subgrid_temperature(
-      cooling, phys_const, floor_props, cosmo, p, xp, log10_T, log10_T_EOS_max);
-  p->cooling_data.subgrid_dens = compute_subgrid_density(
-      cooling, phys_const, floor_props, cosmo, p, xp, log10_T, log10_T_EOS_max);
+      cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
+      log10_T, log10_T_EOS_max);
+  p->cooling_data.subgrid_dens =
+      compute_subgrid_density(cooling, phys_const, floor_props, cosmo, rho_phys,
+                              logZZsol, XH, P_phys, log10_T, log10_T_EOS_max);
 }
 
 /**
