@@ -46,7 +46,6 @@
  * of values for temperature, hydrogen number density, metallicity,
  * abundance ratios, and elements used to index the cooling tables.
  *
- * @param fname Filepath for cooling table from which to read header
  * @param cooling Cooling data structure
  */
 void read_cooling_header(struct cooling_function_data *cooling) {

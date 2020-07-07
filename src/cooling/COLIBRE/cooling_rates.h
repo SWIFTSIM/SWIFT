@@ -410,7 +410,6 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
  * @param redshift Current redshift
  * @param n_H_cgs Hydrogen number density in cgs
  * @param ZZsol Metallicity relative to the solar value from the tables
- * @param abundance_ratio Abundance ratio for each element x relative to solar
  * @param n_H_index Index along the Hydrogen number density dimension
  * @param d_n_H Offset between Hydrogen density and table[n_H_index]
  * @param met_index Index along the metallicity dimension
@@ -458,7 +457,7 @@ INLINE static float colibre_meanparticlemass_temperature(
  * @param d_red Offset between redshift and table[red_index]
  * @param cooling #cooling_function_data structure
  *
- * @retura linear electron density in cm-3 (NOT the electron fraction)
+ * @return linear electron density in cm-3 (NOT the electron fraction)
  */
 INLINE static float colibre_electron_density(
     double log_u_cgs, double redshift, double n_H_cgs, float ZZsol,
@@ -501,7 +500,7 @@ INLINE static float colibre_electron_density(
  * @param d_red Offset between redshift and table[red_index]
  * @param cooling #cooling_function_data structure
  *
- * @retura linear electron density in cm-3 (NOT the electron fraction)
+ * @return linear electron density in cm-3 (NOT the electron fraction)
  */
 INLINE static float colibre_electron_density_temperature(
     double log_T_cgs, double redshift, double n_H_cgs, float ZZsol,

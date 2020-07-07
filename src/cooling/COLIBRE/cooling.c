@@ -647,6 +647,7 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
  *
  * @param phys_const #phys_const data structure.
  * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo #cosmology data structure.
  * @param cooling #cooling_function_data struct.
  * @param p #part data.
@@ -935,7 +936,6 @@ float cooling_get_subgrid_density(
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_props the hydro_props struct
- * @param starform the star formation law properties to initialize
  * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
@@ -1044,10 +1044,11 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
 /**
  * @brief Initialises properties stored in the cooling_function_data struct
  *
- * @param parameter_file The parsed parameter file
- * @param us Internal system of units data structure
- * @param phys_const #phys_const data structure
- * @param cooling #cooling_function_data struct to initialize
+ * @param parameter_file The parsed parameter file.
+ * @param us Internal system of units data structure.
+ * @param hydro_props the properties of the hydro scheme.
+ * @param phys_const #phys_const data structure.
+ * @param cooling #cooling_function_data struct to initialize.
  */
 void cooling_init_backend(struct swift_params *parameter_file,
                           const struct unit_system *us,

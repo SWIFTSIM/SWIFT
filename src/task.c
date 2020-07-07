@@ -1097,7 +1097,7 @@ void task_dump_all(struct engine *e, int step) {
  *
  * @param dumpfile name of the file for the output.
  * @param e the #engine
- * @param dump_task_threshold Fraction of the step time above whic any task
+ * @param dump_tasks_threshold Fraction of the step time above whic any task
  * triggers a call to task_dump_all().
  * @param header whether to write a header include file.
  * @param allranks do the statistics over all ranks, if not just the current
