@@ -49,7 +49,7 @@ void sidm_props_init(struct sidm_props* sidm_props,
     /* Scattering cross section in physical units */
     sidm_props->sigma_cgs = parser_get_param_double(params, "SIDM:sigma_cm2_g");
 
-    sidm_props->sigma = sidm_props->sigma_phys * units_cgs_conversion_factor(us, UNIT_CONV_MASS) / (units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH));
+    sidm_props->sigma = sidm_props->sigma_cgs * units_cgs_conversion_factor(us, UNIT_CONV_MASS) / (units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH));
     
 }
 
