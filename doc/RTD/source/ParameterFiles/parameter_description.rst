@@ -946,15 +946,18 @@ which stops these from being done at the scale of the leaf cells, of which
 there can be a large number. In this case cells with gravity tasks must be at
 least 4 levels above the leaf cells (when possible).
 
-To control the depth at which the ghost tasks are placed, there are
-two parameters (one for the gas, one for the stars). These specify the
-maximum number of particles allowed in such a task before splitting
-into finer ones. These parameters are:
+To control the depth at which the ghost tasks are placed, there are two
+parameters (one for the gas, one for the stars). These specify the maximum
+number of particles allowed in such a task before splitting into finer ones. A
+similar parameter exists for the cooling tasks, which can be useful to tweak for
+models in which the cooling operations are expensive. These three parameters
+are:
 
 .. code:: YAML
 
-  engine_max_parts_per_ghost:   1000
-  engine_max_sparts_per_ghost:  1000
+  engine_max_parts_per_ghost:    1000
+  engine_max_sparts_per_ghost:   1000
+  engine_max_parts_per_cooling: 10000
 
 
 Extra space is required when particles are created in the system (to the time
