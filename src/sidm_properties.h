@@ -58,6 +58,21 @@ struct sidm_props {
     
 };
 
+/**
+ * @brief extra particle data for #gpart in the SIDM model.
+ */
+struct sidm_gpart_data {
+
+    /*! Velocity changed due to DM-DM self-interactions. */
+    float si_v_full[3];
+    
+    /*! flag indicating if particle in given time-step has been scattered*/
+    float sidm_flag;
+    
+    /*! Particle search radius */
+    float h_sidm;
+};
+
 void sidm_props_init(struct sidm_props* sidm_props,
                      const struct phys_const* phys_const,
                      const struct unit_system* us,

@@ -29,5 +29,30 @@
 #include "sidm_properties.h"
 #include "sidm_iact.h"
 
+/**
+ * @brief Sets the SIDM properties of the g-particles to a valid start
+ * state.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
+ * @param data The global chemistry information.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void sidm_first_init_gpart(struct gpart* restrict gp,
+                                                                        const struct sidm_props* sidm_props) {
+    
+    /*! flag indicating if particle in given time-step has been scattered*/
+    gp->sidm_data.sidm_flag = 0.0f;
+    
+    /*! Particle search radius */
+    gp->sidm_data.h_sidm = 0.0f;
+    
+    /* Particle velocity */
+    gp->sidm_data.si_v_full[0] = 0.0f;
+    gp->sidm_data.si_v_full[1] = 0.0f;
+    gp->sidm_data.si_v_full[2] = 0.0f;
+}
 
 #endif /* SWIFT_SIDM_H */
