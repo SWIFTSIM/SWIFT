@@ -2200,7 +2200,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     message("Computing initial gas densities and approximate gravity.");
 
   /* Construct all cells and tasks to start everything */
-  engine_rebuild(e, 0, clean_h_values);
+  engine_rebuild(e, /*repartitioned=*/1, clean_h_values);
+
+#ifdef WITH_MPI
+  /* Make the proxies. */
+  engine_makeproxies(e);
+#endif
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
@@ -2275,6 +2280,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Construct all cells again for a new round (need to update h_max) */
   engine_rebuild(e, 0, 0);
+
+#ifdef WITH_MPI
+  /* Make the proxies. */
+  engine_makeproxies(e);
+#endif
 
   /* No drift this time */
   engine_skip_drift(e);
@@ -3136,7 +3146,6 @@ void engine_makeproxies(struct engine *e) {
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
   const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
@@ -3286,12 +3295,14 @@ void engine_makeproxies(struct engine *e) {
                   if (periodic) {
 
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
-                        !(2. * r_max < theta_crit * min_dist_CoM2))
+                        !cell_can_use_pair_mm(&cells[cid], &cells[cjd],
+                        e, s, /*use_rebuild_data=*/1, /*is_tree_walk=*/0))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
-                    if (!(2. * r_max < theta_crit * min_dist_CoM2))
+                    if (!cell_can_use_pair_mm(&cells[cid], &cells[cjd],
+                        e, s, /*use_rebuild_data=*/1, /*is_tree_walk=*/0))
                       proxy_type |= (int)proxy_cell_type_gravity;
                   }
                 }
@@ -3398,9 +3409,6 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Do the initial partition of the cells. */
   partition_initial_partition(initial_partition, e->nodeID, e->nr_nodes, s);
-
-  /* Make the proxies. */
-  engine_makeproxies(e);
 
   /* Re-allocate the local parts. */
   if (e->verbose)

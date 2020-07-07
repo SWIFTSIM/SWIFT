@@ -1331,13 +1331,27 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+                                cells[0].width[2]};
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from a shifted CoM to centre of cell */
+  const double delta_CoM = engine_max_proxy_centre_frac * r_diag;
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = r_diag + 2. * delta_CoM;
 
   /* Compute how many cells away we need to walk */
-  const double distance = 2.5 * cells[0].width[0] / theta_crit;
-  int delta = (int)(distance / cells[0].width[0]) + 1;
+  const double distance = 2. * r_max * theta_crit_inv;
+  int delta = (int)(distance / cells[0].dmin) + 1;
   int delta_m = delta;
   int delta_p = delta;
 

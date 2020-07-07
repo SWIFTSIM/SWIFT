@@ -764,8 +764,6 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   }
 #endif
 
-  pm_mesh_allocate(mesh);
-
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
