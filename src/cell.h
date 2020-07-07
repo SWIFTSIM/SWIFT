@@ -390,6 +390,12 @@ struct cell {
     /*! The task to end the force calculation */
     struct task *end_force;
 
+    /*! Dependency implicit task for cooling (in->cooling->out) */
+    struct task *cooling_in;
+
+    /*! Dependency implicit task for cooling (in->cooling->out) */
+    struct task *cooling_out;
+
     /*! Task for cooling */
     struct task *cooling;
 
