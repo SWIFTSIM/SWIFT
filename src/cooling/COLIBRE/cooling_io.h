@@ -76,7 +76,7 @@ INLINE static void convert_part_sub_T(const struct engine* e,
                                       const struct part* p,
                                       const struct xpart* xp, float* ret) {
 
-  ret[0] = cooling_get_subgrid_temperature(
+  ret[0] = cooling_get_particle_subgrid_temperature(
       e->internal_units, e->physical_constants, e->cosmology,
       e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
 }
@@ -85,7 +85,7 @@ INLINE static void convert_part_sub_rho(const struct engine* e,
                                         const struct part* p,
                                         const struct xpart* xp, float* ret) {
 
-  ret[0] = cooling_get_subgrid_density(
+  ret[0] = cooling_get_particle_subgrid_density(
       e->internal_units, e->physical_constants, e->cosmology,
       e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
 }
@@ -95,15 +95,15 @@ INLINE static void convert_part_sub_species_frac(const struct engine* e,
                                                  const struct xpart* xp,
                                                  float* ret) {
 
-  ret[0] = cooling_get_subgrid_HI_fraction(
+  ret[0] = cooling_get_particle_subgrid_HI_fraction(
       e->internal_units, e->physical_constants, e->cosmology,
       e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
 
-  ret[1] = cooling_get_subgrid_HII_fraction(
+  ret[1] = cooling_get_particle_subgrid_HII_fraction(
       e->internal_units, e->physical_constants, e->cosmology,
       e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
 
-  ret[2] = cooling_get_subgrid_H2_fraction(
+  ret[2] = cooling_get_particle_subgrid_H2_fraction(
       e->internal_units, e->physical_constants, e->cosmology,
       e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
 

@@ -458,8 +458,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
   if (dt == 0.) {
 
     /* But we still set the subgrid properties to a valid state */
-    cooling_set_subgrid_properties(phys_const, us, cosmo, hydro_properties,
-                                   floor_props, cooling, p, xp);
+    cooling_set_particle_subgrid_properties(
+        phys_const, us, cosmo, hydro_properties, floor_props, cooling, p, xp);
 
     return;
   }
@@ -615,8 +615,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
   xp->cooling_data.radiated_energy -= hydro_get_mass(p) * (u_final - u_0);
 
   /* set subgrid properties and hydrogen fractions */
-  cooling_set_subgrid_properties(phys_const, us, cosmo, hydro_properties,
-                                 floor_props, cooling, p, xp);
+  cooling_set_particle_subgrid_properties(
+      phys_const, us, cosmo, hydro_properties, floor_props, cooling, p, xp);
 }
 
 /**
@@ -680,7 +680,7 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
  * @param p The #part.
  * @param xp The #xpart.
  */
-float cooling_get_subgrid_HI_fraction(
+float cooling_get_particle_subgrid_HI_fraction(
     const struct unit_system *us, const struct phys_const *phys_const,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
@@ -733,7 +733,7 @@ float cooling_get_subgrid_HI_fraction(
  * @param p The #part.
  * @param xp The #xpart.
  */
-float cooling_get_subgrid_HII_fraction(
+float cooling_get_particle_subgrid_HII_fraction(
     const struct unit_system *us, const struct phys_const *phys_const,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
@@ -786,7 +786,7 @@ float cooling_get_subgrid_HII_fraction(
  * @param p The #part.
  * @param xp The #xpart.
  */
-float cooling_get_subgrid_H2_fraction(
+float cooling_get_particle_subgrid_H2_fraction(
     const struct unit_system *us, const struct phys_const *phys_const,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
@@ -838,7 +838,7 @@ float cooling_get_subgrid_H2_fraction(
  * @param p The #part.
  * @param xp The #xpart.
  */
-float cooling_get_subgrid_temperature(
+float cooling_get_particle_subgrid_temperature(
     const struct unit_system *us, const struct phys_const *phys_const,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
@@ -892,7 +892,7 @@ float cooling_get_subgrid_temperature(
  * @param p The #part.
  * @param xp The #xpart.
  */
-float cooling_get_subgrid_density(
+float cooling_get_particle_subgrid_density(
     const struct unit_system *us, const struct phys_const *phys_const,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
@@ -941,7 +941,7 @@ float cooling_get_subgrid_density(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-void cooling_set_subgrid_properties(
+void cooling_set_particle_subgrid_properties(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props,
