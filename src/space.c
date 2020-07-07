@@ -60,6 +60,7 @@
 #include "proxy.h"
 #include "restart.h"
 #include "sink.h"
+#include "sidm.h"
 #include "sort_part.h"
 #include "space_unique_id.h"
 #include "star_formation.h"
@@ -4892,6 +4893,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a;
   const struct gravity_props *grav_props = s->e->gravity_properties;
+  const struct sidm_props *sidm_props = s->e->sidm_properties;
 
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
@@ -4914,6 +4916,8 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     gravity_first_init_gpart(&gp[k], grav_props);
+
+    sidm_first_init_gpart(&gp[k], sidm_props);
 
 #ifdef WITH_LOGGER
     logger_part_data_init(&gp[k].logger_data);
