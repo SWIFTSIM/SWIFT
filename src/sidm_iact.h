@@ -28,6 +28,8 @@
 
 #include "cosmology.h"
 #include "units.h"
+#include "random.h"
+
 
 
 /**
@@ -41,11 +43,14 @@
  * @param gpj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param ti_current Current integer time (for random numbers).
+
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_sidm(float r2, const float *dx, float hi, float hj,
                  struct gpart *gpi, struct gpart *gpj,
                  float a, float H, const double dt,
+                 const integertime_t ti_current,
                  const struct sidm_props* sidm_props) {
         
     /* Calculate probability of gparticles i & j of scattering within the next time step */
@@ -59,7 +64,7 @@ runner_iact_sidm(float r2, const float *dx, float hi, float hj,
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    const double mass = gpi->mass;
+    const double mass = gpj->mass;
     
     /* Pi constant */
     const double pi_constant = 3.14159265;
@@ -73,9 +78,13 @@ runner_iact_sidm(float r2, const float *dx, float hi, float hj,
     
     /* Calculate SIDM probability (in internal units) */
     double Probability_SIDM_ij = Rate_SIDM_ij * dt;
-
-    printf("Pij %f",Probability_SIDM_ij);
     
+    /* Draw a random number */
+    const float rand = random_unit_interval(gpj->id_or_neg_offset, ti_current, random_number_SIDM);
+    
+    /* Are we lucky? If so we have DM-DM interactions */
+    if (Probability_SIDM_ij > rand) printf("Pij %f",Probability_SIDM_ij);
+
 }
 
 
