@@ -78,6 +78,7 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "serial_io.h"
+#include "sidm.h"
 #include "single_io.h"
 #include "space.h"
 #include "star_formation.h"

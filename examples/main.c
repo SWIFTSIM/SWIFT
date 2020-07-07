@@ -165,7 +165,6 @@ int main(int argc, char *argv[]) {
   int with_fof = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
-  int with_sidm = 0;
   int with_black_holes = 0;
   int with_timestep_limiter = 0;
   int with_timestep_sync = 0;
@@ -199,8 +198,6 @@ int main(int argc, char *argv[]) {
 
       OPT_GROUP("  Simulation options:\n"),
       OPT_BOOLEAN('b', "feedback", &with_feedback, "Run with stars feedback.",
-                  NULL, 0, 0),
-      OPT_BOOLEAN('b', "sidm", &with_sidm, "Run with self-interacting dark matter.",
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
                   "Run with cosmological time integration.", NULL, 0, 0),
@@ -962,8 +959,7 @@ int main(int argc, char *argv[]) {
 
       /* Initialise sidm properties */
       bzero(&sidm_properties, sizeof(struct sidm_props));
-      if (with_sidm)
-          sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
+      sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
 
       
     /* Initialise the black holes properties */
@@ -1280,7 +1276,6 @@ int main(int argc, char *argv[]) {
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
-    if (with_sidm) engine_policies |= engine_policy_sidm;
     if (with_black_holes) engine_policies |= engine_policy_black_holes;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;

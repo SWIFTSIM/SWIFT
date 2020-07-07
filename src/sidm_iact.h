@@ -26,6 +26,10 @@
 #include "sidm.h"
 #include "sidm_properties.h"
 
+#include "cosmology.h"
+#include "units.h"
+
+
 /**
  * @brief do self-interacting DM computation. Computes the probability of DM-DM interactions
  *
@@ -41,15 +45,36 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_sidm(float r2, const float *dx, float hi, float hj,
                  struct gpart *gpi, struct gpart *gpj,
-                 float a, float H, const double dt_Gyr,
+                 float a, float H, const double dt,
                  const struct sidm_props* sidm_props) {
         
     /* Calculate probability of gparticles i & j of scattering within the next time step */
-    float dv[3] = {gpi->v_full[0] - gpj->v_full[0], gpi->v_full[1] - gpj->v_full[1], gpi->v_full[2] - gpj->v_full[2]};
-    const float v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double sigma = sidm_props->sigma_phys;
-    float Pij = sqrtf(v2) * dt_Gyr * sigma;
-    printf("Pij %f",Pij);
+    
+    /* Velocities of interacting particles */
+    const double dv[3] = {gpi->v_full[0] - gpj->v_full[0], gpi->v_full[1] - gpj->v_full[1], gpi->v_full[2] - gpj->v_full[2]};
+    const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+    const double vij = sqrt(v2);
+    
+    /* Scattering cross section per unit mass (in internal units) */
+    const double sigma = sidm_props->sigma;
+    
+    /* DM particle mass */
+    const double mass = gpi->mass;
+    
+    /* Pi constant */
+    const double pi_constant = 3.14159265;
+    
+    /* DM-DM distance */
+    const double r = sqrt(r2);
+    const double h_SIDM3 = r * r * r;
+    
+    /* Calculate scattering rate (in internal units) */
+    double Rate_SIDM_ij = sigma * mass * vij / (4.0 * pi_constant * h_SIDM3 / 3.0);
+    
+    /* Calculate SIDM probability (in internal units) */
+    double Probability_SIDM_ij = Rate_SIDM_ij * dt;
+
+    printf("Pij %f",Probability_SIDM_ij);
     
 }
 

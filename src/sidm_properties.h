@@ -50,8 +50,11 @@ struct sidm_props {
     /*! Are we using constant scattering? */
     /*int with_sigma_constant;*/
 
-    /* Scattering cross section in physical units (cm^2/g) */
-    float sigma_phys;
+    /* Scattering cross section (in physical units: cm^2/g) */
+    double sigma_cgs;
+
+    /* Scattering cross section (in internal units) */
+    double sigma;
     
 };
 
