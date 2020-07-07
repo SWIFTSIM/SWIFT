@@ -872,11 +872,17 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
           p->time_bin = e->min_active_bin;
           p->gpart->time_bin = p->time_bin;
           c->hydro.ti_end_min = min(c->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+          c->hydro.ti_end_max = max(c->hydro.ti_end_max, e->ti_current + get_integer_timestep(e->max_active_bin));
+          c->grav.ti_end_min = min(c->grav.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+          c->grav.ti_end_max = max(c->grav.ti_end_max, e->ti_current + get_integer_timestep(e->max_active_bin));
 
           // update parents
           struct cell *parent_cell = c->parent;
           while (parent_cell != NULL) {
             parent_cell->hydro.ti_end_min = min(parent_cell->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+            parent_cell->hydro.ti_end_max = max(parent_cell->hydro.ti_end_max, e->ti_current + get_integer_timestep(e->max_active_bin));
+            parent_cell->grav.ti_end_min = min(parent_cell->grav.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+            parent_cell->grav.ti_end_max = max(parent_cell->grav.ti_end_max, e->ti_current + get_integer_timestep(e->max_active_bin));
             parent_cell = parent_cell->parent;
           }
 

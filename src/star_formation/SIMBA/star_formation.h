@@ -344,9 +344,7 @@ INLINE static int star_formation_should_convert_to_star(
   /* Have we been lucky and need to form a star? */
   if (prob <= random_number && dt_star > 0) {
     /* In SIMBA feedback model we launch winds if we do not form a star */
-    //int old_nparts_decoupled = c->hydro.nparts_decoupled;
     star_formation_feedback(p, xp, c, e->cosmology, e->feedback_props, e->ti_current);
-    //message("cell %p decoupled particles %d old decoupled %d", c, c->hydro.nparts_decoupled, old_nparts_decoupled);
   }
   return (prob > random_number);
 }

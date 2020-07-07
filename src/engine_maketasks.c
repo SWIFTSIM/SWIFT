@@ -917,10 +917,16 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       /* Particle recoupling */
       // ALEXEI: make sure we're only doing this for the types of star formation which actually decouple particles
       if (with_star_formation) {
-	c->part_recouple = scheduler_addtask(s, task_type_part_recouple,
-					     task_subtype_none, 0, 0, c, NULL);
+	    c->part_recouple = scheduler_addtask(s, task_type_part_recouple,
+	    				     task_subtype_none, 0, 0, c, NULL);
 
-	scheduler_addunlock(s, c->kick1, c->part_recouple);
+        // ALEXEI: first attempt make it only depend on the kick
+	    scheduler_addunlock(s, c->kick1, c->part_recouple);
+
+        // ALEXEI: make it happen just before the timestep. This is possibly an improvement, however still crashes with an undrifted cell ~1500 steps into an eagle25 run.
+        //scheduler_addunlock(s, c->kick2, c->part_recouple);
+        //scheduler_addunlock(s, c->part_recouple, c->timestep);
+
       }
     }
   } else { /* We are above the super-cell so need to go deeper */
