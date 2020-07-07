@@ -42,7 +42,6 @@ static inline void compute_kick_speed(struct xpart *xp, const struct feedback_pr
   const float v_circ = pow(xp->feedback_data.host_galaxy_mass_baryons/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
 
   /* Calculate wind speed */
-  // ALEXEI: checkout what the numbers in this equation mean. Maybe possible future simplifications
   xp->feedback_data.v_kick = feedback_props->galsf_firevel 
       * pow(v_circ * cosmo->a /feedback_props->scale_factor_norm,feedback_props->galsf_firevel_slope) 
       //* pow(feedback_props->scale_factor_norm,0.12 - feedback_props->galsf_firevel_slope) // this term seems to be just =1 since exponent is zero
@@ -92,10 +91,9 @@ static inline void compute_heating(struct part *p, struct xpart *xp, const struc
   float u_SN = feedback_props->SN_energy * (0.01020788/1.989e33) * xp->sf_data.star_mass_formed 
                / xp->feedback_data.wind_mass;
 
-  // ALEXEI: should this be smoothed metal mass fraction?
   if (p->chemistry_data.metal_mass_fraction[0] < 1.e-9) {
     // Schaerer 2003
-    u_SN *= exp10(-0.0029*pow(log10(p->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); // ALEXEI: what are all these numbers?
+    u_SN *= exp10(-0.0029*pow(log10(p->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); 
   } else {
     // As above but at zero metallicity
     u_SN *= 2.61634;
@@ -261,7 +259,6 @@ __attribute__((always_inline)) INLINE static void launch_wind(
 
   /* Increment cell counter of decoupled particles */
   c->hydro.nparts_decoupled++;
-  //message("decoupled particle %llu n decoupled %d cell %p depth maxdepth %d %d", p->id, c->hydro.nparts_decoupled, c, c->depth, c->maxdepth);
 
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_decoupled = ti_current;

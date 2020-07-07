@@ -5610,55 +5610,6 @@ void cell_recursively_shift_sparts(struct cell *c,
   }
 }
 
-// ALEXEI: debugging recoupling function
-void cell_recouple(struct cell *c, 
-		   struct engine *e) {
-  
-  if (c->split) {
-    for (int j = 0; j < 8; ++j) {
-      if (c->progeny[j] != NULL) cell_recouple(c->progeny[j], e);
-    }
-  } else {
-    /* Drift from the last time the cell was drifted to the current time */
-    double dt_drift;
-    const int with_cosmology = (e->policy & engine_policy_cosmology);
-    if (with_cosmology) {
-      dt_drift = cosmology_get_drift_factor(e->cosmology, e->ti_old, e->ti_current);
-    } else {
-      dt_drift = (e->ti_current - e->ti_old) * e->time_base;
-    }
-
-    for (int k = 0; k < c->hydro.count; k++) {
-      struct part *p = &c->hydro.parts[k];
-      /* Decrement time delay for decoupled particles */
-      if (part_is_decoupled(p)) {
-        p->delay_time -= dt_drift;
-        if (p->delay_time < 0. || p->rho > e->feedback_props->recoupling_density) {
-          // ALEXEI: Note that the choice of min_active_bin implies that the timestep might be smaller than actually required. 
-          // This will likely result in slow performance as there will be some particle somewhere that is being recoupled.
-          // Think of ways to choose a more apropriate time bin. 
-          p->time_bin = e->min_active_bin;
-          p->gpart->time_bin = p->time_bin;
-	  c->hydro.ti_end_min = min(c->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
-      c->grav.ti_end_min = min(c->grav.ti_end_min, e->ti_current);
-	  
-	  // update parents
-	  struct cell *parent_cell = c->parent;
-	  while (parent_cell != NULL) {
-	    parent_cell->hydro.ti_end_min = min(parent_cell->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
-        parent_cell->grav.ti_end_min = min(parent_cell->grav.ti_end_min, e->ti_current);
-	    parent_cell = parent_cell->parent;
-	  }
-#if SWIFT_DEBUG_CHECKS
-          p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
-#endif    
-
-        }
-      }
-    }
-  }
-}
-
 /**
  * @brief Recursively update the pointer and counter for #gpart after the
  * addition of a new particle.
@@ -5711,19 +5662,6 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
   if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
-  //if (c->grav.ti_old_part != e->ti_current) {
-  //  for (int j = 0; j < c->grav.count; j++) {
-  //    if (c->grav.parts[j].ti_drift != c->grav.ti_old_part) 
-  //      message("ti_drift doesn't correspond to ti_old_part for part %llu, \
-  //        decoupled %d, ti_drift %llu ti_old_part %llu ti_current %llu", 
-  //        e->s->parts[-(c->grav.parts[j].id_or_neg_offset)].id, 
-  //        part_is_decoupled(&e->s->parts[-(c->grav.parts[j].id_or_neg_offset)]), 
-  //        c->grav.parts[j].ti_drift, 
-  //        c->grav.ti_old_part, 
-  //        e->ti_current);
-  //  }
-  //  error("Undrifted cell! cell %p grav.ti_old_part %llu ti_current %llu ti_end_min %llu, count %d decoupled %d", c, c->grav.ti_old_part, e->ti_current, c->grav.ti_end_min, c->hydro.count, c->hydro.nparts_decoupled);
-  //}
   if (c->split) error("Addition of spart performed above the leaf level");
 
   /* Progeny number at each level */

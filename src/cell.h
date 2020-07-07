@@ -989,7 +989,6 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const int use_rebuild_data, const int is_tree_walk);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
                                  const struct engine *e, const struct space *s);
-void cell_recouple(struct cell *c, struct engine *e);
 
 /**
  * @brief Compute the square of the minimal distance between any two points in

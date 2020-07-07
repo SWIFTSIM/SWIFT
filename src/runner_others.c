@@ -473,9 +473,6 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
   
-      // ALEXEI: debugging
-      //if (p->id == 1) message("pid %llu min ngb timebin %d", p->id, p->limiter_data.min_ngb_time_bin);
-
       if (part_is_active(p, e)) {
 
         /* Finish the force loop */
@@ -863,7 +860,6 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
       struct part *p = &c->hydro.parts[k];
       /* Decrement time delay for decoupled particles */
       if (part_is_decoupled(p)) {
-        // ALEXEI: think about cosmology dt!!!
         p->delay_time -= dt_drift;
         if (p->delay_time < 0. || p->rho > e->feedback_props->recoupling_density) {
           // ALEXEI: Note that the choice of min_active_bin implies that the timestep might be smaller than actually required. 
@@ -888,15 +884,7 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
 
 	  // Update counter
 	  c->hydro.nparts_decoupled--; 
-	  if (c->hydro.nparts_decoupled < 0) {
-        // ALEXEI: Debugging sanity check. remove counting of particles
-	    int n_decoupled = 0;
-	    for (int n = 0; n < c->hydro.count; n++) 
-	      if (part_is_decoupled(&(c->hydro.parts[n]))) n_decoupled++;
-	    error("negative particles decoupled %.d directly count decoupled %d cell %p", c->hydro.nparts_decoupled, n_decoupled, c);
-	  }
 	  
-	  //message("recoupled particle %llu cell %p depth maxdepth %d %d ti current grav %llu %llu", p->id, c, c->depth, c->maxdepth, e->ti_current, c->grav.ti_old_part);
 #if SWIFT_DEBUG_CHECKS
           p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
 #endif

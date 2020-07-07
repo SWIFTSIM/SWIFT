@@ -2664,9 +2664,7 @@ void engine_step(struct engine *e) {
   double start_systime = 0.0;
   clocks_get_cputimes_used(&start_usertime, &start_systime);
 #endif
-  // ALEXEI: activate all particle recoupling tasks for debugging
-  //for (int k = 0; k < e->sched.nr_tasks; k++)
-  //  scheduler_activate(&e->sched, &e->sched.tasks[k]);
+  
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
@@ -2718,16 +2716,6 @@ void engine_step(struct engine *e) {
   space_check_sort_flags(e->s);
   space_check_swallow(e->s);
 #endif
-
-  // ALEXEI: Temporary attempt to recouple particles
-  // Loop over all the particles in space, check delay_time counter, possibly recouple, give timebin corresponding to next timestep. (get_time_bin(ti_next) or similar)
-
-  //if (e->s->cells_top != NULL) {
-  //  for (int i = 0; i < e->s->nr_cells; i++) {
-  //    struct cell *c = &e->s->cells_top[i];
-  //    cell_recouple(c, e);
-  //  }
-  //}
 
   // ALEXEI: update total stellar mass. To be used for development in isolated galaxy test case only, remove once can update stellar mass using fof for simba
   double total_stellar_mass = 0.;
