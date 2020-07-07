@@ -2121,7 +2121,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     return;
     
   /* Calculate DM-DM interactions */
-  runner_dopair_sidm(r, ci, cj);
+  /*runner_dopair_sidm(r, ci, cj);*/
 
 
 #ifdef SWIFT_DEBUG_CHECKS

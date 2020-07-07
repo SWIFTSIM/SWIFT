@@ -98,10 +98,10 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
                 dt = get_timestep(gpj->time_bin, e->time_base);
             }
             
-            const double Gyr_in_cgs = 1e9 * 365.25 * 24. * 3600.;
+            /*const double Gyr_in_cgs = 1e9 * 365.25 * 24. * 3600.;
             const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
             const double conversion_factor = time_to_cgs / Gyr_in_cgs;
-            const double dt_Gyr = dt * conversion_factor;
+            const double dt_Gyr = dt * conversion_factor;*/
             
             const float hj = gravity_get_softening(gpj, grav_props);
             const float hj2 = hj * hj;
@@ -112,7 +112,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
 
             /* Hit or miss? */
             if (r2 < hj2) {
-                runner_iact_sidm(r2, dx, hi, hj, gpi, gpj, a, H, dt_Gyr, sidm_props);
+                runner_iact_sidm(r2, dx, hi, hj, gpi, gpj, a, H, dt, sidm_props);
             }
 
         } /* loop over the parts in cell. */
