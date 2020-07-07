@@ -47,6 +47,10 @@ struct black_holes_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /*! Use nibbling? */
+  int use_nibbling;
+  
 };
 
 /**
@@ -95,6 +99,8 @@ static INLINE void black_holes_props_init(struct black_holes_props *bp,
     bp->log_max_h_change = hydro_props->log_max_h_change;
   else
     bp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  bp->use_nibbling = 0;
 }
 
 /**
