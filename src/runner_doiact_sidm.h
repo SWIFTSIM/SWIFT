@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Camila Correa (camila.correa@uva.nl)
+ * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,18 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SIDM_H
-#define SWIFT_SIDM_H
+#ifndef SWIFT_RUNNER_DOIACT_SIDM_H
+#define SWIFT_RUNNER_DOIACT_SIDM_H
 
-/* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "const.h"
-#include "inline.h"
-#include "part.h"
-#include "sidm_properties.h"
-#include "sidm_iact.h"
+struct runner;
+struct cell;
 
+void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj);
 
-#endif /* SWIFT_SIDM_H */
+void runner_doself_sidm(struct runner *r, struct cell *c);
+
+#endif /* SWIFT_RUNNER_DOIACT_SIDM_H */

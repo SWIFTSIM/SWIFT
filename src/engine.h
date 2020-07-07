@@ -82,8 +82,9 @@ enum engine_policy {
   engine_policy_logger = (1 << 23),
   engine_policy_line_of_sight = (1 << 24),
   engine_policy_sink = (1 << 25),
+  engine_policy_sidm = (1 << 26),
 };
-#define engine_maxpolicy 26
+#define engine_maxpolicy 27
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -453,6 +454,9 @@ struct engine {
   /* Properties of the sellar feedback model */
   struct feedback_props *feedback_props;
 
+  /* Properties of the sidm model */
+  struct sidm_props *sidm_properties;
+
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
@@ -561,6 +565,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  const struct black_holes_props *black_holes,
                  struct feedback_props *feedback, struct pm_mesh *mesh,
+                 struct sidm_props *sidm,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
