@@ -238,6 +238,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_kick1:
+    case task_type_sidm_kick:
     case task_type_kick2:
     case task_type_logger:
     case task_type_fof_self:
@@ -427,6 +428,7 @@ void task_unlock(struct task *t) {
   switch (type) {
 
     case task_type_kick1:
+    case task_type_sidm_kick:
     case task_type_kick2:
     case task_type_logger:
     case task_type_timestep:
@@ -600,6 +602,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_kick1:
+    case task_type_sidm_kick:
     case task_type_kick2:
     case task_type_logger:
     case task_type_timestep:
@@ -1368,6 +1371,7 @@ enum task_categories task_get_category(const struct task *t) {
       return task_category_mpi;
 
     case task_type_kick1:
+    case task_type_sidm_kick:
     case task_type_kick2:
     case task_type_timestep:
       return task_category_time_integration;

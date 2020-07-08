@@ -2120,10 +2120,6 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
         (cell_is_active_gravity(cj, e) && cj->nodeID == nodeID)))
     return;
     
-  /* Calculate DM-DM interactions */
-  /*runner_dopair_sidm(r, ci, cj);*/
-
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   const int gcount_i = ci->grav.count;
@@ -2212,6 +2208,9 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
     /* We have two leaves. Go P-P. */
     runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
+      
+    /* Calculate DM-DM interactions */
+    runner_dopair_sidm(r, ci, cj);
 
   } else {
 

@@ -45,6 +45,7 @@
 #include "error.h"
 #include "fof_io.h"
 #include "gravity_io.h"
+#include "sidm_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
 #include "hydro_properties.h"
@@ -556,6 +557,7 @@ void write_output_distributed(struct engine* e,
           /* This is a DM-only run without background or inhibited particles */
           Nparticles = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
+          num_fields += sidm_write_gparts(gparts, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_gparts(gparts, list + num_fields);
           }
@@ -591,6 +593,7 @@ void write_output_distributed(struct engine* e,
 
           /* Select the fields to write */
           darkmatter_write_particles(gparts_written, list, &num_fields);
+          num_fields += sidm_write_gparts(gparts, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_gparts(gparts_written, list + num_fields);
           }
@@ -629,6 +632,7 @@ void write_output_distributed(struct engine* e,
 
         /* Select the fields to write */
         darkmatter_write_particles(gparts_written, list, &num_fields);
+        num_fields += sidm_write_gparts(gparts, list + num_fields);
         if (with_fof) {
           num_fields += fof_write_gparts(gparts_written, list + num_fields);
         }

@@ -814,6 +814,9 @@ struct cell {
 
   /*! The first kick task */
   struct task *kick1;
+    
+  /*! kick due to DM-DM interactions */
+  struct task *sidm_kick;
 
   /*! The second kick task */
   struct task *kick2;

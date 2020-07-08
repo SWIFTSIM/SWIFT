@@ -855,6 +855,10 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
                                    c, NULL);
 
+      /* CC. (Adding also sidm kick) */
+      c->sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0,
+                                     c, NULL);
+
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
                                    c, NULL);
 
@@ -883,6 +887,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       scheduler_addunlock(s, kick2_or_logger, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
+      scheduler_addunlock(s, c->kick1, c->sidm_kick);
 
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0) {
@@ -898,6 +903,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
         scheduler_addunlock(s, c->timestep, c->timestep_limiter);
         scheduler_addunlock(s, c->timestep_limiter, c->kick1);
+        scheduler_addunlock(s, c->kick1, c->sidm_kick);
       }
 
       /* Time-step synchronization */
@@ -908,6 +914,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
         scheduler_addunlock(s, c->timestep, c->timestep_sync);
         scheduler_addunlock(s, c->timestep_sync, c->kick1);
+        scheduler_addunlock(s, c->kick1, c->sidm_kick);
+          
       }
 
       if (with_timestep_limiter && with_timestep_sync) {
@@ -2068,6 +2076,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->super->timestep, t_limiter);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
         scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+        scheduler_addunlock(sched, ci->super->kick1, ci->super->sidm_kick);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
       }
 
@@ -2268,6 +2277,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
           scheduler_addunlock(sched, ci->super->timestep, t_limiter);
           scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+          scheduler_addunlock(sched, ci->super->kick1, ci->super->sidm_kick);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
 
@@ -2361,6 +2371,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           if (with_timestep_limiter) {
             scheduler_addunlock(sched, cj->super->timestep, t_limiter);
             scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+            scheduler_addunlock(sched, cj->super->kick1, cj->super->sidm_kick);
             scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
           }
 
@@ -2540,6 +2551,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
         scheduler_addunlock(sched, ci->super->timestep, t_limiter);
         scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+        scheduler_addunlock(sched, ci->super->kick1, ci->super->sidm_kick);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
       }
 
@@ -2743,6 +2755,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
           scheduler_addunlock(sched, ci->super->timestep, t_limiter);
           scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+          scheduler_addunlock(sched, ci->super->kick1, ci->super->sidm_kick);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
 
@@ -2837,6 +2850,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           if (with_timestep_limiter) {
             scheduler_addunlock(sched, cj->super->timestep, t_limiter);
             scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+            scheduler_addunlock(sched, cj->super->kick1, cj->super->sidm_kick);
             scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
           }
 

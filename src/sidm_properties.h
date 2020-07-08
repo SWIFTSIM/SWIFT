@@ -71,6 +71,9 @@ struct sidm_gpart_data {
     
     /*! Particle search radius */
     float h_sidm;
+    
+    /*! Number of DM-DM collisions */
+    float num_sidm;
 };
 
 void sidm_props_init(struct sidm_props* sidm_props,

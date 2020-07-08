@@ -19,10 +19,22 @@
 #ifndef SWIFT_SIDM_IO_H
 #define SWIFT_SIDM_IO_H
 
-/* Standard headers */
-#include <float.h>
-
-/* Local includes. */
+/**
+ * @brief Specifies which g-particle fields to write to a dataset
+ *
+ * @param gparts The g-particle array.
+ * @param list The list of i/o properties to write.
+ * @param num_fields The number of i/o fields to write.
+ */
+INLINE static int sidm_write_gparts(const struct gpart* gparts,
+                                              struct io_props* list) {
+    
+    /* List what we want to write */
+    list[0] = io_make_output_field("SIDMevents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                   gparts, sidm_data.num_sidm, "Number of DM-DM collisions the particle has had");
+    return 1;
+    
+}
 
 
 #endif /* SWIFT_SIDM_IO_H */
