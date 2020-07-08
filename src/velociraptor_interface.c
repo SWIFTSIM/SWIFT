@@ -232,6 +232,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
   const struct space *s = e->s;
   struct swift_vel_part *swift_parts =
       data->swift_parts + (ptrdiff_t)(gparts - s->gparts);
+  const ptrdiff_t index_offset = gparts - s->gparts;
 
   /* Handle on the other particle types */
   const struct part *parts = s->parts;
@@ -287,7 +288,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
 
     swift_parts[i].type = gparts[i].type;
 
-    swift_parts[i].index = i;
+    swift_parts[i].index = i + index_offset;
 #ifdef WITH_MPI
     swift_parts[i].task = e->nodeID;
 #else
