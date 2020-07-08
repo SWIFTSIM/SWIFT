@@ -392,6 +392,10 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 #endif
     return counts;
   }
+  else {
+    c->grav.parts = gparts;
+    c->grav.parts_rebuild = gparts;
+  }
 
   /* Go deeper to find the level where the tasks are */
   if (c->split) {
