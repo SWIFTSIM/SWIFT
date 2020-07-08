@@ -391,8 +391,7 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
       error("Something is wrong with the foreign counts");
 #endif
     return counts;
-  }
-  else {
+  } else {
     c->grav.parts = gparts;
     c->grav.parts_rebuild = gparts;
   }
