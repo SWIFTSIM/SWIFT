@@ -2891,6 +2891,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->timestep_sync);
     scheduler_activate(s, c->kick1);
+    scheduler_activate(s, c->sidm_kick);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sync);
@@ -2905,6 +2906,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
 #endif
         scheduler_activate(s, parent->timestep_sync);
         scheduler_activate(s, parent->kick1);
+        scheduler_activate(s, parent->sidm_kick);
         break;
       }
     }
@@ -3047,6 +3049,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->timestep_limiter);
     scheduler_activate(s, c->kick1);
+    scheduler_activate(s, c->sidm_kick);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL &&
@@ -3062,6 +3065,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 #endif
         scheduler_activate(s, parent->timestep_limiter);
         scheduler_activate(s, parent->kick1);
+        scheduler_activate(s, parent->sidm_kick);
         break;
       }
     }
@@ -3915,6 +3919,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, c->hydro.extra_ghost);
     if (c->hydro.ghost_in != NULL) cell_activate_hydro_ghosts(c, s, e);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->sidm_kick != NULL) scheduler_activate(s, c->sidm_kick);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
@@ -4069,6 +4074,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav.init != NULL) scheduler_activate(s, c->grav.init);
     if (c->grav.init_out != NULL) scheduler_activate(s, c->grav.init_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->sidm_kick != NULL) scheduler_activate(s, c->sidm_kick);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
@@ -4326,7 +4332,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
       if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+      if (c->sidm_kick != NULL) scheduler_activate(s, c->sidm_kick);
       if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+      if (c->sidm_kick != NULL) scheduler_activate(s, c->sidm_kick);
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
 #ifdef WITH_LOGGER
       if (c->logger != NULL) scheduler_activate(s, c->logger);
@@ -4608,6 +4616,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     if (c->black_holes.black_holes_out != NULL)
       scheduler_activate(s, c->black_holes.black_holes_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->sidm_kick != NULL) scheduler_activate(s, c->sidm_kick);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
 #ifdef WITH_LOGGER

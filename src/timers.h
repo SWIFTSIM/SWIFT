@@ -46,6 +46,7 @@ enum {
   timer_drift_spart,
   timer_drift_bpart,
   timer_kick1,
+  timer_sidm_kick,
   timer_kick2,
   timer_timestep,
   timer_end_hydro_force,
