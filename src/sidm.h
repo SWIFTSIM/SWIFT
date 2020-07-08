@@ -43,11 +43,14 @@
 __attribute__((always_inline)) INLINE static void sidm_first_init_gpart(struct gpart* restrict gp,
                                                                         const struct sidm_props* sidm_props) {
     
-    /*! flag indicating if particle in given time-step has been scattered*/
+    /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
     gp->sidm_data.sidm_flag = 0.0f;
     
     /*! Particle search radius */
     gp->sidm_data.h_sidm = 0.0f;
+    
+    /*! Number of DM-DM particle collisions */
+    gp->sidm_data.num_sidm = 0.0f;
     
     /* Particle velocity */
     gp->sidm_data.si_v_full[0] = 0.0f;

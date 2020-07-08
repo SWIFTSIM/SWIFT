@@ -349,6 +349,9 @@ void *runner_main(void *data) {
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;
+        case task_type_sidm_kick:
+          runner_do_sidm_kick(r, ci);
+        break;
         case task_type_kick2:
           runner_do_kick2(r, ci, 1);
           break;

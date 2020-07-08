@@ -51,7 +51,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
     const struct cosmology *cosmo = e->cosmology;
     const int with_cosmology = (e->policy & engine_policy_cosmology);
     const struct gravity_props *grav_props = e->gravity_properties;
-    /*const struct unit_system *us = e->internal_units;*/
+    const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
 
     
@@ -75,7 +75,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
         /* Skip inactive particles */
         if (!gpart_is_active(gpi, e)) continue;
         
-        const float hi = gravity_get_softening(gpi, grav_props);
+        /*const float hi = gravity_get_softening(gpi, grav_props);*/
         
         /* Loop over every other particle in the cell. */
         for (int pjd = 0; pjd < gcount; pjd++) {
@@ -98,10 +98,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
                 dt = get_timestep(gpj->time_bin, e->time_base);
             }
             
-            /*const double Gyr_in_cgs = 1e9 * 365.25 * 24. * 3600.;
-            const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-            const double conversion_factor = time_to_cgs / Gyr_in_cgs;
-            const double dt_Gyr = dt * conversion_factor;*/
+            const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
             
             const float hj = gravity_get_softening(gpj, grav_props);
             const float hj2 = hj * hj;
@@ -112,7 +109,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
 
             /* Hit or miss? */
             if (r2 < hj2) {
-                runner_iact_sidm(r2, dx, hi, hj, gpi, gpj, a, H, dt, ti_begin, sidm_props);
+                runner_iact_sidm(hj, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
             }
 
         } /* loop over the parts in cell. */
@@ -136,7 +133,7 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
     const struct cosmology *cosmo = e->cosmology;
     const int with_cosmology = (e->policy & engine_policy_cosmology);
     const struct gravity_props *grav_props = e->gravity_properties;
-    /*const struct unit_system *us = e->internal_units;*/
+    const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
     
     /* Cosmological terms */
@@ -161,7 +158,7 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Skip inactive particles */
         if (!gpart_is_active(gpi, e)) continue;
         
-        const float hi = gravity_get_softening(gpi, grav_props);
+        /*const float hi = gravity_get_softening(gpi, grav_props);*/
         
         /* Loop over every other particle in the cell. */
         for (int pjd = 0; pjd < gcount_j; pjd++) {
@@ -184,10 +181,7 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
                 dt = get_timestep(gpj->time_bin, e->time_base);
             }
             
-            /*const double Gyr_in_cgs = 1e9 * 365.25 * 24. * 3600.;
-             const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-             const double conversion_factor = time_to_cgs / Gyr_in_cgs;
-             const double dt_Gyr = dt * conversion_factor;*/
+            const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
             
             const float hj = gravity_get_softening(gpj, grav_props);
             const float hj2 = hj * hj;
@@ -198,12 +192,46 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
             
             /* Hit or miss? */
             if (r2 < hj2) {
-                runner_iact_sidm(r2, dx, hi, hj, gpi, gpj, a, H, dt, ti_begin, sidm_props);
+                runner_iact_sidm(hj, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
             }
             
         } /* loop over the parts in cell cj. */
     } /* loop over the other parts in cell ci. */
     
+}
+
+/**
+ * @brief Performs the kicks in momentum space from DM-DM interactions on all the active particles in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+void runner_do_sidm_kick(struct runner *r, struct cell *c) {
+    
+    const struct engine *e = r->e;
+    struct gpart *restrict gparts = c->grav.parts;
+    const int gcount = c->grav.count;
+    
+    /* Anything to do here? */
+    if (!cell_is_starting_gravity(c, e))
+        return;
+    
+    /* Recurse? */
+    if (c->split) {
+        for (int k = 0; k < 8; k++)
+            if (c->progeny[k] != NULL) runner_do_sidm_kick(r, c->progeny[k]);
+    } else {
+        
+        /* Loop over the gparts in this cell. */
+        for (int k = 0; k < gcount; k++) {
+            
+            /* Get a handle on the part. */
+            struct gpart *restrict gp = &gparts[k];
+                
+            /* do the kick */
+            communicate_sidm_kick_to_gpart(gp);
+        }
+    }
 }
 
 

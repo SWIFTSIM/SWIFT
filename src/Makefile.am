@@ -47,8 +47,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
     statistics.h memswap.h cache.h runner_doiact_hydro_vec.h profiler.h entropy_floor.h \
-    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h sidm_properties.h gravity_derivatives.h \
-    gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
+    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h sidm.h sidm_iact.h sidm_properties.h sidm_io.h \
+    gravity_derivatives.h gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h \
@@ -125,7 +125,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h \
 	         runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h \
-		 runner_doiact_sidm.h sidm_iact.h\
+		 runner_doiact_sidm.h \
                  runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h \
 		 runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
                  kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \
