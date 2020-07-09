@@ -126,6 +126,9 @@ struct cooling_function_data {
 
   /*! Index of the previous tables along the redshift index of the tables */
   int previous_z_index;
+
+  /*! Dummy temporary value to compile the new temporary (?) BH model */
+  float dlogT_EOS;
 };
 
 /**
