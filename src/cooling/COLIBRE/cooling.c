@@ -157,6 +157,52 @@ float cooling_get_internalenergy_for_temperature(
 }
 
 /**
+ * @brief Compute the temperature based on gas properties.
+ *
+ * The temperature returned is consistent with the cooling rates.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param u_phys Internal energy of the gas in internal physical units.
+ */
+float cooling_get_temperature_from_gas(
+    const struct phys_const *phys_const, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const float rho_phys,
+    const float logZZsol, const float XH, const float u_phys) {
+
+  /* Convert to CGS */
+  const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+  const double n_H = rho_phys * XH / phys_const->const_proton_mass;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+
+  /* compute hydrogen number density, metallicity and redshift indices and
+   * offsets  */
+
+  float d_red, d_met, d_n_H;
+  int red_index, met_index, n_H_index;
+
+  get_index_1d(cooling->Redshifts, colibre_cooling_N_redshifts, cosmo->z,
+               &red_index, &d_red);
+  get_index_1d(cooling->Metallicity, colibre_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
+  get_index_1d(cooling->nH, colibre_cooling_N_density, log10(n_H_cgs),
+               &n_H_index, &d_n_H);
+
+  /* Compute the log10 of the temperature by interpolating the table */
+  const double log_10_T =
+      colibre_convert_u_to_temp(log10(u_cgs), cosmo->z, n_H_index, d_n_H,
+                                met_index, d_met, red_index, d_red, cooling);
+
+  /* Undo the log! */
+  return exp10(log_10_T);
+}
+
+/**
  * @brief Compute the temperature of a #part based on the cooling function.
  *
  * The temperature returned is consistent with the cooling rates.
@@ -184,8 +230,7 @@ float cooling_get_temperature(const struct phys_const *phys_const,
 #endif
 
   /* Get physical internal energy */
-  const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
-  const double u_cgs = u * cooling->internal_energy_to_cgs;
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
 
   /* Get the Hydrogen mass fraction */
   float const *metal_fraction =
@@ -193,9 +238,7 @@ float cooling_get_temperature(const struct phys_const *phys_const,
   const float XH = metal_fraction[chemistry_element_H];
 
   /* Convert Hydrogen mass fraction into Hydrogen number density */
-  const float rho = hydro_get_physical_density(p, cosmo);
-  const double n_H = rho * XH / phys_const->const_proton_mass;
-  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get this particle's metallicity ratio to solar.
    *
@@ -204,26 +247,8 @@ float cooling_get_temperature(const struct phys_const *phys_const,
   float dummy[colibre_cooling_N_elementtypes];
   const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
 
-  /* compute hydrogen number density, metallicity and redshift indices and
-   * offsets  */
-
-  float d_red, d_met, d_n_H;
-  int red_index, met_index, n_H_index;
-
-  get_index_1d(cooling->Redshifts, colibre_cooling_N_redshifts, cosmo->z,
-               &red_index, &d_red);
-  get_index_1d(cooling->Metallicity, colibre_cooling_N_metallicity, logZZsol,
-               &met_index, &d_met);
-  get_index_1d(cooling->nH, colibre_cooling_N_density, log10(n_H_cgs),
-               &n_H_index, &d_n_H);
-
-  /* Compute the log10 of the temperature by interpolating the table */
-  const double log_10_T =
-      colibre_convert_u_to_temp(log10(u_cgs), cosmo->z, n_H_index, d_n_H,
-                                met_index, d_met, red_index, d_red, cooling);
-
-  /* Undo the log! */
-  return exp10(log_10_T);
+  return cooling_get_temperature_from_gas(phys_const, cosmo, cooling, rho_phys,
+                                          logZZsol, XH, u_phys);
 }
 
 /**
@@ -692,11 +717,6 @@ float cooling_get_particle_subgrid_HI_fraction(
   const float log10_T_EOS_max =
       log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
 
-  /* Get the particle's temperature */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
-  const float log10_T = log10f(T);
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
@@ -711,6 +731,14 @@ float cooling_get_particle_subgrid_HI_fraction(
 
   /* Get the particle pressure */
   const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  /* Get physical internal energy */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Get the particle's temperature */
+  const float T = cooling_get_temperature_from_gas(
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+  const float log10_T = log10f(T);
 
   return compute_subgrid_HI_fraction(cooling, phys_const, floor_props, cosmo,
                                      rho_phys, logZZsol, XH, P_phys, log10_T,
@@ -745,11 +773,6 @@ float cooling_get_particle_subgrid_HII_fraction(
   const float log10_T_EOS_max =
       log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
 
-  /* Get the particle's temperature */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
-  const float log10_T = log10f(T);
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
@@ -764,6 +787,14 @@ float cooling_get_particle_subgrid_HII_fraction(
 
   /* Get the particle pressure */
   const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  /* Get physical internal energy */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Get the particle's temperature */
+  const float T = cooling_get_temperature_from_gas(
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+  const float log10_T = log10f(T);
 
   return compute_subgrid_HII_fraction(cooling, phys_const, floor_props, cosmo,
                                       rho_phys, logZZsol, XH, P_phys, log10_T,
@@ -798,11 +829,6 @@ float cooling_get_particle_subgrid_H2_fraction(
   const float log10_T_EOS_max =
       log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
 
-  /* Get the particle's temperature */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
-  const float log10_T = log10f(T);
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
@@ -817,6 +843,14 @@ float cooling_get_particle_subgrid_H2_fraction(
 
   /* Get the particle pressure */
   const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  /* Get physical internal energy */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Get the particle's temperature */
+  const float T = cooling_get_temperature_from_gas(
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+  const float log10_T = log10f(T);
 
   return compute_subgrid_H2_fraction(cooling, phys_const, floor_props, cosmo,
                                      rho_phys, logZZsol, XH, P_phys, log10_T,
@@ -850,11 +884,6 @@ float cooling_get_particle_subgrid_temperature(
   const float log10_T_EOS_max =
       log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
 
-  /* Get the particle's temperature */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
-  const float log10_T = log10f(T);
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
@@ -869,6 +898,14 @@ float cooling_get_particle_subgrid_temperature(
 
   /* Get the particle pressure */
   const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  /* Get physical internal energy */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Get the particle's temperature */
+  const float T = cooling_get_temperature_from_gas(
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+  const float log10_T = log10f(T);
 
   return compute_subgrid_temperature(cooling, phys_const, floor_props, cosmo,
                                      rho_phys, logZZsol, XH, P_phys, log10_T,
@@ -904,11 +941,6 @@ float cooling_get_particle_subgrid_density(
   const float log10_T_EOS_max =
       log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
 
-  /* Get the particle's temperature */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
-  const float log10_T = log10f(T);
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
@@ -923,6 +955,14 @@ float cooling_get_particle_subgrid_density(
 
   /* Get the particle pressure */
   const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  /* Get physical internal energy */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Get the particle's temperature */
+  const float T = cooling_get_temperature_from_gas(
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+  const float log10_T = log10f(T);
 
   return compute_subgrid_density(cooling, phys_const, floor_props, cosmo,
                                  rho_phys, logZZsol, XH, P_phys, log10_T,
@@ -953,11 +993,6 @@ void cooling_set_particle_subgrid_properties(
   const float log10_T_EOS_max =
       log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
 
-  /* Get the particle's temperature */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
-  const float log10_T = log10f(T);
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
@@ -972,6 +1007,14 @@ void cooling_set_particle_subgrid_properties(
 
   /* Get the particle pressure */
   const float P_phys = hydro_get_physical_pressure(p, cosmo);
+
+  /* Get physical internal energy */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Get the particle's temperature */
+  const float T = cooling_get_temperature_from_gas(
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+  const float log10_T = log10f(T);
 
   p->cooling_data.subgrid_temp = compute_subgrid_temperature(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,

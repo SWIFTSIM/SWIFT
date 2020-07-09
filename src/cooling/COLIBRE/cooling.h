@@ -61,6 +61,11 @@ void cooling_first_init_part(const struct phys_const *phys_const,
                              const struct cooling_function_data *cooling,
                              struct part *p, struct xpart *xp);
 
+float cooling_get_temperature_from_gas(
+    const struct phys_const *phys_const, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const float rho_phys,
+    const float XH, const float logZZsol, const float u_phys);
+
 float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct hydro_props *hydro_props,
                               const struct unit_system *us,
@@ -109,6 +114,14 @@ void cooling_set_particle_subgrid_properties(
     const struct entropy_floor_properties *floor_props,
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp);
+
+double compute_subgrid_density(
+    const struct cooling_function_data *cooling,
+    const struct phys_const *phys_const,
+    const struct entropy_floor_properties *floor_props,
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max);
 
 float cooling_get_radiated_energy(const struct xpart *xp);
 
