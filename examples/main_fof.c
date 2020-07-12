@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dump_tasks = 0;
   int dump_threadpool = 0;
-  int with_fof = 1;
   int with_fp_exceptions = 0;
+  int with_cosmology = 0;
   int with_stars = 0;
   int with_black_holes = 0;
   int with_hydro = 0;
@@ -160,6 +160,8 @@ int main(int argc, char *argv[]) {
       OPT_HELP(),
 
       OPT_GROUP("  Friends-of-Friends options:\n"),
+      OPT_BOOLEAN('c', "cosmology", &with_cosmology,
+                  "Run with cosmological information.", NULL, 0, 0),
       OPT_BOOLEAN(0, "hydro", &with_hydro, "Read gas particles from the ICs.",
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "stars", &with_stars, "Read stars from the ICs.", NULL, 0,
@@ -257,8 +259,7 @@ int main(int argc, char *argv[]) {
 
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
-    io_write_output_field_parameter(output_parameters_filename,
-                                    /*with_cosmology=*/1);
+    io_write_output_field_parameter(output_parameters_filename, with_cosmology);
     printf("End of run.\n");
     return 0;
   }
@@ -389,6 +390,10 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  /* Prepare and verify the selection of outputs */
+  io_prepare_output_fields(output_options, with_cosmology, /*with_fof=*/1,
+                           /*with_structure_finding=*/0);
+
   /* Initialize unit system and constants */
   units_init_from_params(&us, params, "InternalUnitSystem");
   phys_const_init(&us, params, &prog_const);
@@ -414,12 +419,23 @@ int main(int argc, char *argv[]) {
       params, "InitialConditions:cleanup_h_factors", 0);
   const int cleanup_sqrt_a = parser_get_opt_param_int(
       params, "InitialConditions:cleanup_velocity_factors", 0);
+
   /* Initialise the cosmology */
-  cosmology_init(params, &us, &prog_const, &cosmo);
+  if (with_cosmology)
+    cosmology_init(params, &us, &prog_const, &cosmo);
+  else
+    cosmology_init_no_cosmo(&cosmo);
+  if (myrank == 0 && with_cosmology) cosmology_print(&cosmo);
+
+  /* Initialise the equation of state */
+  if (with_hydro)
+    eos_init(&eos, &prog_const, &us, params);
+  else
+    bzero(&eos, sizeof(struct eos_parameters));
 
   /* Initialise the FOF properties */
   bzero(&fof_properties, sizeof(struct fof_props));
-  if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+  fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/1);
 
   /* Be verbose about what happens next */
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
@@ -438,27 +454,27 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(
-      ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
-      &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-      /*with_grav=*/1, with_stars, with_black_holes, /*with_cosmology=*/1,
-      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
-      MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-      /*dry_run=*/0);
+  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                   &flag_entropy_ICs, with_hydro,
+                   /*with_grav=*/1, with_stars, with_black_holes,
+                   with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   /*dry_run=*/0);
 #else
-  read_ic_serial(
-      ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
-      &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-      /*with_grav=*/1, with_stars, with_black_holes, /*with_cosmology=*/1,
-      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
-      MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, /*dry_run=*/0);
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
+                 &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                 &flag_entropy_ICs, with_hydro,
+                 /*with_grav=*/1, with_stars, with_black_holes, with_cosmology,
+                 cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
+                 MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, /*dry_run=*/0);
 #endif
 #else
   read_ic_single(
       ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
       &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-      /*with_grav=*/1, with_stars, with_black_holes, /*with_cosmology=*/1,
-      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads, /*dry_run=*/0);
+      /*with_grav=*/1, with_stars, with_black_holes, with_cosmology, cleanup_h,
+      cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads, /*dry_run=*/0);
 #endif
 #endif
   if (myrank == 0) {
@@ -532,7 +548,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the gravity scheme */
   bzero(&gravity_properties, sizeof(struct gravity_props));
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
-                     /*with_cosmology=*/1, /*with_external_gravity=*/0,
+                     with_cosmology, /*with_external_gravity=*/0,
                      with_baryon_particles, with_DM_particles,
                      with_DM_background_particles, periodic, s.dim);
 
@@ -583,8 +599,8 @@ int main(int argc, char *argv[]) {
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   engine_policies |= engine_policy_self_gravity;
-  engine_policies |= engine_policy_cosmology;
   engine_policies |= engine_policy_fof;
+  if (with_cosmology) engine_policies |= engine_policy_cosmology;
 
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);

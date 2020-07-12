@@ -206,11 +206,13 @@ void io_assert_valid_header_cosmology(hid_t h_grp, double a) {
                              &redshift_from_snapshot);
 
   /* If the Header/Redshift value is not present, then we skip this check */
-  if (redshift_from_snapshot == -1.0) {
-    return;
-  }
+  if (redshift_from_snapshot == -1.0) return;
 
   const double current_redshift = 1.0 / a - 1.0;
+
+  /* Escape if non-cosmological */
+  if (current_redshift == 0.) return;
+
   const double redshift_fractional_difference =
       fabs(redshift_from_snapshot - current_redshift) / current_redshift;
 
