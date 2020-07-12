@@ -88,10 +88,12 @@ static integertime_t ti_current;
  * @param params the parameter file parser.
  * @param phys_const The physical constants in internal units.
  * @param us The internal unit system.
+ * @param stand_alone_fof Are we initialising for stand-alone? (1) or
+ * on-the-fly? (0)
  */
 void fof_init(struct fof_props *props, struct swift_params *params,
-              const struct phys_const *phys_const,
-              const struct unit_system *us) {
+              const struct phys_const *phys_const, const struct unit_system *us,
+              const int stand_alone_fof) {
 
   /* Base name for the FOF output file */
   parser_get_param_string(params, "FOF:basename", props->base_name);
@@ -118,24 +120,27 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
   /* Read the linking length ratio to the mean inter-particle separation. */
   props->l_x_ratio =
-      parser_get_param_double(params, "FOF:linking_length_ratio");
-
-  if (props->l_x_ratio <= 0.)
-    error("The FOF linking length can't be negative!");
+      parser_get_opt_param_double(params, "FOF:linking_length_ratio", -1.);
 
   /* Read value of absolute linking length aksed by the user */
   props->l_x_absolute =
       parser_get_opt_param_double(params, "FOF:absolute_linking_length", -1.);
 
-  if (props->l_x_ratio <= 0. && props->l_x_ratio != -1.)
+  if (props->l_x_ratio == -1. && props->l_x_absolute <= 0.)
     error("The FOF linking length can't be negative!");
 
-  /* Read the minimal halo mass for black hole seeding */
-  props->seed_halo_mass =
-      parser_get_param_double(params, "FOF:black_hole_seed_halo_mass_Msun");
+  if (props->l_x_ratio <= 0. && props->l_x_absolute == -1.)
+    error("The FOF linking length ratio can't be negative!");
 
-  /* Convert to internal units */
-  props->seed_halo_mass *= phys_const->const_solar_mass;
+  if (!stand_alone_fof) {
+
+    /* Read the minimal halo mass for black hole seeding */
+    props->seed_halo_mass =
+        parser_get_param_double(params, "FOF:black_hole_seed_halo_mass_Msun");
+
+    /* Convert to internal units */
+    props->seed_halo_mass *= phys_const->const_solar_mass;
+  }
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
@@ -262,26 +267,6 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     }
   }
 
-  /* Calculate the mean inter-particle separation as if we were in
-     a scenario where the entire box was filled with high-resolution
-       particles */
-  const double Omega_m = s->e->cosmology->Omega_m;
-  const double Omega_b = s->e->cosmology->Omega_b;
-  const double critical_density_0 = s->e->cosmology->critical_density_0;
-  double mean_matter_density;
-  if (s->with_hydro)
-    mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
-  else
-    mean_matter_density = Omega_m * critical_density_0;
-
-  /* Mean inter-particle separation of the DM particles */
-  const double mean_inter_particle_sep =
-      cbrt(high_res_DM_mass / mean_matter_density);
-
-  /* Calculate the particle linking length based upon the mean inter-particle
-   * spacing of the DM particles. */
-  const double l_x = props->l_x_ratio * mean_inter_particle_sep;
-
   /* Are we using the aboslute value or the one derived from the mean
      inter-particle sepration? */
   if (props->l_x_absolute != -1.) {
@@ -292,6 +277,33 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
               props->l_x_absolute);
     }
   } else {
+
+    /* Safety check */
+    if (!(s->e->policy | engine_policy_cosmology))
+      error(
+          "Attempting to run FoF on a simulation using cosmological "
+          "information but cosmology was not initialised");
+
+    /* Calculate the mean inter-particle separation as if we were in
+       a scenario where the entire box was filled with high-resolution
+         particles */
+    const double Omega_m = s->e->cosmology->Omega_m;
+    const double Omega_b = s->e->cosmology->Omega_b;
+    const double critical_density_0 = s->e->cosmology->critical_density_0;
+    double mean_matter_density;
+    if (s->with_hydro)
+      mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
+    else
+      mean_matter_density = Omega_m * critical_density_0;
+
+    /* Mean inter-particle separation of the DM particles */
+    const double mean_inter_particle_sep =
+        cbrt(high_res_DM_mass / mean_matter_density);
+
+    /* Calculate the particle linking length based upon the mean inter-particle
+     * spacing of the DM particles. */
+    const double l_x = props->l_x_ratio * mean_inter_particle_sep;
+
     props->l_x2 = l_x * l_x;
 
     if (s->e->nodeID == 0) {

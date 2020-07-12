@@ -21,7 +21,12 @@ command line:
 
  * ``--hydro``: Read and process the gas particles,
  * ``--stars``: Read and process the star particles,
- * ``--black-holes``: Read and process the black hole particles.
+ * ``--black-holes``: Read and process the black hole particles,
+ * ``--cosmology``: Consider cosmological terms.
+
+Running with cosmology is necessary when using a linking length based
+on the mean inter-particle separation. For analysis where an absolute
+linking length is used this is not necessary.
 
 The group catalogues contain a unique identifier for each group as
 well as the number of particles in each group and their total mass (in

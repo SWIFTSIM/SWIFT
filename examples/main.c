@@ -991,7 +991,8 @@ int main(int argc, char *argv[]) {
     /* Initialise the FOF properties */
     bzero(&fof_properties, sizeof(struct fof_props));
 #ifdef WITH_FOF
-    if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+    if (with_fof)
+      fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0);
 #endif
 
     /* Be verbose about what happens next */
