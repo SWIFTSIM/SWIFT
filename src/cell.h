@@ -763,6 +763,20 @@ struct cell {
 
     /*! Nr of #sink this cell can hold after addition of new one. */
     int count_total;
+
+    /*! Last (integer) time the cell's sink were drifted forward in time. */
+    integertime_t ti_old_part;
+
+    /*! Minimum end of (integer) time step in this cell for sink tasks. */
+    integertime_t ti_end_min;
+
+    /*! Maximum end of (integer) time step in this cell for sink tasks. */
+    integertime_t ti_end_max;
+
+    /*! Maximum beginning of (integer) time step in this cell for sink
+     * tasks.
+     */
+    integertime_t ti_beg_max;
   } sinks;
 
 #ifdef WITH_MPI
