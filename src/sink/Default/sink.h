@@ -22,8 +22,6 @@
 #include <float.h>
 
 /* Local includes */
-#include "dimension.h"
-#include "kernel_hydro.h"
 #include "minmax.h"
 #include "sink_part.h"
 
@@ -45,7 +43,6 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  * read in to do some conversions.
  *
  * @param sp The particle to act upon
- * @param props The properties of the sink model.
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp) {

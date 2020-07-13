@@ -128,7 +128,8 @@ const char *engine_policy_names[] = {"none",
                                      "time-step limiter",
                                      "time-step sync",
                                      "logger",
-                                     "line of sight"};
+                                     "line of sight",
+                                     "sink"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1513,6 +1514,7 @@ void engine_print_task_counts(const struct engine *e) {
   fflush(stdout);
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sink = %zu.", e->s->nr_sinks);
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
@@ -1770,9 +1772,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     engine_recompute_displacement_constraint(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->bparts,
-                    e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts,
-                    e->s->nr_bparts, e->verbose);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
+                    e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
+                    e->verbose);
 #endif
 
   /* Initial cleaning up session ? */
@@ -2160,6 +2163,7 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_gparts(e->s, e->verbose);
   space_first_init_sparts(e->s, e->verbose);
   space_first_init_bparts(e->s, e->verbose);
+  space_first_init_sinks(e->s, e->verbose);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2213,6 +2217,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
   space_init_sparts(s, e->verbose);
   space_init_bparts(s, e->verbose);
+  space_init_sinks(s, e->verbose);
 
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
@@ -2284,6 +2289,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(e->s, e->verbose);
   space_init_sparts(e->s, e->verbose);
   space_init_bparts(e->s, e->verbose);
+  space_init_sinks(e->s, e->verbose);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
@@ -2419,9 +2425,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->bparts,
-                    e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts,
-                    e->s->nr_bparts, e->verbose);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
+                    e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
+                    e->verbose);
 #endif
 
   /* Ready to go */
@@ -3483,14 +3490,15 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-link everything to the gparts. */
   if (s->nr_gparts > 0)
-    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts,
+    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts, s->sinks,
                                     s->sparts, s->bparts, &e->threadpool);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, s->bparts, s->nr_parts,
-                    s->nr_gparts, s->nr_sparts, s->nr_bparts, e->verbose);
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
+                    s->nr_bparts, e->verbose);
 #endif
 
   if (e->verbose)
@@ -3816,6 +3824,7 @@ static void engine_dumper_init(struct engine *e) {
  * @param output_options Output options for snapshots.
  * @param Ngas total number of gas particles in the simulation.
  * @param Ngparts total number of gravity particles in the simulation.
+ * @param Nsinks total number of sink particles in the simulation.
  * @param Nstars total number of star particles in the simulation.
  * @param Nblackholes total number of black holes in the simulation.
  * @param Nbackground_gparts Total number of background DM particles.
@@ -3841,9 +3850,9 @@ static void engine_dumper_init(struct engine *e) {
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct output_options *output_options, long long Ngas,
-                 long long Ngparts, long long Nstars, long long Nblackholes,
-                 long long Nbackground_gparts, int policy, int verbose,
-                 struct repartition *reparttype,
+                 long long Ngparts, long long Nsinks, long long Nstars,
+                 long long Nblackholes, long long Nbackground_gparts,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
@@ -3868,6 +3877,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_parts = Ngas;
   e->total_nr_gparts = Ngparts;
   e->total_nr_sparts = Nstars;
+  e->total_nr_sinks = Nsinks;
   e->total_nr_bparts = Nblackholes;
   e->total_nr_DM_background_gparts = Nbackground_gparts;
   e->proxy_ind = NULL;

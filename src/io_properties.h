@@ -78,6 +78,14 @@ typedef void (*conversion_func_bpart_double)(const struct engine*,
 typedef void (*conversion_func_bpart_long_long)(const struct engine*,
                                                 const struct bpart*,
                                                 long long*);
+typedef void (*conversion_func_sink_float)(const struct engine*,
+                                           const struct sink*, float*);
+typedef void (*conversion_func_sink_int)(const struct engine*,
+                                         const struct sink*, int*);
+typedef void (*conversion_func_sink_double)(const struct engine*,
+                                            const struct sink*, double*);
+typedef void (*conversion_func_sink_long_long)(const struct engine*,
+                                               const struct sink*, long long*);
 
 /**
  * @brief The properties of a given dataset for i/o
@@ -127,6 +135,7 @@ struct io_props {
   const struct gpart* gparts;
   const struct spart* sparts;
   const struct bpart* bparts;
+  const struct sink* sinks;
 
   /* Are we converting? */
   int conversion;
@@ -154,6 +163,12 @@ struct io_props {
   conversion_func_bpart_int convert_bpart_i;
   conversion_func_bpart_double convert_bpart_d;
   conversion_func_bpart_long_long convert_bpart_l;
+
+  /* Conversion function for sink */
+  conversion_func_sink_float convert_sink_f;
+  conversion_func_sink_int convert_sink_i;
+  conversion_func_sink_double convert_sink_d;
+  conversion_func_sink_long_long convert_sink_l;
 };
 
 /**
@@ -206,6 +221,9 @@ INLINE static struct io_props io_make_input_field_(
   r.convert_bpart_f = NULL;
   r.convert_bpart_d = NULL;
   r.convert_bpart_l = NULL;
+  r.convert_sink_f = NULL;
+  r.convert_sink_d = NULL;
+  r.convert_sink_l = NULL;
 
   return r;
 }
@@ -990,6 +1008,187 @@ INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
   r.bparts = bparts;
   r.conversion = 1;
   r.convert_bpart_l = functionPtr;
+
+  return r;
+}
+
+/**
+ * @brief Constructs an #io_props (with conversion) from its parameters
+ */
+#define io_make_output_field_convert_sink(name, type, dim, units, a_exponent,  \
+                                          sink, convert, desc)                 \
+  io_make_output_field_convert_sink_##type(name, type, dim, units, a_exponent, \
+                                           sizeof(sink[0]), sink, convert,     \
+                                           desc)
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param sinkSize The size in byte of the particle
+ * @param sinks The particle array
+ * @param functionPtr The function used to convert a sink-particle to a float
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_sink_INT(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
+    const struct sink* sinks, conversion_func_sink_int functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
+
+  struct io_props r;
+  bzero(&r, sizeof(struct io_props));
+
+  strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.scale_factor_exponent = a_exponent;
+  r.partSize = sinkSize;
+  r.sinks = sinks;
+  r.conversion = 1;
+  r.convert_sink_i = functionPtr;
+
+  return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param sinkSize The size in byte of the particle
+ * @param sinks The particle array
+ * @param functionPtr The function used to convert a sink-particle to a float
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_sink_FLOAT(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
+    const struct sink* sinks, conversion_func_sink_float functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
+
+  struct io_props r;
+  bzero(&r, sizeof(struct io_props));
+
+  strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.scale_factor_exponent = a_exponent;
+  r.partSize = sinkSize;
+  r.sinks = sinks;
+  r.conversion = 1;
+  r.convert_sink_f = functionPtr;
+
+  return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param sinkSize The size in byte of the particle
+ * @param sinks The particle array
+ * @param functionPtr The function used to convert a sink-particle to a double
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_sink_DOUBLE(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
+    const struct sink* sinks, conversion_func_sink_double functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
+
+  struct io_props r;
+  bzero(&r, sizeof(struct io_props));
+
+  strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.scale_factor_exponent = a_exponent;
+  r.partSize = sinkSize;
+  r.sinks = sinks;
+  r.conversion = 1;
+  r.convert_sink_d = functionPtr;
+
+  return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param sinkSize The size in byte of the particle
+ * @param sinks The particle array
+ * @param functionPtr The function used to convert a sink-particle to a double
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_sink_LONGLONG(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
+    const struct sink* sinks, conversion_func_sink_long_long functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
+
+  struct io_props r;
+  bzero(&r, sizeof(struct io_props));
+
+  strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.scale_factor_exponent = a_exponent;
+  r.partSize = sinkSize;
+  r.sinks = sinks;
+  r.conversion = 1;
+  r.convert_sink_l = functionPtr;
 
   return r;
 }

@@ -752,6 +752,19 @@ struct cell {
 
   } black_holes;
 
+  /*! Sink particles variables */
+  struct {
+
+    /*! Pointer to the #sink data. */
+    struct sink *parts;
+
+    /*! Nr of #sink in this cell. */
+    int count;
+
+    /*! Nr of #sink this cell can hold after addition of new one. */
+    int count_total;
+  } sinks;
+
 #ifdef WITH_MPI
   /*! MPI variables */
   struct {
@@ -843,9 +856,10 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, struct cell_buff *buff,
-                struct cell_buff *sbuff, struct cell_buff *bbuff,
-                struct cell_buff *gbuff);
+                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
+                struct cell_buff *bbuff, struct cell_buff *gbuff,
+                struct cell_buff *sinkbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);

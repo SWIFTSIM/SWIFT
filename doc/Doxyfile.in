@@ -784,6 +784,7 @@ INPUT		       += @top_srcdir@/src/stars/GEAR
 INPUT		       += @top_srcdir@/src/feedback/EAGLE
 INPUT		       += @top_srcdir@/src/feedback/GEAR
 INPUT		       += @top_srcdir@/src/black_holes/EAGLE
+INPUT		       += @top_srcdir@/src/sink/Default
 INPUT		       += @top_srcdir@/logger
 
 # This tag can be used to specify the character encoding of the source files

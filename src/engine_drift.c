@@ -357,9 +357,10 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
   space_check_drift_point(
       e->s, e->ti_current,
       drift_mpoles && (e->policy & engine_policy_self_gravity));
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->bparts,
-                    e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts,
-                    e->s->nr_bparts, e->verbose);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
+                    e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
+                    e->verbose);
 #endif
 
   if (e->verbose)
