@@ -47,7 +47,7 @@ __attribute__((always_inline)) INLINE static void sidm_first_init_gpart(struct g
     gp->sidm_data.sidm_flag = 0.0f;
     
     /*! Particle search radius */
-    gp->sidm_data.h_sidm = 0.0f;
+    gp->sidm_data.h_sidm = sidm_props->h_search_radius;
     
     /*! Number of DM-DM particle collisions */
     gp->sidm_data.num_sidm = 0.0f;
@@ -56,6 +56,11 @@ __attribute__((always_inline)) INLINE static void sidm_first_init_gpart(struct g
     gp->sidm_data.si_v_full[0] = 0.0f;
     gp->sidm_data.si_v_full[1] = 0.0f;
     gp->sidm_data.si_v_full[2] = 0.0f;
+    
+    gp->sidm_data.test_flag = 0.0f;
+    
+    const double v2 = gp->v_full[0] * gp->v_full[0] + gp->v_full[1] * gp->v_full[1] + gp->v_full[2] * gp->v_full[2];
+    if (v2 > 0.001) gp->sidm_data.test_flag = 1.0f; /* 1 indicates parts in cube */
 }
 
 #endif /* SWIFT_SIDM_H */
