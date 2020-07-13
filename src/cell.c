@@ -1487,6 +1487,66 @@ int cell_slocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its array of #sink and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_sink_locktree(struct cell *c) {
+  TIMER_TIC;
+
+  /* First of all, try to lock this cell. */
+  if (c->sinks.hold || lock_trylock(&c->sinks.lock) != 0) {
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Did somebody hold this cell in the meantime? */
+  if (c->sinks.hold) {
+    /* Unlock this cell. */
+    if (lock_unlock(&c->sinks.lock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
+  for (finger = c->parent; finger != NULL; finger = finger->parent) {
+    /* Lock this cell. */
+    if (lock_trylock(&finger->sinks.lock) != 0) break;
+
+    /* Increment the hold. */
+    atomic_inc(&finger->sinks.hold);
+
+    /* Unlock the cell. */
+    if (lock_unlock(&finger->sinks.lock) != 0) error("Failed to unlock cell.");
+  }
+
+  /* If we reached the top of the tree, we're done. */
+  if (finger == NULL) {
+    TIMER_TOC(timer_locktree);
+    return 0;
+  }
+
+  /* Otherwise, we hit a snag. */
+  else {
+    /* Undo the holds up to finger. */
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
+      atomic_dec(&finger2->sinks.hold);
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->sinks.lock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+}
+
+/**
  * @brief Lock a cell for access to its array of #bpart and hold its parents.
  *
  * @param c The #cell.
@@ -1615,6 +1675,24 @@ void cell_sunlocktree(struct cell *c) {
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->stars.hold);
+
+  TIMER_TOC(timer_locktree);
+}
+
+/**
+ * @brief Unlock a cell's parents for access to #sink array.
+ *
+ * @param c The #cell.
+ */
+void cell_sink_unlocktree(struct cell *c) {
+  TIMER_TIC;
+
+  /* First of all, try to unlock this cell. */
+  if (lock_unlock(&c->sinks.lock) != 0) error("Failed to unlock cell.");
+
+  /* Climb up the tree and unhold the parents. */
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+    atomic_dec(&finger->sinks.hold);
 
   TIMER_TOC(timer_locktree);
 }
