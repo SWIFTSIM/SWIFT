@@ -68,23 +68,14 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct gpart *res
     /* Randomly oriented unit vector */
     float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
 
-    /* Kick of particles in momentum space */
-    if (gpj->sidm_data.test_flag > 0.0f) { /* 1 indicates parts in cube */
-        
-        gpj->sidm_data.si_v_full[0] = VCM[0] + dv * e[0];
-        gpj->sidm_data.si_v_full[1] = VCM[1] + dv * e[1];
-        gpj->sidm_data.si_v_full[2] = VCM[2] + dv * e[2];
+    gpj->sidm_data.si_v_full[0] = VCM[0] + dv * e[0];
+    gpj->sidm_data.si_v_full[1] = VCM[1] + dv * e[1];
+    gpj->sidm_data.si_v_full[2] = VCM[2] + dv * e[2];
 
-    }
-
-    if (gpi->sidm_data.test_flag > 0.0f) { /* 1 indicates parts in cube */
-        
-        gpi->sidm_data.si_v_full[0] = VCM[0] - dv * e[0];
-        gpi->sidm_data.si_v_full[1] = VCM[1] - dv * e[1];
-        gpi->sidm_data.si_v_full[2] = VCM[2] - dv * e[2];
-        
-    }
-
+    gpi->sidm_data.si_v_full[0] = VCM[0] - dv * e[0];
+    gpi->sidm_data.si_v_full[1] = VCM[1] - dv * e[1];
+    gpi->sidm_data.si_v_full[2] = VCM[2] - dv * e[2];
+    
     /*! change flag to indicate the particle has been scattered */
     gpj->sidm_data.sidm_flag = 1;
     gpi->sidm_data.sidm_flag = 1;
@@ -106,7 +97,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct gpart *res
  * @param ti_current Current integer time (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_sidm(float hj, struct gpart *gpi, struct gpart *gpj,
+runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
                  float a, float H, const double dt_cgs,
                  const integertime_t ti_current,
                  const struct sidm_props* sidm_props,
@@ -126,8 +117,7 @@ runner_iact_sidm(float hj, struct gpart *gpi, struct gpart *gpj,
     const double mass = gpj->mass * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
     
     /* DM-DM distance */
-    /*float hj_cgs = hj * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);*/
-    float hj_cgs = gpj->sidm_data.h_sidm;
+    float h_SI_cgs = h_SI * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
     float h_SIDM3 = hj_cgs * hj_cgs * hj_cgs;
     
     float a_inv = 1.0f / a;
@@ -142,20 +132,11 @@ runner_iact_sidm(float hj, struct gpart *gpi, struct gpart *gpj,
     /* Draw a random number */
     const float rand = random_unit_interval(gpj->id_or_neg_offset, ti_current, random_number_SIDM);
     
-    /*printf("Pij %f",Probability_SIDM_ij);*/
     
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_ij > rand) {
         
-        /* Imposing particles can interact only once */
-        if (gpj->sidm_data.num_sidm < 1.f && gpi->sidm_data.num_sidm < 1.f) {
-        
-          /*printf("Doing kick");*/
-          if (gpj->sidm_data.test_flag != gpi->sidm_data.test_flag) {
-            
-              sidm_do_kick(gpj, gpi, ti_current);
-          }
-        }
+        sidm_do_kick(gpj, gpi, ti_current);
     }
 }
 
