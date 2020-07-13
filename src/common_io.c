@@ -42,6 +42,7 @@
 #include "kernel_hydro.h"
 #include "part.h"
 #include "part_type.h"
+#include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
 #include "threadpool.h"
@@ -825,6 +826,19 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   return count;
 }
 
+static long long cell_count_non_inhibited_sinks(const struct cell* c) {
+  const int total_count = c->sinks.count;
+  struct sink* sinks = c->sinks.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((sinks[i].time_bin != time_bin_inhibited) &&
+        (sinks[i].time_bin != time_bin_not_created)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 /**
  * @brief Write a single 1D array to a hdf5 group.
  *
@@ -916,22 +930,24 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL,
             *count_background_gpart = NULL, *count_spart = NULL,
-            *count_bpart = NULL;
+            *count_bpart = NULL, *count_sink = NULL;
   count_part = (long long*)malloc(nr_cells * sizeof(long long));
   count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_spart = (long long*)malloc(nr_cells * sizeof(long long));
   count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_sink = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
   long long *offset_part = NULL, *offset_gpart = NULL,
             *offset_background_gpart = NULL, *offset_spart = NULL,
-            *offset_bpart = NULL;
+            *offset_bpart = NULL, *offset_sink = NULL;
   offset_part = (long long*)malloc(nr_cells * sizeof(long long));
   offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_sink = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;
@@ -939,6 +955,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   offset_background_gpart[0] = 0;
   offset_spart[0] = 0;
   offset_bpart[0] = 0;
+  offset_sink[0] = 0;
 
   /* Collect the cell information of *local* cells */
   long long local_offset_part = 0;
@@ -946,6 +963,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   long long local_offset_background_gpart = 0;
   long long local_offset_spart = 0;
   long long local_offset_bpart = 0;
+  long long local_offset_sink = 0;
   for (int i = 0; i < nr_cells; ++i) {
 
     /* Store in which file this cell will be found */
@@ -981,6 +999,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
           cell_count_non_inhibited_background_dark_matter(&cells_top[i]);
       count_spart[i] = cell_count_non_inhibited_stars(&cells_top[i]);
       count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
+      count_sink[i] = cell_count_non_inhibited_sinks(&cells_top[i]);
 
       /* Offsets including the global offset of all particles on this MPI rank
        * Note that in the distributed case, the global offsets are 0 such that
@@ -994,12 +1013,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
       offset_bpart[i] =
           local_offset_bpart + global_offsets[swift_type_black_hole];
+      offset_sink[i] = local_offset_sink + global_offsets[swift_type_sink];
 
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
       local_offset_background_gpart += count_background_gpart[i];
       local_offset_spart += count_spart[i];
       local_offset_bpart += count_bpart[i];
+      local_offset_sink += count_sink[i];
 
     } else {
 
@@ -1014,12 +1035,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       count_background_gpart[i] = 0;
       count_spart[i] = 0;
       count_bpart[i] = 0;
+      count_sink[i] = 0;
 
       offset_part[i] = 0;
       offset_gpart[i] = 0;
       offset_background_gpart[i] = 0;
       offset_spart[i] = 0;
       offset_bpart[i] = 0;
+      offset_sink[i] = 0;
     }
   }
 
@@ -1032,6 +1055,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_background_gpart, nr_cells,
                 MPI_LONG_LONG_INT, MPI_BOR, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, count_sink, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
@@ -1043,6 +1068,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                 MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_background_gpart, nr_cells,
                 MPI_LONG_LONG_INT, MPI_BOR, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, offset_sink, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT,
@@ -1137,6 +1164,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                      "PartType2", "counts");
     }
 
+    if (global_counts[swift_type_sink] > 0 && num_fields[swift_type_sink] > 0) {
+      io_write_array(h_grp_files, nr_cells, files, INT, "PartType3", "files");
+      io_write_array(h_grp_offsets, nr_cells, offset_sink, LONGLONG,
+                     "PartType3", "offsets");
+      io_write_array(h_grp_counts, nr_cells, count_sink, LONGLONG, "PartType3",
+                     "counts");
+    }
+
     if (global_counts[swift_type_stars] > 0 &&
         num_fields[swift_type_stars] > 0) {
       io_write_array(h_grp_files, nr_cells, files, INT, "PartType4", "files");
@@ -1168,11 +1203,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   free(count_background_gpart);
   free(count_spart);
   free(count_bpart);
+  free(count_sink);
   free(offset_part);
   free(offset_gpart);
   free(offset_background_gpart);
   free(offset_spart);
   free(offset_bpart);
+  free(offset_sink);
 }
 
 #endif /* HAVE_HDF5 */
@@ -1559,6 +1596,86 @@ void io_convert_bpart_l_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #sink into a buffer of floats using a
+ * conversion function.
+ */
+void io_convert_sink_f_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct sink* restrict sinks = props.sinks;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  float* restrict temp_f = (float*)temp;
+  const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_sink_f(e, sinks + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #sink into a buffer of ints using a
+ * conversion function.
+ */
+void io_convert_sink_i_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct sink* restrict sinks = props.sinks;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  int* restrict temp_i = (int*)temp;
+  const ptrdiff_t delta = (temp_i - props.start_temp_i) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_sink_i(e, sinks + delta + i, &temp_i[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #sink into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_sink_d_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct sink* restrict sinks = props.sinks;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  double* restrict temp_d = (double*)temp;
+  const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_sink_d(e, sinks + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #sink into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_sink_l_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct sink* restrict sinks = props.sinks;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_sink_l(e, sinks + delta + i, &temp_l[i * dim]);
+}
+
+/**
  * @brief Copy the particle data into a temporary buffer ready for i/o.
  *
  * @param temp The buffer to be filled. Must be allocated and aligned properly.
@@ -1735,6 +1852,54 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_spart_l_mapper, temp_l, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
 
+    } else if (props.convert_sink_f != NULL) {
+
+      /* Prepare some parameters */
+      float* temp_f = (float*)temp;
+      props.start_temp_f = (float*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_sink_f_mapper, temp_f, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
+
+    } else if (props.convert_sink_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_sink_i_mapper, temp_i, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
+
+    } else if (props.convert_sink_d != NULL) {
+
+      /* Prepare some parameters */
+      double* temp_d = (double*)temp;
+      props.start_temp_d = (double*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_sink_d_mapper, temp_d, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
+
+    } else if (props.convert_sink_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_sink_l_mapper, temp_l, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
+
     } else if (props.convert_bpart_f != NULL) {
 
       /* Prepare some parameters */
@@ -1898,10 +2063,12 @@ struct duplication_data {
   struct gpart* gparts;
   struct spart* sparts;
   struct bpart* bparts;
+  struct sink* sinks;
   int Ndm;
   int Ngas;
   int Nstars;
   int Nblackholes;
+  int Nsinks;
 };
 
 void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
@@ -2016,6 +2183,64 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
 
   threadpool_map(tp, io_duplicate_stars_gparts_mapper, sparts, Nstars,
                  sizeof(struct spart), threadpool_auto_chunk_size, &data);
+}
+
+void io_duplicate_sinks_gparts_mapper(void* restrict data, int Nsinks,
+                                      void* restrict extra_data) {
+
+  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  const int Ndm = temp->Ndm;
+  struct sink* sinks = (struct sink*)data;
+  const ptrdiff_t offset = sinks - temp->sinks;
+  struct gpart* gparts = temp->gparts + offset;
+
+  for (int i = 0; i < Nsinks; ++i) {
+
+    /* Duplicate the crucial information */
+    gparts[i + Ndm].x[0] = sinks[i].x[0];
+    gparts[i + Ndm].x[1] = sinks[i].x[1];
+    gparts[i + Ndm].x[2] = sinks[i].x[2];
+
+    gparts[i + Ndm].v_full[0] = sinks[i].v[0];
+    gparts[i + Ndm].v_full[1] = sinks[i].v[1];
+    gparts[i + Ndm].v_full[2] = sinks[i].v[2];
+
+    gparts[i + Ndm].mass = sinks[i].mass;
+
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_sink;
+
+    /* Link the particles */
+    gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
+    sinks[i].gpart = &gparts[i + Ndm];
+  }
+}
+
+/**
+ * @brief Copy every #sink into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles, gas particles and star particles
+ * are all at the start of the gparts array and adds the sinks particles
+ * afterwards
+ *
+ * @param tp The current #threadpool.
+ * @param sinks The array of #sink freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM, gas
+ * and star particles at the start.
+ * @param Nsinks The number of sink particles read in.
+ * @param Ndm The number of DM, gas and star particles read in.
+ */
+void io_duplicate_sinks_gparts(struct threadpool* tp, struct sink* const sinks,
+                               struct gpart* const gparts, size_t Nsinks,
+                               size_t Ndm) {
+
+  struct duplication_data data;
+  data.gparts = gparts;
+  data.sinks = sinks;
+  data.Ndm = Ndm;
+
+  threadpool_map(tp, io_duplicate_sinks_gparts_mapper, sinks, Nsinks,
+                 sizeof(struct sink), threadpool_auto_chunk_size, &data);
 }
 
 void io_duplicate_black_holes_gparts_mapper(void* restrict data,
@@ -2151,6 +2376,40 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
   if (count != Nsparts_written)
     error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
           count, Nsparts_written);
+}
+
+/**
+ * @brief Copy every non-inhibited #sink into the sinks_written array.
+ *
+ * @param sinks The array of #sink containing all particles.
+ * @param sinks_written The array of #sink to fill with particles we want to
+ * write.
+ * @param Nsinks The total number of #sink.
+ * @param Nsinks_written The total number of #sink to write.
+ */
+void io_collect_sinks_to_write(const struct sink* restrict sinks,
+                               struct sink* restrict sinks_written,
+                               const size_t Nsinks,
+                               const size_t Nsinks_written) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Nsinks; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if (sinks[i].time_bin != time_bin_inhibited &&
+        sinks[i].time_bin != time_bin_not_created) {
+
+      sinks_written[count] = sinks[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Nsinks_written)
+    error("Collected the wrong number of sink-particles (%zu vs. %zu expected)",
+          count, Nsinks_written);
 }
 
 /**

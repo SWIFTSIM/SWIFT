@@ -54,6 +54,7 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
 #include "tools.h"
@@ -248,6 +249,7 @@ void write_output_distributed(struct engine* e,
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
+  const struct sink* sinks = e->s->sinks;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
   struct output_options* output_options = e->output_options;
@@ -267,6 +269,7 @@ void write_output_distributed(struct engine* e,
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
+  const size_t Nsinks = e->s->nr_sinks;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nblackholes = e->s->nr_bparts;
 
@@ -281,12 +284,14 @@ void write_output_distributed(struct engine* e,
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
   const size_t Ngas_written =
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nsinks_written =
+      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
   const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written;
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
@@ -331,7 +336,7 @@ void write_output_distributed(struct engine* e,
 
   /* Compute offset in the file and total number of particles */
   const long long N[swift_type_count] = {Ngas_written,   Ndm_written,
-                                         Ndm_background, 0,
+                                         Ndm_background, Nsinks_written,
                                          Nstars_written, Nblackholes_written};
 
   /* Gather the total number of particles to write */
@@ -471,6 +476,7 @@ void write_output_distributed(struct engine* e,
     struct xpart* xparts_written = NULL;
     struct gpart* gparts_written = NULL;
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
+    struct sink* sinks_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
 
@@ -632,6 +638,34 @@ void write_output_distributed(struct engine* e,
         }
       } break;
 
+      case swift_type_sink: {
+        if (Nsinks == Nsinks_written) {
+
+          /* No inhibted particles: easy case */
+          Nparticles = Nsinks;
+          sink_write_particles(sinks, list, &num_fields, with_cosmology);
+
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          Nparticles = Nsinks_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("sinks_written", (void**)&sinks_written,
+                             sink_align,
+                             Nsinks_written * sizeof(struct sink)) != 0)
+            error("Error while allocating temporary memory for sinks");
+
+          /* Collect the particles we want to write */
+          io_collect_sinks_to_write(sinks, sinks_written, Nsinks,
+                                    Nsinks_written);
+
+          /* Select the fields to write */
+          sink_write_particles(sinks_written, list, &num_fields,
+                               with_cosmology);
+        }
+      } break;
+
       case swift_type_stars: {
         if (Nstars == Nstars_written) {
 
@@ -759,6 +793,7 @@ void write_output_distributed(struct engine* e,
     if (gparts_written) swift_free("gparts_written", gparts_written);
     if (gpart_group_data_written)
       swift_free("gpart_group_written", gpart_group_data_written);
+    if (sinks_written) swift_free("sinks_written", sinks_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
 

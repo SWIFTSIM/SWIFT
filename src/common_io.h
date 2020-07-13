@@ -40,6 +40,7 @@ struct velociraptor_gpart_data;
 struct spart;
 struct bpart;
 struct xpart;
+struct sink;
 struct io_props;
 struct engine;
 struct threadpool;
@@ -134,6 +135,10 @@ void io_collect_parts_to_write(const struct part* restrict parts,
                                struct xpart* restrict xparts_written,
                                const size_t Nparts,
                                const size_t Nparts_written);
+void io_collect_sinks_to_write(const struct sink* restrict sinks,
+                               struct sink* restrict sinks_written,
+                               const size_t Nsinks,
+                               const size_t Nsinks_written);
 void io_collect_sparts_to_write(const struct spart* restrict sparts,
                                 struct spart* restrict sparts_written,
                                 const size_t Nsparts,
@@ -166,6 +171,9 @@ void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
 void io_duplicate_stars_gparts(struct threadpool* tp,
                                struct spart* const sparts,
                                struct gpart* const gparts, size_t Nstars,
+                               size_t Ndm);
+void io_duplicate_sinks_gparts(struct threadpool* tp, struct sink* const sinks,
+                               struct gpart* const gparts, size_t Nsinks,
                                size_t Ndm);
 void io_duplicate_black_holes_gparts(struct threadpool* tp,
                                      struct bpart* const bparts,

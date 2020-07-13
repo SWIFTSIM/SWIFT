@@ -54,6 +54,7 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
 #include "tracers_io.h"
@@ -376,16 +377,19 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
  * @param dim (output) The dimension of the volume.
  * @param parts (output) Array of #part particles.
  * @param gparts (output) Array of #gpart particles.
+ * @param sinks (output) Array of #sink particles.
  * @param sparts (output) Array of #spart particles.
  * @param bparts (output) Array of #bpart particles.
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
+ * @param Nsinks (output) The number of #sink read.
  * @param Nstars (output) The number of #spart read.
  * @param Nblackholes (output) The number of #bpart read.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
  * @param with_gravity Are we reading/creating #gpart arrays ?
+ * @param with_sink Are we reading sink particles ?
  * @param with_stars Are we reading star particles ?
  * @param with_black_hole Are we reading black hole particles ?
  * @param with_cosmology Are we running with cosmology ?
@@ -407,12 +411,14 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
 void read_ic_single(const char* fileName,
                     const struct unit_system* internal_units, double dim[3],
                     struct part** parts, struct gpart** gparts,
-                    struct spart** sparts, struct bpart** bparts, size_t* Ngas,
-                    size_t* Ngparts, size_t* Ngparts_background, size_t* Nstars,
+                    struct sink** sinks, struct spart** sparts,
+                    struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
+                    size_t* Ngparts_background, size_t* Nsinks, size_t* Nstars,
                     size_t* Nblackholes, int* flag_entropy, int with_hydro,
-                    int with_gravity, int with_stars, int with_black_holes,
-                    int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
-                    double h, double a, int n_threads, int dry_run) {
+                    int with_gravity, int with_sink, int with_stars,
+                    int with_black_holes, int with_cosmology, int cleanup_h,
+                    int cleanup_sqrt_a, double h, double a, int n_threads,
+                    int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -427,7 +433,7 @@ void read_ic_single(const char* fileName,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0;
+  *Nblackholes = 0, *Nsinks = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -556,6 +562,15 @@ void read_ic_single(const char* fileName,
   }
 
   /* Allocate memory to store star particles */
+  if (with_sink) {
+    *Nsinks = N[swift_type_sink];
+    if (swift_memalign("sinks", (void**)sinks, sink_align,
+                       *Nsinks * sizeof(struct sink)) != 0)
+      error("Error while allocating memory for sink particles");
+    bzero(*sinks, *Nsinks * sizeof(struct sink));
+  }
+
+  /* Allocate memory to store star particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
     if (swift_memalign("sparts", (void**)sparts, spart_align,
@@ -569,7 +584,7 @@ void read_ic_single(const char* fileName,
     *Nblackholes = N[swift_type_black_hole];
     if (swift_memalign("bparts", (void**)bparts, bpart_align,
                        *Nblackholes * sizeof(struct bpart)) != 0)
-      error("Error while allocating memory for stars particles");
+      error("Error while allocating memory for black hole particles");
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
   }
 
@@ -580,6 +595,7 @@ void read_ic_single(const char* fileName,
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
                N[swift_type_dark_matter_background] +
+               (with_sink ? N[swift_type_sink] : 0) +
                (with_stars ? N[swift_type_stars] : 0) +
                (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
@@ -638,6 +654,13 @@ void read_ic_single(const char* fileName,
         }
         break;
 
+      case swift_type_sink:
+        if (with_sink) {
+          Nparticles = *Nsinks;
+          sink_read_particles(*sinks, list, &num_fields);
+        }
+        break;
+
       case swift_type_stars:
         if (with_stars) {
           Nparticles = *Nstars;
@@ -685,14 +708,20 @@ void read_ic_single(const char* fileName,
                                 Ndm + Ndm_background);
 
     /* Duplicate the star particles into gparts */
+    if (with_sink)
+      io_duplicate_sinks_gparts(&tp, *sinks, *gparts, *Nsinks,
+                                Ndm + Ndm_background + *Ngas);
+
+    /* Duplicate the star particles into gparts */
     if (with_stars)
       io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars,
-                                Ndm + Ndm_background + *Ngas);
+                                Ndm + Ndm_background + *Ngas + *Nsinks);
 
     /* Duplicate the black hole particles into gparts */
     if (with_black_holes)
-      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
-                                      Ndm + Ndm_background + *Ngas + *Nstars);
+      io_duplicate_black_holes_gparts(
+          &tp, *bparts, *gparts, *Nblackholes,
+          Ndm + Ndm_background + *Ngas + *Nsinks + *Nstars);
 
     threadpool_clean(&tp);
   }
@@ -732,6 +761,7 @@ void write_output_single(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+  const struct sink* sinks = e->s->sinks;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -750,6 +780,7 @@ void write_output_single(struct engine* e,
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
+  const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
@@ -767,17 +798,19 @@ void write_output_single(struct engine* e,
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
+  const size_t Nsinks_written =
+      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
   const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written;
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
   /* Format things in a Gadget-friendly array */
   long long N_total[swift_type_count] = {
       (long long)Ngas_written,   (long long)Ndm_written,
-      (long long)Ndm_background, 0,
+      (long long)Ndm_background, (long long)Nsinks,
       (long long)Nstars_written, (long long)Nblackholes_written};
 
   /* File name */
@@ -935,6 +968,7 @@ void write_output_single(struct engine* e,
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
+    struct sink* sinks_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1094,6 +1128,33 @@ void write_output_single(struct engine* e,
         }
       } break;
 
+      case swift_type_sink: {
+        if (Nsinks == Nsinks_written) {
+
+          /* No inhibted particles: easy case */
+          N = Nsinks;
+          sink_write_particles(sinks, list, &num_fields, with_cosmology);
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          N = Nsinks_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("sinks_written", (void**)&sinks_written,
+                             sink_align,
+                             Nsinks_written * sizeof(struct sink)) != 0)
+            error("Error while allocating temporary memory for sinks");
+
+          /* Collect the particles we want to write */
+          io_collect_sinks_to_write(sinks, sinks_written, Nsinks,
+                                    Nsinks_written);
+
+          /* Select the fields to write */
+          sink_write_particles(sinks_written, list, &num_fields,
+                               with_cosmology);
+        }
+      } break;
+
       case swift_type_stars: {
         if (Nstars == Nstars_written) {
 
@@ -1227,6 +1288,7 @@ void write_output_single(struct engine* e,
       swift_free("gpart_group_written", gpart_group_data_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
+    if (sinks_written) swift_free("sinks_written", sinks_written);
 
     /* Close particle group */
     H5Gclose(h_grp);
