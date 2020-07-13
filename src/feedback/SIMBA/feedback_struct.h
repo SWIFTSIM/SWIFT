@@ -67,7 +67,7 @@ struct feedback_spart_data {
 /**
  * @brief Feedback data carried by each of the gas particles' xparts
  */
-struct feedback_xpart_data {
+struct feedback_part_data {
   
   /* Velocity to update particles with */
   float v_kick;

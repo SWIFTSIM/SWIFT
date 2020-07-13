@@ -68,6 +68,8 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
+#include "active.h"
+//#include "cell.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -3362,9 +3364,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
 
-  // ALEXEI: get the number of decoupled particles in this cell
-  int nparts_decoupled = c->hydro.nparts_decoupled;
-
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer =
       (buff == NULL && gbuff == NULL && sbuff == NULL && bbuff == NULL);
@@ -3713,19 +3712,12 @@ void space_split_recursive(struct space *s, struct cell *c,
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
-      ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
-      ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
-      ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
-
-      h_max = max(h_max, parts[k].h);
-
-      /* Collect SFR from the particles after rebuilt */
-      star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
-                                              &c->stars.sfh);
       // ALEXEI: skip all the decoupled particles here and accumulate
       if (!part_is_decoupled(&parts[k])) {
-        hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
-        hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
+        ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
+        ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
+        ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
+
         /* Collect SFR from the particles after rebuilt */
         star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                                 &c->stars.sfh);
@@ -3735,9 +3727,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       h_max = max(h_max, parts[k].h);
     }
 
-    if (count == c->hydro.nparts_decoupled) {
-      hydro_time_bin_max = num_time_bins;
-    }
+    //if (count == c->hydro.nparts_decoupled) {
+    //  hydro_time_bin_max = num_time_bins;
+    //}
 
     /* xparts: Reset x_diff */
     for (int k = 0; k < count; k++) {

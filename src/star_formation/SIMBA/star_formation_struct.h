@@ -16,8 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_EAGLE_STAR_FORMATION_STRUCT_H
-#define SWIFT_EAGLE_STAR_FORMATION_STRUCT_H
+#ifndef SWIFT_SIMBA_STAR_FORMATION_STRUCT_H
+#define SWIFT_SIMBA_STAR_FORMATION_STRUCT_H
+
+/* Do we need unique IDs (only useful when spawning
+   new particles, conversion gas->stars does not need unique IDs) */
+#define star_formation_need_unique_id 0
 
 /**
  * @brief Star-formation-related properties stored in the extended particle
@@ -25,11 +29,25 @@
  */
 struct star_formation_xpart_data {
 
-  /*! Star formation rate */
+  /*! Star formation rate (internal units) or (if negative) time/scale-factor of
+   * last SF episode */
   float SFR;
 
   /* Stellar mass formed */
   float star_mass_formed;
 };
 
-#endif /* SWIFT_EAGLE_STAR_FORMATION_STRUCT_H */
+/**
+ * @brief Star-formation-related properties stored in the star particle
+ * data.
+ */
+struct star_formation_spart_data {
+
+  /*! The physical birth density */
+  float birth_density;
+
+  /*! The birth temperature */
+  float birth_temperature;
+};
+
+#endif /* SWIFT_SIMBA_STAR_FORMATION_STRUCT_H */

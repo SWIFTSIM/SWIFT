@@ -28,6 +28,20 @@
 #include "units.h"
 #include "random.h"
 
+/**
+ * @brief Update the properties of a particle fue to feedback effects after
+ * the cooling was applied.
+ *
+ * Nothing to do here in the SIMBA model.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void feedback_update_part(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct engine* restrict e) {}
+
 
 /**
  * @brief Calculates speed particles will be kicked based on
@@ -145,6 +159,27 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 }
 
 /**
+ * @brief Returns the length of time since the particle last did
+ * enrichment/feedback. In SIMBA default to zero because the star particles
+ * themselves don't do any feedback
+ *
+ * @param sp The #spart.
+ * @param with_cosmology Are we running with cosmological time integration on?
+ * @param cosmo The cosmological model.
+ * @param time The current time (since the Big Bang / start of the run) in
+ * internal units.
+ * @param dt_star the length of this particle's time-step in internal units.
+ * @return The length of the enrichment step in internal units.
+ */
+INLINE static double feedback_get_enrichment_timestep(
+    const struct spart* sp, const int with_cosmology,
+    const struct cosmology* cosmo, const double time, const double dt_star) {
+
+  return 0;
+}
+
+
+/**
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.
  */
@@ -194,9 +229,9 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
 __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
-    const double star_age_beg_step, const double dt) {
-  
-}
+    const struct phys_const* phys_const, const double star_age_beg_step,
+    const double dt, const double time, const integertime_t ti_begin,
+    const int with_cosmology) {}
 
 /**
  * @brief If gas particle isn't transformed into a star, kick the particle
@@ -224,7 +259,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   /* Randomise +- direction of above cross product to not get all winds going in one direction out of galaxy*/
   // ALEXEI: come up with better choice for random number
   const double random_number =
-      random_unit_interval(p->id, ti_current, random_number_stellar_feedback);
+      random_unit_interval(p->id, ti_current, random_number_stellar_feedback_1);
   if (((int) (10e7*random_number)) % 2) {
     for (int i = 0; i < 3; i++) v_new[i] *= -1;
   }
@@ -286,7 +321,7 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
   // ALEXEI: seems like we're getting too much feedback, so added an extra 0.1 factor to the probability calculation
   const double prob_launch = (1. - exp(-xp->feedback_data.wind_mass/hydro_get_mass(p)))*0.1;
   const double random_number =
-      random_unit_interval(p->id, ti_current, random_number_stellar_feedback);
+      random_unit_interval(p->id, ti_current, random_number_stellar_feedback_2);
   if (random_number < prob_launch) {
     launch_wind(p, xp, c, feedback_props, cosmo, ti_current);
   }
@@ -315,6 +350,24 @@ static INLINE void feedback_struct_restore(struct feedback_props* feedback,
                                            FILE* stream) {}
 
 /**
+ * @brief Will this star particle want to do feedback during the next time-step?
+ *
+ * Nothing to do here in the SIMBA model
+ *
+ * @param sp The star of interest.
+ * @param feedback_props The properties of the feedback model.
+ * @param with_cosmology Are we running with cosmological time integration?
+ * @param cosmo The #cosmology object.
+ * @param time The current time (since the Big Bang).
+ */
+__attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
+    struct spart* restrict sp, const struct feedback_props* feedback_props,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const double time) {
+  return 1;
+}
+
+/**
  * @brief Clean-up the memory allocated for the feedback routines
  *
  * We simply free all the arrays.
@@ -322,5 +375,20 @@ static INLINE void feedback_struct_restore(struct feedback_props* feedback,
  * @param feedback_props the feedback data structure.
  */
 static INLINE void feedback_clean(struct feedback_props* feedback_props) {}
+
+#ifdef HAVE_HDF5
+/**
+ * @brief Writes the current model of feedback to the file
+ *
+ * @param feedback The properties of the feedback scheme.
+ * @param h_grp The HDF5 group in which to write.
+ */
+INLINE static void feedback_write_flavour(struct feedback_props* feedback,
+                                          hid_t h_grp) {
+
+  io_write_attribute_s(h_grp, "Feedback Model", "EAGLE");
+}
+#endif  // HAVE_HDF5
+
 
 #endif /* SWIFT_FEEDBACK_SIMBA_H */
