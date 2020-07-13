@@ -88,6 +88,7 @@ InitialConditions:
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
   generate_gas_in_ics: 1             # Generate gas particles from the DM-only ICs
   cleanup_smoothing_lengths: 1       # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+  remap_ids: 1                       # Re-map the IDs to [1, N] to avoid collision problems when splitting
 
 # Parameters of the line-of-sight outputs
 LineOfSight:

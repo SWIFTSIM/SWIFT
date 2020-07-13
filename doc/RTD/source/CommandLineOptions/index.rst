@@ -34,6 +34,7 @@ can be found by typing ``./swift -h``:
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
     -B, --black-holes                 Run with black holes.
+    -k, --sinks                       Run with sink particles. 
     -u, --fof                         Run Friends-of-Friends algorithm to
                                       perform black hole seeding.
     -x, --velociraptor                Run with structure finding.

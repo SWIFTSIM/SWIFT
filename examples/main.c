@@ -903,6 +903,8 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:cleanup_velocity_factors", 0);
     const int generate_gas_in_ics = parser_get_opt_param_int(
         params, "InitialConditions:generate_gas_in_ics", 0);
+    const int remap_ids =
+        parser_get_opt_param_int(params, "InitialConditions:remap_ids", 0);
 
     /* Initialise the cosmology */
     if (with_cosmology)
@@ -1140,9 +1142,9 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
                sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, periodic,
-               replicate, generate_gas_in_ics, with_hydro, with_self_gravity,
-               with_star_formation, with_DM_background_particles, talking,
-               dry_run, nr_nodes);
+               replicate, remap_ids, generate_gas_in_ics, with_hydro,
+               with_self_gravity, with_star_formation,
+               with_DM_background_particles, talking, dry_run, nr_nodes);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);

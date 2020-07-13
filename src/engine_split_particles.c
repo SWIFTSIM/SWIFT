@@ -43,6 +43,7 @@ struct data_count {
   const struct engine *const e;
   const float mass_threshold;
   size_t counter;
+  long long max_id;
 };
 
 /**
@@ -51,8 +52,11 @@ struct data_count {
 struct data_split {
   const struct engine *const e;
   const float mass_threshold;
+  const int generate_random_ids;
   size_t *const k_parts;
   size_t *const k_gparts;
+  long long offset_id;
+  long long *count_id;
   swift_lock_type lock;
 };
 
@@ -70,6 +74,7 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
   const float mass_threshold = data->mass_threshold;
 
   size_t counter = 0;
+  long long max_id = 0;
 
   for (int i = 0; i < count; ++i) {
 
@@ -81,10 +86,14 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
     /* Is the mass of this particle larger than the threshold? */
     const float gas_mass = hydro_get_mass(p);
     if (gas_mass > mass_threshold) ++counter;
+
+    /* Get the maximal id */
+    max_id = max(max_id, p->id);
   }
 
   /* Increment the global counter */
   atomic_add(&data->counter, counter);
+  atomic_max_ll(&data->max_id, max_id);
 }
 
 /**
@@ -97,6 +106,9 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
   struct part *parts = (struct part *)map_data;
   struct data_split *data = (struct data_split *)extra_data;
   const float mass_threshold = data->mass_threshold;
+  const int generate_random_ids = data->generate_random_ids;
+  const long long offset_id = data->offset_id;
+  long long *count_id = (long long *)data->count_id;
   const struct engine *e = data->e;
   const int with_gravity = (e->policy & engine_policy_self_gravity) ||
                            (e->policy & engine_policy_external_gravity);
@@ -158,10 +170,14 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
         memcpy(&global_gparts[k_gparts], gp, sizeof(struct gpart));
       }
 
-      /* Update the IDs.
-       * The gas IDs are always odd, so we multiply by two here to
-       * repsect the parity. */
-      global_parts[k_parts].id += 2 * (long long)rand_r(&seedp);
+      /* Update the IDs. */
+      if (generate_random_ids) {
+        /* The gas IDs are always odd, so we multiply by two here to
+         * repsect the parity. */
+        global_parts[k_parts].id += 2 * (long long)rand_r(&seedp);
+      } else {
+        global_parts[k_parts].id = offset_id + 2 * atomic_inc(count_id);
+      }
 
       /* Re-link everything */
       if (with_gravity) {
@@ -264,6 +280,7 @@ void engine_split_gas_particles(struct engine *e) {
                            (e->policy & engine_policy_external_gravity);
   const float mass_threshold =
       e->hydro_properties->particle_splitting_mass_threshold;
+  const int generate_random_ids = e->hydro_properties->generate_random_ids;
   const size_t nr_parts_old = s->nr_parts;
 
   /* Quick check to avoid problems */
@@ -274,12 +291,43 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Start by counting how many particles are above the threshold
    * for splitting (this is done in parallel over the threads) */
-  struct data_count data_count = {e, mass_threshold, 0};
+  struct data_count data_count = {e, mass_threshold, 0, 0};
   threadpool_map(&e->threadpool, engine_split_gas_particle_count_mapper,
                  s->parts, nr_parts_old, sizeof(struct part), 0, &data_count);
   const size_t counter = data_count.counter;
 
-  /* Early abort? */
+  /* Verify that nothing wrong happened with the IDs */
+  if (data_count.max_id > e->max_parts_id) {
+    error("Found a gas particle with an ID larger than the current max!");
+  }
+
+  /* Be verbose about this. This is an important event */
+  message("Splitting %zd particles above the mass threshold", counter);
+
+  /* Number of particles to create */
+  const long long count_new_gas = counter * particle_split_factor;
+
+  /* Get the global offset to generate new IDs (the *2 is to respect the ID
+   * parity) */
+  long long expected_count_id = 2 * counter * (particle_split_factor - 1);
+  long long offset_id = 0;
+#ifdef WITH_MPI
+  MPI_Exscan(&expected_count_id, &offset_id, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
+#endif
+  offset_id += e->max_parts_id + 1;
+
+  /* Store the new maximal id */
+  e->max_parts_id = offset_id + expected_count_id;
+#ifdef WITH_MPI
+  MPI_Bcast(&e->max_parts_id, 1, MPI_LONG_LONG_INT, e->nr_nodes - 1,
+            MPI_COMM_WORLD);
+#endif
+
+  /* Each node now has a unique range of IDs [offset_id, offset_id + count_id]
+   */
+
+  /* Early abort (i.e. no particle to split on this MPI rank) ? */
   if (counter == 0) {
 
     if (e->verbose)
@@ -287,12 +335,6 @@ void engine_split_gas_particles(struct engine *e) {
               clocks_getunit());
     return;
   }
-
-  /* Be verbose about this. This is an important event */
-  message("Splitting %zd particles above the mass threshold", counter);
-
-  /* Number of particles to create */
-  const size_t count_new_gas = counter * particle_split_factor;
 
   /* Do we need to reallocate the gas array for the new particles? */
   if (s->nr_parts + count_new_gas > s->size_parts) {
@@ -376,11 +418,21 @@ void engine_split_gas_particles(struct engine *e) {
   size_t k_gparts = s->nr_gparts;
 
   /* Loop over the particles again to split them */
-  struct data_split data_split = {e, mass_threshold, &k_parts, &k_gparts, 0};
+  long long local_count_id = 0;
+  struct data_split data_split = {
+      e,         mass_threshold, generate_random_ids, &k_parts,
+      &k_gparts, offset_id,      &local_count_id,     0};
   lock_init(&data_split.lock);
   threadpool_map(&e->threadpool, engine_split_gas_particle_split_mapper,
                  s->parts, nr_parts_old, sizeof(struct part), 0, &data_split);
   if (lock_destroy(&data_split.lock) != 0) error("Error destroying lock");
+
+  /* Check that ID assignment went well */
+  if (!generate_random_ids && 2 * local_count_id != expected_count_id)
+    error(
+        "Something went wrong when assigning new IDs expected count=%lld "
+        "actual count=%lld",
+        expected_count_id, local_count_id);
 
   /* Update the local counters */
   s->nr_parts = k_parts;

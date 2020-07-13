@@ -5393,6 +5393,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param Nbpart The number of black hole particles in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
+ * @param remap_ids Are we remapping the IDs from 1 to N?
  * @param generate_gas_in_ics Are we generating gas particles from the gparts?
  * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
@@ -5413,9 +5414,9 @@ void space_init(struct space *s, struct swift_params *params,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
-                int generate_gas_in_ics, int hydro, int self_gravity,
-                int star_formation, int DM_background, int verbose, int dry_run,
-                int nr_nodes) {
+                int remap_ids, int generate_gas_in_ics, int hydro,
+                int self_gravity, int star_formation, int DM_background,
+                int verbose, int dry_run, int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -5466,6 +5467,11 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Initiate some basic randomness */
   srand(42);
+
+  /* Are we remapping the IDs to the range [1, NumPart]? */
+  if (remap_ids) {
+    space_remap_ids(s, nr_nodes, verbose);
+  }
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
@@ -5927,6 +5933,94 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 }
 
 /**
+ * @brief Remaps the IDs of the particles to the range [1, N]
+ *
+ * The IDs are unique accross all MPI ranks and are generated
+ * in ther order DM, gas, sinks, stars, BHs.
+ *
+ * @param s The current #space object.
+ * @param nr_nodes The number of MPI ranks used in the run.
+ * @param verbose Are we talkative?
+ */
+void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
+
+  if (verbose) message("Remapping all the IDs");
+
+  /* Get the current local number of particles */
+  const size_t local_nr_parts = s->nr_parts;
+  const size_t local_nr_sinks = s->nr_sinks;
+  const size_t local_nr_gparts = s->nr_gparts;
+  const size_t local_nr_sparts = s->nr_sparts;
+  const size_t local_nr_bparts = s->nr_bparts;
+  const size_t local_nr_baryons =
+      local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
+  const size_t local_nr_dm = local_nr_gparts - local_nr_baryons;
+
+  /* Get the global offsets */
+  long long offset_parts = 0;
+  long long offset_sinks = 0;
+  long long offset_sparts = 0;
+  long long offset_bparts = 0;
+  long long offset_dm = 0;
+#ifdef WITH_MPI
+  MPI_Exscan(&local_nr_parts, &offset_parts, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_sinks, &offset_sinks, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_sparts, &offset_sparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_bparts, &offset_bparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_dm, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
+             MPI_COMM_WORLD);
+#endif
+
+  /* Total number of particles of each kind */
+  long long total_dm = offset_dm + local_nr_dm;
+  long long total_parts = offset_parts + local_nr_parts;
+  long long total_sinks = offset_sinks + local_nr_sinks;
+  long long total_sparts = offset_sparts + local_nr_sparts;
+  // long long total_bparts = offset_bparts + local_nr_bparts;
+
+#ifdef WITH_MPI
+  /* The last rank now has the correct total, let's broadcast this back */
+  MPI_Bcast(&total_dm, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  MPI_Bcast(&total_parts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  MPI_Bcast(&total_sinks, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  MPI_Bcast(&total_sparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  // MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
+  // MPI_COMM_WORLD);
+#endif
+
+  /* Let's order the particles
+   * IDs will be DM then gas then sinks than stars then BHs */
+  offset_dm += 1;
+  offset_parts += 1 + total_dm;
+  offset_sinks += 1 + total_dm + total_parts;
+  offset_sparts += 1 + total_dm + total_parts + total_sinks;
+  offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
+
+  /* We can now remap the IDs in the range [offset offset + local_nr] */
+  for (size_t i = 0; i < local_nr_parts; ++i) {
+    s->parts[i].id = offset_parts + i;
+  }
+  for (size_t i = 0; i < local_nr_sinks; ++i) {
+    s->sinks[i].id = offset_sinks + i;
+  }
+  for (size_t i = 0; i < local_nr_sparts; ++i) {
+    s->sparts[i].id = offset_sparts + i;
+  }
+  for (size_t i = 0; i < local_nr_bparts; ++i) {
+    s->bparts[i].id = offset_bparts + i;
+  }
+  for (size_t i = 0; i < local_nr_dm; ++i) {
+    if (s->gparts[i].type == swift_type_dark_matter ||
+        s->gparts[i].type == swift_type_dark_matter_background)
+      s->gparts[i].id_or_neg_offset = offset_dm + i;
+  }
+}
+
+/**
  * @brief Duplicate all the dark matter particles to create the same number
  * of gas particles with mass ratios given by the cosmology.
  *
@@ -6166,6 +6260,29 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
           "in the parameter file cosmo.Omega_m=%e Omega_m=%e",
           cosmo->Omega_m, Omega_m);
   }
+}
+
+/**
+ * @brief Compute the max id of any #part in this space.
+ *
+ * This function is inefficient. Don't call often.
+ *
+ * @param s The #space.
+ */
+long long space_get_max_parts_id(struct space *s) {
+
+  long long max_id = -1;
+  for (size_t i = 0; i < s->nr_parts; ++i) max_id = max(max_id, s->parts[i].id);
+  for (size_t i = 0; i < s->nr_sinks; ++i) max_id = max(max_id, s->sinks[i].id);
+  for (size_t i = 0; i < s->nr_sparts; ++i)
+    max_id = max(max_id, s->sparts[i].id);
+  for (size_t i = 0; i < s->nr_bparts; ++i)
+    max_id = max(max_id, s->bparts[i].id);
+  for (size_t i = 0; i < s->nr_gparts; ++i)
+    if (s->gparts[i].type == swift_type_dark_matter ||
+        s->gparts[i].type == swift_type_dark_matter_background)
+      max_id = max(max_id, s->gparts[i].id_or_neg_offset);
+  return max_id;
 }
 
 /**
