@@ -106,7 +106,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct gpart *res
  * @param ti_current Current integer time (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_sidm(float hj, struct gpart *gpi, struct gpart *gpj,
+runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
                  float a, float H, const double dt_cgs,
                  const integertime_t ti_current,
                  const struct sidm_props* sidm_props,
@@ -126,8 +126,7 @@ runner_iact_sidm(float hj, struct gpart *gpi, struct gpart *gpj,
     const double mass = gpj->mass * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
     
     /* DM-DM distance */
-    /*float hj_cgs = hj * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);*/
-    float hj_cgs = gpj->sidm_data.h_sidm;
+    float hj_cgs = h_SI * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
     float h_SIDM3 = hj_cgs * hj_cgs * hj_cgs;
     
     float a_inv = 1.0f / a;
