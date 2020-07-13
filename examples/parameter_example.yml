@@ -38,6 +38,7 @@ SPH:
   max_ghost_iterations:              30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   particle_splitting:                1        # (Optional) Are we splitting particles that are too massive (default: 0)
   particle_splitting_mass_threshold: 7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
+  generate_random_ids:               0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
   initial_temperature:               0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:               0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:                   0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
@@ -178,6 +179,7 @@ InitialConditions:
   smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
   shift:      [0.0,0.0,0.0]         # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
+  remap_ids:  0                     # (Optional) Remap all the particle IDs to the range [1, NumPart].
 
 # Parameters controlling restarts
 Restarts:

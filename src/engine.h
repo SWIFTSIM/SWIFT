@@ -275,6 +275,10 @@ struct engine {
   long long count_inhibited_bparts;
 #endif
 
+  /* Maximal ID of the parts (used for the generation of new IDs when splitting)
+   */
+  long long max_parts_id;
+
   /* Total mass in the simulation */
   double total_mass;
 

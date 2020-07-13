@@ -2171,6 +2171,21 @@ void engine_first_init_particles(struct engine *e) {
 }
 
 /**
+ * @brief Compute the maximal ID of any #part in the run.
+ *
+ * @param e The #engine.
+ */
+void engine_get_max_ids(struct engine *e) {
+
+  e->max_parts_id = space_get_max_parts_id(e->s);
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &e->max_parts_id, 1, MPI_LONG_LONG_INT, MPI_MAX,
+                MPI_COMM_WORLD);
+#endif
+}
+
+/**
  * @brief Initialises the particles and set them in a state ready to move
  *forward in time.
  *
@@ -2430,6 +2445,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                     e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
                     e->verbose);
 #endif
+
+  /* Gather the max IDs at this stage */
+  engine_get_max_ids(e);
 
   /* Ready to go */
   e->step = 0;
