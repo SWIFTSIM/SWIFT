@@ -56,6 +56,8 @@ struct sidm_props {
     /* Scattering cross section (in internal units) */
     double sigma;
     
+    float h_search_radius;
+    
 };
 
 /**
@@ -68,6 +70,8 @@ struct sidm_gpart_data {
     
     /*! flag indicating if particle in given time-step has been scattered*/
     float sidm_flag;
+    
+    float test_flag;
     
     /*! Particle search radius */
     float h_sidm;
