@@ -66,7 +66,8 @@ void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
   p->rho *= new_mass / old_mass;
 
   /* Update internal energy */
-  const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float u =
+      hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
   const float u_new = u + xp->feedback_data.delta_u;
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
