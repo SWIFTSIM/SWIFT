@@ -100,17 +100,18 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
             
             const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
             
-            const float hj = gravity_get_softening(gpj, grav_props);
+            /*const float hj = gravity_get_softening(gpj, grav_props);*/
             /*const float hj2 = hj * hj;*/
             
             /* Compute the pairwise distance. */
             float dx[3] = {gpj->x[0] - gpi->x[0], gpj->x[1] - gpi->x[1], gpj->x[2] - gpi->x[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             const float h_SI = gpj->sidm_data.h_sidm;
+            const float h_SI2 = h_SI * h_SI;
             
             /* Hit or miss? */
-            if (r2 < h_SI) {
-                runner_iact_sidm(hj, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
+            if (r2 < h_SI2) {
+                runner_iact_sidm(h_SI, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
             }
 
         } /* loop over the parts in cell. */
@@ -184,17 +185,18 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
             
             const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
             
-            const float hj = gravity_get_softening(gpj, grav_props);
+            /*const float hj = gravity_get_softening(gpj, grav_props);*/
             /*const float hj2 = hj * hj;*/
             
             /* Compute the pairwise distance. */
             float dx[3] = {gpj->x[0] - gpi->x[0], gpj->x[1] - gpi->x[1], gpj->x[2] - gpi->x[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             const float h_SI = gpj->sidm_data.h_sidm;
+            const float h_SI2 = h_SI * h_SI;
             
             /* Hit or miss? */
-            if (r2 < h_SI) {
-                runner_iact_sidm(hj, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
+            if (r2 < h_SI2) {
+                runner_iact_sidm(h_SI, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
             }
             
         } /* loop over the parts in cell cj. */
