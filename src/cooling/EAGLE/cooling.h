@@ -33,6 +33,7 @@ struct cosmology;
 struct hydro_props;
 struct entropy_floor_properties;
 struct space;
+struct phys_const;
 
 void cooling_update(const struct cosmology *cosmo,
                     struct cooling_function_data *cooling, struct space *s);
