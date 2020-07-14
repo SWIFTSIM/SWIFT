@@ -932,6 +932,26 @@ hydro_diffusive_feedback_reset(struct part* restrict p) {
 }
 
 /**
+ * @brief Update particle velocity
+ *
+ * @param p the particle of interest
+ * @param xp the corresponding xpart
+ * @param v the new velocity to assign to the particle
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_peculiar_velocity(struct part *restrict p, struct xpart *restrict xp, const float v[3]) {
+  xp->v_full[0] = v[0];
+  xp->v_full[1] = v[1];
+  xp->v_full[2] = v[2];
+  p->gpart->v_full[0] = v[0];
+  p->gpart->v_full[1] = v[1];
+  p->gpart->v_full[2] = v[2];
+  p->v[0] = v[0];
+  p->v[1] = v[1];
+  p->v[2] = v[2];
+}
+
+/**
  * @brief Returns the comoving pressure of a particle
  *
  * @param p The particle of interest.

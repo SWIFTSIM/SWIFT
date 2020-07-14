@@ -276,7 +276,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*xp->feedback_data.v_kick/v_new_norm + p->v[i]; 
 
   /* Set the velocity */
-  hydro_set_velocity(p, xp, v_new);
+  hydro_set_peculiar_velocity(p, xp, v_new);
 
   /* Heat particle */
   // Come up with better random number seed
@@ -295,9 +295,6 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   /* Increment cell counter of decoupled particles */
   c->hydro.nparts_decoupled++;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  p->ti_decoupled = ti_current;
-#endif
 }
 
 __attribute__((always_inline)) INLINE static void star_formation_feedback(

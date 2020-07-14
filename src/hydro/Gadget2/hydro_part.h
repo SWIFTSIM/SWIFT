@@ -69,7 +69,6 @@ struct xpart {
   struct star_formation_xpart_data sf_data;
 
   /* Additional data used by the star formation */
-  // ALEXEI: make this compatible with EAGLE feedback
   struct feedback_part_data feedback_data;
 
 #ifdef WITH_LOGGER
@@ -175,7 +174,7 @@ struct part {
   struct timestep_limiter_data limiter_data;
 
   /* Delay time for decoupling from hydro */
-  double delay_time; // ALEXEI: think about which type we want to have here. i.e. integertime_t or double?
+  double delay_time; 
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -184,9 +183,6 @@ struct part {
 
   /* Time of the last kick */
   integertime_t ti_kick;
-
-  /* Time when particle last decoupled */
-  integertime_t ti_decoupled;
 
 #endif
 

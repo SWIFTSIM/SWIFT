@@ -433,14 +433,13 @@ hydro_diffusive_feedback_reset(struct part *restrict p) {
 
 /**
  * @brief Update particle velocity
- * ALEXEI: Maybe come up with more specific name?
  *
  * @param p the particle of interest
  * @param xp the corresponding xpart
  * @param v the new velocity to assign to the particle
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_velocity(struct part *restrict p, struct xpart *restrict xp, const float v[3]) {
+hydro_set_peculiar_velocity(struct part *restrict p, struct xpart *restrict xp, const float v[3]) {
   xp->v_full[0] = v[0];
   xp->v_full[1] = v[1];
   xp->v_full[2] = v[2];
