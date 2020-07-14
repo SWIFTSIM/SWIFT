@@ -2135,6 +2135,9 @@ case "$with_potential" in
    nfw)
       AC_DEFINE([EXTERNAL_POTENTIAL_NFW], [1], [Navarro-Frenk-White external potential])
    ;;
+   nfw_mn)
+      AC_DEFINE([EXTERNAL_POTENTIAL_NFW_MN], [1], [Navarro-Frenk-White + Miyamoto-Nagai disk external potential])
+   ;;
    disc-patch)
       AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
    ;;

@@ -310,6 +310,19 @@ NFWPotential:
   critical_density:   127.4         # Critical density (internal units).
   timestep_mult:      0.01          # Dimensionless pre-factor for the time-step condition, basically determines fraction of orbital time we need to do an integration step
 
+# NFW + Miyamoto-Nagai disk potential
+NFW_MNPotential:
+  useabspos:         0         # 0 -> positions based on centre, 1 -> absolute positions 
+  position:         [0.,0.,0.] # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  timestep_mult:    0.01       # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:          0.01       # Softening size (internal units)
+  concentration:    10.0       # concentration of the Halo
+  M_200:            150.0      # M200 of the galaxy disk (internal units)
+  critical_density: 1.37E-8    # Critical density of the Universe (internal units)
+  Mdisk:            3.0        # Mass of the disk (internal units)
+  Rdisk:            4.0        # Effective radius of the disk (internal units)
+  Zdisk:            0.4704911  # Scale-height of the disk (internal units)
+  
 # Disk-patch potential parameters. The potential is along the x-axis.
 DiscPatchPotential:
   surface_density: 10.      # Surface density of the disc (internal units)
