@@ -280,6 +280,18 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
   }
 }
 
+/** 
+ * @brief Checks whether particle should be recoupled
+ *
+ * Nothing to do here in EAGLE model
+ *
+ * @param p particle to check
+ * @param feedback The properties of the feedback scheme
+ */
+INLINE static int feedback_is_recoupling(const struct part* p, const struct feedback_props* feedback) {
+  return 0;
+}
+
 void feedback_clean(struct feedback_props* fp);
 
 void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);

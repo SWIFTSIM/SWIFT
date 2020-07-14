@@ -367,6 +367,18 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
   return 1;
 }
 
+/** 
+ * @brief Checks whether particle should be recoupled
+ * 
+ * Nothing to do here in EAGLE model
+ * 
+ * @param p particle to check
+ * @param feedback The properties of the feedback scheme
+ */
+INLINE static int feedback_is_recoupling(const struct part* p, const struct feedback_props* feedback) {
+  return (p->delay_time < 0. || p->rho > feedback->recoupling_density);
+}
+
 /**
  * @brief Clean-up the memory allocated for the feedback routines
  *

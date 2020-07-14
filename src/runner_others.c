@@ -321,7 +321,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
 
           /* Are we forming a star particle from this SF rate? */
-          if (star_formation_should_convert_to_star(p, xp, sf_props, e, c,
+          if (star_formation_should_convert_to_star(p, xp, sf_props, e,
                                                     dt_star)) {
 
 #ifdef WITH_LOGGER
@@ -835,13 +835,6 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
 
-  //if (c->hydro.nparts_decoupled == 0) error("There are no decoupled particles in this cell %p", c);
-  //if (c == c->top) {
-  //  message("top cell %p nparts_decoupled %d depth %d maxdepth %d", c, c->hydro.nparts_decoupled, c->depth, c->maxdepth);
-  //} else { 
-  //  message("cell %p parent %p top %p nparts_decoupled %d depth %d maxdepth %d", c, c->parent, c->top, c->hydro.nparts_decoupled, c->depth, c->maxdepth);
-  //}
-
   if (c->split) {
     for (int j = 0; j < 8; ++j) {
       if (c->progeny[j] != NULL) runner_do_part_recouple(r, c->progeny[j], 0);
@@ -861,7 +854,7 @@ void runner_do_part_recouple(struct runner *r, struct cell *c, int timer) {
       /* Decrement time delay for decoupled particles */
       if (part_is_decoupled(p)) {
         p->delay_time -= dt_drift;
-        if (p->delay_time < 0. || p->rho > e->feedback_props->recoupling_density) {
+        if (feedback_is_recoupling(p, e->feedback_props)) {
           // ALEXEI: Note that the choice of min_active_bin implies that the timestep might be smaller than actually required. 
           // This will likely result in slow performance as there will be some particle somewhere that is being recoupled.
           // Think of ways to choose a more apropriate time bin. 
