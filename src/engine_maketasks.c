@@ -1336,7 +1336,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const double max_distance2 = max_distance * max_distance;
 
   /* Compute how many cells away we need to walk */
-  const double distance = 5. * cells[0].width[0] / theta_crit;
+  const double distance = 2.5 * cells[0].width[0] / theta_crit;
   int delta = (int)(distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;

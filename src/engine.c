@@ -3190,7 +3190,7 @@ void engine_makeproxies(struct engine *e) {
 
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
-    const double distance = 4. * r_max * theta_crit_inv;
+    const double distance = 2. * r_max * theta_crit_inv;
     delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
