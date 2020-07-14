@@ -1590,9 +1590,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 2;
   }
   if (e->policy & engine_policy_star_formation) {
-    n1 += 1;
-    // ALEXEI: add one for particle recoupling
-    n1 += 1; 
+    /* star formation + recoupling */
+    n1 += 2;
   }
   if (e->policy & engine_policy_stars) {
     /* 2 self (density, feedback), 1 sort, 26/2 density pairs
@@ -2718,31 +2717,31 @@ void engine_step(struct engine *e) {
 #endif
 
   // ALEXEI: update total stellar mass. To be used for development in isolated galaxy test case only, remove once can update stellar mass using fof for simba
-  //double total_stellar_mass = 0.;
-  //double total_gas_mass = 0.;
-  //if (e->s->cells_top != NULL) {
-  //  for (int i = 0; i < e->s->nr_cells; i++) {
-  //    struct cell *c = &e->s->cells_top[i];
-  //    for (int j = 0; j < c->stars.count; j++) 
-  //  total_stellar_mass += c->stars.parts[j].mass;
-  //  }
-  //}
-  //if (e->s->cells_top != NULL) {
-  //  for (int i = 0; i < e->s->nr_cells; i++) {
-  //    struct cell *c = &e->s->cells_top[i];
-  //    for (int j = 0; j < c->hydro.count; j++) 
-  //  total_gas_mass += c->hydro.parts[j].mass;
-  //  }
-  //}
-  //if (e->s->cells_top != NULL) {
-  //  for (int i = 0; i < e->s->nr_cells; i++) {
-  //    struct cell *c = &e->s->cells_top[i];
-  //    for (int j = 0; j < c->hydro.count; j++) {
-  //  c->hydro.xparts[j].feedback_data.host_galaxy_mass_stars = total_stellar_mass;
-  //  c->hydro.xparts[j].feedback_data.host_galaxy_mass_baryons = total_gas_mass + total_stellar_mass;
-  //    }
-  //  }
-  //}
+  double total_stellar_mass = 0.;
+  double total_gas_mass = 0.;
+  if (e->s->cells_top != NULL) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      for (int j = 0; j < c->stars.count; j++) 
+    total_stellar_mass += c->stars.parts[j].mass;
+    }
+  }
+  if (e->s->cells_top != NULL) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      for (int j = 0; j < c->hydro.count; j++) 
+    total_gas_mass += c->hydro.parts[j].mass;
+    }
+  }
+  if (e->s->cells_top != NULL) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      for (int j = 0; j < c->hydro.count; j++) {
+    c->hydro.xparts[j].feedback_data.host_galaxy_mass_stars = total_stellar_mass;
+    c->hydro.xparts[j].feedback_data.host_galaxy_mass_baryons = total_gas_mass + total_stellar_mass;
+      }
+    }
+  }
 
   
   /* Collect information about the next time-step */

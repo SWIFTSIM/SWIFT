@@ -3777,7 +3777,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->top->hydro.star_formation != NULL) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
     }
-    // ALEXEI: check if there are any decoupled particles in this cell when activating task!
     if (c->part_recouple != NULL) scheduler_activate(s, c->part_recouple);
   }
 

@@ -269,8 +269,6 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             gparts[k].mass, hydro_get_mass(part));
 
       /* Check that the particles are at the same time */
-      //if (gparts[k].time_bin != part->time_bin)
-      // ALEXEI: we don't want to do this check if particle is decoupled
       if (gparts[k].time_bin != part->time_bin && !part_is_decoupled(part))
         error("Linked particles are not at the same time !");
     }
@@ -366,8 +364,6 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Linked particles do not have the same mass!\n");
 
       /* Check that the particles are at the same time */
-      //if (parts[k].time_bin != parts[k].gpart->time_bin)
-      // ALEXEI: we don't want to do this check if the particle is decoupled
       if (parts[k].time_bin != parts[k].gpart->time_bin && !part_is_decoupled(&parts[k]))
         error("Linked particles are not at the same time !");
     }

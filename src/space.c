@@ -3712,7 +3712,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
 
-      // ALEXEI: skip all the decoupled particles here and accumulate
+      /* skip all the decoupled particles here and accumulate */
       if (!part_is_decoupled(&parts[k])) {
         ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
         ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
@@ -3726,10 +3726,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
       h_max = max(h_max, parts[k].h);
     }
-
-    //if (count == c->hydro.nparts_decoupled) {
-    //  hydro_time_bin_max = num_time_bins;
-    //}
 
     /* xparts: Reset x_diff */
     for (int k = 0; k < count; k++) {
@@ -3841,7 +3837,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
-  // ALEXEI: update parent's decoupled particle count
+  /* update parent's decoupled particle count */
   if (c->parent != NULL) c->parent->hydro.nparts_decoupled += c->hydro.nparts_decoupled;
 
   /* Set the values for this cell. */

@@ -24,9 +24,6 @@
 #ifndef SWIFT_ENGINE_H
 #define SWIFT_ENGINE_H
 
-// ALEXEI: define debugging particle id
-#define SIMBA_DEBUG_ID 100000
-
 /* Config parameters. */
 #include "../config.h"
 
