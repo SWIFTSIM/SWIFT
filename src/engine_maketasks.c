@@ -52,6 +52,7 @@
 #include "proxy.h"
 #include "task_order.h"
 #include "timers.h"
+#include "star_formation.h"
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
@@ -916,7 +917,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       /* Particle recoupling */
       // ALEXEI: make sure we're only doing this for the types of star formation which actually decouple particles
-      if (with_star_formation) {
+      if (with_star_formation && swift_star_formation_model_decouples_particles) {
 	    c->part_recouple = scheduler_addtask(s, task_type_part_recouple,
 	    				     task_subtype_none, 0, 0, c, NULL);
 

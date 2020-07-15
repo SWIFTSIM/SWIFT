@@ -804,7 +804,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
-  if (p->id == SIMBA_DEBUG_ID) message("p->force.h_dt %.5e p->h %.5e hydro_dimension_inv %.5e", p->force.h_dt, p->h, hydro_dimension_inv);
 
   p->entropy_dt =
       0.5f * gas_entropy_from_internal_energy(p->rho, p->entropy_dt);

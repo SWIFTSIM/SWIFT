@@ -667,7 +667,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  if (pi->id == SIMBA_DEBUG_ID && !isfinite(pi->force.h_dt)) message("pi id %llu pj id %llu pi->force.h_dt %e mi %e dvdr %e r_inv %e rhoi %e wj_dr %e %e", pi->id, pj->id, pi->force.h_dt, mj, dvdr, r_inv, rhoi, wj_dr,  mj * dvdr * r_inv / rhoi * wj_dr);
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);

@@ -36,8 +36,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_timebin(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
-  //if (pi->id == SIMBA_DEBUG_ID) message("pi id %llu time_bin %d ngb_time_bin %d", pi->id, pi->time_bin, pi->limiter_data.min_ngb_time_bin);
-  //if (pj->id == SIMBA_DEBUG_ID) message("pj id %llu time_bin %d ngb_time_bin %d", pj->id, pj->time_bin, pj->limiter_data.min_ngb_time_bin);
   /* Update the minimal time-bin */
   if (pj->time_bin > 0)
     pi->limiter_data.min_ngb_time_bin =
@@ -65,8 +63,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_timebin(
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {
 
-  //if (pi->id == SIMBA_DEBUG_ID) message("pi id %llu time_bin %d ngb_time_bin %d pj id %llu time_bin %d ngb_time_bin %d", pi->id, pi->time_bin, pi->limiter_data.min_ngb_time_bin, pj->id, pj->time_bin, pj->limiter_data.min_ngb_time_bin);
-  //if (pj->id == SIMBA_DEBUG_ID) message("pj id %llu time_bin %d ngb_time_bin %d pi id %llu time_bin %d ngb_time_bin %d", pj->id, pj->time_bin, pj->limiter_data.min_ngb_time_bin, pi->id, pi->time_bin, pi->limiter_data.min_ngb_time_bin);
   /* Update the minimal time-bin */
   if (pj->time_bin > 0)
     pi->limiter_data.min_ngb_time_bin =

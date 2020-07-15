@@ -33,18 +33,23 @@
 /* Import the right star formation law definition */
 #if defined(STAR_FORMATION_NONE)
 #define swift_star_formation_model_creates_stars 1
+#define swift_star_formation_model_decouples_particles 0
 #include "./star_formation/none/star_formation.h"
 #elif defined(STAR_FORMATION_QLA)
 #define swift_star_formation_model_creates_stars 0
+#define swift_star_formation_model_decouples_particles 0
 #include "./star_formation/QLA/star_formation.h"
 #elif defined(STAR_FORMATION_EAGLE)
 #define swift_star_formation_model_creates_stars 1
+#define swift_star_formation_model_decouples_particles 0
 #include "./star_formation/EAGLE/star_formation.h"
 #elif defined(STAR_FORMATION_GEAR)
 #define swift_star_formation_model_creates_stars 1
+#define swift_star_formation_model_decouples_particles 0
 #include "./star_formation/GEAR/star_formation.h"
 #elif defined(STAR_FORMATION_SIMBA)
 #define swift_star_formation_model_creates_stars 1
+#define swift_star_formation_model_decouples_particles 1
 #include "./star_formation/SIMBA/star_formation.h"
 #else
 #error "Invalid choice of star formation law"
