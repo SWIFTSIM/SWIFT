@@ -265,6 +265,9 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
     /* If we do nibbling, things are quite straightforward. We transfer
      * the mass and all associated quantities right here. */
 
+    if (bh_props->epsilon_r == 1)
+      return;
+
     const float bi_mass_orig = bi->mass;
     const float pj_mass_orig = hydro_get_mass(pj);
 
