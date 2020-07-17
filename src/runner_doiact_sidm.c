@@ -50,7 +50,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
     const int with_cosmology = (e->policy & engine_policy_cosmology);
-    const struct gravity_props *grav_props = e->gravity_properties;
+    /*const struct gravity_props *grav_props = e->gravity_properties;*/
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
 
@@ -134,7 +134,7 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
     const int with_cosmology = (e->policy & engine_policy_cosmology);
-    const struct gravity_props *grav_props = e->gravity_properties;
+    /*const struct gravity_props *grav_props = e->gravity_properties;*/
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
     
