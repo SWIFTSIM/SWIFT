@@ -118,7 +118,7 @@ runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
     
     /* DM-DM distance */
     float h_SI_cgs = h_SI * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-    float h_SIDM3 = hj_cgs * hj_cgs * hj_cgs;
+    float h_SIDM3 = h_SI_cgs * h_SI_cgs * h_SI_cgs;
     
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
