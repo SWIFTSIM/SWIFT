@@ -302,7 +302,8 @@ void engine_split_gas_particles(struct engine *e) {
   }
 
   /* Be verbose about this. This is an important event */
-  message("Splitting %zd particles above the mass threshold", counter);
+  if (counter > 0)
+    message("Splitting %zd particles above the mass threshold", counter);
 
   /* Number of particles to create */
   const long long count_new_gas = counter * particle_split_factor;
