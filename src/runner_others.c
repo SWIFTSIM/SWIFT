@@ -575,7 +575,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
         else if (gp->type == swift_type_stars)
           id = e->s->sparts[-gp->id_or_neg_offset].id;
         else if (gp->type == swift_type_black_hole)
-          error("Unexisting type");
+          id = e->s->bparts[-gp->id_or_neg_offset].id;
         else
           id = gp->id_or_neg_offset;
 
