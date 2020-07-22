@@ -132,6 +132,7 @@ runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
     /* Draw a random number */
     const float rand = random_unit_interval(gpj->id_or_neg_offset, ti_current, random_number_SIDM);
     
+    printf("Pij %f",Probability_SIDM_ij);
     
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_ij > rand) {
@@ -167,9 +168,7 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct gpart *restr
  *
  */
 __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_gpart(struct gpart *restrict gp) {
-
-    if (gp->sidm_data.sidm_flag > 0) {
-        
+    
     /* Rewrite gparticle's velocity */
     gp->v_full[0] = gp->sidm_data.si_v_full[0];
     gp->v_full[1] = gp->sidm_data.si_v_full[1];
@@ -178,7 +177,6 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_gpart
     /* Reset particle SIDM variables */
     sidm_reset(gp);
 
-    }
 }
 
 #endif /* SWIFT_SIDM_IACT_H */
