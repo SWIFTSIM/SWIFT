@@ -107,7 +107,7 @@ enum engine_step_properties {
 #define engine_maxproxies 64
 #define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
-#define engine_max_proxy_centre_frac 0.5
+#define engine_max_proxy_centre_frac 1
 #define engine_redistribute_alloc_margin 1.2
 #define engine_rebuild_link_alloc_margin 1.2
 #define engine_foreign_alloc_margin 1.05
