@@ -3172,11 +3172,8 @@ void engine_makeproxies(struct engine *e) {
                          cell_width[2] * cell_width[2];
   const double r_diag = 0.5 * sqrt(r_diag2);
 
-  /* Maximal distance from a shifted CoM to centre of cell */
-  const double delta_CoM = engine_max_proxy_centre_frac * r_diag;
-
   /* Maximal distance from shifted CoM to any corner */
-  const double r_max = r_diag + 2. * delta_CoM;
+  const double r_max = 2 * r_diag;
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -3240,7 +3237,7 @@ void engine_makeproxies(struct engine *e) {
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk);
-
+              
               /* Early abort  */
               if (cid >= cjd) continue;
 
@@ -3289,35 +3286,32 @@ void engine_makeproxies(struct engine *e) {
                   proxy_type |= (int)proxy_cell_type_gravity;
                 } else {
 
-                  /* We don't have multipoles yet (or there CoMs) so we will
+                  /* We don't have multipoles yet (or their CoMs) so we will
                      have to cook up something based on cell locations only. We
-                     hence need an upper limit on the distance that the CoMs in
-                     those cells could have. We then can decide whether we are
-                     too close for an M2L interaction and hence require a proxy
-                     as this pair of cells cannot rely on just an M2L
-                     calculation. */
+                     hence need a lower limit on the distance that the CoMs in
+                     those cells could have and an upper limit on the distance 
+                     of the furthest particle in the multipole from its CoM. 
+                     We then can decide whether we are too close for an M2L 
+                     interaction and hence require a proxy as this pair of cells 
+                     cannot rely on just an M2L calculation. */
 
                   /* Minimal distance between any two points in the cells */
-                  const double min_dist_centres2 = cell_min_dist2_same_size(
+                  const double min_dist_CoM2 = cell_min_dist2_same_size(
                       &cells[cid], &cells[cjd], periodic, dim);
-
-                  /* Let's now assume the CoMs will shift a bit */
-                  const double min_dist_CoM =
-                      sqrt(min_dist_centres2) - 2. * delta_CoM;
-                  const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
                   /* Are we beyond the distance where the truncated forces are 0
                    * but not too far such that M2L can be used? */
                   if (periodic) {
 
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
-                        !(2. * r_max < theta_crit * min_dist_CoM2))
+                        !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
-                    if (!(2. * r_max < theta_crit * min_dist_CoM2))
-                      proxy_type |= (int)proxy_cell_type_gravity;
+                    if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2)){
+                      proxy_type |= (int)proxy_cell_type_gravity;                    
+                    }
                   }
                 }
               }
