@@ -44,8 +44,7 @@ static const char *gravity_logger_field_names[gravity_logger_field_count] = {
 /**
  * @brief Initialize the logger.
  *
- * WARNING: this should be done in the same order than
- * #gravity_logger_write_particle.
+ * WARNING: The order should be the same in all the functions!
  *
  * @param mask_data Data for each type of mask.
  *
@@ -78,6 +77,8 @@ INLINE static int gravity_logger_populate_mask_data(
 /**
  * @brief Generates the mask and compute the size of the record.
  *
+ * WARNING: The order should be the same in all the functions!
+ *
  * @param masks The list of masks (same order than in #gravity_logger_init).
  * @param part The #gpart that will be written.
  * @param write_all Are we forcing to write all the fields?
@@ -94,34 +95,31 @@ INLINE static void gravity_logger_compute_size_and_mask(
   /* Add the coordinates. */
   *mask |= logger_add_field_to_mask(
       masks[gravity_logger_field_coordinates],
-      gravity_logger_field_names[gravity_logger_field_coordinates],
       buffer_size);
 
   /* Add the velocities. */
   *mask |= logger_add_field_to_mask(
-      masks[gravity_logger_field_velocities],
-      gravity_logger_field_names[gravity_logger_field_velocities], buffer_size);
+      masks[gravity_logger_field_velocities], buffer_size);
 
   /* Add the accelerations. */
   *mask |= logger_add_field_to_mask(
       masks[gravity_logger_field_accelerations],
-      gravity_logger_field_names[gravity_logger_field_accelerations],
       buffer_size);
 
   /* Add the masses. */
   *mask |= logger_add_field_to_mask(
-      masks[gravity_logger_field_masses],
-      gravity_logger_field_names[gravity_logger_field_masses], buffer_size);
+      masks[gravity_logger_field_masses], buffer_size);
 
   /* Add the ID. */
   *mask |= logger_add_field_to_mask(
       masks[gravity_logger_field_particle_ids],
-      gravity_logger_field_names[gravity_logger_field_particle_ids],
       buffer_size);
 }
 
 /**
  * @brief Write a particle to the logger.
+ *
+ * WARNING: The order should be the same in all the functions!
  *
  * @param masks The list of masks (same order than in #gravity_logger_init).
  * @param p The #gpart to write.
@@ -136,40 +134,35 @@ INLINE static char *gravity_logger_write_particle(
 
   /* Write the coordinate. */
   if (logger_should_write_field(
-          mask_data[gravity_logger_field_coordinates], mask,
-          gravity_logger_field_names[gravity_logger_field_coordinates])) {
+      mask_data[gravity_logger_field_coordinates], mask)) {
     memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Write the velocity. */
   if (logger_should_write_field(
-          mask_data[gravity_logger_field_velocities], mask,
-          gravity_logger_field_names[gravity_logger_field_velocities])) {
+          mask_data[gravity_logger_field_velocities], mask)) {
     memcpy(buff, p->v_full, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Write the acceleration. */
   if (logger_should_write_field(
-          mask_data[gravity_logger_field_accelerations], mask,
-          gravity_logger_field_names[gravity_logger_field_accelerations])) {
+          mask_data[gravity_logger_field_accelerations], mask)) {
     memcpy(buff, p->a_grav, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Write the mass. */
   if (logger_should_write_field(
-          mask_data[gravity_logger_field_masses], mask,
-          gravity_logger_field_names[gravity_logger_field_masses])) {
+          mask_data[gravity_logger_field_masses], mask)) {
     memcpy(buff, &p->mass, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Write the Id. */
   if (logger_should_write_field(
-          mask_data[gravity_logger_field_particle_ids], mask,
-          gravity_logger_field_names[gravity_logger_field_particle_ids])) {
+          mask_data[gravity_logger_field_particle_ids], mask)) {
     memcpy(buff, &p->id_or_neg_offset, sizeof(long long));
     buff += sizeof(long long);
   }
