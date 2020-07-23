@@ -4883,6 +4883,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!part_is_inhibited(p, e)) {
 
+#ifdef WITH_LOGGER
+            if (e->policy & engine_policy_logger) {
+              /* Log the particle one last time. */
+              logger_log_part(
+                  e->logger, p, xp, e, /* log_all */ 1,
+                  logger_pack_flags_and_data(logger_flag_delete, 0));
+            }
+#endif
+
             /* One last action before death? */
             hydro_remove_part(p, xp);
 
@@ -5053,6 +5062,17 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
             /* Remove the particle entirely */
             if (gp->type == swift_type_dark_matter) {
+
+#ifdef WITH_LOGGER
+              if (e->policy & engine_policy_logger) {
+                /* Log the particle one last time. */
+                logger_log_gpart(
+                    e->logger, gp, e, /* log_all */ 1,
+                    logger_pack_flags_and_data(logger_flag_delete, 0));
+              }
+#endif
+
+              /* Remove the particle */
               cell_remove_gpart(e, c, gp);
             }
           }
@@ -5193,6 +5213,15 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
           /* Re-check that the particle has not been removed
            * by another thread before we do the deed. */
           if (!spart_is_inhibited(sp, e)) {
+
+#ifdef WITH_LOGGER
+            if (e->policy & engine_policy_logger) {
+              /* Log the particle one last time. */
+              logger_log_spart(
+                  e->logger, sp, e, /* log_all */ 1,
+                  logger_pack_flags_and_data(logger_flag_delete, 0));
+            }
+#endif
 
             /* Remove the particle entirely */
             cell_remove_spart(e, c, sp);
@@ -5364,6 +5393,12 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
           /* Re-check that the particle has not been removed
            * by another thread before we do the deed. */
           if (!bpart_is_inhibited(bp, e)) {
+
+#ifdef WITH_LOGGER
+            if (e->policy & engine_policy_logger) {
+              error("Logging of black hole particles is not yet implemented.");
+            }
+#endif
 
             /* Remove the particle entirely */
             cell_remove_bpart(e, c, bp);

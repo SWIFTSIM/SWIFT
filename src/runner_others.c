@@ -49,6 +49,7 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "logger.h"
+#include "logger_io.h"
 #include "pressure_floor.h"
 #include "space.h"
 #include "star_formation.h"
@@ -328,15 +329,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Write the particle */
             /* Logs all the fields request by the user */
             // TODO select only the requested fields
-            logger_log_part(e->logger, p, xp,
-                            logger_mask_data[logger_x].mask |
-                                logger_mask_data[logger_v].mask |
-                                logger_mask_data[logger_a].mask |
-                                logger_mask_data[logger_u].mask |
-                                logger_mask_data[logger_h].mask |
-                                logger_mask_data[logger_rho].mask |
-                                logger_mask_data[logger_consts].mask |
-                                logger_mask_data[logger_special_flags].mask,
+            logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
                             logger_pack_flags_and_data(logger_flag_change_type,
                                                        swift_type_stars));
 #endif
@@ -396,10 +389,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               sp->logger_data = xp->logger_data;
 
               /* Write the s-particle */
-              logger_log_spart(e->logger, sp,
-                               logger_mask_data[logger_x].mask |
-                                   logger_mask_data[logger_v].mask |
-                                   logger_mask_data[logger_consts].mask,
+              logger_log_spart(e->logger, sp, e,
+                               /* log_all */ 1,
                                /* special flags */ 0);
 #endif
             } else {
@@ -689,14 +680,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
         if (logger_should_write(&xp->logger_data, e->logger)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_part(e->logger, p, xp,
-                          logger_mask_data[logger_x].mask |
-                              logger_mask_data[logger_v].mask |
-                              logger_mask_data[logger_a].mask |
-                              logger_mask_data[logger_u].mask |
-                              logger_mask_data[logger_h].mask |
-                              logger_mask_data[logger_rho].mask |
-                              logger_mask_data[logger_consts].mask,
+          logger_log_part(e->logger, p, xp, e, /* log_all */ 0,
                           /* special flags */ 0);
         } else
           /* Update counter */
@@ -719,11 +703,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
         if (logger_should_write(&gp->logger_data, e->logger)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_gpart(e->logger, gp,
-                           logger_mask_data[logger_x].mask |
-                               logger_mask_data[logger_v].mask |
-                               logger_mask_data[logger_a].mask |
-                               logger_mask_data[logger_consts].mask,
+          logger_log_gpart(e->logger, gp, e, /* log_all */ 0,
                            /* Special flags */ 0);
 
         } else
@@ -744,10 +724,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
         if (logger_should_write(&sp->logger_data, e->logger)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_spart(e->logger, sp,
-                           logger_mask_data[logger_x].mask |
-                               logger_mask_data[logger_v].mask |
-                               logger_mask_data[logger_consts].mask,
+          logger_log_spart(e->logger, sp, e, /* Log_all */ 0,
                            /* Special flags */ 0);
         } else
           /* Update counter */

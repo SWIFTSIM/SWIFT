@@ -22,6 +22,7 @@
 #include "logger_reader.h"
 #include "logger_time.h"
 
+#ifdef HAVE_PYTHON
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <Python.h>
@@ -447,3 +448,5 @@ PyMODINIT_FUNC PyInit_liblogger(void) {
 
   return m;
 }
+
+#endif // HAVE_PYTHON

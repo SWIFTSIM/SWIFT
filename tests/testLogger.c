@@ -34,45 +34,38 @@
 
 void test_log_parts(struct logger_writer *log) {
   struct dump *d = &log->dump;
+  struct engine e;
 
   /* Write several copies of a part to the dump. */
   struct part p;
+  struct xpart xp;
   bzero(&p, sizeof(struct part));
+  bzero(&xp, sizeof(struct xpart));
   p.x[0] = 1.0;
   p.v[0] = 0.1;
-
-  /* Start with an offset at the end of the dump. */
-  size_t offset = d->count;
+  xp.logger_data.last_offset = 0;
 
   /* Write the full part. */
-  logger_log_part(
-      log, &p,
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-          logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
-          logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
-          logger_mask_data[logger_consts].mask,
-      &offset, /* special flags */ 0);
-  printf("Wrote part at offset %#016zx.\n", offset);
+  logger_log_part(log, &p, &xp, &e, /* log_all */ 1, /* special flags */ 0);
+  printf("Wrote part at offset %#016zx.\n", xp.logger_data.last_offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
-  logger_log_part(log, &p, logger_mask_data[logger_x].mask, &offset,
-                  /* special flags */ 0);
-  printf("Wrote part at offset %#016zx.\n", offset);
+  p.v[0] = 0.;
+  logger_log_part(log, &p, &xp, &e, /* log_all */ 0, /* special flags */ 0);
+  printf("Wrote part at offset %#016zx.\n", xp.logger_data.last_offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v[0] = 0.3;
-  logger_log_part(
-      log, &p,
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask,
-      &offset, /* special flags */ 0);
-  printf("Wrote part at offset %#016zx.\n", offset);
+  logger_log_part(log, &p, &xp, &e, /* log_all */ 0, /* special flags */ 0);
+  printf("Wrote part at offset %#016zx.\n", xp.logger_data.last_offset);
 
   /* Recover the last part from the dump. */
   bzero(&p, sizeof(struct part));
+  size_t offset = xp.logger_data.last_offset;
   size_t offset_old = offset;
-  int mask = logger_read_part(&p, &offset, (const char *)d->data);
+  unsigned int mask = logger_read_part(log, &p, &offset, (const char *)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -85,7 +78,7 @@ void test_log_parts(struct logger_writer *log) {
   /* Recover the second part from the dump (only position). */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
-  mask = logger_read_part(&p, &offset, (const char *)d->data);
+  mask = logger_read_part(log, &p, &offset, (const char *)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -98,7 +91,7 @@ void test_log_parts(struct logger_writer *log) {
   /* Recover the first part from the dump. */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
-  mask = logger_read_part(&p, &offset, (const char *)d->data);
+  mask = logger_read_part(log, &p, &offset, (const char *)d->data);
   printf(
       "Recovered part at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -111,44 +104,37 @@ void test_log_parts(struct logger_writer *log) {
 
 void test_log_gparts(struct logger_writer *log) {
   struct dump *d = &log->dump;
+  struct engine e;
 
   /* Write several copies of a part to the dump. */
   struct gpart p;
   bzero(&p, sizeof(struct gpart));
   p.x[0] = 1.0;
   p.v_full[0] = 0.1;
-
-  /* Start with an offset at the end of the dump. */
-  size_t offset = d->count;
+  p.type = swift_type_dark_matter;
+  p.logger_data.last_offset = 0;
 
   /* Write the full part. */
-  logger_log_gpart(
-      log, &p,
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-          logger_mask_data[logger_a].mask | logger_mask_data[logger_h].mask |
-          logger_mask_data[logger_consts].mask,
-      &offset, /* special flags */ 0);
-  printf("Wrote gpart at offset %#016zx.\n", offset);
+  logger_log_gpart(log, &p, &e, /* log_all */ 1, /* special flags */ 0);
+  printf("Wrote gpart at offset %#016zx.\n", p.logger_data.last_offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
-  logger_log_gpart(log, &p, logger_mask_data[logger_x].mask, &offset,
-                   /* special flags */ 0);
-  printf("Wrote gpart at offset %#016zx.\n", offset);
+  p.v_full[0] = 0.;
+  logger_log_gpart(log, &p, &e, /* log_all */ 0, /* special flags */ 0);
+  printf("Wrote gpart at offset %#016zx.\n", p.logger_data.last_offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v_full[0] = 0.3;
-  logger_log_gpart(
-      log, &p,
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask,
-      &offset, /* special flags */ 0);
-  printf("Wrote gpart at offset %#016zx.\n", offset);
+  logger_log_gpart(log, &p, &e, /* log_all */ 0, /* special flags */ 0);
+  printf("Wrote gpart at offset %#016zx.\n", p.logger_data.last_offset);
 
   /* Recover the last part from the dump. */
+  size_t offset = p.logger_data.last_offset;
   bzero(&p, sizeof(struct gpart));
   size_t offset_old = offset;
-  int mask = logger_read_gpart(&p, &offset, (const char *)d->data);
+  int mask = logger_read_gpart(log, &p, &offset, (const char *)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -161,7 +147,7 @@ void test_log_gparts(struct logger_writer *log) {
   /* Recover the second part from the dump. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
-  mask = logger_read_gpart(&p, &offset, (const char *)d->data);
+  mask = logger_read_gpart(log, &p, &offset, (const char *)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -174,7 +160,7 @@ void test_log_gparts(struct logger_writer *log) {
   /* Recover the first part from the dump. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
-  mask = logger_read_gpart(&p, &offset, (const char *)d->data);
+  mask = logger_read_gpart(log, &p, &offset, (const char *)d->data);
   printf(
       "Recovered gpart at offset %#016zx with mask %#04x: p.x[0]=%e, "
       "p.v[0]=%e.\n",
@@ -189,7 +175,7 @@ void test_log_timestamps(struct logger_writer *log) {
   struct dump *d = &log->dump;
 
   /* The timestamp to log. */
-  unsigned long long int t = 10;
+  integertime_t t = 10;
   double time = 0.1;
 
   /* Start with an offset at the end of the dump. */
@@ -211,24 +197,29 @@ void test_log_timestamps(struct logger_writer *log) {
   size_t offset_old = offset;
   t = 0;
   time = 0;
-  int mask = logger_read_timestamp(&t, &time, &offset, (const char *)d->data);
-  printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
-         offset_old, mask);
+  int mask =
+      logger_read_timestamp(log, &t, &time, &offset, (const char *)d->data);
+  printf(
+      "Recovered timestamp %020llu with time %g at offset %#016zx with mask "
+      "%#04x.\n",
+      t, time, offset_old, mask);
   if (t != 30) {
     printf("FAIL: could not recover correct timestamp.\n");
     abort();
   }
   if (time != 0.3) {
-    printf("FAIL: could not recover correct time %g.\n", time);
+    printf("FAIL: could not recover correct time.\n");
     abort();
   }
 
   offset_old = offset;
   t = 0;
   time = 0;
-  mask = logger_read_timestamp(&t, &time, &offset, (const char *)d->data);
-  printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
-         offset_old, mask);
+  mask = logger_read_timestamp(log, &t, &time, &offset, (const char *)d->data);
+  printf(
+      "Recovered timestamp %020llu with time %g at offset %#016zx with mask "
+      "%#04x.\n",
+      t, time, offset_old, mask);
   if (t != 20) {
     printf("FAIL: could not recover correct timestamp.\n");
     abort();
@@ -241,9 +232,11 @@ void test_log_timestamps(struct logger_writer *log) {
   offset_old = offset;
   t = 0;
   time = 0;
-  mask = logger_read_timestamp(&t, &time, &offset, (const char *)d->data);
-  printf("Recovered timestamp %020llu at offset %#016zx with mask %#04x.\n", t,
-         offset_old, mask);
+  mask = logger_read_timestamp(log, &t, &time, &offset, (const char *)d->data);
+  printf(
+      "Recovered timestamp %020llu with time %g at offset %#016zx with mask "
+      "%#04x.\n",
+      t, time, offset_old, mask);
   if (t != 10) {
     printf("FAIL: could not recover correct timestamp.\n");
     abort();
@@ -259,8 +252,11 @@ int main(int argc, char *argv[]) {
   /* Prepare a logger. */
   struct logger_writer log;
   struct swift_params params;
+  struct engine e;
+  e.policy = engine_policy_hydro | engine_policy_self_gravity;
+
   parser_read_file("logger.yml", &params);
-  logger_init(&log, &params);
+  logger_init(&log, &e, &params);
 
   /* Test writing/reading parts. */
   test_log_parts(&log);

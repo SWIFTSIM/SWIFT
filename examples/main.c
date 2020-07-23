@@ -1362,7 +1362,7 @@ int main(int argc, char *argv[]) {
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
     if (e.policy & engine_policy_logger) {
-      logger_log_all(e.logger, &e);
+      logger_log_all_particles(e.logger, &e);
       engine_dump_index(&e);
     }
 #endif
@@ -1568,7 +1568,7 @@ int main(int argc, char *argv[]) {
     }
 #ifdef WITH_LOGGER
     if (e.policy & engine_policy_logger) {
-      logger_log_all(e.logger, &e);
+      logger_log_all_particles(e.logger, &e);
 
       /* Write a final index file */
       engine_dump_index(&e);
