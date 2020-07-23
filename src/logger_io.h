@@ -80,22 +80,13 @@ INLINE static struct mask_data logger_create_mask_entry(const char* name,
  *
  * @param mask_data The mask_data corresponding to the field that we wish to
  * write.
- * @param name The name of the field.
  * @param buffer_size (in) The current size of the future buffer. (out) The
  * updated size.
  *
  * @return The mask of the current field.
  */
 INLINE static size_t logger_add_field_to_mask(struct mask_data mask_data,
-                                              const char* name,
                                               size_t* buffer_size) {
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that we are writing the requested field. */
-  if (strcmp(name, mask_data.name) != 0) {
-    error("Mismatch between the requested field (%s) and the mask (%s)", name,
-          mask_data.name);
-  }
-#endif
 
   *buffer_size += mask_data.size;
   return mask_data.mask;
@@ -106,19 +97,10 @@ INLINE static size_t logger_add_field_to_mask(struct mask_data mask_data,
  * #logger_add_field_to_mask.
  *
  * @param mask_data The mask_data corresponding to the current field.
- * @param name The name of the field that we are checking.
  * @param mask The mask used for the current record.
  */
 INLINE static int logger_should_write_field(struct mask_data mask_data,
-                                            unsigned int* mask,
-                                            const char* name) {
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that we are writing the requested field. */
-  if (strcmp(name, mask_data.name) != 0) {
-    error("Mismatch between the requested field (%s) and the mask (%s)", name,
-          mask_data.name);
-  }
-#endif
+                                            unsigned int* mask) {
 
   const int test = mask_data.mask & *mask;
   if (test) {
