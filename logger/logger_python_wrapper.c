@@ -449,4 +449,4 @@ PyMODINIT_FUNC PyInit_liblogger(void) {
   return m;
 }
 
-#endif // HAVE_PYTHON
+#endif  // HAVE_PYTHON
