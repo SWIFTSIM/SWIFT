@@ -107,37 +107,36 @@ INLINE static void hydro_logger_compute_size_and_mask(
   /* Here you can decide your own writing logic */
 
   /* Add the coordinates. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_coordinates], buffer_size);
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_coordinates],
+                                    buffer_size);
 
   /* Add the velocities. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_velocities], buffer_size);
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_velocities],
+                                    buffer_size);
 
   /* Add the accelerations. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_accelerations], buffer_size);
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_accelerations],
+                                    buffer_size);
 
   /* Add the masses. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_masses], buffer_size);
+  *mask |=
+      logger_add_field_to_mask(masks[hydro_logger_field_masses], buffer_size);
 
   /* Add the smoothing lengths. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_smoothing_lengths],
-      buffer_size);
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_smoothing_lengths],
+                                    buffer_size);
 
   /* Add the entropies. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_entropies], buffer_size);
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_entropies],
+                                    buffer_size);
 
   /* Add the ID. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_particle_ids], buffer_size);
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_particle_ids],
+                                    buffer_size);
 
   /* Add the density. */
-  *mask |= logger_add_field_to_mask(
-      masks[hydro_logger_field_densities], buffer_size);
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_densities],
+                                    buffer_size);
 }
 
 /**
@@ -158,22 +157,22 @@ INLINE static char *hydro_logger_write_particle(
     const struct xpart *xp, unsigned int *mask, char *buff) {
 
   /* Write the coordinate. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_coordinates], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_coordinates],
+                                mask)) {
     memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Write the velocity. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_velocities], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_velocities],
+                                mask)) {
     memcpy(buff, p->v, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Write the acceleration. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_accelerations], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_accelerations],
+                                mask)) {
 
     /* Compute the acceleration due to hydro and gravity */
     float *acc = (float *)buff;
@@ -186,36 +185,35 @@ INLINE static char *hydro_logger_write_particle(
   }
 
   /* Write the mass. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_masses], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_masses], mask)) {
     memcpy(buff, &p->mass, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Write the smoothing length. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_smoothing_lengths], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_smoothing_lengths],
+                                mask)) {
     memcpy(buff, &p->h, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Write the entropy. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_entropies], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_entropies],
+                                mask)) {
     memcpy(buff, &p->entropy, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Write the Id. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_particle_ids], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_particle_ids],
+                                mask)) {
     memcpy(buff, &p->id, sizeof(long long));
     buff += sizeof(long long);
   }
 
   /* Write the density. */
-  if (logger_should_write_field(
-          mask_data[hydro_logger_field_densities], mask)) {
+  if (logger_should_write_field(mask_data[hydro_logger_field_densities],
+                                mask)) {
     memcpy(buff, &p->rho, sizeof(float));
     buff += sizeof(float);
   }
