@@ -562,14 +562,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) {
-      const uint32_t logger_flag =
-          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id);
-
       /* Log the particle when leaving a rank. */
       logger_log_part(
           e->logger, &s->parts[offset_parts + k], &s->xparts[offset_parts + k],
-          logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
-          logger_flag);
+          e, /* log_all_fields */ 1,
+          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id));
     }
 #endif
   }
@@ -610,14 +607,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) {
-      const uint32_t logger_flag =
-          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id);
-
       /* Log the particle when leaving a rank. */
       logger_log_spart(
-          e->logger, &s->sparts[offset_sparts + k],
-          logger_masks_all_spart | logger_mask_data[logger_special_flags].mask,
-          logger_flag);
+          e->logger, &s->sparts[offset_sparts + k], e,
+          /* log_all_fields */ 1,
+          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id));
     }
 #endif
   }
@@ -696,14 +690,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     if ((e->policy & engine_policy_logger) &&
         s->gparts[offset_gparts + k].type == swift_type_dark_matter) {
 
-      const uint32_t logger_flag =
-          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id);
-
       /* Log the particle when leaving a rank. */
       logger_log_gpart(
-          e->logger, &s->gparts[offset_gparts + k],
-          logger_masks_all_gpart | logger_mask_data[logger_special_flags].mask,
-          logger_flag);
+          e->logger, &s->gparts[offset_gparts + k], e,
+          /* log_all_fields */ 1,
+          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id));
     }
 #endif
   }
@@ -937,22 +928,16 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         struct gpart *gparts = &s->gparts[offset_gparts + count_gparts];
 
         /* Log the gas particles */
-        logger_log_parts(
-            e->logger, parts, xparts, prox->nr_parts_in,
-            logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
-            flag);
+        logger_log_parts(e->logger, parts, xparts, prox->nr_parts_in, e,
+                         /* log_all_fields */ 1, flag);
 
         /* Log the stellar particles */
-        logger_log_sparts(e->logger, sparts, prox->nr_sparts_in,
-                          logger_masks_all_spart |
-                              logger_mask_data[logger_special_flags].mask,
-                          flag);
+        logger_log_sparts(e->logger, sparts, prox->nr_sparts_in, e,
+                          /* log_all_fields */ 1, flag);
 
         /* Log the gparts */
-        logger_log_gparts(e->logger, gparts, prox->nr_gparts_in,
-                          logger_masks_all_gpart |
-                              logger_mask_data[logger_special_flags].mask,
-                          flag);
+        logger_log_gparts(e->logger, gparts, prox->nr_gparts_in, e,
+                          /* log_all_fields */ 1, flag);
 
         /* Log the bparts */
         if (prox->nr_bparts_in > 0) {
@@ -3980,7 +3965,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 #if defined(WITH_LOGGER)
   if (e->policy & engine_policy_logger) {
     e->logger = (struct logger_writer *)malloc(sizeof(struct logger_writer));
-    logger_init(e->logger, params);
+    logger_init(e->logger, e, params);
   }
 #endif
 

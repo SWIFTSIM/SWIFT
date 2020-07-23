@@ -29,6 +29,7 @@
 #include "../src/error.h"
 #include "../src/inline.h"
 #include "../src/logger.h"
+#include "../src/logger_io.h"
 #include "../src/part_type.h"
 
 #ifdef HAVE_PYTHON

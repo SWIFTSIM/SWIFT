@@ -135,7 +135,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \
 		 gravity/Potential/gravity_debug.h gravity/Potential/gravity_part.h  \
 		 gravity/MultiSoftening/gravity.h gravity/MultiSoftening/gravity_iact.h gravity/MultiSoftening/gravity_io.h \
-		 gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h  \
+		 gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h \
+     gravity/MultiSoftening/gravity_logger.h \
 		 equation_of_state.h \
 		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
 	 	 hydro.h hydro_io.h hydro_parameters.h \
@@ -147,7 +148,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 hydro/Default/hydro_parameters.h \
 		 hydro/Gadget2/hydro.h hydro/Gadget2/hydro_iact.h hydro/Gadget2/hydro_io.h \
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
-		 hydro/Gadget2/hydro_parameters.h \
+     hydro/Gadget2/hydro_parameters.h hydro/Gadget2/hydro_logger.h \
 		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
                  hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
 		 hydro/PressureEntropy/hydro_parameters.h \
@@ -209,7 +210,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  riemann/riemann_checks.h \
 	 	 stars.h stars_io.h \
 		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
-		 stars/Default/stars_debug.h stars/Default/stars_part.h  \
+     stars/Default/stars_debug.h stars/Default/stars_part.h stars/Default/stars_logger.h  \
 		 stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h \
 		 stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h \
 		 stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h \
@@ -293,7 +294,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h \
 		 pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h \
 	         task_order/GEAR/task_order.h task_order/EAGLE/task_order.h task_order/default/task_order.h \
-		 sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h \
+     sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h \
 		 sink.h sink_io.h
 
 

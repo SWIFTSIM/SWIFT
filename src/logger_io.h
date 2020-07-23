@@ -30,6 +30,104 @@
 #include "part.h"
 #include "units.h"
 
+/* This enum defines the type of particle to use
+   with a given mask.
+   The values should be the same than in part_type.h. */
+enum mask_type {
+  mask_type_gas = 0,
+  mask_type_dark_matter = 1,
+  /* Only need a single type of dm. */
+  mask_type_stars = 4,
+  mask_type_black_hole = 5,
+  mask_type_timestep = -1,
+} __attribute__((packed));
+
+struct mask_data {
+  /* Number of bytes for a mask. */
+  int size;
+
+  /* Mask value. */
+  unsigned int mask;
+
+  /* Type of particle (follow part_type.h and -1 for timestamp). */
+  enum mask_type type;
+
+  /* Name of the mask. */
+  char name[100];
+};
+
+/**
+ * @brief Initialize the mask_data with a given field.
+ *
+ * @param name The name of the field.
+ * @param size The size of the field.
+ *
+ * @return The new mask_data.
+ */
+INLINE static struct mask_data logger_create_mask_entry(const char* name,
+                                                        int size) {
+  struct mask_data mask;
+  /* Copy the fields */
+  strcpy(mask.name, name);
+  mask.size = size;
+  mask.mask = 0;
+
+  return mask;
+}
+
+/**
+ * @brief Add a given field to the current mask.
+ *
+ * @param mask_data The mask_data corresponding to the field that we wish to
+ * write.
+ * @param name The name of the field.
+ * @param buffer_size (in) The current size of the future buffer. (out) The
+ * updated size.
+ *
+ * @return The mask of the current field.
+ */
+INLINE static size_t logger_add_field_to_mask(struct mask_data mask_data,
+                                              const char* name,
+                                              size_t* buffer_size) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we are writing the requested field. */
+  if (strcmp(name, mask_data.name) != 0) {
+    error("Mismatch between the requested field (%s) and the mask (%s)", name,
+          mask_data.name);
+  }
+#endif
+
+  *buffer_size += mask_data.size;
+  return mask_data.mask;
+}
+
+/**
+ * @brief Check if a field should be written according to the mask set in
+ * #logger_add_field_to_mask.
+ *
+ * @param mask_data The mask_data corresponding to the current field.
+ * @param name The name of the field that we are checking.
+ * @param mask The mask used for the current record.
+ */
+INLINE static int logger_should_write_field(struct mask_data mask_data,
+                                            unsigned int* mask,
+                                            const char* name) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we are writing the requested field. */
+  if (strcmp(name, mask_data.name) != 0) {
+    error("Mismatch between the requested field (%s) and the mask (%s)", name,
+          mask_data.name);
+  }
+#endif
+
+  const int test = mask_data.mask & *mask;
+  if (test) {
+    *mask &= ~mask_data.mask;
+  }
+
+  return test;
+}
+
 void logger_write_index_file(struct logger_writer* log, struct engine* e);
 void logger_write_description(struct logger_writer* log, struct engine* e);
 

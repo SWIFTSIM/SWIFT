@@ -1129,6 +1129,7 @@ if test "x$with_python" != "xno"; then
       AC_MSG_RESULT([$PYTHON_INCS])
   ])
   have_python="yes"
+  AC_DEFINE([HAVE_PYTHON],1,[Python appears to be present.])
 fi
 AC_SUBST([PYTHON_INCS])
 AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
