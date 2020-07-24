@@ -31,6 +31,7 @@
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "sink.h"
 #include "stars.h"
 
 /**
@@ -196,6 +197,44 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
   for (int k = 0; k < 3; k++) {
     const float dx = bp->v[k] * dt_drift;
     bp->x_diff[k] -= dx;
+  }
+}
+
+/**
+ * @brief Perform the 'drift' operation on a #sink
+ *
+ * @param sink The #sink to drift.
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void drift_sink(
+    struct sink *restrict sink, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sink->ti_drift != ti_old)
+    error(
+        "s-particle has not been drifted to the current time "
+        "sink->ti_drift=%lld, "
+        "c->ti_old=%lld, ti_current=%lld",
+        sink->ti_drift, ti_old, ti_current);
+
+  sink->ti_drift = ti_current;
+#endif
+
+  /* Drift... */
+  sink->x[0] += sink->v[0] * dt_drift;
+  sink->x[1] += sink->v[1] * dt_drift;
+  sink->x[2] += sink->v[2] * dt_drift;
+
+  /* Predict the values of the extra fields */
+  sink_predict_extra(sink, dt_drift);
+
+  /* Compute offsets since last cell construction */
+  for (int k = 0; k < 3; k++) {
+    const float dx = sink->v[k] * dt_drift;
+    sink->x_diff[k] -= dx;
   }
 }
 
