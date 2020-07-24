@@ -409,6 +409,22 @@ elif test "$boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
+# Check if we want to use fixed boundary particles.
+AC_ARG_ENABLE([fixed-boundary-particles],
+   [AS_HELP_STRING([--enable-fixed-boundary-particles],
+     [Set all particles with an ID smaller than @<:@N@:>@ as fixed boundary particles (i.e. receive zero gravity + hydro forces + zero velocity), this mode enables also --enable-boundary-particles and --enable-no-gravity-below-id.]
+   )],
+   [fixed_boundary_particles="$enableval"],
+   [fixed_boundary_particles="no"]
+)
+if test "$fixed_boundary_particles" == "yes"; then
+   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
+elif test "$fixed_boundary_particles" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
+   AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -2395,6 +2411,7 @@ AC_MSG_RESULT([
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
+   Fixed boundary particles    : $fixed_boundary_particles
 
    Particle Logger      : $with_logger
    Python enabled       : $have_python
