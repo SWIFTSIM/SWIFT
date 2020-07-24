@@ -27,6 +27,7 @@
 #include "const.h"
 #include "debug.h"
 #include "dimension.h"
+#include "engine.h"
 #include "entropy_floor.h"
 #include "hydro.h"
 #include "hydro_properties.h"
@@ -42,10 +43,12 @@
  * @param ti_old Integer start of time-step (for debugging checks).
  * @param ti_current Integer end of time-step (for debugging checks).
  * @param grav_props The properties of the gravity scheme.
+ * @param e the #engine
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
     struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current, const struct gravity_props *grav_props) {
+    integertime_t ti_current, const struct gravity_props *grav_props,
+    const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_drift != ti_old)
@@ -56,6 +59,29 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
         gp->ti_drift, ti_old, ti_current);
 
   gp->ti_drift = ti_current;
+#endif
+
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Get the ID of the gpart */
+  long long id = 0;
+  if (gp->type == swift_type_gas)
+    id = e->s->parts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_stars)
+    id = e->s->sparts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_black_hole)
+    id = e->s->bparts[-gp->id_or_neg_offset].id;
+  else
+    id = gp->id_or_neg_offset;
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+
+    /* Don't move! */
+    gp->v_full[0] = 0.f;
+    gp->v_full[1] = 0.f;
+    gp->v_full[2] = 0.f;
+  }
 #endif
 
   /* Drift... */
@@ -98,6 +124,21 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->ti_drift = ti_current;
 #endif
 
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Get the ID of the gpart */
+  const long long id = p->id;
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+
+    /* Don't move! */
+    xp->v_full[0] = 0.f;
+    xp->v_full[1] = 0.f;
+    xp->v_full[2] = 0.f;
+  }
+#endif
+
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt_drift;
   p->x[1] += xp->v_full[1] * dt_drift;
@@ -121,6 +162,16 @@ __attribute__((always_inline)) INLINE static void drift_part(
     xp->x_diff[k] -= dx;
     xp->x_diff_sort[k] -= dx;
   }
+
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+    p->v[0] = 0.f;
+    p->v[1] = 0.f;
+    p->v[2] = 0.f;
+  }
+#endif
 }
 
 /**
@@ -144,6 +195,21 @@ __attribute__((always_inline)) INLINE static void drift_spart(
         sp->ti_drift, ti_old, ti_current);
 
   sp->ti_drift = ti_current;
+#endif
+
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Get the ID of the gpart */
+  const long long id = sp->id;
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+
+    /* Don't move! */
+    sp->v[0] = 0.f;
+    sp->v[1] = 0.f;
+    sp->v[2] = 0.f;
+  }
 #endif
 
   /* Drift... */
@@ -183,6 +249,21 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
         bp->ti_drift, ti_old, ti_current);
 
   bp->ti_drift = ti_current;
+#endif
+
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+
+  /* Get the ID of the gpart */
+  const long long id = bp->id;
+
+  /* Cancel the velocity of the particles */
+  if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+
+    /* Don't move! */
+    bp->v[0] = 0.f;
+    bp->v[1] = 0.f;
+    bp->v[2] = 0.f;
+  }
 #endif
 
   /* Drift... */

@@ -5032,7 +5032,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (gpart_is_inhibited(gp, e)) continue;
 
       /* Drift... */
-      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props);
+      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
