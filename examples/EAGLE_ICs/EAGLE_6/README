@@ -1,0 +1,6 @@
+Initial conditions corresponding to the 6.25 Mpc volume
+of the EAGLE suite. The ICs only contain DM particles. The
+gas particles will be generated in SWIFT.
+
+Note that this is a very very small volume. It will not result
+in a galaxy population matching the data averaged on large scale.
