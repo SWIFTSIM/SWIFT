@@ -4,3 +4,9 @@ gas particles will be generated in SWIFT.
 
 Note that this is a very very small volume. It will not result
 in a galaxy population matching the data averaged on large scale.
+
+
+This resolution corresponds to: EAGLE res (m_B = 1.81e6 Msol)
+
+MD5 hash:
+dd493e09b7fad76f595b3984e10602ba  EAGLE_L0006N0094_ICs.hdf5

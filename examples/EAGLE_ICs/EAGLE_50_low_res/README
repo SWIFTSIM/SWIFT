@@ -1,3 +1,8 @@
 Initial conditions corresponding to the 50 Mpc volume
 of the EAGLE suite at 8x lower resolution.
 The ICs only contain DM particles. The gas particles will be generated in SWIFT.
+
+This resolution corresponds to: EAGLE low res. (m_B = 1.45e7 Msol)
+
+MD5 hash:
+a474b06a9061b77b460b6288e8a930c2  EAGLE_L0050N0376_ICs.hdf5
