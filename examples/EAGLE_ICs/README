@@ -7,17 +7,23 @@ For standard runs, the code should be configured with
 
 --with-subgrid=EAGLE-XL --with-hydro=sphenix --with-kernel=wendland-C2
 
+(and any other optimization, library or compiler parameters specific
+to your system.)
+
 Compared to the original EAGLE runs of Schaye et al. 2015),
 the following changes have been made (at standard resolution):
 
+ - The flavour of SPH has been changed from the Pressure-Entropy
+   "ANARCHY" implementation to the Density-energy based "SPHENIX"
+   implementation of Borrow+20.
  - The dark matter softening lengths have been increased to 1.3
    pkpc and 3.32 ckpc. The comoving baryon softening lengths have
    been changed to 1.79 ckpc. This follows the recommendations of
    Ludlow et al. 2019. Old values were 0.7 pkpc and 2.69 ckpc for
    all the particle species.
- - SPH particles with a mass larger than 7*10^6 Msun (~4x the initial
-   gas particle mass) are now split into 2 equal mass particles
-   within the smoothing length of the original particle.
+ - SPH particles reaching a mass larger than 7*10^6 Msun (~4x the
+   initial gas particle mass) are now split into 2 equal mass
+   particles within the smoothing length of the original particle.
  - The metallicity-dependent density threshold for star formation
    uses the smoothed metallicities and not the raw metallicities
    any more.
@@ -31,7 +37,7 @@ the following changes have been made (at standard resolution):
    (i.e. 800K at n_H = 10^-4 cm^-3) as a fail-safe.
  - Particles can be star-forming if they are within 0.3 dex of the
    entropy floor (was 0.5 dex). These particles also get their
-   subgrid properties (rho, T) computed.
+   subgrid properties (rho, T as well as the HI and H_2 frac) computed.
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
  - The SNII feedback delay is done by sampling the stellar age
    distribution and not using a fixed delay of 30 Myr any more.
@@ -52,6 +58,9 @@ the following changes have been made (at standard resolution):
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided
 for basic quantities.
+
+To use the cooling model based on the Wiersma+09 tables, replace
+EAGLE-XL by EAGLE in the configuration command line.
 
 VELOCIraptor can be run on the output. The code is compiled
 using
