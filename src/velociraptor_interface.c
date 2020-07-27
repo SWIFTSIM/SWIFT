@@ -182,7 +182,7 @@ struct siminfo {
 };
 
 /**
- * @brief Structure for group information back to swift
+ * @brief Structure for group information to return to swift
  */
 struct groupinfo {
 
@@ -193,16 +193,34 @@ struct groupinfo {
   long long groupID;
 };
 
+/**
+ * @brief Structure for all information to return from VR invocation
+ */
+struct vr_return_data {
+
+  /*! Total number of gparts in all groups on this MPI rank */
+  int num_gparts_in_groups;
+
+  /*! Assignment of particles to groups (must be freed by Swift, may be NULL) */
+  struct groupinfo *group_info;
+  
+  /*! Number of most bound particles returned */
+  int num_most_bound;
+
+  /*! Swift gpart indexes of most bound particles (must be freed by Swift, may be NULL) */
+  int *most_bound_index;
+};
+
+
 int InitVelociraptor(char *config_name, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads);
 
-struct groupinfo *InvokeVelociraptor(
+struct vr_return_data InvokeVelociraptor(
     const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
     struct siminfo sim_info, const size_t num_gravity_parts,
     const size_t num_hydro_parts, const size_t num_star_parts,
     struct swift_vel_part *swift_parts, const int *cell_node_ids,
-    const int numthreads, const int return_group_flags,
-    int *const num_in_groups);
+    const int numthreads, const int return_group_flags);
 
 #endif /* HAVE_VELOCIRAPTOR */
 
@@ -708,10 +726,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   tic = getticks();
 
-  /* Values returned by VELOCIRaptor */
-  int num_gparts_in_groups = -1;
-  struct groupinfo *group_info = NULL;
-
 #ifdef SWIFT_MEMUSE_REPORTS
   char report_filename[60];
   sprintf(report_filename, "memuse-VR-report-rank%d-step%d.txt", e->nodeID,
@@ -720,10 +734,14 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 #endif
 
   /* Call VELOCIraptor. */
-  group_info = (struct groupinfo *)InvokeVelociraptor(
+  struct vr_return_data return_data = InvokeVelociraptor(
       e->stf_output_count, outputFileName, cosmo_info, sim_info, nr_gparts,
       nr_parts, nr_sparts, swift_parts, cell_node_ids, e->nr_threads,
-      linked_with_snap, &num_gparts_in_groups);
+      linked_with_snap);
+
+  /* Unpack returned data */
+  struct groupinfo *group_info = return_data.group_info;
+  int num_gparts_in_groups = return_data.num_gparts_in_groups;
 
   /* Report that the memory was freed */
   memuse_log_allocation("VR.cell_loc", sim_info.cell_loc, 0, 0);
