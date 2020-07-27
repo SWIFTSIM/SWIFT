@@ -198,5 +198,6 @@ int get_ptype_fields(const int ptype, struct io_props* list,
                      const int with_cosmology, const int with_fof,
                      const int with_stf);
 int get_param_ptype(const char* name);
+void set_ids_to_one(struct gpart* gparts, const size_t Ngparts);
 
 #endif /* SWIFT_COMMON_IO_H */

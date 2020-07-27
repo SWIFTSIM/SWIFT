@@ -418,7 +418,7 @@ void read_ic_single(const char* fileName,
                     int with_gravity, int with_sink, int with_stars,
                     int with_black_holes, int with_cosmology, int cleanup_h,
                     int cleanup_sqrt_a, double h, double a, int n_threads,
-                    int dry_run) {
+                    int dry_run, int remap_ids) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -681,13 +681,21 @@ void read_ic_single(const char* fileName,
 
     /* Read everything */
     if (!dry_run)
-      for (int i = 0; i < num_fields; ++i)
+      for (int i = 0; i < num_fields; ++i) {
+        /* If we are remapping ParticleIDs later, don't need to read them. */
+        if (remap_ids && strcmp(list[i].name, "ParticleIDs") == 0) continue;
+
+        /* Read array. */
         read_array_single(h_grp, list[i], Nparticles, internal_units, ic_units,
                           cleanup_h, cleanup_sqrt_a, h, a);
+      }
 
     /* Close particle group */
     H5Gclose(h_grp);
   }
+
+  /* If we are remapping ParticleIDs later, start by setting them to 1. */
+  if (remap_ids) set_ids_to_one(*gparts, *Ngparts);
 
   /* Duplicate the parts for gravity */
   if (!dry_run && with_gravity) {

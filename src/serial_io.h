@@ -45,7 +45,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     int with_black_holes, int with_cosmology, int cleanup_h,
                     int cleanup_sqrt_a, double h, double a, int mpi_rank,
                     int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
-                    int dry_run);
+                    int dry_run, int remap_ids);
 
 void write_output_serial(struct engine* e,
                          const struct unit_system* internal_units,

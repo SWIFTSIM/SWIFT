@@ -733,7 +733,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       int with_stars, int with_black_holes, int with_cosmology,
                       int cleanup_h, int cleanup_sqrt_a, double h, double a,
                       int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                      int n_threads, int dry_run) {
+                      int n_threads, int dry_run, int remap_ids) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -1010,14 +1010,22 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
     /* Read everything */
     if (!dry_run)
-      for (int i = 0; i < num_fields; ++i)
+      for (int i = 0; i < num_fields; ++i) {
+        /* If we are remapping ParticleIDs later, don't need to read them. */
+        if (remap_ids && strcmp(list[i].name, "ParticleIDs") == 0) continue;
+
+        /* Read array. */
         read_array_parallel(h_grp, list[i], Nparticles, N_total[ptype],
                             mpi_rank, offset[ptype], internal_units, ic_units,
                             cleanup_h, cleanup_sqrt_a, h, a);
+      }
 
     /* Close particle group */
     H5Gclose(h_grp);
   }
+
+  /* If we are remapping ParticleIDs later, start by setting them to 1. */
+  if (remap_ids) set_ids_to_one(*gparts, *Ngparts);
 
   if (!dry_run && with_gravity) {
 
