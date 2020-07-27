@@ -2930,3 +2930,18 @@ int get_param_ptype(const char* name) {
    * an int after promising to do so... */
   return -1;
 }
+
+/**
+ * @brief Set all ParticleIDs for each gpart to 1.
+ *
+ * Function is called when remap_ids is 1.
+ *
+ * Note only the gparts IDs have to be set to 1, as other parttypes can survive
+ * as ParticleIDs=0 until the remapping routine.
+ *
+ * @param gparts The array of loaded gparts.
+ * @param Ngparts Number of loaded gparts.
+ */
+void set_ids_to_one(struct gpart* gparts, const size_t Ngparts) {
+  for (size_t i = 0; i < Ngparts; i++) gparts[i].id_or_neg_offset = 1;
+}

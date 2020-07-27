@@ -1032,15 +1032,15 @@ int main(int argc, char *argv[]) {
                      with_gravity, with_sink, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
-                     nr_threads, dry_run);
+                     nr_threads, dry_run, remap_ids);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                    &Nbpart, &flag_entropy_ICs, with_hydro, with_gravity,
                    with_sink, with_stars, with_black_holes, with_cosmology,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run);
+                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, dry_run,
+                   remap_ids);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -1048,7 +1048,7 @@ int main(int argc, char *argv[]) {
                    &Nbpart, &flag_entropy_ICs, with_hydro, with_gravity,
                    with_sink, with_stars, with_black_holes, with_cosmology,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
-                   dry_run);
+                   dry_run, remap_ids);
 #endif
 #endif
 

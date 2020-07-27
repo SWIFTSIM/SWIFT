@@ -5954,7 +5954,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   const size_t local_nr_bparts = s->nr_bparts;
   const size_t local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_dm = local_nr_gparts - local_nr_baryons;
+  const size_t local_nr_dm =
+      local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;

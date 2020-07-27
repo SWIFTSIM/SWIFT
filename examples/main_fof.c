@@ -466,7 +466,7 @@ int main(int argc, char *argv[]) {
                    /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   /*dry_run=*/0);
+                   /*dry_run=*/0, /*remap_ids=*/0);
 #else
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                  &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
@@ -474,7 +474,7 @@ int main(int argc, char *argv[]) {
                  /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
                  with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                  myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                 /*dry_run=*/0);
+                 /*dry_run=*/0, /*remap_ids=*/0);
 #endif
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -482,7 +482,7 @@ int main(int argc, char *argv[]) {
                  &Nbpart, &flag_entropy_ICs, with_hydro,
                  /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
                  with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                 nr_threads, /*dry_run=*/0);
+                 nr_threads, /*dry_run=*/0, /*remap_ids=*/0);
 #endif
 #endif
   if (myrank == 0) {
