@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct gpart *res
     const float rand_theta = random_unit_interval(gpi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
     
     /* Transform to random number in [0, pi] */
-    const float theta = 2.f * rand_theta;
+    const float theta = M_PI * rand_theta;
     
     /* Random number for other angle */
     const float rand_phi = random_unit_interval(gpj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
@@ -98,7 +98,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct gpart *res
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
-                 float a, float H, const double dt_cgs,
+                 float a, float H, const double dt,
                  const integertime_t ti_current,
                  const struct sidm_props* sidm_props,
                  const struct unit_system* us) {
@@ -108,17 +108,16 @@ runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
     /* Velocities of interacting particles */
     const double dv[3] = {gpi->v_full[0] - gpj->v_full[0], gpi->v_full[1] - gpj->v_full[1], gpi->v_full[2] - gpj->v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2) * units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+    double vij = sqrt(v2);
     
-    /* Scattering cross section per unit mass */
-    const double sigma = sidm_props->sigma_cgs;
+    /* Scattering cross section per unit mass (in internal units) */
+    const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    const double mass = gpj->mass * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+    const double mass = gpj->mass;
     
     /* DM-DM distance */
-    float h_SI_cgs = h_SI * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-    float h_SIDM3 = h_SI_cgs * h_SI_cgs * h_SI_cgs;
+    float h_SIDM3 = h_SI * h_SI * h_SI;
     
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
@@ -127,16 +126,17 @@ runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
     float Rate_SIDM_ij = sigma * mass * vij * a_inv4 / (4.0f * M_PI * h_SIDM3 / 3.0f);
     
     /* Calculate SIDM probability */
-    float Probability_SIDM_ij = Rate_SIDM_ij * dt_cgs;
+    float Probability_SIDM_ij = Rate_SIDM_ij * dt;
     
     /* Draw a random number */
     const float rand = random_unit_interval(gpj->id_or_neg_offset, ti_current, random_number_SIDM);
     
+    /*printf("Rateij %f & Probij %f & sigma %f",Rate_SIDM_ij,Probability_SIDM_ij, sigma);*/
     
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_ij > rand) {
         
-        printf("Pij %f",Probability_SIDM_ij);
+        printf("Doing kick");
         sidm_do_kick(gpj, gpi, ti_current);
     }
 }
