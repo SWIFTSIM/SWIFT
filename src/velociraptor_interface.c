@@ -220,7 +220,8 @@ struct vr_return_data InvokeVelociraptor(
     struct siminfo sim_info, const size_t num_gravity_parts,
     const size_t num_hydro_parts, const size_t num_star_parts,
     struct swift_vel_part *swift_parts, const int *cell_node_ids,
-    const int numthreads, const int return_group_flags);
+    const int numthreads, const int return_group_flags,
+    const int return_most_bound);
 
 #endif /* HAVE_VELOCIRAPTOR */
 
@@ -737,7 +738,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   struct vr_return_data return_data = InvokeVelociraptor(
       e->stf_output_count, outputFileName, cosmo_info, sim_info, nr_gparts,
       nr_parts, nr_sparts, swift_parts, cell_node_ids, e->nr_threads,
-      linked_with_snap);
+      linked_with_snap, /* return_most_bound =*/ 0);
 
   /* Unpack returned data */
   struct groupinfo *group_info = return_data.group_info;
