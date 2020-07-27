@@ -98,7 +98,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
                 dt = get_timestep(gpj->time_bin, e->time_base);
             }
             
-            const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+            /*const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);*/
             
             /*const float hj = gravity_get_softening(gpj, grav_props);*/
             /*const float hj2 = hj * hj;*/
@@ -111,7 +111,7 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
             
             /* Hit or miss? */
             if (r2 < h_SI2) {
-                runner_iact_sidm(h_SI, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
+                runner_iact_sidm(h_SI, gpi, gpj, a, H, dt, ti_begin, sidm_props, us);
             }
 
         } /* loop over the parts in cell. */
@@ -183,7 +183,7 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
                 dt = get_timestep(gpj->time_bin, e->time_base);
             }
             
-            const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+            /*const double dt_cgs = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME);*/
             
             /*const float hj = gravity_get_softening(gpj, grav_props);*/
             /*const float hj2 = hj * hj;*/
@@ -196,7 +196,7 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
             
             /* Hit or miss? */
             if (r2 < h_SI2) {
-                runner_iact_sidm(h_SI, gpi, gpj, a, H, dt_cgs, ti_begin, sidm_props, us);
+                runner_iact_sidm(h_SI, gpi, gpj, a, H, dt, ti_begin, sidm_props, us);
             }
             
         } /* loop over the parts in cell cj. */
