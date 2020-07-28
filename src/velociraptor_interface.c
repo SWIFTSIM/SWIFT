@@ -738,11 +738,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   struct vr_return_data return_data = InvokeVelociraptor(
       e->stf_output_count, outputFileName, cosmo_info, sim_info, nr_gparts,
       nr_parts, nr_sparts, swift_parts, cell_node_ids, e->nr_threads,
-      linked_with_snap, /* return_most_bound =*/ 0);
+      linked_with_snap, /* return_most_bound =*/ linked_with_snap);
 
   /* Unpack returned data */
-  struct groupinfo *group_info = return_data.group_info;
   int num_gparts_in_groups = return_data.num_gparts_in_groups;
+  struct groupinfo *group_info = return_data.group_info;
+  int num_most_bound = return_data.num_most_bound;
+  int *most_bound_index = return_data.most_bound_index;
 
   /* Report that the memory was freed */
   memuse_log_allocation("VR.cell_loc", sim_info.cell_loc, 0, 0);
@@ -789,7 +791,16 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
     /* Free the array returned by VELOCIraptor */
     swift_free("VR.group_data", group_info);
+
+    /* FOR TESTING: Set group index for most bound particles negative */
+    for (int i = 0; i < num_most_bound; i++) {
+      data[most_bound_index[i]].groupID *= -1;
+    }
+
   }
+
+  /* Deallocate most bound particle indexes if necessary (may be allocated by VELOCIraptor) */
+  if(most_bound_index)free(most_bound_index);
 
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
