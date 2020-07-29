@@ -37,6 +37,7 @@
 #include "swift_velociraptor_part.h"
 #include "threadpool.h"
 #include "velociraptor_struct.h"
+#include "gravity_io.h"
 
 #ifdef HAVE_VELOCIRAPTOR
 
@@ -452,6 +453,84 @@ void velociraptor_init(struct engine *e) {
 #endif /* HAVE_VELOCIRAPTOR */
 }
 
+
+#ifdef HAVE_VELOCIRAPTOR_ORPHANS
+
+/**
+ * @brief Write all particles which have ever been most bound to a file
+ *
+ * @param e The #engine.
+ */
+void velociraptor_dump_orphan_particles(struct engine *e) {
+
+  const struct space *s = e->s;
+  const size_t nr_gparts = s->nr_gparts;
+  const struct gpart *gp = e->s->gparts;
+  
+  /* Count how many particles we need to write out */
+  size_t nr_flagged = 0;
+  for(size_t i=0; i<nr_gparts; i+=1) {
+    if(gp[i].has_been_most_bound)nr_flagged += 1;
+  }
+
+  /* Allocate write buffers */
+  double *pos;
+  if (swift_memalign("VR.pos", (void **)&pos, SWIFT_STRUCT_ALIGNMENT,
+                     3*nr_flagged*sizeof(double)) != 0)
+    error("Failed to allocate pos buffer for orphan particles.");
+  float *vel;
+  if (swift_memalign("VR.vel", (void **)&vel, SWIFT_STRUCT_ALIGNMENT,
+                     3*nr_flagged*sizeof(float)) != 0)
+    error("Failed to allocate vel buffer for orphan particles.");
+  long long *ids;
+  if (swift_memalign("VR.ids", (void **)&ids, SWIFT_STRUCT_ALIGNMENT,
+                     nr_flagged*sizeof(long long)) != 0)
+    error("Failed to allocate ids buffer for orphan particles.");
+
+  /* Populate write buffers */
+  for(size_t i=0, offset=0; i<nr_gparts; i+=1) {
+    if(gp[i].has_been_most_bound) {
+      convert_gpart_pos(e, &gp[i], &pos[3*offset]);
+      convert_gpart_vel(e, &gp[i], &vel[3*offset]);
+      ids[offset] = gp[i].id_or_neg_offset;
+      offset += 1;
+    }
+  }
+
+  /* Ensure we have HDF5 */
+#ifndef HAVE_HDF5
+#error Option --enable-velociraptor-orphans requires HDF5
+#endif
+
+  /* Determine output file name */
+  char orphansFileName[FILENAME_BUFFER_SIZE];
+  if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.hdf5",
+               outputFileName) >= FILENAME_BUFFER_SIZE) {
+    error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
+  }
+
+  /* Create the output file */
+  hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef WITH_MPI
+  H5Pset_fapl_mpio(h_plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+#endif
+  hid_t file_id = H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+
+  /* Determine offsets and lengths to write in output file on each MPI rank */
+  
+
+  
+  /* Close output file */
+  H5Fclose(file_id);
+
+  /* Free write buffers */
+  swift_free("VR.pos", pos);
+  swift_free("VR.vel", vel);
+  swift_free("VR.ids", ids);
+}
+#endif /* HAVE_VELOCIRAPTOR_ORPHANS */
+
+
 /**
  * @brief Run VELOCIraptor with current particle data.
  *
@@ -734,11 +813,18 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   memuse_log_dump(report_filename);
 #endif
 
+  /* Determine if we're writing out orphan particles */
+#ifdef HAVE_VELOCIRAPTOR_ORPHANS
+  const int return_most_bound = 1;
+#else
+  const int return_most_bound = 0;
+#endif
+
   /* Call VELOCIraptor. */
   struct vr_return_data return_data = InvokeVelociraptor(
       e->stf_output_count, outputFileName, cosmo_info, sim_info, nr_gparts,
       nr_parts, nr_sparts, swift_parts, cell_node_ids, e->nr_threads,
-      linked_with_snap, /* return_most_bound =*/ linked_with_snap);
+      linked_with_snap, return_most_bound);
 
   /* Unpack returned data */
   int num_gparts_in_groups = return_data.num_gparts_in_groups;
@@ -757,6 +843,12 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   }
   if (!linked_with_snap && group_info != NULL) {
     error("VELOCIraptor returned an array whilst it should not have.");
+  }
+  if (return_most_bound && most_bound_index == NULL) {
+    error("VELOCIraptor failed to return most bound particle indexes.");
+  }
+  if (!return_most_bound && most_bound_index != NULL) {
+    error("VELOCIraptor returned most bound particle indexes when it should not have.");
   }
 
   /* Report timing */
@@ -792,12 +884,29 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     /* Free the array returned by VELOCIraptor */
     swift_free("VR.group_data", group_info);
 
-    /* FOR TESTING: Set group index for most bound particles negative */
-    for (int i = 0; i < num_most_bound; i++) {
-      data[most_bound_index[i]].groupID *= -1;
+    /* FOR TESTING: Set group index for most bound particles negative in snapshot */
+#ifdef HAVE_VELOCIRAPTOR_ORPHANS
+    if(most_bound_index) {
+      for (int i = 0; i < num_most_bound; i++) {
+        data[most_bound_index[i]].groupID *= -1;
+      }
     }
-
+#endif
   }
+
+#ifdef HAVE_VELOCIRAPTOR_ORPHANS
+  /* Flag most bound particles */
+  if(most_bound_index) {
+    for (int i = 0; i < num_most_bound; i++) {
+      struct gpart* const gp = &(e->s->gparts[most_bound_index[i]]);
+      gp->has_been_most_bound = 1;
+    }
+  }
+
+  /* Output flagged particles (including those flagged in previous invocations) */
+  velociraptor_dump_orphan_particles(e, outputFileName);
+
+#endif
 
   /* Deallocate most bound particle indexes if necessary (may be allocated by VELOCIraptor) */
   if(most_bound_index)free(most_bound_index);

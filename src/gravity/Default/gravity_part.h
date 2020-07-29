@@ -59,6 +59,12 @@ struct gpart {
   struct logger_part_data logger_data;
 #endif
 
+#ifdef HAVE_VELOCIRAPTOR_ORPHANS
+  /* Flag to indicate this particle should be output at subsequent VR invocations
+     because it was the most bound in a group at some point */
+  int has_been_most_bound;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
