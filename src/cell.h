@@ -487,6 +487,9 @@ struct cell {
     /*! Super cell, i.e. the highest-level parent cell that has a grav pair/self
      * tasks */
     struct cell *super;
+    
+    /*! Linked list of the tasks computing this cell's dm self-interactions. */
+    struct task *sidm;
 
     /*! The drift task for gparts */
     struct task *drift;

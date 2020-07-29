@@ -112,7 +112,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "multipole",  "spart",        "stars_density",  "stars_feedback",
     "sf_count",   "bpart_rho",    "bpart_swallow",  "bpart_feedback",
     "bh_density", "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
-    "bh_feedback"};
+    "bh_feedback", "sidm"};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sort",    "hydro",          "gravity", "feedback",
@@ -222,6 +222,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_bpart;
           break;
 
+        case task_subtype_sidm:
         case task_subtype_grav:
         case task_subtype_external_grav:
           return task_action_gpart;
@@ -458,7 +459,7 @@ void task_unlock(struct task *t) {
 
     case task_type_self:
     case task_type_sub_self:
-      if (subtype == task_subtype_grav) {
+      if ((subtype == task_subtype_grav) || (subtype == task_subtype_sidm)) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
@@ -486,7 +487,7 @@ void task_unlock(struct task *t) {
 
     case task_type_pair:
     case task_type_sub_pair:
-      if (subtype == task_subtype_grav) {
+      if ((subtype == task_subtype_grav) || (subtype == task_subtype_sidm)) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_gunlocktree(cj);
@@ -639,7 +640,7 @@ int task_lock(struct task *t) {
 
     case task_type_self:
     case task_type_sub_self:
-      if (subtype == task_subtype_grav) {
+      if ((subtype == task_subtype_grav) || (subtype == task_subtype_sidm)) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole */
         if (ci->grav.phold || ci->grav.mhold) return 0;
@@ -686,7 +687,7 @@ int task_lock(struct task *t) {
 
     case task_type_pair:
     case task_type_sub_pair:
-      if (subtype == task_subtype_grav) {
+      if ((subtype == task_subtype_grav) || (subtype == task_subtype_sidm)) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole in both cells */
         if (ci->grav.phold || cj->grav.phold) return 0;
@@ -893,6 +894,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       } else {
         strcpy(cluster, "Timestep_limiter");
       }
+      break;
+    case task_subtype_sidm:
+      strcpy(cluster, "SIDM");
       break;
     case task_subtype_stars_density:
       strcpy(cluster, "StarsDensity");
@@ -1418,6 +1422,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_limiter:
           return task_category_limiter;
 
+        case task_subtype_sidm:
         case task_subtype_grav:
         case task_subtype_external_grav:
           return task_category_gravity;

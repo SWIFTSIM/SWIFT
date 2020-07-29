@@ -23,7 +23,7 @@
 #include "runner_doiact_grav.h"
 
 /* Local includes. */
-#include "runner_doiact_sidm.h"
+/*#include "runner_doiact_sidm.h"*/
 #include "active.h"
 #include "cell.h"
 #include "gravity.h"
@@ -2210,7 +2210,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
       
     /* Calculate DM-DM interactions */
-    runner_dopair_sidm(r, ci, cj);
+    /*runner_dopair_sidm(r, ci, cj);*/
 
   } else {
 
@@ -2320,7 +2320,7 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
   else {
 
     /* Calculate probability of DM-DM interactions */
-    runner_doself_sidm(r, c);
+    /*runner_doself_sidm(r, c);*/
 
     runner_doself_grav_pp(r, c);
   }

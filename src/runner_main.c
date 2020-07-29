@@ -39,6 +39,9 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
+/* Import self-interacting DM loop functions. */
+#include "runner_doiact_sidm.h"
+
 /* Import the density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
@@ -183,6 +186,8 @@ void *runner_main(void *data) {
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci);
+          else if (t->subtype == task_subtype_sidm)
+            runner_doself_sidm(r, ci);
           else if (t->subtype == task_subtype_grav)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
@@ -217,6 +222,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
+          else if (t->subtype == task_subtype_sidm)
+            runner_dopair_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)

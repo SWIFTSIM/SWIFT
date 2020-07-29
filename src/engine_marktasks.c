@@ -244,6 +244,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_bh_feedback) {
         if (ci_active_black_holes) scheduler_activate(s, t);
       }
+        
+        /* Activate sidm */
+        else if (t_type == task_type_self &&
+                 t_subtype == task_subtype_sidm) {
+            if (ci_active_gravity) scheduler_activate(s, t);
+        }
+
 
       /* Activate the gravity drift */
       else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
@@ -471,6 +478,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 #endif
       }
+        
+      /* self-interacting dark matter */
+        else if (t_type == task_type_pair && t_subtype == task_subtype_sidm) {
+            
+            /* We only want to activate the task if the cell is active and is
+             going to update some dark matter on the *local* node */
+            if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+                (ci_active_gravity || cj_active_gravity)) {
+                
+                scheduler_activate(s, t);
+                
+            } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
+                       (cj_active_gravity)) {
+                
+                scheduler_activate(s, t);
+                
+            } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
+                       (ci_active_gravity)) {
+                
+                scheduler_activate(s, t);
+            }
+        }
 
       /* Only interested in density tasks as of here. */
       if (t_subtype == task_subtype_density) {

@@ -955,7 +955,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
-
+        
       c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
                                         task_subtype_none, 0, 0, c, NULL);
 
@@ -1379,7 +1379,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
+        scheduler_addtask(sched, task_type_self, task_subtype_sidm, 0, 0, ci,
+                          NULL);
+
+        scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                         NULL);
     }
 
@@ -1414,6 +1417,10 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             error("Multipole of ci was not exchanged properly via the proxies");
           if (multi_j == NULL && cj->nodeID != nodeID)
             error("Multipole of cj was not exchanged properly via the proxies");
+            
+          /* Let's do sidm calculation */
+          scheduler_addtask(sched, task_type_pair, task_subtype_sidm, 0, 0,
+                              ci, cj);
 
           /* Minimal distance between any pair of particles */
           const double min_radius2 =
@@ -1556,6 +1563,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
+      } else if (t_subtype == task_subtype_sidm) {
+          engine_addlink(e, &ci->grav.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1578,6 +1587,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
+      } else if (t_subtype == task_subtype_sidm) {
+          engine_addlink(e, &ci->grav.sidm, t);
+          engine_addlink(e, &cj->grav.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -1606,6 +1618,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
+      } else if (t_subtype == task_subtype_sidm) {
+          engine_addlink(e, &ci->grav.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1628,6 +1642,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
+      } else if (t_subtype == task_subtype_sidm) {
+          engine_addlink(e, &ci->grav.sidm, t);
+          engine_addlink(e, &cj->grav.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);

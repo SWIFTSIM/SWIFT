@@ -1742,7 +1742,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_self:
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
-            t->subtype == task_subtype_external_grav)
+            t->subtype == task_subtype_external_grav ||
+            t->subtype == task_subtype_sidm)
           qid = t->ci->grav.super->owner;
         else
           qid = t->ci->hydro.super->owner;
