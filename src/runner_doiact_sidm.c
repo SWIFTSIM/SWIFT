@@ -68,21 +68,21 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
         /* Get a pointer to the ith particle. */
         struct gpart *gpi = &gparts[pid];
         
-        /* We care only about dark matter particles */
+        /* We care only about dark matter particles here */
         if (gpi->type != swift_type_dark_matter) continue;
 
         /* Skip inactive particles */
         if (!gpart_is_active(gpi, e)) continue;
         
         /* Get particle time-step */
-        const integertime_t ti_step = get_integer_timestep(gpj->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, gpj->time_bin);
+        const integertime_t ti_step = get_integer_timestep(gpi->time_bin);
+        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, gpi->time_bin);
         double dt;
         if (with_cosmology) {
             dt = cosmology_get_delta_time(e->cosmology, ti_begin,
                                           ti_begin + ti_step);
         } else {
-            dt = get_timestep(gpj->time_bin, e->time_base);
+            dt = get_timestep(gpi->time_bin, e->time_base);
         }
         
         /* Loop over every other particle in the cell. */
@@ -98,7 +98,6 @@ void runner_doself_sidm(struct runner *r, struct cell *c) {
             if (gpj->type != swift_type_dark_matter) continue;
             
             /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(gpj->x[0] - c->loc[0]),(float)(gpj->x[1] - c->loc[1]),(float)(gpj->x[2] - c->loc[2])};
             float dx[3] = {gpi->x[0] - gpj->x[0], gpi->x[1] - gpj->x[1], gpi->x[2] - gpj->x[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             const float h_SI = gpj->sidm_data.h_sidm;
@@ -160,14 +159,14 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
         if (!gpart_is_active(gpi, e)) continue;
         
         /* Get particle time-step */
-        const integertime_t ti_step = get_integer_timestep(gpj->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, gpj->time_bin);
+        const integertime_t ti_step = get_integer_timestep(gpi->time_bin);
+        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, gpi->time_bin);
         double dt;
         if (with_cosmology) {
             dt = cosmology_get_delta_time(e->cosmology, ti_begin,
                                           ti_begin + ti_step);
         } else {
-            dt = get_timestep(gpj->time_bin, e->time_base);
+            dt = get_timestep(gpi->time_bin, e->time_base);
         }
         
         /* Loop over every other particle in the cell. */
@@ -183,9 +182,6 @@ void runner_dopair_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
             if (gpj->type != swift_type_dark_matter) continue;
             
             /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(gpj->x[0] - cj->loc[0]),
-                (float)(gpj->x[1] - cj->loc[1]),
-                (float)(gpj->x[2] - cj->loc[2])};
             float dx[3] = {gpi->x[0] - gpj->x[0], gpi->x[1] - gpj->x[1], gpi->x[2] - gpj->x[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             const float h_SI = gpj->sidm_data.h_sidm;

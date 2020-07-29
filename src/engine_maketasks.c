@@ -1564,7 +1564,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.sidm, t);
+          engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1588,8 +1588,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.sidm, t);
-          engine_addlink(e, &cj->grav.sidm, t);
+          engine_addlink(e, &ci->grav.grav, t);
+          engine_addlink(e, &cj->grav.grav, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -1619,7 +1619,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.sidm, t);
+          engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1643,8 +1643,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.sidm, t);
-          engine_addlink(e, &cj->grav.sidm, t);
+          engine_addlink(e, &ci->grav.grav, t);
+          engine_addlink(e, &cj->grav.grav, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);

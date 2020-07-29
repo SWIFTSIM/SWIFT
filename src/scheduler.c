@@ -1376,7 +1376,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_self:
-        if (t->subtype == task_subtype_grav) {
+        if (t->subtype == task_subtype_grav || t->subtype == task_subtype_sidm) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
@@ -1402,7 +1402,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_pair:
-        if (t->subtype == task_subtype_grav) {
+        if (t->subtype == task_subtype_grav || t->subtype == task_subtype_sidm) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
