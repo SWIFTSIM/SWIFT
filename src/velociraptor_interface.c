@@ -481,15 +481,20 @@ void write_orphan_particle_array(hid_t file_id, const char *name, const void *bu
 
   /* Set up dataspaces */
   hid_t file_dspace_id = H5Screate_simple(ndims, dims, NULL);
-  H5Sselect_hyperslab(file_dspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
+  if(H5Sselect_hyperslab(file_dspace_id, H5S_SELECT_SET, start, NULL, count, NULL) < 0) {
+    error("Failed to select hyperslab to write while writing orphan particles.");
+  }
   hid_t mem_dspace_id = H5Screate_simple(ndims, count, NULL);
 
   /* Create the dataset */
   hid_t dset_id = H5Dcreate(file_id, name, dtype_id, file_dspace_id,
                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if(dset_id < 0) error("Failed to create dataset while writing orphan particles.");
 
   /* Write data */
-  H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id, xfer_plist_id, buf);
+  if(H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id, xfer_plist_id, buf) < 0) {
+    error("Failed to write dataset while writing orphan particles.");
+  }
 
   /* Tidy up */
   H5Dclose(dset_id);
@@ -549,9 +554,12 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   /* Create the output file */
   hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
 #if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
-  H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+  if(H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL) < 0) {
+    error("Unable to set MPI mode opening file for orphan particles.");
+  }
 #endif
   hid_t file_id = H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+  if(file_id < 0) error("Failed to create file for orphan particles.");
   H5Pclose(fapl_id);
 
   /* Determine offsets and lengths to write in output file on this MPI rank */
