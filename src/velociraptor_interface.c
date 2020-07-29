@@ -457,11 +457,53 @@ void velociraptor_init(struct engine *e) {
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
 
 /**
+ * @brief Write an array to the output HDF5 file
+ *
+ * @param file_id HDF5 file handle of the file to write to
+ * @param name Name of the dataset to write
+ * @param buf The data to write out
+ * @param dtype_id HDF5 data type to write
+ * @param ndims Number of dimensions of the dataset
+ * @param dims Total size of the data over all MPI ranks
+ * @param start Offset into the dataset for data from this rank
+ * @param count Number of particles to write on this rank
+ *
+ */
+void write_orphan_particle_array(hid_t file_id, const char *name, const void *buf,
+                                 const hid_t dtype_id, const int ndims, const hsize_t *dims,
+                                 const hsize_t *start, const hsize_t *count) {
+
+  /* Make dataset transfer property list */
+  hid_t xfer_plist_id = H5Pcreate(H5P_DATASET_XFER);
+#ifdef WITH_MPI
+  H5Pset_dxpl_mpio(xfer_plist_id, H5FD_MPIO_COLLECTIVE);
+#endif
+
+  /* Set up dataspaces */
+  hid_t file_dspace_id = H5Screate_simple(ndims, dims, NULL);
+  H5Sselect_hyperslab(file_dspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
+  hid_t mem_dspace_id = H5Screate_simple(ndims, count, NULL);
+
+  /* Create the dataset */
+  hid_t dset_id = H5Dcreate(file_id, name, dtype_id, file_dspace_id,
+                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  /* Write data */
+  H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id, xfer_plist_id, buf);
+
+  /* Tidy up */
+  H5Dclose(dset_id);
+  H5Sclose(mem_dspace_id);
+  H5Sclose(file_dspace_id);
+  H5Pclose(xfer_plist_id);
+}
+
+/**
  * @brief Write all particles which have ever been most bound to a file
  *
  * @param e The #engine.
  */
-void velociraptor_dump_orphan_particles(struct engine *e) {
+void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) {
 
   const struct space *s = e->s;
   const size_t nr_gparts = s->nr_gparts;
@@ -512,14 +554,28 @@ void velociraptor_dump_orphan_particles(struct engine *e) {
   /* Create the output file */
   hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
 #ifdef WITH_MPI
-  H5Pset_fapl_mpio(h_plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+  H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
   hid_t file_id = H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+  H5Pclose(fapl_id);
 
-  /* Determine offsets and lengths to write in output file on each MPI rank */
-  
+  /* Determine offsets and lengths to write in output file on this MPI rank */
+  long long offset_ll = 0;
+  long long count_ll = (long long) nr_flagged;
+  long long ntot_ll = nr_flagged;
+#ifdef WITH_MPI
+  MPI_Exscan(&count_ll, &offset_ll, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &ntot_ll, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD); 
+#endif
+  hsize_t start[2] = {(hsize_t) offset_ll, (hsize_t) 0};
+  hsize_t count[2] = {(hsize_t) count_ll, (hsize_t) 3};
+  hsize_t dims[2]  = {(hsize_t) ntot_ll, (hsize_t) 3};
 
-  
+  /* Write the particle data */
+  write_orphan_particle_array(file_id, "Coordinates", pos, H5T_NATIVE_DOUBLE, 2, dims, start, count);
+  write_orphan_particle_array(file_id, "Velocities",  vel, H5T_NATIVE_FLOAT,  2, dims, start, count);
+  write_orphan_particle_array(file_id, "ParticleIDs", ids, H5T_NATIVE_LLONG,  1, dims, start, count);
+
   /* Close output file */
   H5Fclose(file_id);
 
