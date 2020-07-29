@@ -475,7 +475,7 @@ void write_orphan_particle_array(hid_t file_id, const char *name, const void *bu
 
   /* Make dataset transfer property list */
   hid_t xfer_plist_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef WITH_MPI
+#if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
   H5Pset_dxpl_mpio(xfer_plist_id, H5FD_MPIO_COLLECTIVE);
 #endif
 
@@ -539,21 +539,16 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
     }
   }
 
-  /* Ensure we have HDF5 */
-#ifndef HAVE_HDF5
-#error Option --enable-velociraptor-orphans requires HDF5
-#endif
-
   /* Determine output file name */
   char orphansFileName[FILENAME_BUFFER_SIZE];
-  if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.hdf5",
-               outputFileName) >= FILENAME_BUFFER_SIZE) {
+  if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.%d.hdf5",
+               outputFileName, e->nodeID) >= FILENAME_BUFFER_SIZE) {
     error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
   }
 
   /* Create the output file */
   hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
-#ifdef WITH_MPI
+#if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
   H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
   hid_t file_id = H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
@@ -563,7 +558,7 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   long long offset_ll = 0;
   long long count_ll = (long long) nr_flagged;
   long long ntot_ll = nr_flagged;
-#ifdef WITH_MPI
+#if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
   MPI_Exscan(&count_ll, &offset_ll, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &ntot_ll, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD); 
 #endif
