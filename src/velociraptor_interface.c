@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <hdf5.h>
 
 /* This object's header. */
 #include "velociraptor_interface.h"
