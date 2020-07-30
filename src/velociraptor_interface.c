@@ -513,12 +513,17 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
 
   const struct space *s = e->s;
   const size_t nr_gparts = s->nr_gparts;
-  const struct gpart *gp = e->s->gparts;
+  const struct gpart *gparts = e->s->gparts;
   
+  const struct part  *parts  = s->parts;
+  const struct xpart *xparts = s->xparts;
+  const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
+
   /* Count how many particles we need to write out */
   size_t nr_flagged = 0;
   for(size_t i=0; i<nr_gparts; i+=1) {
-    if(gp[i].has_been_most_bound)nr_flagged += 1;
+    if(gparts[i].has_been_most_bound)nr_flagged += 1;
   }
 
   /* Allocate write buffers */
@@ -537,18 +542,44 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
 
   /* Populate write buffers */
   for(size_t i=0, offset=0; i<nr_gparts; i+=1) {
-    if(gp[i].has_been_most_bound) {
-      convert_gpart_pos(e, &gp[i], &pos[3*offset]);
-      convert_gpart_vel(e, &gp[i], &vel[3*offset]);
-      ids[offset] = gp[i].id_or_neg_offset;
+    if(gparts[i].has_been_most_bound) {
+      convert_gpart_pos(e, &gparts[i], &pos[3*offset]);
+      convert_gpart_vel(e, &gparts[i], &vel[3*offset]);
+      switch (gparts[i].type) {
+      case swift_type_gas: {
+        ids[offset] = parts[-gparts[i].id_or_neg_offset].id;
+      } break;
+      case swift_type_stars:
+        ids[offset] = sparts[-gparts[i].id_or_neg_offset].id;
+        break;
+      case swift_type_black_hole:
+        ids[offset] = bparts[-gparts[i].id_or_neg_offset].id;
+        break;
+      case swift_type_dark_matter:
+        ids[offset] = gparts[i].id_or_neg_offset;
+        break;
+      case swift_type_dark_matter_background:
+        ids[offset] = gparts[i].id_or_neg_offset;
+        break;
+      default:
+        error("Particle type not handled by VELOCIraptor.");
+      }
       offset += 1;
     }
   }
 
+  /* Determine output file index for this rank:
+   * this is the nodeID, unless we're doing collective I/O */
+#if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
+  const int filenum = 0;
+#else
+  const int filenum = e->nodeID;
+#endif
+
   /* Determine output file name */
   char orphansFileName[FILENAME_BUFFER_SIZE];
-  if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.%d.hdf5",
-               outputFileName, e->nodeID) >= FILENAME_BUFFER_SIZE) {
+  if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.%d",
+               outputFileName, filenum) >= FILENAME_BUFFER_SIZE) {
     error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
   }
 
@@ -955,6 +986,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   }
 
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
+
   /* Flag most bound particles */
   if(most_bound_index) {
     for (int i = 0; i < num_most_bound; i++) {
@@ -964,6 +996,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   }
 
   /* Output flagged particles (including those flagged in previous invocations) */
+  if (e->verbose) message("Writing out orphan particles");
   velociraptor_dump_orphan_particles(e, outputFileName);
 
 #endif
