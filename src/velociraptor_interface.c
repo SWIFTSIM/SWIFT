@@ -514,9 +514,7 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   const struct space *s = e->s;
   const size_t nr_gparts = s->nr_gparts;
   const struct gpart *gparts = e->s->gparts;
-  
   const struct part  *parts  = s->parts;
-  const struct xpart *xparts = s->xparts;
   const struct spart *sparts = s->sparts;
   const struct bpart *bparts = s->bparts;
 
