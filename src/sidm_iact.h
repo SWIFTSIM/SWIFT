@@ -33,6 +33,83 @@
 #include "random.h"
 
 /**
+ * @brief Density interaction between two dark matter particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving SIDM search radius of particle i.
+ * @param hj Comoving SIDM search radius of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter_density(
+        float r2, const float *dx, float hi, float hj, struct gpart *restrict gpi,
+        const struct gpart *restrict gpj, float a, float H) {
+    
+    float wi;
+    
+    /* Get the masses. */
+    const float mj = gpj->mass;
+    
+    /* Get r. */
+    const float r_inv = 1.0f / sqrtf(r2);
+    const float r = r2 * r_inv;
+    
+    const float h_inv = 1.f / hi;
+    const float ui = r * h_inv;
+    kernel_deval(ui, &wi);
+    
+    gpi->rho += mj * wi;
+    gpi->density.wcount += wi;
+
+}
+
+/**
+ * @brief Density interaction between two dark matter particles (symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving SIDM search radius of particle i.
+ * @param hj Comoving SIDM search radius of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_dark_matter_density(
+            float r2, const float *dx, float hi, float hj, struct gpart *restrict gpi,
+            const struct gpart *restrict gpj, float a, float H) {
+    
+    float wi, wj;
+    
+    /* Get r. */
+    const float r_inv = 1.0f / sqrtf(r2);
+    const float r = r2 * r_inv;
+    
+    /* Get the masses. */
+    const float mi = gpi->mass;
+    const float mj = gpj->mass;
+    
+    /* Compute density of pi. */
+    const float hi_inv = 1.f / hi;
+    const float ui = r * hi_inv;
+    kernel_deval(ui, &wi);
+    
+    gpi->rho += mj * wi;
+    gpi->density.wcount += wi;
+    
+    /* Compute density of pj. */
+    const float hj_inv = 1.f / hj;
+    const float uj = r * hj_inv;
+    kernel_deval(uj, &wj);
+    
+    gpj->rho += mi * wj;
+    gpj->density.wcount += wj;
+}
+
+/**
  * @brief Perform the 'kick' operation on both #gparts
  *
  * @param gpj #gpart

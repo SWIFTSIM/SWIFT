@@ -186,6 +186,8 @@ void *runner_main(void *data) {
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci);
+          else if (t->subtype == task_subtype_dark_matter_density)
+            runner_doself_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
             runner_doself_sidm(r, ci);
           else if (t->subtype == task_subtype_grav)
@@ -222,6 +224,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
+          else if (t->subtype == task_subtype_dark_matter_density)
+            runner_dopair_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
             runner_dopair_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
