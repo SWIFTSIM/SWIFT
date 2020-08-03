@@ -120,6 +120,12 @@ struct chemistry_bpart_data {
 
   /*! Iron mass coming from SNIa */
   float iron_mass_from_SNIa;
+
+  /*! Metallicity of converted part. */
+  float formation_metallicity;
+
+  /*! Smoothed metallicity of converted part. */
+  float smoothed_formation_metallicity;
 };
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_EAGLE_H */

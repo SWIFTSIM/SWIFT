@@ -348,6 +348,9 @@ __attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
       p_data->metal_mass_fraction_from_AGB * gas_mass;
   bp_data->iron_mass_from_SNIa =
       p_data->iron_mass_fraction_from_SNIa * gas_mass;
+  bp_data->formation_metallicity = p_data->metal_mass_fraction_total;
+  bp_data->smoothed_formation_metallicity =
+      p_data->smoothed_metal_mass_fraction_total;
 }
 
 /**

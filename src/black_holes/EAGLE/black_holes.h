@@ -821,8 +821,9 @@ INLINE static void black_holes_create_from_gas(
    * in the FOF code. We update them here.
    * (i.e. position, velocity, mass, time-step have been set) */
 
-  /* Birth time */
+  /* Birth time and density */
   bp->formation_scale_factor = cosmo->a;
+  bp->formation_gas_density = hydro_get_physical_density(p, cosmo);
 
   /* Initial seed mass */
   bp->subgrid_mass = props->subgrid_seed_mass;
