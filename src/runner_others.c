@@ -339,7 +339,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             const int spawn_spart =
                 star_formation_should_spawn_spart(p, xp, sf_props);
 
+            /* Are we using a model that actually generates star particles? */
             if (swift_star_formation_model_creates_stars) {
+
               /* Check if we should create a new particle or transform one */
               if (spawn_spart) {
                 /* Spawn a new spart (+ gpart) */
@@ -348,7 +350,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 /* Convert the gas particle to a star particle */
                 sp = cell_convert_part_to_spart(e, c, p, xp);
               }
+
             } else {
+
+              /* We are in a model where spart don't exist
+               * --> convert the part to a DM gpart */
               cell_convert_part_to_gpart(e, c, p, xp);
             }
 
@@ -393,7 +399,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                /* log_all */ 1,
                                /* special flags */ 0);
 #endif
-            } else {
+            } else if (swift_star_formation_model_creates_stars) {
 
               /* Do something about the fact no star could be formed.
                  Note that in such cases a tree rebuild to create more free
