@@ -39,6 +39,9 @@
 #include "threadpool.h"
 #include "velociraptor_struct.h"
 #include "gravity_io.h"
+#include "hydro_io.h"
+#include "stars_io.h"
+#include "black_holes_io.h"
 
 #ifdef HAVE_VELOCIRAPTOR
 
@@ -514,7 +517,10 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   const struct space *s = e->s;
   const size_t nr_gparts = s->nr_gparts;
   const struct gpart *gparts = e->s->gparts;
-  const struct part  *parts  = s->parts;
+
+  /* Handle on the other particle types */
+  const struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
   const struct spart *sparts = s->sparts;
   const struct bpart *bparts = s->bparts;
 
@@ -541,24 +547,36 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   /* Populate write buffers */
   for(size_t i=0, offset=0; i<nr_gparts; i+=1) {
     if(gparts[i].has_been_most_bound) {
-      convert_gpart_pos(e, &gparts[i], &pos[3*offset]);
-      convert_gpart_vel(e, &gparts[i], &vel[3*offset]);
       switch (gparts[i].type) {
       case swift_type_gas: {
+        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+        convert_part_pos(e, p, xp, &pos[3*offset]);
+        convert_part_vel(e, p, xp, &vel[3*offset]);
         ids[offset] = parts[-gparts[i].id_or_neg_offset].id;
       } break;
-      case swift_type_stars:
+      case swift_type_stars: {
+        const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
+        convert_spart_pos(e, sp, &pos[3*offset]);
+        convert_spart_vel(e, sp, &vel[3*offset]);
         ids[offset] = sparts[-gparts[i].id_or_neg_offset].id;
-        break;
-      case swift_type_black_hole:
+      } break;
+      case swift_type_black_hole: {
+        const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
+        convert_bpart_pos(e, bp, &pos[3*offset]);
+        convert_bpart_vel(e, bp, &vel[3*offset]);
         ids[offset] = bparts[-gparts[i].id_or_neg_offset].id;
-        break;
-      case swift_type_dark_matter:
+      } break;
+      case swift_type_dark_matter: {
+        convert_gpart_pos(e, &gparts[i], &pos[3*offset]);
+        convert_gpart_vel(e, &gparts[i], &vel[3*offset]);
         ids[offset] = gparts[i].id_or_neg_offset;
-        break;
-      case swift_type_dark_matter_background:
+      } break;
+      case swift_type_dark_matter_background: {
+        convert_gpart_pos(e, &gparts[i], &pos[3*offset]);
+        convert_gpart_vel(e, &gparts[i], &vel[3*offset]);
         ids[offset] = gparts[i].id_or_neg_offset;
-        break;
+      } break;
       default:
         error("Particle type not handled by VELOCIraptor.");
       }
@@ -918,7 +936,9 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Unpack returned data */
   int num_gparts_in_groups = return_data.num_gparts_in_groups;
   struct groupinfo *group_info = return_data.group_info;
+#ifdef HAVE_VELOCIRAPTOR_ORPHANS
   int num_most_bound = return_data.num_most_bound;
+#endif
   int *most_bound_index = return_data.most_bound_index;
 
   /* Report that the memory was freed */
