@@ -29,7 +29,6 @@
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
-#include "task_order.h"
 #include "timers.h"
 
 /**
@@ -46,8 +45,6 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
-  if (!task_order_star_formation_before_feedback)
-    error("Resorting when not needed");
 #endif
 
   TIMER_TIC;
