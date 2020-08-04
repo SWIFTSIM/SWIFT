@@ -187,10 +187,12 @@ void stellar_evolution_compute_discrete_feedback_properties(
     const float log_m_end_step, const float m_beg_step, const float m_end_step,
     const float m_init, const int number_snia, const int number_snii) {
 
+  /* Limit the mass within the imf limits */
+  const float m_beg_lim = min(m_beg_step, sm->imf.mass_max);
+  const float m_end_lim = max(m_end_step, sm->imf.mass_min);
+
   /* Compute the average mass */
-  const float m_avg =
-      initial_mass_function_get_integral_imf(&sm->imf, m_end_step, m_beg_step) /
-      initial_mass_function_get_integral_xi(&sm->imf, m_end_step, m_beg_step);
+  const float m_avg = 0.5 * (m_beg_lim + m_end_lim);
   const float log_m_avg = log10(m_avg);
 
   /* Compute the mass ejected */
