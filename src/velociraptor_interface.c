@@ -42,6 +42,7 @@
 #include "hydro_io.h"
 #include "stars_io.h"
 #include "black_holes_io.h"
+#include "common_io.h"
 
 #ifdef HAVE_VELOCIRAPTOR
 
@@ -475,7 +476,9 @@ void velociraptor_init(struct engine *e) {
  */
 void write_orphan_particle_array(hid_t file_id, const char *name, const void *buf,
                                  const hid_t dtype_id, const int ndims, const hsize_t *dims,
-                                 const hsize_t *start, const hsize_t *count) {
+                                 const hsize_t *start, const hsize_t *count,
+                                 const struct unit_system* snapshot_units,
+                                 const struct io_props props) {
 
   /* Make dataset transfer property list */
   hid_t xfer_plist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -494,6 +497,21 @@ void write_orphan_particle_array(hid_t file_id, const char *name, const void *bu
   hid_t dset_id = H5Dcreate(file_id, name, dtype_id, file_dspace_id,
                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if(dset_id < 0) error("Failed to create dataset while writing orphan particles.");
+
+  /* Write unit conversion factors for this data set */
+  char buffer[FIELD_BUFFER_SIZE] = {0};
+  units_cgs_conversion_string(buffer, snapshot_units, props.units,
+                              props.scale_factor_exponent);
+  float baseUnitsExp[5];
+  units_get_base_unit_exponents_array(baseUnitsExp, props.units);
+  io_write_attribute_f(dset_id, "U_M exponent", baseUnitsExp[UNIT_MASS]);
+  io_write_attribute_f(dset_id, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
+  io_write_attribute_f(dset_id, "U_t exponent", baseUnitsExp[UNIT_TIME]);
+  io_write_attribute_f(dset_id, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
+  io_write_attribute_f(dset_id, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
+  io_write_attribute_f(dset_id, "h-scale exponent", 0.f);
+  io_write_attribute_f(dset_id, "a-scale exponent", props.scale_factor_exponent);
+  io_write_attribute_s(dset_id, "Expression for physical CGS units", buffer);
 
   /* Write data */
   if(H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id, xfer_plist_id, buf) < 0) {
@@ -523,6 +541,10 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   const struct xpart *xparts = s->xparts;
   const struct spart *sparts = s->sparts;
   const struct bpart *bparts = s->bparts;
+  
+  /* Units */
+  const struct unit_system *internal_units = e->internal_units;
+  const struct unit_system *snapshot_units = e->snapshot_units;
 
   /* Count how many particles we need to write out */
   size_t nr_flagged = 0;
@@ -621,11 +643,42 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   hsize_t start[2] = {(hsize_t) offset_ll, (hsize_t) 0};
   hsize_t count[2] = {(hsize_t) count_ll, (hsize_t) 3};
   hsize_t dims[2]  = {(hsize_t) ntot_ll, (hsize_t) 3};
+  
+  /* Get list of DM output fields - need this to get metadata for pos/vel/ids.
+   * Note that this will be wrong if we have non-DM particles and they use different
+   * position and velocity units from the DM particles. */
+  int num_fields = 0;
+  struct io_props list[100];
+  darkmatter_write_particles(gparts, list, &num_fields);
 
   /* Write the particle data */
-  write_orphan_particle_array(file_id, "Coordinates", pos, H5T_NATIVE_DOUBLE, 2, dims, start, count);
-  write_orphan_particle_array(file_id, "Velocities",  vel, H5T_NATIVE_FLOAT,  2, dims, start, count);
-  write_orphan_particle_array(file_id, "ParticleIDs", ids, H5T_NATIVE_LLONG,  1, dims, start, count);
+  for(int i=0; i<num_fields; i+=1) {
+    if(strcmp(list[i].name, "Coordinates")==0) {
+      /* Convert length units if necessary */
+      const double factor = units_conversion_factor(internal_units, snapshot_units, list[i].units);
+      if(factor!=1.0) {
+        for(size_t j=0; j<3*nr_gparts; j+=1)
+          pos[j] *= factor;
+      }
+      /* Write out the coordinates */
+      write_orphan_particle_array(file_id, list[i].name, pos, H5T_NATIVE_DOUBLE,
+                                  2, dims, start, count, snapshot_units, list[i]);
+    } else if(strcmp(list[i].name, "Velocities")==0) {
+      /* Convert velocity units if necessary */
+      const double factor = units_conversion_factor(internal_units, snapshot_units, list[i].units);
+      if(factor!=1.0) {
+        for(size_t j=0; j<3*nr_gparts; j+=1)
+          vel[j] *= factor;
+      }
+      /* Write out the velocities */
+      write_orphan_particle_array(file_id, list[i].name,  vel, H5T_NATIVE_FLOAT,
+                                  2, dims, start, count, snapshot_units, list[i]);
+    } else if(strcmp(list[i].name, "ParticleIDs")==0) {
+      /* Write out the particle IDs */      
+      write_orphan_particle_array(file_id, list[i].name, ids, H5T_NATIVE_LLONG,
+                                  1, dims, start, count, snapshot_units, list[i]);
+    }
+  }
 
   /* Close output file */
   H5Fclose(file_id);
