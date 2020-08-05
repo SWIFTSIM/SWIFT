@@ -867,6 +867,9 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
     error("Error while changing shape of %s %s data space.", name,
           array_content);
 
+  /* Dataset type */
+  hid_t h_type = H5Tcopy(io_hdf5_type(type));
+
   const hsize_t chunk[2] = {(1024 > n ? n : 1024), 1};
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
   h_err = H5Pset_chunk(h_prop, 1, chunk);
@@ -881,13 +884,14 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
           array_content);
 
   /* Write */
-  hid_t h_data = H5Dcreate(h_grp, name, io_hdf5_type(type), h_space,
-                           H5P_DEFAULT, h_prop, H5P_DEFAULT);
+  hid_t h_data =
+      H5Dcreate(h_grp, name, h_type, h_space, H5P_DEFAULT, h_prop, H5P_DEFAULT);
   if (h_data < 0)
     error("Error while creating dataspace for %s %s.", name, array_content);
   h_err = H5Dwrite(h_data, io_hdf5_type(type), h_space, H5S_ALL, H5P_DEFAULT,
                    array);
   if (h_err < 0) error("Error while writing %s %s.", name, array_content);
+  H5Tclose(h_type);
   H5Dclose(h_data);
   H5Pclose(h_prop);
   H5Sclose(h_space);
@@ -2588,9 +2592,9 @@ void io_prepare_output_fields(struct output_options* output_options,
     for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
       /* Internally also verifies that the default level is allowed */
-      const enum compression_levels compression_level_current_default =
-          output_options_get_ptype_default(params, section_name,
-                                           (enum part_type)ptype);
+      const enum lossy_compression_schemes compression_level_current_default =
+          output_options_get_ptype_default_compression(params, section_name,
+                                                       (enum part_type)ptype);
 
       if (compression_level_current_default == compression_do_not_write) {
         ptype_default_write_status[ptype] = 0;
@@ -2655,7 +2659,8 @@ void io_prepare_output_fields(struct output_options* output_options,
 
       int value_id = 0;
       for (value_id = 0; value_id < compression_level_count; value_id++)
-        if (strcmp(param_value, compression_level_names[value_id]) == 0) break;
+        if (strcmp(param_value, lossy_compression_schemes_names[value_id]) == 0)
+          break;
 
       if (value_id == compression_level_count)
         error("Choice of output selection parameter %s ('%s') is invalid.",
@@ -2666,7 +2671,8 @@ void io_prepare_output_fields(struct output_options* output_options,
       if (param_is_known) {
         const int is_on =
             strcmp(param_value,
-                   compression_level_names[compression_do_not_write]) != 0;
+                   lossy_compression_schemes_names[compression_do_not_write]) !=
+            0;
 
         if (is_on && !ptype_default_write_status[param_ptype]) {
           /* Particle should be written even though default is off:

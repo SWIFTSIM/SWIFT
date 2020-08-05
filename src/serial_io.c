@@ -239,12 +239,13 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
   H5Dclose(h_data);
 }
 
-void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
-                          FILE* xmfFile, char* partTypeGroupName,
-                          const struct io_props props,
-                          unsigned long long N_total,
-                          const struct unit_system* internal_units,
-                          const struct unit_system* snapshot_units) {
+void prepare_array_serial(
+    const struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
+    char* partTypeGroupName, const struct io_props props,
+    unsigned long long N_total,
+    const enum lossy_compression_schemes lossy_compression,
+    const struct unit_system* internal_units,
+    const struct unit_system* snapshot_units) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -252,7 +253,7 @@ void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = e->snapshot_compression > 0 ? 12 : 18;
+  int log2_chunk_size = 20;
 
   int rank = 0;
   hsize_t shape[2];
@@ -279,8 +280,11 @@ void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
   if (h_err < 0)
     error("Error while changing data space shape for field '%s'.", props.name);
 
+  /* Dataset type */
+  hid_t h_type = H5Tcopy(io_hdf5_type(props.type));
+
   /* Dataset properties */
-  const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
+  hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
   /* Set chunk size */
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
@@ -288,10 +292,9 @@ void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
     error("Error while setting chunk size (%llu, %llu) for field '%s'.",
           chunk_shape[0], chunk_shape[1], props.name);
 
-  /* Impose check-sum to verify data corruption */
-  h_err = H5Pset_fletcher32(h_prop);
-  if (h_err < 0)
-    error("Error while setting checksum options for field '%s'.", props.name);
+  /* Are we imposing some form of lossy compression filter? */
+  if (lossy_compression != compression_write_lossless)
+    set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name);
 
   /* Impose data compression */
   if (e->snapshot_compression > 0) {
@@ -306,9 +309,14 @@ void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
             props.name);
   }
 
+  /* Impose check-sum to verify data corruption */
+  h_err = H5Pset_fletcher32(h_prop);
+  if (h_err < 0)
+    error("Error while setting checksum options for field '%s'.", props.name);
+
   /* Create dataset */
-  const hid_t h_data = H5Dcreate(grp, props.name, io_hdf5_type(props.type),
-                                 h_space, H5P_DEFAULT, h_prop, H5P_DEFAULT);
+  const hid_t h_data = H5Dcreate(grp, props.name, h_type, h_space, H5P_DEFAULT,
+                                 h_prop, H5P_DEFAULT);
   if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write XMF description for this data set */
@@ -352,6 +360,7 @@ void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
   io_write_attribute_s(h_data, "Description", props.description);
 
   /* Close everything */
+  H5Tclose(h_type);
   H5Pclose(h_prop);
   H5Dclose(h_data);
   H5Sclose(h_space);
@@ -381,6 +390,7 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
                         FILE* xmfFile, char* partTypeGroupName,
                         const struct io_props props, size_t N,
                         long long N_total, int mpi_rank, long long offset,
+                        const enum lossy_compression_schemes lossy_compression,
                         const struct unit_system* internal_units,
                         const struct unit_system* snapshot_units) {
 
@@ -392,7 +402,8 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
   /* Prepare the arrays in the file */
   if (mpi_rank == 0)
     prepare_array_serial(e, grp, fileName, xmfFile, partTypeGroupName, props,
-                         N_total, internal_units, snapshot_units);
+                         N_total, lossy_compression, internal_units,
+                         snapshot_units);
 
   /* Allocate temporary buffer */
   void* temp = NULL;
@@ -1484,24 +1495,26 @@ void write_output_serial(struct engine* e,
 
         /* Did the user specify a non-standard default for the entire particle
          * type? */
-        const enum compression_levels compression_level_current_default =
-            output_options_get_ptype_default(output_options->select_output,
-                                             current_selection_name,
-                                             (enum part_type)ptype);
+        const enum lossy_compression_schemes compression_level_current_default =
+            output_options_get_ptype_default_compression(
+                output_options->select_output, current_selection_name,
+                (enum part_type)ptype);
 
         /* Write everything that is not cancelled */
         int num_fields_written = 0;
         for (int i = 0; i < num_fields; ++i) {
 
           /* Did the user cancel this field? */
-          const int should_write = output_options_should_write_field(
-              output_options, current_selection_name, list[i].name,
-              (enum part_type)ptype, compression_level_current_default);
+          const enum lossy_compression_schemes compression_level =
+              output_options_get_field_compression(
+                  output_options, current_selection_name, list[i].name,
+                  (enum part_type)ptype, compression_level_current_default);
 
-          if (should_write) {
+          if (compression_level != compression_do_not_write) {
             write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
                                list[i], Nparticles, N_total[ptype], mpi_rank,
-                               offset[ptype], internal_units, snapshot_units);
+                               offset[ptype], compression_level, internal_units,
+                               snapshot_units);
             num_fields_written++;
           }
         }

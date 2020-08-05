@@ -1327,21 +1327,6 @@ Showing all the parameters for a basic cosmologica test-case, one would have:
     delta_time:           1.1                            # Delta log-a between outputs
 
 
-------------------------
-
-    
-.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
-
-
-.. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
-
-.. [#f3] This feature only makes sense for non-cosmological runs for which the
-         internal time unit is such that when rounded to the nearest integer a
-	 sensible number is obtained. A use-case for this feature would be to
-	 compare runs over the same physical time but with different numbers of
-	 snapshots. Snapshots at a given time would always have the same set of
-	 digits irrespective of the number of snapshots produced before.
-
 Gravity Force Checks
 --------------------
 
@@ -1362,3 +1347,18 @@ If ``only_when_all_active:1`` and ``only_at_snapshots:1`` are enabled together,
 and all the gparts are not active during the timestep of the snapshot dump, the
 exact forces computation is performed on the first timestep at which all the
 gparts are active after that snapshot output timestep.
+
+
+------------------------
+
+.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
+
+
+.. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
+
+.. [#f3] This feature only makes sense for non-cosmological runs for which the
+         internal time unit is such that when rounded to the nearest integer a
+	 sensible number is obtained. A use-case for this feature would be to
+	 compare runs over the same physical time but with different numbers of
+	 snapshots. Snapshots at a given time would always have the same set of
+	 digits irrespective of the number of snapshots produced before.
