@@ -389,14 +389,26 @@ EAGLECooling:
   Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
   S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
 
-# Quick Lyman-alpha cooling (EAGLE with fixed primoridal Z)
+# Quick Lyman-alpha cooling (EAGLE-XL with fixed primoridal Z)
 QLACooling:
-  dir_name:                ./coolingtables/   # Location of the Wiersma+08 cooling tables
-  H_reion_z:               7.5                # Redshift of Hydrogen re-ionization
-  H_reion_eV_p_H:          2.0                # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
-  He_reion_z_centre:       3.5                # Redshift of the centre of the Helium re-ionization Gaussian
-  He_reion_z_sigma:        0.5                # Spread in redshift of the  Helium re-ionization Gaussian
-  He_reion_eV_p_H:         2.0                # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the Ploeckinger+20 cooling tables
+  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
+  H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
+
+# COLIBRE cooling parameters (EAGLE-XL)
+COLIBRECooling:
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
+  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
+  H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
+  delta_logTEOS_subgrid_properties: 0.3      # delta log T above the EOS below which the subgrid properties use Teq assumption
   
 # Cooling with Grackle 3.0
 GrackleCooling:

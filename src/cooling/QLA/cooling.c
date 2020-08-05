@@ -18,7 +18,7 @@
  ******************************************************************************/
 /**
  * @file src/cooling/QLA/cooling.c
- * @brief Quick Lyman-alpha cooling functions
+ * @brief QLA cooling functions
  */
 
 /* Config parameters. */
@@ -31,6 +31,7 @@
 #include <time.h>
 
 /* Local includes. */
+#include "adiabatic_index.h"
 #include "chemistry.h"
 #include "cooling.h"
 #include "cooling_rates.h"
@@ -48,71 +49,14 @@
 #include "space.h"
 #include "units.h"
 
-/* Maximum number of iterations for bisection scheme */
+/* Maximum number of iterations for
+ * bisection integration schemes */
 static const int bisection_max_iterations = 150;
 
 /* Tolerances for termination criteria. */
 static const float explicit_tolerance = 0.05;
 static const float bisection_tolerance = 1.0e-6;
 static const double bracket_factor = 1.5;
-
-/**
- * @brief Find the index of the current redshift along the redshift dimension
- * of the cooling tables.
- *
- * Since the redshift table is not evenly spaced, compare z with each
- * table value in decreasing order starting with the previous redshift index
- *
- * The returned difference is expressed in units of the table separation. This
- * means dx = (x - table[i]) / (table[i+1] - table[i]). It is always between
- * 0 and 1.
- *
- * @param z Redshift we are searching for.
- * @param z_index (return) Index of the redshift in the table.
- * @param dz (return) Difference in redshift between z and table[z_index].
- * @param cooling #cooling_function_data structure containing redshift table.
- */
-__attribute__((always_inline)) INLINE void get_redshift_index(
-    const float z, int *z_index, float *dz,
-    struct cooling_function_data *restrict cooling) {
-
-  /* Before the earliest redshift or before hydrogen reionization, flag for
-   * collisional cooling */
-  if (z > cooling->H_reion_z) {
-    *z_index = qla_cooling_N_redshifts;
-    *dz = 0.0;
-  }
-
-  /* From reionization use the cooling tables */
-  else if (z > cooling->Redshifts[qla_cooling_N_redshifts - 1] &&
-           z <= cooling->H_reion_z) {
-    *z_index = qla_cooling_N_redshifts + 1;
-    *dz = 0.0;
-  }
-
-  /* At the end, just use the last value */
-  else if (z <= cooling->Redshifts[0]) {
-    *z_index = 0;
-    *dz = 0.0;
-  }
-
-  /* Normal case: search... */
-  else {
-
-    /* start at the previous index and search */
-    for (int i = cooling->previous_z_index; i >= 0; i--) {
-      if (z > cooling->Redshifts[i]) {
-
-        *z_index = i;
-        cooling->previous_z_index = i;
-
-        *dz = (z - cooling->Redshifts[i]) /
-              (cooling->Redshifts[i + 1] - cooling->Redshifts[i]);
-        break;
-      }
-    }
-  }
-}
 
 /**
  * @brief Common operations performed on the cooling function at a
@@ -127,15 +71,6 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  */
 void cooling_update(const struct cosmology *cosmo,
                     struct cooling_function_data *cooling, struct space *s) {
-
-  /* Current redshift */
-  const float redshift = cosmo->z;
-
-  /* What is the current table index along the redshift axis? */
-  int z_index = -1;
-  float dz = 0.f;
-  get_redshift_index(redshift, &z_index, &dz, cooling);
-  cooling->dz = dz;
 
   /* Extra energy for reionization? */
   if (!cooling->H_reion_done) {
@@ -153,35 +88,164 @@ void cooling_update(const struct cosmology *cosmo,
       cooling->H_reion_done = 1;
     }
   }
+}
 
-  /* Do we already have the correct tables loaded? */
-  if (cooling->z_index == z_index) return;
+/**
+ * @brief Compute the internal energy of a #part based on the cooling function
+ * but for a given temperature.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param T temperature of the gas (internal units).
+ */
+float cooling_get_internalenergy_for_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp, const float T) {
 
-  /* Which table should we load ? */
-  if (z_index >= qla_cooling_N_redshifts) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->Redshifts == NULL)
+    error(
+        "Cooling function has not been initialised. Did you forget the "
+        "--temperature runtime flag?");
+#endif
 
-    if (z_index == qla_cooling_N_redshifts + 1) {
+  /* Get the Hydrogen mass fraction */
+  const float XH = 1. - phys_const->const_primordial_He_fraction;
 
-      /* Bewtween re-ionization and first table */
-      get_redshift_invariant_table(cooling, /* photodis=*/0);
+  /* Convert Hydrogen mass fraction into Hydrogen number density */
+  const float rho = hydro_get_physical_density(p, cosmo);
+  const double n_H = rho * XH / phys_const->const_proton_mass;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
-    } else {
+  /* Get this particle's metallicity ratio to solar.
+   *
+   * Note that we do not need the individual element's ratios that
+   * the function also computes. */
+  float dummy[qla_cooling_N_elementtypes];
+  const float logZZsol =
+      abundance_ratio_to_solar(p, cooling, phys_const, dummy);
 
-      /* Above re-ionization */
-      get_redshift_invariant_table(cooling, /* photodis=*/1);
-    }
+  /* compute hydrogen number density, metallicity and redshift indices and
+   * offsets  */
 
-  } else {
+  float d_red, d_met, d_n_H;
+  int red_index, met_index, n_H_index;
 
-    /* Normal case: two tables bracketing the current z */
-    const int low_z_index = z_index;
-    const int high_z_index = z_index + 1;
+  get_index_1d(cooling->Redshifts, qla_cooling_N_redshifts, cosmo->z,
+               &red_index, &d_red);
+  get_index_1d(cooling->Metallicity, qla_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
+  get_index_1d(cooling->nH, qla_cooling_N_density, log10(n_H_cgs), &n_H_index,
+               &d_n_H);
 
-    get_cooling_table(cooling, low_z_index, high_z_index);
-  }
+  /* Compute the log10 of the temperature by interpolating the table */
+  const double log_10_U =
+      qla_convert_temp_to_u(log10(T), cosmo->z, n_H_index, d_n_H, met_index,
+                            d_met, red_index, d_red, cooling);
 
-  /* Store the currently loaded index */
-  cooling->z_index = z_index;
+  /* Undo the log! */
+  return exp10(log_10_U);
+}
+
+/**
+ * @brief Compute the temperature based on gas properties.
+ *
+ * The temperature returned is consistent with the cooling rates.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param u_phys Internal energy of the gas in internal physical units.
+ */
+float cooling_get_temperature_from_gas(
+    const struct phys_const *phys_const, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const float rho_phys,
+    const float logZZsol, const float XH, const float u_phys) {
+
+  /* Convert to CGS */
+  const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+  const double n_H = rho_phys * XH / phys_const->const_proton_mass;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+
+  /* compute hydrogen number density, metallicity and redshift indices and
+   * offsets  */
+
+  float d_red, d_met, d_n_H;
+  int red_index, met_index, n_H_index;
+
+  get_index_1d(cooling->Redshifts, qla_cooling_N_redshifts, cosmo->z,
+               &red_index, &d_red);
+  get_index_1d(cooling->Metallicity, qla_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
+  get_index_1d(cooling->nH, qla_cooling_N_density, log10(n_H_cgs), &n_H_index,
+               &d_n_H);
+
+  /* Compute the log10 of the temperature by interpolating the table */
+  const double log_10_T =
+      qla_convert_u_to_temp(log10(u_cgs), cosmo->z, n_H_index, d_n_H, met_index,
+                            d_met, red_index, d_red, cooling);
+
+  /* Undo the log! */
+  return exp10(log_10_T);
+}
+
+/**
+ * @brief Compute the temperature of a #part based on the cooling function.
+ *
+ * The temperature returned is consistent with the cooling rates.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+float cooling_get_temperature(const struct phys_const *phys_const,
+                              const struct hydro_props *hydro_props,
+                              const struct unit_system *us,
+                              const struct cosmology *cosmo,
+                              const struct cooling_function_data *cooling,
+                              const struct part *p, const struct xpart *xp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->Redshifts == NULL)
+    error(
+        "Cooling function has not been initialised. Did you forget the "
+        "--temperature runtime flag?");
+#endif
+
+  /* Get physical internal energy */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Get the Hydrogen mass fraction */
+  const float XH = 1. - phys_const->const_primordial_He_fraction;
+
+  /* Convert Hydrogen mass fraction into Hydrogen number density */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get this particle's metallicity ratio to solar.
+   *
+   * Note that we do not need the individual element's ratios that
+   * the function also computes. */
+  float dummy[qla_cooling_N_elementtypes];
+  const float logZZsol =
+      abundance_ratio_to_solar(p, cooling, phys_const, dummy);
+
+  return cooling_get_temperature_from_gas(phys_const, cosmo, cooling, rho_phys,
+                                          logZZsol, XH, u_phys);
 }
 
 /**
@@ -192,8 +256,10 @@ void cooling_update(const struct cosmology *cosmo,
  * @param redshift Current redshift.
  * @param n_H_index Particle hydrogen number density index.
  * @param d_n_H Particle hydrogen number density offset.
- * @param He_index Particle helium fraction index.
- * @param d_He Particle helium fraction offset.
+ * @param met_index Particle metallicity index.
+ * @param d_met Particle metallicity offset.
+ * @param red_index Redshift index.
+ * @param d_red Redshift offset.
  * @param Lambda_He_reion_cgs Cooling rate coming from He reionization.
  * @param ratefact_cgs Multiplication factor to get a cooling rate.
  * @param cooling #cooling_function_data structure.
@@ -201,18 +267,17 @@ void cooling_update(const struct cosmology *cosmo,
  * @param dt_cgs timestep in CGS.
  * @param ID ID of the particle (for debugging).
  */
-INLINE static double bisection_iter(
+static INLINE double bisection_iter(
     const double u_ini_cgs, const double n_H_cgs, const double redshift,
-    const int n_H_index, const float d_n_H, const int He_index,
-    const float d_He, const double Lambda_He_reion_cgs,
-    const double ratefact_cgs,
-    const struct cooling_function_data *restrict cooling,
-    const float abundance_ratio[qla_cooling_N_abundances], const double dt_cgs,
-    const long long ID) {
+    int n_H_index, float d_n_H, int met_index, float d_met, int red_index,
+    float d_red, double Lambda_He_reion_cgs, double ratefact_cgs,
+    const struct cooling_function_data *cooling,
+    const float abundance_ratio[qla_cooling_N_elementtypes], double dt_cgs,
+    long long ID) {
 
   /* Bracketing */
-  double u_lower_cgs = u_ini_cgs;
-  double u_upper_cgs = u_ini_cgs;
+  double u_lower_cgs = max(u_ini_cgs, cooling->umin_cgs);
+  double u_upper_cgs = max(u_ini_cgs, cooling->umin_cgs);
 
   /*************************************/
   /* Let's get a first guess           */
@@ -221,7 +286,8 @@ INLINE static double bisection_iter(
   double LambdaNet_cgs =
       Lambda_He_reion_cgs +
       qla_cooling_rate(log10(u_ini_cgs), redshift, n_H_cgs, abundance_ratio,
-                       n_H_index, d_n_H, He_index, d_He, cooling);
+                       n_H_index, d_n_H, met_index, d_met, red_index, d_red,
+                       cooling, 0, 0, 0, 0);
 
   /*************************************/
   /* Let's try to bracket the solution */
@@ -230,36 +296,52 @@ INLINE static double bisection_iter(
   if (LambdaNet_cgs < 0) {
 
     /* we're cooling! */
-    u_lower_cgs /= bracket_factor;
-    u_upper_cgs *= bracket_factor;
+    u_lower_cgs = max(u_lower_cgs / bracket_factor, cooling->umin_cgs);
+    u_upper_cgs = max(u_upper_cgs * bracket_factor, cooling->umin_cgs);
 
     /* Compute a new rate */
     LambdaNet_cgs =
         Lambda_He_reion_cgs +
         qla_cooling_rate(log10(u_lower_cgs), redshift, n_H_cgs, abundance_ratio,
-                         n_H_index, d_n_H, He_index, d_He, cooling);
+                         n_H_index, d_n_H, met_index, d_met, red_index, d_red,
+                         cooling, 0, 0, 0, 0);
 
     int i = 0;
     while (u_lower_cgs - u_ini_cgs - LambdaNet_cgs * ratefact_cgs * dt_cgs >
                0 &&
            i < bisection_max_iterations) {
 
-      u_lower_cgs /= bracket_factor;
-      u_upper_cgs /= bracket_factor;
+      u_lower_cgs = max(u_lower_cgs / bracket_factor, cooling->umin_cgs);
+      u_upper_cgs = max(u_upper_cgs / bracket_factor, cooling->umin_cgs);
 
       /* Compute a new rate */
-      LambdaNet_cgs = Lambda_He_reion_cgs +
-                      qla_cooling_rate(log10(u_lower_cgs), redshift, n_H_cgs,
-                                       abundance_ratio, n_H_index, d_n_H,
-                                       He_index, d_He, cooling);
+      LambdaNet_cgs =
+          Lambda_He_reion_cgs +
+          qla_cooling_rate(log10(u_lower_cgs), redshift, n_H_cgs,
+                           abundance_ratio, n_H_index, d_n_H, met_index, d_met,
+                           red_index, d_red, cooling, 0, 0, 0, 0);
+
+      /* If the energy is below or equal the minimum energy and we are still
+       * cooling, return the minimum energy */
+      if ((u_lower_cgs <= cooling->umin_cgs) && (LambdaNet_cgs < 0.))
+        return cooling->umin_cgs;
+
       i++;
     }
 
     if (i >= bisection_max_iterations) {
       error(
           "particle %llu exceeded max iterations searching for bounds when "
-          "cooling, u_ini_cgs %.5e n_H_cgs %.5e",
-          ID, u_ini_cgs, n_H_cgs);
+          "cooling \n more info: n_H_cgs = %.4e, u_ini_cgs = %.4e, redshift = "
+          "%.4f\n"
+          "n_H_index = %i, d_n_H = %.4f\n"
+          "met_index = %i, d_met = %.4f, red_index = %i, d_red = %.4f, initial "
+          "Lambda = %.4e",
+          ID, n_H_cgs, u_ini_cgs, redshift, n_H_index, d_n_H, met_index, d_met,
+          red_index, d_red,
+          qla_cooling_rate(log10(u_ini_cgs), redshift, n_H_cgs, abundance_ratio,
+                           n_H_index, d_n_H, met_index, d_met, red_index, d_red,
+                           cooling, 0, 0, 0, 0));
     }
   } else {
 
@@ -271,7 +353,8 @@ INLINE static double bisection_iter(
     LambdaNet_cgs =
         Lambda_He_reion_cgs +
         qla_cooling_rate(log10(u_upper_cgs), redshift, n_H_cgs, abundance_ratio,
-                         n_H_index, d_n_H, He_index, d_He, cooling);
+                         n_H_index, d_n_H, met_index, d_met, red_index, d_red,
+                         cooling, 0, 0, 0, 0);
 
     int i = 0;
     while (u_upper_cgs - u_ini_cgs - LambdaNet_cgs * ratefact_cgs * dt_cgs <
@@ -282,18 +365,33 @@ INLINE static double bisection_iter(
       u_upper_cgs *= bracket_factor;
 
       /* Compute a new rate */
-      LambdaNet_cgs = Lambda_He_reion_cgs +
-                      qla_cooling_rate(log10(u_upper_cgs), redshift, n_H_cgs,
-                                       abundance_ratio, n_H_index, d_n_H,
-                                       He_index, d_He, cooling);
+      LambdaNet_cgs =
+          Lambda_He_reion_cgs +
+          qla_cooling_rate(log10(u_upper_cgs), redshift, n_H_cgs,
+                           abundance_ratio, n_H_index, d_n_H, met_index, d_met,
+                           red_index, d_red, cooling, 0, 0, 0, 0);
       i++;
     }
 
     if (i >= bisection_max_iterations) {
+      message("Aborting...");
+      message("particle %llu", ID);
+      message("n_H_cgs = %.4e", n_H_cgs);
+      message("u_ini_cgs = %.4e", u_ini_cgs);
+      message("redshift = %.4f", redshift);
+      message("indices nH, met, red = %i, %i, %i", n_H_index, met_index,
+              red_index);
+      message("index weights nH, met, red = %.4e, %.4e, %.4e", d_n_H, d_met,
+              d_red);
+      fflush(stdout);
+      message("cooling rate = %.4e",
+              qla_cooling_rate(log10(u_ini_cgs), redshift, n_H_cgs,
+                               abundance_ratio, n_H_index, d_n_H, met_index,
+                               d_met, red_index, d_red, cooling, 0, 0, 0, 0));
       error(
           "particle %llu exceeded max iterations searching for bounds when "
-          "heating, u_ini_cgs %.5e n_H_cgs %.5e",
-          ID, u_ini_cgs, n_H_cgs);
+          "cooling",
+          ID);
     }
   }
 
@@ -315,14 +413,8 @@ INLINE static double bisection_iter(
     LambdaNet_cgs =
         Lambda_He_reion_cgs +
         qla_cooling_rate(log10(u_next_cgs), redshift, n_H_cgs, abundance_ratio,
-                         n_H_index, d_n_H, He_index, d_He, cooling);
-#ifdef SWIFT_DEBUG_CHECKS
-    if (u_next_cgs <= 0)
-      error(
-          "Got negative energy! u_next_cgs=%.5e u_upper=%.5e u_lower=%.5e "
-          "Lambda=%.5e",
-          u_next_cgs, u_upper_cgs, u_lower_cgs, LambdaNet_cgs);
-#endif
+                         n_H_index, d_n_H, met_index, d_met, red_index, d_red,
+                         cooling, 0, 0, 0, 0);
 
     /* Where do we go next? */
     if (u_next_cgs - u_ini_cgs - LambdaNet_cgs * ratefact_cgs * dt_cgs > 0.0) {
@@ -356,9 +448,7 @@ INLINE static double bisection_iter(
  *
  * f(u_new) = u_new - u_old - dt * du/dt(u_new, X) = 0
  *
- * We first try a few Newton-Raphson iteration if it does not converge, we
- * revert to a bisection scheme.
- *
+ * A bisection scheme is used.
  * This is done by first bracketing the solution and then iterating
  * towards the solution by reducing the window down to a certain tolerance.
  * Note there is always at least one solution since
@@ -374,8 +464,7 @@ INLINE static double bisection_iter(
  * @param xp Pointer to the extended particle data.
  * @param dt The cooling time-step of this particle.
  * @param dt_therm The hydro time-step of this particle.
- * @param time The current time (since the Big Bang or start of the run) in
- * internal units.
+ * @param time Time since Big Bang
  */
 void cooling_cool_part(const struct phys_const *phys_const,
                        const struct unit_system *us,
@@ -383,12 +472,13 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
                        const struct cooling_function_data *cooling,
-                       struct part *restrict p, struct xpart *restrict xp,
-                       const float dt, const float dt_therm,
-                       const double time) {
+                       struct part *p, struct xpart *xp, const float dt,
+                       const float dt_therm, const double time) {
 
   /* No cooling happens over zero time */
-  if (dt == 0.) return;
+  if (dt == 0.) {
+    return;
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (cooling->Redshifts == NULL)
@@ -403,7 +493,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Get the change in internal energy due to hydro forces */
   const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
-  /* Get internal energy at the end of the step (assuming dt does not
+  /* Get internal energy at the end of the next kick step (assuming dt does not
    * increase) */
   double u_0 = (u_start + hydro_du_dt * dt_therm);
 
@@ -421,19 +511,15 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Get this particle's abundance ratios compared to solar
    * Note that we need to add S and Ca that are in the tables but not tracked
    * by the particles themselves.
-   * The order is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe] */
-  float abundance_ratio[qla_cooling_N_abundances];
-  abundance_ratio_to_solar(p, cooling, phys_const, abundance_ratio);
+   * The order is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe, OA] */
+  float abundance_ratio[qla_cooling_N_elementtypes];
+  float logZZsol =
+      abundance_ratio_to_solar(p, cooling, phys_const, abundance_ratio);
 
   /* Get the Hydrogen and Helium mass fractions */
   const float XH = 1. - phys_const->const_primordial_He_fraction;
-  const float XHe = phys_const->const_primordial_He_fraction;
 
-  /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
-   * metal-free Helium mass fraction as per the Wiersma+08 definition */
-  const float HeFrac = XHe / (XH + XHe);
-
-  /* convert Hydrogen mass fraction into physical Hydrogen number density */
+  /* convert Hydrogen mass fraction into Hydrogen number density */
   const double n_H =
       hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
@@ -442,13 +528,17 @@ void cooling_cool_part(const struct phys_const *phys_const,
    * equivalent expression  below */
   const double ratefact_cgs = n_H_cgs * (XH * cooling->inv_proton_mass_cgs);
 
-  /* compute hydrogen number density and helium fraction table indices and
+  /* compute hydrogen number density, metallicity and redshift indices and
    * offsets (These are fixed for any value of u, so no need to recompute them)
    */
-  int He_index, n_H_index;
-  float d_He, d_n_H;
-  get_index_1d(cooling->HeFrac, qla_cooling_N_He_frac, HeFrac, &He_index,
-               &d_He);
+
+  float d_red, d_met, d_n_H;
+  int red_index, met_index, n_H_index;
+
+  get_index_1d(cooling->Redshifts, qla_cooling_N_redshifts, cosmo->z,
+               &red_index, &d_red);
+  get_index_1d(cooling->Metallicity, qla_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
   get_index_1d(cooling->nH, qla_cooling_N_density, log10(n_H_cgs), &n_H_index,
                &d_n_H);
 
@@ -457,22 +547,21 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
   /* Get helium and hydrogen reheating term */
   const double Helium_reion_heat_cgs =
-      qla_helium_reionization_extraheat(cosmo->z, delta_redshift, cooling);
+      eagle_helium_reionization_extraheat(cosmo->z, delta_redshift, cooling);
 
   /* Convert this into a rate */
   const double Lambda_He_reion_cgs =
       Helium_reion_heat_cgs / (dt_cgs * ratefact_cgs);
 
   /* Let's compute the internal energy at the end of the step */
-  /* Initialise to the initial energy to appease compiler; this will never not
-     be overwritten. */
-  double u_final_cgs = u_0_cgs;
+  double u_final_cgs;
 
   /* First try an explicit integration (note we ignore the derivative) */
   const double LambdaNet_cgs =
       Lambda_He_reion_cgs + qla_cooling_rate(log10(u_0_cgs), cosmo->z, n_H_cgs,
                                              abundance_ratio, n_H_index, d_n_H,
-                                             He_index, d_He, cooling);
+                                             met_index, d_met, red_index, d_red,
+                                             cooling, 0, 0, 0, 0);
 
   /* if cooling rate is small, take the explicit solution */
   if (fabs(ratefact_cgs * LambdaNet_cgs * dt_cgs) <
@@ -482,11 +571,10 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
   } else {
 
-    /* Otherwise, go the bisection route. */
     u_final_cgs =
-        bisection_iter(u_0_cgs, n_H_cgs, cosmo->z, n_H_index, d_n_H, He_index,
-                       d_He, Lambda_He_reion_cgs, ratefact_cgs, cooling,
-                       abundance_ratio, dt_cgs, p->id);
+        bisection_iter(u_0_cgs, n_H_cgs, cosmo->z, n_H_index, d_n_H, met_index,
+                       d_met, red_index, d_red, Lambda_He_reion_cgs,
+                       ratefact_cgs, cooling, abundance_ratio, dt_cgs, p->id);
   }
 
   /* Convert back to internal units */
@@ -509,11 +597,34 @@ void cooling_cool_part(const struct phys_const *phys_const,
      (assuming no change in dt) */
   const double delta_u = u_final - max(u_start, u_floor);
 
-  /* Turn this into a rate of change (including cosmology term) */
-  const float cooling_du_dt = delta_u / dt_therm;
+  /* Determine if we are in the slow- or rapid-cooling regime,
+   * by comparing dt / t_cool to the rapid_cooling_threshold.
+   *
+   * Note that dt / t_cool = fabs(delta_u) / u_start. */
+  const double dt_over_t_cool = fabs(delta_u) / max(u_start, u_floor);
 
-  /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
+  /* If rapid_cooling_threshold < 0, always use the slow-cooling
+   * regime. */
+  if ((cooling->rapid_cooling_threshold >= 0.0) &&
+      (dt_over_t_cool >= cooling->rapid_cooling_threshold)) {
+
+    /* Rapid-cooling regime. */
+
+    /* Update the particle's u and du/dt */
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_final);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, u_final);
+    hydro_set_physical_internal_energy_dt(p, cosmo, 0.);
+
+  } else {
+
+    /* Slow-cooling regime. */
+
+    /* Update du/dt so that we can subsequently drift internal energy. */
+    const float cooling_du_dt = delta_u / dt_therm;
+
+    /* Update the internal energy time derivative */
+    hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
+  }
 }
 
 /**
@@ -530,12 +641,10 @@ void cooling_cool_part(const struct phys_const *phys_const,
  * @param xp extended particle data.
  */
 __attribute__((always_inline)) INLINE float cooling_timestep(
-    const struct cooling_function_data *restrict cooling,
-    const struct phys_const *restrict phys_const,
-    const struct cosmology *restrict cosmo,
-    const struct unit_system *restrict us,
-    const struct hydro_props *hydro_props, const struct part *restrict p,
-    const struct xpart *restrict xp) {
+    const struct cooling_function_data *cooling,
+    const struct phys_const *phys_const, const struct cosmology *cosmo,
+    const struct unit_system *us, const struct hydro_props *hydro_props,
+    const struct part *p, const struct xpart *xp) {
 
   return FLT_MAX;
 }
@@ -553,78 +662,10 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
  * @param xp Pointer to the #xpart data.
  */
 __attribute__((always_inline)) INLINE void cooling_first_init_part(
-    const struct phys_const *restrict phys_const,
-    const struct unit_system *restrict us,
-    const struct hydro_props *hydro_props,
-    const struct cosmology *restrict cosmo,
-    const struct cooling_function_data *restrict cooling,
-    const struct part *restrict p, struct xpart *restrict xp) {}
-
-/**
- * @brief Compute the temperature of a #part based on the cooling function.
- *
- * We use the Temperature table of the Wiersma+08 set. This computes the
- * equilibirum temperature of a gas for a given redshift, Hydrogen density,
- * internal energy per unit mass and Helium fraction.
- *
- * The temperature returned is consistent with the cooling rates.
- *
- * @param phys_const #phys_const data structure.
- * @param hydro_props The properties of the hydro scheme.
- * @param us The internal system of units.
- * @param cosmo #cosmology data structure.
- * @param cooling #cooling_function_data struct.
- * @param p #part data.
- * @param xp Pointer to the #xpart data.
- */
-float cooling_get_temperature(
-    const struct phys_const *restrict phys_const,
-    const struct hydro_props *restrict hydro_props,
-    const struct unit_system *restrict us,
-    const struct cosmology *restrict cosmo,
-    const struct cooling_function_data *restrict cooling,
-    const struct part *restrict p, const struct xpart *restrict xp) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (cooling->Redshifts == NULL)
-    error(
-        "Cooling function has not been initialised. Did you forget the "
-        "--temperature runtime flag?");
-#endif
-
-  /* Get physical internal energy */
-  const float u = hydro_get_physical_internal_energy(p, xp, cosmo);
-  const double u_cgs = u * cooling->internal_energy_to_cgs;
-
-  /* Get the Hydrogen and Helium mass fractions */
-  const float XH = 1. - phys_const->const_primordial_He_fraction;
-  const float XHe = phys_const->const_primordial_He_fraction;
-
-  /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
-   * metal-free Helium mass fraction as per the Wiersma+08 definition */
-  const float HeFrac = XHe / (XH + XHe);
-
-  /* Convert Hydrogen mass fraction into Hydrogen number density */
-  const float rho = hydro_get_physical_density(p, cosmo);
-  const double n_H = rho * XH / phys_const->const_proton_mass;
-  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
-
-  /* compute hydrogen number density and helium fraction table indices and
-   * offsets */
-  int He_index, n_H_index;
-  float d_He, d_n_H;
-  get_index_1d(cooling->HeFrac, qla_cooling_N_He_frac, HeFrac, &He_index,
-               &d_He);
-  get_index_1d(cooling->nH, qla_cooling_N_density, log10(n_H_cgs), &n_H_index,
-               &d_n_H);
-
-  /* Compute the log10 of the temperature by interpolating the table */
-  const double log_10_T = qla_convert_u_to_temp(
-      log10(u_cgs), cosmo->z, n_H_index, He_index, d_n_H, d_He, cooling);
-
-  /* Undo the log! */
-  return exp10(log_10_T);
-}
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct hydro_props *hydro_props, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp) {}
 
 /**
  * @brief Returns the total radiated energy by this particle.
@@ -632,9 +673,8 @@ float cooling_get_temperature(
  * @param xp #xpart data struct
  */
 __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
-    const struct xpart *restrict xp) {
-
-  return 0.f;
+    const struct xpart *xp) {
+  return -1.f;
 }
 
 /**
@@ -665,7 +705,7 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
   const float extra_heat =
       cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
 
-  message("Applying extra energy for H reionization!");
+  message("Applying extra energy for H reionization to non-star-forming gas!");
 
   /* Loop through particles and set new heat */
   for (size_t i = 0; i < s->nr_parts; i++) {
@@ -684,11 +724,11 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
 /**
  * @brief Initialises properties stored in the cooling_function_data struct
  *
- * @param parameter_file The parsed parameter file
- * @param us Internal system of units data structure
- * @param phys_const #phys_const data structure
- * @param hydro_props The properties of the hydro scheme.
- * @param cooling #cooling_function_data struct to initialize
+ * @param parameter_file The parsed parameter file.
+ * @param us Internal system of units data structure.
+ * @param hydro_props the properties of the hydro scheme.
+ * @param phys_const #phys_const data structure.
+ * @param cooling #cooling_function_data struct to initialize.
  */
 void cooling_init_backend(struct swift_params *parameter_file,
                           const struct unit_system *us,
@@ -696,9 +736,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           const struct hydro_props *hydro_props,
                           struct cooling_function_data *cooling) {
 
-  /* Read model parameters */
+  /* read some parameters */
 
-  /* Directory for cooling tables */
   parser_get_param_string(parameter_file, "QLACooling:dir_name",
                           cooling->cooling_table_path);
 
@@ -732,31 +771,45 @@ void cooling_init_backend(struct swift_params *parameter_file,
       phys_const->const_electron_volt / phys_const->const_proton_mass *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
-  /* Read in the list of redshifts */
-  get_cooling_redshifts(cooling);
-
-  /* Read in cooling table header */
-  char fname[qla_table_path_name_length + 12];
-  sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
-  read_cooling_header(fname, cooling);
-
-  /* Allocate space for cooling tables */
-  allocate_cooling_tables(cooling);
-
   /* Compute conversion factors */
+  cooling->pressure_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   cooling->internal_energy_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   cooling->internal_energy_from_cgs = 1. / cooling->internal_energy_to_cgs;
   cooling->number_density_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+  cooling->number_density_from_cgs = 1. / cooling->number_density_to_cgs;
 
   /* Store some constants in CGS units */
+  const float units_kB[5] = {1, 2, -2, 0, -1};
+  const double kB_cgs = phys_const->const_boltzmann_k *
+                        units_general_cgs_conversion_factor(us, units_kB);
   const double proton_mass_cgs =
       phys_const->const_proton_mass *
       units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+
+  cooling->log10_kB_cgs = log10(kB_cgs);
   cooling->inv_proton_mass_cgs = 1. / proton_mass_cgs;
   cooling->T_CMB_0 = phys_const->const_T_CMB_0 *
                      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  /* Get the minimal temperature allowed */
+  cooling->Tmin = hydro_props->minimal_temperature;
+  if (cooling->Tmin < 10.)
+    error("QLA cooling cannot handle a minimal temperature below 10 K");
+
+  /* Recover the minimal energy allowed (in internal units) */
+  const double u_min = hydro_props->minimal_internal_energy;
+
+  /* Convert to CGS units */
+  cooling->umin_cgs = u_min * cooling->internal_energy_to_cgs;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Basic cross-check... */
+  if (kB_cgs > 1.381e-16 || kB_cgs < 1.380e-16)
+    error("Boltzmann's constant not initialised properly!");
+#endif
 
   /* Compute the coefficient at the front of the Compton cooling expression */
   const double radiation_constant =
@@ -785,11 +838,16 @@ void cooling_init_backend(struct swift_params *parameter_file,
                               cooling->T_CMB_0 * cooling->T_CMB_0 *
                               cooling->T_CMB_0;
 
-  /* Set the redshift indices to invalid values */
-  cooling->z_index = -10;
+  /* Threshold in dt / t_cool above which we
+   * are in the rapid cooling regime. If negative,
+   * we never use this scheme (i.e. always drift
+   * the internal energies). */
+  cooling->rapid_cooling_threshold = parser_get_param_double(
+      parameter_file, "QLACooling:rapid_cooling_threshold");
 
-  /* set previous_z_index and to last value of redshift table*/
-  cooling->previous_z_index = qla_cooling_N_redshifts - 2;
+  /* Finally, read the tables */
+  read_cooling_header(cooling);
+  read_cooling_tables(cooling);
 }
 
 /**
@@ -802,20 +860,9 @@ void cooling_init_backend(struct swift_params *parameter_file,
 void cooling_restore_tables(struct cooling_function_data *cooling,
                             const struct cosmology *cosmo) {
 
-  /* Read redshifts */
-  get_cooling_redshifts(cooling);
+  read_cooling_header(cooling);
+  read_cooling_tables(cooling);
 
-  /* Read cooling header */
-  char fname[qla_table_path_name_length + 12];
-  sprintf(fname, "%sz_0.000.hdf5", cooling->cooling_table_path);
-  read_cooling_header(fname, cooling);
-
-  /* Allocate memory for the tables */
-  allocate_cooling_tables(cooling);
-
-  /* Force a re-read of the cooling tables */
-  cooling->z_index = -10;
-  cooling->previous_z_index = qla_cooling_N_redshifts - 2;
   cooling_update(cosmo, cooling, /*space=*/NULL);
 }
 
@@ -827,7 +874,7 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
 void cooling_print_backend(const struct cooling_function_data *cooling) {
 
   message(
-      "Cooling function is 'Quick Lyman-alpha (EAGLE with primordial Z "
+      "Cooling function is 'Quick Lyman-alpha (COLIBRE with primordial Z "
       "only)'.");
 }
 
@@ -841,20 +888,37 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
 void cooling_clean(struct cooling_function_data *cooling) {
 
   /* Free the side arrays */
-  swift_free("cooling", cooling->Redshifts);
-  swift_free("cooling", cooling->nH);
-  swift_free("cooling", cooling->Temp);
-  swift_free("cooling", cooling->HeFrac);
-  swift_free("cooling", cooling->Therm);
-  swift_free("cooling", cooling->SolarAbundances);
-  swift_free("cooling", cooling->SolarAbundances_inv);
+  free(cooling->Redshifts);
+  free(cooling->nH);
+  free(cooling->Temp);
+  free(cooling->Metallicity);
+  free(cooling->Therm);
+  free(cooling->LogAbundances);
+  free(cooling->Abundances);
+  free(cooling->Abundances_inv);
+  free(cooling->atomicmass);
+  free(cooling->atomicmass_inv);
+  free(cooling->Zsol);
+  free(cooling->Zsol_inv);
+  free(cooling->LogMassFractions);
+  free(cooling->MassFractions);
 
   /* Free the tables */
-  swift_free("cooling-tables", cooling->table.metal_heating);
-  swift_free("cooling-tables", cooling->table.electron_abundance);
-  swift_free("cooling-tables", cooling->table.temperature);
-  swift_free("cooling-tables", cooling->table.H_plus_He_heating);
-  swift_free("cooling-tables", cooling->table.H_plus_He_electron_abundance);
+  free(cooling->table.Tcooling);
+  free(cooling->table.Ucooling);
+  free(cooling->table.Theating);
+  free(cooling->table.Uheating);
+  free(cooling->table.Telectron_fraction);
+  free(cooling->table.Uelectron_fraction);
+  free(cooling->table.T_from_U);
+  free(cooling->table.U_from_T);
+  free(cooling->table.Umu);
+  free(cooling->table.Tmu);
+  free(cooling->table.meanpartmass_Teq);
+  free(cooling->table.logHfracs_Teq);
+  free(cooling->table.logHfracs_all);
+  free(cooling->table.logTeq);
+  free(cooling->table.logPeq);
 }
 
 /**
@@ -873,14 +937,23 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
   cooling_copy.Redshifts = NULL;
   cooling_copy.nH = NULL;
   cooling_copy.Temp = NULL;
+  cooling_copy.Metallicity = NULL;
   cooling_copy.Therm = NULL;
-  cooling_copy.SolarAbundances = NULL;
-  cooling_copy.SolarAbundances_inv = NULL;
-  cooling_copy.table.metal_heating = NULL;
-  cooling_copy.table.H_plus_He_heating = NULL;
-  cooling_copy.table.H_plus_He_electron_abundance = NULL;
-  cooling_copy.table.temperature = NULL;
-  cooling_copy.table.electron_abundance = NULL;
+  cooling_copy.LogAbundances = NULL;
+  cooling_copy.Abundances = NULL;
+  cooling_copy.Abundances_inv = NULL;
+  cooling_copy.atomicmass = NULL;
+  cooling_copy.LogMassFractions = NULL;
+  cooling_copy.MassFractions = NULL;
+
+  cooling_copy.table.Tcooling = NULL;
+  cooling_copy.table.Theating = NULL;
+  cooling_copy.table.Telectron_fraction = NULL;
+  cooling_copy.table.Ucooling = NULL;
+  cooling_copy.table.Uheating = NULL;
+  cooling_copy.table.Uelectron_fraction = NULL;
+  cooling_copy.table.T_from_U = NULL;
+  cooling_copy.table.U_from_T = NULL;
 
   restart_write_blocks((void *)&cooling_copy,
                        sizeof(struct cooling_function_data), 1, stream,
