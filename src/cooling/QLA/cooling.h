@@ -20,8 +20,9 @@
 #define SWIFT_COOLING_QLA_H
 
 /**
- * @file src/cooling/EAGLE/cooling.h
- * @brief EAGLE cooling function declarations
+ * @file src/cooling/QLA/cooling.h
+ * @brief Quick Lyman alpha cooling (COLIBRE with primoridal Z) function
+ * declarations
  */
 
 /* Local includes. */
@@ -32,10 +33,8 @@ struct xpart;
 struct cosmology;
 struct hydro_props;
 struct entropy_floor_properties;
-struct space;
-struct unit_system;
 struct phys_const;
-struct swift_params;
+struct space;
 
 void cooling_update(const struct cosmology *cosmo,
                     struct cooling_function_data *cooling, struct space *s);
@@ -46,34 +45,36 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct hydro_props *hydro_properties,
                        const struct entropy_floor_properties *floor_props,
                        const struct cooling_function_data *cooling,
-                       struct part *restrict p, struct xpart *restrict xp,
-                       const float dt, const float dt_therm, const double time);
+                       struct part *p, struct xpart *xp, const float dt,
+                       const float dt_therm, const double time);
 
-float cooling_timestep(const struct cooling_function_data *restrict cooling,
-                       const struct phys_const *restrict phys_const,
-                       const struct cosmology *restrict cosmo,
-                       const struct unit_system *restrict us,
+float cooling_timestep(const struct cooling_function_data *cooling,
+                       const struct phys_const *phys_const,
+                       const struct cosmology *cosmo,
+                       const struct unit_system *us,
                        const struct hydro_props *hydro_props,
-                       const struct part *restrict p,
-                       const struct xpart *restrict xp);
+                       const struct part *p, const struct xpart *xp);
 
-void cooling_first_init_part(
-    const struct phys_const *restrict phys_const,
-    const struct unit_system *restrict us,
-    const struct hydro_props *hydro_props,
-    const struct cosmology *restrict cosmo,
-    const struct cooling_function_data *restrict cooling,
-    const struct part *restrict p, struct xpart *restrict xp);
+void cooling_first_init_part(const struct phys_const *phys_const,
+                             const struct unit_system *us,
+                             const struct hydro_props *hydro_props,
+                             const struct cosmology *cosmo,
+                             const struct cooling_function_data *cooling,
+                             struct part *p, struct xpart *xp);
 
-float cooling_get_temperature(
-    const struct phys_const *restrict phys_const,
-    const struct hydro_props *restrict hydro_props,
-    const struct unit_system *restrict us,
-    const struct cosmology *restrict cosmo,
-    const struct cooling_function_data *restrict cooling,
-    const struct part *restrict p, const struct xpart *restrict xp);
+float cooling_get_temperature_from_gas(
+    const struct phys_const *phys_const, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const float rho_phys,
+    const float XH, const float logZZsol, const float u_phys);
 
-float cooling_get_radiated_energy(const struct xpart *restrict xp);
+float cooling_get_temperature(const struct phys_const *phys_const,
+                              const struct hydro_props *hydro_props,
+                              const struct unit_system *us,
+                              const struct cosmology *cosmo,
+                              const struct cooling_function_data *cooling,
+                              const struct part *p, const struct xpart *xp);
+
+float cooling_get_radiated_energy(const struct xpart *xp);
 
 void cooling_split_part(struct part *p, struct xpart *xp, double n);
 

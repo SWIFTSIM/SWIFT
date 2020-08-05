@@ -16,15 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
-/* Config parameters. */
 #ifndef SWIFT_QLA_COOLING_RATES_H
 #define SWIFT_QLA_COOLING_RATES_H
 
+/* Config parameters. */
 #include "../config.h"
 
 /* Local includes. */
+#include "chemistry_struct.h"
 #include "cooling_tables.h"
+#include "error.h"
 #include "exp10.h"
 #include "interpolate.h"
 
@@ -34,44 +35,142 @@
  *
  * The solar abundances are taken from the tables themselves.
  *
- * The quick Lyman-alpha chemistry model does not track any elements.
- * We use the primordial H and He to fill in the element abundance
- * array.
+ * The COLIBRE chemistry model does not track S and Ca. We assume
+ * that their abundance with respect to solar is the same as
+ * the ratio for Si.
+ *
+ * The other un-tracked elements are scaled with the total metallicity.
+ *
+ * We optionally apply a correction if the user asked for a different
+ * ratio.
  *
  * We also re-order the elements such that they match the order of the
- * tables. This is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
+ * tables. This is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe, OA].
  *
  * The solar abundances table (from the cooling struct) is arranged as
  * [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
  *
  * @param p Pointer to #part struct.
  * @param cooling #cooling_function_data struct.
- * @param phys_const the physical constants in internal units
  * @param ratio_solar (return) Array of ratios to solar abundances.
+ *
+ * @return The log10 of the total metallicity with respect to solar, i.e.
+ * log10(Z / Z_sun).
  */
-__attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
+__attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
     const struct part *p, const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
-    float ratio_solar[qla_cooling_N_abundances]) {
+    float ratio_solar[qla_cooling_N_elementtypes]) {
 
-  /* We just construct an array of primoridal abundances as fractions
-     of solar */
+  /* Convert mass fractions to abundances (nx/nH) and compute metal mass */
+  float totmass = 0., metalmass = 0.;
+  for (enum qla_cooling_element elem = element_H; elem < element_OA; elem++) {
 
-  ratio_solar[0] = (1. - phys_const->const_primordial_He_fraction) *
-                   cooling->SolarAbundances_inv[0 /* H */];
+    double Z_mass_frac = -1.f;
+    double Z_mass_frac_H = 1. - phys_const->const_primordial_He_fraction;
 
-  ratio_solar[1] = phys_const->const_primordial_He_fraction *
-                   cooling->SolarAbundances_inv[1 /* He */];
+    /* Assume primordial abundances */
+    if (elem == element_H) {
+      Z_mass_frac = 1. - phys_const->const_primordial_He_fraction;
+    } else if (elem == element_He) {
+      Z_mass_frac = phys_const->const_primordial_He_fraction;
+    } else {
+      Z_mass_frac = 0.f;
+    }
 
-  ratio_solar[2] = 0.f;
-  ratio_solar[3] = 0.f;
-  ratio_solar[4] = 0.f;
-  ratio_solar[5] = 0.f;
-  ratio_solar[6] = 0.f;
-  ratio_solar[7] = 0.f;
-  ratio_solar[8] = 0.f;
-  ratio_solar[9] = 0.f;
-  ratio_solar[10] = 0.f;
+    const int indx1d =
+        row_major_index_2d(cooling->indxZsol, elem, qla_cooling_N_metallicity,
+                           qla_cooling_N_elementtypes);
+
+    const float Mfrac = Z_mass_frac;
+
+    /* ratio_X = ((M_x/M) / (M_H/M)) * (m_H / m_X) * (1 / Z_sun_X) */
+    ratio_solar[elem] =
+        (Mfrac / Z_mass_frac_H) * cooling->atomicmass[element_H] *
+        cooling->atomicmass_inv[elem] * cooling->Abundances_inv[indx1d];
+
+    totmass += Mfrac;
+    if (elem > element_He) metalmass += Mfrac;
+  }
+
+  /* Compute metallicity (Z / Z_sun) of the elements we explicitly track. */
+  /* float ZZsol = (metalmass / totmass) * cooling->Zsol_inv[0];
+  if (ZZsol <= 0.0f) ZZsol = FLT_MIN;
+  const float logZZsol = log10f(ZZsol); */
+
+  /* Get total metallicity [Z/Z_sun] from the particle data */
+  const float Z_total =
+      (float)chemistry_get_total_metal_mass_fraction_for_cooling(p);
+  float ZZsol = Z_total * cooling->Zsol_inv[0];
+  if (ZZsol <= 0.0f) ZZsol = FLT_MIN;
+  const float logZZsol = log10f(ZZsol);
+
+  /* All other elements (element_OA): scale with metallicity */
+  ratio_solar[element_OA] = ZZsol;
+
+  /* Get index and offset from the metallicity table conresponding to this
+   * metallicity */
+  int met_index;
+  float d_met;
+
+  get_index_1d(cooling->Metallicity, qla_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
+
+  /* At this point ratio_solar is (nx/nH) / (nx/nH)_sol.
+   * To multiply with the tables, we want the individual abundance ratio
+   * relative to what is used in the tables for each metallicity
+   */
+
+  /* For example: for a metallicity of 1 per cent solar, the metallicity bin
+   * for logZZsol = -2 has already the reduced cooling rates for each element;
+   * it should therefore NOT be multiplied by 0.01 again.
+   *
+   * BUT: if e.g. Carbon is twice as abundant as the solar abundance ratio,
+   * i.e. nC / nH = 0.02 * (nC/nH)_sol for the overall metallicity of 0.01,
+   * the Carbon cooling rate is multiplied by 2
+   *
+   * We only do this if we are not in the primodial metallicity bin in which
+   * case the ratio to solar should be 0.
+   */
+
+  for (int i = 0; i < qla_cooling_N_elementtypes; i++) {
+
+    /* Are we considering a metal and are *not* in the primodial metallicity
+     * bin? Or are we looking at H or He? */
+    if ((met_index > 0) || (i == element_H) || (i == element_He)) {
+
+      /* Get min/max abundances */
+      const float log_nx_nH_min = cooling->LogAbundances[row_major_index_2d(
+          met_index, i, qla_cooling_N_metallicity, qla_cooling_N_elementtypes)];
+
+      const float log_nx_nH_max = cooling->LogAbundances[row_major_index_2d(
+          met_index + 1, i, qla_cooling_N_metallicity,
+          qla_cooling_N_elementtypes)];
+
+      /* Get solar abundances */
+      const float log_nx_nH_sol = cooling->LogAbundances[row_major_index_2d(
+          cooling->indxZsol, i, qla_cooling_N_metallicity,
+          qla_cooling_N_elementtypes)];
+
+      /* Interpolate ! (linearly in log-space) */
+      const float log_nx_nH =
+          (log_nx_nH_min * (1.f - d_met) + log_nx_nH_max * d_met) -
+          log_nx_nH_sol;
+
+      ratio_solar[i] *= exp10f(-log_nx_nH);
+
+    } else {
+
+      /* Primordial bin --> Z/Z_sun is 0 for that element */
+      ratio_solar[i] = 0.;
+    }
+  }
+
+  /* at this point ratio_solar is (nx/nH) / (nx/nH)_table [Z],
+   * the metallicity dependent abundance ratio for solar abundances.
+   * We also return the total metallicity */
+
+  return logZZsol;
 }
 
 /**
@@ -87,9 +186,9 @@ __attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
  * @param cooling The #cooling_function_data used in the run.
  * @return Helium reionization energy in CGS units.
  */
-__attribute__((always_inline)) INLINE double qla_helium_reionization_extraheat(
-    const double z, const double delta_z,
-    const struct cooling_function_data *cooling) {
+__attribute__((always_inline)) INLINE static double
+eagle_helium_reionization_extraheat(
+    double z, double delta_z, const struct cooling_function_data *cooling) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (delta_z > 0.f) error("Invalid value for delta_z. Should be negative.");
@@ -114,68 +213,43 @@ __attribute__((always_inline)) INLINE double qla_helium_reionization_extraheat(
 
 /**
  * @brief Computes the log_10 of the temperature corresponding to a given
- * internal energy, hydrogen number density, Helium fraction and redshift.
- *
- * Note that the redshift is implicitly passed in via the currently loaded
- * tables in the #cooling_function_data.
- *
- * For the low-z case, we interpolate the flattened 4D table 'u_to_temp' that
- * is arranged in the following way:
- * - 1st dim: redshift, length = eagle_cooling_N_loaded_redshifts
- * - 2nd dim: Hydrogen density, length = eagle_cooling_N_density
- * - 3rd dim: Helium fraction, length = eagle_cooling_N_He_frac
- * - 4th dim: Internal energy, length = eagle_cooling_N_temperature
- *
- * For the high-z case, we interpolate the flattened 3D table 'u_to_temp' that
- * is arranged in the following way:
- * - 1st dim: Hydrogen density, length = eagle_cooling_N_density
- * - 2nd dim: Helium fraction, length = eagle_cooling_N_He_frac
- * - 3rd dim: Internal energy, length = eagle_cooling_N_temperature
+ * internal energy, hydrogen number density, metallicity and redshift
  *
  * @param log_10_u_cgs Log base 10 of internal energy in cgs.
  * @param redshift Current redshift.
  * @param n_H_index Index along the Hydrogen density dimension.
- * @param He_index Index along the Helium fraction dimension.
  * @param d_n_H Offset between Hydrogen density and table[n_H_index].
- * @param d_He Offset between helium fraction and table[He_index].
+ * @param met_index Index along the metallicity dimension.
+ * @param d_met Offset between metallicity and table[met_index].
+ * @param red_index Index along the redshift dimension.
+ * @param d_red Offset between redshift and table[red_index].
  * @param cooling #cooling_function_data structure.
  *
  * @return log_10 of the temperature.
+ *
+ * TO DO: outside table ranges, it uses at the moment the minimum, maximu value
  */
-__attribute__((always_inline)) INLINE double qla_convert_u_to_temp(
-    const double log_10_u_cgs, const float redshift, const int n_H_index,
-    const int He_index, const float d_n_H, const float d_He,
+__attribute__((always_inline)) INLINE static float qla_convert_u_to_temp(
+    const double log_10_u_cgs, const float redshift, int n_H_index, float d_n_H,
+    int met_index, float d_met, int red_index, float d_red,
     const struct cooling_function_data *cooling) {
 
   /* Get index of u along the internal energy axis */
   int u_index;
   float d_u;
-  get_index_1d(cooling->Therm, qla_cooling_N_temperature, log_10_u_cgs,
+
+  get_index_1d(cooling->Therm, qla_cooling_N_internalenergy, log_10_u_cgs,
                &u_index, &d_u);
 
   /* Interpolate temperature table to return temperature for current
-   * internal energy (use 3D interpolation for high redshift table,
-   * otherwise 4D) */
+   * internal energy */
   float log_10_T;
-  if (redshift > cooling->Redshifts[qla_cooling_N_redshifts - 1]) {
 
-    log_10_T = interpolation_3d(cooling->table.temperature,   /* */
-                                n_H_index, He_index, u_index, /* */
-                                d_n_H, d_He, d_u,             /* */
-                                qla_cooling_N_density,        /* */
-                                qla_cooling_N_He_frac,        /* */
-                                qla_cooling_N_temperature);   /* */
-  } else {
-
-    log_10_T =
-        interpolation_4d(cooling->table.temperature,                  /* */
-                         /*z_index=*/0, n_H_index, He_index, u_index, /* */
-                         cooling->dz, d_n_H, d_He, d_u,               /* */
-                         qla_cooling_N_loaded_redshifts,              /* */
-                         qla_cooling_N_density,                       /* */
-                         qla_cooling_N_He_frac,                       /* */
-                         qla_cooling_N_temperature);                  /* */
-  }
+  /* Temperature from internal energy */
+  log_10_T = interpolation_4d(
+      cooling->table.T_from_U, red_index, u_index, met_index, n_H_index, d_red,
+      d_u, d_met, d_n_H, qla_cooling_N_redshifts, qla_cooling_N_internalenergy,
+      qla_cooling_N_metallicity, qla_cooling_N_density);
 
   /* Special case for temperatures below the start of the table */
   if (u_index == 0 && d_u == 0.f) {
@@ -189,331 +263,455 @@ __attribute__((always_inline)) INLINE double qla_convert_u_to_temp(
 }
 
 /**
- * @brief Compute the Compton cooling rate from the CMB at a given
- * redshift, electron abundance, temperature and Hydrogen density.
+ * @brief Computes the log_10 of the internal energy corresponding to a given
+ * temperature, hydrogen number density, metallicity and redshift
  *
- * Uses an analytic formula.
+ * @param log_10_T Log base 10 of temperature in K
+ * @param redshift Current redshift.
+ * @param n_H_index Index along the Hydrogen density dimension.
+ * @param d_n_H Offset between Hydrogen density and table[n_H_index].
+ * @param met_index Index along the metallicity dimension.
+ * @param d_met Offset between metallicity and table[met_index].
+ * @param red_index Index along the redshift dimension.
+ * @param d_red Offset between redshift and table[red_index].
+ * @param cooling #cooling_function_data structure.
  *
- * @param cooling The #cooling_function_data used in the run.
- * @param redshift The current redshift.
- * @param n_H_cgs The Hydrogen number density in CGS units.
- * @param temperature The temperature.
- * @param electron_abundance The electron abundance.
+ * @return log_10 of the internal energy in cgs
+ *
+ * TO DO: outside table ranges, it uses at the moment the minimum, maximu value
  */
-__attribute__((always_inline)) INLINE double qla_Compton_cooling_rate(
-    const struct cooling_function_data *cooling, const double redshift,
-    const double n_H_cgs, const double temperature,
-    const double electron_abundance) {
+__attribute__((always_inline)) INLINE static float qla_convert_temp_to_u(
+    const double log_10_T, const float redshift, int n_H_index, float d_n_H,
+    int met_index, float d_met, int red_index, float d_red,
+    const struct cooling_function_data *cooling) {
 
-  const double zp1 = 1. + redshift;
-  const double zp1p2 = zp1 * zp1;
-  const double zp1p4 = zp1p2 * zp1p2;
-
-  /* CMB temperature at this redshift */
-  const double T_CMB = cooling->T_CMB_0 * zp1;
-
-  /* Compton cooling rate */
-  return cooling->compton_rate_cgs * (temperature - T_CMB) * zp1p4 *
-         electron_abundance / n_H_cgs;
-}
-
-/**
- * @brief Computes the cooling rate corresponding to a given internal energy,
- * hydrogen number density, Helium fraction, redshift and metallicity from
- * all the possible channels.
- *
- * 1) Metal-free cooling:
- * We interpolate the flattened 4D table 'H_and_He_net_heating' that is
- * arranged in the following way:
- * - 1st dim: redshift, length = eagle_cooling_N_loaded_redshifts
- * - 2nd dim: Hydrogen density, length = eagle_cooling_N_density
- * - 3rd dim: Helium fraction, length = eagle_cooling_N_He_frac
- * - 4th dim: Internal energy, length = eagle_cooling_N_temperature
- *
- * 2) Electron abundance
- * We compute the electron abundance by interpolating the flattened 4d table
- * 'H_and_He_electron_abundance' that is arranged in the following way:
- * - 1st dim: redshift, length = eagle_cooling_N_loaded_redshifts
- * - 2nd dim: Hydrogen density, length = eagle_cooling_N_density
- * - 3rd dim: Helium fraction, length = eagle_cooling_N_He_frac
- * - 4th dim: Internal energy, length = eagle_cooling_N_temperature
- *
- * 3) Compton cooling is applied via the analytic formula.
- *
- * 4) Solar electron abudance
- * We compute the solar electron abundance by interpolating the flattened 3d
- * table 'solar_electron_abundance' that is arranged in the following way:
- * - 1st dim: redshift, length = eagle_cooling_N_loaded_redshifts
- * - 2nd dim: Hydrogen density, length = eagle_cooling_N_density
- * - 3rd dim: Internal energy, length = eagle_cooling_N_temperature
- *
- * 5) Metal-line cooling
- * For each tracked element we interpolate the flattened 4D table
- * 'table_metals_net_heating' that is arrange in the following way:
- * - 1st dim: element, length = eagle_cooling_N_metal
- * - 2nd dim: redshift, length = eagle_cooling_N_loaded_redshifts
- * - 3rd dim: Hydrogen density, length = eagle_cooling_N_density
- * - 4th dim: Internal energy, length = eagle_cooling_N_temperature
- *
- * Note that this is a fake 4D interpolation as we do not interpolate
- * along the 1st dimension. We just do this once per element.
- *
- * Since only the temperature changes when cooling a given particle,
- * the redshift, hydrogen number density and helium fraction indices
- * and offsets passed in.
- *
- * If the argument element_lambda is non-NULL, the routine also
- * returns the cooling rate per element in the array.
- *
- * @param log10_u_cgs Log base 10 of internal energy per unit mass in CGS units.
- * @param redshift The current redshift
- * @param n_H_cgs The Hydrogen number density in CGS units.
- * @param solar_ratio Array of ratios of particle metal abundances
- * to solar metal abundances
- *
- * @param n_H_index Particle hydrogen number density index
- * @param d_n_H Particle hydrogen number density offset
- * @param He_index Particle helium fraction index
- * @param d_He Particle helium fraction offset
- * @param cooling Cooling data structure
- *
- * @param element_lambda (return) Cooling rate from each element
- *
- * @return The cooling rate
- */
-INLINE static double qla_metal_cooling_rate(
-    const double log10_u_cgs, const double redshift, const double n_H_cgs,
-    const float solar_ratio[qla_cooling_N_abundances], const int n_H_index,
-    const float d_n_H, const int He_index, const float d_He,
-    const struct cooling_function_data *cooling, double *element_lambda) {
-
-  /* Temperature */
-  const double log_10_T = qla_convert_u_to_temp(
-      log10_u_cgs, redshift, n_H_index, He_index, d_n_H, d_He, cooling);
-
-  /* Get index along temperature dimension of the tables */
+  /* Get index of u along the internal energy axis */
   int T_index;
   float d_T;
+
   get_index_1d(cooling->Temp, qla_cooling_N_temperature, log_10_T, &T_index,
                &d_T);
 
-  /**********************/
-  /* Metal-free cooling */
-  /**********************/
+  /* Interpolate internal energy table to return internal energy for current
+   * temperature */
+  float log_10_U;
 
-  double Lambda_free;
+  /* Internal energy from temperature*/
+  log_10_U = interpolation_4d(
+      cooling->table.U_from_T, red_index, T_index, met_index, n_H_index, d_red,
+      d_T, d_met, d_n_H, qla_cooling_N_redshifts, qla_cooling_N_temperature,
+      qla_cooling_N_metallicity, qla_cooling_N_density);
 
-  if (redshift > cooling->Redshifts[qla_cooling_N_redshifts - 1]) {
-
-    /* If we're using the high redshift tables then we don't interpolate
-     * in redshift */
-    Lambda_free = interpolation_3d(cooling->table.H_plus_He_heating, /* */
-                                   n_H_index, He_index, T_index,     /* */
-                                   d_n_H, d_He, d_T,                 /* */
-                                   qla_cooling_N_density,            /* */
-                                   qla_cooling_N_He_frac,            /* */
-                                   qla_cooling_N_temperature);       /* */
-  } else {
-
-    /* Using normal tables, have to interpolate in redshift */
-    Lambda_free =
-        interpolation_4d(cooling->table.H_plus_He_heating,            /* */
-                         /*z_index=*/0, n_H_index, He_index, T_index, /* */
-                         cooling->dz, d_n_H, d_He, d_T,               /* */
-                         qla_cooling_N_loaded_redshifts,              /* */
-                         qla_cooling_N_density,                       /* */
-                         qla_cooling_N_He_frac,                       /* */
-                         qla_cooling_N_temperature);                  /* */
-  }
-
-  /* If we're testing cooling rate contributions write to array */
-  if (element_lambda != NULL) {
-    element_lambda[0] = Lambda_free;
-  }
-
-  /**********************/
-  /* Electron abundance */
-  /**********************/
-
-  double H_plus_He_electron_abundance;
-
-  if (redshift > cooling->Redshifts[qla_cooling_N_redshifts - 1]) {
-
-    H_plus_He_electron_abundance =
-        interpolation_3d(cooling->table.H_plus_He_electron_abundance, /* */
-                         n_H_index, He_index, T_index,                /* */
-                         d_n_H, d_He, d_T,                            /* */
-                         qla_cooling_N_density,                       /* */
-                         qla_cooling_N_He_frac,                       /* */
-                         qla_cooling_N_temperature);                  /* */
-
-  } else {
-
-    H_plus_He_electron_abundance =
-        interpolation_4d(cooling->table.H_plus_He_electron_abundance, /* */
-                         /*z_index=*/0, n_H_index, He_index, T_index, /* */
-                         cooling->dz, d_n_H, d_He, d_T,               /* */
-                         qla_cooling_N_loaded_redshifts,              /* */
-                         qla_cooling_N_density,                       /* */
-                         qla_cooling_N_He_frac,                       /* */
-                         qla_cooling_N_temperature);                  /* */
-  }
-
-  /**********************/
-  /* Compton cooling    */
-  /**********************/
-
-  double Lambda_Compton = 0.;
-
-  /* Do we need to add the inverse Compton cooling? */
-  /* It is *not* stored in the tables before re-ionisation */
-  if ((redshift > cooling->Redshifts[qla_cooling_N_redshifts - 1]) ||
-      (redshift > cooling->H_reion_z)) {
-
-    const double T = exp10(log_10_T);
-
-    /* Note the minus sign */
-    Lambda_Compton -= qla_Compton_cooling_rate(cooling, redshift, n_H_cgs, T,
-                                               H_plus_He_electron_abundance);
-  }
-
-  /* If we're testing cooling rate contributions write to array */
-  if (element_lambda != NULL) {
-    element_lambda[1] = Lambda_Compton;
-  }
-
-  /*******************************/
-  /* Solar electron abundance    */
-  /*******************************/
-
-  double solar_electron_abundance;
-
-  if (redshift > cooling->Redshifts[qla_cooling_N_redshifts - 1]) {
-
-    /* If we're using the high redshift tables then we don't interpolate
-     * in redshift */
-    solar_electron_abundance =
-        interpolation_2d(cooling->table.electron_abundance, /* */
-                         n_H_index, T_index,                /* */
-                         d_n_H, d_T,                        /* */
-                         qla_cooling_N_density,             /* */
-                         qla_cooling_N_temperature);        /* */
-
-  } else {
-
-    /* Using normal tables, have to interpolate in redshift */
-    solar_electron_abundance =
-        interpolation_3d(cooling->table.electron_abundance, /* */
-                         /*z_index=*/0, n_H_index, T_index, /* */
-                         cooling->dz, d_n_H, d_T,           /* */
-                         qla_cooling_N_loaded_redshifts,    /* */
-                         qla_cooling_N_density,             /* */
-                         qla_cooling_N_temperature);        /* */
-  }
-
-  const double electron_abundance_ratio =
-      H_plus_He_electron_abundance / solar_electron_abundance;
-
-  /**********************/
-  /* Metal-line cooling */
-  /**********************/
-
-  /* for each element the cooling rate is multiplied by the ratio of H, He
-   * electron abundance to solar electron abundance then by the ratio of the
-   * particle metal abundance to solar metal abundance. */
-
-  double lambda_metal[qla_cooling_N_metal + 2] = {0.};
-
-  if (redshift > cooling->Redshifts[qla_cooling_N_redshifts - 1]) {
-
-    /* Loop over the metals (ignore H and He) */
-    for (int elem = 2; elem < qla_cooling_N_metal + 2; elem++) {
-
-      if (solar_ratio[elem] > 0.) {
-
-        /* Note that we do not interpolate along the x-axis
-         * (element dimension) */
-        lambda_metal[elem] =
-            interpolation_3d_no_x(cooling->table.metal_heating,   /* */
-                                  elem - 2, n_H_index, T_index,   /* */
-                                  /*delta_elem=*/0.f, d_n_H, d_T, /* */
-                                  qla_cooling_N_metal,            /* */
-                                  qla_cooling_N_density,          /* */
-                                  qla_cooling_N_temperature);     /* */
-
-        lambda_metal[elem] *= electron_abundance_ratio;
-        lambda_metal[elem] *= solar_ratio[elem];
-      }
-    }
-
-  } else {
-
-    /* Loop over the metals (ignore H and He) */
-    for (int elem = 2; elem < qla_cooling_N_metal + 2; elem++) {
-
-      if (solar_ratio[elem] > 0.) {
-
-        /* Note that we do not interpolate along the x-axis
-         * (element dimension) */
-        lambda_metal[elem] = interpolation_4d_no_x(
-            cooling->table.metal_heating,                /* */
-            elem - 2, /*z_index=*/0, n_H_index, T_index, /* */
-            /*delta_elem=*/0.f, cooling->dz, d_n_H, d_T, /* */
-            qla_cooling_N_metal,                         /* */
-            qla_cooling_N_loaded_redshifts,              /* */
-            qla_cooling_N_density,                       /* */
-            qla_cooling_N_temperature);                  /* */
-
-        lambda_metal[elem] *= electron_abundance_ratio;
-        lambda_metal[elem] *= solar_ratio[elem];
-
-        // message("lambda[%d]=%e", elem, lambda_metal[elem]);
-      }
-    }
-  }
-
-  if (element_lambda != NULL) {
-    for (int elem = 2; elem < qla_cooling_N_metal + 2; ++elem) {
-      element_lambda[elem] = lambda_metal[elem];
-    }
-  }
-
-  /* Sum up all the contributions */
-  double Lambda_net = Lambda_free + Lambda_Compton;
-  for (int elem = 2; elem < qla_cooling_N_metal + 2; ++elem) {
-    Lambda_net += lambda_metal[elem];
-  }
-
-  return Lambda_net;
+  return log_10_U;
 }
 
 /**
- * @brief Wrapper function used to calculate cooling rate.
- * Table indices and offsets for redshift, hydrogen number density and
- * helium fraction are passed it so as to compute them only once per particle.
+ * @brief Computes the mean particle mass for a given
+ * metallicity, temperature, redshift, and density.
  *
- * @param log10_u_cgs Log base 10 of internal energy per unit mass in CGS units.
- * @param redshift The current redshift.
- * @param n_H_cgs Hydrogen number density in CGS units.
- * @param abundance_ratio Ratio of element abundance to solar.
- *
- * @param n_H_index Particle hydrogen number density index
- * @param d_n_H Particle hydrogen number density offset
- * @param He_index Particle helium fraction index
- * @param d_He Particle helium fraction offset
+ * @param log_T_cgs Log base 10 of temperature in K
+ * @param redshift Current redshift
+ * @param n_H_cgs Hydrogen number density in cgs
+ * @param ZZsol Metallicity relative to the solar value from the tables
+ * @param n_H_index Index along the Hydrogen number density dimension
+ * @param d_n_H Offset between Hydrogen density and table[n_H_index]
+ * @param met_index Index along the metallicity dimension
+ * @param d_met Offset between metallicity and table[met_index]
+ * @param red_index Index along redshift dimension
+ * @param d_red Offset between redshift and table[red_index]
  * @param cooling #cooling_function_data structure
  *
- * @return The cooling rate
+ * @return linear electron density in cm-3 (NOT the electron fraction)
  */
-INLINE static double qla_cooling_rate(
-    const double log10_u_cgs, const double redshift, const double n_H_cgs,
-    const float abundance_ratio[qla_cooling_N_abundances], const int n_H_index,
-    const float d_n_H, const int He_index, const float d_He,
+INLINE static float qla_meanparticlemass_temperature(
+    double log_T_cgs, double redshift, double n_H_cgs, float ZZsol,
+    int n_H_index, float d_n_H, int met_index, float d_met, int red_index,
+    float d_red, const struct cooling_function_data *cooling) {
+
+  /* Get index of T along the temperature axis */
+  int T_index;
+  float d_T;
+
+  get_index_1d(cooling->Temp, qla_cooling_N_temperature, log_T_cgs, &T_index,
+               &d_T);
+
+  const float mu = interpolation_4d(
+      cooling->table.Tmu, red_index, T_index, met_index, n_H_index, d_red, d_T,
+      d_met, d_n_H, qla_cooling_N_redshifts, qla_cooling_N_temperature,
+      qla_cooling_N_metallicity, qla_cooling_N_density);
+
+  return mu;
+}
+
+/**
+ * @brief Computes the electron density for a given element
+ * abundance ratio, internal energy, redshift, and density.
+ *
+ * @param log_u_cgs Log base 10 of internal energy in cgs [erg g-1]
+ * @param redshift Current redshift
+ * @param n_H_cgs Hydrogen number density in cgs
+ * @param ZZsol Metallicity relative to the solar value from the tables
+ * @param abundance_ratio Abundance ratio for each element x relative to solar
+ * @param n_H_index Index along the Hydrogen number density dimension
+ * @param d_n_H Offset between Hydrogen density and table[n_H_index]
+ * @param met_index Index along the metallicity dimension
+ * @param d_met Offset between metallicity and table[met_index]
+ * @param red_index Index along redshift dimension
+ * @param d_red Offset between redshift and table[red_index]
+ * @param cooling #cooling_function_data structure
+ *
+ * @return linear electron density in cm-3 (NOT the electron fraction)
+ */
+INLINE static float qla_electron_density(
+    double log_u_cgs, double redshift, double n_H_cgs, float ZZsol,
+    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
+    float d_n_H, int met_index, float d_met, int red_index, float d_red,
     const struct cooling_function_data *cooling) {
 
-  return qla_metal_cooling_rate(log10_u_cgs, redshift, n_H_cgs, abundance_ratio,
-                                n_H_index, d_n_H, He_index, d_He, cooling,
-                                /* element_lambda=*/NULL);
+  /* Get index of u along the internal energy axis */
+  int U_index;
+  float d_U;
+
+  get_index_1d(cooling->Therm, qla_cooling_N_internalenergy, log_u_cgs,
+               &U_index, &d_U);
+
+  /* n_e / n_H */
+  const float electron_fraction = interpolation4d_plus_summation(
+      cooling->table.Uelectron_fraction, abundance_ratio, element_H,
+      qla_cooling_N_electrontypes - 4, red_index, U_index, met_index, n_H_index,
+      d_red, d_U, d_met, d_n_H, qla_cooling_N_redshifts,
+      qla_cooling_N_internalenergy, qla_cooling_N_metallicity,
+      qla_cooling_N_density, qla_cooling_N_electrontypes);
+
+  return electron_fraction * n_H_cgs;
+}
+
+/**
+ * @brief Computes the electron density for a given element
+ * abundance ratio, temperature, redshift, and density.
+ *
+ * @param log_T_cgs Log base 10 of temperature
+ * @param redshift Current redshift
+ * @param n_H_cgs Hydrogen number density in cgs
+ * @param ZZsol Metallicity relative to the solar value from the tables
+ * @param abundance_ratio Abundance ratio for each element x relative to solar
+ * @param n_H_index Index along the Hydrogen number density dimension
+ * @param d_n_H Offset between Hydrogen density and table[n_H_index]
+ * @param met_index Index along the metallicity dimension
+ * @param d_met Offset between metallicity and table[met_index]
+ * @param red_index Index along redshift dimension
+ * @param d_red Offset between redshift and table[red_index]
+ * @param cooling #cooling_function_data structure
+ *
+ * @return linear electron density in cm-3 (NOT the electron fraction)
+ */
+INLINE static float qla_electron_density_temperature(
+    double log_T_cgs, double redshift, double n_H_cgs, float ZZsol,
+    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
+    float d_n_H, int met_index, float d_met, int red_index, float d_red,
+    const struct cooling_function_data *cooling) {
+
+  /* Get index of u along the internal energy axis */
+  int T_index;
+  float d_T;
+
+  get_index_1d(cooling->Temp, qla_cooling_N_temperature, log_T_cgs, &T_index,
+               &d_T);
+
+  /* n_e / n_H */
+  const float electron_fraction = interpolation4d_plus_summation(
+      cooling->table.Telectron_fraction, abundance_ratio, element_H,
+      qla_cooling_N_electrontypes - 4, red_index, T_index, met_index, n_H_index,
+      d_red, d_T, d_met, d_n_H, qla_cooling_N_redshifts,
+      qla_cooling_N_internalenergy, qla_cooling_N_metallicity,
+      qla_cooling_N_density, qla_cooling_N_electrontypes);
+
+  return electron_fraction * n_H_cgs;
+}
+
+/**
+ * @brief Computes the net cooling rate (cooling - heating) for a given element
+ * abundance ratio, internal energy, redshift, and density. The unit of the net
+ * cooling rate is Lambda / nH**2 [erg cm^3 s-1] and all input values are in
+ * cgs. The Compton cooling is not taken from the tables but calculated
+ * analytically and added separately
+ *
+ * @param log_u_cgs Log base 10 of internal energy in cgs [erg g-1]
+ * @param redshift Current redshift
+ * @param n_H_cgs Hydrogen number density in cgs
+ * @param abundance_ratio Abundance ratio for each element x relative to solar
+ * @param n_H_index Index along the Hydrogen number density dimension
+ * @param d_n_H Offset between Hydrogen density and table[n_H_index]
+ * @param met_index Index along the metallicity dimension
+ * @param d_met Offset between metallicity and table[met_index]
+ * @param red_index Index along redshift dimension
+ * @param d_red Offset between redshift and table[red_index]
+ * @param cooling #cooling_function_data structure
+ *
+ * @param onlyicool if true / 1 only plot cooling channel icool
+ * @param onlyiheat if true / 1 only plot cooling channel iheat
+ * @param icool cooling channel to be used
+ * @param iheat heating channel to be used
+ *
+ * Throughout the code: onlyicool = onlyiheat = icool = iheat = 0
+ * These are only used for testing.
+ */
+INLINE static double qla_cooling_rate(
+    double log_u_cgs, double redshift, double n_H_cgs,
+    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
+    float d_n_H, int met_index, float d_met, int red_index, float d_red,
+    const struct cooling_function_data *cooling, int onlyicool, int onlyiheat,
+    int icool, int iheat) {
+
+  /* Set weights for cooling rates */
+  float weights_cooling[qla_cooling_N_cooltypes - 2];
+  for (int i = 0; i < qla_cooling_N_cooltypes - 2; i++) {
+
+    if (i < qla_cooling_N_elementtypes) {
+      /* Use abundance ratios */
+      weights_cooling[i] = abundance_ratio[i];
+    } else if (i == cooltype_Compton) {
+      /* added analytically later, do not use value from table*/
+      weights_cooling[i] = 0.f;
+    } else {
+      /* use same abundances as in the tables */
+      weights_cooling[i] = 1.f;
+    }
+  }
+
+  /* If we care only about one channel, cancel all the other ones */
+  if (onlyicool != 0) {
+    for (int i = 0; i < qla_cooling_N_cooltypes - 2; i++) {
+      if (i != icool) weights_cooling[i] = 0.f;
+    }
+  }
+
+  /* Set weights for heating rates */
+  float weights_heating[qla_cooling_N_heattypes - 2];
+  for (int i = 0; i < qla_cooling_N_heattypes - 2; i++) {
+    if (i < qla_cooling_N_elementtypes) {
+      weights_heating[i] = abundance_ratio[i];
+    } else {
+      weights_heating[i] = 1.f; /* use same abundances as in the tables */
+    }
+  }
+
+  /* If we care only about one channel, cancel all the other ones */
+  if (onlyiheat != 0) {
+    for (int i = 0; i < qla_cooling_N_heattypes - 2; i++) {
+      if (i != iheat) weights_heating[i] = 0.f;
+    }
+  }
+
+  /* Get index of u along the internal energy axis */
+  int U_index;
+  float d_U;
+  get_index_1d(cooling->Therm, qla_cooling_N_internalenergy, log_u_cgs,
+               &U_index, &d_U);
+
+  /* n_e / n_H */
+  const double electron_fraction = interpolation4d_plus_summation(
+      cooling->table.Uelectron_fraction, abundance_ratio, /* */
+      element_H, qla_cooling_N_electrontypes - 4,         /* */
+      red_index, U_index, met_index, n_H_index,           /* */
+      d_red, d_U, d_met, d_n_H,                           /* */
+      qla_cooling_N_redshifts,                            /* */
+      qla_cooling_N_internalenergy,                       /* */
+      qla_cooling_N_metallicity,                          /* */
+      qla_cooling_N_density,                              /* */
+      qla_cooling_N_electrontypes);                       /* */
+
+  /* Lambda / n_H**2 */
+  const double cooling_rate = interpolation4d_plus_summation(
+      cooling->table.Ucooling, weights_cooling, /* */
+      element_H, qla_cooling_N_cooltypes - 3,   /* */
+      red_index, U_index, met_index, n_H_index, /* */
+      d_red, d_U, d_met, d_n_H,                 /* */
+      qla_cooling_N_redshifts,                  /* */
+      qla_cooling_N_internalenergy,             /* */
+      qla_cooling_N_metallicity,                /* */
+      qla_cooling_N_density,                    /* */
+      qla_cooling_N_cooltypes);                 /* */
+
+  /* Gamma / n_H**2 */
+  const double heating_rate = interpolation4d_plus_summation(
+      cooling->table.Uheating, weights_heating, /* */
+      element_H, qla_cooling_N_heattypes - 3,   /* */
+      red_index, U_index, met_index, n_H_index, /* */
+      d_red, d_U, d_met, d_n_H,                 /* */
+      qla_cooling_N_redshifts,                  /* */
+      qla_cooling_N_internalenergy,             /* */
+      qla_cooling_N_metallicity,                /* */
+      qla_cooling_N_density,                    /* */
+      qla_cooling_N_heattypes);                 /* */
+
+  /* Temperature from internal energy */
+  const double logtemp =
+      interpolation_4d(cooling->table.T_from_U,                  /* */
+                       red_index, U_index, met_index, n_H_index, /* */
+                       d_red, d_U, d_met, d_n_H,                 /* */
+                       qla_cooling_N_redshifts,                  /* */
+                       qla_cooling_N_internalenergy,             /* */
+                       qla_cooling_N_metallicity,                /* */
+                       qla_cooling_N_density);                   /* */
+                                                                 /* */
+  const double temp = exp10(logtemp);
+
+  /* Compton cooling/heating */
+  double Compton_cooling_rate = 0.;
+  if (onlyicool == 0 || (onlyicool == 1 && icool == cooltype_Compton)) {
+
+    const double zp1 = 1. + redshift;
+    const double zp1p2 = zp1 * zp1;
+    const double zp1p4 = zp1p2 * zp1p2;
+
+    /* CMB temperature at this redshift */
+    const double T_CMB = cooling->T_CMB_0 * zp1;
+
+    /* Analytic Compton cooling rate: Lambda_Compton / n_H**2 */
+    Compton_cooling_rate = cooling->compton_rate_cgs * (temp - T_CMB) * zp1p4 *
+                           electron_fraction / n_H_cgs;
+  }
+
+  /* Return the net heating rate (Lambda_heat - Lambda_cool) */
+  return heating_rate - cooling_rate - Compton_cooling_rate;
+}
+
+/**
+ * @brief Computes the net cooling rate (cooling - heating) for a given element
+ * abundance ratio, temperature, redshift, and density. The unit of the net
+ * cooling rate is Lambda / nH**2 [erg cm^3 s-1] and all input values are in
+ * cgs. The Compton cooling is not taken from the tables but calculated
+ * analytically and added separately
+ *
+ * @param log_T_cgs Log base 10 of temperature in K
+ * @param redshift Current redshift
+ * @param n_H_cgs Hydrogen number density in cgs
+ * @param abundance_ratio Abundance ratio for each element x relative to solar
+ * @param n_H_index Index along the Hydrogen number density dimension
+ * @param d_n_H Offset between Hydrogen density and table[n_H_index]
+ * @param met_index Index along the metallicity dimension
+ * @param d_met Offset between metallicity and table[met_index]
+ * @param red_index Index along redshift dimension
+ * @param d_red Offset between redshift and table[red_index]
+ * @param cooling #cooling_function_data structure
+ *
+ * @param onlyicool if true / 1 only plot cooling channel icool
+ * @param onlyiheat if true / 1 only plot cooling channel iheat
+ * @param icool cooling channel to be used
+ * @param iheat heating channel to be used
+ *
+ * Throughout the code: onlyicool = onlyiheat = icool = iheat = 0
+ * These are only used for testing.
+ */
+INLINE static double qla_cooling_rate_temperature(
+    double log_T_cgs, double redshift, double n_H_cgs,
+    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
+    float d_n_H, int met_index, float d_met, int red_index, float d_red,
+    const struct cooling_function_data *cooling, int onlyicool, int onlyiheat,
+    int icool, int iheat) {
+
+  /* Set weights for cooling rates */
+  float weights_cooling[qla_cooling_N_cooltypes - 2];
+  for (int i = 0; i < qla_cooling_N_cooltypes - 2; i++) {
+
+    if (i < qla_cooling_N_elementtypes) {
+      /* Use abundance ratios */
+      weights_cooling[i] = abundance_ratio[i];
+    } else if (i == cooltype_Compton) {
+      /* added analytically later, do not use value from table*/
+      weights_cooling[i] = 0.f;
+    } else {
+      /* use same abundances as in the tables */
+      weights_cooling[i] = 1.f;
+    }
+  }
+
+  /* If we care only about one channel, cancel all the other ones */
+  if (onlyicool != 0) {
+    for (int i = 0; i < qla_cooling_N_cooltypes - 2; i++) {
+      if (i != icool) weights_cooling[i] = 0.f;
+    }
+  }
+
+  /* Set weights for heating rates */
+  float weights_heating[qla_cooling_N_heattypes - 2];
+  for (int i = 0; i < qla_cooling_N_heattypes - 2; i++) {
+    if (i < qla_cooling_N_elementtypes) {
+      weights_heating[i] = abundance_ratio[i];
+    } else {
+      weights_heating[i] = 1.f; /* use same abundances as in the tables */
+    }
+  }
+
+  /* If we care only about one channel, cancel all the other ones */
+  if (onlyiheat != 0) {
+    for (int i = 0; i < qla_cooling_N_heattypes - 2; i++) {
+      if (i != iheat) weights_heating[i] = 0.f;
+    }
+  }
+
+  /* Get index of T along the internal energy axis */
+  int T_index;
+  float d_T;
+  get_index_1d(cooling->Temp, qla_cooling_N_temperature, log_T_cgs, &T_index,
+               &d_T);
+
+  /* n_e / n_H */
+  const double electron_fraction = interpolation4d_plus_summation(
+      cooling->table.Telectron_fraction, abundance_ratio, /* */
+      element_H, qla_cooling_N_electrontypes - 4,         /* */
+      red_index, T_index, met_index, n_H_index,           /* */
+      d_red, d_T, d_met, d_n_H,                           /* */
+      qla_cooling_N_redshifts,                            /* */
+      qla_cooling_N_temperature,                          /* */
+      qla_cooling_N_metallicity,                          /* */
+      qla_cooling_N_density,                              /* */
+      qla_cooling_N_electrontypes);                       /* */
+
+  /* Lambda / n_H**2 */
+  const double cooling_rate = interpolation4d_plus_summation(
+      cooling->table.Tcooling, weights_cooling, /* */
+      element_H, qla_cooling_N_cooltypes - 3,   /* */
+      red_index, T_index, met_index, n_H_index, /* */
+      d_red, d_T, d_met, d_n_H,                 /* */
+      qla_cooling_N_redshifts,                  /* */
+      qla_cooling_N_temperature,                /* */
+      qla_cooling_N_metallicity,                /* */
+      qla_cooling_N_density,                    /* */
+      qla_cooling_N_cooltypes);                 /* */
+
+  /* Gamma / n_H**2 */
+  const double heating_rate = interpolation4d_plus_summation(
+      cooling->table.Theating, weights_heating, /* */
+      element_H, qla_cooling_N_heattypes - 3,   /* */
+      red_index, T_index, met_index, n_H_index, /* */
+      d_red, d_T, d_met, d_n_H,                 /* */
+      qla_cooling_N_redshifts,                  /* */
+      qla_cooling_N_temperature,                /* */
+      qla_cooling_N_metallicity,                /* */
+      qla_cooling_N_density,                    /* */
+      qla_cooling_N_heattypes);                 /* */
+
+  const double temp = exp10(log_T_cgs);
+
+  double Compton_cooling_rate = 0.;
+  if (onlyicool == 0 || (onlyicool == 1 && icool == cooltype_Compton)) {
+
+    const double zp1 = 1. + redshift;
+    const double zp1p2 = zp1 * zp1;
+    const double zp1p4 = zp1p2 * zp1p2;
+
+    /* CMB temperature at this redshift */
+    const double T_CMB = cooling->T_CMB_0 * zp1;
+
+    /* Analytic Compton cooling rate: Lambda_Compton / n_H**2 */
+    Compton_cooling_rate = cooling->compton_rate_cgs * (temp - T_CMB) * zp1p4 *
+                           electron_fraction / n_H_cgs;
+  }
+
+  /* Return the net heating rate (Lambda_heat - Lambda_cool) */
+  return heating_rate - cooling_rate - Compton_cooling_rate;
 }
 
 #endif /* SWIFT_QLA_COOLING_RATES_H */
