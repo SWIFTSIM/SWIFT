@@ -20,34 +20,16 @@
 #define SWIFT_OUTPUT_OPTIONS_H
 
 /* Local headers. */
+#include "io_compression.h"
 #include "output_list.h"
 #include "part_type.h"
 #include "restart.h"
-
-/**
- * @brief Compression levels for snapshot fields
- */
-enum compression_levels {
-  compression_do_not_write = 0,
-  compression_write_lossless,
-  compression_write_low_lossy,
-  compression_write_med_lossy,
-  compression_write_high_lossy,
-  /* Counter, always leave last */
-  compression_level_count,
-};
 
 /*! Default value for SelectOutput */
 #define compression_level_default compression_write_lossless
 
 /*! Default name for the SelectOutput header */
 #define select_output_header_default_name "Default"
-
-/**
- * @brief Names of the compression levels, used in the select_output.yml
- *        parameter file.
- **/
-extern const char* compression_level_names[];
 
 /**
  * @brief Output selection properties, including the parsed files.
@@ -76,12 +58,12 @@ void output_options_struct_restore(struct output_options* output_options,
                                    FILE* stream);
 
 /* Logic functions */
-int output_options_should_write_field(
+enum lossy_compression_schemes output_options_get_field_compression(
     const struct output_options* output_options, const char* snapshot_type,
     const char* field_name, const enum part_type part_type,
-    const enum compression_levels comp_level_current_default);
+    const enum lossy_compression_schemes comp_level_current_default);
 
-enum compression_levels output_options_get_ptype_default(
+enum lossy_compression_schemes output_options_get_ptype_default_compression(
     struct swift_params* output_params, const char* snapshot_type,
     const enum part_type part_type);
 

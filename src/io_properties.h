@@ -26,6 +26,7 @@
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
+#include "io_compression.h"
 #include "part.h"
 #include "units.h"
 
@@ -115,6 +116,9 @@ struct io_props {
 
   /* Pointer to the field of the first particle in the array */
   char* field;
+
+  /* Lossy compression scheme to use for this field */
+  enum lossy_compression_schemes lossy_compression;
 
   /* Pointer to the start of the temporary buffer used in i/o */
   char* start_temp_c;
