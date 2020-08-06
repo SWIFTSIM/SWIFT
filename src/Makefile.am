@@ -58,7 +58,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h \
     velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h \
     black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h \
-    feedback.h feedback_struct.h feedback_properties.h task_order.h \
+    feedback.h feedback_struct.h feedback_properties.h \
     space_unique_id.h line_of_sight.h io_compression.h
 
 # source files for EAGLE cooling
@@ -293,7 +293,6 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h \
 		 pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h \
 		 pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h \
-	         task_order/GEAR/task_order.h task_order/EAGLE/task_order.h task_order/default/task_order.h \
      sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h \
 		 sink.h sink_io.h
 
