@@ -904,21 +904,21 @@ void cooling_clean(struct cooling_function_data *cooling) {
   free(cooling->MassFractions);
 
   /* Free the tables */
-  free(cooling->table.Tcooling);
-  free(cooling->table.Ucooling);
-  free(cooling->table.Theating);
-  free(cooling->table.Uheating);
-  free(cooling->table.Telectron_fraction);
-  free(cooling->table.Uelectron_fraction);
-  free(cooling->table.T_from_U);
-  free(cooling->table.U_from_T);
-  free(cooling->table.Umu);
-  free(cooling->table.Tmu);
-  free(cooling->table.meanpartmass_Teq);
-  free(cooling->table.logHfracs_Teq);
-  free(cooling->table.logHfracs_all);
-  free(cooling->table.logTeq);
-  free(cooling->table.logPeq);
+  swift_free("cooling_table.Tcooling", cooling->table.Tcooling);
+  swift_free("cooling_table.Ucooling", cooling->table.Ucooling);
+  swift_free("cooling_table.Theating", cooling->table.Theating);
+  swift_free("cooling_table.Uheating", cooling->table.Uheating);
+  swift_free("cooling_table.Tefrac", cooling->table.Telectron_fraction);
+  swift_free("cooling_table.Uefrac", cooling->table.Uelectron_fraction);
+  swift_free("cooling_table.TfromU", cooling->table.T_from_U);
+  swift_free("cooling_table.UfromT", cooling->table.U_from_T);
+  swift_free("cooling_table.Umu", cooling->table.Umu);
+  swift_free("cooling_table.Tmu", cooling->table.Tmu);
+  swift_free("cooling_table.mueq", cooling->table.meanpartmass_Teq);
+  swift_free("cooling_table.Hfracs", cooling->table.logHfracs_Teq);
+  swift_free("cooling_table.Hfracs", cooling->table.logHfracs_all);
+  swift_free("cooling_table.Teq", cooling->table.logTeq);
+  swift_free("cooling_table.Peq", cooling->table.logPeq);
 }
 
 /**
