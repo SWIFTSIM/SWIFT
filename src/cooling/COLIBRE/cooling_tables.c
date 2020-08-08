@@ -475,7 +475,8 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   H5Fclose(tempfile_id);
 
   /* Pressure at thermal equilibrium temperature */
-  if (posix_memalign((void **)&cooling->table.logPeq, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("cooling_table.Peq", (void **)&cooling->table.logPeq,
+                     SWIFT_STRUCT_ALIGNMENT,
                      colibre_cooling_N_redshifts *
                          colibre_cooling_N_metallicity *
                          colibre_cooling_N_density * sizeof(float)) != 0)
