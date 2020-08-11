@@ -40,22 +40,22 @@
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-__attribute__((always_inline)) INLINE static void sidm_first_init_gpart(struct gpart* restrict gp,
+__attribute__((always_inline)) INLINE static void sidm_first_init_dmpart(struct dmpart* restrict dmp,
                                                                         const struct sidm_props* sidm_props) {
     
     /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
-    gp->sidm_data.sidm_flag = 0.0f;
+    dmp->sidm_data.sidm_flag = 0.0f;
     
     /*! Particle search radius */
-    gp->sidm_data.h_sidm = sidm_props->h_search_radius;
+    dmp->sidm_data.h_sidm = sidm_props->h_search_radius;
     
     /*! Number of DM-DM particle collisions */
-    gp->sidm_data.num_sidm = 0.0f;
+    dmp->sidm_data.num_sidm = 0.0f;
     
     /* Particle velocity */
-    gp->sidm_data.si_v_full[0] = 0.0f;
-    gp->sidm_data.si_v_full[1] = 0.0f;
-    gp->sidm_data.si_v_full[2] = 0.0f;
+    dmp->sidm_data.si_v_full[0] = 0.0f;
+    dmp->sidm_data.si_v_full[1] = 0.0f;
+    dmp->sidm_data.si_v_full[2] = 0.0f;
     
 }
 

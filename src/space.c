@@ -257,8 +257,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.feedback = NULL;
     c->dark_matter.density = NULL;
     c->dark_matter.ghost = NULL;
-    c->dark_matter.sidm = NULL;
-    c->dark_matter.sidm_kick = NULL;
+    /*c->dark_matter.sidm = NULL;
+    c->dark_matter.sidm_kick = NULL;*/ /*Add this in cell.h*/
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -797,7 +797,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
   size_t size_bparts = s->size_bparts;
-  size_t size_dmparts = s->size_dmparts;
+  /*size_t size_dmparts = s->size_dmparts;*/
 
   int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
   if (local_cells == NULL)
@@ -890,6 +890,10 @@ void space_allocate_extras(struct space *s, int verbose) {
         if (s->bparts[i].time_bin != time_bin_not_created)
           s->bparts[i].gpart += delta;
       }
+        for (size_t i = 0; i < nr_dmparts; ++i) {
+            if (s->dmparts[i].time_bin != time_bin_not_created)
+                s->dmparts[i].gpart += delta;
+        }
     }
 
     /* Turn some of the allocated spares into particles we can use */
@@ -2283,6 +2287,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->grav.parts = gfinger;
       c->stars.parts = sfinger;
       c->black_holes.parts = bfinger;
+      c->dark_matter.parts = dmfinger;
       c->sinks.parts = sink_finger;
 
       /* Store the state at rebuild time */
@@ -2300,6 +2305,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       gfinger = &gfinger[c->grav.count_total];
       sfinger = &sfinger[c->stars.count_total];
       bfinger = &bfinger[c->black_holes.count_total];
+      dmfinger = &dmfinger[c->dark_matter.count_total];
       sink_finger = &sink_finger[c->sinks.count_total];
 
       /* Add this cell to the list of local cells */
@@ -3170,7 +3176,7 @@ void space_dmparts_get_cell_index_mapper(void *map_data, int nr_dmparts,
             
             /* Compute sum of velocity norm */
             sum_vel_norm +=
-            dmp->v[0] * dmp->v[0] + dmp->v[1] * dmp->v[1] + dmp->v[2] * dmp->v[2];
+            dmp->v_full[0] * dmp->v_full[0] + dmp->v_full[1] * dmp->v_full[1] + dmp->v_full[2] * dmp->v_full[2];
             
             /* Update the position */
             dmp->x[0] = pos_x;
@@ -4472,7 +4478,7 @@ void space_split_recursive(struct space *s, struct cell *c,
             max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
         ti_dark_matter_end_min = min(ti_dark_matter_end_min, cp->dark_matter.ti_end_min);
         ti_dark_matter_end_max = max(ti_dark_matter_end_max, cp->dark_matter.ti_end_max);
-        ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, cp->dark_matter_.ti_beg_max);
+        ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, cp->dark_matter.ti_beg_max);
 
 
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
@@ -5239,9 +5245,9 @@ void space_synchronize_dmpart_positions_mapper(void *map_data, int nr_dmparts,
         gp->x[1] = dmp->x[1];
         gp->x[2] = dmp->x[2];
         
-        gp->v_full[0] = dmp->v[0];
-        gp->v_full[1] = dmp->v[1];
-        gp->v_full[2] = dmp->v[2];
+        gp->v_full[0] = dmp->v_full[0];
+        gp->v_full[1] = dmp->v_full[1];
+        gp->v_full[2] = dmp->v_full[2];
         
         gp->mass = dmp->mass;
     }
@@ -5463,8 +5469,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   const struct cosmology *cosmo = s->e->cosmology;
   const float a_factor_vel = cosmo->a;
   const struct gravity_props *grav_props = s->e->gravity_properties;
-  const struct sidm_props *sidm_props = s->e->sidm_properties;
-
+  
   /* Convert velocities to internal units */
   for (int k = 0; k < count; k++) {
     gp[k].v_full[0] *= a_factor_vel;
@@ -5730,7 +5735,7 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
     /* Check that the smoothing lengths are non-zero */
     for (int k = 0; k < count; k++) {
         if (dmp[k].h <= 0.)
-            error("Invalid value of smoothing length for bpart %lld h=%e", dmp[k].id,
+            error("Invalid value of smoothing length for bpart %lld h=%e", dmp[k].id_or_neg_offset,
                   dmp[k].h);
     }
     
@@ -6592,9 +6597,9 @@ void space_replicate(struct space *s, int replicate, int verbose) {
               const size_t offset_dmpart = offset * nr_dmparts;
               const size_t offset_gpart = offset * nr_gparts;
               
-              for (size_t n = 0; n < nr_parts; ++n) {
+              for (size_t n = 0; n < nr_dmparts; ++n) {
                   dmparts[offset_dmpart + n].gpart = &gparts[offset_gpart + n];
-                  gparts[offset_gpart + n].id_or_neg_offset = -(offset_part + n);
+                  gparts[offset_gpart + n].id_or_neg_offset = -(offset_dmpart + n);
               }
           }
 
@@ -6685,12 +6690,12 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   /* Get the current local number of particles */
   const size_t local_nr_parts = s->nr_parts;
   const size_t local_nr_sinks = s->nr_sinks;
-  const size_t local_nr_gparts = s->nr_gparts;
+  /*const size_t local_nr_gparts = s->nr_gparts;*/
   const size_t local_nr_sparts = s->nr_sparts;
   const size_t local_nr_bparts = s->nr_bparts;
   const size_t local_nr_dmparts = s->nr_dmparts;
-  const size_t local_nr_baryons =
-      local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
+  /*const size_t local_nr_baryons =
+      local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;*/
   /*const size_t local_nr_dm = local_nr_gparts - local_nr_baryons;*/
 
   /* Get the global offsets */
@@ -6751,7 +6756,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
     s->bparts[i].id = offset_bparts + i;
   }
   for (size_t i = 0; i < local_nr_dmparts; ++i) {
-    s->dmparts[i].id = offset_dmparts + i;
+    s->dmparts[i].id_or_neg_offset = offset_dmparts + i;
   }
   for (size_t i = 0; i < local_nr_dmparts; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter_background)

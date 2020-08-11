@@ -22,14 +22,14 @@
 /* Config parameters. */
 #include "../config.h"
 #include "./sidm.h"
+#include "./dark_matter_part.h"
 
 /**
  * @brief Prepares a s-particle for its interactions
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void dark_matter_init_gpart(
-                                                                   struct gpart* gp) {
+__attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct dmpart* gp) {
     
     
     gp->density.wcount = 0.f;
@@ -49,11 +49,11 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_gpart(
  * cosmology).
  * @param time The current time (used if running without cosmology).
  */
-__attribute__((always_inline)) INLINE static void dark_matter_first_init_gpart(
-     struct gpart* gp, const struct sidm_props* sidm_properties,
+__attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
+     struct dmpart* gp, const struct sidm_props* sidm_properties,
      const int with_cosmology, const double scale_factor, const double time) {
     
-    dark_matter_init_gpart(gp);
+    dark_matter_init_dmpart(gp);
 }
 
 /**
@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_gpart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
-               struct gpart* restrict gp, float dt_drift) {}
+               struct dmpart* restrict gp, float dt_drift) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
  * @param gp The particle.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_values(
-                struct gpart* restrict gp) {}
+                struct dmpart* restrict gp) {}
 
 
 /**
@@ -82,17 +82,17 @@ __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_va
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_end_density(
-    struct gpart* gp, const struct cosmology* cosmo) {
+    struct dmpart* gp, const struct cosmology* cosmo) {
     
     /* Some smoothing length multiples. */
-    const float h = sp->h;
+    const float h = gp->h;
     const float h_inv = 1.0f / h;                       /* 1/h */
     const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
     const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
     
     /* Finish the calculation by inserting the missing h-factors */
-    sp->density.wcount *= h_inv_dim;
-    sp->density.wcount_dh *= h_inv_dim_plus_one;
+    gp->density.wcount *= h_inv_dim;
+    gp->density.wcount_dh *= h_inv_dim_plus_one;
 }
 
 /**
@@ -103,11 +103,11 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighbours(
-    struct gpart* restrict gp, const struct cosmology* cosmo) {
+    struct dmpart* restrict gp, const struct cosmology* cosmo) {
     
     /* Re-set problematic values */
-    sp->density.wcount = 0.f;
-    sp->density.wcount_dh = 0.f;
+    gp->density.wcount = 0.f;
+    gp->density.wcount_dh = 0.f;
 }
 
 #endif

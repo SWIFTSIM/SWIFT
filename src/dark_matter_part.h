@@ -19,6 +19,9 @@
 #ifndef SWIFT_DARK_MATTER_PART_H
 #define SWIFT_DARK_MATTER_PART_H
 
+#include "sidm_properties.h"
+
+
 /**
  * @brief Particle fields for the dark matter particles.
  *
@@ -27,7 +30,7 @@
 struct dmpart {
 
   /*! Particle ID. */
-  long long id;
+  long long id_or_neg_offset;
 
   /*! Pointer to corresponding gravity part. */
   struct gpart* gpart;
@@ -39,10 +42,13 @@ struct dmpart {
   float x_diff[3];
 
   /*! Particle velocity. */
-  float v[3];
+  float v_full[3];
 
   /*! Dark matter mass */
   float mass;
+
+  /*! Dark matter density */
+  float rho;
 
   /* Particle cutoff radius. */
   float h;
@@ -59,6 +65,9 @@ struct dmpart {
     float wcount_dh;
 
   } density;
+
+  /*! Add self-interacting DM specific stuff. */
+  struct sidm_gpart_data sidm_data;
 
 
 } SWIFT_STRUCT_ALIGN;

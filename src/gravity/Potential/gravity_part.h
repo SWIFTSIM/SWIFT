@@ -20,7 +20,6 @@
 #define SWIFT_POTENTIAL_GRAVITY_PART_H
 
 #include "fof_struct.h"
-#include "sidm_properties.h"
 
 /**
  * @brief Gravity particle.
@@ -89,9 +88,6 @@ struct gpart {
   double potential_exact;
 #endif
     
-    /*! Add self-interacting DM specific stuff. */
-    struct sidm_gpart_data sidm_data;
-
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_POTENTIAL_GRAVITY_PART_H */

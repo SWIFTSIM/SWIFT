@@ -45,13 +45,13 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter_density(
-        float r2, const float *dx, float hi, float hj, struct gpart *restrict gpi,
-        const struct gpart *restrict gpj, float a, float H) {
+        float r2, const float *dx, float hi, float hj, struct dmpart *restrict dmpi,
+        const struct dmpart *restrict dmpj, float a, float H) {
     
-    float wi;
+    float wi, dwi;
     
     /* Get the masses. */
-    const float mj = gpj->mass;
+    const float mj = dmpj->mass;
     
     /* Get r. */
     const float r_inv = 1.0f / sqrtf(r2);
@@ -59,10 +59,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     const float h_inv = 1.f / hi;
     const float ui = r * h_inv;
-    kernel_deval(ui, &wi);
+    kernel_deval(ui, &wi, &dwi);
     
-    gpi->rho += mj * wi;
-    gpi->density.wcount += wi;
+    dmpi->rho += mj * wi;
+    dmpi->density.wcount += wi;
 
 }
 
@@ -79,34 +79,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_density(
-            float r2, const float *dx, float hi, float hj, struct gpart *restrict gpi,
-            const struct gpart *restrict gpj, float a, float H) {
+            float r2, const float *dx, float hi, float hj, struct dmpart *restrict dmpi,
+            struct dmpart *restrict dmpj, float a, float H) {
     
-    float wi, wj;
+    float wi, wj, dwi, dwj;
     
     /* Get r. */
     const float r_inv = 1.0f / sqrtf(r2);
     const float r = r2 * r_inv;
     
     /* Get the masses. */
-    const float mi = gpi->mass;
-    const float mj = gpj->mass;
+    const float mi = dmpi->mass;
+    const float mj = dmpj->mass;
     
     /* Compute density of pi. */
     const float hi_inv = 1.f / hi;
     const float ui = r * hi_inv;
-    kernel_deval(ui, &wi);
+    kernel_deval(ui, &wi, &dwi);
     
-    gpi->rho += mj * wi;
-    gpi->density.wcount += wi;
+    dmpi->rho += mj * wi;
+    dmpi->density.wcount += wi;
     
     /* Compute density of pj. */
     const float hj_inv = 1.f / hj;
     const float uj = r * hj_inv;
-    kernel_deval(uj, &wj);
+    kernel_deval(uj, &wj, &dwj);
     
-    gpj->rho += mi * wj;
-    gpj->density.wcount += wj;
+    dmpj->rho += mi * wj;
+    dmpj->density.wcount += wj;
 }
 
 /**
@@ -117,8 +117,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
  * @param ti_current Current integer time (for random numbers).
  *
  */
-__attribute__((always_inline)) INLINE static void sidm_do_kick(struct gpart *restrict gpj,
-                                                               struct gpart *restrict gpi,
+__attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict gpj,
+                                                               struct dmpart *restrict gpi,
                                                                const integertime_t ti_current) {
     
     /* Center of Mass Velocity of interacting particles */
@@ -174,7 +174,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct gpart *res
  * @param ti_current Current integer time (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
+runner_iact_sidm(float h_SI, struct dmpart *gpi, struct dmpart *gpj,
                  float a, float H, const double dt,
                  const integertime_t ti_current,
                  const struct sidm_props* sidm_props,
@@ -223,7 +223,7 @@ runner_iact_sidm(float h_SI, struct gpart *gpi, struct gpart *gpj,
  *
  * @param gp Pointer to the gparticle data.
  */
-__attribute__((always_inline)) INLINE static void sidm_reset(struct gpart *restrict gp) {
+__attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *restrict gp) {
     
     /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
     gp->sidm_data.sidm_flag = 0.0f;
@@ -244,7 +244,7 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct gpart *restr
  * @param gp #gpart
  *
  */
-__attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_gpart(struct gpart *restrict gp) {
+__attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_gpart(struct dmpart *restrict gp) {
     
     if (gp->sidm_data.sidm_flag > 0) {
         
