@@ -48,7 +48,6 @@ __attribute__((always_inline)) INLINE static float gravity_get_mass(
  */
 __attribute__((always_inline)) INLINE static float gravity_get_softening(
     const struct gpart* gp, const struct gravity_props* restrict grav_props) {
-
   return gp->epsilon;
 }
 

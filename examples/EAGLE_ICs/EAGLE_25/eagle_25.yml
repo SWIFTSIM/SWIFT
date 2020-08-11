@@ -91,7 +91,8 @@ InitialConditions:
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
   generate_gas_in_ics: 1             # Generate gas particles from the DM-only ICs
   cleanup_smoothing_lengths: 1       # Since we generate gas, make use of the (expensive) cleaning-up procedure.
-
+  remap_ids: 1                       # Re-map the IDs to [1, N] to avoid collision problems when splitting
+  
 # Parameters of the line-of-sight outputs
 LineOfSight:
   basename:            eagle_los
@@ -204,6 +205,7 @@ EAGLEFeedback:
 EAGLEAGN:
   subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
   multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
+  subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
   with_angmom_limiter:                1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
   radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.

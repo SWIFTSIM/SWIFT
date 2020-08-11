@@ -752,6 +752,39 @@ struct cell {
 
   } black_holes;
 
+  /*! Sink particles variables */
+  struct {
+
+    /*! Pointer to the #sink data. */
+    struct sink *parts;
+
+    /*! Nr of #sink in this cell. */
+    int count;
+
+    /*! Nr of #sink this cell can hold after addition of new one. */
+    int count_total;
+
+    /*! Is the #sink data of this cell being used in a sub-cell? */
+    int hold;
+
+    /*! Spin lock for various uses (#sink case). */
+    swift_lock_type lock;
+
+    /*! Last (integer) time the cell's sink were drifted forward in time. */
+    integertime_t ti_old_part;
+
+    /*! Minimum end of (integer) time step in this cell for sink tasks. */
+    integertime_t ti_end_min;
+
+    /*! Maximum end of (integer) time step in this cell for sink tasks. */
+    integertime_t ti_end_max;
+
+    /*! Maximum beginning of (integer) time step in this cell for sink
+     * tasks.
+     */
+    integertime_t ti_beg_max;
+  } sinks;
+
 #ifdef WITH_MPI
   /*! MPI variables */
   struct {
@@ -843,9 +876,10 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, struct cell_buff *buff,
-                struct cell_buff *sbuff, struct cell_buff *bbuff,
-                struct cell_buff *gbuff);
+                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
+                struct cell_buff *buff, struct cell_buff *sbuff,
+                struct cell_buff *bbuff, struct cell_buff *gbuff,
+                struct cell_buff *sinkbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
@@ -855,6 +889,8 @@ int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
 int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
+int cell_sink_locktree(struct cell *c);
+void cell_sink_unlocktree(struct cell *c);
 int cell_blocktree(struct cell *c);
 void cell_bunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);

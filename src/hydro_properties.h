@@ -120,6 +120,9 @@ struct hydro_props {
   /*! Mass above which particles get split (internal units) */
   float particle_splitting_mass_threshold;
 
+  /*! Are we generating random IDs when splitting particles? */
+  int generate_random_ids;
+
   /* ------ Viscosity and diffusion ---------------- */
 
   /*! Artificial viscosity parameters */

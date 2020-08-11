@@ -409,6 +409,22 @@ elif test "$boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
+# Check if we want to use fixed boundary particles.
+AC_ARG_ENABLE([fixed-boundary-particles],
+   [AS_HELP_STRING([--enable-fixed-boundary-particles],
+     [Set all particles with an ID smaller than @<:@N@:>@ as fixed boundary particles (i.e. receive zero gravity + hydro forces + zero velocity), this mode enables also --enable-boundary-particles and --enable-no-gravity-below-id.]
+   )],
+   [fixed_boundary_particles="$enableval"],
+   [fixed_boundary_particles="no"]
+)
+if test "$fixed_boundary_particles" == "yes"; then
+   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
+elif test "$fixed_boundary_particles" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
+   AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -1129,6 +1145,7 @@ if test "x$with_python" != "xno"; then
       AC_MSG_RESULT([$PYTHON_INCS])
   ])
   have_python="yes"
+  AC_DEFINE([HAVE_PYTHON],1,[Python appears to be present.])
 fi
 AC_SUBST([PYTHON_INCS])
 AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
@@ -1484,7 +1501,7 @@ AC_SUBST([NUMA_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, EAGLE, EAGLE-XL default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1499,7 +1516,6 @@ with_subgrid_pressure_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
-with_subgrid_task_order=default
 with_subgrid_sink=none
 
 case "$with_subgrid" in
@@ -1516,8 +1532,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
 	with_subgrid_black_holes=none
-	with_subgrid_task_order=GEAR
-  	with_subgrid_sink=none
+	with_subgrid_sink=none
 	enable_fof=no
    ;;
    QLA)
@@ -1529,8 +1544,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=QLA
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
-	with_subgrid_task_order=default
-  	with_subgrid_sink=none
+	with_subgrid_sink=none
 	enable_fof=no
    ;;
    EAGLE)
@@ -1542,8 +1556,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
-	with_subgrid_task_order=EAGLE
-  	with_subgrid_sink=none
+	with_subgrid_sink=none
 	enable_fof=yes
    ;;
    EAGLE-XL)
@@ -1555,7 +1568,6 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
-	with_subgrid_task_order=EAGLE
 	with_subgrid_sink=none
 	enable_fof=yes
    ;;
@@ -2091,42 +2103,10 @@ case "$with_sink" in
    ;;
 esac
 
-# Task order
-AC_ARG_WITH([task-order],
-   [AS_HELP_STRING([--with-task-order=<model>],
-       [Task order to use @<:@default, EAGLE, GEAR default: default@:>@]
-   )],
-   [with_task_order="$withval"],
-   [with_task_order="default"]
-)
-
-if test "$with_subgrid" != "none"; then
-   if test "$with_task_order" != "default"; then
-      AC_MSG_ERROR([Cannot provide with-subgrid and with-task-order together])
-   else
-      with_task_order="$with_subgrid_task_order"
-   fi
-fi
-
-case "$with_task_order" in
-   EAGLE)
-       AC_DEFINE([TASK_ORDER_EAGLE], [1], [EAGLE task order])
-   ;;
-   default)
-       AC_DEFINE([TASK_ORDER_DEFAULT], [1], [Default (i.e. EAGLE/OWLS) task order])
-   ;;
-   GEAR)
-       AC_DEFINE([TASK_ORDER_GEAR], [1], [GEAR task order])
-   ;;
-   *)
-       AC_MSG_ERROR([Unknown task ordering: $with_task_order])
-   ;;
-esac
-
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, nfw_mn, hernquist, disc-patch, sine-wave, constant, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -2146,6 +2126,9 @@ case "$with_potential" in
    ;;
    nfw)
       AC_DEFINE([EXTERNAL_POTENTIAL_NFW], [1], [Navarro-Frenk-White external potential])
+   ;;
+   nfw_mn)
+      AC_DEFINE([EXTERNAL_POTENTIAL_NFW_MN], [1], [Navarro-Frenk-White + Miyamoto-Nagai disk external potential])
    ;;
    disc-patch)
       AC_DEFINE([EXTERNAL_POTENTIAL_DISC_PATCH], [1], [Disc-patch external potential])
@@ -2389,7 +2372,6 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
-   Task dependencies    : $with_task_order
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
@@ -2403,6 +2385,7 @@ AC_MSG_RESULT([
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
+   Fixed boundary particles    : $fixed_boundary_particles
 
    Particle Logger      : $with_logger
    Python enabled       : $have_python

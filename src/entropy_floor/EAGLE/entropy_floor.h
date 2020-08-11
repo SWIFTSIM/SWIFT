@@ -144,26 +144,20 @@ static INLINE float entropy_floor(
 }
 
 /**
- * @brief Compute the temperature from the entropy floor for a given #part
+ * @brief Compute the temperature from the entropy floor at a given density
  *
- * Calculate the EoS temperature, the particle is not updated.
  * This is the temperature exactly corresponding to the imposed EoS shape.
  * It only matches the entropy returned by the entropy_floor() function
  * for a neutral gas with primoridal abundance.
  *
- * @param p The #part.
+ * @param rho_phys The physical density (internal units).
+ * @param rho_com The comoving density (internal units).
  * @param cosmo The cosmological model.
  * @param props The properties of the entropy floor.
  */
-static INLINE float entropy_floor_temperature(
-    const struct part *p, const struct cosmology *cosmo,
+static INLINE float entropy_floor_gas_temperature(
+    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
     const struct entropy_floor_properties *props) {
-
-  /* Comoving density in internal units */
-  const float rho_com = hydro_get_comoving_density(p);
-
-  /* Physical density in internal units */
-  const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Mean baryon density in co-moving internal units for over-density condition
    * (Recall cosmo->critical_density_0 is 0 in a non-cosmological run,
@@ -201,6 +195,31 @@ static INLINE float entropy_floor_temperature(
   }
 
   return temperature;
+}
+
+/**
+ * @brief Compute the temperature from the entropy floor for a given #part
+ *
+ * Calculate the EoS temperature, the particle is not updated.
+ * This is the temperature exactly corresponding to the imposed EoS shape.
+ * It only matches the entropy returned by the entropy_floor() function
+ * for a neutral gas with primoridal abundance.
+ *
+ * @param p The #part.
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor_temperature(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+
+  /* Comoving density in internal units */
+  const float rho_com = hydro_get_comoving_density(p);
+
+  /* Physical density in internal units */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  return entropy_floor_gas_temperature(rho_phys, rho_com, cosmo, props);
 }
 
 /**

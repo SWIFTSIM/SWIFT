@@ -66,6 +66,22 @@ void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
 }
 
 /**
+ * @brief Re-link the #gpart%s associated with the list of #sink%s.
+ *
+ * @param sinks The list of #sink.
+ * @param N The number of sink-particles to re-link;
+ * @param offset The offset of #sink%s relative to the global sinks list.
+ */
+void part_relink_gparts_to_sinks(struct sink *sinks, const size_t N,
+                                 const ptrdiff_t offset) {
+  for (size_t k = 0; k < N; k++) {
+    if (sinks[k].gpart) {
+      sinks[k].gpart->id_or_neg_offset = -(k + offset);
+    }
+  }
+}
+
+/**
  * @brief Re-link the #gpart%s associated with the list of #bpart%s.
  *
  * @param bparts The list of #bpart.
@@ -130,11 +146,28 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
 }
 
 /**
+ * @brief Re-link the #sink%s associated with the list of #gpart%s.
+ *
+ * @param gparts The list of #gpart.
+ * @param N The number of particles to re-link;
+ * @param sinks The global #sink array in which to find the #gpart offsets.
+ */
+void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
+                                 struct sink *sinks) {
+  for (size_t k = 0; k < N; k++) {
+    if (gparts[k].type == swift_type_sink) {
+      sinks[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    }
+  }
+}
+
+/**
  * @brief Helper structure to pass data to the liking mapper functions.
  */
 struct relink_data {
   struct part *const parts;
   struct gpart *const garts;
+  struct sink *const sinks;
   struct spart *const sparts;
   struct bpart *const bparts;
 };
@@ -156,6 +189,7 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
   struct spart *const sparts = data->sparts;
   struct bpart *const bparts = data->bparts;
   struct gpart *const gparts = (struct gpart *)map_data;
+  struct sink *const sinks = data->sinks;
 
   for (int k = 0; k < count; k++) {
     if (gparts[k].type == swift_type_gas) {
@@ -164,12 +198,14 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     } else if (gparts[k].type == swift_type_black_hole) {
       bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    } else if (gparts[k].type == swift_type_sink) {
+      sinks[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
 }
 
 /**
- * @brief Re-link both the #part%s, #spart%s and #bpart%s associated
+ * @brief Re-link both the #part%s, #sink%s, #spart%s and #bpart%s associated
  * with the list of #gpart%s.
  *
  * This function uses thread parallelism and should not be called inside
@@ -179,41 +215,44 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
  * @param gparts The list of #gpart.
  * @param N The number of particles to re-link;
  * @param parts The global #part array in which to find the #gpart offsets.
+ * @param sinks The global #sink array in which to find the #gpart offsets.
  * @param sparts The global #spart array in which to find the #gpart offsets.
  * @param bparts The global #bpart array in which to find the #gpart offsets.
  * @param tp The #threadpool object.
  */
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
-                                     struct part *parts, struct spart *sparts,
-                                     struct bpart *bparts,
+                                     struct part *parts, struct sink *sinks,
+                                     struct spart *sparts, struct bpart *bparts,
                                      struct threadpool *tp) {
 
-  struct relink_data data = {parts, /*gparts=*/NULL, sparts, bparts};
+  struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts};
   threadpool_map(tp, part_relink_all_parts_to_gparts_mapper, gparts, N,
                  sizeof(struct gpart), 0, &data);
 }
 
 /**
- * @brief Verifies that the #gpart, #part and #spart are correctly linked
- * together
- * and that the particle poisitions match.
+ * @brief Verifies that the #gpart, #part, #sink, #spart and #bpart are
+ * correctly linked together and that the particle positions match.
  *
  * This is a debugging function.
  *
  * @param parts The #part array.
  * @param gparts The #gpart array.
+ * @param sinks The #sink array.
  * @param sparts The #spart array.
  * @param bparts The #bpart array.
  * @param nr_parts The number of #part in the array.
  * @param nr_gparts The number of #gpart in the array.
+ * @param nr_sinks The number of #sink in the array.
  * @param nr_sparts The number of #spart in the array.
  * @param nr_bparts The number of #bpart in the array.
  * @param verbose Do we report verbosely in case of success ?
  */
 void part_verify_links(struct part *parts, struct gpart *gparts,
-                       struct spart *sparts, struct bpart *bparts,
-                       size_t nr_parts, size_t nr_gparts, size_t nr_sparts,
-                       size_t nr_bparts, int verbose) {
+                       struct sink *sinks, struct spart *sparts,
+                       struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
+                       size_t nr_sinks, size_t nr_sparts, size_t nr_bparts,
+                       int verbose) {
 
   ticks tic = getticks();
 
@@ -339,6 +378,40 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       if (gparts[k].time_bin != bpart->time_bin)
         error("Linked particles are not at the same time !");
     }
+
+    else if (gparts[k].type == swift_type_sink) {
+
+      /* Check that it is linked */
+      if (gparts[k].id_or_neg_offset > 0)
+        error("Sink gpart not linked to anything !");
+
+      /* Find its link */
+      const struct sink *sink = &sinks[-gparts[k].id_or_neg_offset];
+
+      /* Check the reverse link */
+      if (sink->gpart != &gparts[k]) error("Linking problem !");
+
+      /* Check that the particles are at the same place */
+      if (gparts[k].x[0] != sink->x[0] || gparts[k].x[1] != sink->x[1] ||
+          gparts[k].x[2] != sink->x[2])
+        error(
+            "Linked particles are not at the same position !\n"
+            "gp->x=[%e %e %e] sink->x=[%e %e %e] diff=[%e %e %e]",
+            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], sink->x[0],
+            sink->x[1], sink->x[2], gparts[k].x[0] - sink->x[0],
+            gparts[k].x[1] - sink->x[1], gparts[k].x[2] - sink->x[2]);
+
+      /* Check that the particles have the same mass */
+      if (gparts[k].mass != sink->mass)
+        error(
+            "Linked particles do not have the same mass!\n"
+            "gp->m=%e sink->m=%e",
+            gparts[k].mass, sink->mass);
+
+      /* Check that the particles are at the same time */
+      if (gparts[k].time_bin != sink->time_bin)
+        error("Linked particles are not at the same time !");
+    }
   }
 
   /* Now check that all parts are linked */
@@ -417,6 +490,33 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
         /* Check that the particles are at the same time */
         if (bparts[k].time_bin != bparts[k].gpart->time_bin)
+          error("Linked particles are not at the same time !");
+      }
+    }
+  }
+
+  /* Now check that all sinks are linked */
+  for (size_t k = 0; k < nr_sinks; ++k) {
+
+    /* Ok, there is a link */
+    if (sinks[k].gpart != NULL) {
+
+      /* Check the link */
+      if (sinks[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
+        error("Linking problem !");
+
+        /* Check that the particles are at the same place */
+        if (sinks[k].x[0] != sinks[k].gpart->x[0] ||
+            sinks[k].x[1] != sinks[k].gpart->x[1] ||
+            sinks[k].x[2] != sinks[k].gpart->x[2])
+          error("Linked particles are not at the same position !");
+
+        /* Check that the particles have the same mass */
+        if (sinks[k].mass != sinks[k].gpart->mass)
+          error("Linked particles do not have the same mass!\n");
+
+        /* Check that the particles are at the same time */
+        if (sinks[k].time_bin != sinks[k].gpart->time_bin)
           error("Linked particles are not at the same time !");
       }
     }

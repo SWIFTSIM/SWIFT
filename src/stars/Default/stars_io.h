@@ -265,5 +265,4 @@ INLINE static void stars_props_struct_restore(const struct stars_props *p,
   restart_read_blocks((void *)p, sizeof(struct stars_props), 1, stream, NULL,
                       "stars props");
 }
-
 #endif /* SWIFT_DEFAULT_STAR_IO_H */

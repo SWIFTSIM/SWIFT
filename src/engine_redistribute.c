@@ -518,6 +518,12 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
 void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
+#ifdef SWIFT_DEBUG_CHECKS
+  const int nr_sinks_new = 0;
+#endif
+  if (e->policy & engine_policy_sink) {
+    error("Not implemented yet");
+  }
 
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
@@ -868,8 +874,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sparts, s->bparts, g_dest,
-                      &g_counts[nodeID * nr_nodes], nr_nodes);
+    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
+                      g_dest, &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
@@ -998,22 +1004,16 @@ void engine_redistribute(struct engine *e) {
       const uint32_t flag = logger_pack_flags_and_data(logger_flag_mpi_exit, i);
 
       /* Log the hydro parts. */
-      logger_log_parts(
-          e->logger, &parts[part_offset], &xparts[part_offset], counts[c_ind],
-          logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
-          flag);
+      logger_log_parts(e->logger, &parts[part_offset], &xparts[part_offset],
+                       counts[c_ind], e, /* log_all_fields */ 1, flag);
 
       /* Log the stellar parts. */
-      logger_log_sparts(
-          e->logger, &sparts[spart_offset], s_counts[c_ind],
-          logger_masks_all_spart | logger_mask_data[logger_special_flags].mask,
-          flag);
+      logger_log_sparts(e->logger, &sparts[spart_offset], s_counts[c_ind], e,
+                        /* log_all_fields */ 1, flag);
 
       /* Log the gparts */
-      logger_log_gparts(
-          e->logger, &gparts[gpart_offset], g_counts[c_ind],
-          logger_masks_all_gpart | logger_mask_data[logger_special_flags].mask,
-          flag);
+      logger_log_gparts(e->logger, &gparts[gpart_offset], g_counts[c_ind], e,
+                        /* log_all_fields */ 1, flag);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
@@ -1104,23 +1104,17 @@ void engine_redistribute(struct engine *e) {
           logger_pack_flags_and_data(logger_flag_mpi_enter, i);
 
       /* Log the hydro parts. */
-      logger_log_parts(
-          e->logger, &s->parts[part_offset], &s->xparts[part_offset],
-          counts[c_ind],
-          logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
-          flag);
+      logger_log_parts(e->logger, &s->parts[part_offset],
+                       &s->xparts[part_offset], counts[c_ind], e,
+                       /* log_all_fields */ 1, flag);
 
       /* Log the stellar parts. */
-      logger_log_sparts(
-          e->logger, &s->sparts[spart_offset], s_counts[c_ind],
-          logger_masks_all_spart | logger_mask_data[logger_special_flags].mask,
-          flag);
+      logger_log_sparts(e->logger, &s->sparts[spart_offset], s_counts[c_ind], e,
+                        /* log_all_fields */ 1, flag);
 
       /* Log the gparts */
-      logger_log_gparts(
-          e->logger, &s->gparts[gpart_offset], g_counts[c_ind],
-          logger_masks_all_gpart | logger_mask_data[logger_special_flags].mask,
-          flag);
+      logger_log_gparts(e->logger, &s->gparts[gpart_offset], g_counts[c_ind], e,
+                        /* log_all_fields */ 1, flag);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
@@ -1194,8 +1188,9 @@ void engine_redistribute(struct engine *e) {
   }
 
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, s->bparts, nr_parts_new,
-                    nr_gparts_new, nr_sparts_new, nr_bparts_new, e->verbose);
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+                    nr_parts_new, nr_gparts_new, nr_sinks_new, nr_sparts_new,
+                    nr_bparts_new, e->verbose);
 
 #endif
 

@@ -98,6 +98,29 @@ __attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
 }
 
 /**
+ * @brief Check that the #sink in a #cell have been drifted to the current
+ * time.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_are_sink_drifted(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sinks.ti_old_part > e->ti_current)
+    error(
+        "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
+        "and e->ti_current=%lld (t=%e)",
+        c->sinks.ti_old_part, c->sinks.ti_old_part * e->time_base,
+        e->ti_current, e->ti_current * e->time_base);
+#endif
+
+  return (c->sinks.ti_old_part == e->ti_current);
+}
+
+/**
  * @brief Check that the #bpart in a #cell have been drifted to the current
  * time.
  *
@@ -244,6 +267,28 @@ __attribute__((always_inline)) INLINE static int cell_is_active_stars(
 }
 
 /**
+ * @brief Does a cell contain any sink-particle finishing their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_active_sinks(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sinks.ti_end_min < e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->sinks.ti_end_min, c->sinks.ti_end_min * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
+#endif
+
+  return (c->sinks.ti_end_min == e->ti_current);
+}
+
+/**
  * @brief Does a cell contain any b-particle finishing their time-step now ?
  *
  * @param c The #cell.
@@ -354,6 +399,33 @@ __attribute__((always_inline)) INLINE static int spart_is_active(
 }
 
 /**
+ * @brief Is this sink-particle finishing its time-step now ?
+ *
+ * @param sink The #sink.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #bpart is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int sink_is_active(
+    const struct sink *sink, const struct engine *e) {
+
+  const timebin_t max_active_bin = e->max_active_bin;
+  const timebin_t sink_bin = sink->time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_end = get_integer_time_end(ti_current, sink->time_bin);
+
+  if (ti_end < ti_current)
+    error(
+        "sink-particle in an impossible time-zone! bp->ti_end=%lld "
+        "e->ti_current=%lld",
+        ti_end, ti_current);
+#endif
+
+  return (sink_bin <= max_active_bin);
+}
+
+/**
  * @brief Is this b-particle finishing its time-step now ?
  *
  * @param bp The #bpart.
@@ -414,6 +486,18 @@ __attribute__((always_inline)) INLINE static int gpart_is_inhibited(
 __attribute__((always_inline)) INLINE static int spart_is_inhibited(
     const struct spart *sp, const struct engine *e) {
   return sp->time_bin == time_bin_inhibited;
+}
+
+/**
+ * @brief Has this sink particle been inhibited?
+ *
+ * @param sink The #sink.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #sink is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int sink_is_inhibited(
+    const struct sink *sink, const struct engine *e) {
+  return sink->time_bin == time_bin_inhibited;
 }
 
 /**
@@ -494,6 +578,28 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_stars(
 #endif
 
   return (c->stars.ti_beg_max == e->ti_current);
+}
+
+/**
+ * @brief Does a cell contain any sink-particle starting their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_starting_sinks(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->sinks.ti_beg_max > e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->sinks.ti_beg_max, c->sinks.ti_beg_max * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
+#endif
+
+  return (c->sinks.ti_beg_max == e->ti_current);
 }
 
 /**
@@ -628,6 +734,34 @@ __attribute__((always_inline)) INLINE static int bpart_is_starting(
 #endif
 
   return (bpart_bin <= max_active_bin);
+}
+
+/**
+ * @brief Is this sink-particle starting its time-step now ?
+ *
+ * @param sink The #sink.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #sink is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int sink_is_starting(
+    const struct sink *sink, const struct engine *e) {
+
+  const timebin_t max_active_bin = e->max_active_bin;
+  const timebin_t sink_bin = sink->time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_beg =
+      get_integer_time_begin(ti_current + 1, sink->time_bin);
+
+  if (ti_beg > ti_current)
+    error(
+        "sink-particle in an impossible time-zone! sink->ti_beg=%lld "
+        "e->ti_current=%lld",
+        ti_beg, ti_current);
+#endif
+
+  return (sink_bin <= max_active_bin);
 }
 
 #endif /* SWIFT_ACTIVE_H */

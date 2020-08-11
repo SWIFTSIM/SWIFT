@@ -55,6 +55,7 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
 #include "tracers_io.h"
@@ -380,10 +381,11 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
  * @param N_total The total number of particles to write in this array.
  * @param snapshot_units The units used for the data in this snapshot.
  */
-void prepare_array_parallel(struct engine* e, hid_t grp, const char* fileName,
-                            FILE* xmfFile, char* partTypeGroupName,
-                            struct io_props props, long long N_total,
-                            const struct unit_system* snapshot_units) {
+void prepare_array_parallel(
+    struct engine* e, hid_t grp, const char* fileName, FILE* xmfFile,
+    char* partTypeGroupName, struct io_props props, long long N_total,
+    const enum lossy_compression_schemes lossy_compression,
+    const struct unit_system* snapshot_units) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -415,21 +417,36 @@ void prepare_array_parallel(struct engine* e, hid_t grp, const char* fileName,
   if (h_err < 0)
     error("Error while changing data space shape for field '%s'.", props.name);
 
+  /* Dataset type */
+  hid_t h_type = H5Tcopy(io_hdf5_type(props.type));
+
+  /* Dataset properties */
+  hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
+
   /* Create property list for collective dataset write.    */
   const hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
 
   /* Set chunk size */
-  /* h_err = H5Pset_chunk(h_prop, rank, chunk_shape); */
-  /* if (h_err < 0) { */
-  /*   error("Error while setting chunk size (%llu, %llu) for field '%s'.", */
-  /*         chunk_shape[0], chunk_shape[1], props.name); */
-  /* } */
+  // h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
+  // if (h_err < 0) {
+  //  error("Error while setting chunk size (%llu, %llu) for field '%s'.",
+  //        chunk_shape[0], chunk_shape[1], props.name);
+  //}
+
+  /* Are we imposing some form of lossy compression filter? */
+  // if (lossy_compression != compression_write_lossless)
+  //  set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
+  //  props.name);
+
+  /* Impose check-sum to verify data corruption */
+  // h_err = H5Pset_fletcher32(h_prop);
+  // if (h_err < 0)
+  //  error("Error while setting checksum options for field '%s'.", props.name);
 
   /* Create dataset */
-  const hid_t h_data =
-      H5Dcreate(grp, props.name, io_hdf5_type(props.type), h_space, H5P_DEFAULT,
-                H5P_DEFAULT, H5P_DEFAULT);
+  const hid_t h_data = H5Dcreate(grp, props.name, h_type, h_space, H5P_DEFAULT,
+                                 h_prop, H5P_DEFAULT);
   if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write unit conversion factors for this data set */
@@ -473,6 +490,8 @@ void prepare_array_parallel(struct engine* e, hid_t grp, const char* fileName,
                    props.dimension, props.type);
 
   /* Close everything */
+  H5Tclose(h_type);
+  H5Pclose(h_prop);
   H5Pclose(h_plist_id);
   H5Dclose(h_data);
   H5Sclose(h_space);
@@ -691,18 +710,21 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
  * @param dim (output) The dimension of the volume read from the file.
  * @param parts (output) The array of #part read from the file.
  * @param gparts (output) The array of #gpart read from the file.
+ * @param sinks (output) The array of #sink read from the file.
  * @param sparts (output) The array of #spart read from the file.
  * @param bparts (output) The array of #bpart read from the file.
  * @param Ngas (output) The number of particles read from the file.
  * @param Ngparts (output) The number of particles read from the file.
  * @param Ngparts_background (output) The number of background DM particles read
  * from the file.
+ * @param Nsink (output) The number of particles read from the file.
  * @param Nstars (output) The number of particles read from the file.
  * @param Nblackholes (output) The number of particles read from the file.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we running with hydro ?
  * @param with_gravity Are we running with gravity ?
+ * @param with_sink Are we running with sink ?
  * @param with_stars Are we running with stars ?
  * @param with_black_holes Are we running with black holes ?
  * @param with_cosmology Are we running with cosmology ?
@@ -721,14 +743,15 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
  */
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
-                      struct spart** sparts, struct bpart** bparts,
-                      size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
+                      struct sink** sinks, struct spart** sparts,
+                      struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
+                      size_t* Ngparts_background, size_t* Nsinks,
                       size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
-                      int with_hydro, int with_gravity, int with_stars,
-                      int with_black_holes, int with_cosmology, int cleanup_h,
-                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
-                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
-                      int dry_run) {
+                      int with_hydro, int with_gravity, int with_sink,
+                      int with_stars, int with_black_holes, int with_cosmology,
+                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int n_threads, int dry_run, int remap_ids) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -744,7 +767,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0;
+  *Nblackholes = 0, *Nsinks = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -883,6 +906,15 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     bzero(*parts, *Ngas * sizeof(struct part));
   }
 
+  /* Allocate memory to store black hole particles */
+  if (with_sink) {
+    *Nsinks = N[swift_type_sink];
+    if (swift_memalign("sinks", (void**)sinks, sink_align,
+                       *Nsinks * sizeof(struct sink)) != 0)
+      error("Error while allocating memory for sink particles");
+    bzero(*sinks, *Nsinks * sizeof(struct sink));
+  }
+
   /* Allocate memory to store stars particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
@@ -895,7 +927,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store black hole particles */
   if (with_black_holes) {
     *Nblackholes = N[swift_type_black_hole];
-    if (swift_memalign("sparts", (void**)bparts, bpart_align,
+    if (swift_memalign("bparts", (void**)bparts, bpart_align,
                        *Nblackholes * sizeof(struct bpart)) != 0)
       error("Error while allocating memory for black_holes particles");
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
@@ -909,6 +941,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                N[swift_type_dark_matter] +
                N[swift_type_dark_matter_background] +
                (with_stars ? N[swift_type_stars] : 0) +
+               (with_sink ? N[swift_type_sink] : 0) +
                (with_black_holes ? N[swift_type_black_hole] : 0);
     *Ngparts_background = Ndm_background;
     if (swift_memalign("gparts", (void**)gparts, gpart_align,
@@ -966,6 +999,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         }
         break;
 
+      case swift_type_sink:
+        if (with_sink) {
+          Nparticles = *Nsinks;
+          sink_read_particles(*sinks, list, &num_fields);
+        }
+        break;
+
       case swift_type_stars:
         if (with_stars) {
           Nparticles = *Nstars;
@@ -988,14 +1028,22 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
     /* Read everything */
     if (!dry_run)
-      for (int i = 0; i < num_fields; ++i)
+      for (int i = 0; i < num_fields; ++i) {
+        /* If we are remapping ParticleIDs later, don't need to read them. */
+        if (remap_ids && strcmp(list[i].name, "ParticleIDs") == 0) continue;
+
+        /* Read array. */
         read_array_parallel(h_grp, list[i], Nparticles, N_total[ptype],
                             mpi_rank, offset[ptype], internal_units, ic_units,
                             cleanup_h, cleanup_sqrt_a, h, a);
+      }
 
     /* Close particle group */
     H5Gclose(h_grp);
   }
+
+  /* If we are remapping ParticleIDs later, start by setting them to 1. */
+  if (remap_ids) set_ids_to_one(*gparts, *Ngparts);
 
   if (!dry_run && with_gravity) {
 
@@ -1014,15 +1062,21 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
       io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas,
                                 Ndm + Ndm_background);
 
-    /* Duplicate the stars particles into gparts */
-    if (with_stars)
-      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars,
+    /* Duplicate the sink particles into gparts */
+    if (with_sink)
+      io_duplicate_sinks_gparts(&tp, *sinks, *gparts, *Nsinks,
                                 Ndm + Ndm_background + *Ngas);
 
     /* Duplicate the stars particles into gparts */
+    if (with_stars)
+      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars,
+                                Ndm + Ndm_background + *Ngas + *Nsinks);
+
+    /* Duplicate the stars particles into gparts */
     if (with_black_holes)
-      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
-                                      Ndm + Ndm_background + *Ngas + *Nstars);
+      io_duplicate_black_holes_gparts(
+          &tp, *bparts, *gparts, *Nblackholes,
+          Ndm + Ndm_background + *Ngas + *Nsinks + *Nstars);
 
     threadpool_clean(&tp);
   }
@@ -1060,6 +1114,8 @@ void prepare_file(struct engine* e, const char* fileName,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+  const struct sink* sinks = e->s->sinks;
+
   struct output_options* output_options = e->output_options;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
@@ -1233,6 +1289,10 @@ void prepare_file(struct engine* e, const char* fileName,
         }
         break;
 
+      case swift_type_sink:
+        sink_write_particles(sinks, list, &num_fields, with_cosmology);
+        break;
+
       case swift_type_stars:
         stars_write_particles(sparts, list, &num_fields, with_cosmology);
         num_fields += chemistry_write_sparticles(sparts, list + num_fields);
@@ -1265,23 +1325,25 @@ void prepare_file(struct engine* e, const char* fileName,
 
     /* Did the user specify a non-standard default for the entire particle
      * type? */
-    const enum compression_levels compression_level_current_default =
-        output_options_get_ptype_default(output_options->select_output,
-                                         current_selection_name,
-                                         (enum part_type)ptype);
+    const enum lossy_compression_schemes compression_level_current_default =
+        output_options_get_ptype_default_compression(
+            output_options->select_output, current_selection_name,
+            (enum part_type)ptype);
 
     /* Prepare everything that is not cancelled */
     int num_fields_written = 0;
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
-      const int should_write = output_options_should_write_field(
-          output_options, current_selection_name, list[i].name,
-          (enum part_type)ptype, compression_level_current_default);
+      const enum lossy_compression_schemes compression_level =
+          output_options_get_field_compression(
+              output_options, current_selection_name, list[i].name,
+              (enum part_type)ptype, compression_level_current_default);
 
-      if (should_write) {
+      if (compression_level != compression_do_not_write) {
         prepare_array_parallel(e, h_grp, fileName, xmfFile, partTypeGroupName,
-                               list[i], N_total[ptype], snapshot_units);
+                               list[i], N_total[ptype], compression_level,
+                               snapshot_units);
         num_fields_written++;
       }
     }
@@ -1334,6 +1396,7 @@ void write_output_parallel(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+  const struct sink* sinks = e->s->sinks;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -1352,6 +1415,7 @@ void write_output_parallel(struct engine* e,
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
+  const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
@@ -1366,18 +1430,20 @@ void write_output_parallel(struct engine* e,
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
   const size_t Ngas_written =
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nsinks_written =
+      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
   const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written;
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
-                                Ndm_background, 0,
+                                Ndm_background, Nsinks_written,
                                 Nstars_written, Nblackholes_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
@@ -1544,6 +1610,7 @@ void write_output_parallel(struct engine* e,
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
+    struct sink* sinks_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1703,6 +1770,33 @@ void write_output_parallel(struct engine* e,
 
       } break;
 
+      case swift_type_sink: {
+        if (Nsinks == Nsinks_written) {
+
+          /* No inhibted particles: easy case */
+          Nparticles = Nsinks;
+          sink_write_particles(sinks, list, &num_fields, with_cosmology);
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          Nparticles = Nsinks_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("sinks_written", (void**)&sinks_written,
+                             sink_align,
+                             Nsinks_written * sizeof(struct sink)) != 0)
+            error("Error while allocating temporary memory for sink");
+
+          /* Collect the particles we want to write */
+          io_collect_sinks_to_write(sinks, sinks_written, Nsinks,
+                                    Nsinks_written);
+
+          /* Select the fields to write */
+          sink_write_particles(sinks_written, list, &num_fields,
+                               with_cosmology);
+        }
+      } break;
+
       case swift_type_stars: {
         if (Nstars == Nstars_written) {
 
@@ -1803,23 +1897,25 @@ void write_output_parallel(struct engine* e,
 
     /* Did the user specify a non-standard default for the entire particle
      * type? */
-    const enum compression_levels compression_level_current_default =
-        output_options_get_ptype_default(output_options->select_output,
-                                         current_selection_name,
-                                         (enum part_type)ptype);
+    const enum lossy_compression_schemes compression_level_current_default =
+        output_options_get_ptype_default_compression(
+            output_options->select_output, current_selection_name,
+            (enum part_type)ptype);
 
     /* Write everything that is not cancelled */
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
-      const int should_write = output_options_should_write_field(
-          output_options, current_selection_name, list[i].name,
-          (enum part_type)ptype, compression_level_current_default);
+      const enum lossy_compression_schemes compression_level =
+          output_options_get_field_compression(
+              output_options, current_selection_name, list[i].name,
+              (enum part_type)ptype, compression_level_current_default);
 
-      if (should_write)
+      if (compression_level != compression_do_not_write) {
         write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
                              Nparticles, N_total[ptype], mpi_rank,
                              offset[ptype], internal_units, snapshot_units);
+      }
     }
 
     /* Free temporary array */
@@ -1830,6 +1926,7 @@ void write_output_parallel(struct engine* e,
       swift_free("gpart_group_written", gpart_group_data_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
+    if (sinks_written) swift_free("sinks_written", sinks_written);
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);

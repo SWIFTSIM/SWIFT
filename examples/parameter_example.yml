@@ -38,6 +38,7 @@ SPH:
   max_ghost_iterations:              30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   particle_splitting:                1        # (Optional) Are we splitting particles that are too massive (default: 0)
   particle_splitting_mass_threshold: 7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
+  generate_random_ids:               0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
   initial_temperature:               0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:               0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:                   0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
@@ -178,6 +179,7 @@ InitialConditions:
   smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
   shift:      [0.0,0.0,0.0]         # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
+  remap_ids:  0                     # (Optional) Remap all the particle IDs to the range [1, NumPart].
 
 # Parameters controlling restarts
 Restarts:
@@ -308,6 +310,19 @@ NFWPotential:
   critical_density:   127.4         # Critical density (internal units).
   timestep_mult:      0.01          # Dimensionless pre-factor for the time-step condition, basically determines fraction of orbital time we need to do an integration step
 
+# NFW + Miyamoto-Nagai disk potential
+NFW_MNPotential:
+  useabspos:         0         # 0 -> positions based on centre, 1 -> absolute positions 
+  position:         [0.,0.,0.] # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  timestep_mult:    0.01       # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:          0.01       # Softening size (internal units)
+  concentration:    10.0       # concentration of the Halo
+  M_200:            150.0      # M200 of the galaxy disk (internal units)
+  critical_density: 1.37E-8    # Critical density of the Universe (internal units)
+  Mdisk:            3.0        # Mass of the disk (internal units)
+  Rdisk:            4.0        # Effective radius of the disk (internal units)
+  Zdisk:            0.4704911  # Scale-height of the disk (internal units)
+  
 # Disk-patch potential parameters. The potential is along the x-axis.
 DiscPatchPotential:
   surface_density: 10.      # Surface density of the disc (internal units)
@@ -374,14 +389,26 @@ EAGLECooling:
   Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
   S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
 
-# Quick Lyman-alpha cooling (EAGLE with fixed primoridal Z)
+# Quick Lyman-alpha cooling (EAGLE-XL with fixed primoridal Z)
 QLACooling:
-  dir_name:                ./coolingtables/   # Location of the Wiersma+08 cooling tables
-  H_reion_z:               7.5                # Redshift of Hydrogen re-ionization
-  H_reion_eV_p_H:          2.0                # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
-  He_reion_z_centre:       3.5                # Redshift of the centre of the Helium re-ionization Gaussian
-  He_reion_z_sigma:        0.5                # Spread in redshift of the  Helium re-ionization Gaussian
-  He_reion_eV_p_H:         2.0                # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the Ploeckinger+20 cooling tables
+  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
+  H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
+
+# COLIBRE cooling parameters (EAGLE-XL)
+COLIBRECooling:
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5 # Location of the cooling tables
+  H_reion_z:               7.5               # Redshift of Hydrogen re-ionization (Planck 2018)
+  H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
+  delta_logTEOS_subgrid_properties: 0.3      # delta log T above the EOS below which the subgrid properties use Teq assumption
   
 # Cooling with Grackle 3.0
 GrackleCooling:
@@ -509,6 +536,7 @@ EAGLEAGN:
   use_subgrid_mass_from_ics:          1          # (Optional) Use subgrid masses specified in ICs [1, default], or initialise them to particle masses [0]?
   with_subgrid_mass_check:            1          # (Optional) Verify that initial black hole subgrid masses are positive [1, default]. Only used if use_subgrid_mass_from_ics is 1.
   multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
+  subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
   with_angmom_limiter:                1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
   radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.

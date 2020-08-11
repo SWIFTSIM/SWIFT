@@ -27,6 +27,7 @@
 #include "./hydro/Minimal/hydro_io.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_io.h"
+#include "./hydro/Gadget2/hydro_logger.h"
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_io.h"
 #elif defined(HOPKINS_PU_SPH)

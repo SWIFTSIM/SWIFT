@@ -41,7 +41,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
     const struct cooling_function_data* cooling) {
 
   io_write_attribute_s(h_grp, "Cooling Model",
-                       "Quick Lyman-alpha (EAGLE with primordial Z only)");
+                       "Quick Lyman-alpha (COLIBRE with primordial Z only)");
 }
 #endif
 
@@ -70,6 +70,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   list[0] = io_make_output_field_convert_part(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
       convert_part_T, "Temperatures of the gas particles");
+
   return 1;
 }
 

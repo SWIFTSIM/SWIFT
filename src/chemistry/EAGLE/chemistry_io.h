@@ -271,7 +271,19 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
                            "Masses of the BH particles in iron that have been "
                            "produced by SNIa stars");
 
-  return 9;
+  list[9] =
+      io_make_output_field("BirthMetallicities", FLOAT, 1, UNIT_CONV_NO_UNITS,
+                           0.f, bparts, chemistry_data.formation_metallicity,
+                           "Metallicities (metal mass fractions) of the gas "
+                           "particles the black holes formed from");
+
+  list[10] = io_make_output_field(
+      "SmoothedBirthMetallicities", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      chemistry_data.smoothed_formation_metallicity,
+      "Smoothed metallicities (metal mass fractions) of the gas particles the "
+      "black holes formed from");
+
+  return 11;
 }
 
 #ifdef HAVE_HDF5
