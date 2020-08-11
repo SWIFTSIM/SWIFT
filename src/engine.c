@@ -502,6 +502,9 @@ void engine_exchange_cells(struct engine *e) {
  * @param ind_bpart The foreign #cell ID of each bpart.
  * @param Nbpart The number of stray bparts, contains the number of bparts
  *        received on return.
+ * @param ind_dmpart The foreign #cell ID of each dmpart.
+ * @param Ndmpart The number of stray dmparts, contains the number of dmparts
+ *        received on return.
  *
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
@@ -513,7 +516,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const size_t offset_sparts,
                             const int *restrict ind_spart, size_t *Nspart,
                             const size_t offset_bparts,
-                            const int *restrict ind_bpart, size_t *Nbpart) {
+                            const int *restrict ind_bpart, size_t *Nbpart,
+                            const size_t offset_dmparts,
+                            const int *restrict ind_dmpart, size_t *Ndmpart) {
 
 #ifdef WITH_MPI
   struct space *s = e->s;
@@ -525,6 +530,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     e->proxies[k].nr_gparts_out = 0;
     e->proxies[k].nr_sparts_out = 0;
     e->proxies[k].nr_bparts_out = 0;
+    e->proxies[k].nr_dmparts_out = 0;
   }
 
   /* Put the parts into the corresponding proxies. */
@@ -658,6 +664,47 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     }
 #endif
   }
+    
+    /* Put the dmparts into the corresponding proxies. */
+    for (size_t k = 0; k < *Ndmpart; k++) {
+        
+        /* Ignore the particles we want to get rid of (inhibited, ...). */
+        if (ind_dmpart[k] == -1) continue;
+        
+        /* Get the target node and proxy ID. */
+        const int node_id = e->s->cells_top[ind_dmpart[k]].nodeID;
+        if (node_id < 0 || node_id >= e->nr_nodes)
+            error("Bad node ID %i.", node_id);
+        const int pid = e->proxy_ind[node_id];
+        if (pid < 0) {
+            error(
+                  "Do not have a proxy for the requested nodeID %i for part with "
+                  "id=%lld, x=[%e,%e,%e].",
+                  node_id, s->dmparts[offset_dmparts + k].id,
+                  s->dmparts[offset_dmparts + k].x[0], s->dmparts[offset_dmparts + k].x[1],
+                  s->dmparts[offset_dmparts + k].x[2]);
+        }
+        
+        /* Re-link the associated gpart with the buffer offset of the bpart. */
+        if (s->dmparts[offset_dmparts + k].gpart != NULL) {
+            s->dmparts[offset_dmparts + k].gpart->id_or_neg_offset =
+            -e->proxies[pid].nr_dmparts_out;
+        }
+        
+#ifdef SWIFT_DEBUG_CHECKS
+        if (s->dmparts[offset_dmparts + k].time_bin == time_bin_inhibited)
+            error("Attempting to exchange an inhibited particle");
+#endif
+        
+        /* Load the bpart into the proxy */
+        proxy_dmparts_load(&e->proxies[pid], &s->dmparts[offset_dmparts + k], 1);
+        
+#ifdef WITH_LOGGER
+        if (e->policy & engine_policy_logger) {
+            error("Not yet implemented.");
+        }
+#endif
+    }
 
   /* Put the gparts into the corresponding proxies. */
   for (size_t k = 0; k < *Ngpart; k++) {
@@ -731,18 +778,20 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   int count_gparts_in = 0;
   int count_sparts_in = 0;
   int count_bparts_in = 0;
+  int count_dmparts_in = 0;
   for (int k = 0; k < e->nr_proxies; k++) {
     count_parts_in += e->proxies[k].nr_parts_in;
     count_gparts_in += e->proxies[k].nr_gparts_in;
     count_sparts_in += e->proxies[k].nr_sparts_in;
     count_bparts_in += e->proxies[k].nr_bparts_in;
+    count_dmparts_in += e->proxies[k].nr_dmparts_in;
   }
   if (e->verbose) {
     message(
-        "sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts, got %i/%i/%i/%i "
+        "sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts/dmparts, got %i/%i/%i/%i/%i "
         "back.",
-        *Npart, *Ngpart, *Nspart, *Nbpart, count_parts_in, count_gparts_in,
-        count_sparts_in, count_bparts_in);
+        *Npart, *Ngpart, *Nspart, *Nbpart, *Ndmpart, count_parts_in, count_gparts_in,
+        count_sparts_in, count_bparts_in, count_dmparts_in);
   }
 
   /* Reallocate the particle arrays if necessary */
@@ -805,6 +854,24 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       }
     }
   }
+    
+    if (offset_dmparts + count_dmparts_in > s->size_dmparts) {
+        s->size_dmparts = (offset_dmparts + count_dmparts_in) * engine_parts_size_grow;
+        struct dmpart *dmparts_new = NULL;
+        if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
+                           sizeof(struct dmpart) * s->size_dmparts) != 0)
+            error("Failed to allocate new bpart data.");
+        memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * offset_dmparts);
+        swift_free("bparts", s->dmparts);
+        s->dmparts = dmparts_new;
+        
+        /* Reset the links */
+        for (size_t k = 0; k < offset_dmparts; k++) {
+            if (s->dmparts[k].gpart != NULL) {
+                s->dmparts[k].gpart->id_or_neg_offset = -k;
+            }
+        }
+    }
 
   if (offset_gparts + count_gparts_in > s->size_gparts) {
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
@@ -824,6 +891,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_black_hole) {
         s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      } else if (s->gparts[k].type == swift_type_dark_matter) {
+        s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
   }
@@ -856,6 +925,12 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     } else {
       reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
     }
+      if (e->proxies[k].nr_dmparts_in > 0) {
+          reqs_in[5 * k + 4] = e->proxies[k].req_dmparts_in;
+          nr_in += 1;
+      } else {
+          reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
+      }
 
     if (e->proxies[k].nr_parts_out > 0) {
       reqs_out[5 * k] = e->proxies[k].req_parts_out;
@@ -882,11 +957,17 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     } else {
       reqs_out[5 * k + 4] = MPI_REQUEST_NULL;
     }
+      if (e->proxies[k].nr_dmparts_out > 0) {
+          reqs_out[5 * k + 4] = e->proxies[k].req_dmparts_out;
+          nr_out += 1;
+      } else {
+          reqs_out[5 * k + 4] = MPI_REQUEST_NULL;
+      }
   }
 
   /* Wait for each part array to come in and collect the new
      parts from the proxies. */
-  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0;
+  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0, count_dmparts = 0;
   for (int k = 0; k < nr_in; k++) {
     int err, pid;
     if ((err = MPI_Waitany(5 * e->nr_proxies, reqs_in, &pid,
@@ -918,6 +999,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
              sizeof(struct spart) * prox->nr_sparts_in);
       memcpy(&s->bparts[offset_bparts + count_bparts], prox->bparts_in,
              sizeof(struct bpart) * prox->nr_bparts_in);
+        memcpy(&s->dmparts[offset_dmparts + count_dmparts], prox->dmparts_in,
+               sizeof(struct dmpart) * prox->nr_dmparts_in);
 
 #ifdef WITH_LOGGER
       if (e->policy & engine_policy_logger) {
@@ -943,6 +1026,10 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
         /* Log the bparts */
         if (prox->nr_bparts_in > 0) {
+          error("TODO");
+        }
+        /* Log the dmparts */
+        if (prox->nr_dmparts_in > 0) {
           error("TODO");
         }
       }
@@ -973,13 +1060,20 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
           gp->id_or_neg_offset = s->bparts - bp;
           bp->gpart = gp;
         }
+      } else if (gp->type == swift_type_dark_matter) {
+          struct dmpart *dmp =
+          &s->dmparts[offset_dmparts + count_dmparts - gp->id_or_neg_offset];
+          gp->id_or_neg_offset = s->dmparts - dmp;
+          dmp->gpart = gp;
       }
+    
 
       /* Advance the counters. */
       count_parts += prox->nr_parts_in;
       count_gparts += prox->nr_gparts_in;
       count_sparts += prox->nr_sparts_in;
       count_bparts += prox->nr_bparts_in;
+      count_dmparts += prox->nr_dmparts_in;
     }
   }
 
@@ -1003,6 +1097,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   *Ngpart = count_gparts;
   *Nspart = count_sparts;
   *Nbpart = count_bparts;
+  *Ndmpart = count_dmparts;
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1264,13 +1359,14 @@ void engine_allocate_foreign_particles(struct engine *e) {
   const int with_hydro = e->policy & engine_policy_hydro;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
+  const int with_sidm = e->policy & engine_policy_sidm;
   struct space *s = e->s;
   ticks tic = getticks();
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
   size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
-         count_bparts_in = 0;
+         count_bparts_in = 0, count_dmparts_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -1289,6 +1385,9 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
+
+        /* For dark matter, we just use the numbers in the top-level cells */
+        count_dmparts_in += e->proxies[k].cells_in[j]->dark_matter.count;
     }
   }
 
@@ -1351,6 +1450,17 @@ void engine_allocate_foreign_particles(struct engine *e) {
       error("Failed to allocate foreign bpart data.");
   }
 
+    /* Allocate space for the foreign particles we will receive */
+    if (count_dmparts_in > s->size_dmparts_foreign) {
+        if (s->dmparts_foreign != NULL)
+            swift_free("dmparts_foreign", s->dmparts_foreign);
+        s->size_dmparts_foreign = engine_foreign_alloc_margin * count_dmparts_in;
+        if (swift_memalign("dmparts_foreign", (void **)&s->dmparts_foreign,
+                           dmpart_align,
+                           sizeof(struct dmpart) * s->size_dmparts_foreign) != 0)
+            error("Failed to allocate foreign dmpart data.");
+    }
+
   if (e->verbose)
     message(
         "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
@@ -1367,6 +1477,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   struct gpart *gparts = s->gparts_foreign;
   struct spart *sparts = s->sparts_foreign;
   struct bpart *bparts = s->bparts_foreign;
+  struct dmpart *dmparts = s->dmparts_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -1398,6 +1509,13 @@ void engine_allocate_foreign_particles(struct engine *e) {
         cell_link_bparts(e->proxies[k].cells_in[j], bparts);
         bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
       }
+        
+      if (with_sidm) {
+            
+            /* For dark matter, we just use the numbers in the top-level cells */
+            cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);
+            dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_mater.count];
+      }
     }
   }
 
@@ -1406,6 +1524,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
   s->nr_bparts_foreign = bparts - s->bparts_foreign;
+    s->nr_dmparts_foreign = dmparts - s->dmparts_foreign;
 
   if (e->verbose)
     message("Recursively linking foreign arrays took %.3f %s.",
@@ -1724,6 +1843,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       (long long)(e->s->nr_parts - e->s->nr_extra_parts),
       (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
       (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
+      (long long)(e->s->nr_dmparts - e->s->nr_extra_dmparts),
       (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 4, MPI_LONG_LONG, MPI_SUM,
@@ -1733,12 +1853,14 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->total_nr_gparts = num_particles[1];
   e->total_nr_sparts = num_particles[2];
   e->total_nr_bparts = num_particles[3];
+  e->total_nr_dmparts = num_particles[4];
 
   /* Flag that there are no inhibited particles */
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
   e->nr_inhibited_sparts = 0;
   e->nr_inhibited_bparts = 0;
+    e->nr_inhibited_dmparts = 0;
 
   if (e->verbose)
     message("updating particle counts took %.3f %s.",
@@ -2150,6 +2272,7 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_gparts(e->s, e->verbose);
   space_first_init_sparts(e->s, e->verbose);
   space_first_init_bparts(e->s, e->verbose);
+  space_first_init_dmparts(e->s, e->verbose);
   space_first_init_sinks(e->s, e->verbose);
 
   if (e->verbose)
@@ -2219,6 +2342,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(s, e->verbose);
   space_init_sparts(s, e->verbose);
   space_init_bparts(s, e->verbose);
+  space_init_dmparts(s, e->verbose);
   space_init_sinks(s, e->verbose);
 
   /* Update the cooling function */
@@ -2291,6 +2415,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_gparts(e->s, e->verbose);
   space_init_sparts(e->s, e->verbose);
   space_init_bparts(e->s, e->verbose);
+  space_init_dmparts(e->s, e->verbose);
   space_init_sinks(e->s, e->verbose);
 
   /* Print the number of active tasks ? */
@@ -2998,7 +3123,7 @@ void engine_check_for_index_dump(struct engine *e) {
   const float mem_frac = log->index.mem_frac;
   const size_t total_nr_parts =
       (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
-       e->total_nr_bparts + e->total_nr_DM_background_gparts);
+       e->total_nr_bparts + e->total_nr_dmparts + e->total_nr_DM_background_gparts);
   const size_t index_file_size =
       total_nr_parts * sizeof(struct logger_part_data);
 
@@ -3477,6 +3602,25 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link the gparts to their bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
+    
+    /* Re-allocate the local dmparts. */
+    if (e->verbose)
+        message("Re-allocating dmparts array from %zu to %zu.", s->size_dmparts,
+                (size_t)(s->nr_dmparts * engine_redistribute_alloc_margin));
+    s->size_dmparts = s->nr_dmparts * engine_redistribute_alloc_margin;
+    struct dmpart *dmparts_new = NULL;
+    if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
+                       sizeof(struct dmpart) * s->size_dmparts) != 0)
+        error("Failed to allocate new dmpart data.");
+    
+    if (s->nr_dmparts > 0)
+        memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * s->nr_dmparts);
+    swift_free("dmparts", s->dmparts);
+    s->dmparts = dmparts_new;
+    
+    /* Re-link the gparts to their bparts. */
+    if (s->nr_dmparts > 0 && s->nr_gparts > 0)
+        part_relink_gparts_to_dmparts(s->dmparts, s->nr_dmparts, 0);
 
   /* Re-allocate the local gparts. */
   if (e->verbose)
@@ -3496,14 +3640,14 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link everything to the gparts. */
   if (s->nr_gparts > 0)
     part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts, s->sinks,
-                                    s->sparts, s->bparts, &e->threadpool);
+                                    s->sparts, s->bparts, s->dmparts, &e->threadpool);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts, s->dmparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, e->verbose);
+                    s->nr_bparts, s->nr_dmparts, e->verbose);
 #endif
 
   if (e->verbose)
@@ -3885,6 +4029,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_sparts = Nstars;
   e->total_nr_sinks = Nsinks;
   e->total_nr_bparts = Nblackholes;
+  e->total_nr_dmparts = Ndarkmatter;
   e->total_nr_DM_background_gparts = Nbackground_gparts;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
@@ -4671,6 +4816,8 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_gparts", space_extra_gparts);
     space_extra_bparts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_bparts", space_extra_bparts);
+    space_extra_dmparts = parser_get_opt_param_int(
+         params, "Scheduler:cell_extra_dmparts", space_extra_dmparts);
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -5222,7 +5369,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   /* Start by reducing the minimal mass of each particle type */
   float min_mass[swift_type_count] = {
       e->s->min_part_mass,  e->s->min_gpart_mass, FLT_MAX, FLT_MAX,
-      e->s->min_spart_mass, e->s->min_bpart_mass};
+      e->s->min_spart_mass, e->s->min_bpart_mass, e->s->min_dmpart_mass};
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
@@ -5252,7 +5399,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   /* Get the counts of each particle types */
   const long long total_nr_baryons =
-      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
+      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts + e->total_nr_dmparts;
   const long long total_nr_dm_gparts =
       e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
   float count_parts[swift_type_count] = {
@@ -5261,7 +5408,8 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       (float)e->total_nr_DM_background_gparts,
       0.f,
       (float)e->total_nr_sparts,
-      (float)e->total_nr_bparts};
+      (float)e->total_nr_bparts,
+      (float)e->total_nr_dmparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];

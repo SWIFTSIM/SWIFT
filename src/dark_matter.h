@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_gpart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
-                                                                      struct gpart* restrict gp, float dt_drift) {}
+               struct gpart* restrict gp, float dt_drift) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
  * @param gp The particle.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_values(
-                                                                               struct gpart* restrict gp) {}
+                struct gpart* restrict gp) {}
 
 
 /**

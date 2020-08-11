@@ -222,6 +222,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_bpart;
           break;
 
+        case task_subtype_dark_matter_density:
         case task_subtype_sidm:
         case task_subtype_grav:
         case task_subtype_external_grav:

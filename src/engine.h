@@ -254,6 +254,7 @@ struct engine {
   long long total_nr_gparts;
   long long total_nr_sparts;
   long long total_nr_bparts;
+  long long total_nr_dmparts;
   long long total_nr_DM_background_gparts;
 
   /* Total numbers of cells (top-level and sub-cells) in the system. */
@@ -267,6 +268,7 @@ struct engine {
   long long nr_inhibited_gparts;
   long long nr_inhibited_sparts;
   long long nr_inhibited_bparts;
+  long long nr_inhibited_dmparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Total number of particles removed from the system since the last rebuild */
@@ -274,6 +276,7 @@ struct engine {
   long long count_inhibited_gparts;
   long long count_inhibited_sparts;
   long long count_inhibited_bparts;
+  long long nr_inhibited_dmparts;
 #endif
 
   /* Maximal ID of the parts (used for the generation of new IDs when splitting)
@@ -589,7 +592,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             size_t *Ngpart, const size_t offset_sparts,
                             const int *ind_spart, size_t *Nspart,
                             const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart);
+                            size_t *Nbpart,
+                            const size_t offset_dmparts, const int *ind_dmpart,
+                            size_t *Ndmpart);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);

@@ -45,6 +45,7 @@
 #include "chemistry.h"
 #include "const.h"
 #include "cooling.h"
+#include "dark_matter.h"
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
@@ -90,6 +91,9 @@ int space_extra_sparts = space_extra_sparts_default;
 /*! Number of extra #bpart we allocate memory for per top-level cell */
 int space_extra_bparts = space_extra_bparts_default;
 
+/*! Number of extra #dmpart we allocate memory for per top-level cell */
+int space_extra_dmparts = space_extra_dmparts_default;
+
 /*! Number of extra #gpart we allocate memory for per top-level cell */
 int space_extra_gparts = space_extra_gparts_default;
 
@@ -128,6 +132,7 @@ struct index_data {
   int *cell_counts;
   size_t count_inhibited_part;
   size_t count_inhibited_gpart;
+  size_t count_inhibited_dmpart;
   size_t count_inhibited_spart;
   size_t count_inhibited_bpart;
   size_t count_inhibited_sink;
@@ -135,6 +140,7 @@ struct index_data {
   size_t count_extra_gpart;
   size_t count_extra_spart;
   size_t count_extra_bpart;
+  size_t count_extra_dmpart;
   size_t count_extra_sink;
 };
 
@@ -226,6 +232,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.count = 0;
     c->black_holes.count_total = 0;
     c->black_holes.updated = 0;
+    c->dark_matter.count = 0;
+    c->dark_matter.count_total = 0;
+    c->dark_matter.updated = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
@@ -246,8 +255,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+    c->dark_matter.density = NULL;
+    c->dark_matter.ghost = NULL;
+    c->dark_matter.sidm = NULL;
+    c->dark_matter.sidm_kick = NULL;
     c->kick1 = NULL;
-    c->sidm_kick = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
@@ -260,7 +272,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.drift = NULL;
     c->black_holes.black_holes_in = NULL;
     c->black_holes.black_holes_out = NULL;
-    c->grav.sidm = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling_in = NULL;
@@ -283,6 +294,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.parts = NULL;
     c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;
+    c->dark_matter.parts = NULL;
     c->flags = 0;
     c->hydro.ti_end_min = -1;
     c->hydro.ti_end_max = -1;
@@ -292,6 +304,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
     c->black_holes.ti_end_max = -1;
+    c->dark_matter.ti_end_min = -1;
+    c->dark_matter.ti_end_max = -1;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
@@ -358,6 +372,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
   }
+    if (s->dmparts_foreign != NULL) {
+        swift_free("dmparts_foreign", s->dmparts_foreign);
+        s->size_dmparts_foreign = 0;
+        s->dmparts_foreign = NULL;
+    }
   if (clear_cell_pointers) {
     for (int k = 0; k < s->e->nr_proxies; k++) {
       for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
@@ -379,6 +398,7 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_dmparts = s->nr_dmparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -401,6 +421,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
+        if (c->dark_matter.h_max > h_max) {
+          h_max = c->dark_matter.h_max;
+        }
       }
 
       /* Can we instead use all the top-level cells? */
@@ -416,6 +439,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
+          if (c->nodeID == engine_rank && c->dark_matter.h_max > h_max) {
+              h_max = c->dark_matter.h_max;
+          }
       }
 
       /* Last option: run through the particles */
@@ -429,6 +455,9 @@ void space_regrid(struct space *s, int verbose) {
       for (size_t k = 0; k < nr_bparts; k++) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
+        for (size_t k = 0; k < nr_dmparts; k++) {
+            if (s->dmparts[k].h > h_max) h_max = s->dmparts[k].h;
+        }
     }
   }
 
@@ -602,6 +631,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for sinks.");
       if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
         error("Failed to init spinlock for black holes.");
+        if (lock_init(&s->cells_top[k].dark_matter.lock) != 0)
+            error("Failed to init spinlock for dark matter.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
         error("Failed to init spinlock for star formation (spart).");
     }
@@ -624,6 +655,7 @@ void space_regrid(struct space *s, int verbose) {
           c->hydro.count = 0;
           c->grav.count = 0;
           c->stars.count = 0;
+          c->dark_matter.count = 0;
           c->top = c;
           c->super = c;
           c->hydro.super = c;
@@ -632,6 +664,7 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.ti_old_part = ti_current;
           c->stars.ti_old_part = ti_current;
           c->black_holes.ti_old_part = ti_current;
+          c->dark_matter.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
@@ -733,6 +766,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Anything to do here? (Abort if we don't want extras)*/
   if (space_extra_parts == 0 && space_extra_gparts == 0 &&
+      space_extra_dmparts == 0 &&
       space_extra_sparts == 0 && space_extra_bparts == 0)
     return;
 
@@ -747,6 +781,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
+  size_t nr_dmparts = s->nr_dmparts;
   size_t nr_sinks = s->nr_sinks;
 
   /* The current number of actual particles */
@@ -754,6 +789,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t nr_actual_gparts = nr_gparts - s->nr_extra_gparts;
   size_t nr_actual_sparts = nr_sparts - s->nr_extra_sparts;
   size_t nr_actual_bparts = nr_bparts - s->nr_extra_bparts;
+  size_t nr_actual_dmparts = nr_dmparts - s->nr_extra_dmparts;
   size_t nr_actual_sinks = nr_sinks - s->nr_extra_sinks;
 
   /* The number of particles we allocated memory for (MPI overhead) */
@@ -761,6 +797,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
   size_t size_bparts = s->size_bparts;
+  size_t size_dmparts = s->size_dmparts;
 
   int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
   if (local_cells == NULL)
@@ -781,6 +818,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   const size_t expected_num_extra_sparts = nr_local_cells * space_extra_sparts;
   const size_t expected_num_extra_bparts = nr_local_cells * space_extra_bparts;
   const size_t expected_num_extra_sinks = nr_local_cells * space_extra_sinks;
+  const size_t expected_num_extra_dmparts = nr_local_cells * space_extra_dmparts;
 
   if (verbose) {
     message("Currently have %zd/%zd/%zd/%zd/%zd real particles.",
@@ -806,6 +844,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   if (expected_num_extra_bparts < s->nr_extra_bparts)
     error("Reduction in top-level cells number not handled.");
   if (expected_num_extra_sinks < s->nr_extra_sinks)
+    error("Reduction in top-level cells number not handled.");
+  if (expected_num_extra_dmparts < s->nr_extra_dmparts)
     error("Reduction in top-level cells number not handled.");
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
@@ -1003,6 +1043,12 @@ void space_allocate_extras(struct space *s, int verbose) {
   if (nr_actual_sinks + expected_num_extra_sinks > nr_sinks) {
     error("Not implemented yet");
   }
+    
+    /* Do we have enough space for the extra dark matter particles (i.e. we haven't used up any)
+     * ? */
+    if (nr_actual_dmparts + expected_num_extra_dmparts > nr_dmparts) {
+        error("Not implemented yet");
+    }
 
   /* Do we have enough space for the extra sparts (i.e. we haven't used up any)
    * ? */
@@ -1258,6 +1304,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
+  size_t nr_dmparts = s->nr_dmparts;
   size_t nr_bparts = s->nr_bparts;
   size_t nr_sinks = s->nr_sinks;
 
@@ -1265,6 +1312,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t size_parts = s->size_parts;
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
+  size_t size_dmparts = s->size_dmparts;
   size_t size_bparts = s->size_bparts;
   size_t size_sinks = s->size_sinks;
 
@@ -1272,6 +1320,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t count_inhibited_parts = 0;
   size_t count_inhibited_gparts = 0;
   size_t count_inhibited_sparts = 0;
+  size_t count_inhibited_dmparts = 0;
   size_t count_inhibited_bparts = 0;
   size_t count_inhibited_sinks = 0;
 
@@ -1279,6 +1328,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   size_t count_extra_parts = 0;
   size_t count_extra_gparts = 0;
   size_t count_extra_sparts = 0;
+  size_t count_extra_dmparts = 0;
   size_t count_extra_bparts = 0;
   size_t count_extra_sinks = 0;
 
@@ -1287,6 +1337,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   const size_t g_index_size = size_gparts + space_expected_max_nr_strays;
   const size_t s_index_size = size_sparts + space_expected_max_nr_strays;
   const size_t b_index_size = size_bparts + space_expected_max_nr_strays;
+  const size_t dm_index_size = size_dmparts + space_expected_max_nr_strays;
   const size_t sink_index_size = size_sinks + space_expected_max_nr_strays;
 
   /* Allocate arrays to store the indices of the cells where particles
@@ -1296,9 +1347,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   int *g_index = (int *)swift_malloc("g_index", sizeof(int) * g_index_size);
   int *s_index = (int *)swift_malloc("s_index", sizeof(int) * s_index_size);
   int *b_index = (int *)swift_malloc("b_index", sizeof(int) * b_index_size);
+  int *dm_index = (int *)swift_malloc("dm_index", sizeof(int) * dm_index_size);
   int *sink_index =
       (int *)swift_malloc("sink_index", sizeof(int) * sink_index_size);
-  if (h_index == NULL || g_index == NULL || s_index == NULL ||
+  if (h_index == NULL || g_index == NULL || s_index == NULL || dm_index == NULL ||
       b_index == NULL || sink_index == NULL)
     error("Failed to allocate temporary particle indices.");
 
@@ -1311,11 +1363,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       (int *)swift_malloc("cell_spart_counts", sizeof(int) * s->nr_cells);
   int *cell_bpart_counts =
       (int *)swift_malloc("cell_bpart_counts", sizeof(int) * s->nr_cells);
+  int *cell_dmpart_counts =
+    (int *)swift_malloc("cell_dmpart_counts", sizeof(int) * s->nr_cells);
   int *cell_sink_counts =
       (int *)swift_malloc("cell_sink_counts", sizeof(int) * s->nr_cells);
 
   if (cell_part_counts == NULL || cell_gpart_counts == NULL ||
-      cell_spart_counts == NULL || cell_bpart_counts == NULL ||
+      cell_spart_counts == NULL || cell_bpart_counts == NULL || cell_dmpart_counts == NULL ||
       cell_sink_counts == NULL)
     error("Failed to allocate cell particle count buffer.");
 
@@ -1325,6 +1379,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     cell_gpart_counts[i] = 0;
     cell_spart_counts[i] = 0;
     cell_bpart_counts[i] = 0;
+    cell_dmpart_counts[i] = 0;
     cell_sink_counts[i] = 0;
   }
 
@@ -1345,6 +1400,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_bparts_get_cell_index(s, b_index, cell_bpart_counts,
                                 &count_inhibited_bparts, &count_extra_bparts,
                                 verbose);
+    if (nr_dmparts > 0)
+        space_dmparts_get_cell_index(s, dm_index, cell_dmpart_counts,
+                                    &count_inhibited_dmparts, &count_extra_dmparts,
+                                    verbose);
   if (nr_sinks > 0)
     space_sinks_get_cell_index(s, sink_index, cell_sink_counts,
                                &count_inhibited_sinks, &count_extra_sinks,
@@ -1360,6 +1419,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     error("We just repartitioned but still found inhibited gparts.");
   if (repartitioned && count_inhibited_bparts)
     error("We just repartitioned but still found inhibited bparts.");
+  if (repartitioned && count_inhibited_dmparts)
+    error("We just repartitioned but still found inhibited dmparts.");
   if (repartitioned && count_inhibited_sinks)
     error("We just repartitioned but still found inhibited sinks.");
 
@@ -1379,6 +1440,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     error(
         "Number of extra bparts in the bpart array not matching the space "
         "counter.");
+    if (count_extra_dmparts != s->nr_extra_dmparts)
+        error(
+              "Number of extra dmparts in the dmpart array not matching the space "
+              "counter.");
   if (count_extra_sinks != s->nr_extra_sinks)
     error(
         "Number of extra sinks in the sink array not matching the space "
@@ -1523,6 +1588,39 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       }
     }
   }
+    
+    /* Move non-local dmparts and inhibited dmparts to the end of the list. */
+    if ((with_dithering || !repartitioned) &&
+        (s->e->nr_nodes > 1 || count_inhibited_dmparts > 0)) {
+        
+        for (size_t k = 0; k < nr_dmparts; /* void */) {
+            
+            /* Inhibited particle or foreign particle */
+            if (dm_index[k] == -1 || cells_top[dm_index[k]].nodeID != local_nodeID) {
+                
+                /* One fewer particle */
+                nr_dmparts -= 1;
+                
+                /* Swap the particle */
+                memswap(&s->dmparts[k], &s->dmparts[nr_dmparts], sizeof(struct dmpart));
+                
+                /* Swap the link with the gpart */
+                if (s->dmparts[k].gpart != NULL) {
+                    s->dmparts[k].gpart->id_or_neg_offset = -k;
+                }
+                if (s->dmparts[nr_dmparts].gpart != NULL) {
+                    s->dmparts[nr_dmparts].gpart->id_or_neg_offset = -nr_dmparts;
+                }
+                
+                /* Swap the index */
+                memswap(&dm_index[k], &dm_index[nr_dmparts], sizeof(int));
+                
+            } else {
+                /* Increment when not exchanging otherwise we need to retest "k".*/
+                k++;
+            }
+        }
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all bparts are in the correct place. */
@@ -1672,12 +1770,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
     size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
+      size_t nr_dmparts_exchanged = s->nr_dmparts - nr_dmparts;
     size_t nr_bparts_exchanged = s->nr_bparts - nr_bparts;
     engine_exchange_strays(s->e, nr_parts, &h_index[nr_parts],
                            &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
                            &nr_gparts_exchanged, nr_sparts, &s_index[nr_sparts],
                            &nr_sparts_exchanged, nr_bparts, &b_index[nr_bparts],
-                           &nr_bparts_exchanged);
+                           &nr_bparts_exchanged, nr_dmparts, &dm_index[nr_dmparts],
+                           &nr_dmparts_exchanged);
 
     /* Set the new particle counts. */
     s->nr_parts = nr_parts + nr_parts_exchanged;

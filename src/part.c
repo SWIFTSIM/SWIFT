@@ -66,6 +66,22 @@ void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
 }
 
 /**
+ * @brief Re-link the #gpart%s associated with the list of #dmpart%s.
+ *
+ * @param dmparts The list of #dmpart.
+ * @param N The number of dm-particles to re-link;
+ * @param offset The offset of #dmpart%s relative to the global dmparts list.
+ */
+void part_relink_gparts_to_dmparts(struct dmpart *dmparts, const size_t N,
+                                  const ptrdiff_t offset) {
+    for (size_t k = 0; k < N; k++) {
+        if (dmparts[k].gpart) {
+            dmparts[k].gpart->id_or_neg_offset = -(k + offset);
+        }
+    }
+}
+
+/**
  * @brief Re-link the #gpart%s associated with the list of #sink%s.
  *
  * @param sinks The list of #sink.
@@ -130,6 +146,22 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
 }
 
 /**
+ * @brief Re-link the #dmpart%s associated with the list of #gpart%s.
+ *
+ * @param gparts The list of #gpart.
+ * @param N The number of particles to re-link;
+ * @param dmparts The global #dmpart array in which to find the #gpart offsets.
+ */
+void part_relink_dmparts_to_gparts(struct gpart *gparts, const size_t N,
+                                  struct dmpart *dmparts) {
+    for (size_t k = 0; k < N; k++) {
+        if (gparts[k].type == swift_type_dark_matter) {
+            dmparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+        }
+    }
+}
+
+/**
  * @brief Re-link the #bpart%s associated with the list of #gpart%s.
  *
  * @param gparts The list of #gpart.
@@ -170,6 +202,7 @@ struct relink_data {
   struct sink *const sinks;
   struct spart *const sparts;
   struct bpart *const bparts;
+  struct dmpart *const dmparts;
 };
 
 /**
@@ -188,12 +221,15 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
   struct part *const parts = data->parts;
   struct spart *const sparts = data->sparts;
   struct bpart *const bparts = data->bparts;
+  struct dmpart *const dmparts = data->dmparts;
   struct gpart *const gparts = (struct gpart *)map_data;
   struct sink *const sinks = data->sinks;
 
   for (int k = 0; k < count; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    } else if (gparts[k].type == swift_type_dark_matter) {
+      dmparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     } else if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     } else if (gparts[k].type == swift_type_black_hole) {
@@ -223,9 +259,10 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
                                      struct spart *sparts, struct bpart *bparts,
+                                     struct dmpart *dmparts,
                                      struct threadpool *tp) {
 
-  struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts};
+  struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts, dmparts};
   threadpool_map(tp, part_relink_all_parts_to_gparts_mapper, gparts, N,
                  sizeof(struct gpart), 0, &data);
 }
@@ -250,8 +287,9 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
  */
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct sink *sinks, struct spart *sparts,
+                       struct dmpart *dmparts,
                        struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sinks, size_t nr_sparts, size_t nr_bparts,
+                       size_t nr_sinks, size_t nr_sparts, size_t nr_dmparts, size_t nr_bparts,
                        int verbose) {
 
   ticks tic = getticks();
@@ -259,12 +297,39 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
   for (size_t k = 0; k < nr_gparts; ++k) {
 
     /* We have a real DM particle */
-    if (gparts[k].type == swift_type_dark_matter &&
-        gparts[k].time_bin != time_bin_not_created) {
-
-      /* Check that it's not linked */
-      if (gparts[k].id_or_neg_offset <= 0)
-        error("DM gpart particle linked to something !");
+    /* CC. Now I want a DM particle linked! */
+    if (gparts[k].type == swift_type_dark_matter){
+        
+        /* Check that it is linked */
+        if (gparts[k].id_or_neg_offset > 0)
+            error("DM gpart not linked to anything!");
+        
+        /* Find its link */
+        const struct dmpart *dmpart = &dmparts[-gparts[k].id_or_neg_offset];
+        
+        /* Check the reverse link */
+        if (dmpart->gpart != &gparts[k]) error("Linking problem !");
+        
+        /* Check that the particles are at the same place */
+        if (gparts[k].x[0] != dmpart->x[0] || gparts[k].x[1] != dmpart->x[1] ||
+            gparts[k].x[2] != dmpart->x[2])
+            error(
+                  "Linked particles are not at the same position !\n"
+                  "gp->x=[%e %e %e] sp->x=[%e %e %e] diff=[%e %e %e]",
+                  gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], dmpart->x[0],
+                  dmpart->x[1], dmpart->x[2], gparts[k].x[0] - dmpart->x[0],
+                  gparts[k].x[1] - dmpart->x[1], gparts[k].x[2] - dmpart->x[2]);
+        
+        /* Check that the particles have the same mass */
+        if (gparts[k].mass != dmpart->mass)
+            error(
+                  "Linked particles do not have the same mass!\n"
+                  "gp->m=%e sp->m=%e",
+                  gparts[k].mass, dmpart->mass);
+        
+        /* Check that the particles are at the same time */
+        if (gparts[k].time_bin != dmpart->time_bin)
+            error("Linked particles are not at the same time !");
     }
 
     /* We have a background DM particle */
@@ -467,6 +532,33 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       }
     }
   }
+    
+    /* Now check that all dmparts are linked */
+    for (size_t k = 0; k < nr_dmparts; ++k) {
+        
+        /* Ok, there is a link */
+        if (dmparts[k].gpart != NULL) {
+            
+            /* Check the link */
+            if (dmparts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
+                error("Linking problem !");
+                
+                /* Check that the particles are at the same place */
+                if (dmparts[k].x[0] != dmparts[k].gpart->x[0] ||
+                    dmparts[k].x[1] != dmparts[k].gpart->x[1] ||
+                    dmparts[k].x[2] != dmparts[k].gpart->x[2])
+                    error("Linked particles are not at the same position !");
+                
+                /* Check that the particles have the same mass */
+                if (dmparts[k].mass != dmparts[k].gpart->mass)
+                    error("Linked particles do not have the same mass!\n");
+                
+                /* Check that the particles are at the same time */
+                if (dmparts[k].time_bin != dmparts[k].gpart->time_bin)
+                    error("Linked particles are not at the same time !");
+            }
+        }
+    }
 
   /* Now check that all bparts are linked */
   for (size_t k = 0; k < nr_bparts; ++k) {
@@ -533,6 +625,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 MPI_Datatype part_mpi_type;
 MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
+MPI_Datatype dmpart_mpi_type;
 MPI_Datatype spart_mpi_type;
 MPI_Datatype bpart_mpi_type;
 MPI_Datatype lospart_mpi_type;
@@ -568,6 +661,11 @@ void part_create_mpi_types(void) {
       MPI_Type_commit(&spart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for sparts.");
   }
+    if (MPI_Type_contiguous(sizeof(struct dmpart) / sizeof(unsigned char),
+                            MPI_BYTE, &dmpart_mpi_type) != MPI_SUCCESS ||
+        MPI_Type_commit(&dmpart_mpi_type) != MPI_SUCCESS) {
+        error("Failed to create MPI type for dmparts.");
+    }
   if (MPI_Type_contiguous(sizeof(struct bpart) / sizeof(unsigned char),
                           MPI_BYTE, &bpart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&bpart_mpi_type) != MPI_SUCCESS) {
@@ -581,6 +679,7 @@ void part_free_mpi_types(void) {
   MPI_Type_free(&xpart_mpi_type);
   MPI_Type_free(&gpart_mpi_type);
   MPI_Type_free(&spart_mpi_type);
+  MPI_Type_free(&dmpart_mpi_type);
   MPI_Type_free(&bpart_mpi_type);
   MPI_Type_free(&lospart_mpi_type);
 }

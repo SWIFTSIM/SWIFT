@@ -673,6 +673,60 @@ struct cell {
 #endif
 
   } stars;
+    
+    /*! Dark matter variables */
+    struct {
+        
+        /*! Pointer to the #dmpart data. */
+        struct dmpart *parts;
+        
+        /*! Pointer to the #dmpart data at rebuild time. */
+        struct dmpart *parts_rebuild;
+        
+        /*! The dark matter ghost task itself */
+        struct task *ghost;
+        
+        /*! Linked list of the tasks computing this cell's dark matter density. */
+        struct link *density;
+        
+        /*! Last (integer) time the cell's spart were drifted forward in time. */
+        integertime_t ti_old_part;
+        
+        /*! Spin lock for various uses (#spart case). */
+        swift_lock_type lock;
+        
+        /*! Spin lock for star formation use. */
+        swift_lock_type star_formation_lock;
+        
+        /*! Nr of #dmpart in this cell. */
+        int count;
+        
+        /*! Nr of #dmpart this cell can hold after addition of new #dmpart. */
+        int count_total;
+        
+        /*! Max smoothing length in this cell. */
+        float h_max;
+        
+        /*! Values of h_max before the drifts, used for sub-cell tasks. */
+        float h_max_old;
+        
+        /*! Maximum end of (integer) time step in this cell for star tasks. */
+        integertime_t ti_end_min;
+        
+        /*! Maximum end of (integer) time step in this cell for star tasks. */
+        integertime_t ti_end_max;
+        
+        /*! Maximum beginning of (integer) time step in this cell for star tasks.
+         */
+        integertime_t ti_beg_max;
+        
+        /*! Number of #spart updated in this cell. */
+        int updated;
+        
+        /*! Is the #spart data of this cell being used in a sub-cell? */
+        int hold;
+        
+    } dark_matter;
 
   /*! Black hole variables */
   struct {
