@@ -1045,15 +1045,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
     /* Free the array returned by VELOCIraptor */
     swift_free("VR.group_data", group_info);
-
-    /* FOR TESTING: Set group index for most bound particles negative in snapshot */
-#ifdef HAVE_VELOCIRAPTOR_ORPHANS
-    if(most_bound_index) {
-      for (int i = 0; i < num_most_bound; i++) {
-        data[most_bound_index[i]].groupID *= -1;
-      }
-    }
-#endif
   }
 
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
