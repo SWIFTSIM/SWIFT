@@ -476,7 +476,7 @@ void velociraptor_init(struct engine *e) {
  */
 void write_orphan_particle_array(hid_t file_id, const char *name, const void *buf,
                                  const hid_t dtype_id, const int ndims, const hsize_t *dims,
-                                 const hsize_t *start, const hsize_t *count,
+                                 const hsize_t *start, const hsize_t *count, size_t nr_flagged_all,
                                  const struct unit_system* snapshot_units,
                                  const struct io_props props) {
 
@@ -488,8 +488,12 @@ void write_orphan_particle_array(hid_t file_id, const char *name, const void *bu
 
   /* Set up dataspaces */
   hid_t file_dspace_id = H5Screate_simple(ndims, dims, NULL);
-  if(H5Sselect_hyperslab(file_dspace_id, H5S_SELECT_SET, start, NULL, count, NULL) < 0) {
-    error("Failed to select hyperslab to write while writing orphan particles.");
+  if(dims[0] > 0) {
+    if(H5Sselect_hyperslab(file_dspace_id, H5S_SELECT_SET, start, NULL, count, NULL) < 0) {
+      error("Failed to select hyperslab to write while writing orphan particles.");
+    }
+  } else {
+    H5Sselect_none(file_dspace_id);
   }
   hid_t mem_dspace_id = H5Screate_simple(ndims, count, NULL);
 
@@ -513,9 +517,11 @@ void write_orphan_particle_array(hid_t file_id, const char *name, const void *bu
   io_write_attribute_f(dset_id, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(dset_id, "Expression for physical CGS units", buffer);
 
-  /* Write data */
-  if(H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id, xfer_plist_id, buf) < 0) {
-    error("Failed to write dataset while writing orphan particles.");
+  /* Write data, if there is any */
+  if(nr_flagged_all > 0) {
+    if(H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id, xfer_plist_id, buf) < 0) {
+      error("Failed to write dataset while writing orphan particles.");
+    }
   }
 
   /* Tidy up */
@@ -643,7 +649,8 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   hsize_t start[2] = {(hsize_t) offset_ll, (hsize_t) 0};
   hsize_t count[2] = {(hsize_t) count_ll, (hsize_t) 3};
   hsize_t dims[2]  = {(hsize_t) ntot_ll, (hsize_t) 3};
-  
+  size_t nr_flagged_all = (size_t) ntot_ll;
+
   /* Get list of DM output fields - need this to get metadata for pos/vel/ids.
    * Note that this will be wrong if we have non-DM particles and they use different
    * position and velocity units from the DM particles. */
@@ -662,7 +669,7 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
       }
       /* Write out the coordinates */
       write_orphan_particle_array(file_id, list[i].name, pos, H5T_NATIVE_DOUBLE,
-                                  2, dims, start, count, snapshot_units, list[i]);
+                                  2, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
     } else if(strcmp(list[i].name, "Velocities")==0) {
       /* Convert velocity units if necessary */
       const double factor = units_conversion_factor(internal_units, snapshot_units, list[i].units);
@@ -672,11 +679,11 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
       }
       /* Write out the velocities */
       write_orphan_particle_array(file_id, list[i].name,  vel, H5T_NATIVE_FLOAT,
-                                  2, dims, start, count, snapshot_units, list[i]);
+                                  2, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
     } else if(strcmp(list[i].name, "ParticleIDs")==0) {
       /* Write out the particle IDs */      
       write_orphan_particle_array(file_id, list[i].name, ids, H5T_NATIVE_LLONG,
-                                  1, dims, start, count, snapshot_units, list[i]);
+                                  1, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
     }
   }
 
