@@ -1006,7 +1006,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   if (!linked_with_snap && group_info != NULL) {
     error("VELOCIraptor returned an array whilst it should not have.");
   }
-  if (return_most_bound && most_bound_index == NULL) {
+  if (return_most_bound && most_bound_index == NULL && num_most_bound > 0) {
     error("VELOCIraptor failed to return most bound particle indexes.");
   }
   if (!return_most_bound && most_bound_index != NULL) {
