@@ -372,20 +372,121 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
-          if (t->subtype == task_subtype_tend_part) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_gpart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_spart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_bpart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_sf_counts) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_part_swallow) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_bpart_merger) {
-            free(t->buff);
+          {
+            size_t size = 0;              /* Size in bytes. */
+            size_t count = 0;             /* Number of elements to send */
+            MPI_Datatype type = MPI_BYTE; /* Type of the elements */
+            void *buff = NULL;            /* Buffer to send */
+            int freebuff = 0;
+
+            if (t->subtype == task_subtype_tend_part) {
+
+              size = count =
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)buff);
+
+            } else if (t->subtype == task_subtype_tend_gpart) {
+
+              size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)buff);
+
+            } else if (t->subtype == task_subtype_tend_spart) {
+
+              size = count =
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)buff);
+
+            } else if (t->subtype == task_subtype_tend_bpart) {
+
+              size = count =
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_end_step_black_holes(t->ci,
+                                             (struct pcell_step_black_holes *)buff);
+
+            } else if (t->subtype == task_subtype_part_swallow) {
+
+              size = count =
+                t->ci->hydro.count * sizeof(struct black_holes_part_data);
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)buff);
+
+            } else if (t->subtype == task_subtype_bpart_merger) {
+
+              size = count =
+                sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_bpart_swallow(t->ci,
+                                      (struct black_holes_bpart_data *)t->buff);
+
+            } else if (t->subtype == task_subtype_xv ||
+                       t->subtype == task_subtype_rho ||
+                       t->subtype == task_subtype_gradient ||
+                       t->subtype == task_subtype_limiter) {
+
+              count = t->ci->hydro.count;
+              size = count * sizeof(struct part);
+              type = part_mpi_type;
+              buff = t->ci->hydro.parts;
+
+            } else if (t->subtype == task_subtype_gpart) {
+
+              count = t->ci->grav.count;
+              size = count * sizeof(struct gpart);
+              type = gpart_mpi_type;
+              buff = t->ci->grav.parts;
+
+            } else if (t->subtype == task_subtype_spart) {
+
+              count = t->ci->stars.count;
+              size = count * sizeof(struct spart);
+              type = spart_mpi_type;
+              buff = t->ci->stars.parts;
+
+            } else if (t->subtype == task_subtype_bpart_rho ||
+                       t->subtype == task_subtype_bpart_swallow ||
+                       t->subtype == task_subtype_bpart_feedback) {
+
+              count = t->ci->black_holes.count;
+              size = count * sizeof(struct bpart);
+              type = bpart_mpi_type;
+              buff = t->ci->black_holes.parts;
+
+            } else if (t->subtype == task_subtype_multipole) {
+
+              count = t->ci->mpi.pcell_size;
+              size = count * sizeof(struct gravity_tensors);
+              type = multipole_mpi_type;
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_multipoles(t->ci, (struct gravity_tensors *)buff);
+
+            } else if (t->subtype == task_subtype_sf_counts) {
+
+              size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+              buff = t->buff = malloc(size);
+              freebuff = 1;
+              cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
+
+            } else {
+              error("Unknown communication sub-type");
+            }
+
+            int err = MPI_Send(buff, count, type, t->cj->nodeID, t->flags,
+                               subtaskMPI_comms[t->subtype]);
+            if (err != MPI_SUCCESS) {
+              mpi_error(err, "Failed to emit isend for particle data.");
+            }
+            if (freebuff) free(buff);
           }
           break;
         case task_type_recv:

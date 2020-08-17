@@ -574,8 +574,11 @@ int task_lock(struct task *t) {
   switch (type) {
 
     /* Communication task? */
-    case task_type_recv:
     case task_type_send:
+      return 1; // Always ready when we have no dependencies.
+      break;
+
+    case task_type_recv:
 #ifdef WITH_MPI
       /* Check the status of the MPI request. */
       if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
