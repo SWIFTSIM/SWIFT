@@ -284,6 +284,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   if (cooling->self_shielding_method == -1) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
+  message("Thermal time = %g", cooling->thermal_time);
   message("Specific Heating Rates = %i",
           cooling->provide_specific_heating_rates);
   message("Volumetric Heating Rates = %i",

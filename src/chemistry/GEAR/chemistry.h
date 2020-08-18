@@ -46,12 +46,17 @@
  * @param sp the new created star particle with its properties.
  */
 INLINE static void chemistry_copy_star_formation_properties(
-    const struct part* p, const struct xpart* xp, struct spart* sp) {
+    struct part* p, const struct xpart* xp, struct spart* sp) {
+
+  float mass = hydro_get_mass(p);
 
   /* Store the chemistry struct in the star particle */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     sp->chemistry_data.metal_mass_fraction[i] =
         p->chemistry_data.smoothed_metal_mass_fraction[i];
+
+    /* Remove the metals taken by the star. */
+    p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);
   }
 }
 
@@ -174,6 +179,7 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
     cpd->smoothed_metal_mass_fraction[i] = 0.f;
 
     /* Convert the total mass into mass fraction */
+    /* Now the metal mass is not available anymore */
     cpd->metal_mass_fraction[i] = cpd->metal_mass[i] / p->mass;
   }
 }
@@ -211,6 +217,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     cpd->smoothed_metal_mass_fraction[i] *= factor;
 
     /* Convert the mass fraction into a total mass */
+    /* Now the metal mass fraction is not available anymore */
     cpd->metal_mass[i] = m * cpd->metal_mass_fraction[i];
   }
 }
@@ -370,7 +377,7 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
  *
  * @param sp Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_feedback(
     const struct spart* restrict sp) {
 
@@ -384,7 +391,7 @@ chemistry_get_total_metal_mass_fraction_for_feedback(
  *
  * @param sp Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float const*
+__attribute__((always_inline)) INLINE static double const*
 chemistry_get_metal_mass_fraction_for_feedback(
     const struct spart* restrict sp) {
 
@@ -397,7 +404,7 @@ chemistry_get_metal_mass_fraction_for_feedback(
  *
  * @param p Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_cooling(
     const struct part* restrict p) {
 
@@ -411,7 +418,7 @@ chemistry_get_total_metal_mass_fraction_for_cooling(
  *
  * @param p Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float const*
+__attribute__((always_inline)) INLINE static double const*
 chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
 
   return p->chemistry_data.smoothed_metal_mass_fraction;
@@ -423,7 +430,7 @@ chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
  *
  * @param p Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline)) INLINE static double
 chemistry_get_total_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
 
@@ -437,7 +444,7 @@ chemistry_get_total_metal_mass_fraction_for_star_formation(
  *
  * @param p Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float const*
+__attribute__((always_inline)) INLINE static double const*
 chemistry_get_metal_mass_fraction_for_star_formation(
     const struct part* restrict p) {
 
