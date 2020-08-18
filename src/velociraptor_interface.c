@@ -464,7 +464,7 @@ void velociraptor_init(struct engine *e) {
 /**
  * @brief Write an array to the output HDF5 file
  *
- * @param file_id HDF5 file handle of the file to write to
+ * @param h_file HDF5 file handle of the file to write to
  * @param name Name of the dataset to write
  * @param buf The data to write out
  * @param dtype_id HDF5 data type to write
@@ -474,7 +474,7 @@ void velociraptor_init(struct engine *e) {
  * @param count Number of particles to write on this rank
  *
  */
-void write_orphan_particle_array(hid_t file_id, const char *name, const void *buf,
+void write_orphan_particle_array(hid_t h_file, const char *name, const void *buf,
                                  const hid_t dtype_id, const int ndims, const hsize_t *dims,
                                  const hsize_t *start, const hsize_t *count, size_t nr_flagged_all,
                                  const struct unit_system* snapshot_units,
@@ -498,7 +498,7 @@ void write_orphan_particle_array(hid_t file_id, const char *name, const void *bu
   hid_t mem_dspace_id = H5Screate_simple(ndims, count, NULL);
 
   /* Create the dataset */
-  hid_t dset_id = H5Dcreate(file_id, name, dtype_id, file_dspace_id,
+  hid_t dset_id = H5Dcreate(h_file, name, dtype_id, file_dspace_id,
                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if(dset_id < 0) error("Failed to create dataset while writing orphan particles.");
 
@@ -616,8 +616,12 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
    * this is the nodeID, unless we're doing collective I/O */
 #if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
   const int filenum = 0;
+  const int write_metadata = e->nodeID==0;
+  const int num_files = 1;
 #else
   const int filenum = e->nodeID;
+  const int write_metadata = 1;
+  const int num_files = e->nr_nodes;
 #endif
 
   /* Determine output file name */
@@ -627,15 +631,27 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
     error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
   }
 
-  /* Create the output file */
+  /* Create output file and write metadata */
+  hid_t h_file;
+  if(write_metadata) {
+    h_file = H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if(h_file < 0) error("Failed to open file for orphan particles.");
+    io_write_meta_data(h_file, e, internal_units, snapshot_units);
+    hid_t h_grp = H5Gcreate(h_file, "Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files, 1);
+    H5Gclose(h_grp);
+    H5Fclose(h_file);
+  }
+
+  /* Reopen the output file in MPI mode if necessary */
   hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
 #if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
   if(H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL) < 0) {
     error("Unable to set MPI mode opening file for orphan particles.");
   }
 #endif
-  hid_t file_id = H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
-  if(file_id < 0) error("Failed to create file for orphan particles.");
+  h_file = H5Fopen(orphansFileName, H5F_ACC_RDWR, fapl_id);
+  if(h_file < 0) error("Failed to open file for orphan particles.");
   H5Pclose(fapl_id);
 
   /* Determine offsets and lengths to write in output file on this MPI rank */
@@ -658,6 +674,9 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   struct io_props list[100];
   darkmatter_write_particles(gparts, list, &num_fields);
 
+  /* Write all particles as PartType1 */
+  hid_t h_grp = H5Gcreate(h_file, "PartType1", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
   /* Write the particle data */
   for(int i=0; i<num_fields; i+=1) {
     if(strcmp(list[i].name, "Coordinates")==0) {
@@ -668,7 +687,7 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
           pos[j] *= factor;
       }
       /* Write out the coordinates */
-      write_orphan_particle_array(file_id, list[i].name, pos, H5T_NATIVE_DOUBLE,
+      write_orphan_particle_array(h_grp, list[i].name, pos, H5T_NATIVE_DOUBLE,
                                   2, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
     } else if(strcmp(list[i].name, "Velocities")==0) {
       /* Convert velocity units if necessary */
@@ -678,17 +697,18 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
           vel[j] *= factor;
       }
       /* Write out the velocities */
-      write_orphan_particle_array(file_id, list[i].name,  vel, H5T_NATIVE_FLOAT,
+      write_orphan_particle_array(h_grp, list[i].name,  vel, H5T_NATIVE_FLOAT,
                                   2, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
     } else if(strcmp(list[i].name, "ParticleIDs")==0) {
       /* Write out the particle IDs */      
-      write_orphan_particle_array(file_id, list[i].name, ids, H5T_NATIVE_LLONG,
+      write_orphan_particle_array(h_grp, list[i].name, ids, H5T_NATIVE_LLONG,
                                   1, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
     }
   }
 
   /* Close output file */
-  H5Fclose(file_id);
+  H5Gclose(h_grp);
+  H5Fclose(h_file);
 
   /* Free write buffers */
   swift_free("VR.pos", pos);
