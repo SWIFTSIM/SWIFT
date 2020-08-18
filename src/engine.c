@@ -3237,7 +3237,7 @@ void engine_makeproxies(struct engine *e) {
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk);
-              
+
               /* Early abort  */
               if (cid >= cjd) continue;
 
@@ -3289,10 +3289,10 @@ void engine_makeproxies(struct engine *e) {
                   /* We don't have multipoles yet (or their CoMs) so we will
                      have to cook up something based on cell locations only. We
                      hence need a lower limit on the distance that the CoMs in
-                     those cells could have and an upper limit on the distance 
-                     of the furthest particle in the multipole from its CoM. 
-                     We then can decide whether we are too close for an M2L 
-                     interaction and hence require a proxy as this pair of cells 
+                     those cells could have and an upper limit on the distance
+                     of the furthest particle in the multipole from its CoM.
+                     We then can decide whether we are too close for an M2L
+                     interaction and hence require a proxy as this pair of cells
                      cannot rely on just an M2L calculation. */
 
                   /* Minimal distance between any two points in the cells */
@@ -3304,13 +3304,15 @@ void engine_makeproxies(struct engine *e) {
                   if (periodic) {
 
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
-                        !(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2))
+                        !(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
-                    if (!(4. * r_max * r_max < theta_crit * theta_crit * min_dist_CoM2)){
-                      proxy_type |= (int)proxy_cell_type_gravity;                    
+                    if (!(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2)) {
+                      proxy_type |= (int)proxy_cell_type_gravity;
                     }
                   }
                 }
