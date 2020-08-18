@@ -191,8 +191,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GrackleCooling:convergence_limit", 1e-2);
 
   /* Thermal time */
-  cooling->thermal_time =
-      parser_get_param_float(parameter_file, "GrackleCooling:thermal_time_myr");
+  cooling->thermal_time = parser_get_param_double(
+      parameter_file, "GrackleCooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
 }
 

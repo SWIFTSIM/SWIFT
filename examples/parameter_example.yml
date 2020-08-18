@@ -523,7 +523,7 @@ EAGLEFeedback:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
+  supernovae_energy_erg: 0.135e51                            # Energy released by a single supernovae.
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
 
