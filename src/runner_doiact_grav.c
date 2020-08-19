@@ -882,7 +882,7 @@ static INLINE void runner_dopair_grav_pm_full(
   const float multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
-#ifndef SWIFT_DEBUG_CHECKS
+#if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
@@ -1025,7 +1025,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
   const float multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
-#ifndef SWIFT_DEBUG_CHECKS
+#if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int pid = 0; pid < gcount_padded_i; pid++) {
