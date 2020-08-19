@@ -57,7 +57,7 @@ struct feedback_spart_data {
   float mass_ejected;
 
   /*! Chemical composition of the mass ejected */
-  float metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

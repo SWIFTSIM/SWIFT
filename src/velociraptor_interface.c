@@ -32,9 +32,13 @@
 #include "velociraptor_interface.h"
 
 /* Local includes. */
+#include "black_holes_io.h"
 #include "cooling.h"
 #include "engine.h"
+#include "gravity_io.h"
 #include "hydro.h"
+#include "hydro_io.h"
+#include "stars_io.h"
 #include "swift_velociraptor_part.h"
 #include "threadpool.h"
 #include "velociraptor_struct.h"
@@ -272,12 +276,6 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
   const struct phys_const *phys_const = e->physical_constants;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
-  const float a_inv = e->cosmology->a_inv;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double pos_dithering[3] = {s->pos_dithering[0], s->pos_dithering[1],
-                                   s->pos_dithering[2]};
-
   /* Convert particle properties into VELOCIraptor units.
    * VELOCIraptor wants:
    * - Un-dithered co-moving positions,
@@ -287,23 +285,6 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
    * - Temperatures (for the gas).
    */
   for (int i = 0; i < nr_gparts; i++) {
-
-    if (periodic) {
-      swift_parts[i].x[0] =
-          box_wrap(gparts[i].x[0] - pos_dithering[0], 0.0, dim[0]);
-      swift_parts[i].x[1] =
-          box_wrap(gparts[i].x[1] - pos_dithering[1], 0.0, dim[1]);
-      swift_parts[i].x[2] =
-          box_wrap(gparts[i].x[2] - pos_dithering[2], 0.0, dim[2]);
-    } else {
-      swift_parts[i].x[0] = gparts[i].x[0];
-      swift_parts[i].x[1] = gparts[i].x[1];
-      swift_parts[i].x[2] = gparts[i].x[2];
-    }
-
-    swift_parts[i].v[0] = gparts[i].v_full[0] * a_inv;
-    swift_parts[i].v[1] = gparts[i].v_full[1] * a_inv;
-    swift_parts[i].v[2] = gparts[i].v_full[2] * a_inv;
 
 #ifndef HAVE_VELOCIRAPTOR_WITH_NOMASS
     swift_parts[i].mass = gravity_get_mass(&gparts[i]);
@@ -328,28 +309,38 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
         const struct part *p = &parts[-gparts[i].id_or_neg_offset];
         const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
 
+        convert_part_pos(e, p, xp, swift_parts[i].x);
+        convert_part_vel(e, p, xp, swift_parts[i].v);
         swift_parts[i].id = parts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = hydro_get_drifted_physical_internal_energy(p, cosmo);
         swift_parts[i].T = cooling_get_temperature(phys_const, hydro_props, us,
                                                    cosmo, cool_func, p, xp);
       } break;
 
-      case swift_type_stars:
+      case swift_type_stars: {
+        const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
 
+        convert_spart_pos(e, sp, swift_parts[i].x);
+        convert_spart_vel(e, sp, swift_parts[i].v);
         swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = 0.f;
         swift_parts[i].T = 0.f;
-        break;
+      } break;
 
-      case swift_type_black_hole:
+      case swift_type_black_hole: {
+        const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
 
+        convert_bpart_pos(e, bp, swift_parts[i].x);
+        convert_bpart_vel(e, bp, swift_parts[i].v);
         swift_parts[i].id = bparts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = 0.f;
         swift_parts[i].T = 0.f;
-        break;
+      } break;
 
       case swift_type_dark_matter:
 
+        convert_gpart_pos(e, &(gparts[i]), swift_parts[i].x);
+        convert_gpart_vel(e, &(gparts[i]), swift_parts[i].v);
         swift_parts[i].id = gparts[i].id_or_neg_offset;
         swift_parts[i].u = 0.f;
         swift_parts[i].T = 0.f;
@@ -357,6 +348,8 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
 
       case swift_type_dark_matter_background:
 
+        convert_gpart_pos(e, &(gparts[i]), swift_parts[i].x);
+        convert_gpart_vel(e, &(gparts[i]), swift_parts[i].v);
         swift_parts[i].id = gparts[i].id_or_neg_offset;
         swift_parts[i].u = 0.f;
         swift_parts[i].T = 0.f;
