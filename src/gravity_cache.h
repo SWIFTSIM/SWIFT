@@ -225,7 +225,7 @@ INLINE static void gravity_cache_populate(
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */
-#ifndef SWIFT_DEBUG_CHECKS
+#if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int i = 0; i < gcount; ++i) {
@@ -485,7 +485,7 @@ INLINE static void gravity_cache_write_back(const struct gravity_cache *c,
   swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
 
   /* Write stuff back to the particles */
-#ifndef SWIFT_DEBUG_CHECKS
+#if !defined(SWIFT_DEBUG_CHECKS) && _OPENMP >= 201307
 #pragma omp simd
 #endif
   for (int i = 0; i < gcount; ++i) {
