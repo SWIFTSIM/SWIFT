@@ -1016,9 +1016,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Unpack returned data */
   int num_gparts_in_groups = return_data.num_gparts_in_groups;
   struct groupinfo *group_info = return_data.group_info;
-#ifdef HAVE_VELOCIRAPTOR_ORPHANS
   int num_most_bound = return_data.num_most_bound;
-#endif
   int *most_bound_index = return_data.most_bound_index;
 
   /* Report that the memory was freed */
