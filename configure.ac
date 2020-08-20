@@ -141,7 +141,7 @@ if test "$enable_ipo" = "yes"; then
    fi
 fi
 
-# Check for MPI. Need to do this before characterising the compiler (C99 mode),
+# Check for MPI. Need to do this before characterising the compiler (C11 mode),
 # as this changes the compiler.
 # We should consider using AX_PROG_CC_MPI to replace AC_PROG_CC when compiling
 # whole applications. There are issues with mixing compilers when using this
@@ -221,8 +221,14 @@ AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 # Add libtool support (now that CC is defined).
 LT_INIT
 
-# Need C99 and inline support.
-AC_PROG_CC_C99
+# Need to do check C11 support manually until autoconf has AC_PROG_CC_C11 macro.
+AX_CHECK_COMPILE_FLAG([-std=c11], [
+  CFLAGS+=" -std=c11"
+], [
+  echo "C compiler cannot compile C11 code"
+  exit -1
+])
+# Need inline support.
 AC_C_INLINE
 
 # If debugging try to show inlined functions.
