@@ -619,9 +619,16 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
 
   /* Determine output file name */
   char orphansFileName[FILENAME_BUFFER_SIZE];
-  if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.%d",
-               outputFileName, filenum) >= FILENAME_BUFFER_SIZE) {
-    error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
+  if(num_files > 1) {
+    if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.%d.hdf5",
+                 outputFileName, filenum) >= FILENAME_BUFFER_SIZE) {
+      error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
+    }
+  } else {
+    if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.hdf5",
+                 outputFileName) >= FILENAME_BUFFER_SIZE) {
+      error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
+    }
   }
 
   /* Create output file and write metadata */
