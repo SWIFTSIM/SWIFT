@@ -44,6 +44,13 @@ struct chemistry_global_data {};
 struct chemistry_part_data {};
 
 /**
+ * @brief Chemistry properties carried by the #spart.
+ *
+ * Nothing here.
+ */
+struct chemistry_spart_data {};
+
+/**
  * @brief Chemistry properties carried by the #bpart.
  *
  * Nothing here.
