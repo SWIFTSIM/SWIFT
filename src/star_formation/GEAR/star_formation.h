@@ -21,6 +21,7 @@
 #define SWIFT_GEAR_STAR_FORMATION_H
 
 /* Local includes */
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"

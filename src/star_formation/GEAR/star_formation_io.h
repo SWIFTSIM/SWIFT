@@ -27,6 +27,24 @@
 #include "io_properties.h"
 
 /**
+ * @brief Specifies which s-particle fields to read from a dataset
+ *
+ * @param sparts The s-particle array.
+ * @param list The list of i/o properties to read.
+ *
+ * @return num_fields The number of i/o fields to read.
+ */
+INLINE static int star_formation_read_particles(struct spart* sparts,
+                                                struct io_props* list) {
+
+  /* List what we want to read */
+  list[0] = io_make_input_field("BirthMass", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+                                sparts, sf_data.birth_mass);
+
+  return 1;
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
@@ -113,7 +131,9 @@ INLINE static void starformation_init_backend(
   starform->min_mass_frac_plus_one += 1.;
 
   /* Get the jeans factor */
-  starform->n_jeans_2_3 = pow(pressure_floor_props.n_jeans, 2. / 3.);
+  starform->n_jeans_2_3 =
+      parser_get_param_float(parameter_file, "GEARPressureFloor:jeans_factor");
+  starform->n_jeans_2_3 = pow(starform->n_jeans_2_3, 2. / 3.);
 
   /* Apply unit change */
   starform->maximal_temperature *=

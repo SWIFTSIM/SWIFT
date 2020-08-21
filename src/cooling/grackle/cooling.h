@@ -21,7 +21,7 @@
 
 /**
  * @file src/cooling/grackle/cooling.h
- * @brief Cooling using the GRACKLE 3.0 library.
+ * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
 /* Some standard headers. */
