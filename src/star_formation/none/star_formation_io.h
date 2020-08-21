@@ -26,6 +26,19 @@
 #include "io_properties.h"
 
 /**
+ * @brief Specifies which s-particle fields to read from a dataset
+ *
+ * @param sparts The s-particle array.
+ * @param list The list of i/o properties to read.
+ *
+ * @return num_fields The number of i/o fields to read.
+ */
+INLINE static int star_formation_read_particles(struct spart* sparts,
+                                                struct io_props* list) {
+  return 0;
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
