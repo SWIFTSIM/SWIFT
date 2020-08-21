@@ -1215,6 +1215,7 @@ if test "x$with_grackle" != "xno"; then
    have_grackle="yes"
 
    echo $GRACKLE_LIBS
+   AS_VAR_APPEND([GRACKLE_LIBS], ["$FCLIBS"])
 
    AC_CHECK_LIB(
       [grackle],
@@ -1249,6 +1250,7 @@ if test "x$with_velociraptor" != "xno"; then
    fi
 
    have_velociraptor="yes"
+   AS_VAR_APPEND([VELOCIRAPTOR_LIBS], ["$FCLIBS"])
 
    AC_CHECK_LIB(
       [velociraptor],
