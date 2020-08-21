@@ -18,7 +18,7 @@
  ******************************************************************************/
 /**
  * @file src/cooling/grackle/cooling.c
- * @brief Cooling using the GRACKLE 3.0 library.
+ * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
 #include "../config.h"

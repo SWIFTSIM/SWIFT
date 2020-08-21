@@ -1010,6 +1010,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         if (with_stars) {
           Nparticles = *Nstars;
           stars_read_particles(*sparts, list, &num_fields);
+          num_fields +=
+              star_formation_read_particles(*sparts, list + num_fields);
         }
         break;
 

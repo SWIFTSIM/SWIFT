@@ -50,6 +50,17 @@ chemistry_get_element_name(enum chemistry_element elem) {
 }
 
 /**
+ * @brief Copies the chemistry properties of the gas particle over to the
+ * star particle.
+ *
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param sp the new created star particle with its properties.
+ */
+INLINE static void chemistry_copy_star_formation_properties(
+    const struct part* p, const struct xpart* xp, struct spart* sp) {}
+
+/**
  * @brief Initialises the chemistry properties.
  *
  * Nothing to do here.
