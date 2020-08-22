@@ -513,14 +513,18 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       const double gas_P_phys =
           gas_pressure_from_internal_energy(gas_rho_phys, gas_u_phys);
 
-      /* Assume primordial abundance and solar metallicity
+      /* Assume primordial abundance and solar metallicity pattern
        * (Yes, that is inconsitent but makes no difference) */
       const double logZZsol = 0.;
       const double XH = 0.75;
+      float abundance_ratio[colibre_cooling_N_elementtypes];
+      for (int i = 0; i < colibre_cooling_N_elementtypes; ++i)
+        abundance_ratio[i] = 1.f;
 
       /* Get the gas temperature */
       const float gas_T = cooling_get_temperature_from_gas(
-          constants, cosmo, cooling, gas_rho_phys, logZZsol, XH, gas_u_phys);
+          constants, cosmo, cooling, gas_rho_phys, logZZsol, XH, gas_u_phys,
+          /*HII_region=*/0);
       const float log10_gas_T = log10f(gas_T);
 
       /* Get the temperature on the EOS at this physical density */
@@ -533,9 +537,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
       /* Compute the subgrid density assuming pressure
        * equilibirum if on the entropy floor */
-      const double rho_sub = compute_subgrid_density(
+      const double rho_sub = compute_subgrid_property(
           cooling, constants, floor_props, cosmo, gas_rho_phys, logZZsol, XH,
-          gas_P_phys, log10_gas_T, log10_T_EOS_max);
+          gas_P_phys, log10_gas_T, log10_T_EOS_max, /*HII_region=*/0,
+          abundance_ratio, 0.f, colibre_compute_subgrid_density);
 
       /* Record what we used */
       bp->rho_subgrid_gas = rho_sub;

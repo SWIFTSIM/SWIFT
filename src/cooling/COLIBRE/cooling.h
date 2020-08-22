@@ -26,6 +26,7 @@
 
 /* Local includes. */
 #include "cooling_struct.h"
+#include "cooling_tables.h"
 
 struct part;
 struct xpart;
@@ -64,7 +65,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,
-    const float XH, const float logZZsol, const float u_phys);
+    const float XH, const float logZZsol, const float u_phys,
+    const int HII_region);
 
 float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct hydro_props *hydro_props,
@@ -115,13 +117,22 @@ void cooling_set_particle_subgrid_properties(
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp);
 
-double compute_subgrid_density(
+double get_thermal_equilibrium_pressure(
+    const struct cooling_function_data *cooling,
+    const float abundance_ratio[colibre_cooling_N_elementtypes],
+    const double log_u_cgs, const float log10nH_local, const double rho_cgs,
+    const double redshift, const int ired, const int imet, const float dred,
+    const float dmet);
+
+double compute_subgrid_property(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
     const struct entropy_floor_properties *floor_props,
     const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
     const float XH, const float P_phys, const float log10_T,
-    const float log10_T_EOS_max);
+    const float log10_T_EOS_max, const int HII_region,
+    const float abundance_ratio[colibre_cooling_N_elementtypes],
+    const double log_u_cgs, const enum colibre_subgrid_properties isub);
 
 float cooling_get_radiated_energy(const struct xpart *xp);
 
@@ -140,5 +151,40 @@ void cooling_init_backend(struct swift_params *parameter_file,
 void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_clean(struct cooling_function_data *data);
+
+/**
+ * @brief Converts cooling quantities of a particle at the start of a run
+ *
+ * This function is called once at the end of the engine_init_particle()
+ * routine (at the start of a calculation) after the densities of
+ * particles have been computed.
+ *
+ * For this cooling module, this routine does not do anything.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle to act upon
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme.
+ * @param phys_const #phys_const data structure.
+ * @param us Internal system of units data structure.
+ * @param floor_props Properties of the entropy floor.
+ * @param cooling #cooling_function_data data structure.
+ */
+__attribute__((always_inline)) INLINE static void cooling_convert_quantities(
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling) {}
+
+/**
+ * @brief Updates cooling properties of particle hit by feedback.
+ *
+ * For this cooling module, this routine does not do anything.
+ *
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void
+cooling_update_feedback_particle(struct xpart *restrict xp) {}
 
 #endif /* SWIFT_COOLING_COLIBRE_H */
