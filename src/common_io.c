@@ -2855,7 +2855,8 @@ int get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_gas:
       hydro_write_particles(NULL, NULL, list, &num_fields);
-      num_fields += chemistry_write_particles(NULL, NULL, list + num_fields);
+      num_fields += chemistry_write_particles(NULL, NULL, list + num_fields,
+                                              with_cosmology);
       num_fields +=
           cooling_write_particles(NULL, NULL, list + num_fields, NULL);
       num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
