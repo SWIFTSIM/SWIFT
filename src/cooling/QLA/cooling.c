@@ -94,6 +94,10 @@ void cooling_update(const struct cosmology *cosmo,
  * @brief Compute the internal energy of a #part based on the cooling function
  * but for a given temperature.
  *
+ * This is used e.g. for particles in HII regions that are set to a constant
+ * temperature, but their internal energies should reflect the particle
+ * composition .
+ *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
@@ -118,6 +122,8 @@ float cooling_get_internalenergy_for_temperature(
 
   /* Get the Hydrogen mass fraction */
   const float XH = 1. - phys_const->const_primordial_He_fraction;
+
+  /* Normal case --> Interpolate the table */
 
   /* Convert Hydrogen mass fraction into Hydrogen number density */
   const float rho = hydro_get_physical_density(p, cosmo);
@@ -167,20 +173,28 @@ float cooling_get_internalenergy_for_temperature(
  * metallicity.
  * @param XH The Hydrogen abundance of the gas.
  * @param u_phys Internal energy of the gas in internal physical units.
+ * @param HII_region Is this patch of gas in an HII region?
  */
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,
-    const float logZZsol, const float XH, const float u_phys) {
+    const float logZZsol, const float XH, const float u_phys,
+    const int HII_region) {
+
+  if (HII_region)
+    error("HII regions are not implemented in the EAGLE-XL flavour");
 
   /* Convert to CGS */
   const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+
+  /* Get density in Hydrogen number density */
   const double n_H = rho_phys * XH / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
+  /* Normal case --> Interpolate the table */
+
   /* compute hydrogen number density, metallicity and redshift indices and
    * offsets  */
-
   float d_red, d_met, d_n_H;
   int red_index, met_index, n_H_index;
 
@@ -203,7 +217,8 @@ float cooling_get_temperature_from_gas(
 /**
  * @brief Compute the temperature of a #part based on the cooling function.
  *
- * The temperature returned is consistent with the cooling rates.
+ * The temperature returned is consistent with the cooling rates or
+ * is the temperature of an HII region if the particle is flagged as such.
  *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
@@ -227,14 +242,12 @@ float cooling_get_temperature(const struct phys_const *phys_const,
         "--temperature runtime flag?");
 #endif
 
-  /* Get physical internal energy */
+  /* Get quantities in physical frame */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the Hydrogen mass fraction */
   const float XH = 1. - phys_const->const_primordial_He_fraction;
-
-  /* Convert Hydrogen mass fraction into Hydrogen number density */
-  const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get this particle's metallicity ratio to solar.
    *
@@ -244,8 +257,11 @@ float cooling_get_temperature(const struct phys_const *phys_const,
   const float logZZsol =
       abundance_ratio_to_solar(p, cooling, phys_const, dummy);
 
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
+
   return cooling_get_temperature_from_gas(phys_const, cosmo, cooling, rho_phys,
-                                          logZZsol, XH, u_phys);
+                                          logZZsol, XH, u_phys, HII_region);
 }
 
 /**
@@ -477,6 +493,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
   /* No cooling happens over zero time */
   if (dt == 0.) {
+
     return;
   }
 
@@ -674,6 +691,7 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
  */
 __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
     const struct xpart *xp) {
+
   return -1.f;
 }
 
@@ -780,6 +798,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->number_density_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
   cooling->number_density_from_cgs = 1. / cooling->number_density_to_cgs;
+  cooling->density_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  cooling->density_from_cgs = 1. / cooling->density_to_cgs;
 
   /* Store some constants in CGS units */
   const float units_kB[5] = {1, 2, -2, 0, -1};
@@ -791,6 +811,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   cooling->log10_kB_cgs = log10(kB_cgs);
   cooling->inv_proton_mass_cgs = 1. / proton_mass_cgs;
+  cooling->proton_mass_cgs = proton_mass_cgs;
   cooling->T_CMB_0 = phys_const->const_T_CMB_0 *
                      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
