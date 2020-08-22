@@ -95,6 +95,10 @@ void cooling_update(const struct cosmology *cosmo,
  * @brief Compute the internal energy of a #part based on the cooling function
  * but for a given temperature.
  *
+ * This is used e.g. for particles in HII regions that are set to a constant
+ * temperature, but their internal energies should reflect the particle
+ * composition .
+ *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
@@ -121,6 +125,8 @@ float cooling_get_internalenergy_for_temperature(
   float const *metal_fraction =
       chemistry_get_metal_mass_fraction_for_cooling(p);
   const float XH = metal_fraction[chemistry_element_H];
+
+  /* Normal case --> Interpolate the table */
 
   /* Convert Hydrogen mass fraction into Hydrogen number density */
   const float rho = hydro_get_physical_density(p, cosmo);
@@ -169,20 +175,28 @@ float cooling_get_internalenergy_for_temperature(
  * metallicity.
  * @param XH The Hydrogen abundance of the gas.
  * @param u_phys Internal energy of the gas in internal physical units.
+ * @param HII_region Is this patch of gas in an HII region?
  */
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,
-    const float logZZsol, const float XH, const float u_phys) {
+    const float logZZsol, const float XH, const float u_phys,
+    const int HII_region) {
+
+  if (HII_region)
+    error("HII regions are not implemented in the EAGLE-XL flavour");
 
   /* Convert to CGS */
   const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+
+  /* Get density in Hydrogen number density */
   const double n_H = rho_phys * XH / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
 
+  /* Normal case --> Interpolate the table */
+
   /* compute hydrogen number density, metallicity and redshift indices and
    * offsets  */
-
   float d_red, d_met, d_n_H;
   int red_index, met_index, n_H_index;
 
@@ -205,7 +219,8 @@ float cooling_get_temperature_from_gas(
 /**
  * @brief Compute the temperature of a #part based on the cooling function.
  *
- * The temperature returned is consistent with the cooling rates.
+ * The temperature returned is consistent with the cooling rates or
+ * is the temperature of an HII region if the particle is flagged as such.
  *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
@@ -229,16 +244,14 @@ float cooling_get_temperature(const struct phys_const *phys_const,
         "--temperature runtime flag?");
 #endif
 
-  /* Get physical internal energy */
+  /* Get quantities in physical frame */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the Hydrogen mass fraction */
   float const *metal_fraction =
       chemistry_get_metal_mass_fraction_for_cooling(p);
   const float XH = metal_fraction[chemistry_element_H];
-
-  /* Convert Hydrogen mass fraction into Hydrogen number density */
-  const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get this particle's metallicity ratio to solar.
    *
@@ -247,8 +260,11 @@ float cooling_get_temperature(const struct phys_const *phys_const,
   float dummy[colibre_cooling_N_elementtypes];
   const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
 
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
+
   return cooling_get_temperature_from_gas(phys_const, cosmo, cooling, rho_phys,
-                                          logZZsol, XH, u_phys);
+                                          logZZsol, XH, u_phys, HII_region);
 }
 
 /**
@@ -721,8 +737,8 @@ float cooling_get_particle_subgrid_HI_fraction(
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the total metallicity in units of solar */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen abundance */
   const float *const metal_fraction =
@@ -735,14 +751,19 @@ float cooling_get_particle_subgrid_HI_fraction(
   /* Get physical internal energy */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
 
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
+
   /* Get the particle's temperature */
   const float T = cooling_get_temperature_from_gas(
-      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys, HII_region);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_HI_fraction(cooling, phys_const, floor_props, cosmo,
-                                     rho_phys, logZZsol, XH, P_phys, log10_T,
-                                     log10_T_EOS_max);
+  return compute_subgrid_property(
+      cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
+      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10(u_phys * cooling->internal_energy_to_cgs),
+      colibre_compute_subgrid_HI_fraction);
 }
 
 /**
@@ -777,8 +798,8 @@ float cooling_get_particle_subgrid_HII_fraction(
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the total metallicity in units of solar */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen abundance */
   const float *const metal_fraction =
@@ -791,14 +812,19 @@ float cooling_get_particle_subgrid_HII_fraction(
   /* Get physical internal energy */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
 
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
+
   /* Get the particle's temperature */
   const float T = cooling_get_temperature_from_gas(
-      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys, HII_region);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_HII_fraction(cooling, phys_const, floor_props, cosmo,
-                                      rho_phys, logZZsol, XH, P_phys, log10_T,
-                                      log10_T_EOS_max);
+  return compute_subgrid_property(
+      cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
+      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10(u_phys * cooling->internal_energy_to_cgs),
+      colibre_compute_subgrid_HII_fraction);
 }
 
 /**
@@ -833,8 +859,8 @@ float cooling_get_particle_subgrid_H2_fraction(
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the total metallicity in units of solar */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen abundance */
   const float *const metal_fraction =
@@ -847,14 +873,19 @@ float cooling_get_particle_subgrid_H2_fraction(
   /* Get physical internal energy */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
 
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
+
   /* Get the particle's temperature */
   const float T = cooling_get_temperature_from_gas(
-      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys, HII_region);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_H2_fraction(cooling, phys_const, floor_props, cosmo,
-                                     rho_phys, logZZsol, XH, P_phys, log10_T,
-                                     log10_T_EOS_max);
+  return compute_subgrid_property(
+      cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
+      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10(u_phys * cooling->internal_energy_to_cgs),
+      colibre_compute_subgrid_H2_fraction);
 }
 
 /**
@@ -888,8 +919,8 @@ float cooling_get_particle_subgrid_temperature(
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the total metallicity in units of solar */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen abundance */
   const float *const metal_fraction =
@@ -902,14 +933,19 @@ float cooling_get_particle_subgrid_temperature(
   /* Get physical internal energy */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
 
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
+
   /* Get the particle's temperature */
   const float T = cooling_get_temperature_from_gas(
-      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys, HII_region);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_temperature(cooling, phys_const, floor_props, cosmo,
-                                     rho_phys, logZZsol, XH, P_phys, log10_T,
-                                     log10_T_EOS_max);
+  return compute_subgrid_property(
+      cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
+      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10(u_phys * cooling->internal_energy_to_cgs),
+      colibre_compute_subgrid_temperature);
 }
 
 /**
@@ -945,8 +981,8 @@ float cooling_get_particle_subgrid_density(
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the total metallicity in units of solar */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen abundance */
   const float *const metal_fraction =
@@ -956,17 +992,21 @@ float cooling_get_particle_subgrid_density(
   /* Get the particle pressure */
   const float P_phys = hydro_get_physical_pressure(p, cosmo);
 
-  /* Get physical internal energy */
-  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
-
   /* Get the particle's temperature */
-  const float T = cooling_get_temperature_from_gas(
-      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
+                                          cooling, p, xp);
   const float log10_T = log10f(T);
 
-  return compute_subgrid_density(cooling, phys_const, floor_props, cosmo,
-                                 rho_phys, logZZsol, XH, P_phys, log10_T,
-                                 log10_T_EOS_max);
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
+
+  const float u_start = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const double u_0_cgs = u_start * cooling->internal_energy_to_cgs;
+
+  return compute_subgrid_property(
+      cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
+      log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_0_cgs),
+      colibre_compute_subgrid_density);
 }
 
 /**
@@ -997,8 +1037,8 @@ void cooling_set_particle_subgrid_properties(
   const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Get the total metallicity in units of solar */
-  float dummy[colibre_cooling_N_elementtypes];
-  const float logZZsol = abundance_ratio_to_solar(p, cooling, dummy);
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen abundance */
   const float *const metal_fraction =
@@ -1010,18 +1050,25 @@ void cooling_set_particle_subgrid_properties(
 
   /* Get physical internal energy */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+
+  /* Are we in an HII region? */
+  const int HII_region = 0; /* No HII regions in the EAGLE-XL flavour */
 
   /* Get the particle's temperature */
   const float T = cooling_get_temperature_from_gas(
-      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys);
+      phys_const, cosmo, cooling, rho_phys, logZZsol, XH, u_phys, HII_region);
   const float log10_T = log10f(T);
 
-  p->cooling_data.subgrid_temp = compute_subgrid_temperature(
+  p->cooling_data.subgrid_temp = compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max);
-  p->cooling_data.subgrid_dens =
-      compute_subgrid_density(cooling, phys_const, floor_props, cosmo, rho_phys,
-                              logZZsol, XH, P_phys, log10_T, log10_T_EOS_max);
+      log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_cgs),
+      colibre_compute_subgrid_temperature);
+
+  p->cooling_data.subgrid_dens = compute_subgrid_property(
+      cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
+      log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_cgs),
+      colibre_compute_subgrid_density);
 }
 
 /**
@@ -1153,6 +1200,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->number_density_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
   cooling->number_density_from_cgs = 1. / cooling->number_density_to_cgs;
+  cooling->density_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  cooling->density_from_cgs = 1. / cooling->density_to_cgs;
 
   /* Store some constants in CGS units */
   const float units_kB[5] = {1, 2, -2, 0, -1};
@@ -1164,6 +1213,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   cooling->log10_kB_cgs = log10(kB_cgs);
   cooling->inv_proton_mass_cgs = 1. / proton_mass_cgs;
+  cooling->proton_mass_cgs = proton_mass_cgs;
   cooling->T_CMB_0 = phys_const->const_T_CMB_0 *
                      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
