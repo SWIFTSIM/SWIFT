@@ -217,4 +217,15 @@ struct cooling_xpart_data {
   float radiated_energy;
 };
 
+/**
+ * @brief Subgrid properties to calculate
+ */
+enum cooling_subgrid_properties {
+  cooling_compute_subgrid_density,
+  cooling_compute_subgrid_temperature,
+  cooling_compute_subgrid_HI_fraction,
+  cooling_compute_subgrid_HII_fraction,
+  cooling_compute_subgrid_H2_fraction
+};
+
 #endif /* SWIFT_COOLING_STRUCT_COLIBRE_H */

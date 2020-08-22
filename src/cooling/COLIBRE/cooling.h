@@ -132,7 +132,7 @@ double compute_subgrid_property(
     const float XH, const float P_phys, const float log10_T,
     const float log10_T_EOS_max, const int HII_region,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
-    const double log_u_cgs, const enum colibre_subgrid_properties isub);
+    const double log_u_cgs, const enum cooling_subgrid_properties isub);
 
 float cooling_get_radiated_energy(const struct xpart *xp);
 
