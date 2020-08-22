@@ -56,17 +56,6 @@
 #define colibre_cooling_N_elementtypes 12
 
 /**
- * @brief Subgrid properties to calculate
- */
-enum colibre_subgrid_properties {
-  colibre_compute_subgrid_density,
-  colibre_compute_subgrid_temperature,
-  colibre_compute_subgrid_HI_fraction,
-  colibre_compute_subgrid_HII_fraction,
-  colibre_compute_subgrid_H2_fraction
-};
-
-/**
  * @brief Elements present in the tables
  */
 enum colibre_cooling_element {

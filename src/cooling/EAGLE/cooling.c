@@ -585,7 +585,8 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,
-    const float XH, const float logZZsol, const float u_phys) {
+    const float XH, const float logZZsol, const float u_phys,
+    const int HII_region) {
 
   error("Do not call this function");
   return -1.f;
@@ -657,6 +658,20 @@ float cooling_get_temperature(
 
   /* Undo the log! */
   return exp10(log_10_T);
+}
+
+double compute_subgrid_property(
+    const struct cooling_function_data *cooling,
+    const struct phys_const *phys_const,
+    const struct entropy_floor_properties *floor_props,
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max, const int HII_region,
+    const float *abundance_ratio, const double log_u_cgs,
+    const enum cooling_subgrid_properties isub) {
+
+  error("Do not call this function");
+  return -1.f;
 }
 
 /**

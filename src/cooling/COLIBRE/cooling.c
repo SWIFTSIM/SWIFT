@@ -763,7 +763,7 @@ float cooling_get_particle_subgrid_HI_fraction(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
       log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
-      colibre_compute_subgrid_HI_fraction);
+      cooling_compute_subgrid_HI_fraction);
 }
 
 /**
@@ -824,7 +824,7 @@ float cooling_get_particle_subgrid_HII_fraction(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
       log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
-      colibre_compute_subgrid_HII_fraction);
+      cooling_compute_subgrid_HII_fraction);
 }
 
 /**
@@ -885,7 +885,7 @@ float cooling_get_particle_subgrid_H2_fraction(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
       log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
-      colibre_compute_subgrid_H2_fraction);
+      cooling_compute_subgrid_H2_fraction);
 }
 
 /**
@@ -945,7 +945,7 @@ float cooling_get_particle_subgrid_temperature(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
       log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
-      colibre_compute_subgrid_temperature);
+      cooling_compute_subgrid_temperature);
 }
 
 /**
@@ -1006,7 +1006,7 @@ float cooling_get_particle_subgrid_density(
   return compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
       log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_0_cgs),
-      colibre_compute_subgrid_density);
+      cooling_compute_subgrid_density);
 }
 
 /**
@@ -1063,12 +1063,12 @@ void cooling_set_particle_subgrid_properties(
   p->cooling_data.subgrid_temp = compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
       log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_cgs),
-      colibre_compute_subgrid_temperature);
+      cooling_compute_subgrid_temperature);
 
   p->cooling_data.subgrid_dens = compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
       log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_cgs),
-      colibre_compute_subgrid_density);
+      cooling_compute_subgrid_density);
 }
 
 /**

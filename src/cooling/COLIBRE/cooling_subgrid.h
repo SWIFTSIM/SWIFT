@@ -185,7 +185,7 @@ double compute_subgrid_property(
     const float XH, const float P_phys, const float log10_T,
     const float log10_T_EOS_max, const int HII_region,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
-    const double log_u_cgs, const enum colibre_subgrid_properties isub) {
+    const double log_u_cgs, const enum cooling_subgrid_properties isub) {
 
   if (HII_region)
     error("HII regions are not implemented in the EAGLE-XL flavour");
@@ -199,9 +199,9 @@ double compute_subgrid_property(
 
   /* Start by computing the subgrid property as if it were not subgrid */
 
-  if (isub == colibre_compute_subgrid_density) {
+  if (isub == cooling_compute_subgrid_density) {
     standard_return = rho_phys;
-  } else if (isub == colibre_compute_subgrid_temperature) {
+  } else if (isub == cooling_compute_subgrid_temperature) {
     standard_return = exp10(log10_T);
   } else {
 
@@ -221,7 +221,7 @@ double compute_subgrid_property(
     get_index_1d(cooling->Temp, colibre_cooling_N_temperature, log10_T, &item,
                  &dtem);
 
-    if (isub == colibre_compute_subgrid_HI_fraction) {
+    if (isub == cooling_compute_subgrid_HI_fraction) {
 
       const float nHI_over_nH =
           interpolation4d_plus_summation(cooling->table.logHfracs_all,  /* */
@@ -236,7 +236,7 @@ double compute_subgrid_property(
 
       standard_return = nHI_over_nH;
 
-    } else if (isub == colibre_compute_subgrid_HII_fraction) {
+    } else if (isub == cooling_compute_subgrid_HII_fraction) {
 
       const float nHII_over_nH =
           interpolation4d_plus_summation(cooling->table.logHfracs_all,  /* */
@@ -251,7 +251,7 @@ double compute_subgrid_property(
 
       standard_return = nHII_over_nH;
 
-    } else if (isub == colibre_compute_subgrid_H2_fraction) {
+    } else if (isub == cooling_compute_subgrid_H2_fraction) {
 
       const float mH2_over_mH =
           interpolation4d_plus_summation(cooling->table.logHfracs_all,  /* */
@@ -356,7 +356,7 @@ double compute_subgrid_property(
      * bin */
     if (log10_P_cgs > log10_Peq_max_cgs) {
 
-      if (isub == colibre_compute_subgrid_density) {
+      if (isub == cooling_compute_subgrid_density) {
 
         const double rho_cgs =
             exp10(cooling->nH[colibre_cooling_N_density - 1]) *
@@ -364,7 +364,7 @@ double compute_subgrid_property(
 
         return rho_cgs * cooling->density_from_cgs;
 
-      } else if (isub == colibre_compute_subgrid_temperature) {
+      } else if (isub == cooling_compute_subgrid_temperature) {
 
         const float log10_T_at_Peq = interpolation_3d_no_z(
             cooling->table.logTeq, ired, imet, colibre_cooling_N_density - 1,
@@ -373,7 +373,7 @@ double compute_subgrid_property(
 
         return exp10(log10_T_at_Peq);
 
-      } else if (isub == colibre_compute_subgrid_HI_fraction) {
+      } else if (isub == cooling_compute_subgrid_HI_fraction) {
 
         const float log10_HI_over_nH = interpolation_4d_no_z_no_w(
             cooling->table.logHfracs_Teq,                       /* */
@@ -386,7 +386,7 @@ double compute_subgrid_property(
 
         return exp10(log10_HI_over_nH);
 
-      } else if (isub == colibre_compute_subgrid_HII_fraction) {
+      } else if (isub == cooling_compute_subgrid_HII_fraction) {
 
         const float log10_HII_over_nH = interpolation_4d_no_z_no_w(
             cooling->table.logHfracs_Teq,                       /* */
@@ -399,7 +399,7 @@ double compute_subgrid_property(
 
         return exp10(log10_HII_over_nH);
 
-      } else if (isub == colibre_compute_subgrid_H2_fraction) {
+      } else if (isub == cooling_compute_subgrid_H2_fraction) {
 
         const float log10_H2_over_nH = interpolation_4d_no_z_no_w(
             cooling->table.logHfracs_Teq,                         /* */
@@ -475,7 +475,7 @@ double compute_subgrid_property(
          * equilibrium temperature function Teq(density,
          * metallicity/abundances, redshift) for equal pressure */
 
-        if (isub == colibre_compute_subgrid_density) {
+        if (isub == cooling_compute_subgrid_density) {
           const double rho_cgs =
               exp10(log10_n_at_Peq) * cooling->proton_mass_cgs / XH;
           return rho_cgs * cooling->density_from_cgs;
@@ -499,7 +499,7 @@ double compute_subgrid_property(
                                colibre_cooling_N_metallicity, /* */
                                colibre_cooling_N_density);
 
-          if (isub == colibre_compute_subgrid_temperature) {
+          if (isub == cooling_compute_subgrid_temperature) {
             return exp10(log10_T_at_Peq);
 
           } else {
@@ -510,7 +510,7 @@ double compute_subgrid_property(
             get_index_1d(cooling->Temp, colibre_cooling_N_temperature,
                          log10_T_at_Peq, &item_eq, &dtem_eq);
 
-            if (isub == colibre_compute_subgrid_HI_fraction) {
+            if (isub == cooling_compute_subgrid_HI_fraction) {
 
               const float nHI_over_nH_eq = interpolation4d_plus_summation(
                   cooling->table.logHfracs_all,  /* */
@@ -525,7 +525,7 @@ double compute_subgrid_property(
 
               return nHI_over_nH_eq;
 
-            } else if (isub == colibre_compute_subgrid_HII_fraction) {
+            } else if (isub == cooling_compute_subgrid_HII_fraction) {
 
               const float nHII_over_nH_eq = interpolation4d_plus_summation(
                   cooling->table.logHfracs_all,  /* */
@@ -540,7 +540,7 @@ double compute_subgrid_property(
 
               return nHII_over_nH_eq;
 
-            } else if (isub == colibre_compute_subgrid_H2_fraction) {
+            } else if (isub == cooling_compute_subgrid_H2_fraction) {
 
               const float mH2_over_mH_eq = interpolation4d_plus_summation(
                   cooling->table.logHfracs_all,  /* */
