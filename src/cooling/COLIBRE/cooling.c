@@ -31,6 +31,7 @@
 #include <time.h>
 
 /* Local includes. */
+#include "active.h"
 #include "adiabatic_index.h"
 #include "chemistry.h"
 #include "cooling.h"
@@ -1120,6 +1121,8 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
 
     struct part *p = &parts[i];
     struct xpart *xp = &xparts[i];
+
+    if (part_is_inhibited(p, s->e)) continue;
 
     if (xp->sf_data.SFR <= 0.) {
       const float old_u = hydro_get_physical_internal_energy(p, xp, cosmo);
