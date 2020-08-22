@@ -49,7 +49,8 @@ INLINE static int chemistry_read_particles(struct part* parts,
  */
 INLINE static int chemistry_write_particles(const struct part* parts,
                                             const struct xpart* xparts,
-                                            struct io_props* list) {
+                                            struct io_props* list,
+                                            const int with_cosmology) {
 
   /* update list according to hydro_io */
 

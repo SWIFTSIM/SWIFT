@@ -438,7 +438,8 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
 
   /* Find all the gas output fields */
   hydro_write_particles(parts, xparts, list, &num_fields);
-  num_fields += chemistry_write_particles(parts, xparts, list + num_fields);
+  num_fields += chemistry_write_particles(parts, xparts, list + num_fields,
+                                          with_cosmology);
   if (with_cooling || with_temperature) {
     num_fields += cooling_write_particles(parts, xparts, list + num_fields,
                                           e->cooling_func);
