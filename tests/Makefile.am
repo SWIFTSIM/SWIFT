@@ -28,7 +28,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testOutputList testFormat.sh \
+	testCbrt testCosmology testOutputList \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed
 
