@@ -3,4 +3,17 @@ Language:        Cpp
 BasedOnStyle:  Google
 KeepEmptyLinesAtTheStartOfBlocks: true
 PenaltyBreakAssignment: 2
+IncludeCategories:
+  - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
+    Priority:        3
+    SortPriority:    3
+  - Regex:           '^(<|"(gtest|gmock|isl|json)/)'
+    Priority:        4
+  - Regex:           '<[[:alnum:].]+>'
+    Priority:        5
+  - Regex:           '.*'
+    Priority:        2
+    SortPriority:    0
+  - Regex:           config.h
+    Priority:        1
 ...

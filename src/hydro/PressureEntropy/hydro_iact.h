@@ -19,7 +19,7 @@
 #ifndef SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H
 #define SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H
 
-#include "./hydro_parameters.h"
+#include "hydro_parameters.h"
 
 /**
  * @file PressureEntropy/hydro_iact.h

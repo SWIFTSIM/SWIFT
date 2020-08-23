@@ -24,14 +24,14 @@
 #if defined(WITH_LOGGER)
 
 /* Some standard headers. */
+#include "common_io.h"
+
 #include <hdf5.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "common_io.h"
 
 /* This object's header. */
 #include "logger_io.h"

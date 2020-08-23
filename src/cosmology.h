@@ -21,7 +21,6 @@
 
 /* Config parameters. */
 #include "../config.h"
-
 #include "parser.h"
 #include "physical_constants.h"
 #include "timeline.h"

@@ -20,14 +20,15 @@
 #ifndef SWIFT_VORONOIXD_ALGORITHM_H
 #define SWIFT_VORONOIXD_ALGORITHM_H
 
+#include "error.h"
+#include "inline.h"
+#include "voronoi3d_cell.h"
+
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "error.h"
-#include "inline.h"
-#include "voronoi3d_cell.h"
 
 /* For debugging purposes */
 //#define LOOP_CHECK 1000

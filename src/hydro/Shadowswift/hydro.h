@@ -19,7 +19,6 @@
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_H
 #define SWIFT_SHADOWSWIFT_HYDRO_H
 
-#include <float.h>
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "cosmology.h"
@@ -29,6 +28,8 @@
 #include "hydro_properties.h"
 #include "hydro_space.h"
 #include "voronoi_algorithm.h"
+
+#include <float.h>
 
 /**
  * @brief Computes the hydro time-step of a given particle
