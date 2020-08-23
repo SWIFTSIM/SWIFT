@@ -17,11 +17,11 @@
  *
  ******************************************************************************/
 #include "logger_tools.h"
+
 #include "logger_header.h"
 #include "logger_loader_io.h"
-#include "logger_reader.h"
-
 #include "logger_particle.h"
+#include "logger_reader.h"
 
 #include <stdio.h>
 

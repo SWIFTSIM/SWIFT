@@ -109,8 +109,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
     }   /* loop over the bparts in ci. */
   }     /* Do we have gas particles in the cell? */
 
-    /* When doing BH swallowing, we need a quick loop also over the BH
-     * neighbours */
+  /* When doing BH swallowing, we need a quick loop also over the BH
+   * neighbours */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
 
   /* Loop over the bparts in ci. */
@@ -263,8 +263,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
     }   /* loop over the bparts in ci. */
   }     /* Do we have gas particles in the cell? */
 
-    /* When doing BH swallowing, we need a quick loop also over the BH
-     * neighbours */
+  /* When doing BH swallowing, we need a quick loop also over the BH
+   * neighbours */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
 
   const int bcount_j = cj->black_holes.count;

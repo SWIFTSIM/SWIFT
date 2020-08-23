@@ -16,14 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "logger_loader_io.h"
+
+#include "logger_header.h"
+#include "logger_tools.h"
+
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#include "logger_header.h"
-#include "logger_loader_io.h"
-#include "logger_tools.h"
 
 /**
  * @brief get the size of a file.

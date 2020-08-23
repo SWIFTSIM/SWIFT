@@ -320,7 +320,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     cache_i->pot[i] += pot;
   }
 
-    /* Write back to the particle data */
+  /* Write back to the particle data */
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   lock_lock(&ci->grav.plock);
 #endif
@@ -519,7 +519,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     cache_i->pot[i] += pot;
   }
 
-    /* Write back to the particle data */
+  /* Write back to the particle data */
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   lock_lock(&ci->grav.plock);
 #endif
@@ -1768,7 +1768,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
     }
   }
 
-    /* Write back to the particles */
+  /* Write back to the particles */
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   lock_lock(&c->grav.plock);
 #endif
@@ -2078,7 +2078,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
                                       cj);
     }
 
-      /* Write back to the particles */
+    /* Write back to the particles */
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     lock_lock(&ci->grav.plock);
 #endif

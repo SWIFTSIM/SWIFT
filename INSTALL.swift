@@ -189,6 +189,6 @@ before you can build it.
                              ==================
 
 The SWIFT source code uses a variation of 'Google' style. The script
-'format.sh' in the root directory applies the clang-format-5.0 tool with our
+'format.sh' in the root directory applies the clang-format-10 tool with our
 style choices to all the SWIFT C source file. Please apply the formatting
 script to the files before submitting a merge request.

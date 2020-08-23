@@ -18,7 +18,6 @@
  *
  ******************************************************************************/
 #include "../config.h"
-
 #include "align.h"
 #include "kernel_hydro.h"
 #include "vector.h"

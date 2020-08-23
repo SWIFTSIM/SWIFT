@@ -18,10 +18,10 @@
  *
  ******************************************************************************/
 
+#include "kernel_hydro.h"
+
 #include <math.h>
 #include <stdio.h>
-
-#include "kernel_hydro.h"
 
 /**
  * @brief Test the SPH kernel function by dumping it in the interval [0,1].

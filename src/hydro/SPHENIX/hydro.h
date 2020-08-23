@@ -33,13 +33,12 @@
 #include "dimension.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
-
-#include "./hydro_parameters.h"
 
 #include <float.h>
 

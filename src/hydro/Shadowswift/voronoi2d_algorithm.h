@@ -20,13 +20,14 @@
 #ifndef SWIFT_VORONOIXD_ALGORITHM_H
 #define SWIFT_VORONOIXD_ALGORITHM_H
 
-#include <float.h>
-#include <math.h>
-#include <stdlib.h>
 #include "error.h"
 #include "inline.h"
 #include "minmax.h"
 #include "voronoi2d_cell.h"
+
+#include <float.h>
+#include <math.h>
+#include <stdlib.h>
 
 /* Check if the number of vertices exceeds the maximal allowed number */
 #define VORONOI_CHECK_SIZE()          \

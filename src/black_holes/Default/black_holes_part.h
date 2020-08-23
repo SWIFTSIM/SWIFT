@@ -20,7 +20,6 @@
 #define SWIFT_DEFAULT_BLACK_HOLE_PART_H
 
 #include "chemistry_struct.h"
-
 #include "timeline.h"
 
 /**
