@@ -108,7 +108,7 @@ double get_thermal_equilibrium_pressure(
     /* still cooling, need to decrease u */
     if (Lambda_current < 0) {
 
-      u_current = u_prev / du;
+      u_current = u_current / du;
 
       /* heating: interpolate to find eq */
     } else {
