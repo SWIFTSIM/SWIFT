@@ -494,8 +494,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the other links are correctly set */
-  part_verify_links(parts, gparts, sparts, bparts, Ngas, Ngpart, Nspart, Nbpart,
-                    1);
+  part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart, Nsink,
+                    Nspart, Nbpart, /*verbose=*/1);
 #endif
 
   /* Get the total number of particles across all nodes. */

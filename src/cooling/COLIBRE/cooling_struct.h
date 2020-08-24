@@ -165,8 +165,17 @@ struct cooling_function_data {
   /*! Number density conversion from CGS to internal units (for quick access) */
   double number_density_from_cgs;
 
+  /*! Density conversion from internal units to CGS (for quick access) */
+  double density_to_cgs;
+
+  /*! Density conversion from CGS to internal units (for quick access) */
+  double density_from_cgs;
+
   /*! Inverse of proton mass in cgs (for quick access) */
   double inv_proton_mass_cgs;
+
+  /*! Proton mass in cgs (for quick access) */
+  double proton_mass_cgs;
 
   /*! Logarithm base 10 of the Boltzmann constant in CGS (for quick access) */
   double log10_kB_cgs;
@@ -206,6 +215,17 @@ struct cooling_xpart_data {
 
   /*! Cumulative energy radiated by the particle */
   float radiated_energy;
+};
+
+/**
+ * @brief Subgrid properties to calculate
+ */
+enum cooling_subgrid_properties {
+  cooling_compute_subgrid_density,
+  cooling_compute_subgrid_temperature,
+  cooling_compute_subgrid_HI_fraction,
+  cooling_compute_subgrid_HII_fraction,
+  cooling_compute_subgrid_H2_fraction
 };
 
 #endif /* SWIFT_COOLING_STRUCT_COLIBRE_H */

@@ -17,13 +17,12 @@
  *
  ******************************************************************************/
 #include "../config.h"
+#include "swift.h"
 
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "swift.h"
 
 /**
  * @brief Check that a and b are consistent (up to some relative error)

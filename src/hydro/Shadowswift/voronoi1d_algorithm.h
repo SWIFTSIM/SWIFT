@@ -20,11 +20,12 @@
 #ifndef SWIFT_VORONOIXD_ALGORITHM_H
 #define SWIFT_VORONOIXD_ALGORITHM_H
 
-#include <math.h>
-#include <stdlib.h>
 #include "error.h"
 #include "inline.h"
 #include "voronoi1d_cell.h"
+
+#include <math.h>
+#include <stdlib.h>
 
 /**
  * @brief Store the extents of the simulation box in the global variables.

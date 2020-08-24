@@ -526,9 +526,9 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
     return 0;
   }
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    /* Manhattan Norm of 1st order terms */
-    /* Nothing to do here all the 1st order terms are 0 since we expand around
-     * CoM */
+  /* Manhattan Norm of 1st order terms */
+  /* Nothing to do here all the 1st order terms are 0 since we expand around
+   * CoM */
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   /* Manhattan Norm of 2nd order terms */

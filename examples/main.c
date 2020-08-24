@@ -1087,7 +1087,7 @@ int main(int argc, char *argv[]) {
     /* Check that the other links are correctly set */
     if (!dry_run)
       part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart,
-                        Nsink, Nspart, Nbpart, 1);
+                        Nsink, Nspart, Nbpart, /*verbose=*/1);
 #endif
 
     /* Get the total number of particles across all nodes. */
@@ -1402,7 +1402,7 @@ int main(int argc, char *argv[]) {
     parser_write_params_to_file(params, "unused_parameters.yml", /*used=*/0);
   }
 
-    /* Dump memory use report if collected for the 0 step. */
+  /* Dump memory use report if collected for the 0 step. */
 #ifdef SWIFT_MEMUSE_REPORTS
   {
     char dumpfile[40];
@@ -1415,7 +1415,7 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-    /* Dump MPI requests if collected. */
+  /* Dump MPI requests if collected. */
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
   {
     char dumpfile[40];
@@ -1479,7 +1479,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-      /* Dump memory use report if collected. */
+    /* Dump memory use report if collected. */
 #ifdef SWIFT_MEMUSE_REPORTS
     {
       char dumpfile[40];
@@ -1493,7 +1493,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-      /* Dump MPI requests if collected. */
+    /* Dump MPI requests if collected. */
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
     {
       char dumpfile[40];
@@ -1595,7 +1595,7 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-      /* Write final stf? */
+    /* Write final stf? */
 #ifdef HAVE_VELOCIRAPTOR
     if (with_structure_finding && e.output_list_stf) {
       if (e.output_list_stf->final_step_dump && !e.stf_this_timestep)

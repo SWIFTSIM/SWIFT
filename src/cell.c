@@ -5854,8 +5854,8 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
       }
     }
 
-      /* Check that the cell was indeed drifted to this point to avoid future
-       * issues */
+    /* Check that the cell was indeed drifted to this point to avoid future
+     * issues */
 #ifdef SWIFT_DEBUG_CHECKS
     if (top->hydro.super != NULL && top->stars.count > 0 &&
         top->stars.ti_old_part != e->ti_current) {
@@ -5989,8 +5989,8 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
       }
     }
 
-      /* Check that the cell was indeed drifted to this point to avoid future
-       * issues */
+    /* Check that the cell was indeed drifted to this point to avoid future
+     * issues */
 #ifdef SWIFT_DEBUG_CHECKS
     if (top->grav.super != NULL && top->grav.count > 0 &&
         top->grav.ti_old_part != e->ti_current) {

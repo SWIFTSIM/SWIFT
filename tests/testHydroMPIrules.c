@@ -17,13 +17,12 @@
  *
  ******************************************************************************/
 #include "../config.h"
+#include "swift.h"
 
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "swift.h"
 
 void print_bytes(void *p, size_t len) {
   printf("(");
@@ -97,7 +96,7 @@ void test(void) {
     error("Particles 'pj' do not match after density (byte = %d)", j_not_ok);
   }
 
-    /* --- Test the gradient loop --- */
+  /* --- Test the gradient loop --- */
 #ifdef EXTRA_HYDRO_LOOP
 
   runner_iact_nonsym_gradient(r2, dx, pi.h, pj.h, &pi, &pj, a, H);

@@ -19,8 +19,9 @@
 #ifndef SWIFT_GEAR_STARS_H
 #define SWIFT_GEAR_STARS_H
 
-#include <float.h>
 #include "minmax.h"
+
+#include <float.h>
 
 /**
  * @brief Computes the gravity time-step of a given star particle.
@@ -68,8 +69,6 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     const int with_cosmology, const double scale_factor, const double time) {
 
   sp->time_bin = 0;
-  sp->sf_data.birth_density = 0.f;
-  // sp->birth_time = 0.;
 
   stars_init_spart(sp);
 }

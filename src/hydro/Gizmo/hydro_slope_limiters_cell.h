@@ -19,9 +19,10 @@
 #ifndef SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
 #define SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
 
-#include <float.h>
 #include "hydro_getters.h"
 #include "hydro_setters.h"
+
+#include <float.h>
 
 /**
  * @brief Initialize variables for the cell wide slope limiter

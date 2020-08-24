@@ -17,9 +17,10 @@
  *
  ******************************************************************************/
 
+#include "logger_time.h"
+
 #include <stdlib.h>
 #include <time.h>
-#include "logger_time.h"
 
 #define NUMBER_OF_ELEMENT 10000
 #define TIME_BASE 0.04

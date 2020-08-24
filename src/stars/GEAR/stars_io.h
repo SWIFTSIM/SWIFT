@@ -34,7 +34,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 7;
+  *num_fields = 6;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -47,10 +47,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_NO_UNITS, sparts, id);
   list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sparts, h);
-  list[5] = io_make_input_field("BirthMass", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
-                                sparts, sf_data.birth_mass);
-
-  list[6] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
+  list[5] = io_make_input_field("BirthTime", FLOAT, 1, OPTIONAL, UNIT_CONV_MASS,
                                 sparts, birth_time);
 }
 

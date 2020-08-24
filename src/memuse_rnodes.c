@@ -165,7 +165,7 @@ void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
   /* Are we at the lowest level yet? */
   depth++;
   if (depth == keylen) {
-  /* Our destination node. */
+    /* Our destination node. */
 
 #if SWIFT_DEBUG_CHECKS
     if (child->ptr != NULL)
