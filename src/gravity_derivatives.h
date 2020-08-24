@@ -358,9 +358,9 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 #endif
   }
 
-/* Alright, let's get the full terms */
+  /* Alright, let's get the full terms */
 
-    /* Compute some powers of (r_x / r), (r_y / r) and (r_z / r) */
+  /* Compute some powers of (r_x / r), (r_y / r) and (r_z / r) */
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   const float rx_r = r_x * r_inv;
   const float ry_r = r_y * r_inv;

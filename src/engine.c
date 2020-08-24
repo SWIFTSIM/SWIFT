@@ -2665,7 +2665,7 @@ void engine_step(struct engine *e) {
   }
 #endif
 
-    /* Get current CPU times.*/
+  /* Get current CPU times.*/
 #ifdef WITH_MPI
   double start_usertime = 0.0;
   double start_systime = 0.0;
@@ -4744,7 +4744,7 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 #endif
 
-    /* Initialise the structure finder */
+  /* Initialise the structure finder */
 #ifdef HAVE_VELOCIRAPTOR
   if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
 #endif

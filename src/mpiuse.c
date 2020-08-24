@@ -227,7 +227,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       /* Should be the handoff. Check that. */
       if (mpiuse_log[k].activation) {
 
-      /* Used twice, this is an error, but just complain as not fatal. */
+        /* Used twice, this is an error, but just complain as not fatal. */
 #if SWIFT_DEBUG_CHECKS
         message(
             "Used the same MPI request address twice "
@@ -264,7 +264,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
 
     } else if (child == NULL && !mpiuse_log[k].activation) {
 
-    /* Unmatched handoff, not OK, but not fatal. */
+      /* Unmatched handoff, not OK, but not fatal. */
 #if SWIFT_DEBUG_CHECKS
       if (mpiuse_log[k].ptr != NULL) {
         message("Unmatched MPI_Test found: (%s/%s: %d->%d: %zd/%d)",
@@ -312,8 +312,8 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
   }
 
 #ifdef MEMUSE_RNODE_DUMP
-    /* Debug dump of tree. */
-    // memuse_rnode_dump(0, memuse_rnode_root, 0);
+  /* Debug dump of tree. */
+  // memuse_rnode_dump(0, memuse_rnode_root, 0);
 #endif
 
   /* Write our statistics. */

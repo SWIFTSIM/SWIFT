@@ -33,13 +33,12 @@
 #include "dimension.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "pressure_floor.h"
-
-#include "./hydro_parameters.h"
 
 #include <float.h>
 
@@ -604,16 +603,20 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   const float balsara =
       abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
 
-  /* Compute the "grad h" term */
-  const float rho_inv = 1.f / p->rho;
-  float rho_dh = p->density.rho_dh;
+  /* Compute the "grad h" term  - Note here that we have \tilde{x}
+   * as 1 as we use the local number density to find neighbours. This
+   * introduces a j-component that is considered in the force loop,
+   * meaning that this cached grad_h_term gives:
+   *
+   * f_ij = 1.f - grad_h_term_i / m_j */
+  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
+  float grad_h_term = common_factor * p->density.rho_dh /
+                      (1.f + common_factor * p->density.wcount_dh);
+
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
-    rho_dh = 0.f;
+    grad_h_term = 0.f;
   }
-
-  const float grad_h_term =
-      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
 
   /* Update variables. */
   p->force.f = grad_h_term;

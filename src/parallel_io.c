@@ -1010,6 +1010,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         if (with_stars) {
           Nparticles = *Nstars;
           stars_read_particles(*sparts, list, &num_fields);
+          num_fields +=
+              star_formation_read_particles(*sparts, list + num_fields);
         }
         break;
 
@@ -1249,8 +1251,8 @@ void prepare_file(struct engine* e, const char* fileName,
 
       case swift_type_gas:
         hydro_write_particles(parts, xparts, list, &num_fields);
-        num_fields +=
-            chemistry_write_particles(parts, xparts, list + num_fields);
+        num_fields += chemistry_write_particles(
+            parts, xparts, list + num_fields, with_cosmology);
         if (with_cooling || with_temperature) {
           num_fields += cooling_write_particles(
               parts, xparts, list + num_fields, e->cooling_func);
@@ -1622,8 +1624,8 @@ void write_output_parallel(struct engine* e,
           /* No inhibted particles: easy case */
           Nparticles = Ngas;
           hydro_write_particles(parts, xparts, list, &num_fields);
-          num_fields +=
-              chemistry_write_particles(parts, xparts, list + num_fields);
+          num_fields += chemistry_write_particles(
+              parts, xparts, list + num_fields, with_cosmology);
           if (with_cooling || with_temperature) {
             num_fields += cooling_write_particles(
                 parts, xparts, list + num_fields, e->cooling_func);
@@ -1662,8 +1664,8 @@ void write_output_parallel(struct engine* e,
           /* Select the fields to write */
           hydro_write_particles(parts_written, xparts_written, list,
                                 &num_fields);
-          num_fields += chemistry_write_particles(parts_written, xparts_written,
-                                                  list + num_fields);
+          num_fields += chemistry_write_particles(
+              parts_written, xparts_written, list + num_fields, with_cosmology);
           if (with_cooling || with_temperature) {
             num_fields +=
                 cooling_write_particles(parts_written, xparts_written,

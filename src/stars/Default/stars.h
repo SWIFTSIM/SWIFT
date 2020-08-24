@@ -19,8 +19,9 @@
 #ifndef SWIFT_DEFAULT_STARS_H
 #define SWIFT_DEFAULT_STARS_H
 
-#include <float.h>
 #include "minmax.h"
+
+#include <float.h>
 
 /**
  * @brief Computes the gravity time-step of a given star particle.

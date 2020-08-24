@@ -232,8 +232,8 @@ void memuse_log_dump(const char *filename) {
       /* Found the allocation, this should be the free. */
       if (memuse_log[k].allocated) {
 
-      /* Allocated twice, this is an error, but we cannot abort as that will
-       * attempt another memory dump, so just complain. */
+        /* Allocated twice, this is an error, but we cannot abort as that will
+         * attempt another memory dump, so just complain. */
 #if SWIFT_DEBUG_CHECKS
         message("Allocated the same address twice (%s: %zd)",
                 memuse_log[k].label, memuse_log[k].size);
@@ -261,7 +261,7 @@ void memuse_log_dump(const char *filename) {
 
     } else if (child == NULL && !memuse_log[k].allocated) {
 
-    /* Unmatched free, OK if NULL. */
+      /* Unmatched free, OK if NULL. */
 #if SWIFT_DEBUG_CHECKS
       if (memuse_log[k].ptr != NULL) {
         message("Unmatched non-NULL free: %s", memuse_log[k].label);
@@ -292,8 +292,8 @@ void memuse_log_dump(const char *filename) {
   }
 
 #ifdef MEMUSE_RNODE_DUMP
-    /* Debug dump of tree. */
-    // memuse_rnode_dump(0, memuse_rnode_root, 0);
+  /* Debug dump of tree. */
+  // memuse_rnode_dump(0, memuse_rnode_root, 0);
 #endif
 
   /* Now we find all the still active nodes and gather their sizes against the

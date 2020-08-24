@@ -129,7 +129,7 @@ double eagle_feedback_number_of_sampled_SNII(const struct spart* sp,
     /* The max dying star mass is also below the SNII mass window */
     else {
 
-    /* We already excluded this at the star of the function */
+      /* We already excluded this at the star of the function */
 #ifdef SWIFT_DEBUG_CHECKS
       error("Error in the logic");
 #endif
@@ -139,7 +139,7 @@ double eagle_feedback_number_of_sampled_SNII(const struct spart* sp,
   /* The min dying star mass dies above the SNII mass window */
   else {
 
-  /* We already excluded this at the star of the function */
+    /* We already excluded this at the star of the function */
 #ifdef SWIFT_DEBUG_CHECKS
     error("Error in the logic");
 #endif

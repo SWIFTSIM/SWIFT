@@ -26,13 +26,14 @@
  * Modified by Pete Warden to fix a serious performance problem, support strings
  * as keys and removed thread synchronization - http://petewarden.typepad.com
  */
+#include "hashmap.h"
+
+#include "error.h"
+#include "memuse.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "error.h"
-#include "hashmap.h"
-#include "memuse.h"
 
 #define INITIAL_NUM_CHUNKS (1)
 #define HASHMAP_GROWTH_FACTOR (2)

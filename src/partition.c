@@ -168,17 +168,17 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
 }
 #endif
 
-  /* METIS/ParMETIS support (optional)
-   * =================================
-   *
-   * METIS/ParMETIS partitions using a multi-level k-way scheme. We support
-   * using this in a unweighted scheme, which works well and seems to be
-   * guaranteed, and a weighted by the number of particles scheme.
-   *
-   * Repartitioning is based on ParMETIS and uses weights determined from the
-   * estimated costs that a cells tasks will take or the relative time bins of
-   * the cells next updates.
-   */
+/* METIS/ParMETIS support (optional)
+ * =================================
+ *
+ * METIS/ParMETIS partitions using a multi-level k-way scheme. We support
+ * using this in a unweighted scheme, which works well and seems to be
+ * guaranteed, and a weighted by the number of particles scheme.
+ *
+ * Repartitioning is based on ParMETIS and uses weights determined from the
+ * estimated costs that a cells tasks will take or the relative time bins of
+ * the cells next updates.
+ */
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
@@ -1612,7 +1612,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
   }
 
-    /* Allocate cell list for the partition. If not already done. */
+  /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
@@ -1692,7 +1692,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     }
   }
 
-    /* And repartition/ partition, using both weights or not as requested. */
+  /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
@@ -1790,7 +1790,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
     for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
   }
 
-    /* And repartition. */
+  /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);

@@ -106,7 +106,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     E_BA_term /= (rho_A + rho_B);
   }
 
-    /* Compute r^p */
+  /* Compute r^p */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
   const float r_to_p = integer_powf(sqrtf(r2), p);
 #else

@@ -66,7 +66,8 @@ void cooling_first_init_part(
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling, const float rho_phys,
-    const float XH, const float logZZsol, const float u_phys);
+    const float XH, const float logZZsol, const float u_phys,
+    const int HII_region);
 
 float cooling_get_temperature(
     const struct phys_const *restrict phys_const,
@@ -76,13 +77,15 @@ float cooling_get_temperature(
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, const struct xpart *restrict xp);
 
-double compute_subgrid_density(
+double compute_subgrid_property(
     const struct cooling_function_data *cooling,
     const struct phys_const *phys_const,
     const struct entropy_floor_properties *floor_props,
     const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
     const float XH, const float P_phys, const float log10_T,
-    const float log10_T_EOS_max);
+    const float log10_T_EOS_max, const int HII_region,
+    const float *abundance_ratio, const double log_u_cgs,
+    const enum cooling_subgrid_properties isub);
 
 float cooling_get_radiated_energy(const struct xpart *restrict xp);
 
@@ -101,5 +104,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
 void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_clean(struct cooling_function_data *data);
+
+/*! Stub defined to let the BH model compile */
+#define colibre_cooling_N_elementtypes 1
 
 #endif /* SWIFT_COOLING_EAGLE_H */

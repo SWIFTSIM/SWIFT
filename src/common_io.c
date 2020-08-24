@@ -165,7 +165,7 @@ void io_read_attribute_graceful(hid_t grp, const char* name,
   const htri_t h_exists = H5Aexists(grp, name);
 
   if (h_exists <= 0) {
-  /* Attribute either does not exist (0) or function failed (-ve) */
+    /* Attribute either does not exist (0) or function failed (-ve) */
 #ifdef SWIFT_DEBUG_CHECKS
     message("WARNING: attribute '%s' does not exist.", name);
 #endif
@@ -176,7 +176,7 @@ void io_read_attribute_graceful(hid_t grp, const char* name,
     if (h_attr >= 0) {
       const hid_t h_err = H5Aread(h_attr, io_hdf5_type(type), data);
       if (h_err < 0) {
-      /* Explicitly do nothing unless debugging checks are activated */
+        /* Explicitly do nothing unless debugging checks are activated */
 #ifdef SWIFT_DEBUG_CHECKS
         message("WARNING: unable to read attribute '%s'", name);
 #endif
@@ -2855,7 +2855,8 @@ int get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_gas:
       hydro_write_particles(NULL, NULL, list, &num_fields);
-      num_fields += chemistry_write_particles(NULL, NULL, list + num_fields);
+      num_fields += chemistry_write_particles(NULL, NULL, list + num_fields,
+                                              with_cosmology);
       num_fields +=
           cooling_write_particles(NULL, NULL, list + num_fields, NULL);
       num_fields += tracers_write_particles(NULL, NULL, list + num_fields,

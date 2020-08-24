@@ -26,9 +26,6 @@
 #include <mpi.h>
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "atomic.h"
 #include "chemistry_io.h"
 #include "cooling_io.h"
@@ -42,6 +39,9 @@
 #include "star_formation_io.h"
 #include "tracers_io.h"
 #include "velociraptor_io.h"
+
+#include <stdio.h>
+#include <stdlib.h>
 
 /**
  * @brief Will the line of sight intersect a given cell?
@@ -438,7 +438,8 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
 
   /* Find all the gas output fields */
   hydro_write_particles(parts, xparts, list, &num_fields);
-  num_fields += chemistry_write_particles(parts, xparts, list + num_fields);
+  num_fields += chemistry_write_particles(parts, xparts, list + num_fields,
+                                          with_cosmology);
   if (with_cooling || with_temperature) {
     num_fields += cooling_write_particles(parts, xparts, list + num_fields,
                                           e->cooling_func);
@@ -969,7 +970,7 @@ void do_line_of_sight(struct engine *e) {
       H5Gclose(h_grp);
     }
 
-      /* Free up some memory */
+    /* Free up some memory */
 #ifdef WITH_MPI
     free(counts);
     free(offsets);
