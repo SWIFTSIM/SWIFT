@@ -230,8 +230,9 @@ eagle_helium_reionization_extraheat(
  * TO DO: outside table ranges, it uses at the moment the minimum, maximu value
  */
 __attribute__((always_inline)) INLINE static float qla_convert_u_to_temp(
-    const double log_10_u_cgs, const float redshift, int n_H_index, float d_n_H,
-    int met_index, float d_met, int red_index, float d_red,
+    const double log_10_u_cgs, const float redshift, const int n_H_index,
+    const float d_n_H, const int met_index, const float d_met,
+    const int red_index, const float d_red,
     const struct cooling_function_data *cooling) {
 
   /* Get index of u along the internal energy axis */
@@ -281,8 +282,9 @@ __attribute__((always_inline)) INLINE static float qla_convert_u_to_temp(
  * TO DO: outside table ranges, it uses at the moment the minimum, maximu value
  */
 __attribute__((always_inline)) INLINE static float qla_convert_temp_to_u(
-    const double log_10_T, const float redshift, int n_H_index, float d_n_H,
-    int met_index, float d_met, int red_index, float d_red,
+    const double log_10_T, const float redshift, const int n_H_index,
+    const float d_n_H, const int met_index, const float d_met,
+    const int red_index, const float d_red,
     const struct cooling_function_data *cooling) {
 
   /* Get index of u along the internal energy axis */
@@ -324,9 +326,10 @@ __attribute__((always_inline)) INLINE static float qla_convert_temp_to_u(
  * @return linear electron density in cm-3 (NOT the electron fraction)
  */
 INLINE static float qla_meanparticlemass_temperature(
-    double log_T_cgs, double redshift, double n_H_cgs, float ZZsol,
-    int n_H_index, float d_n_H, int met_index, float d_met, int red_index,
-    float d_red, const struct cooling_function_data *cooling) {
+    const double log_T_cgs, const double redshift, const double n_H_cgs,
+    const float ZZsol, const int n_H_index, const float d_n_H,
+    const int met_index, const float d_met, const int red_index,
+    const float d_red, const struct cooling_function_data *cooling) {
 
   /* Get index of T along the temperature axis */
   int T_index;
@@ -363,9 +366,10 @@ INLINE static float qla_meanparticlemass_temperature(
  * @return linear electron density in cm-3 (NOT the electron fraction)
  */
 INLINE static float qla_electron_density(
-    double log_u_cgs, double redshift, double n_H_cgs, float ZZsol,
-    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
-    float d_n_H, int met_index, float d_met, int red_index, float d_red,
+    const double log_u_cgs, const double redshift, const double n_H_cgs,
+    const float ZZsol, const float abundance_ratio[qla_cooling_N_elementtypes],
+    const int n_H_index, const float d_n_H, const int met_index,
+    const float d_met, const int red_index, const float d_red,
     const struct cooling_function_data *cooling) {
 
   /* Get index of u along the internal energy axis */
@@ -406,9 +410,10 @@ INLINE static float qla_electron_density(
  * @return linear electron density in cm-3 (NOT the electron fraction)
  */
 INLINE static float qla_electron_density_temperature(
-    double log_T_cgs, double redshift, double n_H_cgs, float ZZsol,
-    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
-    float d_n_H, int met_index, float d_met, int red_index, float d_red,
+    const double log_T_cgs, const double redshift, const double n_H_cgs,
+    const float ZZsol, const float abundance_ratio[qla_cooling_N_elementtypes],
+    const int n_H_index, const float d_n_H, const int met_index,
+    const float d_met, const int red_index, const float d_red,
     const struct cooling_function_data *cooling) {
 
   /* Get index of u along the internal energy axis */
@@ -430,7 +435,7 @@ INLINE static float qla_electron_density_temperature(
 }
 
 /**
- * @brief Computes the net cooling rate (cooling - heating) for a given element
+ * @brief Computes the net cooling rate (heating - cooling) for a given element
  * abundance ratio, internal energy, redshift, and density. The unit of the net
  * cooling rate is Lambda / nH**2 [erg cm^3 s-1] and all input values are in
  * cgs. The Compton cooling is not taken from the tables but calculated
@@ -457,11 +462,12 @@ INLINE static float qla_electron_density_temperature(
  * These are only used for testing.
  */
 INLINE static double qla_cooling_rate(
-    double log_u_cgs, double redshift, double n_H_cgs,
-    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
-    float d_n_H, int met_index, float d_met, int red_index, float d_red,
-    const struct cooling_function_data *cooling, int onlyicool, int onlyiheat,
-    int icool, int iheat) {
+    const double log_u_cgs, const double redshift, const double n_H_cgs,
+    const float abundance_ratio[qla_cooling_N_elementtypes],
+    const int n_H_index, const float d_n_H, const int met_index,
+    const float d_met, const int red_index, const float d_red,
+    const struct cooling_function_data *cooling, const int onlyicool,
+    const int onlyiheat, const int icool, const int iheat) {
 
   /* Set weights for cooling rates */
   float weights_cooling[qla_cooling_N_cooltypes - 2];
@@ -605,11 +611,12 @@ INLINE static double qla_cooling_rate(
  * These are only used for testing.
  */
 INLINE static double qla_cooling_rate_temperature(
-    double log_T_cgs, double redshift, double n_H_cgs,
-    const float abundance_ratio[qla_cooling_N_elementtypes], int n_H_index,
-    float d_n_H, int met_index, float d_met, int red_index, float d_red,
-    const struct cooling_function_data *cooling, int onlyicool, int onlyiheat,
-    int icool, int iheat) {
+    const double log_T_cgs, const double redshift, const double n_H_cgs,
+    const float abundance_ratio[qla_cooling_N_elementtypes],
+    const int n_H_index, const float d_n_H, const int met_index,
+    const float d_met, const int red_index, const float d_red,
+    const struct cooling_function_data *cooling, const int onlyicool,
+    const int onlyiheat, const int icool, const int iheat) {
 
   /* Set weights for cooling rates */
   float weights_cooling[qla_cooling_N_cooltypes - 2];
