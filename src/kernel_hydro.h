@@ -39,6 +39,7 @@
 #include "error.h"
 #include "inline.h"
 #include "minmax.h"
+#include "pi.h"
 #include "vector.h"
 
 /* ------------------------------------------------------------------------- */

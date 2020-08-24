@@ -56,16 +56,16 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
                                                          void **memptr,
                                                          size_t alignment,
                                                          size_t size) {
-  int result = posix_memalign(memptr, alignment, size);
+  (*memptr) = aligned_alloc(alignment, size);
 #ifdef SWIFT_MEMUSE_REPORTS
-  if (result == 0) {
+  if (memptr != NULL) {
     memuse_log_allocation(label, *memptr, 1, size);
   } else {
     /* Failed allocations are interesting as well. */
     memuse_log_allocation(label, NULL, -1, size);
   }
 #endif
-  return result;
+  return memptr != NULL;
 }
 
 /**

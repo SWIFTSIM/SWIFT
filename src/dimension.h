@@ -30,6 +30,7 @@
 
 /* Local headers. */
 #include "inline.h"
+#include "pi.h"
 #include "vector.h"
 
 #include <math.h>
