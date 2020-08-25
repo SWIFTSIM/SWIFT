@@ -80,7 +80,7 @@ io_read_string_array_attribute(hid_t grp, const char *name, void *data,
   for (hsize_t i = 0; i < number_element; i++) {
     char *src = tmp + i * sdim;
     char *dest = data + i * size_per_element;
-    memcpy(dest, src, sdim);
+    memcpy(dest, src, sdim + 1);
   }
 
   /* Cleanup */
