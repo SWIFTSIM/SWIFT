@@ -242,7 +242,9 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "logger", &with_logger, "Run with the particle logger.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('R', "radiation", &with_rt, "Run with radiative transfer",
+      OPT_BOOLEAN('R', "radiation", &with_rt,
+                  "Run with radiative transfer. Work in progress, currently "
+                  "has no effect.",
                   NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
@@ -1298,7 +1300,6 @@ int main(int argc, char *argv[]) {
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
     if (with_sink) engine_policies |= engine_policy_sink;
     if (with_rt) engine_policies |= engine_policy_rt;
-    printf("ENGINE POLICY: %d\n", engine_policy_rt);
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
