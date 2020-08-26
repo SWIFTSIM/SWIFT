@@ -18,9 +18,9 @@ Setting up VELOCIraptor
 -----------------------
 
 The first step is setting up VELOCIraptor, this requires us to download the 
-git repository as::
+git repository at::
   
-  git clone https://github.com/pelahi/VELOCIraptor-STF
+  git clone https://github.com/ICRAR/VELOCIraptor-STF.git
 
 Similar to the SWIFT with VELOCIraptor configuration, we can use the 
 master to analyse individual snapshots. We can use this branch

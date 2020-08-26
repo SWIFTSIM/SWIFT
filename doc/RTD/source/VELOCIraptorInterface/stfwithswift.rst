@@ -18,9 +18,9 @@ Setting up VELOCIraptor
 -----------------------
 
 Before we can run SWIFT with VELOCIraptor we first need to download
-VELOCIraptor. This can be done by cloning the repository on GitHub_::
+VELOCIraptor. This can be done by cloning the repository on GitHub::
 
-  git clone https://github.com/pelahi/VELOCIraptor-STF
+  git clone https://github.com/ICRAR/VELOCIraptor-STF.git
 
 The SWIFT interface is in the master branch of VELOCIraptor so nothing is more
 is needed besides fetching the latest version of the `NBodyLib` that the code
@@ -54,7 +54,7 @@ HDF5 library, not a parallel build.
 Compiling SWIFT
 ---------------
 The next part is compiling SWIFT with VELOCIraptor and assumes you already
-downloaded SWIFT from the GitLab_, this can be done by running
+downloaded SWIFT from the GitLab repository. This can be done by running
 
 .. code:: bash
   
@@ -88,5 +88,4 @@ finder as::
 Which activates the VELOCIraptor interface.
 
 
-.. _GitHub: https://github.com/pelahi/VELOCIraptor-STF
 .. _GitLab: https://gitlab.cosma.dur.ac.uk/swift/swiftsim
