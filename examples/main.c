@@ -177,6 +177,7 @@ int main(int argc, char *argv[]) {
   int with_eagle = 0;
   int with_gear = 0;
   int with_line_of_sight = 0;
+  int with_rt = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -240,6 +241,10 @@ int main(int argc, char *argv[]) {
                   "feedback events.",
                   NULL, 0, 0),
       OPT_BOOLEAN(0, "logger", &with_logger, "Run with the particle logger.",
+                  NULL, 0, 0),
+      OPT_BOOLEAN('R', "radiation", &with_rt,
+                  "Run with radiative transfer. Work in progress, currently "
+                  "has no effect.",
                   NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
@@ -557,6 +562,23 @@ int main(int argc, char *argv[]) {
     }
     return 1;
   }
+
+#ifdef RT_NONE
+  if (with_rt) {
+    error("Running with radiative transfer but compiled without it!");
+  }
+#else
+  if (with_rt && !with_hydro) {
+    error(
+        "Error: Cannot use radiative transfer without gas, --hydro must be "
+        "chosen\n");
+  }
+  if (with_rt && !with_stars) {
+    error(
+        "Error: Cannot use radiative transfer without stars, --stars must be "
+        "chosen\n");
+  }
+#endif
 
 /* Let's pin the main thread, now we know if affinity will be used. */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
@@ -1277,6 +1299,7 @@ int main(int argc, char *argv[]) {
     if (with_logger) engine_policies |= engine_policy_logger;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
     if (with_sink) engine_policies |= engine_policy_sink;
+    if (with_rt) engine_policies |= engine_policy_rt;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
