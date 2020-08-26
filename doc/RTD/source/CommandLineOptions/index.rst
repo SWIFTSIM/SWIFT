@@ -22,19 +22,19 @@ can be found by typing ``./swift -h``:
 
     -b, --feedback                    Run with stars feedback.
     -c, --cosmology                   Run with cosmological time integration.
-    --temperature                     Run with temperature calculation. 
+    --temperature                     Run with temperature calculation.
     -C, --cooling                     Run with cooling (also switches on --temperature).
     -D, --drift-all                   Always drift all particles even the ones
                                       far from active particles. This emulates
                                       Gadget-[23] and GIZMO's default behaviours.
-    -F, --star-formation	      Run with star formation.
+    -F, --star-formation              Run with star formation.
     -g, --external-gravity            Run with an external gravitational potential.
     -G, --self-gravity                Run with self-gravity.
     -M, --multipole-reconstruction    Reconstruct the multipoles every time-step.
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
     -B, --black-holes                 Run with black holes.
-    -k, --sinks                       Run with sink particles. 
+    -k, --sinks                       Run with sink particles.
     -u, --fof                         Run Friends-of-Friends algorithm to
                                       perform black hole seeding.
     -x, --velociraptor                Run with structure finding.
@@ -42,19 +42,26 @@ can be found by typing ``./swift -h``:
     --limiter                         Run with time-step limiter.
     --sync                            Run with time-step synchronization
                                       of particles hit by feedback events.
-    --logger                          Run with the particle logger. 
+    --logger                          Run with the particle logger.
+    -R, --radiation                   Run with radiative transfer. Work in
+                                      progress, currently has no effect.
 
   Simulation meta-options:
 
-    --eagle                           Run with all the options needed for the 
-                                      EAGLE model. This is equivalent to --hydro 
-                                      --limiter --sync --self-gravity --stars 
-                                      --star-formation --cooling --feedback 
-                                      --black-holes --fof. 
-    --quick-lyman-alpha               Run with all the options needed for the 
-                                      quick Lyman-alpha model. This is equivalent 
-                                      to --hydro --self-gravity --stars --star-formation 
+    --quick-lyman-alpha               Run with all the options needed for the
+                                      quick Lyman-alpha model. This is equivalent
+                                      to --hydro --self-gravity --stars --star-formation
                                       --cooling.
+    --eagle                           Run with all the options needed for the
+                                      EAGLE model. This is equivalent to --hydro
+                                      --limiter --sync --self-gravity --stars
+                                      --star-formation --cooling --feedback
+                                      --black-holes --fof.
+    --gear                            Run with all the options needed for the
+                                      GEAR model. This is equivalent to --hydro
+                                      --limiter --sync --self-gravity --stars
+                                      --star-formation --cooling --feedback.
+
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
@@ -82,12 +89,15 @@ can be found by typing ``./swift -h``:
     -T, --timers=<int>                Print timers every time-step.
     -v, --verbose=<int>               Run in verbose mode, in MPI mode 2 outputs
                                       from all ranks.
-    -y, --task-dumps=<int>            Time-step frequency at which task analysis
-                                      files and/or tasks are dumped.
-    --cell-dumps=<int>                Time-step frequency at which cell graphs 
-                                      are dumped. 
+    -y, --task-dumps=<int>            Time-step frequency at which task graphs
+                                      are dumped.
+    --cell-dumps=<int>                Time-step frequency at which cell graphs
+                                      are dumped.
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.
-    --dump-tasks-threshold=<flt>      Fraction of the total step's time spent 
-                                      in a task to trigger a dump of the task plot 
-                                      on this step 
+    --dump-tasks-threshold=<flt>      Fraction of the total step's time spent
+                                      in a task to trigger a dump of the task plot
+                                      on this step
+
+See the file examples/parameter_example.yml for an example of parameter file.
+
