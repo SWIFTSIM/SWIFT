@@ -20,14 +20,14 @@
 import h5py
 import numpy as np
 from shutil import copyfile
+import sys
 
 # Add sink particles to the isolated galaxy
 
-fileName = "3e11-star-only-DM-halo-galaxy.hdf5"
+fileName = sys.argv[-1]
 output = "isolated_galaxy.hdf5"
 
-L = 13756  # Size of the box (internal units)
-L_sink = 1000 # Size of the sink particle area (L_sink < L)
+L_sink = 50  # Size of the sink particle area
 N = 1000  # Number of sink particles
 max_vel = 100  # Maximal velocity of the sink particles (in km / s)
 mass = 0.000142  # Mass of a sink particle (internal units)
@@ -39,6 +39,11 @@ copyfile(fileName, output)
 
 # File
 file = h5py.File(output, 'a')
+
+# Get the box size (suppose that the galaxy is at the center of the box)
+L = 2 * file["PartType0/Coordinates"][:].mean()
+if (L < L_sink):
+    raise Exception("Error the size of the sink box is too large")
 
 pos = np.random.rand(N, 3) * L_sink + 0.5 * (L - L_sink)
 vel = 2 * (np .random.rand(N, 3) - 0.5) * max_vel
