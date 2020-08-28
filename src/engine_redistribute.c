@@ -521,7 +521,7 @@ void engine_redistribute(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   const int nr_sinks_new = 0;
 #endif
-  if (e->policy & engine_policy_sink) {
+  if (e->policy & engine_policy_sinks) {
     error("Not implemented yet");
   }
 

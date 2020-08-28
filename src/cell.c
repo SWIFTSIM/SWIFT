@@ -2065,6 +2065,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   /* Store the counts and offsets. */
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->sinks.count = bucket_count[k];
+    c->progeny[k]->sinks.count_total = c->progeny[k]->sinks.count;
     c->progeny[k]->sinks.parts = &c->sinks.parts[bucket_offset[k]];
   }
 
@@ -2289,6 +2290,44 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
         c->grav.parts[i].time_bin != time_bin_inhibited)
       error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
             c->grav.parts[i].ti_drift, ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that the #sink in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_sink_drift_point(struct cell *c, void *data) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  /* Only check cells with content */
+  if (c->sinks.count == 0) return;
+
+  if (c->sinks.ti_old_part != ti_drift)
+    error(
+        "Cell in an incorrect time-zone! c->sinks.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->sinks.ti_old_part, ti_drift);
+
+  for (int i = 0; i < c->sinks.count; ++i)
+    if (c->sinks.parts[i].ti_drift != ti_drift &&
+        c->sinks.parts[i].time_bin != time_bin_inhibited)
+      error(
+          "sink-part in an incorrect time-zone! sink->ti_drift=%lld "
+          "ti_drift=%lld",
+          c->sinks.parts[i].ti_drift, ti_drift);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -2633,7 +2672,8 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
                          cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift |
                          cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift |
                          cell_flag_do_stars_drift |
-                         cell_flag_do_stars_sub_drift);
+                         cell_flag_do_stars_sub_drift |
+                         cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
 }
 
 /**
@@ -3021,6 +3061,44 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->black_holes.drift");
 #endif
         scheduler_activate(s, parent->black_holes.drift);
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the #sink drifts on the given cell.
+ */
+void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
+
+  /* If this cell is already marked for drift, quit early. */
+  if (cell_get_flag(c, cell_flag_do_sink_drift)) return;
+
+  /* Mark this cell for drifting. */
+  cell_set_flag(c, cell_flag_do_sink_drift);
+
+  /* Set the do_sink_sub_drifts all the way up and activate the super
+     drift if this has not yet been done. */
+  if (c == c->hydro.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->sinks.drift == NULL)
+      error("Trying to activate un-existing c->sinks.drift");
+#endif
+    scheduler_activate(s, c->sinks.drift);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_sink_sub_drift);
+         parent = parent->parent) {
+      /* Mark this cell for drifting */
+      cell_set_flag(parent, cell_flag_do_sink_sub_drift);
+
+      if (parent == c->hydro.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->sinks.drift == NULL)
+          error("Trying to activate un-existing parent->sinks.drift");
+#endif
+        scheduler_activate(s, parent->sinks.drift);
         break;
       }
     }
@@ -3511,6 +3589,102 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
       if (ci->nodeID == engine_rank && with_timestep_sync)
         cell_activate_sync_part(ci, s);
     }
+  } /* Otherwise, pair interation */
+}
+
+/**
+ * @brief Traverse a sub-cell task and activate the sinks drift tasks that
+ * are required by a sinks task
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ * @param with_timestep_sync Are we running with time-step synchronization on?
+ */
+void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s,
+                                       const int with_timestep_sync) {
+  const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values. */
+  ci->sinks.dx_max_part_old = ci->sinks.dx_max_part;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
+
+  if (cj != NULL) {
+    cj->sinks.dx_max_part_old = cj->sinks.dx_max_part;
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+    cj->hydro.h_max_old = cj->hydro.h_max;
+  }
+
+  /* Self interaction? */
+  if (cj == NULL) {
+    /* Do anything? */
+    if (!cell_is_active_sinks(ci, e) || ci->hydro.count == 0 ||
+        ci->sinks.count == 0)
+      return;
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_sinks_task(ci)) {
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_sinks_tasks(ci->progeny[j], NULL, s,
+                                            with_timestep_sync);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_sinks_tasks(ci->progeny[j], ci->progeny[k],
+                                                s, with_timestep_sync);
+        }
+      }
+    } else {
+      /* We have reached the bottom of the tree: activate drift */
+      cell_activate_drift_sink(ci, s);
+      cell_activate_drift_part(ci, s);
+    }
+  }
+
+  /* Otherwise, pair interation */
+  else {
+    error("Not implemented yet.");
+    /* /\* Should we even bother? *\/ */
+    /* if (!cell_is_active_sinks(ci, e) && */
+    /*     !cell_is_active_sinks(cj, e)) */
+    /*   return; */
+
+    /* /\* Get the orientation of the pair. *\/ */
+    /* double shift[3]; */
+    /* const int sid = space_getsid(s->space, &ci, &cj, shift); */
+
+    /* /\* recurse? *\/ */
+    /* if (cell_can_recurse_in_pair_sinks_task(ci, cj) && */
+    /*     cell_can_recurse_in_pair_sinks_task(cj, ci)) { */
+    /*   const struct cell_split_pair *csp = &cell_split_pairs[sid]; */
+    /*   for (int k = 0; k < csp->count; k++) { */
+    /*     const int pid = csp->pairs[k].pid; */
+    /*     const int pjd = csp->pairs[k].pjd; */
+    /*     if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) */
+    /*       cell_activate_subcell_sinks_tasks( */
+    /*           ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync); */
+    /*   } */
+    /* } */
+
+    /* /\* Otherwise, activate the drifts. *\/ */
+    /* else if (cell_is_active_sinks(ci, e) || */
+    /*          cell_is_active_sinks(cj, e)) { */
+
+    /*   /\* Activate the drifts if the cells are local. *\/ */
+    /*   if (ci->nodeID == engine_rank) cell_activate_drift_sinks(ci, s); */
+    /*   if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s); */
+    /*   if (cj->nodeID == engine_rank && with_timestep_sync) */
+    /*     cell_activate_sync_part(cj, s); */
+
+    /*   /\* Activate the drifts if the cells are local. *\/ */
+    /*   if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s); */
+    /*   if (cj->nodeID == engine_rank) cell_activate_drift_sinks(cj, s); */
+    /*   if (ci->nodeID == engine_rank && with_timestep_sync) */
+    /*     cell_activate_sync_part(ci, s); */
+    /* } */
   } /* Otherwise, pair interation */
 }
 
@@ -4610,6 +4784,38 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Un-skips all the sinks tasks associated with a given cell and
+ * checks if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
+
+  struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
+  int rebuild = 0;
+
+  if (c->sinks.drift != NULL && cell_is_active_sinks(c, e)) {
+    cell_activate_drift_sink(c, s);
+  }
+
+  /* Unskip all the other task types. */
+  if (c->nodeID == nodeID && cell_is_active_sinks(c, e)) {
+    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+#ifdef WITH_LOGGER
+    if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
+  }
+
+  return rebuild;
+}
+
+/**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
@@ -5440,6 +5646,156 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 }
 
 /**
+ * @brief Recursively drifts the #sinks in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ * @param force Drift the particles irrespective of the #cell flags.
+ */
+void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
+
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const integertime_t ti_old_bpart = c->sinks.ti_old_part;
+  const integertime_t ti_current = e->ti_current;
+  struct sink *const sinks = c->sinks.parts;
+
+  float dx_max = 0.f, dx2_max = 0.f;
+
+  /* Drift irrespective of cell flags? */
+  force = (force || cell_get_flag(c, cell_flag_do_sink_drift));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only drift local cells. */
+  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_bpart) error("Attempt to drift to the past");
+#endif
+
+  /* Early abort? */
+  if (c->sinks.count == 0) {
+
+    /* Clear the drift flags. */
+    cell_clear_flag(c, cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
+
+    /* Update the time of the last drift */
+    c->sinks.ti_old_part = ti_current;
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift */
+
+  /* Are we not in a leaf ? */
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_sink_sub_drift))) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+
+        /* Recurse */
+        cell_drift_sink(cp, e, force);
+
+        /* Update */
+        dx_max = max(dx_max, cp->sinks.dx_max_part);
+      }
+    }
+
+    /* Store the values */
+    c->sinks.dx_max_part = dx_max;
+
+    /* Update the time of the last drift */
+    c->sinks.ti_old_part = ti_current;
+
+  } else if (!c->split && force && ti_current > ti_old_bpart) {
+
+    /* Drift from the last time the cell was drifted to the current time */
+    double dt_drift;
+    if (with_cosmology) {
+      dt_drift =
+          cosmology_get_drift_factor(e->cosmology, ti_old_bpart, ti_current);
+    } else {
+      dt_drift = (ti_current - ti_old_bpart) * e->time_base;
+    }
+
+    /* Loop over all the star particles in the cell */
+    const size_t nr_sinks = c->sinks.count;
+    for (size_t k = 0; k < nr_sinks; k++) {
+
+      /* Get a handle on the sink. */
+      struct sink *const sink = &sinks[k];
+
+      /* Ignore inhibited particles */
+      if (sink_is_inhibited(sink, e)) continue;
+
+      /* Drift... */
+      drift_sink(sink, dt_drift, ti_old_bpart, ti_current);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particle does not drift by more than a box length. */
+      if (fabs(sink->v[0] * dt_drift) > e->s->dim[0] ||
+          fabs(sink->v[1] * dt_drift) > e->s->dim[1] ||
+          fabs(sink->v[2] * dt_drift) > e->s->dim[2]) {
+        error("Particle drifts by more than a box length!");
+      }
+#endif
+
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((sink->x[0] > dim[0]) || (sink->x[0] < 0.) ||  // x
+            (sink->x[1] > dim[1]) || (sink->x[1] < 0.) ||  // y
+            (sink->x[2] > dim[2]) || (sink->x[2] < 0.)) {  // z
+
+          lock_lock(&e->s->lock);
+
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!sink_is_inhibited(sink, e)) {
+
+            /* Remove the particle entirely */
+            // cell_remove_sink(e, c, bp);
+            error("TODO: loic implement cell_remove_sink");
+          }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
+
+          continue;
+        }
+      }
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = sink->x_diff[0] * sink->x_diff[0] +
+                        sink->x_diff[1] * sink->x_diff[1] +
+                        sink->x_diff[2] * sink->x_diff[2];
+      dx2_max = max(dx2_max, dx2);
+
+      /* Get ready for a density calculation */
+      if (sink_is_active(sink, e)) {
+        sink_init_sink(sink);
+      }
+    }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+
+    /* Store the values */
+    c->sinks.dx_max_part = dx_max;
+
+    /* Update the time of the last drift */
+    c->sinks.ti_old_part = ti_current;
+  }
+
+  /* Clear the drift flags. */
+  cell_clear_flag(c, cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
+}
+
+/**
  * @brief Recursively drifts all multipoles in a cell hierarchy.
  *
  * @param c The #cell.
@@ -5587,7 +5943,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->nr_tasks > 0)
+      c->sinks.ti_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {

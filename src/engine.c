@@ -1591,6 +1591,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 6;
 #endif
   }
+  if (e->policy & engine_policy_sinks) {
+    /* 1 drift, 2 kicks, 1 time-step */
+    n1 += 4;
+  }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
   }
@@ -1697,46 +1701,52 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Report the number of particles and memory */
   if (e->verbose)
     message(
-        "Space has memory for %zd/%zd/%zd/%zd part/gpart/spart/bpart "
-        "(%zd/%zd/%zd/%zd MB)",
+        "Space has memory for %zd/%zd/%zd/%zd/%zd part/gpart/spart/sink/bpart "
+        "(%zd/%zd/%zd/%zd/%zd MB)",
         e->s->size_parts, e->s->size_gparts, e->s->size_sparts,
-        e->s->size_bparts,
+        e->s->size_sinks, e->s->size_bparts,
         e->s->size_parts * sizeof(struct part) / (1024 * 1024),
         e->s->size_gparts * sizeof(struct gpart) / (1024 * 1024),
         e->s->size_sparts * sizeof(struct spart) / (1024 * 1024),
+        e->s->size_sinks * sizeof(struct sink) / (1024 * 1024),
         e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024));
 
   if (e->verbose)
     message(
-        "Space holds %zd/%zd/%zd/%zd part/gpart/spart/bpart (fracs: "
-        "%f/%f/%f/%f)",
-        e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts, e->s->nr_bparts,
+        "Space holds %zd/%zd/%zd/%zd/%zd part/gpart/spart/sink/bpart (fracs: "
+        "%f/%f/%f/%f/%f)",
+        e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts, e->s->nr_sinks,
+        e->s->nr_bparts,
         e->s->nr_parts ? e->s->nr_parts / ((double)e->s->size_parts) : 0.,
         e->s->nr_gparts ? e->s->nr_gparts / ((double)e->s->size_gparts) : 0.,
         e->s->nr_sparts ? e->s->nr_sparts / ((double)e->s->size_sparts) : 0.,
+        e->s->nr_sinks ? e->s->nr_sinks / ((double)e->s->size_sinks) : 0.,
         e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.);
 
   const ticks tic2 = getticks();
 
   /* Update the global counters of particles */
-  long long num_particles[4] = {
+  long long num_particles[5] = {
       (long long)(e->s->nr_parts - e->s->nr_extra_parts),
       (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
       (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
+      (long long)(e->s->nr_sinks - e->s->nr_extra_sinks),
       (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, num_particles, 4, MPI_LONG_LONG, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
   e->total_nr_parts = num_particles[0];
   e->total_nr_gparts = num_particles[1];
   e->total_nr_sparts = num_particles[2];
-  e->total_nr_bparts = num_particles[3];
+  e->total_nr_sinks = num_particles[3];
+  e->total_nr_bparts = num_particles[4];
 
   /* Flag that there are no inhibited particles */
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
   e->nr_inhibited_sparts = 0;
+  e->nr_inhibited_sinks = 0;
   e->nr_inhibited_bparts = 0;
 
   if (e->verbose)
@@ -1822,6 +1832,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->updates_since_rebuild = 0;
   e->g_updates_since_rebuild = 0;
   e->s_updates_since_rebuild = 0;
+  e->sink_updates_since_rebuild = 0;
   e->b_updates_since_rebuild = 0;
 
   /* Flag that a rebuild has taken place */
@@ -2031,8 +2042,8 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep ||
+        t->type == task_type_drift_sink || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
@@ -2061,6 +2072,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_part ||
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
+        t->subtype == task_subtype_tend_sink ||
         t->subtype == task_subtype_tend_bpart ||
         t->subtype == task_subtype_rho || t->subtype == task_subtype_sf_counts)
       t->skip = 1;
@@ -2087,7 +2099,8 @@ void engine_skip_drift(struct engine *e) {
 
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_drift_bpart)
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
+        t->type == task_type_drift_sink)
       t->skip = 1;
   }
 
@@ -2473,10 +2486,11 @@ void engine_step(struct engine *e) {
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-        "%12lld %21.3f %6d\n",
+        "%12lld %12lld %21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->b_updates, e->wallclock_time, e->step_props);
+        e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
+        e->step_props);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
@@ -2499,10 +2513,11 @@ void engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%21.3f %6d\n",
+          "%12lld %21.3f %6d\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-          e->s_updates, e->b_updates, e->wallclock_time, e->step_props);
+          e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
+          e->step_props);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
 #endif
@@ -2731,6 +2746,7 @@ void engine_step(struct engine *e) {
   e->updates_since_rebuild += e->collect_group1.updated;
   e->g_updates_since_rebuild += e->collect_group1.g_updated;
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
+  e->sink_updates_since_rebuild += e->collect_group1.sink_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -4323,12 +4339,12 @@ void engine_config(int restart, int fof, struct engine *e,
           engine_step_prop_stf, engine_step_prop_fof,
           engine_step_prop_logger_index);
 
-      fprintf(
-          e->file_timesteps,
-          "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",
-          "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
-          "Updates", "g-Updates", "s-Updates", "b-Updates", "Wall-clock time",
-          clocks_getunit(), "Props");
+      fprintf(e->file_timesteps,
+              "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
+              "[%s] %6s\n",
+              "Step", "Time", "Scale-factor", "Redshift", "Time-step",
+              "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
+              "b-Updates", "Wall-clock time", clocks_getunit(), "Props");
       fflush(e->file_timesteps);
     }
 
@@ -5214,8 +5230,8 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   /* Start by reducing the minimal mass of each particle type */
   float min_mass[swift_type_count] = {
-      e->s->min_part_mass,  e->s->min_gpart_mass, FLT_MAX, FLT_MAX,
-      e->s->min_spart_mass, e->s->min_bpart_mass};
+      e->s->min_part_mass, e->s->min_gpart_mass, FLT_MAX,
+      e->s->min_sink_mass, e->s->min_spart_mass, e->s->min_bpart_mass};
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
@@ -5235,9 +5251,12 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #endif
 
   /* Do the same for the velocity norm sum */
-  float vel_norm[swift_type_count] = {
-      e->s->sum_part_vel_norm,  e->s->sum_gpart_vel_norm, 0.f, 0.f,
-      e->s->sum_spart_vel_norm, e->s->sum_spart_vel_norm};
+  float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
+                                      e->s->sum_gpart_vel_norm,
+                                      0.f,
+                                      e->s->sum_sink_vel_norm,
+                                      e->s->sum_spart_vel_norm,
+                                      e->s->sum_spart_vel_norm};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -5252,17 +5271,19 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       (float)e->total_nr_parts,
       (float)total_nr_dm_gparts,
       (float)e->total_nr_DM_background_gparts,
-      0.f,
+      (float)e->total_nr_sinks,
       (float)e->total_nr_sparts,
       (float)e->total_nr_bparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];
-  const float N_b = count_parts[0] + count_parts[4] + count_parts[5];
+  const float N_b =
+      count_parts[0] + count_parts[3] + count_parts[4] + count_parts[5];
 
   /* Peculiar motion norm for the two species */
   const float vel_norm_dm = vel_norm[1];
-  const float vel_norm_b = vel_norm[0] + vel_norm[4] + vel_norm[5];
+  const float vel_norm_b =
+      vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
 
   /* Mesh forces smoothing scale */
   float r_s;
@@ -5293,7 +5314,8 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   if (N_b > 0.f) {
 
     /* Minimal mass for the baryons */
-    const float min_mass_b = min3(min_mass[0], min_mass[4], min_mass[5]);
+    const float min_mass_b =
+        min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
 
     /* Inter-particle sepration for the baryons */
     const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));

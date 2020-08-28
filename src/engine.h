@@ -81,7 +81,7 @@ enum engine_policy {
   engine_policy_timestep_sync = (1 << 22),
   engine_policy_logger = (1 << 23),
   engine_policy_line_of_sight = (1 << 24),
-  engine_policy_sink = (1 << 25),
+  engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
 };
 #define engine_maxpolicy 27
@@ -224,6 +224,15 @@ struct engine {
   /* Maximal black holes ti_beg for the next time-step */
   integertime_t ti_black_holes_beg_max;
 
+  /* Minimal sinks ti_end for the next time-step */
+  integertime_t ti_sinks_end_min;
+
+  /* Maximal sinks ti_end for the next time-step */
+  integertime_t ti_sinks_end_max;
+
+  /* Maximal sinks ti_beg for the next time-step */
+  integertime_t ti_sinks_beg_max;
+
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
@@ -234,12 +243,13 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates, b_updates;
+  long long updates, g_updates, s_updates, b_updates, sink_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;
   long long g_updates_since_rebuild;
   long long s_updates_since_rebuild;
+  long long sink_updates_since_rebuild;
   long long b_updates_since_rebuild;
 
   /* Star formation logger information */
@@ -252,6 +262,7 @@ struct engine {
   long long total_nr_parts;
   long long total_nr_gparts;
   long long total_nr_sparts;
+  long long total_nr_sinks;
   long long total_nr_bparts;
   long long total_nr_DM_background_gparts;
 
@@ -265,6 +276,7 @@ struct engine {
   long long nr_inhibited_parts;
   long long nr_inhibited_gparts;
   long long nr_inhibited_sparts;
+  long long nr_inhibited_sinks;
   long long nr_inhibited_bparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -509,9 +521,6 @@ struct engine {
   double delta_time_los;
   integertime_t ti_next_los;
   int los_output_count;
-
-  /* Total number of sink particles in the system. */
-  long long total_nr_sinks;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run brute force checks only on steps when all gparts active? */
