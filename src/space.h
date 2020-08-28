@@ -262,6 +262,9 @@ struct space {
   /*! Minimal mass of all the #spart */
   float min_spart_mass;
 
+  /*! Minimal mass of all the #sink */
+  float min_sink_mass;
+
   /*! Minimal mass of all the #bpart */
   float min_bpart_mass;
 
@@ -273,6 +276,9 @@ struct space {
 
   /*! Sum of the norm of the velocity of all the #spart */
   float sum_spart_vel_norm;
+
+  /*! Sum of the norm of the velocity of all the #sink */
+  float sum_sink_vel_norm;
 
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;

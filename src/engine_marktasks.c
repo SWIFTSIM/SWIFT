@@ -878,9 +878,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_kick1 || t_type == task_type_kick2) {
 
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
-          cell_is_active_stars(t->ci, e) ||
+          cell_is_active_stars(t->ci, e) || cell_is_active_sinks(t->ci, e) ||
           cell_is_active_black_holes(t->ci, e))
         scheduler_activate(s, t);
+    }
+
+    /* Sink drift ? */
+    else if (t_type == task_type_drift_sink) {
+
+      if (cell_is_active_sinks(t->ci, e)) cell_activate_drift_sink(t->ci, s);
     }
 
     /* Hydro ghost tasks ? */
@@ -959,9 +965,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->hydro.updated = 0;
       t->ci->grav.updated = 0;
       t->ci->stars.updated = 0;
+      t->ci->sinks.updated = 0;
       t->ci->black_holes.updated = 0;
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
-          cell_is_active_stars(t->ci, e) ||
+          cell_is_active_stars(t->ci, e) || cell_is_active_sinks(t->ci, e) ||
           cell_is_active_black_holes(t->ci, e))
         scheduler_activate(s, t);
     }

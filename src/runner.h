@@ -98,6 +98,7 @@ void runner_do_all_stars_sort(struct runner *r, struct cell *c);
 void runner_do_drift_part(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_spart(struct runner *r, struct cell *c, int timer);
+void runner_do_drift_sink(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
