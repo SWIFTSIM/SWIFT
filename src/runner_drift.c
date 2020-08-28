@@ -94,3 +94,19 @@ void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_drift_bpart);
 }
+
+/**
+ * @brief Drift all sink in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_drift_sink(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  cell_drift_sink(c, r->e, 0);
+
+  if (timer) TIMER_TOC(timer_drift_sink);
+}

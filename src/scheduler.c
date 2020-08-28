@@ -545,6 +545,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
      access the engine... */
   const int with_feedback = (s->space->e->policy & engine_policy_feedback);
   const int with_stars = (s->space->e->policy & engine_policy_stars);
+  const int with_sinks = (s->space->e->policy & engine_policy_sinks);
   const int with_black_holes =
       (s->space->e->policy & engine_policy_black_holes);
 
@@ -558,6 +559,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     const int is_self =
         (t->type == task_type_self) && (t->ci != NULL) &&
         ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0) ||
+         (with_sinks && t->ci->sinks.count > 0) ||
          (with_black_holes && t->ci->black_holes.count > 0));
 
     /* Is this a non-empty pair-task? */
@@ -565,9 +567,11 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                         (t->cj != NULL) &&
                         ((t->ci->hydro.count > 0) ||
                          (with_feedback && t->ci->stars.count > 0) ||
+                         (with_sinks && t->ci->sinks.count > 0) ||
                          (with_black_holes && t->ci->black_holes.count > 0)) &&
                         ((t->cj->hydro.count > 0) ||
                          (with_feedback && t->cj->stars.count > 0) ||
+                         (with_sinks && t->cj->sinks.count > 0) ||
                          (with_black_holes && t->cj->black_holes.count > 0));
 
     /* Empty task? */
@@ -1356,6 +1360,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float gcount_j = (t->cj != NULL) ? t->cj->grav.count : 0.f;
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
     const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
+    const float sink_count_i = (t->ci != NULL) ? t->ci->sinks.count : 0.f;
     const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
     const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
 
@@ -1545,6 +1550,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_spart:
         cost = wscale * scount_i;
         break;
+      case task_type_drift_sink:
+        cost = wscale * sink_count_i;
+        break;
       case task_type_drift_bpart:
         cost = wscale * bcount_i;
         break;
@@ -1576,13 +1584,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * (count_i + scount_i);
         break;
       case task_type_kick1:
-        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
+        cost =
+            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_kick2:
-        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
+        cost =
+            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_timestep:
-        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
+        cost =
+            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_timestep_limiter:
         cost = wscale * count_i;
