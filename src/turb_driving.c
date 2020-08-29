@@ -167,6 +167,28 @@ void st_update_ouseq(void) {
   }
 }
 
+/* return factor needed to renormalize below based on fraction of power
+ * projected out in our solenoidal projection, to return the correct
+ * normalization for accelerations. */
+double solenoidal_frac_total_weight_renormalization(void) {
+#if defined(HYDRO_DIMENSION_3D)
+  return sqrt(3.0 / 3.0) * sqrt(3.0) * 1.0 /
+         sqrt(1.0 - 2.0 * TurbDriving_Global_SolenoidalFraction +
+              3.0 * TurbDriving_Global_SolenoidalFraction *
+                  TurbDriving_Global_SolenoidalFraction);
+#elif defined(HYDRO_DIMENSION_2D)
+  return sqrt(3.0 / 2.0) * sqrt(3.0) * 1.0 /
+         sqrt(1.0 - 2.0 * TurbDriving_Global_SolenoidalFraction +
+              2.0 * TurbDriving_Global_SolenoidalFraction *
+                  TurbDriving_Global_SolenoidalFraction);
+#elif defined(HYDRO_DIMENSION_1D)
+  return sqrt(3.0 / 1.0) * sqrt(3.0) * 1.0 /
+         sqrt(1.0 - 2.0 * TurbDriving_Global_SolenoidalFraction +
+              1.0 * TurbDriving_Global_SolenoidalFraction *
+                  TurbDriving_Global_SolenoidalFraction);
+#endif
+}
+
 /* routine to calculate the projected phases/acceleration field variables, using
  * the fourier-space solenoidal/compressible projection */
 void st_turbdrive_calc_phases(void) {
@@ -195,22 +217,24 @@ void st_turbdrive_calc_phases(void) {
 
 /* parent routine to initialize and update turbulent driving fields and to track
  * different variables used for analyzing power spectra of dissipation, etc. */
-void set_turb_ampl(const struct engine *e, struct cell *c) {
+void set_turb_ampl(const struct engine *e) {
   double delta = (e->ti_current - StTPrev) * e->time_base;
   double Dt_Update = st_return_dt_between_updates();
-
-  const int count = c->hydro.count;
 
   if (delta >= Dt_Update) {
     if (delta > 0) {
       double e_diss_sum = 0, e_drive_sum = 0, glob_diss_sum = 0,
              glob_drive_sum = 0;
-      // message(" ..updating fields tracked for following injected energy and
-      // dissipation");
+      message(
+          " ..updating fields tracked for following injected energy and  "
+          "dissipation");
+
+      const int count = e->s->nr_parts;
+      struct part *parts = e->s->parts;
 
       for (int i = 0; i < count; i++) {
 
-        struct part *p = &c->hydro.parts[i];
+        struct part *p = &parts[i];
 
         if (part_is_inhibited(p, e)) continue;
 
@@ -456,46 +480,24 @@ void init_turb(const struct space *s, const struct engine *e) {
   }                            // cycle past initial seed
   st_turbdrive_init_ouseq();   // initialize variable for phases
   st_turbdrive_calc_phases();  // initialize phases
-  // MATTHIEU: CAll this on all cells!
-  set_turb_ampl(
-      e, &e->s->cells_top[0]);  // set initial amplitudes and calculate initial
-                                // quantities needed for dissipation measures
+  set_turb_ampl(e);            // set initial amplitudes and calculate initial
+                               // quantities needed for dissipation measures
   StTPrev =
       e->ti_current;  // mark current time as last update of turb driving fields
 }
 
-/* return factor needed to renormalize below based on fraction of power
- * projected out in our solenoidal projection, to return the correct
- * normalization for accelerations. */
-double solenoidal_frac_total_weight_renormalization(void) {
-#if defined(HYDRO_DIMENSION_3D)
-  return sqrt(3.0 / 3.0) * sqrt(3.0) * 1.0 /
-         sqrt(1.0 - 2.0 * TurbDriving_Global_SolenoidalFraction +
-              3.0 * TurbDriving_Global_SolenoidalFraction *
-                  TurbDriving_Global_SolenoidalFraction);
-#elif defined(HYDRO_DIMENSION_2D)
-  return sqrt(3.0 / 2.0) * sqrt(3.0) * 1.0 /
-         sqrt(1.0 - 2.0 * TurbDriving_Global_SolenoidalFraction +
-              2.0 * TurbDriving_Global_SolenoidalFraction *
-                  TurbDriving_Global_SolenoidalFraction);
-#elif defined(HYDRO_DIMENSION_1D)
-  return sqrt(3.0 / 1.0) * sqrt(3.0) * 1.0 /
-         sqrt(1.0 - 2.0 * TurbDriving_Global_SolenoidalFraction +
-              1.0 * TurbDriving_Global_SolenoidalFraction *
-                  TurbDriving_Global_SolenoidalFraction);
-#endif
-}
-
 /* routine to actually calculate the turbulent acceleration 'driving field'
  * force on every resolution element */
-void add_turb_accel(const struct engine *e, struct cell *c) {
-  set_turb_ampl(e, c);
+void add_turb_accel(const struct engine *e) {
 
-  const int count = c->hydro.count;
+  set_turb_ampl(e);
+
+  const int count = e->s->nr_parts;
+  struct part *parts = e->s->parts;
 
   double acc[3], fac_sol = 2. * solenoidal_frac_total_weight_renormalization();
   for (int i = 0; i < count; ++i) {
-    struct part *p = &c->hydro.parts[i];
+    struct part *p = &parts[i];
 
     if (part_is_active(p, e)) {
 

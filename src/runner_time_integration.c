@@ -38,6 +38,7 @@
 #include "timestep_limiter.h"
 #include "timestep_sync.h"
 #include "tracers.h"
+#include "turb_driving.h"
 
 /**
  * @brief Initialize the multipoles before the gravity calculation.
@@ -114,6 +115,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_kick1(r, c->progeny[k], 0);
   } else {
+
+    do_turb_driving_step_first_half(c, e);
 
     /* Loop over the parts in this cell. */
     for (int k = 0; k < count; k++) {
@@ -379,6 +382,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_kick2(r, c->progeny[k], 0);
   } else {
+
+    do_turb_driving_step_second_half(c, e);
 
     /* Loop over the particles in this cell. */
     for (int k = 0; k < count; k++) {

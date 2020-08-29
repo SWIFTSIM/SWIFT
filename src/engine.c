@@ -96,6 +96,7 @@
 #include "statistics.h"
 #include "timers.h"
 #include "tools.h"
+#include "turb_driving.h"
 #include "units.h"
 #include "velociraptor_interface.h"
 #include "version.h"
@@ -2240,6 +2241,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
 
+  init_turb(e->s, e);
+
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
 
@@ -2632,6 +2635,8 @@ void engine_step(struct engine *e) {
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
     engine_drift_all(e, /*drift_mpole=*/1);
+
+  add_turb_accel(e);
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
