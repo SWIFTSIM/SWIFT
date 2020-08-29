@@ -116,6 +116,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
     hashmap.c pressure_floor.c space_unique_id.c output_options.c line_of_sight.c \
+    turb_driving.c \
     $(QLA_COOLING_SOURCES) \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
     $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) \

@@ -199,6 +199,20 @@ struct part {
     } force;
   };
 
+  struct {
+
+    float du_dt_diss;
+
+    float energy_diss;
+
+    float du_dt_drive;
+
+    float energy_drive;
+
+    float a[3];
+    
+  } turbulence;
+  
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
