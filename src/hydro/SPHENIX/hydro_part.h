@@ -210,9 +210,9 @@ struct part {
     float energy_drive;
 
     float a[3];
-    
+
   } turbulence;
-  
+
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
