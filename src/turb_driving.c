@@ -68,27 +68,27 @@
 /***************************************/
 
 const int TurbDriving_Global_DrivingSpectrumKey =
-    0;  // driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3);
+    2;  // driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3);
         // 3=Ek~k^-2
 const int TurbDriving_Global_DrivingRandomNumberKey =
-    1;  // random number seed for modes
+    42;  // random number seed for modes
 const double TurbDriving_Global_DrivingScaleKMinVar =
-    1.0;  // minimum driving-k: should be ~2.*M_PI/All.BoxSize -->
+    6.27;  // minimum driving-k: should be ~2.*M_PI/All.BoxSize -->
           // TurbDrive_MaxWavelength
 const double TurbDriving_Global_DrivingScaleKMaxVar =
-    2.0;  // maximum driving-k: set to couple times Kmin or more if more cascade
+    12.57;  // maximum driving-k: set to couple times Kmin or more if more cascade
           // desired   // should be < MaxWavelength
 const double TurbDriving_Global_AccelerationPowerVariable =
-    1.0;  // energy of driving-scale modes: sets norm of turb -->
+    0.0002;  // energy of driving-scale modes: sets norm of turb -->
           // TurbDrive_ApproxRMSVturb
 const double TurbDriving_Global_DecayTime =
-    0.;  // decay time for driving-mode phase correlations   -->
+    1.;  // decay time for driving-mode phase correlations   -->
          // TurbDrive_CoherenceTime
 const double TurbDriving_Global_SolenoidalFraction =
-    0.5;  // fractional wt of solenoidal modes (wt*curl + (1-wt)*div) -->
+    1.0;  // fractional wt of solenoidal modes (wt*curl + (1-wt)*div) -->
           // TurbDrive_SolenoidalFraction
 const double TurbDriving_Global_DtTurbUpdates =
-    1.0;  // time interval for driving updates (set by hand)  -->
+    0.005;  // time interval for driving updates (set by hand)  -->
           // TurbDrive_TimeBetweenTurbUpdates
 
 /* block of global variables used specifically for the set of subroutines below,
@@ -223,8 +223,8 @@ void set_turb_ampl(const struct engine *e) {
 
   if (delta >= Dt_Update) {
     if (delta > 0) {
-      double e_diss_sum = 0, e_drive_sum = 0, glob_diss_sum = 0,
-             glob_drive_sum = 0;
+      double e_diss_sum = 0, e_drive_sum = 0;
+
       message(
           " ..updating fields tracked for following injected energy and  "
           "dissipation");
@@ -256,13 +256,8 @@ void set_turb_ampl(const struct engine *e) {
         }
       }
 
-      // MATTHIEU: Replace by a local atomic reduction
-      MPI_Allreduce(&e_diss_sum, &glob_diss_sum, 1, MPI_DOUBLE, MPI_SUM,
-                    MPI_COMM_WORLD);
-      MPI_Allreduce(&e_drive_sum, &glob_drive_sum, 1, MPI_DOUBLE, MPI_SUM,
-                    MPI_COMM_WORLD);
-      TurbDissipatedEnergy += glob_diss_sum;
-      TurbInjectedEnergy += glob_drive_sum;
+      TurbDissipatedEnergy += e_diss_sum;
+      TurbInjectedEnergy += e_drive_sum;
     }
 
     // MATTHIEU: Need to do this only once!!!
@@ -484,6 +479,9 @@ void init_turb(const struct space *s, const struct engine *e) {
                                // quantities needed for dissipation measures
   StTPrev =
       e->ti_current;  // mark current time as last update of turb driving fields
+
+  TurbDissipatedEnergy = 0.;
+  TurbInjectedEnergy = 0.;
 }
 
 /* routine to actually calculate the turbulent acceleration 'driving field'
