@@ -1720,6 +1720,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         } else if (s->gparts[k].type == swift_type_black_hole) {
           s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+        } else if (s->gparts[k].type == swift_type_dark_matter) {
+            s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         }
 
         if (s->gparts[nr_gparts].type == swift_type_gas) {
@@ -1731,7 +1733,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
           s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
               &s->gparts[nr_gparts];
-        }
+        } else if (s->gparts[nr_gparts].type == swift_type_dark_matter) {
+          s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+          &s->gparts[nr_gparts];
+      }
 
         /* Swap the index */
         memswap(&g_index[k], &g_index[nr_gparts], sizeof(int));
@@ -1774,7 +1779,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
     size_t nr_sparts_exchanged = s->nr_sparts - nr_sparts;
-      size_t nr_dmparts_exchanged = s->nr_dmparts - nr_dmparts;
+    size_t nr_dmparts_exchanged = s->nr_dmparts - nr_dmparts;
     size_t nr_bparts_exchanged = s->nr_bparts - nr_bparts;
     engine_exchange_strays(s->e, nr_parts, &h_index[nr_parts],
                            &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
@@ -2270,6 +2275,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->grav.ti_old_multipole = ti_current;
     c->stars.ti_old_part = ti_current;
     c->black_holes.ti_old_part = ti_current;
+    c->dark_matter.ti_old_part = ti_current;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = -last_cell_id;
@@ -2279,7 +2285,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     const int is_local = (c->nodeID == engine_rank);
     const int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
-        (c->black_holes.count > 0) || (c->sinks.count > 0);
+        (c->black_holes.count > 0) || (c->dark_matter.count > 0) || (c->sinks.count > 0);
 
     if (is_local) {
       c->hydro.parts = finger;
@@ -3361,13 +3367,13 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
   data.count_inhibited_bpart = 0;
-    data.count_inhibited_dmpart = 0;
+  data.count_inhibited_dmpart = 0;
   data.count_inhibited_sink = 0;
   data.count_extra_part = 0;
   data.count_extra_gpart = 0;
   data.count_extra_spart = 0;
   data.count_extra_bpart = 0;
-    data.count_extra_dmpart = 0;
+  data.count_extra_dmpart = 0;
   data.count_extra_sink = 0;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
@@ -4369,6 +4375,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.count = 0;
       cp->sinks.count = 0;
       cp->black_holes.count = 0;
+      cp->dark_matter.count = 0;
       cp->hydro.count_total = 0;
       cp->grav.count_total = 0;
       cp->sinks.count_total = 0;
