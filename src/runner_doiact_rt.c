@@ -1,6 +1,9 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,17 +19,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_NONE_H
-#define SWIFT_RT_NONE_H
 
-/**
- * @file src/rt/debug/rt.h
- * @brief Main header file for no radiative transfer scheme.
- */
+/* Config parameters. */
+#include "../config.h"
 
-/**
- * @brief Dummy function to test whether inclusions work properly.
- */
-__attribute__((always_inline)) INLINE static void rt_dummy_function(void) { message("Called no RT scheme."); }
+/* Local headers. */
+#include "active.h"
+#include "cell.h"
+#include "engine.h"
+#include "rt.h"
+#include "runner.h"
+#include "space_getsid.h"
+#include "timers.h"
 
-#endif /* SWIFT_RT_NONE_H */
+/* Import the rt injection loop functions. */
+#define FUNCTION inject
+#define FUNCTION_TASK_LOOP TASK_LOOP_INJECT
+#include "runner_doiact_functions_rt.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
