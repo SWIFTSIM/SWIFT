@@ -122,6 +122,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->N++;
+  pj->N++;
+#endif
+  
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
   if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
@@ -198,6 +203,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[1] += fac * curlvr[1];
   pi->density.rot_v[2] += fac * curlvr[2];
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->N++;
+#endif
+  
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
   if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
