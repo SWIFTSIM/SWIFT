@@ -124,6 +124,8 @@ const char* timers_names[timer_count] = {
     "fof_self",
     "fof_pair",
     "drift_sink",
+    "rt_inject_self",
+    "rt_inject_pair",
 };
 
 /* File to store the timers */

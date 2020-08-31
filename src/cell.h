@@ -407,6 +407,9 @@ struct cell {
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
+    /*! Task for self/pair injection step of radiative transfer */
+    struct link *rt_inject;
+
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 
