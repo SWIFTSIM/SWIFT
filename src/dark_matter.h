@@ -23,6 +23,7 @@
 #include "../config.h"
 #include "./sidm.h"
 #include "./dark_matter_part.h"
+#include "./dark_matter_iact.h"
 
 /**
  * @brief Prepares a s-particle for its interactions

@@ -193,6 +193,26 @@ struct pcell {
     integertime_t ti_old_part;
 
   } black_holes;
+    
+    /*! Dark matter variables */
+    struct {
+        
+        /*! Number of #spart in this cell. */
+        int count;
+        
+        /*! Maximal smoothing length. */
+        float h_max;
+        
+        /*! Minimal integer end-of-timestep in this cell for stars tasks */
+        integertime_t ti_end_min;
+        
+        /*! Maximal integer end-of-timestep in this cell for stars tasks */
+        integertime_t ti_end_max;
+        
+        /*! Integer time of the last drift of the #spart in this cell */
+        integertime_t ti_old_part;
+        
+    } dark_matter;
 
   /*! Maximal depth in that part of the tree */
   int maxdepth;
@@ -253,6 +273,18 @@ struct pcell_step_black_holes {
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
+};
+
+struct pcell_step_dark_matter {
+    
+    /*! Minimal integer end-of-timestep in this cell (dark_matter) */
+    integertime_t ti_end_min;
+    
+    /*! Maximal integer end-of-timestep in this cell (dark_matter) */
+    integertime_t ti_end_max;
+    
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
 };
 
 /**
@@ -488,9 +520,6 @@ struct cell {
      * tasks */
     struct cell *super;
     
-    /*! Linked list of the tasks computing this cell's dm self-interactions. */
-    struct task *sidm;
-
     /*! The drift task for gparts */
     struct task *drift;
 
@@ -683,20 +712,23 @@ struct cell {
         /*! Pointer to the #dmpart data at rebuild time. */
         struct dmpart *parts_rebuild;
         
+        /*! Linked list of the tasks computing this cell's dm self-interactions. */
+        struct task *sidm;
+
         /*! The dark matter ghost task itself */
         struct task *ghost;
         
         /*! Linked list of the tasks computing this cell's dark matter density. */
         struct link *density;
         
+        /*! kick due to DM-DM interactions */
+        struct task *sidm_kick;
+        
         /*! Last (integer) time the cell's spart were drifted forward in time. */
         integertime_t ti_old_part;
         
-        /*! Spin lock for various uses (#spart case). */
+        /*! Spin lock for various uses (#dmpart case). */
         swift_lock_type lock;
-        
-        /*! Spin lock for star formation use. */
-        swift_lock_type star_formation_lock;
         
         /*! Nr of #dmpart in this cell. */
         int count;
@@ -872,9 +904,6 @@ struct cell {
   /*! The first kick task */
   struct task *kick1;
     
-  /*! kick due to DM-DM interactions */
-  struct task *sidm_kick;
-
   /*! The second kick task */
   struct task *kick2;
 

@@ -257,8 +257,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.feedback = NULL;
     c->dark_matter.density = NULL;
     c->dark_matter.ghost = NULL;
-    /*c->dark_matter.sidm = NULL;
-    c->dark_matter.sidm_kick = NULL;*/ /*Add this in cell.h*/
+    c->dark_matter.sidm = NULL;
+    c->dark_matter.sidm_kick = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
