@@ -1014,6 +1014,7 @@ int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
+int cell_link_dmparts(struct cell *c, struct dmpart *dmparts);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
 void cell_unlink_foreign_particles(struct cell *c);
@@ -1035,6 +1036,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
@@ -1058,6 +1060,9 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        const int with_star_formation,
                                        const int with_timestep_sync);
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
+                                             struct scheduler *s,
+                                             const int with_timestep_sync);
+void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,

@@ -45,6 +45,7 @@ enum task_broad_types {
   task_broad_types_gravity,
   task_broad_types_stars,
   task_broad_types_black_holes,
+  task_broad_types_dark_matter,
   task_broad_types_count,
 };
 

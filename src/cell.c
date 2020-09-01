@@ -51,6 +51,7 @@
 #include "atomic.h"
 #include "black_holes.h"
 #include "chemistry.h"
+#include "dark_matter.h"
 #include "drift.h"
 #include "engine.h"
 #include "entropy_floor.h"
@@ -316,6 +317,39 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
 }
 
 /**
+ * @brief Link the cells recursively to the given #dmpart array.
+ *
+ * @param c The #cell.
+ * @param dmparts The #dmpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_dmparts(struct cell *c, struct dmpart *dmparts) {
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank)
+        error("Linking foreign particles in a local cell!");
+    
+    if (c->dark_matter.parts != NULL)
+        error("Linking bparts into a cell that was already linked");
+#endif
+    
+    c->dark_matter.parts = dmparts;
+    
+    /* Fill the progeny recursively, depth-first. */
+    if (c->split) {
+        int offset = 0;
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL)
+                offset += cell_link_dmparts(c->progeny[k], &dmparts[offset]);
+        }
+    }
+    
+    /* Return the total number of linked particles. */
+    return c->dark_matter.count;
+}
+
+/**
  * @brief Recurse down foreign cells until reaching one with hydro
  * tasks; then trigger the linking of the #part array from that
  * level.
@@ -435,6 +469,7 @@ void cell_unlink_foreign_particles(struct cell *c) {
   c->hydro.parts = NULL;
   c->stars.parts = NULL;
   c->black_holes.parts = NULL;
+  c->dark_matter.parts = NULL;
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {
@@ -548,6 +583,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->stars.ti_end_max = c->stars.ti_end_max;
   pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
   pc->black_holes.ti_end_max = c->black_holes.ti_end_max;
+    pc->dark_matter.ti_end_min = c->dark_matter.ti_end_min;
+    pc->dark_matter.ti_end_max = c->dark_matter.ti_end_max;
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
@@ -556,6 +593,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
   pc->black_holes.count = c->black_holes.count;
+    pc->dark_matter.count = c->dark_matter.count;
   pc->maxdepth = c->maxdepth;
 
   /* Copy the Multipole related information */
@@ -701,6 +739,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_max = pc->stars.ti_end_max;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->black_holes.ti_end_max = pc->black_holes.ti_end_max;
+    c->dark_matter.ti_end_min = pc->dark_matter.ti_end_min;
+    c->dark_matter.ti_end_max = pc->dark_matter.ti_end_max;
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
@@ -710,6 +750,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
   c->black_holes.count = pc->black_holes.count;
+    c->dark_matter.count = pc->dark_matter.count;
   c->maxdepth = pc->maxdepth;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -760,6 +801,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->stars.dx_max_part = 0.f;
       temp->stars.dx_max_sort = 0.f;
       temp->black_holes.dx_max_part = 0.f;
+        temp->dark_matter.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -1074,6 +1116,74 @@ int cell_unpack_end_step_black_holes(
 #else
   error("SWIFT was not compiled with MPI support.");
   return 0;
+#endif
+}
+
+/**
+ * @brief Pack the time information of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The end-of-timestep information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_end_step_dark_matter(
+                                   struct cell *restrict c, struct pcell_step_dark_matter *restrict pcells) {
+    
+#ifdef WITH_MPI
+    
+    /* Pack this cell's data. */
+    pcells[0].ti_end_min = c->dark_matter.ti_end_min;
+    pcells[0].ti_end_max = c->dark_matter.ti_end_max;
+    pcells[0].dx_max_part = c->dark_matter.dx_max_part;
+    
+    /* Fill in the progeny, depth-first recursion. */
+    int count = 1;
+    for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL) {
+            count += cell_pack_end_step_dark_matter(c->progeny[k], &pcells[count]);
+        }
+    
+    /* Return the number of packed values. */
+    return count;
+    
+#else
+    error("SWIFT was not compiled with MPI support.");
+    return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the time information of a given cell and its sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The end-of-timestep information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_end_step_dark_matter(
+                                     struct cell *restrict c, struct pcell_step_dark_matter *restrict pcells) {
+    
+#ifdef WITH_MPI
+    
+    /* Unpack this cell's data. */
+    c->dark_matter.ti_end_min = pcells[0].ti_end_min;
+    c->dark_matter.ti_end_max = pcells[0].ti_end_max;
+    c->dark_matter.dx_max_part = pcells[0].dx_max_part;
+    
+    /* Fill in the progeny, depth-first recursion. */
+    int count = 1;
+    for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL) {
+            count += cell_unpack_end_step_dark_matter(c->progeny[k], &pcells[count]);
+        }
+    
+    /* Return the number of packed values. */
+    return count;
+    
+#else
+    error("SWIFT was not compiled with MPI support.");
+    return 0;
 #endif
 }
 
@@ -1608,6 +1718,67 @@ int cell_blocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its array of #dmpart and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_dmlocktree(struct cell *c) {
+    TIMER_TIC;
+    
+    /* First of all, try to lock this cell. */
+    if (c->dark_matter.hold || lock_trylock(&c->dark_matter.lock) != 0) {
+        TIMER_TOC(timer_locktree);
+        return 1;
+    }
+    
+    /* Did somebody hold this cell in the meantime? */
+    if (c->dark_matter.hold) {
+        /* Unlock this cell. */
+        if (lock_unlock(&c->dark_matter.lock) != 0) error("Failed to unlock cell.");
+        
+        /* Admit defeat. */
+        TIMER_TOC(timer_locktree);
+        return 1;
+    }
+    
+    /* Climb up the tree and lock/hold/unlock. */
+    struct cell *finger;
+    for (finger = c->parent; finger != NULL; finger = finger->parent) {
+        /* Lock this cell. */
+        if (lock_trylock(&finger->dark_matter.lock) != 0) break;
+        
+        /* Increment the hold. */
+        atomic_inc(&finger->dark_matter.hold);
+        
+        /* Unlock the cell. */
+        if (lock_unlock(&finger->dark_matter.lock) != 0)
+            error("Failed to unlock cell.");
+    }
+    
+    /* If we reached the top of the tree, we're done. */
+    if (finger == NULL) {
+        TIMER_TOC(timer_locktree);
+        return 0;
+    }
+    
+    /* Otherwise, we hit a snag. */
+    else {
+        /* Undo the holds up to finger. */
+        for (struct cell *finger2 = c->parent; finger2 != finger;
+             finger2 = finger2->parent)
+            atomic_dec(&finger2->dark_matter.hold);
+        
+        /* Unlock this cell. */
+        if (lock_unlock(&c->dark_matter.lock) != 0) error("Failed to unlock cell.");
+        
+        /* Admit defeat. */
+        TIMER_TOC(timer_locktree);
+        return 1;
+    }
+}
+
+/**
  * @brief Unlock a cell's parents for access to #part array.
  *
  * @param c The #cell.
@@ -1716,6 +1887,24 @@ void cell_bunlocktree(struct cell *c) {
 }
 
 /**
+ * @brief Unlock a cell's parents for access to #dmpart array.
+ *
+ * @param c The #cell.
+ */
+void cell_dmunlocktree(struct cell *c) {
+    TIMER_TIC;
+    
+    /* First of all, try to unlock this cell. */
+    if (lock_unlock(&c->dark_matter.lock) != 0) error("Failed to unlock cell.");
+    
+    /* Climb up the tree and unhold the parents. */
+    for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+        atomic_dec(&finger->dark_matter.hold);
+    
+    TIMER_TOC(timer_locktree);
+}
+
+/**
  * @brief Sort the parts into eight bins along the given pivots.
  *
  * @param c The #cell array to be sorted.
@@ -1742,16 +1931,17 @@ void cell_bunlocktree(struct cell *c) {
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff,
+                struct cell_buff *bbuff, struct cell_buff *gbuff, struct cell_buff *dmbuff,
                 struct cell_buff *sinkbuff) {
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
-            sink_count = c->sinks.count;
+            dmcount = c->dark_matter.count, sink_count = c->sinks.count;
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
+    struct dmpart *dmparts = c->dark_matter.parts;
   struct sink *sinks = c->sinks.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
@@ -1781,6 +1971,11 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         bbuff[k].x[2] != bparts[k].x[2])
       error("Inconsistent bbuff contents.");
   }
+    for (int k = 0; k < dmcount; k++) {
+        if (dmbuff[k].x[0] != dmparts[k].x[0] || dmbuff[k].x[1] != dmparts[k].x[1] ||
+            dmbuff[k].x[2] != dmparts[k].x[2])
+            error("Inconsistent bbuff contents.");
+    }
   for (int k = 0; k < sink_count; k++) {
     if (sinkbuff[k].x[0] != sinks[k].x[0] ||
         sinkbuff[k].x[1] != sinks[k].x[1] || sinkbuff[k].x[2] != sinks[k].x[2])
@@ -2015,6 +2210,60 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
   }
 
+    /* Now do the same song and dance for the dmparts. */
+    for (int k = 0; k < 8; k++) bucket_count[k] = 0;
+    
+    /* Fill the buffer with the indices. */
+    for (int k = 0; k < dmcount; k++) {
+        const int bid = (dmbuff[k].x[0] > pivot[0]) * 4 +
+        (dmbuff[k].x[1] > pivot[1]) * 2 + (dmbuff[k].x[2] > pivot[2]);
+        bucket_count[bid]++;
+        dmbuff[k].ind = bid;
+    }
+    
+    /* Set the buffer offsets. */
+    bucket_offset[0] = 0;
+    for (int k = 1; k <= 8; k++) {
+        bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+        bucket_count[k - 1] = 0;
+    }
+    
+    /* Run through the buckets, and swap particles to their correct spot. */
+    for (int bucket = 0; bucket < 8; bucket++) {
+        for (int k = bucket_offset[bucket] + bucket_count[bucket];
+             k < bucket_offset[bucket + 1]; k++) {
+            int bid = dmbuff[k].ind;
+            if (bid != bucket) {
+                struct dmpart dmpart = dmparts[k];
+                struct cell_buff temp_buff = dmbuff[k];
+                while (bid != bucket) {
+                    int j = bucket_offset[bid] + bucket_count[bid]++;
+                    while (dmbuff[j].ind == bid) {
+                        j++;
+                        bucket_count[bid]++;
+                    }
+                    memswap(&dmparts[j], &dmpart, sizeof(struct dmpart));
+                    memswap(&dmbuff[j], &temp_buff, sizeof(struct cell_buff));
+                    if (dmparts[j].gpart)
+                        dmparts[j].gpart->id_or_neg_offset = -(j + dmparts_offset);
+                    bid = temp_buff.ind;
+                }
+                dmparts[k] = dmpart;
+                dmbuff[k] = temp_buff;
+                if (dmparts[k].gpart)
+                    dmparts[k].gpart->id_or_neg_offset = -(k + dmparts_offset);
+            }
+            bucket_count[bid]++;
+        }
+    }
+    
+    /* Store the counts and offsets. */
+    for (int k = 0; k < 8; k++) {
+        c->progeny[k]->dark_matter.count = bucket_count[k];
+        c->progeny[k]->dark_matter.count_total = c->progeny[k]->dark_matter.count;
+        c->progeny[k]->dark_matter.parts = &c->dark_matter.parts[bucket_offset[k]];
+    }
+
   /* Now do the same song and dance for the sinks. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
@@ -2223,6 +2472,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->black_holes.do_gas_swallow = NULL;
   c->black_holes.do_bh_swallow = NULL;
   c->black_holes.feedback = NULL;
+  c->dark_matter.density = NULL;
+  c->dark_matter.sidm = NULL;
 }
 
 /**
@@ -4068,7 +4319,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav.init != NULL) scheduler_activate(s, c->grav.init);
     if (c->grav.init_out != NULL) scheduler_activate(s, c->grav.init_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
-    if (c->sidm_kick != NULL) scheduler_activate(s, c->sidm_kick);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
@@ -4617,6 +4867,288 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
   return rebuild;
 }
+
+/**
+ * @brief Un-skips all the dark matter tasks associated with a given cell and
+ * checks if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
+    
+    struct engine *e = s->space->e;
+    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
+    const int nodeID = e->nodeID;
+    int rebuild = 0;
+    
+    if (c->dark_matter.drift != NULL && cell_is_active_dark_matter(c, e)) {
+        cell_activate_drift_dmpart(c, s);
+    }
+    
+    /* Un-skip the density tasks involved with this cell. */
+    for (struct link *l = c->dark_matter.density; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        struct cell *ci = t->ci;
+        struct cell *cj = t->cj;
+        const int ci_active = cell_is_active_dark_matter(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_dark_matter(cj, e) : 0;
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+        const int ci_nodeID = nodeID;
+        const int cj_nodeID = nodeID;
+#endif
+        
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+            
+            scheduler_activate(s, t);
+            
+            /* Activate the drifts */
+            if (t->type == task_type_self) {
+                cell_activate_drift_part(ci, s);
+                cell_activate_drift_dmpart(ci, s);
+            }
+            
+            /* Activate the drifts */
+            else if (t->type == task_type_pair) {
+                
+                /* Activate the drift tasks. */
+                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+                
+                if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+                if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+            }
+            
+            /* Store current values of dx_max and h_max. */
+            else if (t->type == task_type_sub_self) {
+                cell_activate_subcell_dark_matter_tasks(ci, NULL, s,
+                                                        with_timestep_sync);
+            }
+            
+            /* Store current values of dx_max and h_max. */
+            else if (t->type == task_type_sub_pair) {
+                cell_activate_subcell_dark_matter_tasks(ci, cj, s, with_timestep_sync);
+            }
+        }
+        
+        /* Only interested in pair interactions as of here. */
+        if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+            
+            /* Check whether there was too much particle motion, i.e. the
+             cell neighbour conditions were violated. */
+            if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
+            if (cell_need_rebuild_for_dark_matter_pair(cj, ci)) rebuild = 1;
+            
+            scheduler_activate(s, ci->hydro.super->dark_matter.swallow_ghost[0]);
+            scheduler_activate(s, cj->hydro.super->dark_matter.swallow_ghost[0]);
+            
+#ifdef WITH_MPI
+            /* Activate the send/recv tasks. */
+            if (ci_nodeID != nodeID) {
+                
+                /* Receive the foreign parts to compute BH accretion rates and do the
+                 * swallowing */
+                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);*/
+                
+                /* Send the local BHs to tag the particles to swallow and to do feedback
+                 */
+                /*scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_rho,
+                                        ci_nodeID);
+                scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_feedback,
+                                        ci_nodeID);*/
+                
+                /* Drift before you send */
+                cell_activate_drift_dmpart(cj, s);
+                
+                /* Send the new BH time-steps */
+                /*scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
+                                        ci_nodeID);*/
+                
+                /* Receive the foreign BHs to tag particles to swallow and for feedback
+                 */
+                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
+                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);*/
+                
+                /* Receive the foreign BH time-steps */
+                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);*/
+                
+                /* Send the local part information */
+                scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+                /*scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
+                                        ci_nodeID);*/
+                
+                /* Drift the cell which will be sent; note that not all sent
+                 particles will be drifted, only those that are needed. */
+                cell_activate_drift_part(cj, s);
+                
+            } else if (cj_nodeID != nodeID) {
+                
+                /* Receive the foreign parts to compute BH accretion rates and do the
+                 * swallowing */
+                /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);*/
+                
+                /* Send the local BHs to tag the particles to swallow and to do feedback
+                 */
+                /*scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_rho,
+                                        cj_nodeID);
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_feedback,
+                                        cj_nodeID);*/
+                
+                /* Drift before you send */
+                cell_activate_drift_dmpart(ci, s);
+                
+                /* Send the new BH time-steps */
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
+                                        cj_nodeID);
+                
+                /* Receive the foreign BHs to tag particles to swallow and for feedback
+                 */
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);
+                
+                /* Receive the foreign BH time-steps */
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
+                
+                /* Send the local part information */
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
+                                        cj_nodeID);
+                
+                /* Drift the cell which will be sent; note that not all sent
+                 particles will be drifted, only those that are needed. */
+                cell_activate_drift_part(ci, s);
+            }
+#endif
+        }
+    }
+    
+    /* Un-skip the swallow tasks involved with this cell. */
+    for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        struct cell *ci = t->ci;
+        struct cell *cj = t->cj;
+        const int ci_active = cell_is_active_black_holes(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+        const int ci_nodeID = nodeID;
+        const int cj_nodeID = nodeID;
+#endif
+        
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+            
+            scheduler_activate(s, t);
+        }
+    }
+    
+    /* Un-skip the swallow tasks involved with this cell. */
+    for (struct link *l = c->black_holes.do_gas_swallow; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        struct cell *ci = t->ci;
+        struct cell *cj = t->cj;
+        const int ci_active = cell_is_active_black_holes(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+        const int ci_nodeID = nodeID;
+        const int cj_nodeID = nodeID;
+#endif
+        
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+            
+            scheduler_activate(s, t);
+        }
+    }
+    
+    /* Un-skip the swallow tasks involved with this cell. */
+    for (struct link *l = c->black_holes.do_bh_swallow; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        struct cell *ci = t->ci;
+        struct cell *cj = t->cj;
+        const int ci_active = cell_is_active_black_holes(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+        const int ci_nodeID = nodeID;
+        const int cj_nodeID = nodeID;
+#endif
+        
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+            
+            scheduler_activate(s, t);
+        }
+    }
+    
+    /* Un-skip the feedback tasks involved with this cell. */
+    for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        struct cell *ci = t->ci;
+        struct cell *cj = t->cj;
+        const int ci_active = cell_is_active_black_holes(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+        const int ci_nodeID = nodeID;
+        const int cj_nodeID = nodeID;
+#endif
+        
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+            
+            scheduler_activate(s, t);
+        }
+    }
+    
+    /* Unskip all the other task types. */
+    if (c->nodeID == nodeID && cell_is_active_black_holes(c, e)) {
+        
+        if (c->black_holes.density_ghost != NULL)
+            scheduler_activate(s, c->black_holes.density_ghost);
+        if (c->black_holes.swallow_ghost[0] != NULL)
+            scheduler_activate(s, c->black_holes.swallow_ghost[0]);
+        if (c->black_holes.swallow_ghost[1] != NULL)
+            scheduler_activate(s, c->black_holes.swallow_ghost[1]);
+        if (c->black_holes.swallow_ghost[2] != NULL)
+            scheduler_activate(s, c->black_holes.swallow_ghost[2]);
+        if (c->black_holes.black_holes_in != NULL)
+            scheduler_activate(s, c->black_holes.black_holes_in);
+        if (c->black_holes.black_holes_out != NULL)
+            scheduler_activate(s, c->black_holes.black_holes_out);
+        if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+        if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+        if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+#ifdef WITH_LOGGER
+        if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
+    }
+    
+    return rebuild;
+}
+
 
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
