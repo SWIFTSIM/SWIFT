@@ -1569,7 +1569,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   }
 
   size_t nsend = map.size;
-  struct fof_mass_send_hashmap hashmap_mass_send;
+  struct fof_mass_send_hashmap hashmap_mass_send = {NULL, 0};
 
   /* Allocate and initialise a mass array. */
   if (posix_memalign((void **)&hashmap_mass_send.mass_send, 32,
