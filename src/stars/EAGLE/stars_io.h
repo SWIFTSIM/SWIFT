@@ -35,7 +35,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 7;
+  *num_fields = 9;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -52,6 +52,11 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 sparts, mass_init);
   list[6] = io_make_input_field("StellarFormationTime", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_NO_UNITS, sparts, birth_time);
+  list[7] = io_make_input_field("BirthDensities", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_DENSITY, sparts, birth_density);
+  list[8] =
+      io_make_input_field("BirthTemperatures", FLOAT, 1, OPTIONAL,
+                          UNIT_CONV_TEMPERATURE, sparts, birth_temperature);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
@@ -115,7 +120,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 8;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -158,6 +163,19 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "FeedbackEnergyFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, f_E,
       "Fractions of the canonical feedback energy that was used for the stars' "
       "SNII feedback events");
+
+  list[8] = io_make_output_field(
+      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts, birth_density,
+      "Physical densities at the time of birth of the gas particles that "
+      "turned into stars (note that "
+      "we store the physical density at the birth redshift, no conversion is "
+      "needed)");
+
+  list[9] =
+      io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,
+                           0.f, sparts, birth_temperature,
+                           "Temperatures at the time of birth of the gas "
+                           "particles that turned into stars");
 }
 
 /**
@@ -206,14 +224,30 @@ INLINE static void stars_props_init(struct stars_props *sp,
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  /* Do we want to overwrite the stars' birth time? */
+  /* Do we want to overwrite the stars' birth properties? */
   sp->overwrite_birth_time =
       parser_get_opt_param_int(params, "Stars:overwrite_birth_time", 0);
+  sp->overwrite_birth_density =
+      parser_get_opt_param_int(params, "Stars:overwrite_birth_density", 0);
+  sp->overwrite_birth_temperature =
+      parser_get_opt_param_int(params, "Stars:overwrite_birth_temperature", 0);
 
   /* Read birth time to set all stars in ICs */
   if (sp->overwrite_birth_time) {
     sp->spart_first_init_birth_time =
         parser_get_param_float(params, "Stars:birth_time");
+  }
+
+  /* Read birth density to set all stars in ICs */
+  if (sp->overwrite_birth_density) {
+    sp->spart_first_init_birth_density =
+        parser_get_param_float(params, "Stars:birth_density");
+  }
+
+  /* Read birth temperature to set all stars in ICs */
+  if (sp->overwrite_birth_temperature) {
+    sp->spart_first_init_birth_temperature =
+        parser_get_param_float(params, "Stars:birth_temperature");
   }
 }
 

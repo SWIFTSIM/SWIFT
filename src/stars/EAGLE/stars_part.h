@@ -89,6 +89,12 @@ struct spart {
   /*! Feedback energy fraction */
   float f_E;
 
+  /*! The physical birth density */
+  float birth_density;
+
+  /*! The birth temperature */
+  float birth_temperature;
+
   /*! Star formation struct */
   struct star_formation_spart_data sf_data;
 
@@ -165,8 +171,20 @@ struct stars_props {
   /*! Are we overwriting the stars' birth time read from the ICs? */
   int overwrite_birth_time;
 
+  /*! Are we overwriting the stars' birth density read from the ICs? */
+  int overwrite_birth_density;
+
+  /*! Are we overwriting the stars' birth temperature read from the ICs? */
+  int overwrite_birth_temperature;
+
   /*! Value to set birth time of stars read from ICs */
   float spart_first_init_birth_time;
+
+  /*! Value to set birth density of stars read from ICs */
+  float spart_first_init_birth_density;
+
+  /*! Value to set birth temperature of stars read from ICs */
+  float spart_first_init_birth_temperature;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
