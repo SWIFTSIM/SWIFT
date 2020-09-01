@@ -707,26 +707,26 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Is this a non-empty self-task? */
-    const int is_self =
-        (t->type == task_type_self) && (t->ci != NULL) &&
+    const int is_sub_self =
+        (t->type == task_type_sub_self) && (t->ci != NULL) &&
         ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0) ||
          (with_sinks && t->ci->sinks.count > 0) ||
          (with_black_holes && t->ci->black_holes.count > 0));
 
     /* Is this a non-empty pair-task? */
-    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
-                        (t->cj != NULL) &&
-                        ((t->ci->hydro.count > 0) ||
-                         (with_feedback && t->ci->stars.count > 0) ||
-                         (with_sinks && t->ci->sinks.count > 0) ||
-                         (with_black_holes && t->ci->black_holes.count > 0)) &&
-                        ((t->cj->hydro.count > 0) ||
-                         (with_feedback && t->cj->stars.count > 0) ||
-                         (with_sinks && t->cj->sinks.count > 0) ||
-                         (with_black_holes && t->cj->black_holes.count > 0));
+    const int is_sub_pair =
+        (t->type == task_type_sub_pair) && (t->ci != NULL) && (t->cj != NULL) &&
+        ((t->ci->hydro.count > 0) ||
+         (with_feedback && t->ci->stars.count > 0) ||
+         (with_sinks && t->ci->sinks.count > 0) ||
+         (with_black_holes && t->ci->black_holes.count > 0)) &&
+        ((t->cj->hydro.count > 0) ||
+         (with_feedback && t->cj->stars.count > 0) ||
+         (with_sinks && t->cj->sinks.count > 0) ||
+         (with_black_holes && t->cj->black_holes.count > 0));
 
     /* Empty task? */
-    if (!is_self && !is_pair) {
+    if (!is_sub_self && !is_sub_pair) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->ci = NULL;
@@ -736,7 +736,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     }
 
     /* Self-interaction? */
-    if (t->type == task_type_self) {
+    if (t->type == task_type_sub_self) {
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
 
@@ -746,63 +746,72 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Is this cell even split and the task does not violate h ? */
-      if (cell_can_split_self_hydro_task(ci)) {
-        /* Make a sub? */
-        if (scheduler_dosub && (ci->hydro.count < space_subsize_self_hydro) &&
-            (ci->stars.count < space_subsize_self_stars)) {
-          /* convert to a self-subtask. */
-          t->type = task_type_sub_self;
+      /* Cell is split */
+      if (ci->split) {
 
-          /* Otherwise, make tasks explicitly. */
-        } else {
+        /* Do we want to create for tasks as this one contains too many
+           particles? */
+        if ((ci->hydro.count > space_subsize_self_hydro) ||
+            (ci->stars.count > space_subsize_self_stars)) {
+
+          /* Does this cell violate the h constraint? */
+          if (!cell_can_split_self_hydro_task(ci)) {
+
+            message("hello!");
+	    
+            /* Ok, we have at least one fat particle here so
+             * we need to add a task to act solely on this level */
+            scheduler_addtask(s, task_type_self, t->subtype, 0, /*flags=*/1, ci,
+                              NULL);
+            cell_set_flag(t->ci, cell_flag_has_tasks);
+
+            /* We also need to mark the current sub-self as needing to
+               only look at small particles */
+            t->flags = 1;
+          }
+
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
 
-          /* Add the self tasks. */
+          /* Find the first non-empty progeny cell */
           int first_child = 0;
           while (ci->progeny[first_child] == NULL) first_child++;
 
+          /* The task now acts on that progeny */
           t->ci = ci->progeny[first_child];
           cell_set_flag(t->ci, cell_flag_has_tasks);
 
+          /* Now create the other tasks
+           * (i.e. self in all the other non-empty cells
+           * and pairs between all the non-empty cells) 
+	   *
+	   * Note that we copy over the flags! */
           for (int k = first_child + 1; k < 8; k++) {
-            /* Do we have a non-empty progenitor? */
-            if (ci->progeny[k] != NULL &&
-                (ci->progeny[k]->hydro.count ||
-                 (with_stars && ci->progeny[k]->stars.count))) {
-              scheduler_splittask_hydro(
-                  scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                                    ci->progeny[k], NULL),
-                  s);
+            if (ci->progeny[k] != NULL) {
+
+              struct task *t2 =
+                  scheduler_addtask(s, task_type_sub_self, t->subtype, 0,
+                                    t->flags, ci->progeny[k], NULL);
+              scheduler_splittask_hydro(t2, s);
             }
           }
 
-          /* Make a task for each pair of progeny */
           for (int j = 0; j < 8; j++) {
-            /* Do we have a non-empty progenitor? */
-            if (ci->progeny[j] != NULL &&
-                (ci->progeny[j]->hydro.count ||
-                 (with_feedback && ci->progeny[j]->stars.count))) {
-              for (int k = j + 1; k < 8; k++) {
-                /* Do we have a second non-empty progenitor? */
-                if (ci->progeny[k] != NULL &&
-                    (ci->progeny[k]->hydro.count ||
-                     (with_feedback && ci->progeny[k]->stars.count))) {
-                  scheduler_splittask_hydro(
-                      scheduler_addtask(s, task_type_pair, t->subtype,
-                                        sub_sid_flag[j][k], 0, ci->progeny[j],
-                                        ci->progeny[k]),
-                      s);
-                }
+            for (int k = 0; k < 8; k++) {
+              /* Do we have a pair of non-empty progenitors? */
+              if (ci->progeny[j] != NULL && ci->progeny[k] != NULL) {
+
+                struct task *t2 =
+                    scheduler_addtask(s, task_type_sub_pair, t->subtype, 0,
+                                      t->flags, ci->progeny[j], ci->progeny[j]);
+                scheduler_splittask_hydro(t2, s);
               }
             }
           }
-        }
-
-      } /* Cell is split */
-
-    } /* Self interaction */
+	  
+        } /* Create smaller tasks */
+      }   /* Cell is split */
+    }     /* Self interaction */
 
     /* Pair interaction? */
     else if (t->type == task_type_pair) {
