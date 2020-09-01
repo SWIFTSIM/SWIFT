@@ -3186,8 +3186,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
-                        NULL);
+      scheduler_addtask(sched, task_type_sub_self, task_subtype_density,
+                        /*flags=*/0, /*implicit=*/0, ci, NULL);
     }
 
     /* Now loop over all the neighbours of this cell */
@@ -3218,9 +3218,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
             continue;
 
           /* Construct the pair task */
-          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
-                            ci, cj);
+          scheduler_addtask(sched, task_type_sub_pair, task_subtype_density,
+                            /*flags=*/0, /*implicit=*/0, ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
