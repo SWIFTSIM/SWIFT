@@ -814,7 +814,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     }     /* Self interaction */
 
     /* Pair interaction? */
-    else if (t->type == task_type_pair) {
+    else if (t->type == task_type_sub_pair) {
 
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
