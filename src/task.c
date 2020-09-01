@@ -969,6 +969,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_bh_feedback:
       strcpy(cluster, "BHFeedback");
       break;
+    case task_subtype_rt_inject:
+      strcpy(cluster, "RTinject");
+      break;
     default:
       strcpy(cluster, "None");
       break;
