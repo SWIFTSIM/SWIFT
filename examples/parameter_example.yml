@@ -54,12 +54,16 @@ SPH:
 
 # Parameters of the stars neighbour search
 Stars:
-  resolution_eta:       1.2348   # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
-  h_tolerance:          1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
-  max_ghost_iterations: 30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
-  max_volume_change:    1.4      # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
-  overwrite_birth_time:  0       # (Optional) Do we want to overwrite the birth time of the stars read from the ICs? (default: 0).
-  birth_time:           -1       # (Optional) Initial birth times of *all* the stars to be used if we are overwriting them. (-1 means the stars remain inactive feedback-wise througout the run).
+  resolution_eta:              1.2348 # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
+  h_tolerance:                 1e-4   # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
+  max_ghost_iterations:        30     # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
+  max_volume_change:           1.4    # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
+  overwrite_birth_time:         0     # (Optional) Do we want to overwrite the birth time of the stars read from the ICs? (default: 0).
+  birth_time:                  -1     # (Optional) Initial birth times of *all* the stars to be used if we are overwriting them. (-1 means the stars remain inactive feedback-wise througout the run).
+  overwrite_birth_density:      0     # (Optional) Do we want to overwrite the birth density of the stars read from the ICs? (default: 0).
+  birth_density:               -1     # (Optional) Initial birth densities of *all* the stars to be used if we are overwriting them.
+  overwrite_birth_temperature:  0     # (Optional) Do we want to overwrite the birth temperature of the stars read from the ICs? (default: 0).
+  birth_temperature:           -1     # (Optional) Initial birth temperatures of *all* the stars to be used if we are overwriting them.
 
 # Parameters for the self-gravity scheme
 Gravity:

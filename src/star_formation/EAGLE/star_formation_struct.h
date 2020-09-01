@@ -38,13 +38,6 @@ struct star_formation_xpart_data {
  * @brief Star-formation-related properties stored in the star particle
  * data.
  */
-struct star_formation_spart_data {
-
-  /*! The physical birth density */
-  float birth_density;
-
-  /*! The birth temperature */
-  float birth_temperature;
-};
+struct star_formation_spart_data {};
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_STRUCT_H */
