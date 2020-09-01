@@ -126,7 +126,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->N++;
   pj->N++;
 #endif
-  
+
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
   if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
@@ -206,7 +206,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->N++;
 #endif
-  
+
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
   if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
@@ -695,7 +695,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
 #endif
-
 }
 
 #ifdef WITH_VECTORIZATION
