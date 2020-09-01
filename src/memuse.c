@@ -407,6 +407,13 @@ void memuse_log_dump(const char *filename) {
       /* Don't need this again. */
       free(item);
     }
+
+
+  /* Add the memory consumption of the mem logger itself */
+    fprintf(fd, "## %30s %16.3f %16zd\n", "memuse_log",
+            memuse_log_size * sizeof(struct memuse_log_entry) / MEGABYTE, 1L);
+    total_mem += memuse_log_size * sizeof(struct memuse_log_entry);
+
     fprintf(fd, "##\n");
     fprintf(fd, "# Total memory still in use : %.3f (MB)\n",
             total_mem / MEGABYTE);
