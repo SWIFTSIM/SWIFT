@@ -277,6 +277,21 @@ def getFunctionCalls(name):
         return pre + txt + app
 
 
+def taskIsRT(name):
+    """
+    Does the task concern Radiative Transfer?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "_rt" in name:
+        return True
+    return False
+
+
 def writeTask(f, name, implicit, mpi, with_calls):
     """
     Write the special task (e.g. implicit and mpi)
@@ -318,6 +333,9 @@ def writeTask(f, name, implicit, mpi, with_calls):
 
     if taskIsGravity(name):
         txt += "color=red3,"
+
+    if taskIsRT(name):
+        txt += 'color="springgreen"'
 
     if with_calls:
         func = getFunctionCalls(name)
