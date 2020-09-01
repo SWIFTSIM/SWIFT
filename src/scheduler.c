@@ -798,12 +798,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           }
 
           for (int j = 0; j < 8; j++) {
-            for (int k = 0; k < 8; k++) {
+            for (int k = j + 1; k < 8; k++) {
               if (ci->progeny[j] != NULL && ci->progeny[k] != NULL) {
 
                 struct task *t2 = scheduler_addtask(
                     s, task_type_sub_pair, t->subtype, t->flags,
-                    /*implicit=*/0, ci->progeny[j], ci->progeny[j]);
+                    /*implicit=*/0, ci->progeny[j], ci->progeny[k]);
                 scheduler_splittask_hydro(t2, s);
               }
             }
@@ -825,6 +825,10 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         t->skip = 1;
         break;
       }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci == cj) error("Pair task acting on the same cell twice!");
+#endif
 
       /* Cells are split split */
       if (ci->split && cj->split) {
@@ -866,7 +870,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 	  if (!cell_can_split_pair_hydro_task(ci) ||
 	      !cell_can_split_pair_hydro_task(cj)) {
 
-            message("hello pair!");
+            //message("hello pair!");
 
             /* Ok, we have at least one fat particle here so
              * we need to add a task to act solely on this level */
