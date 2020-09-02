@@ -689,16 +689,16 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
  *
  * @param t The #task
  * @param s The #scheduler we are working in.
+ * @param with_feedback Are we constructing feedback tasks later on?
+ * @param with_stars Are we constructing stellar tasks later on?
+ * @param with_sinks Are we constructing sink tasks later on?
+ * @param with_black_holes Are we constructing BH tasks later on?
  */
-static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
-  /* Are we considering both stars and hydro when splitting? */
-  /* Note this is not very clean as the scheduler should not really
-     access the engine... */
-  const int with_feedback = (s->space->e->policy & engine_policy_feedback);
-  const int with_stars = (s->space->e->policy & engine_policy_stars);
-  const int with_sinks = (s->space->e->policy & engine_policy_sinks);
-  const int with_black_holes =
-      (s->space->e->policy & engine_policy_black_holes);
+static void scheduler_splittask_hydro(struct task *t, struct scheduler *s,
+                                      const int with_feedback,
+                                      const int with_stars,
+                                      const int with_sinks,
+                                      const int with_black_holes) {
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -757,7 +757,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           /* Does this cell violate the h constraint? */
           if (!cell_can_split_self_hydro_task(ci)) {
 
-            //message("hello self!");
+            // message("hello self!");
 
             /* Ok, we have at least one fat particle here so
              * we need to add a task to act solely on this level */
@@ -780,7 +780,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 
           /* The task now acts on that progeny */
           t->ci = ci->progeny[first_child];
-	  cell_set_flag(t->ci, cell_flag_has_tasks);
+          cell_set_flag(t->ci, cell_flag_has_tasks);
 
           /* Now create the other tasks
            * (i.e. self in all the other non-empty cells
@@ -793,7 +793,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
               struct task *t2 = scheduler_addtask(
                   s, task_type_sub_self, t->subtype, t->flags, /*implicit=*/0,
                   ci->progeny[k], /*cj=*/NULL);
-              scheduler_splittask_hydro(t2, s);
+              scheduler_splittask_hydro(t2, s, with_feedback, with_stars,
+                                        with_sinks, with_black_holes);
             }
           }
 
@@ -804,7 +805,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 struct task *t2 = scheduler_addtask(
                     s, task_type_sub_pair, t->subtype, t->flags,
                     /*implicit=*/0, ci->progeny[j], ci->progeny[k]);
-                scheduler_splittask_hydro(t2, s);
+                scheduler_splittask_hydro(t2, s, with_feedback, with_stars,
+                                          with_sinks, with_black_holes);
               }
             }
           }
@@ -870,7 +872,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 	  if (!cell_can_split_pair_hydro_task(ci) ||
 	      !cell_can_split_pair_hydro_task(cj)) {
 
-            //message("hello pair!");
+            // message("hello pair!");
 
             /* Ok, we have at least one fat particle here so
              * we need to add a task to act solely on this level */
@@ -906,7 +908,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             struct task *t2 = scheduler_addtask(
                 s, task_type_sub_pair, t->subtype, t->flags, /*implicit=*/0,
                 ci->progeny[csp->pairs[k].pid], cj->progeny[csp->pairs[k].pjd]);
-            scheduler_splittask_hydro(t2, s);
+            scheduler_splittask_hydro(t2, s, with_feedback, with_stars,
+                                      with_sinks, with_black_holes);
           }
 
         } /* Create smaller tasks */
@@ -1173,12 +1176,19 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
   struct scheduler *s = (struct scheduler *)extra_data;
   struct task *tasks = (struct task *)map_data;
 
+  const int with_feedback = (s->space->e->policy & engine_policy_feedback);
+  const int with_stars = (s->space->e->policy & engine_policy_stars);
+  const int with_sinks = (s->space->e->policy & engine_policy_sinks);
+  const int with_black_holes =
+      (s->space->e->policy & engine_policy_black_holes);
+
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
-      scheduler_splittask_hydro(t, s);
+      scheduler_splittask_hydro(t, s, with_feedback, with_stars, with_sinks,
+                                with_black_holes);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
