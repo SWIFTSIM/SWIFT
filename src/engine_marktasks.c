@@ -50,7 +50,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
-#include "proxy.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 /**
@@ -303,6 +303,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Local pointers. */
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
+
+      /* Get the orientation of the pair. */
+      double shift[3];
+      const int sid = space_getsid(s->space, &ci, &cj, shift);
+
 #ifdef WITH_MPI
       const int ci_nodeID = ci->nodeID;
       const int cj_nodeID = cj->nodeID;
@@ -343,8 +348,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (t_type == task_type_pair && t_subtype == task_subtype_density) {
 
           /* Store some values. */
-          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+          atomic_or(&cj->hydro.requires_sorts, 1 << sid);
           ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
           cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
@@ -359,8 +364,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cell_activate_limiter(cj, s);
 
           /* Check the sorts and activate them if needed. */
-          cell_activate_hydro_sorts(ci, t->flags, s);
-          cell_activate_hydro_sorts(cj, t->flags, s);
+          cell_activate_hydro_sorts(ci, sid, s);
+          cell_activate_hydro_sorts(cj, sid, s);
 
         }
 
@@ -579,7 +584,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_hydro_pair(ci, cj)) *rebuild_space = 1;
+        // if (t_type = task_type_cell_need_rebuild_for_hydro_pair(ci, cj))
+        // *rebuild_space = 1;
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
