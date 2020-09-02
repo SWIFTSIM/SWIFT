@@ -119,7 +119,7 @@ EAGLEStarFormation:
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
   KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
-  min_over_density:                  57.7      # The over-density above which star-formation is allowed.
+  min_over_density:                  100.0     # The over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
   EOS_entropy_margin_dex:            0.5       # Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
