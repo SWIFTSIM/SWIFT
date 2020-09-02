@@ -41,7 +41,7 @@
 #include "dump.h"
 #include "engine.h"
 #include "error.h"
-#include "gravity_io.h"
+#include "gravity_logger.h"
 #include "hydro_io.h"
 #include "stars_io.h"
 #include "units.h"
@@ -607,12 +607,6 @@ void logger_init_masks(struct logger_writer *log, const struct engine *e) {
   log->mask_data_pointers.stars = NULL;
   log->mask_data_pointers.gravity = NULL;
 
-  /* Get the policies */
-  const int with_hydro = e->policy & engine_policy_hydro;
-  const int with_grav = (e->policy & engine_policy_self_gravity) ||
-                        (e->policy & engine_policy_external_gravity);
-  const int with_stars = e->policy & engine_policy_stars;
-
   struct mask_data list[100];
   int num_fields = 0;
 
@@ -637,51 +631,46 @@ void logger_init_masks(struct logger_writer *log, const struct engine *e) {
   // TODO add chemistry, cooling, ... + xpart + spart
 
   /* Get all the fields that need to be written for the hydro. */
-  if (with_hydro) {
-    struct mask_data *tmp = &list[num_fields];
+  struct mask_data *tmp = &list[num_fields];
 
-    /* Set the mask_data_pointers */
-    log->mask_data_pointers.hydro = tmp;
+  /* Set the mask_data_pointers */
+  log->mask_data_pointers.hydro = tmp;
 
-    /* Set the masks */
-    num_fields = hydro_logger_populate_mask_data(tmp);
-    /* Set the particle type */
-    for (int i = 0; i < num_fields; i++) {
-      tmp[i].type = mask_type_gas;
-    }
+  /* Set the masks */
+  int tmp_num_fields = hydro_logger_writer_populate_mask_data(tmp);
+  /* Set the particle type */
+  for (int i = 0; i < tmp_num_fields; i++) {
+    tmp[i].type = mask_type_gas;
   }
+  num_fields += tmp_num_fields;
 
   /* Get all the fields that need to be written for the stars. */
-  if (with_stars) {
-    struct mask_data *tmp = &list[num_fields];
+  tmp = &list[num_fields];
 
-    /* Set the mask_data_pointers */
-    log->mask_data_pointers.stars = tmp;
+  /* Set the mask_data_pointers */
+  log->mask_data_pointers.stars = tmp;
 
-    /* Set the masks */
-    int tmp_num_fields = stars_logger_populate_mask_data(tmp);
-    /* Set the particle type */
-    for (int i = 0; i < tmp_num_fields; i++) {
-      tmp[i].type = mask_type_stars;
-    }
-    num_fields += tmp_num_fields;
+  /* Set the masks */
+  tmp_num_fields = stars_logger_writer_populate_mask_data(tmp);
+  /* Set the particle type */
+  for (int i = 0; i < tmp_num_fields; i++) {
+    tmp[i].type = mask_type_stars;
   }
+  num_fields += tmp_num_fields;
 
   /* Get all the fields that need to be written for the gravity. */
-  if (with_grav) {
-    struct mask_data *tmp = &list[num_fields];
+  tmp = &list[num_fields];
 
-    /* Set the mask_data_pointers */
-    log->mask_data_pointers.gravity = tmp;
+  /* Set the mask_data_pointers */
+  log->mask_data_pointers.gravity = tmp;
 
-    /* Set the masks */
-    int tmp_num_fields = gravity_logger_populate_mask_data(tmp);
-    /* Set the particle type */
-    for (int i = 0; i < tmp_num_fields; i++) {
-      tmp[i].type = mask_type_dark_matter;
-    }
-    num_fields += tmp_num_fields;
+  /* Set the masks */
+  tmp_num_fields = gravity_logger_writer_populate_mask_data(tmp);
+  /* Set the particle type */
+  for (int i = 0; i < tmp_num_fields; i++) {
+    tmp[i].type = mask_type_dark_matter;
   }
+  num_fields += tmp_num_fields;
 
   /* Set the masks and ensure to have only one for the common fields
      (e.g. Coordinates).
@@ -748,24 +737,18 @@ void logger_init_masks(struct logger_writer *log, const struct engine *e) {
 
   /* Compute the maximal size of the records. */
   log->max_size_record_part = 0;
-  if (with_hydro) {
-    for (int i = 0; i < hydro_logger_field_count; i++) {
-      log->max_size_record_part += log->mask_data_pointers.hydro[i].size;
-    }
+  for (int i = 0; i < hydro_logger_field_count; i++) {
+    log->max_size_record_part += log->mask_data_pointers.hydro[i].size;
   }
 
   log->max_size_record_gpart = 0;
-  if (with_grav) {
-    for (int i = 0; i < gravity_logger_field_count; i++) {
-      log->max_size_record_gpart += log->mask_data_pointers.gravity[i].size;
-    }
+  for (int i = 0; i < gravity_logger_field_count; i++) {
+    log->max_size_record_gpart += log->mask_data_pointers.gravity[i].size;
   }
 
   log->max_size_record_spart = 0;
-  if (with_stars) {
-    for (int i = 0; i < stars_logger_field_count; i++) {
-      log->max_size_record_spart += log->mask_data_pointers.stars[i].size;
-    }
+  for (int i = 0; i < stars_logger_field_count; i++) {
+    log->max_size_record_spart += log->mask_data_pointers.stars[i].size;
   }
 
   /* Set the counter */

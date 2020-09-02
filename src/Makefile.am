@@ -129,7 +129,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
                  kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \
                  timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h \
-                 dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_cache.h output_options.h \
+     dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_logger.h  gravity_cache.h output_options.h\
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \
@@ -139,7 +139,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
      gravity/MultiSoftening/gravity_logger.h \
 		 equation_of_state.h \
 		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
-	 	 hydro.h hydro_io.h hydro_parameters.h \
+	   hydro.h hydro_io.h hydro_logger.h hydro_parameters.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
 		 hydro/Minimal/hydro_parameters.h \
@@ -209,7 +209,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
                  riemann/riemann_checks.h \
 		 rt.h rt/none/rt.h rt/debug/rt.h rt/M1closure/rt.h \
-	 	 stars.h stars_io.h \
+	 	 stars.h stars_io.h stars_logger.h \
+	   stars.h stars_io.h stars_logger.h \
 		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
      stars/Default/stars_debug.h stars/Default/stars_part.h stars/Default/stars_logger.h  \
 		 stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h \

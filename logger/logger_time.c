@@ -99,7 +99,7 @@ size_t time_read(integertime_t *int_time, double *time,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* check if time mask is present in log file header. */
-  int ind = header_get_field_index(h, "timestamp");
+  int ind = header_get_field_index(h, "Timestamp");
   if (ind == -1) error("File header does not contain a mask for time.");
 
   /* check if reading a time record. */
@@ -128,7 +128,7 @@ size_t time_offset_first_record(const struct header *h) {
   void *map = h->log->log.map;
 
   /* Check that the first record is really a time record. */
-  int i = header_get_field_index(h, "timestamp");
+  int i = header_get_field_index(h, "Timestamp");
 
   if (i == -1) error("Time mask not present in the log file header.");
 
