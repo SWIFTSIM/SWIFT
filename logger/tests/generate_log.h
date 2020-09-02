@@ -24,6 +24,7 @@
 #include "engine.h"
 #include "hydro.h"
 #include "logger.h"
+#include "logger_io.h"
 
 /* Not all the fields are written at every step.
  * Here we define how often a few fields are written.
@@ -56,6 +57,7 @@ void generate_particles(struct part *parts, struct xpart *xparts,
       parts[i].x[j] = 0;
       parts[i].v[j] = (j == 0) ? -1 : 0;
       parts[i].a_hydro[j] = (j == 1) ? 1e-2 : 0;
+      xparts[i].a_grav[j] = 0;
     }
     parts[i].h = 15;
     parts[i].rho = 50;
@@ -117,20 +119,9 @@ void write_particles(struct logger_writer *log, struct engine *e) {
       /* Write a time information to check that the correct particle is read. */
       parts[j].x[0] = i;
 
-      /* Write this particle. */
-      unsigned int mask =
-          logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-          logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
-          logger_mask_data[logger_consts].mask;
+      // TODO write only a few masks at the time
 
-      int number_particle_step = i / parts[j].time_bin;
-
-      if (number_particle_step % period_h == 0)
-        mask |= logger_mask_data[logger_h].mask;
-      if (number_particle_step % period_rho == 0)
-        mask |= logger_mask_data[logger_rho].mask;
-
-      logger_log_part(log, &parts[j], mask, &xparts[j].logger_data.last_offset,
+      logger_log_part(log, &parts[j], &xparts[j], e, /* log_all */ 0,
                       /* special flags */ 0);
     }
   }
@@ -141,23 +132,18 @@ void generate_log(struct swift_params *params, struct part *parts,
   /* Initialize the particles */
   generate_particles(parts, xparts, nparts);
 
-  /* Initialize the writer */
-  struct logger_writer log;
-  logger_init(&log, params);
-
   /* initialize the engine */
   struct engine e;
+  e.policy = engine_policy_hydro;
   e.total_nr_parts = nparts;
   e.total_nr_gparts = 0;
   e.total_nr_sparts = 0;
   e.total_nr_bparts = 0;
   e.verbose = 1;
-  e.policy = 0;
   e.ti_current = 0;
   e.time = 0;
   e.time_base = const_time_base;
   e.time_begin = 0;
-  e.logger = &log;
   threadpool_init(&e.threadpool, 1);
   struct space s;
   e.s = &s;
@@ -176,6 +162,11 @@ void generate_log(struct swift_params *params, struct part *parts,
   s.nr_extra_parts = 0;
   s.nr_extra_sparts = 0;
   s.nr_extra_bparts = 0;
+  struct logger_writer log;
+  e.logger = &log;
+
+  /* Initialize the writer */
+  logger_init(&log, &e, params);
 
   /* Write file header */
   logger_write_file_header(&log);
@@ -187,7 +178,7 @@ void generate_log(struct swift_params *params, struct part *parts,
   logger_ensure_size(&log, nparts, /* number gpart */ 0, 0);
 
   /* Log all the particles before starting */
-  logger_log_all(&log, &e);
+  logger_log_all_particles(&log, &e);
   engine_dump_index(&e);
 
   /* Write particles */
@@ -198,7 +189,7 @@ void generate_log(struct swift_params *params, struct part *parts,
                        &e.logger->timestamp_offset);
 
   /* Write all the particles at the end */
-  logger_log_all(e.logger, &e);
+  logger_log_all_particles(e.logger, &e);
 
   /* Write a sentinel timestamp */
   logger_log_timestamp(e.logger, e.ti_current, e.time,

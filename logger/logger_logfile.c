@@ -88,6 +88,8 @@ void logger_logfile_free(struct logger_logfile *log) {
   logger_loader_io_munmap_file(&log->log);
 
   time_array_free(&log->times);
+
+  header_free(&log->header);
 }
 
 /**

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GRAVITY_IO_H
-#define SWIFT_GRAVITY_IO_H
 
-/* Config parameters. */
-#include "../config.h"
+#include "logger_stars.h"
 
-/* Local headers. */
-#include "./const.h"
+/* Define the size of all the fields. */
+#define member_size(type, member) sizeof(((type *)0)->member)
 
-/* Import the right functions */
-#if defined(DEFAULT_GRAVITY)
-#include "./gravity/Default/gravity_io.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_io.h"
-#elif defined(MULTI_SOFTENING_GRAVITY)
-#include "./gravity/MultiSoftening/gravity_io.h"
-#else
-#error "Invalid choice of gravity variant"
-#endif
+const int stars_logger_field_size[stars_logger_field_count] = {
+    member_size(struct spart, x),       // coordinates
+    member_size(struct spart, v),       // velocities
+    member_size(struct gpart, a_grav),  // accelerations -> stored inside gparts
+    member_size(struct spart, mass),    // massses
+    member_size(struct spart, h),       // Smoothing Length
+    member_size(struct spart, id),      // IDs
+};
 
-#endif /* SWIFT_GRAVITY_IO_H */
+int stars_logger_local_to_global[stars_logger_field_count];
