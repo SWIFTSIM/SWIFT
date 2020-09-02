@@ -40,6 +40,7 @@
 #include "runner_doiact_grav.h"
 
 /* Import self-interacting DM loop functions. */
+#include "runner_doiact_dark_matter.h"
 #include "runner_doiact_sidm.h"
 
 /* Import the density loop functions. */
@@ -264,6 +265,10 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, 1);
+          else if (t->subtype == task_subtype_dark_matter_density)
+              runner_dosub_self_dark_matter_density(r, ci, 1);
+          else if (t->subtype == task_subtype_sidm)
+              runner_dosub_self_sidm(r, ci, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -294,6 +299,10 @@ void *runner_main(void *data) {
             runner_dosub_pair_stars_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_dark_matter_density)
+              runner_dosub_pair_dark_matter_density(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sidm)
+              runner_dosub_pair_sidm(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -339,6 +348,9 @@ void *runner_main(void *data) {
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, 1);
           break;
+        case task_type_dark_matter_density_ghost:
+          runner_do_dark_matter_density_ghost(r, ci, 1);
+          break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
           break;
@@ -361,7 +373,7 @@ void *runner_main(void *data) {
           runner_do_kick1(r, ci, 1);
           break;
         case task_type_sidm_kick:
-          runner_do_sidm_kick(r, ci);
+          runner_do_sidm_kick(r, ci, 1);
         break;
         case task_type_kick2:
           runner_do_kick2(r, ci, 1);

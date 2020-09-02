@@ -24,47 +24,29 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOSELF1_DM(f) PASTE(runner_doself_dm, f)
-#define DOSELF1_DM _DOSELF1_DM(FUNCTION)
+#define _DOPAIR_SUBSET_DM_NAIVE(f) PASTE(runner_dopair_subset_dm_naive, f)
+#define DOPAIR_SUBSET_DM_NAIVE _DOPAIR_SUBSET_DM_NAIVE(FUNCTION)
 
-#define _DO_SYM_PAIR1_DM(f) PASTE(runner_do_sym_pair_dm, f)
-#define DO_SYM_PAIR1_DM _DO_SYM_PAIR1_DM(FUNCTION)
-
-#define _DO_NONSYM_PAIR1_DM_NAIVE(f) PASTE(runner_do_nonsym_pair_dm_naive, f)
-#define DO_NONSYM_PAIR1_DM_NAIVE _DO_NONSYM_PAIR1_DM_NAIVE(FUNCTION)
-
-#define _DOPAIR1_DM_NAIVE(f) PASTE(runner_dopair_dm_naive, f)
+#define _DOPAIR1_DM_NAIVE(f) PASTE(runner_dopair1_dm_naive, f)
 #define DOPAIR1_DM_NAIVE _DOPAIR1_DM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_DM(f) PASTE(runner_dopair_subset_dm, f)
-#define DOPAIR1_SUBSET_DM _DOPAIR1_SUBSET_DM(FUNCTION)
+#define _DOPAIR2_DM_NAIVE(f) PASTE(runner_dopair2_dm_naive, f)
+#define DOPAIR2_DM_NAIVE _DOPAIR2_DM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_DM_NAIVE(f) PASTE(runner_dopair_subset_dm_naive, f)
-#define DOPAIR1_SUBSET_DM_NAIVE _DOPAIR1_SUBSET_DM_NAIVE(FUNCTION)
+#define _DOSELF1_DM_NAIVE(f) PASTE(runner_doself1_dm_naive, f)
+#define DOSELF1_DM_NAIVE _DOSELF1_DM_NAIVE(FUNCTION)
 
-#define _DOSELF1_SUBSET_DM(f) PASTE(runner_doself_subset_dm, f)
-#define DOSELF1_SUBSET_DM _DOSELF1_SUBSET_DM(FUNCTION)
+#define _DOSELF2_DM_NAIVE(f) PASTE(runner_doself2_dm_naive, f)
+#define DOSELF2_DM_NAIVE _DOSELF2_DM_NAIVE(FUNCTION)
 
-#define _DOSELF1_SUBSET_BRANCH_DM(f) PASTE(runner_doself_subset_branch_dm, f)
-#define DOSELF1_SUBSET_BRANCH_DM _DOSELF1_SUBSET_BRANCH_DM(FUNCTION)
+#define _DOSELF_SUBSET_DM_NAIVE(f) PASTE(runner_doself_subset_dm_naive, f)
+#define DOSELF_SUBSET_DM_NAIVE _DOSELF_SUBSET_DM_NAIVE(FUNCTION)
 
-#define _DOPAIR1_SUBSET_BRANCH_DM(f) PASTE(runner_dopair_subset_branch_dm, f)
-#define DOPAIR1_SUBSET_BRANCH_DM _DOPAIR1_SUBSET_BRANCH_DM(FUNCTION)
+#define _IACT_NONSYM_DM(f) PASTE(runner_iact_nonsym_dm, f)
+#define IACT_NONSYM_DM _IACT_NONSYM_DM(FUNCTION)
 
-#define _DOSUB_SUBSET_DM(f) PASTE(runner_dosub_subset_dm, f)
-#define DOSUB_SUBSET_DM _DOSUB_SUBSET_DM(FUNCTION)
-
-#define _DOSELF1_BRANCH_DM(f) PASTE(runner_doself_branch_dm, f)
-#define DOSELF1_BRANCH_DM _DOSELF1_BRANCH_DM(FUNCTION)
-
-#define _DOPAIR1_BRANCH_DM(f) PASTE(runner_dopair_branch_dm, f)
-#define DOPAIR1_BRANCH_DM _DOPAIR1_BRANCH_DM(FUNCTION)
-
-#define _DOSUB_PAIR1_DM(f) PASTE(runner_dosub_pair_dm, f)
-#define DOSUB_PAIR1_DM _DOSUB_PAIR1_DM(FUNCTION)
-
-#define _DOSUB_SELF1_DM(f) PASTE(runner_dosub_self_dm, f)
-#define DOSUB_SELF1_DM _DOSUB_SELF1_DM(FUNCTION)
+#define _IACT_DM(f) PASTE(runner_iact_dm, f)
+#define IACT_DM _IACT_DM(FUNCTION)
 
 #define _TIMER_DOSELF_DM(f) PASTE(timer_doself_dm, f)
 #define TIMER_DOSELF_DM _TIMER_DOSELF_DM(FUNCTION)
@@ -72,26 +54,9 @@
 #define _TIMER_DOPAIR_DM(f) PASTE(timer_dopair_dm, f)
 #define TIMER_DOPAIR_DM _TIMER_DOPAIR_DM(FUNCTION)
 
-#define _TIMER_DOSUB_SELF_DM(f) PASTE(timer_dosub_self_dm, f)
-#define TIMER_DOSUB_SELF_DM _TIMER_DOSUB_SELF_DM(FUNCTION)
+#define _TIMER_DOSELF_SUBSET_DM(f) PASTE(timer_doself_subset_dm, f)
+#define TIMER_DOSELF_SUBSET_DM _TIMER_DOSELF_SUBSET_DM(FUNCTION)
 
-#define _TIMER_DOSUB_PAIR_DM(f) PASTE(timer_dosub_pair_dm, f)
-#define TIMER_DOSUB_PAIR_DM _TIMER_DOSUB_PAIR_DM(FUNCTION)
+#define _TIMER_DOPAIR_SUBSET_DM(f) PASTE(timer_dopair_subset_dm, f)
+#define TIMER_DOPAIR_SUBSET_DM _TIMER_DOPAIR_SUBSET_DM(FUNCTION)
 
-void DOSELF1_BRANCH_DM(struct runner *r, struct cell *c);
-void DOPAIR1_BRANCH_DM(struct runner *r, struct cell *ci, struct cell *cj);
-
-void DOSUB_SELF1_DM(struct runner *r, struct cell *ci, int gettimer);
-void DOSUB_PAIR1_DM(struct runner *r, struct cell *ci, struct cell *cj,
-                    int gettimer);
-
-void DOSELF1_SUBSET_BRANCH_DM(struct runner *r, struct cell *restrict ci,
-                              struct dmpart *restrict dmparts, int *restrict ind,
-                              const int dmcount);
-void DOPAIR1_SUBSET_BRANCH_DM(struct runner *r, struct cell *restrict ci,
-                              struct dmpart *restrict dmparts_i,
-                              int *restrict ind, int const dmcount,
-                              struct cell *restrict cj);
-
-void DOSUB_SUBSET_DM(struct runner *r, struct cell *ci, struct dmpart *dmparts,
-                     int *ind, const int dmcount, struct cell *cj, int gettimer);
