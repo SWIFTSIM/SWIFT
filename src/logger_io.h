@@ -54,6 +54,15 @@ struct mask_data {
 
   /* Name of the mask. */
   char name[100];
+
+  /* Variables used only for the reader. */
+  struct {
+    /* Index of the fields containing the first derivative (< 0 for none) */
+    int first_deriv;
+
+    /* Index of the fields containing the second derivative (< 0 for none) */
+    int second_deriv;
+  } reader;
 };
 
 /**

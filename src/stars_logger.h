@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GRAVITY_IO_H
-#define SWIFT_GRAVITY_IO_H
+#ifndef SWIFT_STARS_LOGGER_H
+#define SWIFT_STARS_LOGGER_H
 
-/* Config parameters. */
+/* Include config */
 #include "../config.h"
 
-/* Local headers. */
+/* Local includes */
 #include "./const.h"
+#include "align.h"
+#include "logger.h"
+#include "part_type.h"
+#include "timeline.h"
 
-/* Import the right functions */
-#if defined(DEFAULT_GRAVITY)
-#include "./gravity/Default/gravity_io.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_io.h"
-#elif defined(MULTI_SOFTENING_GRAVITY)
-#include "./gravity/MultiSoftening/gravity_io.h"
+/* Load the correct star type */
+#if defined(FEEDBACK_CONST)
+#error TODO
+#elif defined(STARS_NONE)
+#include "./stars/Default/stars_logger.h"
+#elif defined(STARS_EAGLE)
+#error TODO
+#elif defined(STARS_GEAR)
+#error TODO
 #else
-#error "Invalid choice of gravity variant"
+#error "Invalid choice of star model"
 #endif
 
-#endif /* SWIFT_GRAVITY_IO_H */
+#endif /* SWIFT_STARS_LOGGER_H */

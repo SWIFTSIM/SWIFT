@@ -19,6 +19,7 @@
 #ifndef SWIFT_MULTISOFTENING_GRAVITY_LOGGER_H
 #define SWIFT_MULTISOFTENING_GRAVITY_LOGGER_H
 
+#include "gravity_part.h"
 #include "logger_io.h"
 
 #ifdef WITH_LOGGER
@@ -44,13 +45,14 @@ static const char *gravity_logger_field_names[gravity_logger_field_count] = {
 /**
  * @brief Initialize the logger.
  *
- * WARNING: The order should be the same in all the functions!
+ * WARNING: The order should be the same in all the functions and
+ * #gravity_logger_fields!
  *
  * @param mask_data Data for each type of mask.
  *
  * @return Number of masks used.
  */
-INLINE static int gravity_logger_populate_mask_data(
+INLINE static int gravity_logger_writer_populate_mask_data(
     struct mask_data *mask_data) {
   mask_data[gravity_logger_field_coordinates] = logger_create_mask_entry(
       gravity_logger_field_names[gravity_logger_field_coordinates],
@@ -77,7 +79,8 @@ INLINE static int gravity_logger_populate_mask_data(
 /**
  * @brief Generates the mask and compute the size of the record.
  *
- * WARNING: The order should be the same in all the functions!
+ * WARNING: The order should be the same in all the functions and
+ * #gravity_logger_fields!
  *
  * @param masks The list of masks (same order than in #gravity_logger_init).
  * @param part The #gpart that will be written.
@@ -116,7 +119,8 @@ INLINE static void gravity_logger_compute_size_and_mask(
 /**
  * @brief Write a particle to the logger.
  *
- * WARNING: The order should be the same in all the functions!
+ * WARNING: The order should be the same in all the functions and
+ * #gravity_logger_fields!
  *
  * @param masks The list of masks (same order than in #gravity_logger_init).
  * @param p The #gpart to write.

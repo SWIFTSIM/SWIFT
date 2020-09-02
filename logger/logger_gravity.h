@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GRAVITY_IO_H
-#define SWIFT_GRAVITY_IO_H
+#ifndef SWIFT_LOGGER_GRAVITY_H
+#define SWIFT_LOGGER_GRAVITY_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "./const.h"
-
 /* Import the right functions */
 #if defined(DEFAULT_GRAVITY)
-#include "./gravity/Default/gravity_io.h"
+#error TODO
+#include "./gravity/Default/logger_gravity.h"
 #elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_io.h"
+#error TODO
+#include "./gravity/Potential/logger_gravity.h"
 #elif defined(MULTI_SOFTENING_GRAVITY)
-#include "./gravity/MultiSoftening/gravity_io.h"
+#include "./gravity/MultiSoftening/logger_gravity.h"
 #else
 #error "Invalid choice of gravity variant"
 #endif
 
-#endif /* SWIFT_GRAVITY_IO_H */
+#endif

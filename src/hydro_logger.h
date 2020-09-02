@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,43 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GRAVITY_IO_H
-#define SWIFT_GRAVITY_IO_H
+#ifndef SWIFT_HYDRO_LOGGER_H
+#define SWIFT_HYDRO_LOGGER_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "./const.h"
+/* Local includes */
+#include "align.h"
+#include "logger.h"
+#include "part_type.h"
+#include "timeline.h"
 
-/* Import the right functions */
-#if defined(DEFAULT_GRAVITY)
-#include "./gravity/Default/gravity_io.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_io.h"
-#elif defined(MULTI_SOFTENING_GRAVITY)
-#include "./gravity/MultiSoftening/gravity_io.h"
+/* Import the right functloggerns */
+#if defined(MINIMAL_SPH)
+#error TODO
+#elif defined(GADGET2_SPH)
+#include "./hydro/Gadget2/hydro_logger.h"
+#elif defined(HOPKINS_PE_SPH)
+#error TODO
+#elif defined(HOPKINS_PU_SPH)
+#error TODO
+#elif defined(HOPKINS_PU_SPH_MONAGHAN)
+#error TODO
+#elif defined(DEFAULT_SPH)
+#error TODO
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#error TODO
+#elif defined(SHADOWFAX_SPH)
+#error TODO
+#elif defined(PLANETARY_SPH)
+#error TODO
+#elif defined(SPHENIX_SPH)
+#error TODO
+#elif defined(ANARCHY_PU_SPH)
+#error TODO
 #else
-#error "Invalid choice of gravity variant"
+#error "Invalid choice of SPH variant"
 #endif
 
-#endif /* SWIFT_GRAVITY_IO_H */
+#endif /* SWIFT_HYDRO_LOGGER_H */
