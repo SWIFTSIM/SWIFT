@@ -27,6 +27,7 @@
 /* Local include */
 #include "generate_log.h"
 #include "hydro.h"
+#include "logger.h"
 #include "logger_reader.h"
 
 #define number_steps 10.
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]) {
   struct logger_reader reader;
   char basename[200];
   parser_get_param_string(&params, "Logger:basename", basename);
+  strcat(basename, "_0000");
   logger_reader_init(&reader, basename,
                      /* Verbose */ 0);
 
@@ -84,33 +86,57 @@ int main(int argc, char *argv[]) {
   }
 
   /* Allocate the particles memory */
-  struct logger_particle *particles =
-      malloc(n_tot * sizeof(struct logger_particle));
+  double *pos = (double *)malloc(n_tot * 3 * sizeof(double));
+  long long *ids = (long long *)malloc(n_tot * sizeof(long long));
 
-  logger_reader_read_all_particles(&reader, begin, logger_reader_const,
-                                   particles, n_tot);
+  /* Create the list of fields. */
+  const int n_fields = 2;
+  int *required_fields = (int *)malloc(n_fields * sizeof(int));
+  const struct header *h = &reader.log.header;
+  for (int i = 0; i < n_fields; i++) {
+    required_fields[i] = -1;
+  }
+  for (int j = 0; j < h->masks_count; j++) {
+    if (strcmp(h->masks[j].name, "Coordinates") == 0) {
+      required_fields[0] = j;
+    } else if (strcmp(h->masks[j].name, "ParticleIDs") == 0) {
+      required_fields[1] = j;
+    }
+  }
+  if (required_fields[0] == -1) {
+    error("Coordinates not found");
+  }
+  if (required_fields[1] == -1) {
+    error("ParticleIDs not found.");
+  }
+
+  /* Create the output */
+  void **output = malloc(n_fields * sizeof(void *));
+  output[0] = (void *)pos;
+  output[1] = (void *)ids;
 
   /* Loop over time for a single particle */
-  size_t id = 0;
-  struct logger_particle p = particles[id];
+  int part_ind = 0;
   for (double t = begin; t < end; t += (end - begin) / number_steps) {
-    /* Get the offset of the given time */
-    size_t o = logger_reader_get_next_offset_from_time(&reader, t);
-    message("time: %f offset: %ld", t, o);
+    /* Set the time of the next reading */
+    logger_reader_set_time(&reader, t);
 
-    /* Read the next particle */
-    struct logger_particle n;
-    logger_reader_get_next_particle(&reader, &p, &n, o);
+    /* Read the next time */
+    logger_reader_read_all_particles(&reader, t, logger_reader_lin,
+                                     required_fields, n_fields, output,
+                                     n_parts);
 
-    message("Particle %zi: %f %f %f %f", id, p.pos[0], p.pos[1], p.pos[2],
-            p.time);
-
-    /* Now you can interpolate */
-    logger_particle_interpolate(&p, &n, t);
+    message("Particle %lli: %f %f %f %f", ids[part_ind], pos[3 * part_ind + 0],
+            pos[3 * part_ind + 1], pos[3 * part_ind + 2], t);
   }
 
   /* Cleanup the memory */
-  free(particles);
+  free(required_fields);
+  free(ids);
+  free(pos);
+  free(parts);
+  free(xparts);
   logger_reader_free(&reader);
+  free(output);
   return 0;
 }

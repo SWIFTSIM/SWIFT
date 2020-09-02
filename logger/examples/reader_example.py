@@ -6,34 +6,33 @@ Example: ./reader_example.py ../../examples/SedovBlast_3D/index 0.1
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 sys.path.append("../.libs/")
 
 import liblogger as logger
 
 
 def plot3D(pos):
-    from mpl_toolkits.mplot3d import Axes3D
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-    ax.plot(pos[:, 0], pos[:, 1], pos[:, 2], ".", markersize=0.2)
+    ax.plot(pos[:, 0], pos[:, 1], pos[:, 2], ".", markersize=0.1)
 
 
-def plot2D():
+def plot2D(pos, entropies):
+    plt.figure()
     center = np.array([0.5]*3)
     r2 = np.sum((pos - center)**2, axis=1)
 
     # plot entropy vs distance
-    plt.plot(np.sqrt(r2), data["entropies"], '.',
+    plt.plot(np.sqrt(r2), entropies, '.',
              markersize=0.2)
 
-    plt.xlim(0., 0.5)
-    plt.ylim(-1, 50)
     plt.xlabel("Radius")
     plt.ylabel("Entropy")
 
 
-basename = "../../examples/HydroTests/SedovBlast_3D/index"
-time = 0.05
+basename = "../../examples/HydroTests/SedovBlast_3D/index_0000"
+time = 0.03
 if len(sys.argv) >= 2:
     basename = sys.argv[1]
 else:
@@ -47,14 +46,13 @@ if len(sys.argv) > 3:
 print("basename: %s" % basename)
 print("time: %g" % time)
 
-# read dump
-
+# read the logger
 t = logger.getTimeLimits(basename)
-data = logger.loadSnapshotAtTime(basename, time, 2)
-print("The data contains the following elements:")
-print(data.dtype.names)
+pos, ent = logger.get_particle_data(basename, ["Coordinates", "Entropies"],
+                                    time)
 
-pos = data["positions"]
-
+print("Min/Max of the position:", pos.min(), pos.max())
+print("Min/Max of the entropy:", ent.min(), ent.max())
 plot3D(pos)
+plot2D(pos, ent)
 plt.show()

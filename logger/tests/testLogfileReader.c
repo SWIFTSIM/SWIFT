@@ -51,9 +51,13 @@ void check_data(struct logger_reader *reader, struct part *parts,
 
   /* Get required structures. */
   struct logger_logfile *logfile = &reader->log;
+  struct header *h = &reader->log.header;
 
-  struct logger_particle lp;
-  logger_particle_init(&lp);
+  /* Create a particle */
+  void **output = malloc(hydro_logger_field_count * sizeof(void *));
+  for (int i = 0; i < hydro_logger_field_count; i++) {
+    output[i] = malloc(h->masks[hydro_logger_local_to_global[i]].size);
+  }
 
   /* Define a few variables */
   double time = get_double_time(0);
@@ -64,14 +68,16 @@ void check_data(struct logger_reader *reader, struct part *parts,
   /* Number of particle found during this time step. */
   int count = 0;
   /* Set it to an impossible value in order to flag it. */
-  const size_t id_flag = 5 * number_parts;
-  long long previous_id = id_flag;
+  const uint64_t id_flag = 5 * number_parts;
+  uint64_t previous_id = id_flag;
 
   /* Loop over each record. */
-  for (size_t offset = reader_read_record(reader, &lp, &time, &is_particle,
-                                          logfile->header.offset_first_record);
+  for (size_t offset =
+           logger_reader_read_record(reader, output, &time, &is_particle,
+                                     logfile->header.offset_first_record);
        offset < logfile->log.mmap_size;
-       offset = reader_read_record(reader, &lp, &time, &is_particle, offset)) {
+       offset = logger_reader_read_record(reader, output, &time, &is_particle,
+                                          offset)) {
 
     /* Do the particle case */
     if (is_particle) {
@@ -81,15 +87,20 @@ void check_data(struct logger_reader *reader, struct part *parts,
         Check that we are really increasing the id in the logfile.
         See the writing part to see that we are always increasing the id.
       */
-      if (previous_id != id_flag && previous_id >= lp.id) {
+      const uint64_t current_id =
+          *(long long *)output[hydro_logger_field_particle_ids];
+      if (previous_id != id_flag && previous_id >= current_id) {
         error("Wrong particle found");
-        previous_id = lp.id;
+        previous_id = current_id;
       }
 
       /* Get the corresponding particle */
-      if (lp.id >= number_parts) error("Wrong id %lli", lp.id);
+      if (current_id >= number_parts) error("Wrong id %li", current_id);
 
-      struct part *p = &parts[lp.id];
+      struct part *p = &parts[current_id];
+      const double *pos = (double *)output[hydro_logger_field_coordinates];
+      const float *vel = (float *)output[hydro_logger_field_velocities];
+      const float *acc = (float *)output[hydro_logger_field_accelerations];
 
       /* Check the record's data. */
       for (int i = 0; i < 3; i++) {
@@ -100,28 +111,36 @@ void check_data(struct logger_reader *reader, struct part *parts,
           if (step >= max_step) {
             tmp = max_step - max_step % p->time_bin;
           }
-          assert(tmp == lp.pos[i]);
+          assert(tmp == pos[i]);
         } else
-          assert(p->x[i] == lp.pos[i]);
-        assert(p->v[i] == lp.vel[i]);
-        assert(p->a_hydro[i] == lp.acc[i]);
+          assert(p->x[i] == pos[i]);
+        assert(p->v[i] == vel[i]);
+        assert(p->a_hydro[i] == acc[i]);
       }
 
-      assert(p->entropy == lp.entropy);
-      assert(p->mass == lp.mass);
+      const float entropy = *(float *)output[hydro_logger_field_entropies];
+      assert(p->entropy == entropy);
+      const float mass = *(float *)output[hydro_logger_field_masses];
+      assert(p->mass == mass);
 
       /* Check optional fields. */
-      int number_steps = step / p->time_bin;
-      if (number_steps % period_h == 0 || step > max_step) {
-        assert(p->h == lp.h);
-      } else {
-        assert(-1 == lp.h);
-      }
-      if (number_steps % period_rho == 0 || step > max_step) {
-        assert(p->rho == lp.density);
-      } else {
-        assert(-1 == lp.density);
-      }
+      // int number_steps = step / p->time_bin;
+      // TODO check only every few steps
+      const float current_h =
+          *(float *)output[hydro_logger_field_smoothing_lengths];
+      assert(p->h == current_h);
+      /* if (number_steps % period_h == 0 || step > max_step) { */
+      /*   assert(p->h == lp.h); */
+      /* } else { */
+      /*   assert(-1 == lp.h); */
+      /* } */
+      const float rho = *(float *)output[hydro_logger_field_densities];
+      assert(p->rho == rho);
+      /* if (number_steps % period_rho == 0 || step > max_step) { */
+      /*   assert(p->rho == lp.rho); */
+      /* } else { */
+      /*   assert(-1 == lp.rho); */
+      /* } */
     }
     /* Time stamp case. */
     else {
@@ -149,6 +168,12 @@ void check_data(struct logger_reader *reader, struct part *parts,
       assert(time == get_double_time(tmp_step));
     }
   }
+
+  /* Cleanup */
+  for (int i = 0; i < hydro_logger_field_count; i++) {
+    free(output[i]);
+  }
+  free(output);
 }
 
 int main(int argc, char *argv[]) {
@@ -195,6 +220,7 @@ int main(int argc, char *argv[]) {
   /* Read the header. */
   char basename[200];
   parser_get_param_string(&params, "Logger:basename", basename);
+  strcat(basename, "_0000");
   logger_reader_init(&reader, basename, /* verbose */ 1);
 
   /*
@@ -206,6 +232,7 @@ int main(int argc, char *argv[]) {
   /* Do some cleanup. */
   free(parts);
   free(xparts);
+  logger_reader_free(&reader);
 
   return 0;
 }

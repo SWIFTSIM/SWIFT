@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GRAVITY_IO_H
-#define SWIFT_GRAVITY_IO_H
 
-/* Config parameters. */
-#include "../config.h"
+#include "logger_hydro.h"
 
-/* Local headers. */
-#include "./const.h"
+int hydro_logger_local_to_global[hydro_logger_field_count];
+/* Define the size of all the fields. */
+#define member_size(type, member) sizeof(((type *)0)->member)
 
-/* Import the right functions */
-#if defined(DEFAULT_GRAVITY)
-#include "./gravity/Default/gravity_io.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_io.h"
-#elif defined(MULTI_SOFTENING_GRAVITY)
-#include "./gravity/MultiSoftening/gravity_io.h"
-#else
-#error "Invalid choice of gravity variant"
-#endif
-
-#endif /* SWIFT_GRAVITY_IO_H */
+const int hydro_logger_field_size[hydro_logger_field_count] = {
+    member_size(struct part, x),        // coordinates
+    member_size(struct part, v),        // velocities
+    member_size(struct part, a_hydro),  // accelerations
+    member_size(struct part, mass),     // massses
+    member_size(struct part, h),        // Smoothing Length
+    member_size(struct part, entropy),  // Entropy
+    member_size(struct part, id),       // IDs
+    member_size(struct part, rho),      // density
+};

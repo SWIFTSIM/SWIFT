@@ -75,5 +75,6 @@ int main(int argc, char *argv[]) {
     assert(offset == times.records[ind].offset);
   }
 
+  time_array_free(&times);
   return 0;
 }

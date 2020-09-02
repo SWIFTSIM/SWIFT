@@ -27,7 +27,7 @@
  * List of all possible mask.
  * Outside the module, only hydro_logger_field_count is used.
  */
-enum hydro_logger_fields_mask {
+enum hydro_logger_fields {
   hydro_logger_field_coordinates = 0,
   hydro_logger_field_velocities,
   hydro_logger_field_accelerations,
@@ -47,13 +47,15 @@ static const char *hydro_logger_field_names[hydro_logger_field_count] = {
 /**
  * @brief Initialize the logger.
  *
- * WARNING: The order should be the same in all the functions!
+ * WARNING: The order should be the same in all the functions and
+ * #hydro_logger_fields!
  *
  * @param mask_data Data for each type of mask.
  *
  * @return Number of masks used.
  */
-INLINE static int hydro_logger_populate_mask_data(struct mask_data *mask_data) {
+INLINE static int hydro_logger_writer_populate_mask_data(
+    struct mask_data *mask_data) {
   mask_data[hydro_logger_field_coordinates] = logger_create_mask_entry(
       hydro_logger_field_names[hydro_logger_field_coordinates],
       3 * sizeof(double));
@@ -89,7 +91,8 @@ INLINE static int hydro_logger_populate_mask_data(struct mask_data *mask_data) {
 /**
  * @brief Generates the mask and compute the size of the record.
  *
- * WARNING: The order should be the same in all the functions!
+ * WARNING: The order should be the same in all the functions and
+ * #hydro_logger_fields!
  *
  * @param masks The list of masks (same order than in #hydro_logger_init).
  * @param part The #part that will be written.
@@ -142,7 +145,8 @@ INLINE static void hydro_logger_compute_size_and_mask(
 /**
  * @brief Write a particle to the logger.
  *
- * WARNING: The order should be the same in all the functions!
+ * WARNING: The order should be the same in all the functions and
+ * #hydro_logger_fields!
  *
  * @param masks The list of masks (same order than in #hydro_logger_init).
  * @param p The #part to write.

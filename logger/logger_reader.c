@@ -91,9 +91,14 @@ void logger_reader_init_index(struct logger_reader *reader) {
   reader->index.n_files = count;
 
   /* Initialize the arrays */
-  reader->index.times = (double *)malloc(count * sizeof(double));
-  reader->index.int_times =
-      (integertime_t *)malloc(count * sizeof(integertime_t));
+  if ((reader->index.times = (double *)malloc(count * sizeof(double))) ==
+      NULL) {
+    error("Failed to allocate the list of times");
+  }
+  if ((reader->index.int_times =
+           (integertime_t *)malloc(count * sizeof(integertime_t))) == NULL) {
+    error("Failed to allocate the list of times");
+  }
 
   /* Get the information contained in the headers */
   for (int i = 0; i < reader->index.n_files; i++) {
@@ -121,46 +126,9 @@ void logger_reader_free(struct logger_reader *reader) {
   if (reader->time.time != -1.) {
     logger_index_free(&reader->index.index);
   }
-}
 
-/**
- * @brief Read a record (timestamp or particle)
- *
- * @param reader The #logger_reader.
- * @param lp (out) The #logger_particle (if the record is a particle).
- * @param time (out) The time read (if the record is a timestamp).
- * @param is_particle Is the record a particle (or a timestamp)?
- * @param offset The offset in the file.
- *
- * @return The offset after this record.
- */
-size_t reader_read_record(struct logger_reader *reader,
-                          struct logger_particle *lp, double *time,
-                          int *is_particle, size_t offset) {
-
-  struct logger_logfile *log = &reader->log;
-
-  /* Read mask to find out if timestamp or particle. */
-  size_t mask = 0;
-  logger_loader_io_read_mask(&log->header, (char *)log->log.map + offset, &mask,
-                             NULL);
-
-  /* Check if timestamp or not. */
-  int ind = header_get_field_index(&log->header, "timestamp");
-  if (ind == -1) {
-    error("File header does not contain a mask for time.");
-  }
-  if (log->header.masks[ind].mask == mask) {
-    *is_particle = 0;
-    integertime_t int_time = 0;
-    offset = time_read(&int_time, time, reader, offset);
-  } else {
-    *is_particle = 1;
-    offset =
-        logger_particle_read(lp, reader, offset, *time, logger_reader_const);
-  }
-
-  return offset;
+  free(reader->index.int_times);
+  free(reader->index.times);
 }
 
 /**
@@ -202,6 +170,11 @@ void logger_reader_set_time(struct logger_reader *reader, double time) {
 
   /* Get the offset of the time chunk */
   size_t ind = time_array_get_index_from_time(&reader->log.times, time);
+  /* ind == 0 and ind == 1 are the same time, but when reading we need
+     data before the initial time. */
+  if (ind == 0) {
+    ind = 1;
+  }
 
   /* Check if we requested exactly a time step  */
   if (reader->log.times.records[ind].time != time) {
@@ -229,79 +202,301 @@ const uint64_t *logger_reader_get_number_particles(struct logger_reader *reader,
   return reader->index.index.nparts;
 }
 
-struct extra_data_read {
-  struct logger_reader *reader;
-  struct logger_particle *parts;
-  struct index_data *data;
-  enum logger_reader_type type;
-};
-
 /**
- * @brief Mapper function of logger_reader_read_all_particles().
+ * @brief Read a single field for a single part from the logger and interpolate
+ it if needed.
+ * This function will jump from the last known full record until the requested
+ time and then
+ * read the last record containing the requested field.
+ * If an interpolation is required, the function will continue jumping until
+ finding a record
+ * with the requested field. If the first or second derivative is present in the
+ last record before /
+ * first record after the requested time, it will use it for the interpolation.
  *
- * @param map_data The array of #logger_particle.
- * @param num_elements The number of element to process.
- * @param extra_data The #extra_data_read.
+ * @param reader The #logger_reader.
+ * @param time The requested time.
+ * @param offset_time The offset of the corresponding time record.
+ * @param interp_type The type of interpolation requested.
+ * @param offset_last_full_record The offset of this particle last record
+ containing all the fields.
+ * @param field The fields wanted in local index.
+ * @param first_deriv_wanted The field that corresponds to the first derivative
+ of fields (-1 if none)
+ * @param second_deriv_wanted The field that corresponds to the second
+ derivative of field (-1 if none)
+ * @param output Pointers to the output array
  */
-void logger_reader_read_all_particles_mapper(void *map_data, int num_elements,
-                                             void *extra_data) {
+void logger_reader_read_field(struct logger_reader *reader, double time,
+                              size_t offset_time,
+                              enum logger_reader_type interp_type,
+                              const size_t offset_last_full_record,
+                              const int field, const int first,
+                              const int second, void *output,
+                              enum part_type type) {
 
-  struct logger_particle *parts = (struct logger_particle *)map_data;
-  struct extra_data_read *read = (struct extra_data_read *)extra_data;
-  const struct logger_reader *reader = read->reader;
-  struct index_data *data = read->data + (parts - read->parts);
+  const struct header *h = &reader->log.header;
+  size_t offset = offset_last_full_record;
 
-  const uint64_t *nparts = reader->index.index.nparts;
-  const size_t shift = parts - read->parts;
+  /* Get the particle type variables. */
+  int *local_to_global = NULL;
+  int field_count = 0;
+  switch (type) {
+    case swift_type_gas:
+      local_to_global = hydro_logger_local_to_global;
+      field_count = hydro_logger_field_count;
+      break;
+    case swift_type_dark_matter:
+      local_to_global = gravity_logger_local_to_global;
+      field_count = gravity_logger_field_count;
+      break;
+    case swift_type_stars:
+      local_to_global = stars_logger_local_to_global;
+      field_count = stars_logger_field_count;
+      break;
+    default:
+      error("Particle type not implemented");
+  }
 
-  /* Read the particles */
-  for (int i = 0; i < num_elements; i++) {
-    const size_t part_ind = shift + i;
+  /* Get the masks. */
+  struct mask_data *mask_field = &h->masks[local_to_global[field]];
+  struct mask_data *mask_first = NULL;
+  if (first >= 0) {
+    mask_first = &h->masks[local_to_global[first]];
+  }
+  struct mask_data *mask_second = NULL;
+  if (second >= 0) {
+    mask_second = &h->masks[local_to_global[second]];
+  }
 
-    /* Get the offset */
-    size_t prev_offset = data[i].offset;
-    size_t next_offset = prev_offset;
+  /* Offset of the field read before the requested time. */
+  size_t offset_before = offset_last_full_record;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* check with the offset of the next timestamp.
-     * (the sentinel protects against overflow)
-     */
-    const size_t ind = reader->time.index + 1;
-    if (prev_offset >= reader->log.times.records[ind].offset) {
-      error("An offset is out of range (%zi > %zi).", prev_offset,
-            reader->log.times.records[ind].offset);
+  /* Record's header information */
+  size_t mask, h_offset;
+
+  /* Find the data for the previous record.
+     As we start from a full record,
+     no need to check if the field is found.
+  */
+  while (offset < offset_time) {
+    /* Read the particle. */
+    logger_loader_io_read_mask(h, reader->log.log.map + offset, &mask,
+                               &h_offset);
+
+    /* Check if the field is present */
+    if (mask & mask_field->mask) {
+      offset_before = offset;
     }
-#endif
 
-    while (next_offset < reader->time.time_offset) {
-      prev_offset = next_offset;
-      int test = tools_get_next_record(&reader->log.header, reader->log.log.map,
-                                       &next_offset, reader->log.log.mmap_size);
+    /* Go to the next record. */
+    offset += h_offset;
+  }
 
-      if (test == -1) {
-        size_t mask = 0;
-        logger_loader_io_read_mask(&reader->log.header,
-                                   (char *)reader->log.log.map + prev_offset,
-                                   &mask, &next_offset);
-        error(
-            "Trying to get a particle without next record (mask: %zi, diff "
-            "offset: %zi)",
-            mask, next_offset);
-      }
-    }
+  /* Read the field */
+  logger_particle_read_field(reader, offset_before, output, local_to_global,
+                             field_count, field, &mask, &h_offset);
 
-    /* Read the particle */
-    logger_particle_read(&parts[i], reader, prev_offset, reader->time.time,
-                         read->type);
+  /* Deal with the first derivative. */
+  const size_t size_first = mask_first == NULL ? 0 : mask_first->size;
+  char first_deriv[size_first];
 
-    /* Set the type */
-    size_t count = 0;
-    for (int ptype = 0; ptype < swift_type_count; ptype++) {
-      count += nparts[ptype];
-      if (part_ind < count) {
-        parts[i].type = ptype;
+  int first_found = mask_first != NULL && mask & mask_first->mask;
+  if (first_found) {
+    /* Read the first derivative */
+    logger_particle_read_field(reader, offset_before, first_deriv,
+                               local_to_global, field_count, first, &mask,
+                               &h_offset);
+  }
+
+  /* Deal with the second derivative. */
+  const size_t size_second = mask_second == NULL ? 0 : mask_second->size;
+  char second_deriv[size_second];
+
+  int second_found = mask_second != NULL && mask & mask_second->mask;
+  if (second_found) {
+    /* Read the first derivative */
+    logger_particle_read_field(reader, offset_before, second_deriv,
+                               local_to_global, field_count, second, &mask,
+                               &h_offset);
+  }
+
+  /* Get the time. */
+  // TODO reduce search interval
+  double time_before = time_array_get_time(&reader->log.times, offset_before);
+
+  /* When interpolating, we need to get the next record after
+     the requested time.
+  */
+  if (interp_type != logger_reader_const) {
+
+    /* Loop over the records until having all the fields. */
+    while (1) {
+
+      /* Read the particle. */
+      logger_loader_io_read_mask(h, reader->log.log.map + offset, &mask,
+                                 &h_offset);
+
+      /* Do we have the field? */
+      if (mask & mask_field->mask) {
         break;
       }
+
+      /* Check if we can still move forward */
+      if (h_offset == 0) {
+        error("There is no record after the current one");
+      }
+
+      /* Go to the next record. */
+      offset += h_offset;
+    }
+
+    /* Output after the requested time. */
+    char output_after[mask_field->size];
+
+    /* Read the field */
+    logger_particle_read_field(reader, offset, output_after, local_to_global,
+                               field_count, field, &mask, &h_offset);
+
+    /* Deal with the first derivative. */
+    char first_deriv_after[size_first];
+
+    /* Did we find the derivative before and in this record? */
+    first_found = mask_first != NULL && first_found && mask & mask_first->mask;
+    if (first_found) {
+      /* Read the first derivative */
+      logger_particle_read_field(reader, offset, first_deriv_after,
+                                 local_to_global, field_count, first, &mask,
+                                 &h_offset);
+    }
+
+    /* Deal with the second derivative. */
+    char second_deriv_after[size_second];
+
+    /* Did we find the derivative before and in this record? */
+    second_found =
+        mask_second != NULL && second_found && mask & mask_second->mask;
+    if (second_found) {
+      /* Read the second derivative */
+      logger_particle_read_field(reader, offset, second_deriv_after,
+                                 local_to_global, field_count, second, &mask,
+                                 &h_offset);
+    }
+
+    /* Get the time. */
+    // TODO reduce search interval
+    double time_after = time_array_get_time(&reader->log.times, offset);
+
+    /* Deal with the derivatives */
+    struct logger_field before;
+    struct logger_field after;
+    before.field = output;
+    before.first_deriv = first_found ? first_deriv : NULL;
+    before.second_deriv = second_found ? second_deriv : NULL;
+    after.field = output_after;
+    after.first_deriv = first_found ? first_deriv_after : NULL;
+    after.second_deriv = second_found ? second_deriv_after : NULL;
+
+    /* Interpolate the data. */
+    switch (type) {
+      case swift_type_gas:
+        hydro_logger_interpolate_field(time_before, &before, time_after, &after,
+                                       output, time, field);
+        break;
+      case swift_type_dark_matter:
+        gravity_logger_interpolate_field(time_before, &before, time_after,
+                                         &after, output, time, field);
+        break;
+      case swift_type_stars:
+        stars_logger_interpolate_field(time_before, &before, time_after, &after,
+                                       output, time, field);
+        break;
+      default:
+        error("Particle type not implemented");
+    }
+  }
+}
+
+/**
+ * @brief Convert the fields from global indexes to local.
+ *
+ * @param reader The #logger_reader.
+ * @param global_fields_wanted The fields to sort.
+ * @param local_fields_wanted (out) fields_wanted in local indexes (need to be
+ * allocated).
+ * @param local_first_deriv (out) Fields (local indexes) corresponding to the
+ * first derivative of local_fields_wanted (need to be allocated).
+ * @param local_second_deriv (out) Fields (local indexes) corresponding to the
+ * second derivative of local_fields_wanted (need to be allocated).
+ * @param n_fields_wanted Number of elements in global_fields_wanted,
+ * local_fields_wanted and its derivatives.
+ * @param type The type of the particle.
+ */
+void logger_reader_global_to_local(
+    const struct logger_reader *reader, const int *global_fields_wanted,
+    int *local_fields_wanted, int *local_first_deriv, int *local_second_deriv,
+    const int n_fields_wanted, enum part_type type) {
+
+  const struct header *h = &reader->log.header;
+
+  /* Get the correct variables. */
+  int n_max = 0;
+  int *local_to_global = NULL;
+  const char **local_names = NULL;
+  switch (type) {
+    case swift_type_gas:
+      n_max = hydro_logger_field_count;
+      local_to_global = hydro_logger_local_to_global;
+      local_names = hydro_logger_field_names;
+      break;
+    case swift_type_dark_matter:
+      n_max = gravity_logger_field_count;
+      local_to_global = gravity_logger_local_to_global;
+      local_names = gravity_logger_field_names;
+      break;
+    case swift_type_stars:
+      n_max = stars_logger_field_count;
+      local_to_global = stars_logger_local_to_global;
+      local_names = stars_logger_field_names;
+      break;
+    default:
+      error("Particle type not implemented yet.");
+  }
+
+  /* Initialize the arrays */
+  for (int local = 0; local < n_fields_wanted; local++) {
+    local_fields_wanted[local] = -1;
+    local_first_deriv[local] = -1;
+    local_second_deriv[local] = -1;
+  }
+
+  /* Find the corresponding local fields */
+  for (int i = 0; i < n_fields_wanted; i++) {
+    const int global_field = global_fields_wanted[i];
+    const int global_first = h->masks[global_field].reader.first_deriv;
+    const int global_second = h->masks[global_field].reader.second_deriv;
+
+    for (int local = 0; local < n_max; local++) {
+      /* Check if we have the same field. */
+      if (global_field == local_to_global[local]) {
+        local_fields_wanted[i] = local;
+      }
+      /* Check if we have the same first derivative. */
+      if (global_first == local_to_global[local]) {
+        local_first_deriv[i] = local;
+      }
+      /* Check if we have the same second derivative. */
+      if (global_second == local_to_global[local]) {
+        local_second_deriv[i] = local;
+      }
+    }
+  }
+
+  /* Check that we found the fields */
+  for (int local = 0; local < n_fields_wanted; local++) {
+    if (local_fields_wanted[local] < 0) {
+      error("Field %s not found in particle type %s", local_names[local],
+            part_type_names[type]);
     }
   }
 }
@@ -312,36 +507,138 @@ void logger_reader_read_all_particles_mapper(void *map_data, int num_elements,
  * @param reader The #logger_reader.
  * @param time The requested time for the particle.
  * @param interp_type The type of interpolation.
- * @param parts The array of particles to use.
- * @param n_tot The total number of particles
+ * @param global_fields_wanted The fields requested (global index).
+ * @param n_fields_wanted Number of field requested.
+ * @param output Pointer to the output array. Size: (n_fields_wanted,
+ * sum(n_part)).
+ * @param n_part Number of particles of each type.
  */
 void logger_reader_read_all_particles(struct logger_reader *reader, double time,
                                       enum logger_reader_type interp_type,
-                                      struct logger_particle *parts,
-                                      size_t n_tot) {
+                                      const int *global_fields_wanted,
+                                      const int n_fields_wanted, void **output,
+                                      const uint64_t *n_part) {
 
-  /* Initialize the thread pool */
-  struct threadpool threadpool;
-  threadpool_init(&threadpool, nr_threads);
+  const struct header *h = &reader->log.header;
 
-  /* Shortcut to some structures */
-  struct logger_index *index = &reader->index.index;
+  /* Allocate temporary memory. */
+  /* fields_wanted sorted according to the fields order (local index). */
+  int *local_fields_wanted = (int *)malloc(sizeof(int) * n_fields_wanted);
+  if (local_fields_wanted == NULL) {
+    error("Failed to allocate the array of sorted fields.");
+  }
 
-  /* Get the correct index file */
-  logger_reader_set_time(reader, time);
-  struct index_data *data = logger_index_get_data(index, 0);
+  /* Fields corresponding to the first derivative of fields_wanted (sorted and
+   * local index). */
+  int *local_first_deriv = malloc(sizeof(int) * n_fields_wanted);
+  if (local_first_deriv == NULL) {
+    error("Failed to allocate the list of first derivative.");
+  }
 
-  /* Read the particles */
-  struct extra_data_read read;
-  read.reader = reader;
-  read.parts = parts;
-  read.data = data;
-  read.type = interp_type;
-  threadpool_map(&threadpool, logger_reader_read_all_particles_mapper, parts,
-                 n_tot, sizeof(struct logger_particle), 0, &read);
+  /* Fields corresponding to the second derivative of fields_wanted (sorted and
+   * local index). */
+  int *local_second_deriv = malloc(sizeof(int) * n_fields_wanted);
+  if (local_second_deriv == NULL) {
+    error("Failed to allocate the list of second derivative.");
+  }
 
-  /* Cleanup the threadpool */
-  threadpool_clean(&threadpool);
+  /* Do the hydro. */
+  if (n_part[swift_type_gas] != 0) {
+    struct index_data *data =
+        logger_index_get_data(&reader->index.index, swift_type_gas);
+
+    /* Sort the fields in order to read the correct bits. */
+    logger_reader_global_to_local(
+        reader, global_fields_wanted, local_fields_wanted, local_first_deriv,
+        local_second_deriv, n_fields_wanted, swift_type_gas);
+
+    /* Read the particles */
+    for (size_t i = 0; i < n_part[swift_type_gas]; i++) {
+      /* Get the offset */
+      size_t offset = data[i].offset;
+
+      /* Sort the output into output_single. */
+      for (int field = 0; field < n_fields_wanted; field++) {
+        const int global = global_fields_wanted[field];
+        const int local = local_fields_wanted[field];
+        const int first = local_first_deriv[field];
+        const int second = local_second_deriv[field];
+        void *output_single = output[field] + i * h->masks[global].size;
+
+        /* Read the field. */
+        logger_reader_read_field(reader, time, reader->time.time_offset,
+                                 interp_type, offset, local, first, second,
+                                 output_single, swift_type_gas);
+      }
+    }
+  }
+
+  /* Do the dark matter. */
+  if (n_part[swift_type_dark_matter] != 0) {
+    struct index_data *data =
+        logger_index_get_data(&reader->index.index, swift_type_dark_matter);
+
+    /* Sort the fields in order to read the correct bits. */
+    logger_reader_global_to_local(
+        reader, global_fields_wanted, local_fields_wanted, local_first_deriv,
+        local_second_deriv, n_fields_wanted, swift_type_dark_matter);
+
+    /* Read the particles */
+    for (size_t i = 0; i < n_part[swift_type_dark_matter]; i++) {
+      /* Get the offset */
+      size_t offset = data[i].offset;
+
+      /* Sort the output into output_single. */
+      for (int field = 0; field < n_fields_wanted; field++) {
+        const int global = global_fields_wanted[field];
+        const int local = local_fields_wanted[field];
+        const int first = local_first_deriv[field];
+        const int second = local_second_deriv[field];
+        void *output_single = output[field] + i * h->masks[global].size;
+
+        /* Read the field. */
+        logger_reader_read_field(reader, time, reader->time.time_offset,
+                                 interp_type, offset, local, first, second,
+                                 output_single, swift_type_dark_matter);
+      }
+    }
+  }
+
+  /* Do the stars. */
+  if (n_part[swift_type_stars] != 0) {
+    struct index_data *data =
+        logger_index_get_data(&reader->index.index, swift_type_stars);
+
+    /* Sort the fields in order to read the correct bits. */
+    logger_reader_global_to_local(
+        reader, global_fields_wanted, local_fields_wanted, local_first_deriv,
+        local_second_deriv, n_fields_wanted, swift_type_stars);
+
+    /* Read the particles */
+    for (size_t i = 0; i < n_part[swift_type_stars]; i++) {
+      /* Get the offset */
+      size_t offset = data[i].offset;
+
+      /* Sort the output into output_single. */
+      for (int field = 0; field < n_fields_wanted; field++) {
+        const int global = global_fields_wanted[field];
+        const int local = local_fields_wanted[field];
+        const int first = local_first_deriv[field];
+        const int second = local_second_deriv[field];
+        void *output_single = output[field] + i * h->masks[global].size;
+
+        /* Read the field. */
+        logger_reader_read_field(reader, time, reader->time.time_offset,
+                                 interp_type, offset, local, first, second,
+                                 output_single, swift_type_stars);
+      }
+    }
+  }
+
+  /* Free the memory. */
+  free(local_fields_wanted);
+  free(local_first_deriv);
+  free(local_second_deriv);
 }
 
 /**
@@ -386,85 +683,51 @@ size_t logger_reader_get_next_offset_from_time(struct logger_reader *reader,
 }
 
 /**
- * @brief Get the two particle records around the requested time.
+ * @brief Read a record without knowing if it is a particle or a timestamp.
+ *
+ * WARNING This function asssumes that all the particles are hydro particles.
+ * Thus it should be used only for testing the code.
  *
  * @param reader The #logger_reader.
- * @param prev (in) A record before the requested time. (out) The last record
- * before the time.
- * @param next (out) The first record after the requested time.
- * @param time_offset The offset of the requested time.
+ * @param output The already allocated buffer containing all the fields possible
+ * for an hydro particle. (out) The particle if the record is a particle
+ * @param time (out) The time if the record is a timestamp.
+ * @param is_particle (out) 1 if the record is a particle 0 otherwise.
+ * @param offset The offset of the record to read.
+ *
+ * @return The offset after the record.
  */
-void logger_reader_get_next_particle(struct logger_reader *reader,
-                                     struct logger_particle *prev,
-                                     struct logger_particle *next,
-                                     size_t time_offset) {
+size_t logger_reader_read_record(struct logger_reader *reader, void **output,
+                                 double *time, int *is_particle,
+                                 size_t offset) {
 
+  /* Get a few pointers. */
+  const struct header *h = &reader->log.header;
   void *map = reader->log.log.map;
-  size_t prev_offset = prev->offset;
-  size_t next_offset = 0;
 
-  /* Get the mask index of the special flags */
-  const int spec_flag_ind =
-      header_get_field_index(&reader->log.header, "special flags");
-  if (spec_flag_ind < -1) {
-    error("The logfile does not contain the special flags field.");
-  }
+  size_t mask = 0;
+  size_t h_offset = 0;
 
-  /* Keep the type in memory */
-  const int prev_type = prev->type;
-  int new_type = -1;
+  /* Read the record's mask. */
+  map = logger_loader_io_read_mask(h, (char *)map + offset, &mask, &h_offset);
 
-  while (1) {
-    /* Read the offset to the next particle */
-    size_t mask = 0;
-    logger_loader_io_read_mask(&reader->log.header, (char *)map + prev_offset,
-                               &mask, &next_offset);
+  *is_particle = !(mask & h->timestamp_mask);
+  /* The record is a particle. */
+  if (*is_particle) {
 
-    /* Check if something special happened */
-    if (mask & reader->log.header.masks[spec_flag_ind].mask) {
-      struct logger_particle tmp;
-      logger_particle_read(&tmp, reader, prev_offset, /* Time */ -1,
-                           logger_reader_const);
-      new_type = tmp.type;
+    size_t offset_tmp = offset;
+    for (int i = 0; i < hydro_logger_field_count; i++) {
+      offset = logger_particle_read_field(
+          reader, offset_tmp, output[i], hydro_logger_local_to_global,
+          hydro_logger_field_count, i, &mask, &h_offset);
     }
 
-    /* Are we at the end of the file? */
-    if (next_offset == 0) {
-      time_array_print(&reader->log.times);
-      error(
-          "End of file for particle %lli offset %zi when requesting time %g "
-          "with offset %zi",
-          prev->id, prev_offset,
-          time_array_get_time(&reader->log.times, time_offset), time_offset);
-    }
-
-    next_offset += prev_offset;
-
-    /* Have we found the next particle? */
-    if (next_offset > time_offset) {
-      break;
-    }
-
-    /* Update the previous offset */
-    prev_offset = next_offset;
+  }
+  /* The record is a timestamp. */
+  else {
+    integertime_t not_used = 0;
+    offset = time_read(&not_used, time, reader, offset);
   }
 
-  /* Read the previous offset if required */
-  if (prev_offset != prev->offset) {
-    logger_particle_read(prev, reader, prev_offset, /* Time */ 0,
-                         logger_reader_const);
-  }
-
-  /* Read the next particle */
-  logger_particle_read(next, reader, next_offset, /* Time */ 0,
-                       logger_reader_const);
-
-  /* Set the types */
-  if (new_type == -1) {
-    next->type = prev_type;
-    prev->type = prev_type;
-  } else {
-    next->type = new_type;
-    prev->type = new_type;
-  }
+  return offset;
 }

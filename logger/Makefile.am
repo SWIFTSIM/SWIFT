@@ -43,22 +43,28 @@ lib_LTLIBRARIES = liblogger.la
 # lib_LTLIBRARIES += liblogger_mpi.la
 # endif
 
+GRAVITY_SRC = gravity/MultiSoftening/logger_gravity.c
+STARS_SRC = stars/Default/logger_stars.c
+HYDRO_SRC = hydro/Gadget2/logger_hydro.c
+
 # subdirectories
 SUBDIRS = tests
 
 # List required headers
 include_HEADERS = logger_header.h logger_loader_io.h logger_particle.h logger_time.h logger_tools.h logger_reader.h \
-	logger_logfile.h logger_index.h quick_sort.h
+	logger_logfile.h logger_index.h quick_sort.h logger_python_tools.h
 
 # Common source files
 AM_SOURCES = logger_header.c logger_loader_io.c logger_particle.c logger_time.c logger_tools.c logger_reader.c \
-	logger_logfile.c logger_index.c quick_sort.c
+	logger_logfile.c logger_index.c quick_sort.c $(GRAVITY_SRC) $(STARS_SRC) $(HYDRO_SRC)
 if HAVEPYTHON
 AM_SOURCES += logger_python_wrapper.c
 endif
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = 
+nobase_noinst_HEADERS = logger_hydro.h hydro/Gadget2/logger_hydro.h \
+	logger_stars.h stars/Default/logger_stars.h \
+	logger_gravity.h gravity/MultiSoftening/logger_gravity.h
 
 # Sources and flags for regular library
 liblogger_la_SOURCES = $(AM_SOURCES)
