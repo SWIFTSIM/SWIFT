@@ -42,6 +42,7 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "cooling.h"
+#include "dark_matter.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
@@ -59,6 +60,32 @@
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
+
+/**
+ * @brief Performs the kicks in momentum space from DM-DM interactions on all the active particles in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+void runner_do_sidm_kick(struct runner *r, struct cell *c) {
+    
+    /* Anything to do here? */
+    if (c->dark_matter.count == 0) return;
+    
+    const struct engine *e = r->e;
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
+    const int count = c->dark_matter.count;
+    
+    /* Loop over the gparts in this cell. */
+    for (int k = 0; k < count; k++) {
+        
+        /* Get a handle on the part. */
+        struct dmpart *restrict dmp = &dmparts[k];
+        
+        /* do the kick */
+        communicate_sidm_kick_to_dmpart(dmp);
+    }
+}
 
 /**
  * @brief Calculate gravity acceleration from external potential

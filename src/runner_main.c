@@ -40,8 +40,14 @@
 #include "runner_doiact_grav.h"
 
 /* Import self-interacting DM loop functions. */
-#include "runner_doiact_dark_matter.h"
 #include "runner_doiact_sidm.h"
+
+/* Import the density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_dark_matter.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -372,9 +378,9 @@ void *runner_main(void *data) {
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;
-        case task_type_sidm_kick:
+        /*case task_type_sidm_kick:
           runner_do_sidm_kick(r, ci, 1);
-        break;
+        break;*/
         case task_type_kick2:
           runner_do_kick2(r, ci, 1);
           break;

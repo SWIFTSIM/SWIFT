@@ -58,11 +58,15 @@ struct dmpart {
 
   struct {
 
-    /* Number of neighbours. */
-    float wcount;
-
-    /* Number of neighbours spatial derivative. */
-    float wcount_dh;
+      /*! Neighbour number count. */
+      float wcount;
+      
+      /*! Derivative of the neighbour number with respect to h. */
+      float wcount_dh;
+      
+      /*! Derivative of density with respect to h */
+      float rho_dh;
+      
 
   } density;
 

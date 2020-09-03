@@ -24,28 +24,22 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOPAIR_SUBSET_DM_NAIVE(f) PASTE(runner_dopair_subset_dm_naive, f)
-#define DOPAIR_SUBSET_DM_NAIVE _DOPAIR_SUBSET_DM_NAIVE(FUNCTION)
+#define _DOPAIR1_DM(f) PASTE(runner_dopair_dark_matter, f)
+#define DOPAIR1_DM _DOPAIR1_DM(FUNCTION)
 
-#define _DOPAIR1_DM_NAIVE(f) PASTE(runner_dopair1_dm_naive, f)
-#define DOPAIR1_DM_NAIVE _DOPAIR1_DM_NAIVE(FUNCTION)
+#define _DOSELF1_DM(f) PASTE(runner_doself_dark_matter, f)
+#define DOSELF1_DM _DOSELF1_DM(FUNCTION)
 
-#define _DOPAIR2_DM_NAIVE(f) PASTE(runner_dopair2_dm_naive, f)
-#define DOPAIR2_DM_NAIVE _DOPAIR2_DM_NAIVE(FUNCTION)
+#define _DOPAIR_SUBSET_DM(f) PASTE(runner_dosub_pair_dark_matter, f)
+#define DOPAIR_SUBSET_DM _DOPAIR_SUBSET_DM(FUNCTION)
 
-#define _DOSELF1_DM_NAIVE(f) PASTE(runner_doself1_dm_naive, f)
-#define DOSELF1_DM_NAIVE _DOSELF1_DM_NAIVE(FUNCTION)
+#define _DOSELF_SUBSET_DM(f) PASTE(runner_dosub_self_dark_matter, f)
+#define DOSELF_SUBSET_DM _DOSELF_SUBSET_DM(FUNCTION)
 
-#define _DOSELF2_DM_NAIVE(f) PASTE(runner_doself2_dm_naive, f)
-#define DOSELF2_DM_NAIVE _DOSELF2_DM_NAIVE(FUNCTION)
-
-#define _DOSELF_SUBSET_DM_NAIVE(f) PASTE(runner_doself_subset_dm_naive, f)
-#define DOSELF_SUBSET_DM_NAIVE _DOSELF_SUBSET_DM_NAIVE(FUNCTION)
-
-#define _IACT_NONSYM_DM(f) PASTE(runner_iact_nonsym_dm, f)
+#define _IACT_NONSYM_DM(f) PASTE(runner_iact_nonsym_dark_matter, f)
 #define IACT_NONSYM_DM _IACT_NONSYM_DM(FUNCTION)
 
-#define _IACT_DM(f) PASTE(runner_iact_dm, f)
+#define _IACT_DM(f) PASTE(runner_iact_dark_matter, f)
 #define IACT_DM _IACT_DM(FUNCTION)
 
 #define _TIMER_DOSELF_DM(f) PASTE(timer_doself_dm, f)

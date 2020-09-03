@@ -32,9 +32,11 @@
  */
 __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct dmpart* gp) {
     
-    
     gp->density.wcount = 0.f;
     gp->density.wcount_dh = 0.f;
+    gp->rho = 0.f;
+    gp->density.rho_dh = 0.f;
+
 }
 
 /**
@@ -91,10 +93,17 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
     const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
     
+    /* Final operation on the density (add self-contribution). */
+    gp->rho += gp->mass * kernel_root;
+    gp->density.rho_dh -= hydro_dimension * gp->mass * kernel_root;
+    gp->density.wcount += kernel_root;
+    gp->density.wcount_dh -= hydro_dimension * kernel_root;
+    
     /* Finish the calculation by inserting the missing h-factors */
+    gp->rho *= h_inv_dim;
+    gp->density.rho_dh *= h_inv_dim_plus_one;
     gp->density.wcount *= h_inv_dim;
-    gp->density.wcount_dh *= h_inv_dim_plus_one;
-}
+    gp->density.wcount_dh *= h_inv_dim_plus_one;}
 
 /**
  * @brief Sets all particle fields to sensible values when the #spart has 0
@@ -106,10 +115,59 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
 __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighbours(
     struct dmpart* restrict gp, const struct cosmology* cosmo) {
     
+    /* Some smoothing length multiples. */
+    const float h = gp->h;
+    const float h_inv = 1.0f / h;                 /* 1/h */
+    const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
     /* Re-set problematic values */
-    gp->density.wcount = 0.f;
+    gp->rho = gp->mass * kernel_root * h_inv_dim;
+    gp->density.wcount = kernel_root * h_inv_dim;
+    gp->density.rho_dh = 0.f;
     gp->density.wcount_dh = 0.f;
 }
 
+
+/**
+ * @brief Resets the SIDM properties of the g-particles
+ *
+ * @param gp Pointer to the gparticle data.
+ */
+__attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *restrict gp) {
+    
+    /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
+    gp->sidm_data.sidm_flag = 0.0f;
+    
+    /*! Particle search radius */
+    gp->sidm_data.h_sidm = 0.0f;
+    
+    /* Particle velocity */
+    gp->sidm_data.si_v_full[0] = 0.0f;
+    gp->sidm_data.si_v_full[1] = 0.0f;
+    gp->sidm_data.si_v_full[2] = 0.0f;
+}
+
+
+/**
+ * @brief Updates #gparts velocities
+ *
+ * @param gp #gpart
+ *
+ */
+__attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpart(struct dmpart *restrict gp) {
+    
+    if (gp->sidm_data.sidm_flag > 0) {
+        
+        /* Rewrite gparticle's velocity */
+        /*gp->v_full[0] = gp->sidm_data.si_v_full[0];
+         gp->v_full[1] = gp->sidm_data.si_v_full[1];
+         gp->v_full[2] = gp->sidm_data.si_v_full[2];*/
+        
+        /* Reset particle SIDM variables */
+        sidm_reset(gp);
+        
+    }
+    
+}
 #endif
 
