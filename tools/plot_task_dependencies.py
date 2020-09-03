@@ -15,9 +15,12 @@ def parseOption():
     parser = OptionParser()
 
     parser.add_option(
-        "-c", "--with-calls", dest="with_calls",
+        "-c",
+        "--with-calls",
+        dest="with_calls",
         help="Add the function calls in the graph",
-        action="store_true")
+        action="store_true",
+    )
 
     opt, files = parser.parse_args()
     if len(files) != 1:
@@ -88,14 +91,12 @@ def appendSingleData(data0, datai):
         # get data
         ta = datai["task_in"][i]
         tb = datai["task_out"][i]
-        ind = np.logical_and(data0["task_in"] == ta,
-                             data0["task_out"] == tb)
+        ind = np.logical_and(data0["task_in"] == ta, data0["task_out"] == tb)
 
         # check number of ta->tb
         N = np.sum(ind)
         if N > 1:
-            raise Exception("Same dependency written multiple times %s->%s" %
-                            (ta, tb))
+            raise Exception("Same dependency written multiple times %s->%s" % (ta, tb))
         # if not present in data0
         if N == 0:
             data0.append(row)
@@ -129,7 +130,7 @@ def appendData(data):
         return data[0]
 
     # add number link to data[0]
-    for i in range(N-1):
+    for i in range(N - 1):
         i += 1
         data[0] = appendSingleData(data[0], data[i])
 
@@ -150,6 +151,7 @@ def taskIsBlackHoles(name):
         return True
     return False
 
+
 def taskIsStars(name):
     """
     Does the task concern stars?
@@ -166,6 +168,7 @@ def taskIsStars(name):
         return True
 
     return False
+
 
 def taskIsHydro(name):
     """
@@ -197,7 +200,7 @@ def taskIsHydro(name):
         "ghost_out",
         "extra_ghost",
         "cooling",
-        "star_formation"
+        "star_formation",
     ]
     if name in task_name:
         return True
@@ -217,6 +220,21 @@ def taskIsGravity(name):
     if "gpart" in name:
         return True
     if "grav" in name:
+        return True
+    return False
+
+
+def taskIsRT(name):
+    """
+    Does the task concern Radiative Transfer?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "_rt" in name:
         return True
     return False
 
@@ -275,21 +293,6 @@ def getFunctionCalls(name):
         pre = "<" + name + "<BR/> <Font POINT-SIZE='10'>Calls: "
         app = "</Font>>"
         return pre + txt + app
-
-
-def taskIsRT(name):
-    """
-    Does the task concern Radiative Transfer?
-
-    Parameters
-    ----------
-
-    name: str
-        Task name
-    """
-    if "_rt" in name:
-        return True
-    return False
 
 
 def writeTask(f, name, implicit, mpi, with_calls):
@@ -391,8 +394,7 @@ def writeHeader(f, data, git, opt):
             continue
 
         written.append(ta)
-        writeTask(f, ta, data["implicit_in"][i], data["mpi_in"][i],
-                  opt.with_calls)
+        writeTask(f, ta, data["implicit_in"][i], data["mpi_in"][i], opt.with_calls)
 
     # do task out
     for i in range(N):
@@ -401,8 +403,7 @@ def writeHeader(f, data, git, opt):
             continue
 
         written.append(tb)
-        writeTask(f, tb, data["implicit_out"][i], data["mpi_out"][i],
-                  opt.with_calls)
+        writeTask(f, tb, data["implicit_out"][i], data["mpi_out"][i], opt.with_calls)
 
     f.write("\n")
 
@@ -505,8 +506,7 @@ def writeDependencies(f, data):
         arrow = ""
         if data["number_rank"][i] != max_rank:
             arrow = ",style=dashed"
-        f.write("\t %s->%s[label=%i%s]\n" %
-                (ta, tb, number_link, arrow))
+        f.write("\t %s->%s[label=%i%s]\n" % (ta, tb, number_link, arrow))
 
 
 def writeFooter(f):
