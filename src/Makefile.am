@@ -47,7 +47,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
     statistics.h memswap.h cache.h runner_doiact_hydro_vec.h profiler.h entropy_floor.h \
-    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h sidm.h sidm_iact.h sidm_properties.h sidm_io.h \
+    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h dark_matter.h dark_matter_iact.h \
+    dark_matter_properties.h dark_matter_io.h dark_matter_part.h \
     gravity_derivatives.h gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h \
@@ -101,8 +102,8 @@ endif
 # Common source files
 AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
     runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
-    runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
-    runner_doiact_hydro_vec.c runner_others.c runner_doiact_sidm.c\
+    runner_sort.c runner_drift.c runner_black_holes.c runner_dark_matter.c runner_time_integration.c \
+    runner_doiact_hydro_vec.c runner_others.c \
     queue.c task.c cell.c engine.c engine_maketasks.c engine_split_particles.c \
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
     engine_redistribute.c engine_fof.c serial_io.c timers.c debug.c scheduler.c \
@@ -111,7 +112,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     physical_constants.c potential.c hydro_properties.c \
     threadpool.c cooling.c star_formation.c \
     statistics.c profiler.c dump.c logger.c \
-    part_type.c xmf.c gravity_properties.c gravity.c sidm_properties.c \
+    part_type.c xmf.c gravity_properties.c gravity.c dark_matter_properties.c \
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
@@ -125,7 +126,6 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h \
 	         runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h \
-		 runner_doiact_sidm.h \
                  runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h \
 		 runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
                  kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \

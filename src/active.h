@@ -52,6 +52,19 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
 }
 
 /**
+ * @brief Check that the #part in a #cell have been drifted to the current time.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_are_dmpart_drifted(
+    const struct cell *c, const struct engine *e) {
+    
+    return (c->dark_matter.ti_old_part == e->ti_current);
+}
+
+/**
  * @brief Check that the #gpart in a #cell have been drifted to the current
  * time.
  *

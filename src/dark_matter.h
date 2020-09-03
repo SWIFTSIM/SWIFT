@@ -21,7 +21,6 @@
 
 /* Config parameters. */
 #include "../config.h"
-#include "./sidm.h"
 #include "./dark_matter_part.h"
 #include "./dark_matter_iact.h"
 
@@ -49,13 +48,13 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
  * @param sidm_properties Properties of the self-interacting dark matter model.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
-     struct dmpart* dmp, const struct sidm_props* sidm_properties) {
+     struct dmpart* dmp, const struct sidm_props* sidm_props) {
     
     /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
     dmp->sidm_data.sidm_flag = 0.0f;
     
     /*! Particle search radius */
-    dmp->sidm_data.h_sidm = sidm_props->h_search_radius;
+    /*dmp->sidm_data.h_sidm = sidm_props->h_search_radius;*/
     
     /*! Number of DM-DM particle collisions */
     dmp->sidm_data.num_sidm = 0.0f;
@@ -176,7 +175,7 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
         sidm_reset(gp);
         
     }
-    
 }
+
 #endif
 

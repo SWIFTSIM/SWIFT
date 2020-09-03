@@ -742,6 +742,24 @@ struct cell {
         /*! Values of h_max before the drifts, used for sub-cell tasks. */
         float h_max_old;
         
+        /*! Maximum part movement in this cell since last construction. */
+        float dx_max_part;
+        
+        /*! Maximum particle movement in this cell since the last sort. */
+        float dx_max_sort;
+        
+        /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+        float dx_max_part_old;
+        
+        /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+        float dx_max_sort_old;
+        
+        /*! Bit-mask indicating the sorted directions */
+        uint16_t sort_allocated;
+
+        /*! Pointer for the sorted indices. */
+        struct sort_entry *sort;
+        
         /*! Maximum end of (integer) time step in this cell for star tasks. */
         integertime_t ti_end_min;
         
@@ -1194,6 +1212,23 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair dark_matter task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split ? */
+    /* If so, is the cut-off radius plus the max distance the parts have moved */
+    /* smaller than the sub-cell sizes ? */
+    /* Note: We use the _old values as these might have been updated by a drift */
+    return c->split && ((kernel_gamma * c->dark_matter.h_max_old +
+                         c->dark_matter.dx_max_part_old) < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-self hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -1204,6 +1239,19 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self dark matter task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split and not smaller than the smoothing length? */
+    return c->split && (kernel_gamma * c->dark_matter.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -1559,6 +1607,31 @@ cell_get_hydro_sorts(const struct cell *c, const int sid) {
   /* Return the corresponding array */
   return &c->hydro.sort[j * (c->hydro.count + 1)];
 }
+
+/**
+ * @brief Returns the array of sorted indices for the DM particles of a given
+ * cell along agiven direction.
+ *
+ * @param c The #cell.
+ * @param sid the direction id.
+ */
+__attribute__((always_inline)) INLINE static struct sort_entry *
+cell_get_dark_matter_sorts(const struct cell *c, const int sid) {
+    
+    /* We need to find at what position in the meta-array of
+     sorts where the corresponding sid has been allocated since
+     there might be gaps as we only allocated the directions that
+     are in use.
+     We create a mask with all the bits before the sid's one set to 1
+     and apply it on the list of allocated directions. We then count
+     the number of bits that are in the results to obtain the position
+     of the correspondin sid in the meta-array */
+    const int j = intrinsics_popcount(c->dark_matter.sort_allocated & ((1 << sid) - 1));
+    
+    /* Return the corresponding array */
+    return &c->dark_matter.sort[j * (c->dark_matter.count + 1)];
+}
+
 
 /**
  * @brief Allocate stars sort memory for cell.

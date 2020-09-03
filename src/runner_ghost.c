@@ -1406,10 +1406,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
     
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const struct engine *e = r->e;
-    const struct space *s = e->s;
     const struct cosmology *cosmo = e->cosmology;
-    const struct sidm_props *sidm_props = e->sidm_properties;
-    
     const int with_cosmology = (e->policy & engine_policy_cosmology);
     
     const float dark_matter_h_max = e->sidm_properties->h_max;
@@ -1585,7 +1582,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
                                 "Smoothing length convergence problem: iter=%d p->id=%lld "
                                 "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
                                 "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
-                                num_reruns, p->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                                num_reruns, p->id_or_neg_offset, h_init, h_old, h_new, f, f_prime, n_sum,
                                 n_target, left[i], right[i]);
                     }
                     
@@ -1635,7 +1632,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
                         redo += 1;
                         
                         /* Re-initialise everything */
-                        dark_matter_init_dmpart(p, hs);
+                        dark_matter_init_dmpart(p);
                         
                         /* Off we go ! */
                         continue;
@@ -1720,35 +1717,34 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
                         
                         /* Self-interaction? */
                         if (l->t->type == task_type_self)
-                            runner_dosub_self_dark_matter_density(r, finger, dmparts, pid, count);
+                            runner_doself_subset_dark_matter_density(r, finger, dmparts, pid, count);
                         
                         /* Otherwise, pair interaction? */
                         else if (l->t->type == task_type_pair) {
                             
                             /* Left or right? */
                             if (l->t->ci == finger)
-                                runner_dosub_pair_dark_matter_density(r, finger, dmparts, pid,
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid,
                                                                     count, l->t->cj);
                             else
-                                runner_dosub_pair_dark_matter_density(r, finger, dmparts, pid,
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid,
                                                                     count, l->t->ci);
                         }
                         
                         /* Otherwise, sub-self interaction? */
                         else if (l->t->type == task_type_sub_self)
-                            runner_dosub_self_dark_matter_density(r, finger, dmparts, pid, count, NULL,
-                                                        1);
+                            runner_doself_subset_dark_matter_density(r, finger, dmparts, pid, count);
                         
                         /* Otherwise, sub-pair interaction? */
                         else if (l->t->type == task_type_sub_pair) {
                             
                             /* Left or right? */
                             if (l->t->ci == finger)
-                                runner_dosub_pair_dark_matter_density(r, finger, dmparts, pid, count,
-                                                            l->t->cj, 1);
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, count,
+                                                            l->t->cj);
                             else
-                                runner_dosub_pair_dark_matter_density(r, finger, dmparts, pid, count,
-                                                            l->t->ci, 1);
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, count,
+                                                            l->t->ci);
                         }
                     }
                 }

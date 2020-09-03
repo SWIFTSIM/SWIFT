@@ -23,7 +23,6 @@
 #include "runner_doiact_grav.h"
 
 /* Local includes. */
-/*#include "runner_doiact_sidm.h"*/
 #include "active.h"
 #include "cell.h"
 #include "gravity.h"
@@ -2209,9 +2208,6 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     /* We have two leaves. Go P-P. */
     runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
       
-    /* Calculate DM-DM interactions */
-    /*runner_dopair_sidm(r, ci, cj);*/
-
   } else {
 
     /* Alright, we'll have to split and recurse. */
@@ -2318,9 +2314,6 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
   /* If the cell is not split, then just go for it... */
   else {
-
-    /* Calculate probability of DM-DM interactions */
-    /*runner_doself_sidm(r, c);*/
 
     runner_doself_grav_pp(r, c);
   }

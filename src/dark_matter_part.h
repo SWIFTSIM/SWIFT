@@ -19,7 +19,7 @@
 #ifndef SWIFT_DARK_MATTER_PART_H
 #define SWIFT_DARK_MATTER_PART_H
 
-#include "sidm_properties.h"
+#include "dark_matter_properties.h"
 
 
 /**

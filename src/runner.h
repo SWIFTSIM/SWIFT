@@ -86,6 +86,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
                                          int timer);
+void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
@@ -116,6 +117,8 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_self(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         int timer);
+void runner_do_self_dark_matter_sidm(struct runner *r, struct cell *c, int timer);
+void runner_do_pair_dark_matter_sidm(struct runner *r, struct cell *ci, struct cell *cj, int timer);
 void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,

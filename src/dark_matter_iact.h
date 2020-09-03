@@ -21,6 +21,9 @@
 
 /* Config parameters. */
 #include "../config.h"
+#include "random.h"
+#include "dark_matter.h"
+
 
 /**
  * @brief Density interaction between two particles.
@@ -106,6 +109,59 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 }
 
 /**
+ * @brief Perform the 'kick' operation on both #gparts
+ *
+ * @param gpj #gpart
+ * @param gpi #gpart
+ * @param ti_current Current integer time (for random numbers).
+ *
+ */
+__attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict pj,
+                                                               struct dmpart *restrict pi, const integertime_t ti_current) {
+    
+    /* Center of Mass Velocity of interacting particles */
+    const double VCM[3] = {(pi->v_full[0] + pj->v_full[0])/2.0, (pi->v_full[1] + pj->v_full[1])/2.0, (pi->v_full[2] + pj->v_full[2])/2.0};
+    
+    double dw[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
+    double dv = sqrt(dv2) / 2.0;
+    
+    /* Direction of kick is randomly chosen */
+    
+    /* Draw a random number */
+    const float rand_theta = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
+    
+    /* Transform to random number in [0, pi] */
+    const float theta = M_PI * rand_theta;
+    
+    /* Random number for other angle */
+    const float rand_phi = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
+    
+    /* Transform to random number in [-pi, pi] range */
+    const float phi = 2.f * M_PI * rand_phi - M_PI;
+    
+    /* Randomly oriented unit vector */
+    float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
+    
+    pj->sidm_data.si_v_full[0] = VCM[0] + dv * e[0];
+    pj->sidm_data.si_v_full[1] = VCM[1] + dv * e[1];
+    pj->sidm_data.si_v_full[2] = VCM[2] + dv * e[2];
+    
+    pi->sidm_data.si_v_full[0] = VCM[0] - dv * e[0];
+    pi->sidm_data.si_v_full[1] = VCM[1] - dv * e[1];
+    pi->sidm_data.si_v_full[2] = VCM[2] - dv * e[2];
+    
+    /*! change flag to indicate the particle has been scattered */
+    pj->sidm_data.sidm_flag = 1;
+    pi->sidm_data.sidm_flag = 1;
+    
+    /* Add counter of DM-DM collisions */
+    pj->sidm_data.num_sidm += 1.f;
+    pi->sidm_data.num_sidm += 1.f;
+    
+}
+
+/**
  * @brief Interaction between two dark matter particles during force loop
  * It calculates the probability of DM particles i & j of scattering within the next time step
  *
@@ -148,8 +204,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / (4.0f * M_PI * hj_3 / 3.0f);
 
     /* Calculate SIDM probability */
-    float Probability_SIDM_i = Rate_SIDM_i * dt;
-    float Probability_SIDM_j = Rate_SIDM_j * dt;
+    float Probability_SIDM_i = Rate_SIDM_i * dti;
+    float Probability_SIDM_j = Rate_SIDM_j * dtj;
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
@@ -208,62 +264,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > rand) sidm_do_kick(pi, pj, ti_current);
+    if (Probability_SIDM_i > rand) {
+        sidm_do_kick(pi, pj, ti_current);
+    }
 }
 
-/**
- * @brief Perform the 'kick' operation on both #gparts
- *
- * @param gpj #gpart
- * @param gpi #gpart
- * @param ti_current Current integer time (for random numbers).
- *
- */
-__attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict gpj,
-                                                               struct dmpart *restrict gpi,
-                                                               const integertime_t ti_current) {
-    
-    /* Center of Mass Velocity of interacting particles */
-    const double VCM[3] = {(gpi->v_full[0] + gpj->v_full[0])/2.0, (gpi->v_full[1] + gpj->v_full[1])/2.0, (gpi->v_full[2] + gpj->v_full[2])/2.0};
-    
-    double dw[3] = {gpi->v_full[0] - gpj->v_full[0], gpi->v_full[1] - gpj->v_full[1], gpi->v_full[2] - gpj->v_full[2]};
-    double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
-    double dv = sqrt(dv2) / 2.0;
-    
-    /* Direction of kick is randomly chosen */
-    
-    /* Draw a random number */
-    const float rand_theta = random_unit_interval(gpi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
-    
-    /* Transform to random number in [0, pi] */
-    const float theta = M_PI * rand_theta;
-    
-    /* Random number for other angle */
-    const float rand_phi = random_unit_interval(gpj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
-    
-    /* Transform to random number in [-pi, pi] range */
-    const float phi = 2.f * M_PI * rand_phi - M_PI;
-    
-    /* Randomly oriented unit vector */
-    float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
-    
-    gpj->sidm_data.si_v_full[0] = VCM[0] + dv * e[0];
-    gpj->sidm_data.si_v_full[1] = VCM[1] + dv * e[1];
-    gpj->sidm_data.si_v_full[2] = VCM[2] + dv * e[2];
-    
-    gpi->sidm_data.si_v_full[0] = VCM[0] - dv * e[0];
-    gpi->sidm_data.si_v_full[1] = VCM[1] - dv * e[1];
-    gpi->sidm_data.si_v_full[2] = VCM[2] - dv * e[2];
-    
-    /*! change flag to indicate the particle has been scattered */
-    gpj->sidm_data.sidm_flag = 1;
-    gpi->sidm_data.sidm_flag = 1;
-    
-    /* Add counter of DM-DM collisions */
-    gpj->sidm_data.num_sidm += 1.f;
-    gpi->sidm_data.num_sidm += 1.f;
-    
-}
 
 #endif
 

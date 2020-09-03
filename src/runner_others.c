@@ -72,7 +72,6 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
     
-    const struct engine *e = r->e;
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const int count = c->dark_matter.count;
     
