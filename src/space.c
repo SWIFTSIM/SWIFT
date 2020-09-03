@@ -61,7 +61,6 @@
 #include "proxy.h"
 #include "restart.h"
 #include "sink.h"
-#include "sidm.h"
 #include "sort_part.h"
 #include "space_unique_id.h"
 #include "star_formation.h"
@@ -5749,7 +5748,7 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
     /* Initialise the rest */
     for (int k = 0; k < count; k++) {
         
-        sidm_first_init_dmpart(&dmp[k], sidm_props);
+        dark_matter_first_init_dmpart(&dmp[k], sidm_props);
         
 #ifdef SWIFT_DEBUG_CHECKS
         if (dmp[k].gpart && dmp[k].gpart->id_or_neg_offset != -(k + delta))

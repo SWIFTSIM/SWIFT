@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* This object's header. */
-#include "sidm_properties.h"
+#include "dark_matter_properties.h"
 
 /* Standard headers */
 #include <float.h>

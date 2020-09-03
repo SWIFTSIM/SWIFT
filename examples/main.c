@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
   struct space s;
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
+  struct dmpart *dmparts = NULL;
   struct sink *sinks = NULL;
   struct unit_system us;
   struct los_props los_properties;
@@ -1108,6 +1109,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_sink] = Nsink;
     N_long[swift_type_stars] = Nspart;
     N_long[swift_type_black_hole] = Nbpart;
+    N_long[swift_type_dark_matter] = Ndmpart;
     N_long[swift_type_count] = Ngpart;
     MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
@@ -1119,6 +1121,7 @@ int main(int argc, char *argv[]) {
     N_total[swift_type_sink] = Nsink;
     N_total[swift_type_stars] = Nspart;
     N_total[swift_type_black_hole] = Nbpart;
+    N_total[swift_type_dark_matter] = Ndmpart;
     N_total[swift_type_count] = Ngpart;
 #endif
 
@@ -1147,7 +1150,7 @@ int main(int argc, char *argv[]) {
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
-               sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, periodic,
+               sparts, bparts, dmparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Ndmpart, periodic,
                replicate, remap_ids, generate_gas_in_ics, with_hydro,
                with_self_gravity, with_star_formation,
                with_DM_background_particles, talking, dry_run, nr_nodes);

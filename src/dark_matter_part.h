@@ -67,11 +67,10 @@ struct dmpart {
       /*! Derivative of density with respect to h */
       float rho_dh;
       
-
   } density;
 
   /*! Add self-interacting DM specific stuff. */
-  struct sidm_gpart_data sidm_data;
+  struct sidm_dmpart_data sidm_data;
 
 
 } SWIFT_STRUCT_ALIGN;

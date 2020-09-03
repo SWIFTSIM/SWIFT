@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SIDM_PROPERTIES_H
-#define SWIFT_SIDM_PROPERTIES_H
+#ifndef SWIFT_DARK_MATTER_PROPERTIES_H
+#define SWIFT_DARK_MATTER_PROPERTIES_H
 
 /**
  * @file sidm_properties.h
@@ -63,7 +63,7 @@ struct sidm_props {
 /**
  * @brief extra particle data for #gpart in the SIDM model.
  */
-struct sidm_gpart_data {
+struct sidm_dmpart_data {
 
     /*! Velocity changed due to DM-DM self-interactions. */
     float si_v_full[3];
@@ -89,4 +89,4 @@ void sidm_props_init(struct sidm_props* sidm_props,
 void sidm_props_struct_restore(struct sidm_props *p, FILE *stream);
 */
 
-#endif /* SWIFT_SIDM_PROPERTIES_H */
+#endif /* SWIFT_DARK_MATTER_PROPERTIES_H */

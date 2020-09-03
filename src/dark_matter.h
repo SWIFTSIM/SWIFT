@@ -47,16 +47,25 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
  *
  * @param gp The particle to act upon.
  * @param sidm_properties Properties of the self-interacting dark matter model.
- * @param with_cosmology Are we running with cosmological time integration.
- * @param scale_factor The current scale-factor (used if running with
- * cosmology).
- * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
-     struct dmpart* gp, const struct sidm_props* sidm_properties,
-     const int with_cosmology, const double scale_factor, const double time) {
+     struct dmpart* dmp, const struct sidm_props* sidm_properties) {
     
-    dark_matter_init_dmpart(gp);
+    /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
+    dmp->sidm_data.sidm_flag = 0.0f;
+    
+    /*! Particle search radius */
+    dmp->sidm_data.h_sidm = sidm_props->h_search_radius;
+    
+    /*! Number of DM-DM particle collisions */
+    dmp->sidm_data.num_sidm = 0.0f;
+    
+    /* Particle velocity */
+    dmp->sidm_data.si_v_full[0] = 0.0f;
+    dmp->sidm_data.si_v_full[1] = 0.0f;
+    dmp->sidm_data.si_v_full[2] = 0.0f;
+
+    dark_matter_init_dmpart(dmp);
 }
 
 /**
