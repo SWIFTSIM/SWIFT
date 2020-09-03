@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2018 Loic Hausammann (loic.hausammann@epfl.ch)
  *               2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -28,15 +29,20 @@
 #define _DOSELF1_RT(f) PASTE(runner_doself_rt, f)
 #define DOSELF1_RT _DOSELF1_RT(FUNCTION)
 
-#define _DO_SYM_PAIR1_RT(f) PASTE(runner_do_sym_pair_rt, f)
-#define DO_SYM_PAIR1_RT _DO_SYM_PAIR1_RT(FUNCTION)
+#define _DOPAIR1_SYM_RT(f) PASTE(runner_dopair_rt, f)
+#define DOPAIR1_SYM_RT _DOPAIR1_SYM_RT(FUNCTION)
 
-#define _DO_NONSYM_PAIR1_RT_NAIVE(f) \
-  PASTE(runner_do_nonsym_pair_rt_naive, f)
-#define DO_NONSYM_PAIR1_RT_NAIVE _DO_NONSYM_PAIR1_RT_NAIVE(FUNCTION)
+#define _DOPAIR1_NONSYM_RT(f) PASTE(runner_dopair_nonsym_rt, f)
+#define DOPAIR1_NONSYM_RT _DOPAIR1_NONSYM_RT(FUNCTION)
 
-#define _DOPAIR1_RT_NAIVE(f) PASTE(runner_dopair_rt_naive, f)
-#define DOPAIR1_RT_NAIVE _DOPAIR1_RT_NAIVE(FUNCTION)
+#define _DOPAIR1_SYM_NAIVE_RT(f) PASTE(runner_dopair_naive_rt, f)
+#define DOPAIR1_SYM_NAIVE_RT _DOPAIR1_SYM_NAIVE_RT(FUNCTION)
+
+#define _DOPAIR1_NONSYM_NAIVE_RT(f) PASTE(runner_dopair_nonsym_naive_rt, f)
+#define DOPAIR1_NONSYM_NAIVE_RT _DOPAIR1_NONSYM_NAIVE_RT(FUNCTION)
+
+#define _DOPAIR1_RT(f) PASTE(runner_dopair_rt, f)
+#define DOPAIR1_RT_DOPAIR1_RT(FUNCTION)
 
 #define _DOSELF1_BRANCH_RT(f) PASTE(runner_doself_branch_rt, f)
 #define DOSELF1_BRANCH_RT _DOSELF1_BRANCH_RT(FUNCTION)
