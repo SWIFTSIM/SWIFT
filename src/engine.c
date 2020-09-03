@@ -60,6 +60,7 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "cycle.h"
+#include "dark_matter.h"
 #include "debug.h"
 #include "distributed_io.h"
 #include "entropy_floor.h"
@@ -88,7 +89,6 @@
 #include "restart.h"
 #include "runner.h"
 #include "serial_io.h"
-#include "sidm.h"
 #include "single_io.h"
 #include "sort_part.h"
 #include "star_formation.h"
@@ -1839,14 +1839,14 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   const ticks tic2 = getticks();
 
   /* Update the global counters of particles */
-  long long num_particles[4] = {
+  long long num_particles[5] = {
       (long long)(e->s->nr_parts - e->s->nr_extra_parts),
       (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
       (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
       (long long)(e->s->nr_dmparts - e->s->nr_extra_dmparts),
       (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, num_particles, 4, MPI_LONG_LONG, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
   e->total_nr_parts = num_particles[0];
@@ -4000,7 +4000,7 @@ static void engine_dumper_init(struct engine *e) {
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct output_options *output_options, long long Ngas,
                  long long Ngparts, long long Nsinks, long long Nstars,
-                 long long Nblackholes, long long Nbackground_gparts,
+                 long long Nblackholes, long long Ndarkmatter, long long Nbackground_gparts,
                  int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
@@ -5369,7 +5369,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   /* Start by reducing the minimal mass of each particle type */
   float min_mass[swift_type_count] = {
       e->s->min_part_mass,  e->s->min_gpart_mass, FLT_MAX, FLT_MAX,
-      e->s->min_spart_mass, e->s->min_bpart_mass, e->s->min_dmpart_mass};
+      e->s->min_spart_mass, e->s->min_bpart_mass};
 
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
@@ -5399,7 +5399,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   /* Get the counts of each particle types */
   const long long total_nr_baryons =
-      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts + e->total_nr_dmparts;
+      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
   const long long total_nr_dm_gparts =
       e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
   float count_parts[swift_type_count] = {
@@ -5408,8 +5408,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       (float)e->total_nr_DM_background_gparts,
       0.f,
       (float)e->total_nr_sparts,
-      (float)e->total_nr_bparts,
-      (float)e->total_nr_dmparts};
+      (float)e->total_nr_bparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];

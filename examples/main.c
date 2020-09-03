@@ -1292,6 +1292,7 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
                 N_total[swift_type_count], N_total[swift_type_sink],
                 N_total[swift_type_stars], N_total[swift_type_black_hole],
+                N_total[swift_type_dark_matter],
                 N_total[swift_type_dark_matter_background], engine_policies,
                 talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,

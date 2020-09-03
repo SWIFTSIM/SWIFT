@@ -559,7 +559,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct output_options *output_options, long long Ngas,
                  long long Ngparts, long long Nsinks, long long Nstars,
-                 long long Nblackholes, long long Nbackground_gparts,
+                 long long Nblackholes, long long Ndarkmatter, long long Nbackground_gparts,
                  int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,

@@ -1929,7 +1929,7 @@ void cell_dmunlocktree(struct cell *c) {
  * entries, used for sorting indices for the sinks.
  */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
+                ptrdiff_t bparts_offset, ptrdiff_t dmparts_offset, ptrdiff_t sinks_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *bbuff, struct cell_buff *gbuff, struct cell_buff *dmbuff,
                 struct cell_buff *sinkbuff) {
@@ -1941,7 +1941,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
-    struct dmpart *dmparts = c->dark_matter.parts;
+  struct dmpart *dmparts = c->dark_matter.parts;
   struct sink *sinks = c->sinks.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
@@ -3202,6 +3202,35 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
       }
     }
   }
+}
+
+/**
+ * @brief Activate the #dmpart drifts on the given cell.
+ */
+void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s) {
+    /* If this cell is already marked for drift, quit early. */
+    if (cell_get_flag(c, cell_flag_do_dark_matter_drift)) return;
+    
+    /* Mark this cell for drifting. */
+    cell_set_flag(c, cell_flag_do_dark_matter_drift);
+    
+    /* Set the do_stars_sub_drifts all the way up and activate the super drift
+     if this has not yet been done. */
+    if (c == c->grav.super) {
+        scheduler_activate(s, c->dark_matter.drift);
+    } else {
+        for (struct cell *parent = c->parent;
+             parent != NULL && !cell_get_flag(parent, cell_flag_do_dark_matter_sub_drift);
+             parent = parent->parent) {
+            /* Mark this cell for drifting */
+            cell_set_flag(parent, cell_flag_do_dark_matter_sub_drift);
+            
+            if (parent == c->grav.super) {
+                scheduler_activate(s, parent->dark_matter.drift);
+                break;
+            }
+        }
+    }
 }
 
 /**
@@ -4946,8 +4975,8 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
             if (cell_need_rebuild_for_dark_matter_pair(cj, ci)) rebuild = 1;
             
-            scheduler_activate(s, ci->hydro.super->dark_matter.swallow_ghost[0]);
-            scheduler_activate(s, cj->hydro.super->dark_matter.swallow_ghost[0]);
+            /*scheduler_activate(s, ci->hydro.super->dark_matter.swallow_ghost[0]);
+            scheduler_activate(s, cj->hydro.super->dark_matter.swallow_ghost[0]);*/
             
 #ifdef WITH_MPI
             /* Activate the send/recv tasks. */

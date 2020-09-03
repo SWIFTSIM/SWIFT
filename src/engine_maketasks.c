@@ -855,9 +855,9 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
                                    c, NULL);
 
-      /* CC. (Adding also sidm kick) */
       c->sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0,
                                      c, NULL);
+      scheduler_addunlock(s, c->kick1, c->sidm_kick);
 
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
                                    c, NULL);
@@ -887,7 +887,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       scheduler_addunlock(s, kick2_or_logger, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
-      scheduler_addunlock(s, c->kick1, c->sidm_kick);
 
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0) {
@@ -903,7 +902,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
         scheduler_addunlock(s, c->timestep, c->timestep_limiter);
         scheduler_addunlock(s, c->timestep_limiter, c->kick1);
-        scheduler_addunlock(s, c->kick1, c->sidm_kick);
       }
 
       /* Time-step synchronization */
@@ -914,8 +912,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
         scheduler_addunlock(s, c->timestep, c->timestep_sync);
         scheduler_addunlock(s, c->timestep_sync, c->kick1);
-        scheduler_addunlock(s, c->kick1, c->sidm_kick);
-          
       }
 
       if (with_timestep_limiter && with_timestep_sync) {
@@ -1379,8 +1375,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-        scheduler_addtask(sched, task_type_self, task_subtype_sidm, 0, 0, ci,
-                          NULL);
 
         scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                         NULL);
@@ -1563,8 +1557,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
+      } else if (t->subtype == task_subtype_dark_matter_density) {
+          engine_addlink(e, &ci->dark_matter.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.grav, t);
+          engine_addlink(e, &ci->dark_matter.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1587,9 +1583,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
+      } else if (t->subtype == task_subtype_dark_matter_density) {
+          engine_addlink(e, &ci->dark_matter.density, t);
+          engine_addlink(e, &cj->dark_matter.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.grav, t);
-          engine_addlink(e, &cj->grav.grav, t);
+          engine_addlink(e, &ci->dark_matter.sidm, t);
+          engine_addlink(e, &cj->dark_matter.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -1618,8 +1617,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
+      } else if (t->subtype == task_subtype_dark_matter_density) {
+        engine_addlink(e, &ci->dark_matter.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.grav, t);
+          engine_addlink(e, &ci->dark_matter.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1642,9 +1643,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
+      } else if (t->subtype == task_subtype_dark_matter_density) {
+          engine_addlink(e, &ci->dark_matter.density, t);
+          engine_addlink(e, &cj->dark_matter.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->grav.grav, t);
-          engine_addlink(e, &cj->grav.grav, t);
+          engine_addlink(e, &ci->dark_matter.sidm, t);
+          engine_addlink(e, &cj->dark_matter.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);

@@ -339,7 +339,9 @@ enum cell_flags {
   cell_flag_do_stars_resort = (1UL << 13),
   cell_flag_has_tasks = (1UL << 14),
   cell_flag_do_hydro_sync = (1UL << 15),
-  cell_flag_do_hydro_sub_sync = (1UL << 16)
+  cell_flag_do_hydro_sub_sync = (1UL << 16),
+  cell_flag_do_dark_matter_drift = (1UL << 17),
+  cell_flag_do_dark_matter_sub_drift = (1UL << 18)
 };
 
 /**
@@ -714,6 +716,9 @@ struct cell {
         
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
         struct task *sidm;
+        
+        /*! The drift task for parts */
+        struct task *drift;
 
         /*! The dark matter ghost task itself */
         struct task *ghost;
@@ -1090,6 +1095,7 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
+void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_sync_part(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
@@ -1470,6 +1476,28 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
     return 1;
   }
   return 0;
+}
+
+/**
+ * @brief Have dark matter particles in a pair of cells moved too much and require a
+ * rebuild?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_dark_matter_pair(const struct cell *ci,
+                                       const struct cell *cj) {
+    
+    /* Is the cut-off radius plus the max distance the parts in both cells have */
+    /* moved larger than the cell size ? */
+    /* Note ci->dmin == cj->dmin */
+    if (kernel_gamma * max(ci->dark_matter.h_max, cj->dark_matter.h_max) +
+        ci->dark_matter.dx_max_part + cj->dark_matter.dx_max_part >
+        cj->dmin) {
+        return 1;
+    }
+    return 0;
 }
 
 /**
