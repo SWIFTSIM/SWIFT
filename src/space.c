@@ -59,6 +59,7 @@
 #include "pressure_floor.h"
 #include "proxy.h"
 #include "restart.h"
+#include "rt.h"
 #include "sink.h"
 #include "sort_part.h"
 #include "space_unique_id.h"
@@ -4923,6 +4924,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     /* And the black hole markers */
     black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
 
+    /* And the radiative transfer */
+    rt_first_init_xpart(&xp[k]);
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
     if (p[k].gpart && p[k].gpart->id_or_neg_offset != -(k + delta))
@@ -5081,6 +5085,9 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
+
+    /* And radiative transfer data */
+    rt_first_init_spart(&sp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
@@ -5275,6 +5282,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     black_holes_init_potential(&parts[k].black_holes_data);
     chemistry_init_part(&parts[k], e->chemistry);
     pressure_floor_init_part(&parts[k], &xparts[k]);
+    rt_init_xpart(&xparts[k]);
     star_formation_init_part(&parts[k], e->star_formation);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,

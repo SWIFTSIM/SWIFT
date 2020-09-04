@@ -40,6 +40,7 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
+#include "rt_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -70,6 +71,9 @@ struct xpart {
 
   /* Additional data used by the feedback */
   struct feedback_part_data feedback_data;
+
+  /* Additional Radiative Transfer Data */
+  struct rt_xpart_data rt_data;
 
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */
