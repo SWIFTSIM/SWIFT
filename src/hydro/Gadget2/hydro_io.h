@@ -24,6 +24,7 @@
 #include "hydro_parameters.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "rt_io.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -206,6 +207,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
                            UNIT_CONV_NO_UNITS, parts, ids_ngbs_force);
 
 #endif
+
+  /* add radiative transfer data */
+  rt_write_xparts(xparts, list, num_fields);
 }
 
 /**

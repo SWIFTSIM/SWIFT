@@ -25,14 +25,6 @@
  */
 
 /**
- * @brief Dummy function to test whether inclusions work properly.
- */
-__attribute__((always_inline)) INLINE static void rt_dummy_function(void) {
-  message("Called debug RT scheme.");
-}
-
-
-/**
  * @brief First initialisation of the RT extra hydro partilce data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_xpart(struct xpart* restrict xp) {
