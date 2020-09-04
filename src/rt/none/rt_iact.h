@@ -21,13 +21,14 @@
 
 /**
  * @file src/rt/none/rt_iact.h
- * @brief Main header file for no radiative transfer scheme particle interactions.
+ * @brief Main header file for no radiative transfer scheme particle
+ * interactions.
  */
 
 /**
  * @brief Injection step interaction between star and hydro particles.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_rt_inject(int call) {};
-
+__attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
+    int call){};
 
 #endif /* SWIFT_RT_IACT_NONE_H */

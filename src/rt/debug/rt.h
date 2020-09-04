@@ -27,7 +27,8 @@
 /**
  * @brief First initialisation of the RT extra hydro partilce data.
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_xpart(struct xpart* restrict xp) {
+__attribute__((always_inline)) INLINE static void rt_first_init_xpart(
+    struct xpart* restrict xp) {
 
   xp->rt_data.iact_stars = 0;
   xp->rt_data.calls_tot = 0;
@@ -37,28 +38,29 @@ __attribute__((always_inline)) INLINE static void rt_first_init_xpart(struct xpa
 /**
  * @brief Initialisation of the RT extra hydro partilce data.
  */
-__attribute__((always_inline)) INLINE static void rt_init_xpart(struct xpart* restrict xp) {
+__attribute__((always_inline)) INLINE static void rt_init_xpart(
+    struct xpart* restrict xp) {
 
   xp->rt_data.iact_stars = 0;
   xp->rt_data.calls_per_step = 0;
 }
 
-
 /**
  * @brief First initialisation of the RT extra star partilce data.
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart( struct spart* restrict sp) {
+__attribute__((always_inline)) INLINE static void rt_first_init_spart(
+    struct spart* restrict sp) {
 
   sp->rt_data.iact_hydro = 0;
   sp->rt_data.calls_tot = 0;
   sp->rt_data.calls_per_step = 0;
 }
 
-
 /**
  * @brief First initialisation of the RT extra star partilce data.
  */
-__attribute__((always_inline)) INLINE static void rt_init_spart( struct spart* restrict sp) {
+__attribute__((always_inline)) INLINE static void rt_init_spart(
+    struct spart* restrict sp) {
 
   sp->rt_data.iact_hydro = 0;
   sp->rt_data.calls_per_step = 0;
