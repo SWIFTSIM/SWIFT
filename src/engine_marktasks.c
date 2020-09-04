@@ -270,7 +270,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
         
       else if (t_type == task_type_self &&
-               t_subtype == task_subtype_sidm_kick) {
+               t_subtype == task_subtype_sidm) {
           if (ci_active_dark_matter) {
               scheduler_activate(s, t);
           }
@@ -490,8 +490,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         
         /* Dark matter density */
       else if ((t_subtype == task_subtype_dark_matter_density ||
-                t_subtype == task_subtype_sidm ||
-                t_subtype == task_subtype_sidm_kick) &&
+                t_subtype == task_subtype_sidm) &&
                (ci_active_dark_matter || cj_active_dark_matter) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
           
@@ -1060,7 +1059,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
       
       /* Dark matter stuff ? */
-    else if (t_type == task_type_ghost || t_type == task_type_sidm) {
+    else if (t_type == task_type_dark_matter_ghost || t_type == task_type_sidm_kick) {
         if (cell_is_active_dark_matter(t->ci, e)) scheduler_activate(s, t);
     }
 

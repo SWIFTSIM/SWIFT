@@ -351,7 +351,7 @@ void *runner_main(void *data) {
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, 1);
           break;
-        case task_type_dark_matter_density_ghost:
+        case task_type_dark_matter_ghost:
           runner_do_dark_matter_density_ghost(r, ci, 1);
           break;
         case task_type_bh_density_ghost:
@@ -409,6 +409,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_bpart) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_tend_dmpart) {
+              free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           } else if (t->subtype == task_subtype_part_swallow) {
@@ -427,6 +429,9 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_tend_spart) {
             cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
             free(t->buff);
+          } else if (t->subtype == task_subtype_tend_dmpart) {
+              cell_unpack_end_step_dark_matter(ci, (struct pcell_step_dark_matter *)t->buff);
+              free(t->buff);
           } else if (t->subtype == task_subtype_tend_bpart) {
             cell_unpack_end_step_black_holes(
                 ci, (struct pcell_step_black_holes *)t->buff);
@@ -455,6 +460,8 @@ void *runner_main(void *data) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);
+          } else if (t->subtype == task_subtype_dmpart) {
+              runner_do_recv_dmpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_swallow) {
