@@ -140,8 +140,7 @@ const char *subtaskID_names[task_subtype_count] = {"none",
                                                    "do_bh_swallow",
                                                    "bh_feedback",
                                                    "sink",
-                                                   "rt_inject"
-                                                   };
+                                                   "rt_inject"};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sort",    "hydro",          "gravity", "feedback",

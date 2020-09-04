@@ -27,36 +27,35 @@
 
 #include "runner_doiact_rt.h"
 
-
 /**
- * @brief TODO
+ * @brief Function for self-type interaction between stars and hydro particles
  *
  * @param r runner task
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_RT(struct runner *r, struct cell *c, int timer){
-  TIMER_TIC; 
+void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
+  TIMER_TIC;
   message("message from DOSELF1_RT");
   if (timer) TIMER_TOC(TIMER_DOSELF_RT);
 }
 
 /**
- * @brief TODO
+ * @brief Function for pari-type interaction between stars and hydro particles
+ *
  *
  * @param r runner task
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOPAIR1_SYM_RT(struct runner *r, struct cell *ci, struct cell *cj, int timer){
-  TIMER_TIC; 
+void DOPAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj, int timer) {
+  TIMER_TIC;
   message("message from DOPAIR1_RT");
   if (timer) TIMER_TOC(TIMER_DOPAIR_RT);
 }
 
 /**
- * @brief Determine which version of DOSELF1_RT needs to be called depending
- * on the optimisation level.
+ * @brief Determine which version of DOSELF1_RT needs to be called
  *
  * @param r #runner
  * @param c #cell c
@@ -67,15 +66,15 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Determine which version of DOPAIR1_RT needs to be called depending
- * on the optimisation level.
+ * @brief Determine which version of DOPAIR1_RT needs to be called
  *
  * @param r #runner
  * @param c #cell c
  * @param timer 1 if the time is to be recorded.
  */
-void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj, int timer) {
-  DOPAIR1_SYM_RT(r, ci, cj, timer);
+void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
+                       int timer) {
+  DOPAIR1_RT(r, ci, cj, timer);
 }
 
 /**
@@ -96,6 +95,7 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj, int timer) {
-  DOPAIR1_SYM_RT(r, ci, cj, timer);
+void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
+                    int timer) {
+  DOPAIR1_RT(r, ci, cj, timer);
 }

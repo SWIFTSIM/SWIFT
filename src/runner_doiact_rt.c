@@ -34,7 +34,5 @@
 
 /* Import the rt injection loop functions. */
 #define FUNCTION inject
-#define FUNCTION_TASK_LOOP TASK_LOOP_INJECT
 #include "runner_doiact_functions_rt.h"
-#undef FUNCTION_TASK_LOOP
 #undef FUNCTION
