@@ -16,29 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_H
-#define SWIFT_RT_H
+#ifndef SWIFT_RT_IACT_NONE_H
+#define SWIFT_RT_IACT_NONE_H
 
 /**
- * @file src/rt.h
- * @brief Branches between the different radiative transfer schemes.
+ * @file src/rt/none/rt_iact.h
+ * @brief Main header file for no radiative transfer scheme particle interactions.
  */
 
-/* Config parameters. */
-#include "../config.h"
+/**
+ * @brief Injection step interaction between star and hydro particles.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_rt_inject(int call) {};
 
-/* Import the right RT definition */
-#if defined(RT_NONE)
-#include "./rt/none/rt.h"
-#include "./rt/none/rt_iact.h"
-#elif defined(RT_DEBUG)
-#include "./rt/debug/rt.h"
-#include "./rt/debug/rt_iact.h"
-#elif defined(RT_M1)
-#include "./rt/M1closure/rt.h"
-#include "./rt/M1closure/rt_iact.h"
-#else
-#error "Invalid choice of radiation scheme"
-#endif
 
-#endif /* SWIFT_RT_H */
+#endif /* SWIFT_RT_IACT_NONE_H */

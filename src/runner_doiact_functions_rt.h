@@ -36,7 +36,7 @@
  */
 void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
-  message("message from DOSELF1_RT");
+  IACT_RT(1);
   if (timer) TIMER_TOC(TIMER_DOSELF_RT);
 }
 
@@ -50,7 +50,7 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
  */
 void DOPAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj, int timer) {
   TIMER_TIC;
-  message("message from DOPAIR1_RT");
+  IACT_RT(2);
   if (timer) TIMER_TOC(TIMER_DOPAIR_RT);
 }
 
