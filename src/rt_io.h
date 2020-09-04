@@ -16,38 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_M1_H
-#define SWIFT_RT_M1_H
+#ifndef SWIFT_RT_IO_H
+#define SWIFT_RT_IO_H
 
 /**
- * @file src/rt/M1closure/rt.h
- * @brief Main header file for the M1 Closure radiative transfer scheme.
+ * @file src/rt_io.h
+ * @brief Branches between the different radiative transfer schemes IO routines.
  */
 
-/**
- * @brief First initialisation of the RT extra hydro partilce data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_xpart(struct xpart* restrict xp) {}
+/* Config parameters. */
+#include "../config.h"
 
-/**
- * @brief Initialisation of the RT extra hydro partilce data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_xpart(struct xpart* restrict xp) {
-}
+/* Import the right RT definition */
+#if defined(RT_NONE)
+#include "./rt/none/rt_io.h"
+#elif defined(RT_DEBUG)
+#include "./rt/debug/rt_io.h"
+#elif defined(RT_M1)
+#include "./rt/M1closure/rt_io.h"
+#else
+#error "Invalid choice of radiation scheme"
+#endif
 
-
-/**
- * @brief First initialisation of the RT extra star partilce data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart( struct spart* restrict sp) {
-}
-
-
-/**
- * @brief First initialisation of the RT extra star partilce data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_spart( struct spart* restrict sp) {
-}
-
-
-#endif /* SWIFT_RT_M1_H */
+#endif /* SWIFT_RT_IO_H */

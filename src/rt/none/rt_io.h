@@ -16,38 +16,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_M1_H
-#define SWIFT_RT_M1_H
+#ifndef SWIFT_RT_IO_NONE_H
+#define SWIFT_RT_IO_NONE_H
+
+#include "io_properties.h"
 
 /**
- * @file src/rt/M1closure/rt.h
- * @brief Main header file for the M1 Closure radiative transfer scheme.
+ * @file src/rt/none/rt_io.h
+ * @brief Main header file for no radiative transfer scheme IO routines.
  */
 
 /**
- * @brief First initialisation of the RT extra hydro partilce data.
+ * @brief Creates additional output fields for the radiative transfer data of hydro particles.
+ *        Intended to be called from inside hydro_write_particles().
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_xpart(struct xpart* restrict xp) {}
+INLINE static void rt_write_xparts(const struct xpart* xparts,
+                                   struct io_props* list,
+                                   int* num_fields) {}
+
 
 /**
- * @brief Initialisation of the RT extra hydro partilce data.
+ * @brief Creates additional output fields for the radiative transfer data of star particles.
+ *        Intended to be called from inside hydro_write_particles().
  */
-__attribute__((always_inline)) INLINE static void rt_init_xpart(struct xpart* restrict xp) {
+INLINE static void rt_write_stars(const struct spart *sparts,
+                                  struct io_props *list, int *num_fields) {
 }
-
-
-/**
- * @brief First initialisation of the RT extra star partilce data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart( struct spart* restrict sp) {
-}
-
-
-/**
- * @brief First initialisation of the RT extra star partilce data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_spart( struct spart* restrict sp) {
-}
-
-
-#endif /* SWIFT_RT_M1_H */
+#endif /* SWIFT_RT_IO_NONE_H */
