@@ -3796,6 +3796,87 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the dark matter drift tasks that
+ * are required by a dark matter task
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
+                                             struct scheduler *s) {
+    const struct engine *e = s->space->e;
+    
+    /* Store the current dx_max and h_max values. */
+    ci->dark_matter.dx_max_part_old = ci->dark_matter.dx_max_part;
+    ci->dark_matter.h_max_old = ci->dark_matter.h_max;
+    
+    if (cj != NULL) {
+        cj->dark_matter.dx_max_part_old = cj->dark_matter.dx_max_part;
+        cj->dark_matter.h_max_old = cj->dark_matter.h_max;
+    }
+    
+    /* Self interaction? */
+    if (cj == NULL) {
+        /* Do anything? */
+        if (!cell_is_active_dark_matter(ci, e) || ci->dark_matter.count == 0 ||
+            ci->dark_matter.count == 0)
+            return;
+        
+        /* Recurse? */
+        if (cell_can_recurse_in_self_dark_matter_task(ci)) {
+            /* Loop over all progenies and pairs of progenies */
+            for (int j = 0; j < 8; j++) {
+                if (ci->progeny[j] != NULL) {
+                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s);
+                    for (int k = j + 1; k < 8; k++)
+                        if (ci->progeny[k] != NULL)
+                            cell_activate_subcell_dark_matter_tasks(
+                                                                    ci->progeny[j], ci->progeny[k], s);
+                }
+            }
+        } else {
+            /* We have reached the bottom of the tree: activate drift */
+            cell_activate_drift_dmpart(ci, s);
+        }
+    }
+    
+    /* Otherwise, pair interation */
+    else {
+        /* Should we even bother? */
+        if (!cell_is_active_dark_matter(ci, e) &&
+            !cell_is_active_dark_matter(cj, e))
+            return;
+        
+        /* Get the orientation of the pair. */
+        double shift[3];
+        const int sid = space_getsid(s->space, &ci, &cj, shift);
+        
+        /* recurse? */
+        if (cell_can_recurse_in_pair_dark_matter_task(ci, cj) &&
+            cell_can_recurse_in_pair_dark_matter_task(cj, ci)) {
+            const struct cell_split_pair *csp = &cell_split_pairs[sid];
+            for (int k = 0; k < csp->count; k++) {
+                const int pid = csp->pairs[k].pid;
+                const int pjd = csp->pairs[k].pjd;
+                if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+                    cell_activate_subcell_dark_matter_tasks(
+                                                            ci->progeny[pid], cj->progeny[pjd], s);
+            }
+        }
+        
+        /* Otherwise, activate the drifts. */
+        else if (cell_is_active_dark_matter(ci, e) ||
+                 cell_is_active_dark_matter(cj, e)) {
+            
+            /* Activate the drifts if the cells are local. */
+            if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
+            if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
+        }
+    } /* Otherwise, pair interation */
+}
+
+/**
  * @brief Traverse a sub-cell task and activate the gravity drift tasks that
  * are required by a self gravity task.
  *
@@ -4957,13 +5038,12 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             
             /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_self) {
-                cell_activate_subcell_dark_matter_tasks(ci, NULL, s,
-                                                        with_timestep_sync);
+                cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
             }
             
             /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_pair) {
-                cell_activate_subcell_dark_matter_tasks(ci, cj, s, with_timestep_sync);
+                cell_activate_subcell_dark_matter_tasks(ci, cj, s);
             }
         }
         

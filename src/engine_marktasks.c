@@ -96,6 +96,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
       const int ci_active_stars = cell_is_active_stars(ci, e) ||
                                   (with_star_formation && ci_active_hydro);
+      const int ci_active_dark_matter = cell_is_active_dark_matter(ci, e);
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {
@@ -245,12 +246,37 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_black_holes) scheduler_activate(s, t);
       }
         
-        /* Activate sidm */
-        else if (t_type == task_type_self &&
-                 t_subtype == task_subtype_sidm) {
-            if (ci_active_gravity) scheduler_activate(s, t);
-        }
+        /* Activate the dark matter density */
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_dark_matter_density) {
+          if (ci_active_dark_matter) {
+              scheduler_activate(s, t);
+              cell_activate_drift_dmpart(ci, s);
+          }
+      }
+        
+        /* Store current values of dx_max and h_max. */
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_dark_matter_density) {
+          if (ci_active_dark_matter) {
+              scheduler_activate(s, t);
+              cell_activate_subcell_dark_matter_tasks(t->ci, NULL, s);
+          }
+      }
+        
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_sidm) {
+          if (ci_active_dark_matter) scheduler_activate(s, t);
+      }
+        
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_sidm_kick) {
+          if (ci_active_dark_matter) {
+              scheduler_activate(s, t);
+          }
+      }
 
+        
 
       /* Activate the gravity drift */
       else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
@@ -297,6 +323,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
       const int cj_active_black_holes = cell_is_active_black_holes(cj, e);
+
+      const int ci_active_dark_matter = cell_is_active_dark_matter(ci, e);
+      const int cj_active_dark_matter = cell_is_active_dark_matter(cj, e);
 
       const int ci_active_stars = cell_is_active_stars(ci, e) ||
                                   (with_star_formation && ci_active_hydro);
@@ -458,6 +487,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                                   with_timestep_sync);
         }
       }
+        
+        /* Dark matter density */
+      else if ((t_subtype == task_subtype_dark_matter_density ||
+                t_subtype == task_subtype_sidm ||
+                t_subtype == task_subtype_sidm_kick) &&
+               (ci_active_dark_matter || cj_active_dark_matter) &&
+               (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+          
+          scheduler_activate(s, t);
+          
+          /* Set the correct drifting flags */
+          if (t_type == task_type_pair && t_subtype == task_subtype_dark_matter_density) {
+              if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+              if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+          }
+          
+          /* Store current values of dx_max and h_max. */
+          else if (t_type == task_type_sub_pair &&
+                   t_subtype == task_subtype_dark_matter_density) {
+              cell_activate_subcell_dark_matter_tasks(ci, cj, s);
+          }
+      }
 
       /* Gravity */
       else if ((t_subtype == task_subtype_grav) &&
@@ -479,28 +530,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
         
-      /* self-interacting dark matter */
-        else if (t_type == task_type_pair && t_subtype == task_subtype_sidm) {
-            
-            /* We only want to activate the task if the cell is active and is
-             going to update some dark matter on the *local* node */
-            if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-                (ci_active_gravity || cj_active_gravity)) {
-                
-                scheduler_activate(s, t);
-                
-            } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
-                       (cj_active_gravity)) {
-                
-                scheduler_activate(s, t);
-                
-            } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
-                       (ci_active_gravity)) {
-                
-                scheduler_activate(s, t);
-            }
-        }
-
       /* Only interested in density tasks as of here. */
       if (t_subtype == task_subtype_density) {
 
@@ -838,6 +867,85 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 #endif
       }
+        
+        /* Only interested in dark matter density tasks as of here. */
+      else if (t->subtype == task_subtype_dark_matter_density) {
+          
+          /* Too much particle movement? */
+          if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) *rebuild_space = 1;
+          if (cell_need_rebuild_for_dark_matter_pair(cj, ci)) *rebuild_space = 1;
+          
+#ifdef WITH_MPI
+          /* Activate the send/recv tasks. */
+          if (ci_nodeID != nodeID) {
+              
+              if (cj_active_dark_matter) {
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);
+
+                  /* If the local cell is active, more stuff will be needed. */
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart,
+                                          ci_nodeID);
+                  cell_activate_drift_dmpart(cj, s);
+                  
+                  /* If the local cell is active, send its ti_end values. */
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
+                                          ci_nodeID);
+              }
+              
+              if (ci_active_dark_matter) {
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart);
+                  
+                  /* If the foreign cell is active, we want its ti_end values. */
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
+                  
+                  /* Is the foreign cell active and will need stuff from us? */
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                          ci_nodeID);
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm,
+                                          ci_nodeID);
+                  
+                  /* Drift the cell which will be sent; note that not all sent
+                   particles will be drifted, only those that are needed. */
+                  cell_activate_drift_dmpart(cj, s);
+              }
+              
+          } else if (cj_nodeID != nodeID) {
+              
+              /* If the local cell is active, receive data from the foreign cell. */
+              if (ci_active_dark_matter) {
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);
+
+                  /* If the local cell is active, more stuff will be needed. */
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart,
+                                          cj_nodeID);
+                  cell_activate_drift_dmpart(ci, s);
+                  
+                  /* If the local cell is active, send its ti_end values. */
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
+                                          cj_nodeID);
+              }
+              
+              if (cj_active_dark_matter) {
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart);
+                  
+                  /* If the foreign cell is active, we want its ti_end values. */
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
+                  
+                  /* Is the foreign cell active and will need stuff from us? */
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                          cj_nodeID);
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm,
+                                          cj_nodeID);
+                  
+                  /* Drift the cell which will be sent; note that not all sent
+                   particles will be drifted, only those that are needed. */
+                  cell_activate_drift_dmpart(ci, s);
+              }
+          }
+#endif
+      }
 
       /* Only interested in gravity tasks as of here. */
       else if (t_subtype == task_subtype_grav) {
@@ -915,12 +1023,17 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Kick ? */
-    else if (t_type == task_type_kick1 || t_type == task_type_sidm_kick || t_type == task_type_kick2) {
+    else if (t_type == task_type_kick1 || t_type == task_type_kick2) {
 
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
-          cell_is_active_stars(t->ci, e) ||
+          cell_is_active_stars(t->ci, e) || cell_is_active_dark_matter(t->ci, e) ||
           cell_is_active_black_holes(t->ci, e))
         scheduler_activate(s, t);
+    }
+
+    /* SIDM Kick ? */
+    else if (t_type == task_type_sidm_kick) {
+        if (cell_is_active_dark_matter(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Hydro ghost tasks ? */
@@ -944,6 +1057,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t_type == task_type_drift_gpart_out ||
              t_type == task_type_grav_down_in) {
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
+    }
+      
+      /* Dark matter stuff ? */
+    else if (t_type == task_type_ghost || t_type == task_type_sidm) {
+        if (cell_is_active_dark_matter(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Multipole - Multipole interaction task */
