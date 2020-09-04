@@ -1026,7 +1026,7 @@ int main(int argc, char *argv[]) {
 
     /* Get ready to read particles of all kinds */
     size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0;
-    size_t Nspart = 0, Nbpart = 0, Nsink = 0;
+    size_t Nspart = 0, Nbpart = 0, Ndmpart = 0, Nsink = 0;
     double dim[3] = {0., 0., 0.};
 
     if (myrank == 0) clocks_gettime(&tic);
@@ -1100,6 +1100,7 @@ int main(int argc, char *argv[]) {
     /* Get the total number of particles across all nodes. */
     long long N_total[swift_type_count + 1] = {0};
     long long Nbaryons = Ngas + Nspart + Nbpart + Nsink;
+    Ndmpart = Ngpart - Ngpart_background - Nbaryons;
 #if defined(WITH_MPI)
     long long N_long[swift_type_count + 1] = {0};
     N_long[swift_type_gas] = Ngas;

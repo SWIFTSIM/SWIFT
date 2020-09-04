@@ -46,8 +46,7 @@
 #include "error.h"
 #include "fof_io.h"
 #include "gravity_io.h"
-#include "sidm_io.h"
-#include "sidm_io.h"
+#include "dark_matter_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
 #include "hydro_properties.h"
@@ -904,6 +903,7 @@ void write_output_serial(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+    const struct dmpart* dmparts = e->s->dmparts;
   const struct sink* sinks = e->s->sinks;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
@@ -1176,6 +1176,7 @@ void write_output_serial(struct engine* e,
         struct velociraptor_gpart_data* gpart_group_data_written = NULL;
         struct spart* sparts_written = NULL;
         struct bpart* bparts_written = NULL;
+        struct dmpart* dmparts_written = NULL;
         struct sink* sinks_written = NULL;
 
         /* Write particle fields from the particle structure */
@@ -1256,7 +1257,7 @@ void write_output_serial(struct engine* e,
                */
               Nparticles = Ntot;
               darkmatter_write_particles(gparts, list, &num_fields);
-              num_fields += sidm_write_gparts(gparts, list + num_fields);
+              num_fields += sidm_write_dmparts(dmparts, list + num_fields);
               if (with_fof) {
                 num_fields +=
                     fof_write_gparts(gparts_written, list + num_fields);
@@ -1294,7 +1295,7 @@ void write_output_serial(struct engine* e,
 
               /* Select the fields to write */
               darkmatter_write_particles(gparts_written, list, &num_fields);
-              num_fields += sidm_write_gparts(gparts_written, list + num_fields);
+              num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);
               if (with_fof) {
                 num_fields +=
                     fof_write_gparts(gparts_written, list + num_fields);
@@ -1335,7 +1336,7 @@ void write_output_serial(struct engine* e,
 
             /* Select the fields to write */
             darkmatter_write_particles(gparts_written, list, &num_fields);
-            num_fields += sidm_write_gparts(gparts_written, list + num_fields);
+            num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);
             if (with_fof) {
               num_fields += fof_write_gparts(gparts_written, list + num_fields);
             }

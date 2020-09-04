@@ -45,7 +45,7 @@
 #include "error.h"
 #include "fof_io.h"
 #include "gravity_io.h"
-#include "sidm_io.h"
+#include "dark_matter_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
 #include "hydro_properties.h"
@@ -253,6 +253,7 @@ void write_output_distributed(struct engine* e,
   const struct sink* sinks = e->s->sinks;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+  const struct dmpart* dmparts = e->s->dmparts;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -480,6 +481,7 @@ void write_output_distributed(struct engine* e,
     struct sink* sinks_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
+      struct dmpart* dmparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -557,7 +559,7 @@ void write_output_distributed(struct engine* e,
           /* This is a DM-only run without background or inhibited particles */
           Nparticles = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
-          num_fields += sidm_write_gparts(gparts, list + num_fields);
+          num_fields += sidm_write_dmparts(dmparts, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_gparts(gparts, list + num_fields);
           }
@@ -593,7 +595,7 @@ void write_output_distributed(struct engine* e,
 
           /* Select the fields to write */
           darkmatter_write_particles(gparts_written, list, &num_fields);
-          num_fields += sidm_write_gparts(gparts, list + num_fields);
+          num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_gparts(gparts_written, list + num_fields);
           }
@@ -632,7 +634,7 @@ void write_output_distributed(struct engine* e,
 
         /* Select the fields to write */
         darkmatter_write_particles(gparts_written, list, &num_fields);
-        num_fields += sidm_write_gparts(gparts, list + num_fields);
+        num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);
         if (with_fof) {
           num_fields += fof_write_gparts(gparts_written, list + num_fields);
         }

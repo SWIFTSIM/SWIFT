@@ -29,6 +29,7 @@
 #include "dimension.h"
 #include "parser.h"
 #include "units.h"
+#include "error.h"
 
 #define sidm_props_default_max_iterations 30
 #define sidm_props_default_h_max FLT_MAX
@@ -69,15 +70,15 @@ void sidm_props_init(struct sidm_props* sidm_props,
                                                 sidm_props_default_h_tolerance);
     
     /* Get derived properties */
-    sidm_props->target_neighbours = pow_dimension(sidm_props->eta_neighbours) * kernel_norm;
+    sidm_props->target_neighbours = pow_dimension(sidm_props->eta_neighbours);
     
     const float delta_eta = sidm_props->eta_neighbours * (1.f + sidm_props->h_tolerance);
 
-    sidm_props->delta_neighbours = (pow_dimension(delta_eta) - pow_dimension(sidm_props->eta_neighbours)) * kernel_norm;
+    sidm_props->delta_neighbours = (pow_dimension(delta_eta) - pow_dimension(sidm_props->eta_neighbours));
     
     /* Maximal smoothing length */
     sidm_props->h_max = parser_get_opt_param_float(params, "SIDM:h_max",
-                                          hydro_props_default_h_max);
+                                          sidm_props_default_h_max);
     
     
     /* Temporarily set the minimal softening to 0. */

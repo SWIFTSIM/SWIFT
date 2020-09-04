@@ -276,7 +276,7 @@ struct engine {
   long long count_inhibited_gparts;
   long long count_inhibited_sparts;
   long long count_inhibited_bparts;
-  long long nr_inhibited_dmparts;
+  long long count_inhibited_dmparts;
 #endif
 
   /* Maximal ID of the parts (used for the generation of new IDs when splitting)

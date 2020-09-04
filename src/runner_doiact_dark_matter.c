@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ * Copyright (c) 2020 Camila Correa (camila.correa@uva.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,23 +23,13 @@
 /* Local headers. */
 #include "active.h"
 #include "dark_matter.h"
+#include "dark_matter_iact.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
 #include "space_getsid.h"
 #include "timers.h"
 
-/* Import the black hole density loop functions. */
-#define FUNCTION density
-#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+/* Import the dark matter density loop functions. */
 #include "runner_doiact_functions_dark_matter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
-
-/* Import the black hole feedback loop functions. */
-#define FUNCTION force
-#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
-#include "runner_doiact_functions_dark_matter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
 

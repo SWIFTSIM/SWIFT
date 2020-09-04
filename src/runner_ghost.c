@@ -1402,7 +1402,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const struct engine *e = r->e;
@@ -1432,7 +1432,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
     if (c->split) {
         for (int k = 0; k < 8; k++) {
             if (c->progeny[k] != NULL) {
-                runner_do_dark_matter_density_ghost(r, c->progeny[k], 0);
+                runner_do_dark_matter_density_ghost(r, c->progeny[k]);
                 
                 /* Update h_max */
                 h_max = max(h_max, c->progeny[k]->dark_matter.h_max);
@@ -1724,11 +1724,9 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
                             
                             /* Left or right? */
                             if (l->t->ci == finger)
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid,
-                                                                    count, l->t->cj);
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->cj, count);
                             else
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid,
-                                                                    count, l->t->ci);
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->ci, count);
                         }
                         
                         /* Otherwise, sub-self interaction? */
@@ -1740,11 +1738,9 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
                             
                             /* Left or right? */
                             if (l->t->ci == finger)
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, count,
-                                                            l->t->cj);
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->cj, count);
                             else
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, count,
-                                                            l->t->ci);
+                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->ci, count);
                         }
                     }
                 }
@@ -1772,6 +1768,4 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c, int t
             atomic_max_f(&tmp->dark_matter.h_max, h_max);
         }
     }
-    
-    if (timer) TIMER_TOC(timer_do_dark_matter_ghost);
 }

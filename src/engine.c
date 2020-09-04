@@ -680,7 +680,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
             error(
                   "Do not have a proxy for the requested nodeID %i for part with "
                   "id=%lld, x=[%e,%e,%e].",
-                  node_id, s->dmparts[offset_dmparts + k].id,
+                  node_id, s->dmparts[offset_dmparts + k].id_or_neg_offset,
                   s->dmparts[offset_dmparts + k].x[0], s->dmparts[offset_dmparts + k].x[1],
                   s->dmparts[offset_dmparts + k].x[2]);
         }
@@ -788,7 +788,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
   if (e->verbose) {
     message(
-        "sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts/dmparts, got %i/%i/%i/%i/%i "
+        "sent out %zu/%zu/%zu/%zu/%zu parts/gparts/sparts/bparts/dmparts, got %i/%i/%i/%i/%i "
         "back.",
         *Npart, *Ngpart, *Nspart, *Nbpart, *Ndmpart, count_parts_in, count_gparts_in,
         count_sparts_in, count_bparts_in, count_dmparts_in);
@@ -999,7 +999,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
              sizeof(struct spart) * prox->nr_sparts_in);
       memcpy(&s->bparts[offset_bparts + count_bparts], prox->bparts_in,
              sizeof(struct bpart) * prox->nr_bparts_in);
-        memcpy(&s->dmparts[offset_dmparts + count_dmparts], prox->dmparts_in,
+      memcpy(&s->dmparts[offset_dmparts + count_dmparts], prox->dmparts_in,
                sizeof(struct dmpart) * prox->nr_dmparts_in);
 
 #ifdef WITH_LOGGER
@@ -1059,12 +1059,12 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
               &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->bparts - bp;
           bp->gpart = gp;
-        }
       } else if (gp->type == swift_type_dark_matter) {
           struct dmpart *dmp =
           &s->dmparts[offset_dmparts + count_dmparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->dmparts - dmp;
           dmp->gpart = gp;
+        }
       }
     
 
@@ -1359,7 +1359,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   const int with_hydro = e->policy & engine_policy_hydro;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
-  const int with_sidm = e->policy & engine_policy_sidm;
+  /*const int with_sidm = e->policy & engine_policy_sidm;*/
   struct space *s = e->s;
   ticks tic = getticks();
 
@@ -1510,12 +1510,11 @@ void engine_allocate_foreign_particles(struct engine *e) {
         bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
       }
         
-      if (with_sidm) {
+      /*if (with_sidm) {*/
             
-            /* For dark matter, we just use the numbers in the top-level cells */
-            cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);
-            dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_mater.count];
-      }
+        /* For dark matter, we just use the numbers in the top-level cells */
+        cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);
+        dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_matter.count];
     }
   }
 
@@ -2185,6 +2184,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
         t->subtype == task_subtype_tend_bpart ||
+        t->subtype == task_subtype_tend_dmpart ||
         t->subtype == task_subtype_rho || t->subtype == task_subtype_sf_counts)
       t->skip = 1;
   }

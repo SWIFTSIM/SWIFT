@@ -563,6 +563,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
   p->buff_out[1] = p->nr_gparts_out;
   p->buff_out[2] = p->nr_sparts_out;
   p->buff_out[3] = p->nr_bparts_out;
+  p->buff_out[4] = p->nr_dmparts_out;
   if (MPI_Isend(p->buff_out, 4, MPI_INT, p->nodeID,
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
@@ -611,6 +612,14 @@ void proxy_parts_exchange_first(struct proxy *p) {
     // message( "isent bpart data (%i) to node %i." , p->nr_bparts_out ,
     // p->nodeID ); fflush(stdout);
   }
+    if (p->nr_dmparts_out > 0) {
+        if (MPI_Isend(p->dmparts_out, p->nr_dmparts_out, dmpart_mpi_type, p->nodeID,
+                      p->mynodeID * proxy_tag_shift + proxy_tag_dmparts,
+                      MPI_COMM_WORLD, &p->req_dmparts_out) != MPI_SUCCESS)
+            error("Failed to isend spart data.");
+        // message( "isent spart data (%i) to node %i." , p->nr_sparts_out ,
+        // p->nodeID ); fflush(stdout);
+    }
 
   /* Receive the number of particles. */
   if (MPI_Irecv(p->buff_in, 4, MPI_INT, p->nodeID,
@@ -632,6 +641,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
   p->nr_gparts_in = p->buff_in[1];
   p->nr_sparts_in = p->buff_in[2];
   p->nr_bparts_in = p->buff_in[3];
+    p->nr_dmparts_in = p->buff_in[4];
 
   /* Is there enough space in the buffers? */
   if (p->nr_parts_in > p->size_parts_in) {
@@ -673,6 +683,15 @@ void proxy_parts_exchange_second(struct proxy *p) {
              "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
       error("Failed to re-allocate bparts_in buffers.");
   }
+    if (p->nr_dmparts_in > p->size_dmparts_in) {
+        do {
+            p->size_dmparts_in *= proxy_buffgrow;
+        } while (p->nr_dmparts_in > p->size_dmparts_in);
+        swift_free("dmparts_in", p->dmparts_in);
+        if ((p->dmparts_in = (struct dmpart *)swift_malloc(
+                                                         "dmparts_in", sizeof(struct dmpart) * p->size_dmparts_in)) == NULL)
+            error("Failed to re-allocate dmparts_in buffers.");
+    }
 
   /* Receive the particle buffers. */
   if (p->nr_parts_in > 0) {
@@ -710,6 +729,14 @@ void proxy_parts_exchange_second(struct proxy *p) {
     // message( "irecv bpart data (%i) from node %i." , p->nr_bparts_in ,
     // p->nodeID ); fflush(stdout);
   }
+    if (p->nr_dmparts_in > 0) {
+        if (MPI_Irecv(p->dmparts_in, p->nr_dmparts_in, dmpart_mpi_type, p->nodeID,
+                      p->nodeID * proxy_tag_shift + proxy_tag_dmparts,
+                      MPI_COMM_WORLD, &p->req_dmparts_in) != MPI_SUCCESS)
+            error("Failed to irecv dmpart data.");
+        // message( "irecv bpart data (%i) from node %i." , p->nr_bparts_in ,
+        // p->nodeID ); fflush(stdout);
+    }
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -846,6 +873,36 @@ void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
 }
 
 /**
+ * @brief Load bparts onto a proxy for exchange.
+ *
+ * @param p The #proxy.
+ * @param dmparts Pointer to an array of #dmpart to send.
+ * @param N The number of bparts.
+ */
+void proxy_dmparts_load(struct proxy *p, const struct dmpart *dmparts, int N) {
+    
+    /* Is there enough space in the buffer? */
+    if (p->nr_dmparts_out + N > p->size_dmparts_out) {
+        do {
+            p->size_dmparts_out *= proxy_buffgrow;
+        } while (p->nr_dmparts_out + N > p->size_dmparts_out);
+        struct dmpart *tp;
+        if ((tp = (struct dmpart *)swift_malloc(
+                                               "dmparts_out", sizeof(struct dmpart) * p->size_dmparts_out)) == NULL)
+            error("Failed to re-allocate dmparts_out buffers.");
+        memcpy(tp, p->dmparts_out, sizeof(struct dmpart) * p->nr_dmparts_out);
+        swift_free("bparts_out", p->dmparts_out);
+        p->dmparts_out = tp;
+    }
+    
+    /* Copy the parts and xparts data to the buffer. */
+    memcpy(&p->dmparts_out[p->nr_dmparts_out], dmparts, sizeof(struct dmpart) * N);
+    
+    /* Increase the counters. */
+    p->nr_dmparts_out += N;
+}
+
+/**
  * @brief Frees the memory allocated for the particle proxies and sets their
  * size back to the initial state.
  *
@@ -920,6 +977,21 @@ void proxy_free_particle_buffers(struct proxy *p) {
              "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
       error("Failed to allocate bparts_in buffers.");
   }
+    
+    if (p->size_dmparts_out > proxy_buffinit) {
+        swift_free("dmparts_out", p->dmparts_out);
+        p->size_dmparts_out = proxy_buffinit;
+        if ((p->dmparts_out = (struct dmpart *)swift_malloc(
+                                                          "dmparts_out", sizeof(struct dmpart) * p->size_dmparts_out)) == NULL)
+            error("Failed to allocate dmparts_out buffers.");
+    }
+    if (p->size_dmparts_in > proxy_buffinit) {
+        swift_free("dmparts_in", p->dmparts_in);
+        p->size_dmparts_in = proxy_buffinit;
+        if ((p->dmparts_in = (struct dmpart *)swift_malloc(
+                                                         "dmparts_in", sizeof(struct dmpart) * p->size_dmparts_in)) == NULL)
+            error("Failed to allocate dmparts_in buffers.");
+    }
 }
 
 /**
@@ -1024,6 +1096,22 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
       error("Failed to allocate bparts_out buffers.");
   }
   p->nr_bparts_out = 0;
+    
+    /* Allocate the bpart send and receive buffers, if needed. */
+    if (p->dmparts_in == NULL) {
+        p->size_dmparts_in = proxy_buffinit;
+        if ((p->dmparts_in = (struct dmpart *)swift_malloc(
+                                                         "dmparts_in", sizeof(struct dmpart) * p->size_dmparts_in)) == NULL)
+            error("Failed to allocate dmparts_in buffers.");
+    }
+    p->nr_dmparts_in = 0;
+    if (p->dmparts_out == NULL) {
+        p->size_dmparts_out = proxy_buffinit;
+        if ((p->dmparts_out = (struct dmpart *)swift_malloc(
+                                                          "dmparts_out", sizeof(struct dmpart) * p->size_dmparts_out)) == NULL)
+            error("Failed to allocate dmparts_out buffers.");
+    }
+    p->nr_dmparts_out = 0;
 }
 
 /**
@@ -1042,11 +1130,13 @@ void proxy_clean(struct proxy *p) {
   swift_free("gparts_out", p->gparts_out);
   swift_free("sparts_out", p->sparts_out);
   swift_free("bparts_out", p->bparts_out);
+    swift_free("dmparts_out", p->dmparts_out);
   swift_free("parts_in", p->parts_in);
   swift_free("xparts_in", p->xparts_in);
   swift_free("gparts_in", p->gparts_in);
   swift_free("sparts_in", p->sparts_in);
   swift_free("bparts_in", p->bparts_in);
+    swift_free("dmparts_in", p->dmparts_in);
 }
 
 /**

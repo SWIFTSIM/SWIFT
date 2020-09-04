@@ -26,8 +26,9 @@
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-INLINE static int sidm_write_gparts(const struct dmpart* dmparts,
+INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
                                               struct io_props* list) {
+    
     
     /* List what we want to write */
     list[0] = io_make_output_field("SIDMevents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,

@@ -281,6 +281,80 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 #endif
 }
 
+
+/**
+ * @brief Construct the cell properties from the received #dmpart.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
+                          int timer) {
+    
+#ifdef WITH_MPI
+    
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
+    const size_t nr_dmparts = c->dark_matter.count;
+    const integertime_t ti_current = r->e->ti_current;
+    
+    TIMER_TIC;
+    
+    integertime_t ti_dark_matter_end_min = max_nr_timesteps;
+    integertime_t ti_dark_matter_end_max = 0;
+    timebin_t time_bin_min = num_time_bins;
+    timebin_t time_bin_max = 0;
+    float h_max = 0.f;
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank) error("Updating a local cell!");
+#endif
+    
+    /* If this cell is a leaf, collect the particle data. */
+    if (!c->split) {
+        
+        /* Collect everything... */
+        for (size_t k = 0; k < nr_dmparts; k++) {
+            
+            if (dmparts[k].time_bin == time_bin_inhibited) continue;
+            time_bin_min = min(time_bin_min, dmparts[k].time_bin);
+            time_bin_max = max(time_bin_max, dmparts[k].time_bin);
+            h_max = max(h_max, dmparts[k].h);
+        }
+        
+        /* Convert into a time */
+        ti_dark_matter_end_min = get_integer_time_end(ti_current, time_bin_min);
+        ti_dark_matter_end_max = get_integer_time_end(ti_current, time_bin_max);
+    }
+    
+    /* Otherwise, recurse and collect. */
+    else {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL && c->progeny[k]->dark_matter.count > 0) {
+                runner_do_recv_dmpart(r, c->progeny[k], clear_sorts, 0);
+                ti_dark_matter_end_min =
+                min(ti_dark_matter_end_min, c->progeny[k]->dark_matter.ti_end_min);
+                ti_dark_matter_end_max =
+                max(ti_dark_matter_end_max, c->progeny[k]->dark_matter.ti_end_max);
+                h_max = max(h_max, c->progeny[k]->dark_matter.h_max);
+            }
+        }
+    }
+    
+    /* ... and store. */
+    // c->grav.ti_end_min = ti_gravity_end_min;
+    // c->grav.ti_end_max = ti_gravity_end_max;
+    c->dark_matter.ti_old_part = ti_current;
+    c->dark_matter.h_max = h_max;
+    
+    if (timer) TIMER_TOC(timer_dorecv_spart);
+    
+#else
+    error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
 /**
  * @brief Construct the cell properties from the received #bpart.
  *

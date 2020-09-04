@@ -296,9 +296,6 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
         /* The send_rho task depends on the cell's ghost task. */
         scheduler_addunlock(s, ci->grav.super->dark_matter.ghost, t_sidm);
         
-        /* The send_sidm task should unlock the super-cell's sidm_kick task. */
-        scheduler_addunlock(s, t_sidm, t_sidm_kick);
-        
         scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_rho);
         
         /* Ghost before you send */
@@ -320,7 +317,7 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
         for (int k = 0; k < 8; k++)
             if (ci->progeny[k] != NULL)
                 engine_addtasks_send_dark_matter(e, ci->progeny[k], cj, t_rho, t_ti,
-                                           t_sidm, t_sidm_kick);
+                                           t_sidm);
     
 #else
     error("SWIFT was not compiled with MPI support.");
@@ -674,31 +671,23 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
 #endif /* SWIFT_DEBUG_CHECKS */
         
         /* Create the tasks. */
-        t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
-                                  0, c, NULL);
-        
         t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_dmpart,
                                  c->mpi.tag, 0, c, NULL);
         
         t_sidm = scheduler_addtask(s, task_type_recv, task_subtype_sidm, c->mpi.tag,
                                   0, c, NULL);
     }
-    
-        engine_addlink(e, &c->mpi.recv, t_rho);
+
+    if (t_sidm != NULL) {
         engine_addlink(e, &c->mpi.recv, t_ti);
         engine_addlink(e, &c->mpi.recv, t_sidm);
     
         for (struct link *l = c->dark_matter.density; l != NULL; l = l->next) {
-            scheduler_addunlock(s, l->t, t_rho);
-        }
-
-        for (struct link *l = c->dark_matter.ghost; l != NULL; l = l->next) {
-            scheduler_addunlock(s, t_rho, l->t);
             scheduler_addunlock(s, l->t, t_sidm);
         }
         for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) {
             scheduler_addunlock(s, t_sidm, l->t);
-            scheduler_addunlock(s, l->t, t_rho);
+            scheduler_addunlock(s, l->t, t_ti);
         }
     }
     
@@ -1118,12 +1107,7 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             scheduler_addunlock(s, kick2_or_logger, c->timestep);
             scheduler_addunlock(s, c->timestep, c->kick1);
             scheduler_addunlock(s, c->kick1, c->dark_matter.sidm_kick);
-            scheduler_addunlock(s, kick2_or_logger, c->top->dark_matter.density);
             
-            /* Make sure we don't start calculating DM interactions before the DM
-             have converged on their smoothing lengths. */
-            scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm);
-
         }
     } else { /* We are above the super-cell so need to go deeper */
         
@@ -3237,7 +3221,7 @@ void engine_make_extra_dark_matter_tasks_mapper(void *map_data, int num_elements
 
             
             /* Create the task dependencies */
-            scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm);
+            scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
         }
         
         /* Otherwise, sub-pair interaction? */

@@ -318,6 +318,14 @@ static void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
  */
 static void ENGINE_REDISTRIBUTE_DEST_MAPPER(bpart);
 
+/**
+ * @brief Accumulate the counts of dark matter particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * bpart version.
+ */
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(dmpart);
+
 #endif /* redist_mapper_data */
 
 #ifdef WITH_MPI /* savelink_mapper_data */
@@ -411,6 +419,7 @@ struct relink_mapper_data {
   int *s_counts;
   int *g_counts;
   int *b_counts;
+  int *dm_counts;
   struct space *s;
 };
 
@@ -434,6 +443,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
   int *g_counts = mydata->g_counts;
   int *s_counts = mydata->s_counts;
   int *b_counts = mydata->b_counts;
+    int *dm_counts = mydata->dm_counts;
   struct space *s = mydata->s;
 
   for (int i = 0; i < num_elements; i++) {
@@ -445,12 +455,14 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
     size_t offset_gparts = 0;
     size_t offset_sparts = 0;
     size_t offset_bparts = 0;
+      size_t offset_dmparts = 0;
     for (int n = 0; n < node; n++) {
       int ind_recv = n * nr_nodes + nodeID;
       offset_parts += counts[ind_recv];
       offset_gparts += g_counts[ind_recv];
       offset_sparts += s_counts[ind_recv];
       offset_bparts += b_counts[ind_recv];
+        offset_dmparts += dm_counts[ind_recv];
     }
 
     /* Number of gparts sent from this node. */
@@ -491,6 +503,17 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
         /* Re-link */
         s->gparts[k].id_or_neg_offset = -partner_index;
         s->bparts[partner_index].gpart = &s->gparts[k];
+      }
+        
+        /* Does this gpart have a dark matter partner ? */
+      else if (s->gparts[k].type == swift_type_dark_matter) {
+          
+          const ptrdiff_t partner_index =
+          offset_dmparts - s->gparts[k].id_or_neg_offset;
+          
+          /* Re-link */
+          s->gparts[k].id_or_neg_offset = -partner_index;
+          s->dmparts[partner_index].gpart = &s->gparts[k];
       }
     }
   }
@@ -535,12 +558,14 @@ void engine_redistribute(struct engine *e) {
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
   struct bpart *bparts = s->bparts;
+    struct dmpart *dmparts = s->dmparts;
   ticks tic = getticks();
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
+    size_t nr_dmparts = s->nr_dmparts;
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {
@@ -607,6 +632,27 @@ void engine_redistribute(struct engine *e) {
       k++;
     }
   }
+    
+    /* Now move inhibited dark matter particles to the end of the arrays */
+    for (size_t k = 0; k < nr_dmparts; /* void */) {
+        if (dmparts[k].time_bin == time_bin_inhibited ||
+            dmparts[k].time_bin == time_bin_not_created) {
+            nr_dmparts -= 1;
+            
+            /* Swap the particle */
+            memswap(&s->dmparts[k], &s->dmparts[nr_dmparts], sizeof(struct dmpart));
+            
+            /* Swap the link with the gpart */
+            if (s->dmparts[k].gpart != NULL) {
+                s->dmparts[k].gpart->id_or_neg_offset = -k;
+            }
+            if (s->dmparts[nr_dmparts].gpart != NULL) {
+                s->dmparts[nr_dmparts].gpart->id_or_neg_offset = -nr_dmparts;
+            }
+        } else {
+            k++;
+        }
+    }
 
   /* Finally do the same with the gravity particles */
   for (size_t k = 0; k < nr_gparts; /* void */) {
@@ -624,6 +670,8 @@ void engine_redistribute(struct engine *e) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_black_hole) {
         s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      } else if (s->gparts[k].type == swift_type_dark_matter) {
+          s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
 
       if (s->gparts[nr_gparts].type == swift_type_gas) {
@@ -635,6 +683,9 @@ void engine_redistribute(struct engine *e) {
       } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
         s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
+      } else if (s->gparts[nr_gparts].type == swift_type_dark_matter) {
+          s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+          &s->gparts[nr_gparts];
       }
     } else {
       k++;
@@ -854,6 +905,73 @@ void engine_redistribute(struct engine *e) {
                    &savelink_data);
   }
   swift_free("b_dest", b_dest);
+    
+    
+    /* Get destination of each dm-particle */
+    int *dm_counts;
+    if ((dm_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
+        error("Failed to allocate dm_counts temporary buffer.");
+    
+    int *dm_dest;
+    if ((dm_dest = (int *)swift_malloc("dm_dest", sizeof(int) * nr_dmparts)) == NULL)
+        error("Failed to allocate dm_dest temporary buffer.");
+    
+    redist_data.counts = dm_counts;
+    redist_data.dest = dm_dest;
+    redist_data.base = (void *)dmparts;
+    
+    threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_dmpart, dmparts,
+                   nr_dmparts, sizeof(struct dmpart), threadpool_auto_chunk_size,
+                   &redist_data);
+    
+    /* Sort the particles according to their cell index. */
+    if (nr_dmparts > 0)
+        space_dmparts_sort(s->dmparts, dm_dest, &dm_counts[nodeID * nr_nodes], nr_nodes,
+                          0);
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Verify that the bpart have been sorted correctly. */
+    for (size_t k = 0; k < nr_dmparts; k++) {
+        const struct dmpart *dmp = &s->dmparts[k];
+        
+        if (dmp->time_bin == time_bin_inhibited)
+            error("Inhibited particle found after sorting!");
+        
+        if (dmp->time_bin == time_bin_not_created)
+            error("Inhibited particle found after sorting!");
+        
+        /* New cell index */
+        const int new_cid =
+        cell_getid(s->cdim, dmp->x[0] * s->iwidth[0], dmp->x[1] * s->iwidth[1],
+                   dmp->x[2] * s->iwidth[2]);
+        
+        /* New cell of this bpart */
+        const struct cell *c = &s->cells_top[new_cid];
+        const int new_node = c->nodeID;
+        
+        if (dm_dest[k] != new_node)
+            error("dmpart's new node index not matching sorted index.");
+        
+        if (dmp->x[0] < c->loc[0] || dmp->x[0] > c->loc[0] + c->width[0] ||
+            dmp->x[1] < c->loc[1] || dmp->x[1] > c->loc[1] + c->width[1] ||
+            dmp->x[2] < c->loc[2] || dmp->x[2] > c->loc[2] + c->width[2])
+            error("dmpart not sorted into the right top-level cell!");
+    }
+#endif
+    
+    /* We need to re-link the gpart partners of dmparts. */
+    if (nr_dmparts > 0) {
+        
+        struct savelink_mapper_data savelink_data;
+        savelink_data.nr_nodes = nr_nodes;
+        savelink_data.counts = dm_counts;
+        savelink_data.parts = (void *)dmparts;
+        savelink_data.nodeID = nodeID;
+        threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_bpart,
+                       nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                       &savelink_data);
+    }
+    swift_free("b_dest", dm_dest);
 
   /* Get destination of each g-particle */
   int *g_counts;
@@ -874,7 +992,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts,
+    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts, s->dmparts,
                       g_dest, &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -930,22 +1048,29 @@ void engine_redistribute(struct engine *e) {
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce bparticle transfer counts.");
 
+    /* Get all the dm_counts from all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, dm_counts, nr_nodes * nr_nodes, MPI_INT,
+                      MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+        error("Failed to allreduce bparticle transfer counts.");
+
   /* Report how many particles will be moved. */
   if (e->verbose) {
     if (e->nodeID == 0) {
-      size_t total = 0, g_total = 0, s_total = 0, b_total = 0;
-      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0, b_unmoved = 0;
+      size_t total = 0, g_total = 0, s_total = 0, b_total = 0, dm_total = 0;
+      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0, b_unmoved = 0, dm_unmoved = 0;
       for (int p = 0, r = 0; p < nr_nodes; p++) {
         for (int n = 0; n < nr_nodes; n++) {
           total += counts[r];
           g_total += g_counts[r];
           s_total += s_counts[r];
           b_total += b_counts[r];
+          dm_total += dm_counts[r];
           if (p == n) {
             unmoved += counts[r];
             g_unmoved += g_counts[r];
             s_unmoved += s_counts[r];
             b_unmoved += b_counts[r];
+            dm_unmoved += dm_counts[r];
           }
           r++;
         }
@@ -965,6 +1090,10 @@ void engine_redistribute(struct engine *e) {
         message("%ld of %ld (%.2f%%) of b-particles moved", b_total - b_unmoved,
                 b_total,
                 100.0 * (double)(b_total - b_unmoved) / (double)b_total);
+        if (dm_total > 0)
+            message("%ld of %ld (%.2f%%) of dm-particles moved", dm_total - dm_unmoved,
+                    dm_total,
+                    100.0 * (double)(dm_total - dm_unmoved) / (double)dm_total);
     }
   }
 
@@ -972,7 +1101,7 @@ void engine_redistribute(struct engine *e) {
    * transferred to every other node. Get the new numbers of particles for this
    * node. */
   size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0,
-         nr_bparts_new = 0;
+         nr_bparts_new = 0, nr_dmparts_new = 0;
   for (int k = 0; k < nr_nodes; k++)
     nr_parts_new += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
@@ -981,6 +1110,8 @@ void engine_redistribute(struct engine *e) {
     nr_sparts_new += s_counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
+  for (int k = 0; k < nr_nodes; k++)
+    nr_dmparts_new += dm_counts[k * nr_nodes + nodeID];
 
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
@@ -1077,6 +1208,17 @@ void engine_redistribute(struct engine *e) {
   s->bparts = (struct bpart *)new_parts;
   s->nr_bparts = nr_bparts_new;
   s->size_bparts = engine_redistribute_alloc_margin * nr_bparts_new;
+    
+    
+    /* Dark matter particles. */
+    new_parts =
+    engine_do_redistribute("dmparts", dm_counts, (char *)s->dmparts,
+                           nr_dmparts_new, sizeof(struct dmpart), dmpart_align,
+                           dmpart_mpi_type, nr_nodes, nodeID, e->syncredist);
+    swift_free("bparts", s->dmparts);
+    s->dmparts = (struct dmpart *)new_parts;
+    s->nr_dmparts = nr_dmparts_new;
+    s->size_dmparts = engine_redistribute_alloc_margin * nr_dmparts_new;
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
@@ -1139,6 +1281,7 @@ void engine_redistribute(struct engine *e) {
   relink_data.g_counts = g_counts;
   relink_data.s_counts = s_counts;
   relink_data.b_counts = b_counts;
+    relink_data.dm_counts = dm_counts;
   relink_data.nodeID = nodeID;
   relink_data.nr_nodes = nr_nodes;
 
@@ -1151,6 +1294,7 @@ void engine_redistribute(struct engine *e) {
   free(g_counts);
   free(s_counts);
   free(b_counts);
+    free(dm_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
@@ -1211,6 +1355,7 @@ void engine_redistribute(struct engine *e) {
   s->nr_extra_gparts = 0;
   s->nr_extra_sparts = 0;
   s->nr_extra_bparts = 0;
+    s->nr_extra_dmparts = 0;
 
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;

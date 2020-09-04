@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "const.h"
+#include "dark_matter.h"
 #include "debug.h"
 #include "dimension.h"
 #include "engine.h"
@@ -226,6 +227,48 @@ __attribute__((always_inline)) INLINE static void drift_spart(
     sp->x_diff[k] -= dx;
     sp->x_diff_sort[k] -= dx;
   }
+}
+
+/**
+ * @brief Perform the 'drift' operation on a #dmpart
+ *
+ * @param sp The #dmpart to drift.
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void drift_dmpart(
+    struct dmpart *restrict dmp, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current) {
+    
+#ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
+    
+    /* Get the ID of the gpart */
+    const long long id = dmp->id_or_neg_offset;
+    
+    /* Cancel the velocity of the particles */
+    if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
+        
+        /* Don't move! */
+        dmp->v[0] = 0.f;
+        dmp->v[1] = 0.f;
+        dmp->v[2] = 0.f;
+    }
+#endif
+    
+    /* Drift... */
+    dmp->x[0] += dmp->v_full[0] * dt_drift;
+    dmp->x[1] += dmp->v_full[1] * dt_drift;
+    dmp->x[2] += dmp->v_full[2] * dt_drift;
+    
+    /* Predict the values of the extra fields */
+    dark_matter_predict_extra(dmp, dt_drift);
+    
+    /* Compute offsets since last cell construction */
+    for (int k = 0; k < 3; k++) {
+        const float dx = dmp->v_full[k] * dt_drift;
+        dmp->x_diff[k] -= dx;
+    }
 }
 
 /**

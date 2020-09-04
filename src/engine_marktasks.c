@@ -885,11 +885,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                   /* If the local cell is active, more stuff will be needed. */
                   scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart,
                                           ci_nodeID);
-                  cell_activate_drift_dmpart(cj, s);
                   
+                  /* Drif before you send */
+                  cell_activate_drift_dmpart(cj, s);
+
                   /* If the local cell is active, send its ti_end values. */
                   scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
                                           ci_nodeID);
+                  
               }
               
               if (ci_active_dark_matter) {

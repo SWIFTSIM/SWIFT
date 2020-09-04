@@ -68,7 +68,13 @@ struct sidm_props {
     
     /*! Resolution parameter */
     float eta_neighbours;
-    
+
+    /*! Target neighbours */
+    float target_neighbours;
+
+    /*!  */
+    float delta_neighbours;
+
     /*! Maximal number of iterations to converge h */
     int max_smoothing_iterations;
     

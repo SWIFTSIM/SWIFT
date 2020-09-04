@@ -243,8 +243,8 @@ struct space {
   /*! Number of extra #bpart we allocated (for on-the-fly creation) */
   size_t nr_extra_bparts;
 
-    /*! Number of extra #dmpart we allocated (for on-the-fly creation) */
-    size_t nr_extra_dmparts;
+  /*! Number of extra #dmpart we allocated (for on-the-fly creation) */
+  size_t nr_extra_dmparts;
 
   /*! Number of extra #sink we allocated (for on-the-fly creation) */
   size_t nr_extra_sinks;

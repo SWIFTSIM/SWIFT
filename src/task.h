@@ -118,6 +118,7 @@ enum task_subtypes {
   task_subtype_tend_gpart,
   task_subtype_tend_spart,
   task_subtype_tend_bpart,
+  task_subtype_tend_dmpart,
   task_subtype_xv,
   task_subtype_rho,
   task_subtype_part_swallow,
@@ -125,6 +126,7 @@ enum task_subtypes {
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
+  task_subtype_dmpart,
   task_subtype_stars_density,
   task_subtype_stars_feedback,
   task_subtype_sf_counts,
@@ -148,6 +150,7 @@ enum task_actions {
   task_action_gpart,
   task_action_spart,
   task_action_bpart,
+  task_action_dmpart,
   task_action_all,
   task_action_multipole,
   task_action_count

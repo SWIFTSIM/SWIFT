@@ -39,12 +39,8 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
-/* Import the density loop functions. */
-#define FUNCTION density
-#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+/* Import the dark matter loop functions. */
 #include "runner_doiact_dark_matter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -193,7 +189,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_dark_matter_density)
             runner_doself_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
-              runner_do_self_dark_matter_sidm(r, ci, 1);
+            runner_do_self_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_grav)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
@@ -231,7 +227,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_dark_matter_density)
             runner_dopair_dark_matter_density(r, ci, cj);
           else if (t->subtype == task_subtype_sidm)
-              runner_do_pair_dark_matter_sidm(r, ci, cj, 1);
+            runner_do_pair_dark_matter_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -269,11 +265,11 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, 1);
           else if (t->subtype == task_subtype_dark_matter_density)
-              runner_dosub_self_dark_matter_density(r, ci, 1);
+              runner_dosub_self_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_sidm)
-              runner_do_self_dark_matter_sidm(r, ci, 1);
+              runner_do_self_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dosub_self_bh_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_do_gas_swallow)
@@ -303,9 +299,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, 1);
           else if (t->subtype == task_subtype_dark_matter_density)
-              runner_dosub_pair_dark_matter_density(r, ci, cj, 1);
+              runner_dosub_pair_dark_matter_density(r, ci, cj);
           else if (t->subtype == task_subtype_sidm)
-              runner_do_pair_dark_matter_sidm(r, ci, cj, 1);
+              runner_do_pair_dark_matter_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -352,7 +348,7 @@ void *runner_main(void *data) {
           runner_do_stars_ghost(r, ci, 1);
           break;
         case task_type_dark_matter_ghost:
-          runner_do_dark_matter_density_ghost(r, ci, 1);
+          runner_do_dark_matter_density_ghost(r, ci);
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);

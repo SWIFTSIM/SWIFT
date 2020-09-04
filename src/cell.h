@@ -715,7 +715,7 @@ struct cell {
         struct dmpart *parts_rebuild;
         
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
-        struct task *sidm;
+        struct link *sidm;
         
         /*! The drift task for parts */
         struct task *drift;
@@ -1020,7 +1020,9 @@ int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
 int cell_unpack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
+int cell_unpack_end_step_dark_matter(struct cell *c, struct pcell_step_dark_matter *pcell);
 int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
+int cell_pack_end_step_dark_matter(struct cell *c, struct pcell_step_dark_matter *pcell);
 int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
 int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);

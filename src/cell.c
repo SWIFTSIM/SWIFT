@@ -1161,8 +1161,7 @@ int cell_pack_end_step_dark_matter(
  *
  * @return The number of cells created.
  */
-int cell_unpack_end_step_dark_matter(
-                                     struct cell *restrict c, struct pcell_step_dark_matter *restrict pcells) {
+int cell_unpack_end_step_dark_matter(struct cell *restrict c, struct pcell_step_dark_matter *restrict pcells) {
     
 #ifdef WITH_MPI
     
@@ -3853,8 +3852,8 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
         const int sid = space_getsid(s->space, &ci, &cj, shift);
         
         /* recurse? */
-        if (cell_can_recurse_in_pair_dark_matter_task(ci, cj) &&
-            cell_can_recurse_in_pair_dark_matter_task(cj, ci)) {
+        if (cell_can_recurse_in_pair_dark_matter_task(ci) &&
+            cell_can_recurse_in_pair_dark_matter_task(cj)) {
             const struct cell_split_pair *csp = &cell_split_pairs[sid];
             for (int k = 0; k < csp->count; k++) {
                 const int pid = csp->pairs[k].pid;
@@ -4990,7 +4989,6 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
     
     struct engine *e = s->space->e;
-    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
     const int nodeID = e->nodeID;
     int rebuild = 0;
     
@@ -5021,7 +5019,6 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             
             /* Activate the drifts */
             if (t->type == task_type_self) {
-                cell_activate_drift_part(ci, s);
                 cell_activate_drift_dmpart(ci, s);
             }
             
@@ -5030,9 +5027,6 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 
                 /* Activate the drift tasks. */
                 if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-                
-                if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
                 if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
             }
             
@@ -5055,167 +5049,67 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
             if (cell_need_rebuild_for_dark_matter_pair(cj, ci)) rebuild = 1;
             
-            /*scheduler_activate(s, ci->hydro.super->dark_matter.swallow_ghost[0]);
-            scheduler_activate(s, cj->hydro.super->dark_matter.swallow_ghost[0]);*/
             
 #ifdef WITH_MPI
             /* Activate the send/recv tasks. */
             if (ci_nodeID != nodeID) {
                 
-                /* Receive the foreign parts to compute BH accretion rates and do the
-                 * swallowing */
-                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);*/
-                
-                /* Send the local BHs to tag the particles to swallow and to do feedback
-                 */
-                /*scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_rho,
-                                        ci_nodeID);
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_feedback,
-                                        ci_nodeID);*/
-                
-                /* Drift before you send */
-                cell_activate_drift_dmpart(cj, s);
-                
-                /* Send the new BH time-steps */
-                /*scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
-                                        ci_nodeID);*/
-                
-                /* Receive the foreign BHs to tag particles to swallow and for feedback
-                 */
-                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);*/
-                
-                /* Receive the foreign BH time-steps */
-                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);*/
+                /* Receive the foreign parts to compute DM parts interactions */
+                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);
                 
                 /* Send the local part information */
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
-                /*scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
-                                        ci_nodeID);*/
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, ci_nodeID);
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm, ci_nodeID);
                 
                 /* Drift the cell which will be sent; note that not all sent
                  particles will be drifted, only those that are needed. */
-                cell_activate_drift_part(cj, s);
+                cell_activate_drift_dmpart(ci, s);
+                
+                /* Send the new DM time-steps */
+                scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
+                                        ci_nodeID);
+                
+                /* Receive the foreign DM time-steps */
+                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
+
+
                 
             } else if (cj_nodeID != nodeID) {
                 
-                /* Receive the foreign parts to compute BH accretion rates and do the
-                 * swallowing */
-                /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);*/
-                
-                /* Send the local BHs to tag the particles to swallow and to do feedback
-                 */
-                /*scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_rho,
-                                        cj_nodeID);
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_feedback,
-                                        cj_nodeID);*/
-                
-                /* Drift before you send */
-                cell_activate_drift_dmpart(ci, s);
-                
-                /* Send the new BH time-steps */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
-                                        cj_nodeID);
-                
-                /* Receive the foreign BHs to tag particles to swallow and for feedback
-                 */
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);
-                
-                /* Receive the foreign BH time-steps */
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
-                
+                /* Receive the foreign parts to compute DM parts interactions */
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);
+
                 /* Send the local part information */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
-                                        cj_nodeID);
+                scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+                scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm, ci_nodeID);
                 
                 /* Drift the cell which will be sent; note that not all sent
                  particles will be drifted, only those that are needed. */
-                cell_activate_drift_part(ci, s);
+                cell_activate_drift_dmpart(cj, s);
+                
+                /* Send the new DM time-steps */
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
+                                        cj_nodeID);
+                
+                /* Receive the foreign BH time-steps */
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
+
+
+
             }
 #endif
         }
     }
     
-    /* Un-skip the swallow tasks involved with this cell. */
-    for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next) {
+    /* Un-skip the sidm tasks involved with this cell. */
+    for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) {
         struct task *t = l->t;
         struct cell *ci = t->ci;
         struct cell *cj = t->cj;
-        const int ci_active = cell_is_active_black_holes(ci, e);
-        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
-#ifdef WITH_MPI
-        const int ci_nodeID = ci->nodeID;
-        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-        const int ci_nodeID = nodeID;
-        const int cj_nodeID = nodeID;
-#endif
-        
-        /* Only activate tasks that involve a local active cell. */
-        if ((ci_active || cj_active) &&
-            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-            
-            scheduler_activate(s, t);
-        }
-    }
-    
-    /* Un-skip the swallow tasks involved with this cell. */
-    for (struct link *l = c->black_holes.do_gas_swallow; l != NULL; l = l->next) {
-        struct task *t = l->t;
-        struct cell *ci = t->ci;
-        struct cell *cj = t->cj;
-        const int ci_active = cell_is_active_black_holes(ci, e);
-        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
-#ifdef WITH_MPI
-        const int ci_nodeID = ci->nodeID;
-        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-        const int ci_nodeID = nodeID;
-        const int cj_nodeID = nodeID;
-#endif
-        
-        /* Only activate tasks that involve a local active cell. */
-        if ((ci_active || cj_active) &&
-            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-            
-            scheduler_activate(s, t);
-        }
-    }
-    
-    /* Un-skip the swallow tasks involved with this cell. */
-    for (struct link *l = c->black_holes.do_bh_swallow; l != NULL; l = l->next) {
-        struct task *t = l->t;
-        struct cell *ci = t->ci;
-        struct cell *cj = t->cj;
-        const int ci_active = cell_is_active_black_holes(ci, e);
-        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
-#ifdef WITH_MPI
-        const int ci_nodeID = ci->nodeID;
-        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-        const int ci_nodeID = nodeID;
-        const int cj_nodeID = nodeID;
-#endif
-        
-        /* Only activate tasks that involve a local active cell. */
-        if ((ci_active || cj_active) &&
-            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-            
-            scheduler_activate(s, t);
-        }
-    }
-    
-    /* Un-skip the feedback tasks involved with this cell. */
-    for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
-        struct task *t = l->t;
-        struct cell *ci = t->ci;
-        struct cell *cj = t->cj;
-        const int ci_active = cell_is_active_black_holes(ci, e);
-        const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+        const int ci_active = cell_is_active_dark_matter(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_dark_matter(cj, e) : 0;
 #ifdef WITH_MPI
         const int ci_nodeID = ci->nodeID;
         const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -5233,26 +5127,15 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
     }
     
     /* Unskip all the other task types. */
-    if (c->nodeID == nodeID && cell_is_active_black_holes(c, e)) {
+    if (c->nodeID == nodeID && cell_is_active_dark_matter(c, e)) {
         
-        if (c->black_holes.density_ghost != NULL)
-            scheduler_activate(s, c->black_holes.density_ghost);
-        if (c->black_holes.swallow_ghost[0] != NULL)
-            scheduler_activate(s, c->black_holes.swallow_ghost[0]);
-        if (c->black_holes.swallow_ghost[1] != NULL)
-            scheduler_activate(s, c->black_holes.swallow_ghost[1]);
-        if (c->black_holes.swallow_ghost[2] != NULL)
-            scheduler_activate(s, c->black_holes.swallow_ghost[2]);
-        if (c->black_holes.black_holes_in != NULL)
-            scheduler_activate(s, c->black_holes.black_holes_in);
-        if (c->black_holes.black_holes_out != NULL)
-            scheduler_activate(s, c->black_holes.black_holes_out);
+        if (c->dark_matter.ghost != NULL)
+            scheduler_activate(s, c->dark_matter.ghost);
+        if (c->dark_matter.sidm_kick != NULL)
+            scheduler_activate(s, c->dark_matter.sidm_kick);
         if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
         if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
         if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-#ifdef WITH_LOGGER
-        if (c->logger != NULL) scheduler_activate(s, c->logger);
-#endif
     }
     
     return rebuild;
@@ -5737,6 +5620,156 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift);
+}
+
+/**
+ * @brief Recursively drifts the #dmpart in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ * @param force Drift the particles irrespective of the #cell flags.
+ */
+void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
+    const int periodic = e->s->periodic;
+    const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+    const int with_cosmology = (e->policy & engine_policy_cosmology);
+    const float dark_matter_h_max = e->sidm_properties->h_max;
+    const float dark_matter_h_min = e->sidm_properties->h_min;
+    const integertime_t ti_old_dmpart = c->dark_matter.ti_old_part;
+    const integertime_t ti_current = e->ti_current;
+    struct dmpart *const dmparts = c->dark_matter.parts;
+    
+    float dx_max = 0.f, dx2_max = 0.f;
+    float cell_h_max = 0.f;
+    
+    /* Drift irrespective of cell flags? */
+    force = (force || cell_get_flag(c, cell_flag_do_dark_matter_drift));
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we only drift local cells. */
+    if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+    
+    /* Check that we are actually going to move forward. */
+    if (ti_current < ti_old_spart) error("Attempt to drift to the past");
+#endif
+    
+    /* Early abort? */
+    if (c->dark_matter.count == 0) {
+        /* Clear the drift flags. */
+        cell_clear_flag(c, cell_flag_do_dark_matter_drift | cell_flag_do_dark_matter_sub_drift);
+        
+        /* Update the time of the last drift */
+        c->dark_matter.ti_old_part = ti_current;
+        
+        return;
+    }
+    
+    /* Ok, we have some particles somewhere in the hierarchy to drift */
+    
+    /* Are we not in a leaf ? */
+    if (c->split && (force || cell_get_flag(c, cell_flag_do_dark_matter_sub_drift))) {
+        
+        /* Loop over the progeny and collect their data. */
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                struct cell *cp = c->progeny[k];
+                
+                /* Recurse */
+                cell_drift_dmpart(cp, e, force);
+                
+                /* Update */
+                dx_max = max(dx_max, cp->dark_matter.dx_max_part);
+                cell_h_max = max(cell_h_max, cp->dark_matter.h_max);
+            }
+        }
+        
+        /* Store the values */
+        c->dark_matter.h_max = cell_h_max;
+        c->dark_matter.dx_max_part = dx_max;
+        
+        /* Update the time of the last drift */
+        c->dark_matter.ti_old_part = ti_current;
+        
+    } else if (!c->split && force && ti_current > ti_old_dmpart) {
+        /* Drift from the last time the cell was drifted to the current time */
+        double dt_drift;
+        if (with_cosmology) {
+            dt_drift =
+            cosmology_get_drift_factor(e->cosmology, ti_old_dmpart, ti_current);
+        } else {
+            dt_drift = (ti_current - ti_old_dmpart) * e->time_base;
+        }
+        
+        /* Loop over all the star particles in the cell */
+        const size_t nr_dmparts = c->dark_matter.count;
+        for (size_t k = 0; k < nr_dmparts; k++) {
+            /* Get a handle on the spart. */
+            struct dmpart *const dmp = &dmparts[k];
+            
+            /* Ignore inhibited particles */
+            if (dmpart_is_inhibited(dmp, e)) continue;
+            
+            /* Drift... */
+            drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);
+            
+#ifdef SWIFT_DEBUG_CHECKS
+            /* Make sure the particle does not drift by more than a box length. */
+            if (fabs(dmp->v[0] * dt_drift) > e->s->dim[0] ||
+                fabs(dmp->v[1] * dt_drift) > e->s->dim[1] ||
+                fabs(dmp->v[2] * dt_drift) > e->s->dim[2]) {
+                error("DM Particle drifts by more than a box length!");
+            }
+#endif
+            
+            /* In non-periodic BC runs, remove particles that crossed the border */
+            if (!periodic) {
+                
+                /* Did the particle leave the box?  */
+                if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
+                    (dmp->x[1] > dim[1]) || (dmp->x[1] < 0.) ||  // y
+                    (dmp->x[2] > dim[2]) || (dmp->x[2] < 0.)) {  // z
+                    
+                    lock_lock(&e->s->lock);
+                    
+                    if (lock_unlock(&e->s->lock) != 0)
+                        error("Failed to unlock the space!");
+                    
+                    continue;
+                }
+            }
+            
+            /* Limit h to within the allowed range */
+            dmp->h = min(dmp->h, dark_matter_h_max);
+            dmp->h = max(dmp->h, dark_matter_h_min);
+            
+            /* Compute (square of) motion since last cell construction */
+            const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] +
+            dmp->x_diff[1] * dmp->x_diff[1] +
+            dmp->x_diff[2] * dmp->x_diff[2];
+            dx2_max = max(dx2_max, dx2);
+            
+            /* Maximal smoothing length */
+            cell_h_max = max(cell_h_max, dmp->h);
+            
+            /* Get ready for a density calculation */
+            if (dmpart_is_active(dmp, e)) {
+                dark_matter_init_dmpart(dmp);
+            }
+        }
+        
+        /* Now, get the maximal particle motion from its square */
+        dx_max = sqrtf(dx2_max);
+        
+        /* Store the values */
+        c->dark_matter.h_max = cell_h_max;
+        c->dark_matter.dx_max_part = dx_max;
+        
+        /* Update the time of the last drift */
+        c->dark_matter.ti_old_part = ti_current;
+    }
+    
+    /* Clear the drift flags. */
+    cell_clear_flag(c, cell_flag_do_dark_matter_drift | cell_flag_do_dark_matter_sub_drift);
 }
 
 /**

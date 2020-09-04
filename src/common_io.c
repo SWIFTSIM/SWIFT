@@ -32,11 +32,11 @@
 #include "chemistry_io.h"
 #include "const.h"
 #include "cooling_io.h"
+#include "dark_matter_io.h"
 #include "error.h"
 #include "feedback.h"
 #include "fof_io.h"
 #include "gravity_io.h"
-#include "sidm_io.h"
 #include "hydro.h"
 #include "hydro_io.h"
 #include "io_properties.h"
@@ -2865,7 +2865,7 @@ int get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_dark_matter:
       darkmatter_write_particles(NULL, list, &num_fields);
-      num_fields += sidm_write_gparts(NULL, list + num_fields);
+      num_fields += sidm_write_dmparts(NULL, list + num_fields);
       if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
       if (with_stf)
         num_fields += velociraptor_write_gparts(NULL, list + num_fields);
@@ -2873,7 +2873,6 @@ int get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_dark_matter_background:
       darkmatter_write_particles(NULL, list, &num_fields);
-      num_fields += sidm_write_gparts(NULL, list + num_fields);
       if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
       if (with_stf)
         num_fields += velociraptor_write_gparts(NULL, list + num_fields);
