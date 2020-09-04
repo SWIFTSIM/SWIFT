@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_STARS_H
 
 #include "minmax.h"
+#include "rt.h"
 
 #include <float.h>
 
@@ -50,6 +51,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+  rt_init_spart(sp);
 }
 
 /**

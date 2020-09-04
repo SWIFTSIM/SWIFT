@@ -27,6 +27,7 @@
 #include "feedback_struct.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
+#include "rt_struct.h"
 
 /**
  * @brief Particle fields for the star particles.
@@ -90,6 +91,9 @@ struct spart {
 
   /*! Chemistry structure */
   struct chemistry_spart_data chemistry_data;
+
+  /*! Radiative Transfer data */
+  struct rt_spart_data rt_data;
 
   /*! Particle time bin */
   timebin_t time_bin;
