@@ -470,7 +470,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
 
-
 #ifdef SWIFT_DEBUG_CHECKS
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_grav) {
@@ -885,7 +884,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                     cj_nodeID);
         }
 #endif
-      }      /* Only interested in RT tasks as of here. */
+      } /* Only interested in RT tasks as of here. */
       else if (t_subtype == task_subtype_rt_inject) {
 #ifdef WITH_MPI
         error("RT doesn't work with MPI yet.");

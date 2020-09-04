@@ -29,20 +29,8 @@
 #define _DOSELF1_RT(f) PASTE(runner_doself_rt, f)
 #define DOSELF1_RT _DOSELF1_RT(FUNCTION)
 
-#define _DOPAIR1_SYM_RT(f) PASTE(runner_dopair_rt, f)
-#define DOPAIR1_SYM_RT _DOPAIR1_SYM_RT(FUNCTION)
-
-#define _DOPAIR1_NONSYM_RT(f) PASTE(runner_dopair_nonsym_rt, f)
-#define DOPAIR1_NONSYM_RT _DOPAIR1_NONSYM_RT(FUNCTION)
-
-#define _DOPAIR1_SYM_NAIVE_RT(f) PASTE(runner_dopair_naive_rt, f)
-#define DOPAIR1_SYM_NAIVE_RT _DOPAIR1_SYM_NAIVE_RT(FUNCTION)
-
-#define _DOPAIR1_NONSYM_NAIVE_RT(f) PASTE(runner_dopair_nonsym_naive_rt, f)
-#define DOPAIR1_NONSYM_NAIVE_RT _DOPAIR1_NONSYM_NAIVE_RT(FUNCTION)
-
 #define _DOPAIR1_RT(f) PASTE(runner_dopair_rt, f)
-#define DOPAIR1_RT_DOPAIR1_RT(FUNCTION)
+#define DOPAIR1_RT _DOPAIR1_RT(FUNCTION)
 
 #define _DOSELF1_BRANCH_RT(f) PASTE(runner_doself_branch_rt, f)
 #define DOSELF1_BRANCH_RT _DOSELF1_BRANCH_RT(FUNCTION)
@@ -68,13 +56,13 @@
 #define _TIMER_DOSUB_PAIR_RT(f) PASTE(timer_dosub_pair_rt, f)
 #define TIMER_DOSUB_PAIR_RT _TIMER_DOSUB_PAIR_RT(FUNCTION)
 
-#define _IACT_RT(f) PASTE(runner_iact_nonsym_rt, f)
+#define _IACT_RT(f) PASTE(runner_iact_rt, f)
 #define IACT_RT _IACT_RT(FUNCTION)
 
 void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer);
-void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj, 
+void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
                        int timer);
 
 void DOSUB_SELF1_RT(struct runner *r, struct cell *ci, int timer);
 void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
-                       int timer);
+                    int timer);

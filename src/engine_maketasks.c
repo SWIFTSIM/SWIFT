@@ -1958,7 +1958,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        t_rt_inject = scheduler_addtask(sched, task_type_self, task_subtype_rt_inject, flags, 0, ci, NULL);
+        t_rt_inject = scheduler_addtask(
+            sched, task_type_self, task_subtype_rt_inject, flags, 0, ci, NULL);
       }
 
       /* Link the tasks to the cells */
@@ -1977,7 +1978,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
       }
-      if (with_rt){
+      if (with_rt) {
         engine_addlink(e, &ci->hydro.rt_inject, t_rt_inject);
       }
 
@@ -2069,7 +2070,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        scheduler_addunlock(sched, ci->hydro.super->stars.stars_out, t_rt_inject);
+        scheduler_addunlock(sched, ci->hydro.super->stars.stars_out,
+                            t_rt_inject);
         scheduler_addunlock(sched, t_rt_inject, ci->super->timestep);
       }
     }
@@ -2131,11 +2133,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        t_rt_inject = 
-            scheduler_addtask(sched, task_type_pair, task_subtype_rt_inject, 
-                              flags, 0, ci, cj);
+        t_rt_inject = scheduler_addtask(
+            sched, task_type_pair, task_subtype_rt_inject, flags, 0, ci, cj);
       }
-
 
       engine_addlink(e, &ci->hydro.force, t_force);
       engine_addlink(e, &cj->hydro.force, t_force);
@@ -2161,7 +2161,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
         engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
       }
-      if (with_rt){
+      if (with_rt) {
         engine_addlink(e, &ci->hydro.rt_inject, t_rt_inject);
         engine_addlink(e, &cj->hydro.rt_inject, t_rt_inject);
       }
@@ -2286,7 +2286,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_rt) {
-          scheduler_addunlock(sched, ci->hydro.super->stars.stars_out, t_rt_inject);
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_out,
+                              t_rt_inject);
           scheduler_addunlock(sched, t_rt_inject, ci->super->timestep);
         }
 
@@ -2364,14 +2365,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_rt) {
-            scheduler_addunlock(sched, cj->hydro.super->stars.stars_out, t_rt_inject);
+            scheduler_addunlock(sched, cj->hydro.super->stars.stars_out,
+                                t_rt_inject);
             scheduler_addunlock(sched, t_rt_inject, cj->super->timestep);
           }
 
           if (with_timestep_limiter) {
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t_limiter);
           }
-
         }
 
         if (ci->super != cj->super) {
@@ -2459,11 +2460,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        t_rt_inject = 
-            scheduler_addtask(sched, task_type_self, 
-                              task_subtype_rt_inject, flags, 0, ci, NULL);
+        t_rt_inject = scheduler_addtask(
+            sched, task_type_self, task_subtype_rt_inject, flags, 0, ci, NULL);
       }
-
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &ci->hydro.force, t_force);
@@ -2481,7 +2480,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->black_holes.do_bh_swallow, t_do_bh_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
       }
-      if (with_rt){
+      if (with_rt) {
         engine_addlink(e, &ci->hydro.rt_inject, t_rt_inject);
       }
 
@@ -2579,7 +2578,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        scheduler_addunlock(sched, ci->hydro.super->stars.stars_out, t_rt_inject);
+        scheduler_addunlock(sched, ci->hydro.super->stars.stars_out,
+                            t_rt_inject);
         scheduler_addunlock(sched, t_rt_inject, ci->super->timestep);
       }
     }
@@ -2645,9 +2645,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        t_rt_inject = 
-            scheduler_addtask(sched, task_type_pair, task_subtype_rt_inject, 
-                              flags, 0, ci, cj);
+        t_rt_inject = scheduler_addtask(
+            sched, task_type_pair, task_subtype_rt_inject, flags, 0, ci, cj);
       }
 
       engine_addlink(e, &ci->hydro.force, t_force);
@@ -2674,7 +2673,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
         engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
       }
-      if (with_rt){
+      if (with_rt) {
         engine_addlink(e, &ci->hydro.rt_inject, t_rt_inject);
         engine_addlink(e, &cj->hydro.rt_inject, t_rt_inject);
       }
@@ -2798,7 +2797,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_rt) {
-          scheduler_addunlock(sched, ci->hydro.super->stars.stars_out, t_rt_inject);
+          scheduler_addunlock(sched, ci->hydro.super->stars.stars_out,
+                              t_rt_inject);
           scheduler_addunlock(sched, t_rt_inject, ci->super->timestep);
         }
       } else /* ci->nodeID != nodeID */ {
@@ -2875,7 +2875,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->black_holes.black_holes_out);
           }
           if (with_rt) {
-            scheduler_addunlock(sched, cj->hydro.super->stars.stars_out, t_rt_inject);
+            scheduler_addunlock(sched, cj->hydro.super->stars.stars_out,
+                                t_rt_inject);
             scheduler_addunlock(sched, t_rt_inject, cj->super->timestep);
           }
 
@@ -3548,7 +3549,4 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  scheduler_write_dependencies(sched, 1);
-
 }
