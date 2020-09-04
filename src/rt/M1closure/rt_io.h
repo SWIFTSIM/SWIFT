@@ -27,19 +27,16 @@
  */
 
 /**
- * @brief Creates additional output fields for the radiative transfer data of hydro particles.
- *        Intended to be called from inside hydro_write_particles().
+ * @brief Creates additional output fields for the radiative transfer data of
+ * hydro particles. Intended to be called from inside hydro_write_particles().
  */
 INLINE static void rt_write_xparts(const struct xpart* xparts,
-                                   struct io_props* list,
-                                   int* num_fields) {}
-
+                                   struct io_props* list, int* num_fields) {}
 
 /**
- * @brief Creates additional output fields for the radiative transfer data of star particles.
- *        Intended to be called from inside hydro_write_particles().
+ * @brief Creates additional output fields for the radiative transfer data of
+ * star particles. Intended to be called from inside hydro_write_particles().
  */
-INLINE static void rt_write_stars(const struct spart *sparts,
-                                  struct io_props *list, int *num_fields) {
-}
+INLINE static void rt_write_stars(const struct spart* sparts,
+                                  struct io_props* list, int* num_fields) {}
 #endif /* SWIFT_RT_IO_M1CLOSURE_H */

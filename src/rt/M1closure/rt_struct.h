@@ -24,9 +24,8 @@
  * @brief Main header file for no radiative transfer struct.
  */
 
-struct rt_xpart_data { };
+struct rt_xpart_data {};
 
-struct rt_spart_data { };
-
+struct rt_spart_data {};
 
 #endif /* SWIFT_RT_STRUCT_M1CLOSURE_H */

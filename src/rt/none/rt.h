@@ -27,26 +27,25 @@
 /**
  * @brief First initialisation of the RT extra hydro partilce data.
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_xpart(struct xpart* restrict xp) {}
+__attribute__((always_inline)) INLINE static void rt_first_init_xpart(
+    struct xpart* restrict xp) {}
 
 /**
  * @brief Initialisation of the RT extra hydro partilce data.
  */
-__attribute__((always_inline)) INLINE static void rt_init_xpart(struct xpart* restrict xp) {
-}
-
-
-/**
- * @brief First initialisation of the RT extra star partilce data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart( struct spart* restrict sp) {
-}
-
+__attribute__((always_inline)) INLINE static void rt_init_xpart(
+    struct xpart* restrict xp) {}
 
 /**
  * @brief First initialisation of the RT extra star partilce data.
  */
-__attribute__((always_inline)) INLINE static void rt_init_spart( struct spart* restrict sp) {
-}
+__attribute__((always_inline)) INLINE static void rt_first_init_spart(
+    struct spart* restrict sp) {}
+
+/**
+ * @brief First initialisation of the RT extra star partilce data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_spart(
+    struct spart* restrict sp) {}
 
 #endif /* SWIFT_RT_NONE_H */

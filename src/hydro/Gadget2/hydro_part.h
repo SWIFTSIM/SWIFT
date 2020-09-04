@@ -37,10 +37,10 @@
 #include "feedback_struct.h"
 #include "logger.h"
 #include "pressure_floor_struct.h"
+#include "rt_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
-#include "rt_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
