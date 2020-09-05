@@ -32,6 +32,9 @@
 #define _DOPAIR1_RT(f) PASTE(runner_dopair_rt, f)
 #define DOPAIR1_RT _DOPAIR1_RT(FUNCTION)
 
+#define _DOPAIR1_NONSYM_RT(f) PASTE(runner_dopair_nonsym_rt, f)
+#define DOPAIR1_NONSYM_RT _DOPAIR1_NONSYM_RT(FUNCTION)
+
 #define _DOSELF1_BRANCH_RT(f) PASTE(runner_doself_branch_rt, f)
 #define DOSELF1_BRANCH_RT _DOSELF1_BRANCH_RT(FUNCTION)
 

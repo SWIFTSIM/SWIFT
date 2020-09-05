@@ -27,8 +27,16 @@
 
 /**
  * @brief Injection step interaction between star and hydro particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si Star particle.
+ * @param xpj Hydro particle extra data.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    int call){};
+    const float r2, float* dx, const float hi, const float hj,
+    struct spart* restrict si, struct xpart* restrict xpj) {}
 
 #endif /* SWIFT_RT_IACT_M1CLOSURE_H */

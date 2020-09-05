@@ -35,22 +35,136 @@
  * @param timer 1 if the time is to be recorded.
  */
 void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
+
   TIMER_TIC;
-  IACT_RT(1);
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0 || c->stars.count == 0) return;
+
+  struct spart *restrict sparts = c->stars.parts;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+
+  const int scount = c->stars.count;
+  const int count = c->hydro.count;
+
+  /* Loop over the sparts in cell */
+  for (int sid = 0; sid < scount; sid++) {
+
+    struct spart *restrict si = &sparts[sid];
+    const float hi = si->h;
+    const float six[3] = {(float)(si->x[0] - c->loc[0]),
+                          (float)(si->x[1] - c->loc[1]),
+                          (float)(si->x[2] - c->loc[2])};
+
+    /* Loop over the (x)parts in cell */
+    for (int pid = 0; pid < count; pid++) {
+      struct xpart *restrict xpj = &xparts[pid];
+      struct part *restrict pj = &parts[pid];
+      const float hj = pj->h;
+      const float hjg2 = hj * hj * kernel_gamma2;
+
+      /* Compute the pairwise distance. */
+      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+                            (float)(pj->x[1] - c->loc[1]),
+                            (float)(pj->x[2] - c->loc[2])};
+      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      if (r2 < hjg2) IACT_RT(r2, dx, hi, hj, si, xpj);
+    }
+  }
+
   if (timer) TIMER_TOC(TIMER_DOSELF_RT);
 }
 
 /**
- * @brief Function for pari-type interaction between stars and hydro particles
+ * @brief Function for non-symmetric pair-type interaction between stars
+ *        and hydro particles. Will interact star particles of cell i
+ *        with hydro particles of cell j.
  *
  *
  * @param r runner task
- * @param c cell
+ * @param ci the first cell, where we take star particles from
+ * @param cj the second cell, where we take hydro particles from
+ */
+void DOPAIR1_NONSYM_RT(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  const struct engine *e = r->e;
+
+  const int scount_i = ci->stars.count;
+  const int count_j = cj->hydro.count;
+  struct spart *restrict sparts_i = ci->stars.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+  /* Loop over the sparts in ci. */
+  for (int sid = 0; sid < scount_i; sid++) {
+
+    /* Get a hold of the ith spart in ci. */
+    struct spart *restrict si = &sparts_i[sid];
+
+    const float hi = si->h;
+    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+
+    /* Loop over the parts in cj. */
+    for (int pjd = 0; pjd < count_j; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      struct part *restrict pj = &parts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
+      const float hj = pj->h;
+      const float hjg2 = hj * hj * kernel_gamma2;
+
+      /* Skip inhibited particles. */
+      // if (part_is_inhibited(pj, e)) continue;
+
+      /* Compute the pairwise distance. */
+      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+                            (float)(pj->x[1] - cj->loc[1]),
+                            (float)(pj->x[2] - cj->loc[2])};
+      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      if (r2 < hjg2) IACT_RT(r2, dx, hi, hj, si, xpj);
+
+    } /* loop over the parts in cj. */
+  }   /* loop over the parts in ci. */
+}
+
+/**
+ * @brief Function for pair-type interaction between stars
+ *        and hydro particles. Will interact hydro particles of cell i
+ *        with star particles of cell j.
+ *
+ * @param r runner task
+ * @param ci the first cell
+ * @param cj the second cell
  * @param timer 1 if the time is to be recorded.
  */
 void DOPAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj, int timer) {
+
   TIMER_TIC;
-  IACT_RT(2);
+
+  const int do_stars_in_ci = (cj->nodeID == r->e->nodeID) &&
+                             (ci->stars.count != 0) && (cj->hydro.count != 0);
+  if (do_stars_in_ci) DOPAIR1_NONSYM_RT(r, ci, cj);
+
+  const int do_stars_in_cj = (ci->nodeID == r->e->nodeID) &&
+                             (cj->stars.count != 0) && (ci->hydro.count != 0);
+  if (do_stars_in_cj) DOPAIR1_NONSYM_RT(r, cj, ci);
+
   if (timer) TIMER_TOC(TIMER_DOPAIR_RT);
 }
 

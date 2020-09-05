@@ -27,10 +27,28 @@
 
 /**
  * @brief Injection step interaction between star and hydro particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si Star particle.
+ * @param xpj Hydro particle extra data.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    int call) {
-  message("Called debug RT scheme with case=%d", call);
+    const float r2, float* dx, const float hi, const float hj,
+    struct spart* restrict si, struct xpart* restrict xpj) {
+
+  struct rt_spart_data* restrict sd = &(si->rt_data);
+  struct rt_xpart_data* restrict pd = &(xpj->rt_data);
+
+  sd->iact_hydro += 1;
+  sd->calls_tot += 1;
+  sd->calls_per_step += 1;
+
+  pd->iact_stars += 1;
+  pd->calls_tot += 1;
+  sd->calls_per_step += 1;
 }
 
 #endif /* SWIFT_RT_IACT_DEBUG_H */
