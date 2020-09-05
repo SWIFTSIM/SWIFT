@@ -1417,7 +1417,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   if (!sort_is_corner(sid))
     runner_dopair1_density_vec(r, ci, cj, sid, shift);
   else
-    DOPAIR1(r, ci, cj, sid, shift);
+    DOPAIR1(r, ci, cj, 0, 0, sid, shift);
 #else
   DOPAIR1(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #endif
@@ -1433,7 +1433,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR2(struct runner *r, struct cell *restrict ci,
-             struct cell *restrict cj, const int sid, const double shift[3]) {
+             struct cell *restrict cj, const int limit_min_h,
+             const int limit_max_h, const int sid, const double shift[3]) {
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -1466,9 +1467,13 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
       2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Get some other useful values. */
-  const double hi_max = ci->hydro.h_max;
-  const double hj_max = cj->hydro.h_max;
+  const double hi_max = min(ci->hydro.h_max, h_max);
+  const double hj_max = min(cj->hydro.h_max, h_max);
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
@@ -1491,8 +1496,8 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
   const double shift_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
 
   int count_active_i = 0, count_active_j = 0;
-  struct sort_entry *restrict sort_active_i = NULL,
-                              *restrict sort_active_j = NULL;
+  struct sort_entry *restrict sort_active_i = NULL;
+  struct sort_entry *restrict sort_active_j = NULL;
 
   // MATTHIEU: temporary disable this optimization
   if (0 && cell_is_all_active_hydro(ci, e)) {
@@ -1506,7 +1511,9 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
 
     /* Collect the active particles in ci */
     for (int k = 0; k < count_i; k++) {
-      if (part_is_active(&parts_i[sort_i[k].i], e)) {
+      const struct part *p = &parts_i[sort_i[k].i];
+      const float h = p->h;
+      if (part_is_active(p, e) && (h >= h_min) && (h < h_max)) {
         sort_active_i[count_active_i] = sort_i[k];
         count_active_i++;
       }
@@ -1525,7 +1532,9 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
 
     /* Collect the active particles in cj */
     for (int k = 0; k < count_j; k++) {
-      if (part_is_active(&parts_j[sort_j[k].i], e)) {
+      const struct part *p = &parts_j[sort_j[k].i];
+      const float h = p->h;
+      if (part_is_active(p, e) && (h >= h_min) && (h < h_max)) {
         sort_active_j[count_active_j] = sort_j[k];
         count_active_j++;
       }
@@ -1559,7 +1568,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
 
     /* Do we need to only check active parts in cj
        (i.e. pi does not need updating) ? */
-    if (!part_is_active(pi, e)) {
+    if (!part_is_active(pi, e) || hi < h_min || hi >= h_max) {
 
       /* Loop over the *active* parts in cj within range of pi */
       for (int pjd = 0; pjd < count_active_j && sort_active_j[pjd].d < di;
@@ -1700,7 +1709,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
         if (r2 < hig2) {
 
           /* Does pj need to be updated too? */
-          if (part_is_active(pj, e)) {
+          if (part_is_active(pj, e) && hj >= h_min && hj < h_max) {
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1758,7 +1767,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
 
     /* Do we need to only check active parts in ci
        (i.e. pj does not need updating) ? */
-    if (!part_is_active(pj, e)) {
+    if (!part_is_active(pj, e) || hj < h_min || hj >= h_max) {
 
       /* Loop over the *active* parts in ci. */
       for (int pid = count_active_i - 1;
@@ -1901,7 +1910,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
         if (r2 < hjg2 && r2 >= hig2) {
 
           /* Does pi need to be updated too? */
-          if (part_is_active(pi, e)) {
+          if (part_is_active(pi, e) && hi >= h_min && hi < h_max) {
             IACT(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1951,7 +1960,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci,
  *
  */
 void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
-		    const int limit_min_h, const int limit_max_h) {
+                    const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -2029,9 +2038,9 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   if (!sort_is_corner(sid))
     runner_dopair2_force_vec(r, ci, cj, sid, shift);
   else
-    DOPAIR2(r, ci, cj, sid, shift);
+    DOPAIR2(r, ci, cj, 0, 0, sid, shift);
 #else
-  DOPAIR2(r, ci, cj, sid, shift);
+  DOPAIR2(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #endif
 }
 
@@ -2588,14 +2597,14 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
   /* Did we mess up the recursion? */
   if (limit_min_h && !limit_max_h)
     error("Fundamental error in the recursion logic");
-  
+
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF2_NAIVE(r, c);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-  (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+    (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
   if (limit_min_h || limit_max_h)
     error(
         "Vectorized SELF1 only implemented for the case where no limit on h is "
@@ -2863,7 +2872,8 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max, const int gettimer) {
+void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
+                 const int gettimer) {
 
   TIMER_TIC;
 
@@ -2880,7 +2890,6 @@ void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max, cons
     DOSELF2_BRANCH(r, c, /*limit_h_min=*/0,
                    /*limit_h_max=*/recurse_below_h_max);
 
-    
   } else {
 
     /* Should we change the recursion regime because we encountered a large
@@ -2890,25 +2899,25 @@ void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max, cons
 
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
-    if(recurse_below_h_max) {
+    if (recurse_below_h_max) {
 
       /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
       DOSELF2_BRANCH(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
-
     }
-  
+
     /* Recurse to the lower levels. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         DOSUB_SELF2(r, c->progeny[k], recurse_below_h_max, /*gettimer=*/0);
         for (int j = k + 1; j < 8; j++) {
           if (c->progeny[j] != NULL) {
-            DOSUB_PAIR2(r, c->progeny[k], c->progeny[j], recurse_below_h_max, /*gettimer=*/0);
-	  }
-	}
+            DOSUB_PAIR2(r, c->progeny[k], c->progeny[j], recurse_below_h_max,
+                        /*gettimer=*/0);
+          }
+        }
       }
     }
   }
