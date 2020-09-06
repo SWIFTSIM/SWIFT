@@ -605,8 +605,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *c) {
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
-                         struct part *restrict parts_i, int *restrict ind,
+void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
+                         struct part *restrict parts_i, const int *ind,
                          int count, struct cell *restrict cj,
                          const double *shift) {
 
@@ -702,10 +702,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param flipped Flag to check whether the cells have been flipped or not.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts_i, int *restrict ind, int count,
-                   struct cell *restrict cj, const int sid, const int flipped,
-                   const double *shift) {
+void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
+                   struct part *restrict parts_i, const int *ind, int count,
+                   const struct cell *restrict cj, const int sid,
+                   const int flipped, const double *shift) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -867,9 +867,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts_i, int *restrict ind,
-                          int count, struct cell *restrict cj) {
+void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
+                          struct part *restrict parts_i, const int *ind,
+                          int count, const struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
@@ -926,8 +926,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  */
-void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts, int *restrict ind, int count) {
+void DOSELF_SUBSET(struct runner *r, const struct cell *ci, struct part *parts,
+                   const int *ind, int count) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -1017,8 +1017,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  */
-void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts, int *restrict ind,
+void DOSELF_SUBSET_BRANCH(struct runner *r, const struct cell *ci,
+                          struct part *restrict parts, const int *ind,
                           int count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
@@ -2591,8 +2591,8 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
-    error("Cell smaller than smoothing length");
+  // if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
+  //  error("Cell smaller than smoothing length");
 
   /* Did we mess up the recursion? */
   if (limit_min_h && !limit_max_h)
@@ -2925,19 +2925,8 @@ void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
 }
 
-void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                  int *ind, int count, struct cell *cj, int gettimer) {
-
-  const struct engine *e = r->e;
-  struct space *s = e->s;
-
-  TIMER_TIC;
-
-  /* Should we even bother? */
-  if (!cell_is_active_hydro(ci, e) &&
-      (cj == NULL || !cell_is_active_hydro(cj, e)))
-    return;
-  if (ci->hydro.count == 0 || (cj != NULL && cj->hydro.count == 0)) return;
+struct cell *FIND_SUB(const struct cell *const ci,
+                      const struct part *const parts, const int *ind) {
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
@@ -2954,59 +2943,83 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
     }
   }
 
-  /* Is this a single cell? */
-  if (cj == NULL) {
+  return sub;
+}
 
-    /* Recurse? */
-    if (cell_can_recurse_in_self_hydro_task2(ci)) {
+void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
+                       const int *ind, const int count, struct cell *cj,
+                       const int gettimer) {
 
-      /* Loop over all progeny. */
-      DOSUB_SUBSET(r, sub, parts, ind, count, NULL, 0);
-      for (int j = 0; j < 8; j++)
-        if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET(r, sub, parts, ind, count, ci->progeny[j], 0);
+  const struct engine *e = r->e;
+  struct space *s = e->s;
 
+  TIMER_TIC;
+
+  /* Should we even bother? */
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+
+  struct cell *const sub = FIND_SUB(ci, parts, ind);
+
+  /* Recurse? */
+  if (cell_can_recurse_in_pair_hydro_task2(ci) &&
+      cell_can_recurse_in_pair_hydro_task2(cj)) {
+
+    /* Get the type of pair and flip ci/cj if needed. */
+    double shift[3];
+    const int sid = space_getsid(s, &ci, &cj, shift);
+
+    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    for (int k = 0; k < csp->count; k++) {
+      const int pid = csp->pairs[k].pid;
+      const int pjd = csp->pairs[k].pjd;
+      if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
+        DOSUB_PAIR_SUBSET(r, ci->progeny[pid], parts, ind, count,
+                          cj->progeny[pjd],
+                          /*gettimer=*/0);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
+        DOSUB_PAIR_SUBSET(r, cj->progeny[pjd], parts, ind, count,
+                          ci->progeny[pid],
+                          /*gettimer=*/0);
     }
 
-    /* Otherwise, compute self-interaction. */
-    else
-      DOSELF_SUBSET_BRANCH(r, ci, parts, ind, count);
-  } /* self-interaction. */
+  }
+  /* Otherwise, compute the pair directly. */
+  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
 
-  /* Otherwise, it's a pair interaction. */
-  else {
+    /* Do any of the cells need to be drifted first? */
+    if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
 
-    /* Recurse? */
-    if (cell_can_recurse_in_pair_hydro_task2(ci) &&
-        cell_can_recurse_in_pair_hydro_task2(cj)) {
-
-      /* Get the type of pair and flip ci/cj if needed. */
-      double shift[3];
-      const int sid = space_getsid(s, &ci, &cj, shift);
-
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
-      for (int k = 0; k < csp->count; k++) {
-        const int pid = csp->pairs[k].pid;
-        const int pjd = csp->pairs[k].pjd;
-        if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET(r, ci->progeny[pid], parts, ind, count, cj->progeny[pjd],
-                       0);
-        if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET(r, cj->progeny[pjd], parts, ind, count, ci->progeny[pid],
-                       0);
-      }
-    }
-
-    /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
-
-      /* Do any of the cells need to be drifted first? */
-      if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
-
-      DOPAIR_SUBSET_BRANCH(r, ci, parts, ind, count, cj);
-    }
-
-  } /* otherwise, pair interaction. */
+    DOPAIR_SUBSET_BRANCH(r, ci, parts, ind, count, cj);
+  }
 
   if (gettimer) TIMER_TOC(timer_dosub_subset);
+}
+
+void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
+                       const int *ind, const int count, const int gettimer) {
+
+  const struct engine *e = r->e;
+
+  /* Should we even bother? */
+  if (ci->hydro.count == 0) return;
+  if (!cell_is_active_hydro(ci, e)) return;
+
+  struct cell *const sub = FIND_SUB(ci, parts, ind);
+
+  /* Recurse? */
+  if (cell_can_recurse_in_self_hydro_task2(ci)) {
+
+    /* Loop over all progeny. */
+    DOSUB_SELF_SUBSET(r, sub, parts, ind, count, /*gettimer=*/0);
+    for (int j = 0; j < 8; j++)
+      if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
+        DOSUB_PAIR_SUBSET(r, sub, parts, ind, count, ci->progeny[j],
+                          /*gettimer=*/0);
+
+  }
+
+  /* Otherwise, compute self-interaction. */
+  else
+    DOSELF_SUBSET_BRANCH(r, ci, parts, ind, count);
 }
