@@ -35,6 +35,7 @@ struct exact_density_data {
   const struct engine *e;
   const struct space *s;
   int counter_global;
+  int check_force;
 };
 
 void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
@@ -48,6 +49,7 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int check_force = data->check_force;
   int counter = 0;
 
   for (int i = 0; i < nr_parts; ++i) {
@@ -117,7 +119,7 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
         }
 
         /* Interact loop of type 2? */
-        if ((pi != pj) && (r2 < hig2 || r2 < hjg2)) {
+        if (check_force && (pi != pj) && (r2 < hig2 || r2 < hjg2)) {
 
           float wi, wi_dx;
           float wj, wj_dx;
@@ -154,7 +156,8 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
 #endif
 }
 
-void hydro_exact_density_compute(struct space *s, const struct engine *e) {
+void hydro_exact_density_compute(struct space *s, const struct engine *e,
+                                 const int check_force) {
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
 
@@ -164,6 +167,7 @@ void hydro_exact_density_compute(struct space *s, const struct engine *e) {
   data.e = e;
   data.s = s;
   data.counter_global = 0;
+  data.check_force = check_force;
 
   threadpool_map(&s->e->threadpool, hydro_exact_density_compute_mapper,
                  s->parts, s->nr_parts, sizeof(struct part), 0, &data);
@@ -261,7 +265,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       if (!found_inhibited &&
           (fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol ||
            fabsf(pi->rho_exact / pi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld", id);
+        message("RHO: id=%lld swift=%e exact=%e", id, pi->rho, pi->rho_exact);
         wrong_rho++;
       }
       if (!found_inhibited &&
