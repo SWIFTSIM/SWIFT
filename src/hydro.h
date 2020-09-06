@@ -94,6 +94,6 @@ struct space;
 void hydro_exact_density_compute(struct space *s, const struct engine *e,
                                  const int check_force);
 void hydro_exact_density_check(struct space *s, const struct engine *e,
-                               const float rel_tol);
+                               const float rel_tol, const int check_force);
 
 #endif /* SWIFT_HYDRO_H */

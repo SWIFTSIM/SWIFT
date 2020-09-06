@@ -182,7 +182,7 @@ void hydro_exact_density_compute(struct space *s, const struct engine *e,
 }
 
 void hydro_exact_density_check(struct space *s, const struct engine *e,
-                               const float rel_tol) {
+                               const float rel_tol, const int check_force) {
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
 
@@ -268,7 +268,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
         message("RHO: id=%lld swift=%e exact=%e", id, pi->rho, pi->rho_exact);
         wrong_rho++;
       }
-      if (!found_inhibited &&
+      if (check_force && !found_inhibited &&
           fabsf(pi->n_force / pi->n_force_exact - 1.f) > rel_tol) {
         message("N_FORCE: id=%lld", id);
         wrong_n_force++;

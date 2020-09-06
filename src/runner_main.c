@@ -269,7 +269,7 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*recurse_below_h_max=*/t->flags,
-				     1);
+                                     1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -306,7 +306,7 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj,
-				     /*recurse_below_h_max=*/t->flags, 1);
+                                     /*recurse_below_h_max=*/t->flags, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
