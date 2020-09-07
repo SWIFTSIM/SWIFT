@@ -1554,14 +1554,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
       }
 
       /* Link pair tasks to cells. */
@@ -1575,18 +1567,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-        engine_addlink(e, &cj->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-        engine_addlink(e, &cj->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-        engine_addlink(e, &cj->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
-        engine_addlink(e, &cj->black_holes.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -1604,14 +1584,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
       }
 
       /* Link sub-pair tasks to cells. */
@@ -1625,18 +1597,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-        engine_addlink(e, &cj->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-        engine_addlink(e, &cj->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-        engine_addlink(e, &cj->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
-        engine_addlink(e, &cj->black_holes.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
