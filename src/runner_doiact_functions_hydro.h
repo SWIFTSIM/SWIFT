@@ -908,7 +908,7 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
   /* Has the cell cj been sorted? */
   if (!(cj->hydro.sorted & (1 << sid)) ||
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
+    runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
 #endif
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
