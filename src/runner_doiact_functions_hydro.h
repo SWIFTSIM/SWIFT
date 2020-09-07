@@ -326,8 +326,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
  * @param limit_min_h Only consider particles with h >= c->dmin/2.
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOSELF1_NAIVE(struct runner *r, struct cell *c, const int limit_min_h,
-                   const int limit_max_h) {
+void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
+                   const int limit_min_h, const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -472,8 +472,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *c, const int limit_min_h,
  * @param r The #runner.
  * @param c The #cell.
  */
-void DOSELF2_NAIVE(struct runner *r, struct cell *c, const int limit_min_h,
-                   const int limit_max_h) {
+void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
+                   const int limit_min_h, const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -711,9 +711,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
-                   struct part *restrict parts_i, const int *ind, int count,
-                   const struct cell *restrict cj, const int sid,
-                   const int flipped, const double shift[3]) {
+                   struct part *restrict parts_i, const int *ind,
+                   const int count, const struct cell *restrict cj,
+                   const int sid, const int flipped, const double shift[3]) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -2674,6 +2674,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
 
   } else {
 
+    /* Both ci and cj are split */
+
     /* Should we change the recursion regime because we encountered a large
        particle? */
     if (!recurse_below_h_max && (!cell_can_recurse_in_pair_hydro_task1(ci) ||
@@ -2967,11 +2969,12 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
-  struct cell *const sub = FIND_SUB(ci, parts, ind);
-
   /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task2(ci) &&
-      cell_can_recurse_in_pair_hydro_task2(cj)) {
+  if (ci->split && cell_can_recurse_in_pair_hydro_task1(ci) && cj->split &&
+      cell_can_recurse_in_pair_hydro_task1(cj)) {
+
+    /* Find in which sub-cell of ci the particles are */
+    struct cell *const sub = FIND_SUB(ci, parts, ind);
 
     /* Get the type of pair and flip ci/cj if needed. */
     double shift[3];
@@ -3013,10 +3016,11 @@ void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (ci->hydro.count == 0) return;
   if (!cell_is_active_hydro(ci, e)) return;
 
-  struct cell *const sub = FIND_SUB(ci, parts, ind);
-
   /* Recurse? */
-  if (cell_can_recurse_in_self_hydro_task2(ci)) {
+  if (ci->split && cell_can_recurse_in_self_hydro_task1(ci)) {
+
+    /* Find in which sub-cell of ci the particles are */
+    struct cell *const sub = FIND_SUB(ci, parts, ind);
 
     /* Loop over all progeny. */
     DOSUB_SELF_SUBSET(r, sub, parts, ind, count, /*gettimer=*/0);
