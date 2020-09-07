@@ -140,8 +140,8 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
             n_force_exact += wi + wj;
           }
 
-	  /* Number of neighbours */
-            N_force_exact++;	    
+          /* Number of neighbours */
+          N_force_exact++;
         }
       }
 
@@ -208,7 +208,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
   fprintf(file_swift, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s\n", "id",
-          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Ns", "rho", "n_force");
+          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho", "n_force");
 
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_parts; ++i) {
@@ -222,7 +222,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       fprintf(file_swift,
               "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
               pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density, pi->N_force,
-	      pi->rho, pi->n_force);
+              pi->rho, pi->n_force);
     }
   }
 
@@ -244,7 +244,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_exact, "# Git Branch: %s\n", git_branch());
   fprintf(file_exact, "# Git Revision: %s\n", git_revision());
   fprintf(file_exact, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s\n", "id",
-          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho_exact", "n_force_exact");
+          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho_exact",
+          "n_force_exact");
 
   int wrong_rho = 0;
   int wrong_n_force = 0;
@@ -262,7 +263,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       fprintf(file_swift,
               "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
               pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density_exact,
-	      pi->N_force_exact, pi->rho_exact, pi->n_force_exact);
+              pi->N_force_exact, pi->rho_exact, pi->n_force_exact);
 
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibted particle as a
@@ -275,8 +276,10 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
         wrong_rho++;
       }
       if (check_force && !found_inhibited &&
-          fabsf(pi->n_force / pi->n_force_exact - 1.f) > rel_tol) {
-        message("N_FORCE: id=%lld", id);
+          (fabsf(pi->n_force / pi->n_force_exact - 1.f) > 10. * rel_tol ||
+           fabsf(pi->n_force_exact / pi->n_force - 1.f) > 10. * rel_tol)) {
+        message("N_FORCE: id=%lld swift=%e exact=%e", id, pi->n_force,
+                pi->n_force_exact);
         wrong_n_force++;
       }
     }

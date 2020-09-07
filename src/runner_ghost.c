@@ -1364,7 +1364,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_self_subset_density(r, finger, parts, pid, count, /*gettimer=*/1);
+              runner_dosub_self_subset_density(r, finger, parts, pid, count,
+                                               /*gettimer=*/1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {

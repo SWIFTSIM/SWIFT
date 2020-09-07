@@ -218,7 +218,7 @@ struct part {
 
   /* Exact integer number of neighbours in the force loop */
   int N_force_exact;
-  
+
   /*! Exact value of the density field obtained via brute-force loop */
   float rho_exact;
 
