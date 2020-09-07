@@ -123,8 +123,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[2] += facj * curlvr[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->N++;
-  pj->N++;
+  pi->N_density++;
+  pj->N_density++;
 #endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
@@ -204,7 +204,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[2] += fac * curlvr[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->N++;
+  pi->N_density++;
 #endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
@@ -573,6 +573,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
   pj->n_force += wi + wj;
+  pi->N_force++;
+  pj->N_force++;
 #endif
 }
 
@@ -694,6 +696,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
+  pi->N_force++;
 #endif
 }
 

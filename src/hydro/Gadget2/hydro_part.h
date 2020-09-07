@@ -207,12 +207,18 @@ struct part {
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
 
-  /* Integer number of neighbours */
-  int N;
+  /* Integer number of neighbours in the density loop */
+  int N_density;
 
-  /* Exact integer number of neighbours */
-  int N_exact;
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
 
+  /* Integer number of neighbours in the force loop */
+  int N_force;
+
+  /* Exact integer number of neighbours in the force loop */
+  int N_force_exact;
+  
   /*! Exact value of the density field obtained via brute-force loop */
   float rho_exact;
 

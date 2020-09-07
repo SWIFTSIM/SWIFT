@@ -67,7 +67,8 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
       const float hig2 = hi * hi * kernel_gamma2;
 
       /* Be ready for the calculation */
-      int N_exact = 0;
+      int N_density_exact = 0;
+      int N_force_exact = 0;
       double rho_exact = 0.;
       double n_force_exact = 0.;
 
@@ -114,7 +115,7 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
             rho_exact += mj * wi;
 
             /* Number of neighbours */
-            N_exact++;
+            N_density_exact++;
           }
         }
 
@@ -138,11 +139,15 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
             /* Force count */
             n_force_exact += wi + wj;
           }
+
+	  /* Number of neighbours */
+            N_force_exact++;	    
         }
       }
 
       /* Store the exact answer */
-      pi->N_exact = N_exact;
+      pi->N_density_exact = N_density_exact;
+      pi->N_force_exact = N_force_exact;
       pi->rho_exact = rho_exact * pow_dimension(hi_inv);
       pi->n_force_exact = n_force_exact;
 
@@ -202,8 +207,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
-  fprintf(file_swift, "# %16s %16s %16s %16s %16s %7s %16s %16s\n", "id",
-          "pos[0]", "pos[1]", "pos[2]", "h", "N", "rho", "n_force");
+  fprintf(file_swift, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s\n", "id",
+          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Ns", "rho", "n_force");
 
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_parts; ++i) {
@@ -215,8 +220,9 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
       fprintf(file_swift,
-              "%18lld %16.8e %16.8e %16.8e %16.8e %7d %16.8e %16.8e\n", id,
-              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N, pi->rho, pi->n_force);
+              "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
+              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density, pi->N_force,
+	      pi->rho, pi->n_force);
     }
   }
 
@@ -237,8 +243,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_exact, "# periodic= %d\n", s->periodic);
   fprintf(file_exact, "# Git Branch: %s\n", git_branch());
   fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-  fprintf(file_exact, "# %16s %16s %16s %16s %16s %7s %16s %16s\n", "id",
-          "pos[0]", "pos[1]", "pos[2]", "h", "N", "rho_exact", "n_force_exact");
+  fprintf(file_exact, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s\n", "id",
+          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho_exact", "n_force_exact");
 
   int wrong_rho = 0;
   int wrong_n_force = 0;
@@ -254,9 +260,9 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
       fprintf(file_swift,
-              "%18lld %16.8e %16.8e %16.8e %16.8e %7d %16.8e %16.8e\n", id,
-              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_exact, pi->rho_exact,
-              pi->n_force_exact);
+              "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
+              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density_exact,
+	      pi->N_force_exact, pi->rho_exact, pi->n_force_exact);
 
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibted particle as a
