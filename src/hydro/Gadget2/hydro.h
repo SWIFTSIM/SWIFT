@@ -467,7 +467,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
-  p->N_force = 1;   /* Self contribution */
+  p->N_force = 0;
   p->N_density_exact = 0;
   p->N_force_exact = 0;
   p->rho_exact = 0.f;

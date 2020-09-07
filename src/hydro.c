@@ -207,8 +207,9 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
-  fprintf(file_swift, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s\n", "id",
-          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho", "n_force");
+  fprintf(file_swift, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s %16s\n",
+          "id", "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho", "n_force",
+          "N_ngb");
 
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_parts; ++i) {
@@ -217,12 +218,17 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     const long long id = pi->id;
     if (pi->limited_part) continue;
 
+    const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
+                         kernel_gamma * pi->h * pi->h * pi->h *
+                         (pi->rho / pi->mass);
+
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
-      fprintf(file_swift,
-              "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
-              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density, pi->N_force,
-              pi->rho, pi->n_force);
+      fprintf(
+          file_swift,
+          "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e %16.8e\n",
+          id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density, pi->N_force,
+          pi->rho, pi->n_force, N_ngb);
     }
   }
 
