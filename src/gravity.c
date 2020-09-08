@@ -44,7 +44,7 @@
 struct exact_force_data {
   const struct engine *e;
   const struct space *s;
-  int counter_global;
+  atomic_int counter_global;
   double const_G;
 };
 

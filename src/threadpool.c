@@ -143,7 +143,8 @@ void threadpool_chomp(struct threadpool *tp, int tid) {
                    (int)(tid * tp->map_data_size / tp->num_threads);
     } else {
       chunk_size =
-          (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
+          (tp->map_data_size - atomic_load(&tp->map_data_count)) / (2 * tp->num_threads);
+
       if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
     }
     if (chunk_size < 1) chunk_size = 1;

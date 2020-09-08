@@ -116,28 +116,30 @@ void queue_get_incoming(struct queue *q) {
 
     /* Is there a next element? */
     const int ind = q->first_incoming % queue_incoming_size;
-    if (q->tid_incoming[ind] < 0) break;
+    if (atomic_load(&q->tid_incoming[ind]) < 0) break;
 
     /* Get the next offset off the DEQ. */
     const int offset = atomic_swap(&q->tid_incoming[ind], -1);
     atomic_inc(&q->first_incoming);
 
     /* Does the queue need to be grown? */
-    if (q->count == q->size) {
+    if (atomic_load(q->count) == q->size) {
       struct queue_entry *temp;
       q->size *= queue_sizegrow;
       if ((temp = (struct queue_entry *)malloc(sizeof(struct queue_entry) *
                                                q->size)) == NULL)
         error("Failed to allocate new indices.");
-      memcpy(temp, entries, sizeof(struct queue_entry) * q->count);
+      memcpy(temp, entries, sizeof(struct queue_entry) * atomic_load(&q->count));
       free(entries);
       q->entries = entries = temp;
     }
 
     /* Drop the task at the end of the queue. */
-    entries[q->count].tid = offset;
-    entries[q->count].weight = q->tasks[offset].weight;
+    int q_count = atomic_load(&q->count);
+    entries[q_count].tid = offset;
+    entries[q_count].weight = q->tasks[offset].weight;
     q->count += 1;
+    atomic_inc(&q->count);
     atomic_dec(&q->count_incoming);
 
     /* Re-heap by bubbling up the new (last) element. */
@@ -145,7 +147,7 @@ void queue_get_incoming(struct queue *q) {
 
 #ifdef SWIFT_DEBUG_CHECK
     /* Check the queue's consistency. */
-    for (int k = 1; k < q->count; k++)
+    for (int k = 1; k < atomic_load(&q->count); k++)
       if (entries[(k - 1) / 2].weight < entries[k].weight)
         error("Queue heap is disordered.");
 #endif
@@ -207,7 +209,7 @@ void queue_init(struct queue *q, struct task *tasks) {
   if (lock_init(&q->lock) != 0) error("Failed to init queue lock.");
 
   /* Init the incoming DEQ. */
-  if ((q->tid_incoming = (int *)malloc(sizeof(int) * queue_incoming_size)) ==
+  if ((q->tid_incoming = (atomic_int *)malloc(sizeof(atomic_int) * queue_incoming_size)) ==
       NULL)
     error("Failed to allocate queue incoming buffer.");
   for (int k = 0; k < queue_incoming_size; k++) {
@@ -242,7 +244,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   queue_get_incoming(q);
 
   /* If there are no tasks, leave immediately. */
-  if (q->count == 0) {
+  if (atomic_load(&q->count) == 0) {
     lock_unlock_blind(qlock);
     return NULL;
   }
@@ -250,7 +252,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   /* Set some pointers we will use often. */
   struct queue_entry *entries = q->entries;
   struct task *qtasks = q->tasks;
-  const int old_qcount = q->count;
+  const int old_qcount = atomic_load(&q->count);
 
   /* Loop over the queue entries. */
   int ind;
@@ -274,7 +276,8 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   if (ind < old_qcount) {
 
     /* Another one bites the dust. */
-    const int qcount = q->count -= 1;
+    atomic_dec(&q->count);
+    const int qcount = atomic_load(&q->count);  // q->count -= 1;
 
     /* Get a pointer on the task that we want to return. */
     res = &qtasks[entries[ind].tid];

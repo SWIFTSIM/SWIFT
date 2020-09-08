@@ -75,7 +75,7 @@
 extern int engine_star_resort_task_depth;
 
 /* Global variables. */
-int cell_next_tag = 0;
+atomic_int cell_next_tag = 0;
 
 /** List of cell pairs for sub-cell recursion. For any sid, the entries in
  * this array contain the number of sub-cell pairs and the indices and sid
@@ -3101,19 +3101,22 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
  */
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
   /* Do we need to re-sort? */
-  if (c->hydro.dx_max_sort > space_maxreldx * c->dmin) {
+  if (atomic_load_f(&c->hydro.dx_max_sort) > space_maxreldx * c->dmin) {
     /* Climb up the tree to active the sorts in that direction */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
-      if (finger->hydro.requires_sorts) {
-        atomic_or(&finger->hydro.do_sort, finger->hydro.requires_sorts);
+      const unsigned int requires_sorts =
+          atomic_load(&finger->hydro.requires_sorts);
+      if (requires_sorts) {
+        atomic_or(&finger->hydro.do_sort, requires_sorts);
         cell_activate_hydro_sorts_up(finger, s);
       }
-      finger->hydro.sorted = 0;
+      atomic_write_u(&finger->hydro.sorted, 0);
     }
   }
 
   /* Has this cell been sorted at all for the given sid? */
-  if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+  if (!(atomic_load_u(&c->hydro.sorted) & (1 << sid)) ||
+      c->nodeID != engine_rank) {
     atomic_or(&c->hydro.do_sort, (1 << sid));
     cell_activate_hydro_sorts_up(c, s);
   }
@@ -3198,12 +3201,14 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
-  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
-  ci->hydro.h_max_old = ci->hydro.h_max;
+  const float dx_max_part_i = atomic_load_f(&ci->hydro.dx_max_part);
+  atomic_write_f(&ci->hydro.dx_max_part_old, dx_max_part_i);
+  atomic_write_f(&ci->hydro.h_max_old, ci->hydro.h_max);
 
   if (cj != NULL) {
-    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
-    cj->hydro.h_max_old = cj->hydro.h_max;
+    const float dx_max_part_j = atomic_load_f(&cj->hydro.dx_max_part);
+    atomic_write_f(&cj->hydro.dx_max_part_old, dx_max_part_j);
+    atomic_write_f(&cj->hydro.h_max_old, cj->hydro.h_max);
   }
 
   /* Self interaction? */
@@ -3259,8 +3264,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* We are going to interact this pair, so store some values. */
       atomic_or(&ci->hydro.requires_sorts, 1 << sid);
       atomic_or(&cj->hydro.requires_sorts, 1 << sid);
-      ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-      cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+      const float dx_max_sort_i = atomic_load_f(&ci->hydro.dx_max_sort);
+      const float dx_max_sort_j = atomic_load_f(&cj->hydro.dx_max_sort);
+
+      atomic_write_f(&ci->hydro.dx_max_sort_old, dx_max_sort_i);
+      atomic_write_f(&cj->hydro.dx_max_sort_old, dx_max_sort_j);
 
       /* Activate the drifts if the cells are local. */
       if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
@@ -3715,8 +3724,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Store some values. */
         atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
         atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        const float dx_max_sort_i = atomic_load_f(&ci->hydro.dx_max_sort);
+        const float dx_max_sort_j = atomic_load_f(&cj->hydro.dx_max_sort);
+
+        atomic_write_f(&ci->hydro.dx_max_sort_old, dx_max_sort_i);
+        atomic_write_f(&cj->hydro.dx_max_sort_old, dx_max_sort_j);
 
         /* Activate the drift tasks. */
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);

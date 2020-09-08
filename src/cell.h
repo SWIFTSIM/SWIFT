@@ -33,6 +33,7 @@
 
 /* Local includes. */
 #include "align.h"
+#include "atomic.h"
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "multipole_struct.h"
@@ -57,7 +58,7 @@ struct scheduler;
 #define cell_align 128
 
 /* Global variables. */
-extern int cell_next_tag;
+extern atomic_int cell_next_tag;
 
 /* Struct to temporarily buffer the particle locations and bin id. */
 struct cell_buff {
@@ -339,7 +340,7 @@ struct cell {
   struct cell *super;
 
   /*! Cell flags bit-mask. */
-  volatile uint32_t flags;
+  atomic_uint32 flags;
 
   /*! Hydro variables */
   struct {
@@ -422,7 +423,7 @@ struct cell {
     swift_lock_type lock;
 
     /*! Max smoothing length in this cell. */
-    float h_max;
+    atomic_float h_max;
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
@@ -449,16 +450,16 @@ struct cell {
     int updated;
 
     /*! Is the #part data of this cell being used in a sub-cell? */
-    int hold;
+    atomic_int hold;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
-    uint16_t requires_sorts;
+    atomic_uint16 requires_sorts;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    uint16_t do_sort;
+    atomic_uint16 do_sort;
 
     /*! Bit-mask indicating the sorted directions */
-    uint16_t sorted;
+    atomic_uint16 sorted;
 
     /*! Bit-mask indicating the sorted directions */
     uint16_t sort_allocated;
@@ -556,13 +557,13 @@ struct cell {
     int updated;
 
     /*! Is the #gpart data of this cell being used in a sub-cell? */
-    int phold;
+    atomic_int phold;
 
     /*! Is the #multipole data of this cell being used in a sub-cell? */
-    int mhold;
+    atomic_int mhold;
 
     /*! Number of M-M tasks that are associated with this cell. */
-    short int nr_mm_tasks;
+    atomic_short nr_mm_tasks;
 
   } grav;
 
@@ -613,7 +614,7 @@ struct cell {
     int count_total;
 
     /*! Max smoothing length in this cell. */
-    float h_max;
+    atomic_float h_max;
 
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
@@ -637,13 +638,13 @@ struct cell {
     uint16_t requires_sorts;
 
     /*! Bit-mask indicating the sorted directions */
-    uint16_t sorted;
+    atomic_uint16 sorted;
 
     /*! Bit-mask indicating the sorted directions */
     uint16_t sort_allocated;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    uint16_t do_sort;
+    atomic_uint16 do_sort;
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
@@ -659,7 +660,7 @@ struct cell {
     int updated;
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
-    int hold;
+    atomic_int hold;
 
     /*! Star formation history struct */
     struct star_formation_history sfh;
@@ -722,7 +723,7 @@ struct cell {
     int count_total;
 
     /*! Max smoothing length in this cell. */
-    float h_max;
+    atomic_float h_max;
 
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
@@ -843,7 +844,7 @@ struct cell {
   int nodeID;
 
   /*! Number of tasks that are associated with this cell. */
-  short int nr_tasks;
+  atomic_short nr_tasks;
 
   /*! The depth of this cell in the tree. */
   char depth;
@@ -1095,7 +1096,7 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->hydro.h_max_old +
+  return c->split && ((kernel_gamma * atomic_load_f(&c->hydro.h_max_old) +
                        c->hydro.dx_max_part_old) < 0.5f * c->dmin);
 }
 
@@ -1109,7 +1110,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+  return c->split && (kernel_gamma * atomic_load_f(&c->hydro.h_max_old) < 0.5f * c->dmin);
 }
 
 /**
@@ -1280,7 +1281,8 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
-          ci->hydro.dx_max_part + cj->hydro.dx_max_part >
+          atomic_load_f(&ci->hydro.dx_max_part) +
+          atomic_load_f(&cj->hydro.dx_max_part) >
       cj->dmin) {
     return 1;
   }
@@ -1594,7 +1596,7 @@ __attribute__((always_inline)) INLINE static void cell_clear_flag(
 /** Get the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
     const struct cell *c, uint32_t flag) {
-  return (c->flags & flag) > 0;
+  return (atomic_load(&c->flags) & flag) > 0;
 }
 
 /**

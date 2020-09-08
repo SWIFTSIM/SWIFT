@@ -69,7 +69,7 @@ struct scheduler {
   int nr_tasks, size, tasks_next;
 
   /* Total number of waiting tasks. */
-  int waiting;
+  atomic_int waiting;
 
   /* The task array. */
   struct task *tasks;
@@ -79,12 +79,12 @@ struct scheduler {
 
   /* List of initial tasks. */
   int *tid_active;
-  int active_count;
+  atomic_int active_count;
 
   /* The task unlocks. */
   struct task **volatile unlocks;
   int *volatile unlock_ind;
-  volatile int nr_unlocks, size_unlocks, completed_unlock_writes;
+  atomic_int nr_unlocks, size_unlocks, completed_unlock_writes;
 
   /* Lock for this scheduler. */
   swift_lock_type lock;
@@ -122,8 +122,9 @@ struct scheduler {
  */
 __attribute__((always_inline)) INLINE static void scheduler_activate(
     struct scheduler *s, struct task *t) {
-  if (atomic_cas(&t->skip, 1, 0)) {
-    t->wait = 0;
+  char one = 1;
+  if (atomic_cas(&t->skip, &one, (char)0)) {
+    atomic_init(&t->wait, 0);
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
   }

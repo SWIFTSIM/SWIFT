@@ -43,7 +43,7 @@
  * @param x The value to add to *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_add_i(
-    volatile int *const address, const int x) {
+    atomic_int *const address, const int x) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   *address += x;
@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static void accumulate_add_i(
  * @param x The value to add to *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_add_ll(
-    volatile long long *const address, const long long x) {
+    atomic_llong *const address, const long long x) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   *address += x;
@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static void accumulate_add_ll(
  * @param x The value to add to *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_add_f(
-    volatile float *const address, const float x) {
+    atomic_float *const address, const float x) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   *address += x;
@@ -100,7 +100,7 @@ __attribute__((always_inline)) INLINE static void accumulate_add_f(
  * @param x The value to add to *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_add_d(
-    volatile double *const address, const double x) {
+    atomic_double *const address, const double x) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   *address += x;
@@ -118,7 +118,7 @@ __attribute__((always_inline)) INLINE static void accumulate_add_d(
  * @param address The address to update.
  */
 __attribute__((always_inline)) INLINE static void accumulate_inc_i(
-    volatile int *const address) {
+    atomic_int *const address) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   (*address)++;
@@ -136,7 +136,7 @@ __attribute__((always_inline)) INLINE static void accumulate_inc_i(
  * @param address The address to update.
  */
 __attribute__((always_inline)) INLINE static void accumulate_inc_ll(
-    volatile long long *const address) {
+    atomic_llong *const address) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   (*address)++;
@@ -156,7 +156,7 @@ __attribute__((always_inline)) INLINE static void accumulate_inc_ll(
  * @param x The value to max against *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_max_c(
-    volatile int8_t *const address, const int8_t x) {
+    atomic_int8 *const address, const int8_t x) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   *address = max(*address, x);
@@ -176,7 +176,7 @@ __attribute__((always_inline)) INLINE static void accumulate_max_c(
  * @param x The value to max against *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_max_i(
-    volatile int *const address, const int x) {
+    atomic_int *const address, const int x) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   *address = max(*address, x);
@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static void accumulate_max_i(
  * @param x The value to max against *address.
  */
 __attribute__((always_inline)) INLINE static void accumulate_max_f(
-    volatile float *const address, const float x) {
+    atomic_float *const address, const float x) {
 
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
   *address = max(*address, x);

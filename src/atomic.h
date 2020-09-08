@@ -19,6 +19,10 @@
 #ifndef SWIFT_ATOMIC_H
 #define SWIFT_ATOMIC_H
 
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+
 /* Config parameters. */
 #include "../config.h"
 
@@ -26,41 +30,63 @@
 #include "inline.h"
 #include "minmax.h"
 
-/* Standard includes */
-#include <stdint.h>
+#include <stdatomic.h>
 
-#define atomic_add(v, i) __sync_fetch_and_add(v, i)
-#define atomic_sub(v, i) __sync_fetch_and_sub(v, i)
-#define atomic_or(v, i) __sync_fetch_and_or(v, i)
-#define atomic_and(v, i) __sync_fetch_and_and(v, i)
-#define atomic_inc(v) atomic_add(v, 1)
-#define atomic_dec(v) atomic_sub(v, 1)
-#define atomic_cas(v, o, n) __sync_val_compare_and_swap(v, o, n)
-#define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
+#define atomic_add(v, i) atomic_fetch_add(v, i)
+#define atomic_and(v, i) atomic_fetch_and(v, i)
+#define atomic_sub(v, i) atomic_fetch_sub(v, i)
+#define atomic_or(v, i) atomic_fetch_or(v, i)
+#define atomic_inc(v) atomic_fetch_add(v, 1)
+#define atomic_dec(v) atomic_fetch_sub(v, 1)
+#define atomic_cas_fast(o, e, d) atomic_compare_exchange_weak(o, e, d)
+#define atomic_write(o, v) atomic_store(o, v)
+#define atomic_write_u(o, v) atomic_store(o, v)
+#define atomic_write_c(o, v) atomic_store(o, v)
+#define atomic_write_f(o, v) atomic_write(o, v)
+#define atomic_load_f(v) atomic_load(v)
+#define atomic_load_u(v) atomic_load(v)
+typedef _Atomic(float) atomic_float;
+typedef _Atomic(double) atomic_double;
+typedef _Atomic(uint32_t) atomic_uint32;
+typedef _Atomic(uint16_t) atomic_uint16;
+typedef _Atomic(int8_t) atomic_int8;
+//typedef _Atomic(int16_t) atomic_short;
+#define atomic_cas(obj,expected,desired) _Generic((desired), \
+  int: bool_atomic_compare_and_swap_i, \
+  long long: bool_atomic_compare_and_swap_ll, \
+  float: bool_atomic_compare_and_swap_f, \
+  char: bool_atomic_compare_and_swap_c, \
+  default: bool_atomic_compare_and_swap_ll \
+  )(obj,expected,desired)
+#define atomic_swap(v, n) atomic_exchange(v,n)
 
-/**
- * @brief Atomic min operation on ints.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_min(
-    volatile int *const address, const int y) {
-
-  int *int_ptr = (int *)address;
-
-  int test_val, old_val, new_val;
-  old_val = *address;
-
-  do {
-    test_val = old_val;
-    new_val = min(old_val, y);
-    old_val = atomic_cas(int_ptr, test_val, new_val);
-  } while (test_val != old_val);
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_c( atomic_char *obj, char *expected, char desired){
+  char preexpected = *expected;
+  _Bool retval = atomic_compare_exchange_strong(obj, expected, desired);
+  *expected = preexpected;
+  return retval;
 }
 
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_i( atomic_int *obj, int *expected, int desired){
+  int preexpected = *expected;
+  _Bool retval = atomic_compare_exchange_strong(obj, expected, desired);
+  *expected = preexpected;
+  return retval;
+}
+
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_ll( atomic_llong *obj, long long *expected, long long desired){
+  long long preexpected = *expected;
+  _Bool retval = atomic_compare_exchange_strong(obj, expected, desired);
+  *expected = preexpected;
+  return retval;
+}
+
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_f( atomic_float *obj, float *expected, float desired){
+  float preexpected = *expected;
+  _Bool retval = atomic_compare_exchange_strong( obj, expected, desired);
+  *expected = preexpected;
+  return retval;
+}
 /**
  * @brief Atomic min operation on floats.
  *
@@ -72,215 +98,69 @@ __attribute__((always_inline)) INLINE static void atomic_min(
  * @param address The address to update.
  * @param y The value to update the address with.
  */
-__attribute__((always_inline)) INLINE static void atomic_min_f(
-    volatile float *const address, const float y) {
+__attribute__((always_inline)) INLINE static void atomic_min_f( atomic_float *obj, float const y){
+  float test_val, new_val;
 
-  int *const int_ptr = (int *)address;
-
-  typedef union {
-    float as_float;
-    int as_int;
-  } cast_type;
-
-  cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
-
-  do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = min(old_val.as_float, y);
-    old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
-  } while (test_val.as_int != old_val.as_int);
+  do{
+    test_val = atomic_load(obj);
+    new_val = fminf(test_val, y);
+  }while(!atomic_cas_fast( obj, &test_val, new_val));
 }
 
-/**
- * @brief Atomic min operation on doubles.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point min that we want.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_min_d(
-    volatile double *const address, const double y) {
 
-  long long *const long_long_ptr = (long long *)address;
 
-  typedef union {
-    double as_double;
-    long long as_long_long;
-  } cast_type;
+__attribute__((always_inline)) INLINE static void atomic_max(atomic_int *obj, const int y) {
+  int test_val, new_val;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
-
-  do {
-    test_val.as_long_long = old_val.as_long_long;
-    new_val.as_double = min(old_val.as_double, y);
-    old_val.as_long_long =
-        atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
-  } while (test_val.as_long_long != old_val.as_long_long);
+  do{
+    test_val = atomic_load(obj);
+    new_val = max(test_val, y);
+  }while(!atomic_cas_fast(obj, &test_val, new_val));
 }
 
-/**
- * @brief Atomic max operation on int8_t.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_max_c(
-    volatile int8_t *const address, const int8_t y) {
+__attribute__((always_inline)) INLINE static void atomic_max_c(atomic_int8 *obj, const int8_t y) {
+  int8_t test_val, new_val;
 
-  int8_t test_val, old_val, new_val;
-  old_val = *address;
-
-  do {
-    test_val = old_val;
-    new_val = max(old_val, y);
-    old_val = atomic_cas(address, test_val, new_val);
-  } while (test_val != old_val);
+  do{
+    test_val = atomic_load(obj);
+    new_val = max(test_val, y);
+  }while(!atomic_cas_fast(obj, &test_val, new_val));
 }
 
-/**
- * @brief Atomic max operation on ints.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_max(
-    volatile int *const address, const int y) {
+__attribute__((always_inline)) INLINE static void atomic_max_f( atomic_float *obj, float const y){
+  float test_val, new_val;
 
-  int *int_ptr = (int *)address;
+  do{
+    test_val = atomic_load(obj);
+    new_val = fmaxf(test_val, y);
+  }while(!atomic_cas_fast(obj, &test_val, new_val));
 
-  int test_val, old_val, new_val;
-  old_val = *address;
-
-  do {
-    test_val = old_val;
-    new_val = max(old_val, y);
-    old_val = atomic_cas(int_ptr, test_val, new_val);
-  } while (test_val != old_val);
 }
 
-/**
- * @brief Atomic max operation on long long.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_max_ll(
-    volatile long long *const address, const long long y) {
+__attribute__((always_inline)) INLINE static void atomic_max_d( atomic_double *obj, double const y){
+  double test_val, new_val;
 
-  int test_val, old_val, new_val;
-  old_val = *address;
-
-  do {
-    test_val = old_val;
-    new_val = max(old_val, y);
-    old_val = atomic_cas(address, test_val, new_val);
-  } while (test_val != old_val);
+  do{
+    test_val = atomic_load(obj);
+    new_val = fmax(test_val, y);
+  }while(!atomic_cas_fast(obj, &test_val, new_val));
 }
 
-/**
- * @brief Atomic max operation on floats.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point max that we want.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_max_f(
-    volatile float *const address, const float y) {
-
-  int *const int_ptr = (int *)address;
-
-  typedef union {
-    float as_float;
-    int as_int;
-  } cast_type;
-
-  cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
-
-  do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = max(old_val.as_float, y);
-    old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
-  } while (test_val.as_int != old_val.as_int);
-}
-
-/**
- * @brief Atomic max operation on doubles.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point max that we want.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_max_d(
-    volatile double *const address, const double y) {
-
-  long long *const long_long_ptr = (long long *)address;
-
-  typedef union {
-    double as_double;
-    long long as_long_long;
-  } cast_type;
-
-  cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
-
-  do {
-    test_val.as_long_long = old_val.as_long_long;
-    new_val.as_double = max(old_val.as_double, y);
-    old_val.as_long_long =
-        atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
-  } while (test_val.as_long_long != old_val.as_long_long);
-}
-
-/**
- * @brief Atomic add operation on floats.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point add that we want.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
 __attribute__((always_inline)) INLINE static void atomic_add_f(
-    volatile float *const address, const float y) {
-
-  int *const int_ptr = (int *)address;
+    atomic_float *const address, const float y) {
+  atomic_int *const int_ptr = (atomic_int *) address;
 
   typedef union {
     float as_float;
     int as_int;
   } cast_type;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_float = *address;
+  cast_type test_val, new_val;
 
-  do {
-    test_val.as_int = old_val.as_int;
-    new_val.as_float = old_val.as_float + y;
-    old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
-  } while (test_val.as_int != old_val.as_int);
+  do{
+    test_val.as_int = atomic_load(address);
+    new_val.as_float = test_val.as_float + y;
+  } while(!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
 }
 
 /**
@@ -289,30 +169,26 @@ __attribute__((always_inline)) INLINE static void atomic_add_f(
  * This is a text-book implementation based on an atomic CAS.
  *
  * We create a temporary union to cope with the int-only atomic CAS
- * and the floating-point add that we want.
+ * and the double add that we want.
  *
  * @param address The address to update.
  * @param y The value to update the address with.
  */
 __attribute__((always_inline)) INLINE static void atomic_add_d(
-    volatile double *const address, const double y) {
-
-  long long *const long_long_ptr = (long long *)address;
+    atomic_double *const address, const double y) {
+  atomic_int *const int_ptr = (atomic_int *) address;
 
   typedef union {
     double as_double;
-    long long as_long_long;
+    int as_int;
   } cast_type;
 
-  cast_type test_val, old_val, new_val;
-  old_val.as_double = *address;
+  cast_type test_val, new_val;
 
-  do {
-    test_val.as_long_long = old_val.as_long_long;
-    new_val.as_double = old_val.as_double + y;
-    old_val.as_long_long =
-        atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
-  } while (test_val.as_long_long != old_val.as_long_long);
+  do{
+    test_val.as_int = atomic_load(address);
+    new_val.as_double = test_val.as_double + y;
+  } while(!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
 }
 
 #endif /* SWIFT_ATOMIC_H */

@@ -125,16 +125,16 @@ struct index_data {
   struct space *s;
   int *ind;
   int *cell_counts;
-  size_t count_inhibited_part;
-  size_t count_inhibited_gpart;
-  size_t count_inhibited_spart;
-  size_t count_inhibited_bpart;
-  size_t count_inhibited_sink;
-  size_t count_extra_part;
-  size_t count_extra_gpart;
-  size_t count_extra_spart;
-  size_t count_extra_bpart;
-  size_t count_extra_sink;
+  atomic_size_t count_inhibited_part;
+  atomic_size_t count_inhibited_gpart;
+  atomic_size_t count_inhibited_spart;
+  atomic_size_t count_inhibited_bpart;
+  atomic_size_t count_inhibited_sink;
+  atomic_size_t count_extra_part;
+  atomic_size_t count_extra_gpart;
+  atomic_size_t count_extra_spart;
+  atomic_size_t count_extra_bpart;
+  atomic_size_t count_extra_sink;
 };
 
 /**
@@ -196,8 +196,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
     c->stars.sorts = NULL;
-    c->nr_tasks = 0;
-    c->grav.nr_mm_tasks = 0;
+    atomic_init(&c->nr_tasks, 0);
+    atomic_init(&c->grav.nr_mm_tasks, 0);
     c->hydro.density = NULL;
     c->hydro.gradient = NULL;
     c->hydro.force = NULL;
@@ -209,9 +209,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.dx_max_part = 0.f;
     c->stars.dx_max_sort = 0.f;
     c->black_holes.dx_max_part = 0.f;
-    c->hydro.sorted = 0;
+    atomic_init(&c->hydro.sorted, 0);
     c->hydro.sort_allocated = 0;
-    c->stars.sorted = 0;
+    atomic_init(&c->stars.sorted, 0);
     c->hydro.count = 0;
     c->hydro.count_total = 0;
     c->hydro.updated = 0;
@@ -318,7 +318,7 @@ void space_free_cells(struct space *s) {
   threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top,
                  s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
                  s);
-  s->maxdepth = 0;
+  atomic_init(&s->maxdepth, 0);
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3856,8 +3856,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   }
 
   /* Check the depth. */
-  while (depth > (maxdepth = s->maxdepth)) {
-    atomic_cas(&s->maxdepth, maxdepth, depth);
+  while (depth > (maxdepth = atomic_load(&s->maxdepth))) {
+    atomic_cas(&s->maxdepth, &maxdepth, depth);
   }
 
   /* If the depth is too large, we have a problem and should stop. */
@@ -3925,7 +3925,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-      cp->cellID = last_cell_id++;
+      cp->cellID = atomic_inc(&last_cell_id);
 #endif
     }
 

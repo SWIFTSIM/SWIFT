@@ -225,7 +225,7 @@ struct task {
   int nr_unlock_tasks;
 
   /*! Number of unsatisfied dependencies */
-  int wait;
+  atomic_int wait;
 
   /*! Type of the task */
   enum task_types type;
@@ -234,7 +234,7 @@ struct task {
   enum task_subtypes subtype;
 
   /*! Should the scheduler skip this task ? */
-  char skip;
+  atomic_char skip;
 
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;

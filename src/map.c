@@ -101,7 +101,7 @@ void map_check(struct part *p, struct cell *c, void *data) {
  */
 void map_cellcheck(struct cell *c, void *data) {
 
-  int *count = (int *)data;
+  atomic_int *count = (int *)data;
   atomic_add(count, c->hydro.count);
 
   /* Loop over all parts and check if they are in the cell. */
