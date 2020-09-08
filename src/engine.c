@@ -1622,6 +1622,7 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sink = %zu.", e->s->nr_sinks);
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
+  message("nr_dmparts = %zu.", e->s->nr_dmparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1842,8 +1843,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       (long long)(e->s->nr_parts - e->s->nr_extra_parts),
       (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
       (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
-      (long long)(e->s->nr_dmparts - e->s->nr_extra_dmparts),
-      (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
+      (long long)(e->s->nr_bparts - e->s->nr_extra_bparts),
+      (long long)(e->s->nr_dmparts - e->s->nr_extra_dmparts)};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -1859,7 +1860,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->nr_inhibited_gparts = 0;
   e->nr_inhibited_sparts = 0;
   e->nr_inhibited_bparts = 0;
-    e->nr_inhibited_dmparts = 0;
+  e->nr_inhibited_dmparts = 0;
 
   if (e->verbose)
     message("updating particle counts took %.3f %s.",
@@ -1915,6 +1916,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Re-build the tasks. */
   engine_maketasks(e);
 
+
   /* Make the list of top-level cells that have tasks */
   space_list_useful_top_level_cells(e->s);
 
@@ -1936,7 +1938,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Run through the tasks and mark as skip or not. */
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
-
+    
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -1945,6 +1947,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->g_updates_since_rebuild = 0;
   e->s_updates_since_rebuild = 0;
   e->b_updates_since_rebuild = 0;
+  e->dm_updates_since_rebuild = 0;
 
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
@@ -2858,6 +2861,7 @@ void engine_step(struct engine *e) {
   e->g_updates_since_rebuild += e->collect_group1.g_updated;
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
+  e->dm_updates_since_rebuild += e->collect_group1.dm_updated;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all cells have correct time-step information */

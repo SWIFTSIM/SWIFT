@@ -19,6 +19,33 @@
 #ifndef SWIFT_DARK_MATTER_IO_H
 #define SWIFT_DARK_MATTER_IO_H
 
+#include "io_properties.h"
+
+/**
+ * @brief Specifies which g-particle fields to read from a dataset
+ *
+ * @param gparts The g-particle array.
+ * @param list The list of i/o properties to read.
+ * @param num_fields The number of i/o fields to read.
+ */
+INLINE static void darkmatter_read_as_dmparticles(struct dmpart* dmparts,
+                                             struct io_props* list,
+                                             int* num_fields) {
+    
+    /* Say how much we want to read */
+    *num_fields = 4;
+    
+    /* List what we want to read */
+    list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
+                                  UNIT_CONV_LENGTH, dmparts, x);
+    list[1] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
+                                  UNIT_CONV_SPEED, dmparts, v_full);
+    list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
+                                  dmparts, mass);
+    list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
+                                  UNIT_CONV_NO_UNITS, dmparts, id_or_neg_offset);
+}
+
 /**
  * @brief Specifies which dm particle fields to write to a dataset
  *
@@ -33,7 +60,16 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     /* List what we want to write */
     list[0] = io_make_output_field("SIDMevents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
                                    dmparts, sidm_data.num_sidm, "Number of DM-DM collisions the particle has had");
-    return 1;
+    
+    
+    list[1] = io_make_output_field("SIDM_search_radius", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, dmparts, h,
+                                   "Co-moving smoothing lengths (FWHM of the kernel) of the DM particles");
+    
+    list[2] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, dmparts, rho,
+                                   "Co-moving mass densities of the particles");
+
+        
+    return 3;
     
 }
 

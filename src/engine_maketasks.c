@@ -1098,6 +1098,9 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             
             c->dark_matter.ghost = scheduler_addtask(s, task_type_dark_matter_ghost, task_subtype_none, 0, 0, c, NULL);
 
+            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
+            scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);
+
             struct task *kick2_or_logger = c->kick2;
             
             /* Add the time-step calculation task and its dependency */
@@ -3765,6 +3768,7 @@ void engine_maketasks(struct engine *e) {
     message("Making gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
     
+
     /* Add the dark matter tasks. */
     threadpool_map(&e->threadpool, engine_make_dark_matter_tasks_mapper, NULL,
                        s->nr_cells, 1, threadpool_auto_chunk_size, e);
@@ -3855,14 +3859,15 @@ void engine_maketasks(struct engine *e) {
                    sched->tasks, sched->nr_tasks, sizeof(struct task),
                    threadpool_auto_chunk_size, e);
 
-    /* Adding dark matter stuff */
-    threadpool_map(&e->threadpool, engine_make_extra_dark_matter_tasks_mapper,
-                       sched->tasks, sched->nr_tasks, sizeof(struct task),
-                       threadpool_auto_chunk_size, e);
-
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    
+  /* Adding dark matter stuff */
+  /*threadpool_map(&e->threadpool, engine_make_extra_dark_matter_tasks_mapper,
+               sched->tasks, sched->nr_tasks, sizeof(struct task),
+               threadpool_auto_chunk_size, e);*/
+
 
   tic2 = getticks();
 

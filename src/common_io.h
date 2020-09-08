@@ -39,6 +39,7 @@ struct gpart;
 struct velociraptor_gpart_data;
 struct spart;
 struct bpart;
+struct dmpart;
 struct xpart;
 struct sink;
 struct io_props;
@@ -172,6 +173,9 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
                                struct spart* const sparts,
                                struct gpart* const gparts, size_t Nstars,
                                size_t Ndm);
+void io_duplicate_darkmatter_gparts(struct threadpool* tp,
+                               struct dmpart* const dmparts,
+                               struct gpart* const gparts, size_t Ndarkmatter);
 void io_duplicate_sinks_gparts(struct threadpool* tp, struct sink* const sinks,
                                struct gpart* const gparts, size_t Nsinks,
                                size_t Ndm);

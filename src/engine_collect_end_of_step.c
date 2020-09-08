@@ -35,13 +35,15 @@
  */
 struct end_of_step_data {
 
-  size_t updated, g_updated, s_updated, b_updated;
-  size_t inhibited, g_inhibited, s_inhibited, b_inhibited;
+  size_t updated, g_updated, s_updated, b_updated, dm_updated;
+  size_t inhibited, g_inhibited, s_inhibited, b_inhibited, dm_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
   integertime_t ti_black_holes_end_min, ti_black_holes_end_max,
       ti_black_holes_beg_max;
+  integertime_t ti_dark_matter_end_min, ti_dark_matter_end_max,
+    ti_dark_matter_beg_max;
   struct engine *e;
   struct star_formation_history sfh;
   float runtime;
@@ -274,6 +276,64 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
 }
 
 /**
+ * @brief Recursive function gathering end-of-step data.
+ *
+ * We recurse until we encounter a timestep or time-step MPI recv task
+ * as the values will have been set at that level. We then bring these
+ * values upwards.
+ *
+ * @param c The #cell to recurse into.
+ * @param e The #engine.
+ */
+void engine_collect_end_of_step_recurse_dark_matter(struct cell *c,
+                                                    const struct engine *e) {
+    
+    /* Skip super-cells (Their values are already set) */
+    if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+    if (cell_get_recv(c, task_subtype_tend_dmpart) != NULL) return;
+#endif /* WITH_MPI */
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    // if (!c->split) error("Reached a leaf without finding a time-step task!");
+#endif
+    
+    /* Counters for the different quantities. */
+    size_t updated = 0;
+    integertime_t ti_dark_matter_end_min = max_nr_timesteps,
+    ti_dark_matter_end_max = 0, ti_dark_matter_beg_max = 0;
+    
+    /* Collect the values from the progeny. */
+    for (int k = 0; k < 8; k++) {
+        struct cell *cp = c->progeny[k];
+        if (cp != NULL && cp->dark_matter.count > 0) {
+            
+            /* Recurse */
+            engine_collect_end_of_step_recurse_dark_matter(cp, e);
+            
+            /* And update */
+            ti_dark_matter_end_min =
+            min(ti_dark_matter_end_min, cp->dark_matter.ti_end_min);
+            ti_dark_matter_end_max =
+            max(ti_dark_matter_end_max, cp->dark_matter.ti_end_max);
+            ti_dark_matter_beg_max =
+            max(ti_dark_matter_beg_max, cp->dark_matter.ti_beg_max);
+            
+            updated += cp->dark_matter.updated;
+            
+            /* Collected, so clear for next time. */
+            cp->dark_matter.updated = 0;
+        }
+    }
+    
+    /* Store the collected values in the cell. */
+    c->dark_matter.ti_end_min = ti_dark_matter_end_min;
+    c->dark_matter.ti_end_max = ti_dark_matter_end_max;
+    c->dark_matter.ti_beg_max = ti_dark_matter_beg_max;
+    c->dark_matter.updated = updated;
+}
+
+/**
  * @brief Mapping function to collect the data from the end of the step
  *
  * This function will call a recursive function on all the top-level cells
@@ -300,7 +360,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   struct star_formation_history *sfh_top = &data->sfh;
 
   /* Local collectible */
-  size_t updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
+  size_t updated = 0, g_updated = 0, s_updated = 0, b_updated = 0, dm_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -309,6 +369,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                 ti_stars_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+  integertime_t ti_dark_matter_end_min = max_nr_timesteps,
+    ti_dark_matter_end_max = 0, ti_dark_matter_beg_max = 0;
 
   /* Local Star formation history properties */
   struct star_formation_history sfh_updated;
@@ -320,7 +382,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     struct cell *c = &s->cells_top[local_cells[ind]];
 
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
-        c->black_holes.count > 0) {
+        c->dark_matter.count > 0 || c->black_holes.count > 0) {
 
       /* Make the top-cells recurse */
       if (with_hydro) {
@@ -335,6 +397,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       if (with_black_holes) {
         engine_collect_end_of_step_recurse_black_holes(c, e);
       }
+      engine_collect_end_of_step_recurse_dark_matter(c, e);
 
       /* And aggregate */
       if (c->hydro.ti_end_min > e->ti_current)
@@ -360,10 +423,20 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       ti_black_holes_beg_max =
           max(ti_black_holes_beg_max, c->black_holes.ti_beg_max);
 
+      if (c->dark_matter.ti_end_min > e->ti_current)
+        ti_dark_matter_end_min =
+            min(ti_dark_matter_end_min, c->dark_matter.ti_end_min);
+      ti_dark_matter_end_max =
+        max(ti_dark_matter_end_max, c->dark_matter.ti_end_max);
+      ti_dark_matter_beg_max =
+        max(ti_dark_matter_beg_max, c->dark_matter.ti_beg_max);
+
+        
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
       s_updated += c->stars.updated;
       b_updated += c->black_holes.updated;
+      dm_updated += c->dark_matter.updated;
 
       /* Check if the cell was inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(c, e)) {
@@ -379,6 +452,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       c->grav.updated = 0;
       c->stars.updated = 0;
       c->black_holes.updated = 0;
+      c->dark_matter.updated = 0;
     }
   }
 
@@ -389,6 +463,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->g_updated += g_updated;
     data->s_updated += s_updated;
     data->b_updated += b_updated;
+    data->dm_updated += dm_updated;
 
     /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
@@ -418,6 +493,15 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
         max(ti_black_holes_end_max, data->ti_black_holes_end_max);
     data->ti_black_holes_beg_max =
         max(ti_black_holes_beg_max, data->ti_black_holes_beg_max);
+
+    if (ti_dark_matter_end_min > e->ti_current)
+      data->ti_dark_matter_end_min =
+          min(ti_dark_matter_end_min, data->ti_dark_matter_end_min);
+    data->ti_dark_matter_end_max =
+      max(ti_dark_matter_end_max, data->ti_dark_matter_end_max);
+    data->ti_dark_matter_beg_max =
+      max(ti_dark_matter_beg_max, data->ti_dark_matter_beg_max);
+
   }
 
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
@@ -445,7 +529,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   const ticks tic = getticks();
   struct space *s = e->s;
   struct end_of_step_data data;
-  data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
+  data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0 , data.dm_updated = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_end_max = 0,
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
@@ -454,6 +538,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_stars_beg_max = 0;
   data.ti_black_holes_end_min = max_nr_timesteps,
   data.ti_black_holes_end_max = 0, data.ti_black_holes_beg_max = 0;
+    data.ti_dark_matter_end_min = max_nr_timesteps,
+    data.ti_dark_matter_end_max = 0, data.ti_dark_matter_beg_max = 0;
   data.e = e;
 
   /* Need to use a consistent check of the hours since we started. */
@@ -473,16 +559,19 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.g_inhibited = s->nr_inhibited_gparts;
   data.s_inhibited = s->nr_inhibited_sparts;
   data.b_inhibited = s->nr_inhibited_bparts;
+    data.dm_inhibited = s->nr_inhibited_dmparts;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
-      data.b_updated, data.inhibited, data.g_inhibited, data.s_inhibited,
-      data.b_inhibited, data.ti_hydro_end_min, data.ti_hydro_end_max,
+      data.b_updated, data.dm_updated, data.inhibited, data.g_inhibited, data.s_inhibited,
+      data.b_inhibited, data.dm_inhibited, data.ti_hydro_end_min, data.ti_hydro_end_max,
       data.ti_hydro_beg_max, data.ti_gravity_end_min, data.ti_gravity_end_max,
       data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_end_max,
       data.ti_stars_beg_max, data.ti_black_holes_end_min,
-      data.ti_black_holes_end_max, data.ti_black_holes_beg_max, e->forcerebuild,
+      data.ti_black_holes_end_max, data.ti_black_holes_beg_max,
+      data.ti_dark_matter_end_min, data.ti_dark_matter_end_max,
+      data.ti_dark_matter_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
       (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh,
       data.runtime);

@@ -1520,6 +1520,86 @@ void io_convert_spart_l_mapper(void* restrict temp, int N,
  * @brief Mapper function to copy #bpart into a buffer of floats using a
  * conversion function.
  */
+void io_convert_dmpart_f_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+    
+    const struct io_props props = *((const struct io_props*)extra_data);
+    const struct dmpart* restrict dmparts = props.dmparts;
+    const struct engine* e = props.e;
+    const size_t dim = props.dimension;
+    
+    /* How far are we with this chunk? */
+    float* restrict temp_f = (float*)temp;
+    const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+    
+    for (int i = 0; i < N; i++)
+        props.convert_dmpart_f(e, dmparts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #bpart into a buffer of ints using a
+ * conversion function.
+ */
+void io_convert_dmpart_i_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+    
+    const struct io_props props = *((const struct io_props*)extra_data);
+    const struct dmpart* restrict dmparts = props.dmparts;
+    const struct engine* e = props.e;
+    const size_t dim = props.dimension;
+    
+    /* How far are we with this chunk? */
+    int* restrict temp_i = (int*)temp;
+    const ptrdiff_t delta = (temp_i - props.start_temp_i) / dim;
+    
+    for (int i = 0; i < N; i++)
+        props.convert_dmpart_i(e, dmparts + delta + i, &temp_i[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #bpart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_dmpart_d_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+    
+    const struct io_props props = *((const struct io_props*)extra_data);
+    const struct dmpart* restrict dmparts = props.dmparts;
+    const struct engine* e = props.e;
+    const size_t dim = props.dimension;
+    
+    /* How far are we with this chunk? */
+    double* restrict temp_d = (double*)temp;
+    const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+    
+    for (int i = 0; i < N; i++)
+        props.convert_dmpart_d(e, dmparts + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #bpart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_dmpart_l_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+    
+    const struct io_props props = *((const struct io_props*)extra_data);
+    const struct dmpart* restrict dmparts = props.dmparts;
+    const struct engine* e = props.e;
+    const size_t dim = props.dimension;
+    
+    /* How far are we with this chunk? */
+    long long* restrict temp_l = (long long*)temp;
+    const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+    
+    for (int i = 0; i < N; i++)
+        props.convert_dmpart_l(e, dmparts + delta + i, &temp_l[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #bpart into a buffer of floats using a
+ * conversion function.
+ */
 void io_convert_bpart_f_mapper(void* restrict temp, int N,
                                void* restrict extra_data) {
 
@@ -1852,6 +1932,54 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_spart_l_mapper, temp_l, N, copySize,
                      threadpool_auto_chunk_size, (void*)&props);
+    
+    } else if (props.convert_dmpart_f != NULL) {
+        
+        /* Prepare some parameters */
+        float* temp_f = (float*)temp;
+        props.start_temp_f = (float*)temp;
+        props.e = e;
+        
+        /* Copy the whole thing into a buffer */
+        threadpool_map((struct threadpool*)&e->threadpool,
+                       io_convert_dmpart_f_mapper, temp_f, N, copySize,
+                       threadpool_auto_chunk_size, (void*)&props);
+        
+    } else if (props.convert_dmpart_i != NULL) {
+        
+        /* Prepare some parameters */
+        int* temp_i = (int*)temp;
+        props.start_temp_i = (int*)temp;
+        props.e = e;
+        
+        /* Copy the whole thing into a buffer */
+        threadpool_map((struct threadpool*)&e->threadpool,
+                       io_convert_dmpart_i_mapper, temp_i, N, copySize,
+                       threadpool_auto_chunk_size, (void*)&props);
+        
+    } else if (props.convert_dmpart_d != NULL) {
+        
+        /* Prepare some parameters */
+        double* temp_d = (double*)temp;
+        props.start_temp_d = (double*)temp;
+        props.e = e;
+        
+        /* Copy the whole thing into a buffer */
+        threadpool_map((struct threadpool*)&e->threadpool,
+                       io_convert_dmpart_d_mapper, temp_d, N, copySize,
+                       threadpool_auto_chunk_size, (void*)&props);
+        
+    } else if (props.convert_dmpart_l != NULL) {
+        
+        /* Prepare some parameters */
+        long long* temp_l = (long long*)temp;
+        props.start_temp_l = (long long*)temp;
+        props.e = e;
+        
+        /* Copy the whole thing into a buffer */
+        threadpool_map((struct threadpool*)&e->threadpool,
+                       io_convert_dmpart_l_mapper, temp_l, N, copySize,
+                       threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_sink_f != NULL) {
 
@@ -2060,6 +2188,7 @@ size_t io_count_dm_background_gparts(const struct gpart* const gparts,
 
 struct duplication_data {
 
+  struct dmpart* dmparts;
   struct part* parts;
   struct gpart* gparts;
   struct spart* sparts;
@@ -2071,6 +2200,62 @@ struct duplication_data {
   int Nblackholes;
   int Nsinks;
 };
+
+void io_duplicate_darkmatter_gparts_mapper(void* restrict data, int Ndarkmatter,
+                                      void* restrict extra_data) {
+    
+    struct duplication_data* temp = (struct duplication_data*)extra_data;
+    /*const int Ndm = temp->Ndm;*/
+    struct dmpart* dmparts = (struct dmpart*)data;
+    const ptrdiff_t offset = dmparts - temp->dmparts;
+    struct gpart* gparts = temp->gparts + offset;
+    
+    for (int i = 0; i < Ndarkmatter; ++i) {
+        
+        /* Duplicate the crucial information */
+        gparts[i].x[0] = dmparts[i].x[0];
+        gparts[i].x[1] = dmparts[i].x[1];
+        gparts[i].x[2] = dmparts[i].x[2];
+        
+        gparts[i].v_full[0] = dmparts[i].v_full[0];
+        gparts[i].v_full[1] = dmparts[i].v_full[1];
+        gparts[i].v_full[2] = dmparts[i].v_full[2];
+        
+        gparts[i].mass = dmparts[i].mass;
+        
+        /* Set gpart type */
+        gparts[i].type = swift_type_dark_matter;
+        
+        /* Link the particles */
+        gparts[i].id_or_neg_offset = -(long long)(offset + i);
+        dmparts[i].gpart = &gparts[i];
+    }
+}
+
+/**
+ * @brief Copy every #spart into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles and gas particles are all at
+ * the start of the gparts array and adds the star particles afterwards
+ *
+ * @param tp The current #threadpool.
+ * @param sparts The array of #spart freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM and gas
+ * particles at the start.
+ * @param Nstars The number of stars particles read in.
+ * @param Ndm The number of DM and gas particles read in.
+ */
+void io_duplicate_darkmatter_gparts(struct threadpool* tp,
+                               struct dmpart* const dmparts,
+                               struct gpart* const gparts, size_t Ndarkmatter) {
+    
+    struct duplication_data data;
+    data.gparts = gparts;
+    data.dmparts = dmparts;
+    data.Ndm = Ndarkmatter;
+    threadpool_map(tp, io_duplicate_darkmatter_gparts_mapper, dmparts, Ndarkmatter,
+                   sizeof(struct dmpart), threadpool_auto_chunk_size, &data);
+}
 
 void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
                                       void* restrict extra_data) {

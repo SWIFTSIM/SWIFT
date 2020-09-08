@@ -1147,7 +1147,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
   bzero(counts, sizeof(int) * s->nr_tasks);
   for (int k = 0; k < s->nr_unlocks; k++) {
     counts[s->unlock_ind[k]] += 1;
-
+      
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
       error(
@@ -1163,10 +1163,10 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Compute the offset for each unlock block. */
   int *offsets;
-  if ((offsets = (int *)swift_malloc("offsets",
-                                     sizeof(int) * (s->nr_tasks + 1))) == NULL)
+  if ((offsets = (int *)swift_malloc("offsets", sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
+
   for (int k = 0; k < s->nr_tasks; k++) {
     offsets[k + 1] = offsets[k] + counts[k];
 
@@ -1186,7 +1186,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
     unlocks[offsets[ind]] = s->unlocks[k];
     offsets[ind] += 1;
   }
-
+    
   /* Swap the unlocks. */
   swift_free("unlocks", s->unlocks);
   s->unlocks = unlocks;

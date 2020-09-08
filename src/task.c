@@ -65,6 +65,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "drift_spart",
                                              "drift_bpart",
                                              "drift_gpart",
+                                             "drift_dmpart",
                                              "drift_gpart_out",
                                              "end_hydro_force",
                                              "kick1",
@@ -112,7 +113,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "multipole",  "spart",        "stars_density",  "stars_feedback",
     "sf_count",   "bpart_rho",    "bpart_swallow",  "bpart_feedback",
     "bh_density", "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
-    "bh_feedback", "sidm"};
+    "bh_feedback", "sidm", "dark_matter_density",};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sort",    "hydro",          "gravity", "feedback",
@@ -153,6 +154,7 @@ TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
 TASK_CELL_OVERLAP(gpart, grav.parts, grav.count);
 TASK_CELL_OVERLAP(spart, stars.parts, stars.count);
 TASK_CELL_OVERLAP(bpart, black_holes.parts, black_holes.count);
+/*TASK_CELL_OVERLAP(dmpart, dark_matter.parts, dark_matter.count);*/
 
 /**
  * @brief Returns the #task_actions for a given task.
@@ -190,6 +192,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_drift_bpart:
     case task_type_bh_density_ghost:
     case task_type_bh_swallow_ghost3:
+      return task_action_bpart;
+      break;
+
+    case task_type_drift_dmpart:
+    case task_type_dark_matter_ghost:
       return task_action_bpart;
       break;
 

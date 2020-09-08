@@ -225,6 +225,15 @@ struct engine {
   /* Maximal black holes ti_beg for the next time-step */
   integertime_t ti_black_holes_beg_max;
 
+    /* Minimal dark_matter ti_end for the next time-step */
+    integertime_t ti_dark_matter_end_min;
+    
+    /* Maximal dark_matter ti_end for the next time-step */
+    integertime_t ti_dark_matter_end_max;
+    
+    /* Maximal dark_matter ti_beg for the next time-step */
+    integertime_t ti_dark_matter_beg_max;
+
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
@@ -235,13 +244,14 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates, b_updates;
+  long long updates, g_updates, s_updates, b_updates, dm_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;
   long long g_updates_since_rebuild;
   long long s_updates_since_rebuild;
   long long b_updates_since_rebuild;
+  long long dm_updates_since_rebuild;
 
   /* Star formation logger information */
   struct star_formation_history_accumulator sfh;

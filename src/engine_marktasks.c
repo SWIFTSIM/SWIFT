@@ -81,7 +81,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     struct task *t = &tasks[ind];
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
-
+      
     /* Single-cell task? */
     if (t_type == task_type_self || t_type == task_type_sub_self) {
 
@@ -271,13 +271,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_sidm) {
-          if (ci_active_dark_matter) {
-              scheduler_activate(s, t);
-          }
+          if (ci_active_dark_matter) scheduler_activate(s, t);
       }
 
         
-
       /* Activate the gravity drift */
       else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
         if (ci_active_gravity) {

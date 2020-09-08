@@ -3209,7 +3209,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s) {
     /* If this cell is already marked for drift, quit early. */
     if (cell_get_flag(c, cell_flag_do_dark_matter_drift)) return;
-    
+
     /* Mark this cell for drifting. */
     cell_set_flag(c, cell_flag_do_dark_matter_drift);
     
@@ -5630,6 +5630,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
  * @param force Drift the particles irrespective of the #cell flags.
  */
 void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
+    
     const int periodic = e->s->periodic;
     const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
     const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -5644,14 +5645,6 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
     
     /* Drift irrespective of cell flags? */
     force = (force || cell_get_flag(c, cell_flag_do_dark_matter_drift));
-    
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Check that we only drift local cells. */
-    if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
-    
-    /* Check that we are actually going to move forward. */
-    if (ti_current < ti_old_spart) error("Attempt to drift to the past");
-#endif
     
     /* Early abort? */
     if (c->dark_matter.count == 0) {
@@ -5711,7 +5704,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             
             /* Drift... */
             drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);
-            
+
 #ifdef SWIFT_DEBUG_CHECKS
             /* Make sure the particle does not drift by more than a box length. */
             if (fabs(dmp->v[0] * dt_drift) > e->s->dim[0] ||
@@ -5752,9 +5745,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             cell_h_max = max(cell_h_max, dmp->h);
             
             /* Get ready for a density calculation */
-            if (dmpart_is_active(dmp, e)) {
-                dark_matter_init_dmpart(dmp);
-            }
+            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
         }
         
         /* Now, get the maximal particle motion from its square */

@@ -1051,7 +1051,7 @@ int main(int argc, char *argv[]) {
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
+                   &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                    &Nbpart, &flag_entropy_ICs, with_hydro, with_gravity,
                    with_sink, with_stars, with_black_holes, with_cosmology,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
@@ -1116,8 +1116,8 @@ int main(int argc, char *argv[]) {
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
-    N_total[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
+    /*N_total[swift_type_dark_matter] =
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;*/
     N_total[swift_type_dark_matter_background] = Ngpart_background;
     N_total[swift_type_sink] = Nsink;
     N_total[swift_type_stars] = Nspart;
@@ -1147,7 +1147,7 @@ int main(int argc, char *argv[]) {
     /* Do we have background DM particles? */
     const int with_DM_background_particles =
         N_total[swift_type_dark_matter_background] > 0;
-
+      
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
@@ -1155,7 +1155,7 @@ int main(int argc, char *argv[]) {
                replicate, remap_ids, generate_gas_in_ics, with_hydro,
                with_self_gravity, with_star_formation,
                with_DM_background_particles, talking, dry_run, nr_nodes);
-
+      
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
@@ -1212,8 +1212,9 @@ int main(int argc, char *argv[]) {
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = s.nr_parts;
-    N_total[swift_type_dark_matter] =
-        with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons : 0;
+    /*N_total[swift_type_dark_matter] =
+        with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons : 0;*/
+    N_total[swift_type_dark_matter] = s.nr_dmparts;
     N_total[swift_type_count] = s.nr_gparts;
     N_total[swift_type_stars] = s.nr_sparts;
     N_total[swift_type_sink] = s.nr_sinks;

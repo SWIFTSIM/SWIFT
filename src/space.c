@@ -258,6 +258,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->dark_matter.ghost = NULL;
     c->dark_matter.sidm = NULL;
     c->dark_matter.sidm_kick = NULL;
+    c->dark_matter.drift = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -6098,7 +6099,8 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
-                struct bpart *bparts, struct dmpart *dmparts, size_t Npart, size_t Ngpart, size_t Nsink,
+                struct bpart *bparts, struct dmpart *dmparts, size_t Npart,
+                size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Ndmpart, int periodic, int replicate,
                 int remap_ids, int generate_gas_in_ics, int hydro,
                 int self_gravity, int star_formation, int DM_background,
@@ -6165,7 +6167,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (remap_ids) {
     space_remap_ids(s, nr_nodes, verbose);
   }
-
+    
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
     space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background, dim,
@@ -6195,15 +6197,15 @@ void space_init(struct space *s, struct swift_params *params,
     gparts = s->gparts;
     sparts = s->sparts;
     bparts = s->bparts;
-      dmparts = s->dmparts;
+    dmparts = s->dmparts;
     sinks = s->sinks;
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
     Nspart = s->nr_sparts;
     Nbpart = s->nr_bparts;
-      Ndmpart = s->nr_dmparts;
+    Ndmpart = s->nr_dmparts;
     Nsink = s->nr_sinks;
-
+            
 #ifdef SWIFT_DEBUG_CHECKS
     part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
                       Nsink, Nspart, Nbpart, 1);
@@ -6307,6 +6309,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (s->initial_bpart_h != -1.f) {
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
+    
   /* Read in imposed dark matter smoothing length */
   s->initial_dmpart_h = parser_get_opt_param_float(
       params, "InitialConditions:dark_matter_smoothing_length", -1.f);
@@ -6555,8 +6558,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                nr_sparts * sizeof(struct spart));
         memcpy(bparts + offset * nr_bparts, s->bparts,
                nr_bparts * sizeof(struct bpart));
-          memcpy(dmparts + offset * nr_dmparts, s->dmparts,
-                 nr_dmparts * sizeof(struct dmpart));
+        memcpy(dmparts + offset * nr_dmparts, s->dmparts,
+               nr_dmparts * sizeof(struct dmpart));
         memcpy(gparts + offset * nr_gparts, s->gparts,
                nr_gparts * sizeof(struct gpart));
         memcpy(sinks + offset * nr_sinks, s->sinks,
