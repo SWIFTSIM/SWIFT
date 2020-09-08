@@ -2214,6 +2214,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
+  c->hydro.rt_inject = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
   c->stars.density = NULL;
@@ -4867,17 +4868,16 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
 
-      message("ACTIVATING %d", counter);
       scheduler_activate(s, t);
 
       if (t->type == task_type_sub_self) {
-        message("trying to access subcell rt tasks activation");
+        printf("=========================================trying to access subcell self rt tasks activation\n");
         cell_activate_subcell_rt_tasks(ci, NULL, s);
       }
 
       else if (t->type == task_type_sub_pair) {
+        printf("=========================================trying to access subcell pair rt tasks activation\n");
         cell_activate_subcell_rt_tasks(ci, cj, s);
-        message("trying to access subcell rt tasks activation");
       }
     }
   }
