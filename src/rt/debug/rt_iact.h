@@ -48,7 +48,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
 
   pd->iact_stars += 1;
   pd->calls_tot += 1;
-  sd->calls_per_step += 1;
+  pd->calls_per_step += 1;
+
+  if (r2 > 0.f){
+    sd->calls_self += 1;
+    pd->calls_self += 1;
+  } else {
+    sd->calls_pair += 1;
+    pd->calls_pair += 1;
+  }
 }
 
 #endif /* SWIFT_RT_IACT_DEBUG_H */

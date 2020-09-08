@@ -3839,6 +3839,19 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 }
 
 /**
+ * @brief Traverse a sub-cell task and activate the radiative transfer tasks
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
+                                    struct scheduler *s) {
+  /* TODO: everything */
+}
+
+
+/**
  * @brief Un-skips all the hydro tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
@@ -4818,6 +4831,60 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   return rebuild;
 }
+
+/**
+ * @brief Un-skips all the RT tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
+  struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
+
+  int rebuild = 0;
+  int counter = 0;
+
+  for (struct link *l = c->hydro.rt_inject; l != NULL; l = l->next) {
+    counter ++;
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+
+      message("ACTIVATING %d", counter);
+      scheduler_activate(s, t);
+
+      if (t->type == task_type_sub_self) {
+        message("trying to access subcell rt tasks activation");
+        cell_activate_subcell_rt_tasks(ci, NULL, s);
+      }
+
+      else if (t->type == task_type_sub_pair) {
+        cell_activate_subcell_rt_tasks(ci, cj, s);
+        message("trying to access subcell rt tasks activation");
+      }
+    }
+  }
+
+  return rebuild;
+}
+
 
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.

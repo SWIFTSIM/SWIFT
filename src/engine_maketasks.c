@@ -1777,7 +1777,8 @@ void engine_link_gravity_tasks(struct engine *e) {
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
       }
-    }
+
+}
 
     /* Otherwise M-M interaction? */
     else if (t_type == task_type_grav_mm) {
