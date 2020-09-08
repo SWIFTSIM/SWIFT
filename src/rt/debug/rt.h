@@ -33,6 +33,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_xpart(
   xp->rt_data.iact_stars = 0;
   xp->rt_data.calls_tot = 0;
   xp->rt_data.calls_per_step = 0;
+  xp->rt_data.calls_self = 0;
+  xp->rt_data.calls_pair = 0;
 }
 
 /**
@@ -43,6 +45,8 @@ __attribute__((always_inline)) INLINE static void rt_init_xpart(
 
   xp->rt_data.iact_stars = 0;
   xp->rt_data.calls_per_step = 0;
+  xp->rt_data.calls_self = 0;
+  xp->rt_data.calls_pair = 0;
 }
 
 /**
@@ -54,6 +58,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
   sp->rt_data.iact_hydro = 0;
   sp->rt_data.calls_tot = 0;
   sp->rt_data.calls_per_step = 0;
+  sp->rt_data.calls_self = 0;
+  sp->rt_data.calls_pair = 0;
 }
 
 /**
@@ -64,5 +70,7 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
 
   sp->rt_data.iact_hydro = 0;
   sp->rt_data.calls_per_step = 0;
+  sp->rt_data.calls_self = 0;
+  sp->rt_data.calls_pair = 0;
 }
 #endif /* SWIFT_RT_DEBUG_H */

@@ -34,7 +34,7 @@ INLINE static void rt_write_xparts(const struct xpart* xparts,
                                    struct io_props* list, int* num_fields) {
 
   list += *num_fields;
-  *num_fields += 3;
+  *num_fields += 5;
 
   list[0] = io_make_output_field("RT_star_iact", INT, 1, UNIT_CONV_NO_UNITS,
                                  1.f, xparts, rt_data.iact_stars,
@@ -48,6 +48,14 @@ INLINE static void rt_write_xparts(const struct xpart* xparts,
       "RT_calls_this_step", INT, 1, UNIT_CONV_NO_UNITS, 1.f, xparts,
       rt_data.calls_per_step,
       "number of calls to this particle during one time step");
+  list[3] = io_make_output_field(
+      "RT_calls_self", INT, 1, UNIT_CONV_NO_UNITS, 1.f, xparts,
+      rt_data.calls_self,
+      "number of calls to this particle during one time step in self task");
+  list[4] = io_make_output_field(
+      "RT_calls_pair", INT, 1, UNIT_CONV_NO_UNITS, 1.f, xparts,
+      rt_data.calls_pair,
+      "number of calls to this particle during one time step in self task");
 }
 
 /**
@@ -58,7 +66,7 @@ INLINE static void rt_write_stars(const struct spart* sparts,
                                   struct io_props* list, int* num_fields) {
 
   list += *num_fields;
-  *num_fields += 3;
+  *num_fields += 5;
 
   list[0] = io_make_output_field("RT_hydro_iact", INT, 1, UNIT_CONV_NO_UNITS,
                                  1.f, sparts, rt_data.iact_hydro,
@@ -72,5 +80,13 @@ INLINE static void rt_write_stars(const struct spart* sparts,
       "RT_calls_this_step", INT, 1, UNIT_CONV_NO_UNITS, 1.f, sparts,
       rt_data.calls_per_step,
       "number of calls to this particle during one time step");
+  list[3] = io_make_output_field(
+      "RT_calls_self", INT, 1, UNIT_CONV_NO_UNITS, 1.f, sparts,
+      rt_data.calls_self,
+      "number of calls to this particle during one time step in self task");
+  list[4] = io_make_output_field(
+      "RT_calls_pair", INT, 1, UNIT_CONV_NO_UNITS, 1.f, sparts,
+      rt_data.calls_pair,
+      "number of calls to this particle during one time step in self task");
 }
 #endif /* SWIFT_RT_IO_DEBUG_H */
