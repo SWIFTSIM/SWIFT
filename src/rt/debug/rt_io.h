@@ -66,7 +66,7 @@ INLINE static int rt_write_stars(const struct spart* sparts,
                                  "number of interactions between this hydro "
                                  "particle and any star particle");
   list[1] = io_make_output_field(
-      "RTRotalCalls", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts, rt_data.calls_tot,
+      "RTTotalCalls", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts, rt_data.calls_tot,
       "total number of calls to this particle during the run");
   list[2] = io_make_output_field(
       "RTCallsThisStep", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts,

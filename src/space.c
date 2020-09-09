@@ -5341,7 +5341,10 @@ void space_init_sparts_mapper(void *restrict map_data, int scount,
                               void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
-  for (int k = 0; k < scount; k++) stars_init_spart(&sparts[k]);
+  for (int k = 0; k < scount; k++) {
+    stars_init_spart(&sparts[k]);
+    rt_init_spart(&sparts[k]);
+  }
 }
 
 /**
