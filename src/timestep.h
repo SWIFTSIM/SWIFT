@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
 
   const float a_hydro[3] = {0.f, 0.f, 0.f};
   if (e->policy & engine_policy_self_gravity)
-    new_dt_ext = gravity_compute_timestep_self(
+    new_dt_self = gravity_compute_timestep_self(
         gp, a_hydro, e->gravity_properties, e->cosmology);
 
   /* Take the minimum of all */
