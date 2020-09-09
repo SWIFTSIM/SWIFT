@@ -1632,6 +1632,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   }
 #endif
   if (e->policy & engine_policy_rt) {
+    /* 1 self (inject), (3^3-1)/2 = 26/2 = 13 inject pairs */
     n1 += 14;
   }
 

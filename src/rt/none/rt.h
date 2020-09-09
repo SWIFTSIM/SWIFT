@@ -25,25 +25,25 @@
  */
 
 /**
- * @brief First initialisation of the RT extra hydro partilce data.
+ * @brief First initialisation of the RT extra hydro particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_xpart(
     struct xpart* restrict xp) {}
 
 /**
- * @brief Initialisation of the RT extra hydro partilce data.
+ * @brief Initialisation of the RT extra hydro particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_init_xpart(
     struct xpart* restrict xp) {}
 
 /**
- * @brief First initialisation of the RT extra star partilce data.
+ * @brief First initialisation of the RT extra star particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {}
 
 /**
- * @brief First initialisation of the RT extra star partilce data.
+ * @brief First initialisation of the RT extra star particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
     struct spart* restrict sp) {}
