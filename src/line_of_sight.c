@@ -36,6 +36,7 @@
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
 #include "periodic.h"
+#include "rt_io.h"
 #include "star_formation_io.h"
 #include "tracers_io.h"
 #include "velociraptor_io.h"
@@ -432,6 +433,7 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
 #else
   const int with_stf = 0;
 #endif
+  const int with_rt = e->policy & engine_policy_rt;
 
   int num_fields = 0;
   struct io_props list[100];
@@ -454,6 +456,9 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
       tracers_write_particles(parts, xparts, list + num_fields, with_cosmology);
   num_fields +=
       star_formation_write_particles(parts, xparts, list + num_fields);
+  if (with_rt) {
+    num_fields += rt_write_particles(xparts, list + num_fields);
+  }
 
   /* Loop over each output field */
   for (int i = 0; i < num_fields; i++) {
