@@ -42,6 +42,7 @@
 #include "kernel_hydro.h"
 #include "part.h"
 #include "part_type.h"
+#include "rt_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -2867,6 +2868,7 @@ int get_ptype_fields(const int ptype, struct io_props* list,
         num_fields += fof_write_parts(NULL, NULL, list + num_fields);
       if (with_stf)
         num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
+      num_fields += rt_write_particles(NULL, list + num_fields);
       break;
 
     case swift_type_dark_matter:
@@ -2892,6 +2894,7 @@ int get_ptype_fields(const int ptype, struct io_props* list,
       if (with_fof) num_fields += fof_write_sparts(NULL, list + num_fields);
       if (with_stf)
         num_fields += velociraptor_write_sparts(NULL, list + num_fields);
+      num_fields += rt_write_stars(NULL, list + num_fields);
       break;
 
     case swift_type_sink:
