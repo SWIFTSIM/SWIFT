@@ -579,7 +579,23 @@ int main(int argc, char *argv[]) {
         "Error: Cannot use radiative transfer without stars, --stars must be "
         "chosen\n");
   }
+  /* Temporary, this dependency will be removed later */
+  if (with_rt && !with_feedback) {
+    error(
+        "Error: Cannot use radiative transfer without feedback for now,"
+        " --feedback must be chosen\n");
+  }
+
+#ifndef GADGET2_SPH
+  /* Temporary, this dependency will be removed later */
+  error("Error: Cannot use radiative transfer without gadget2-sph for now\n");
 #endif
+#ifndef STARS_GEAR
+  /* Temporary, this dependency will be removed later */
+  error(
+      "Error: Cannot use radiative transfer without GEAR star model for now\n");
+#endif
+#endif /* idfef RT_NONE */
 
 /* Let's pin the main thread, now we know if affinity will be used. */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
