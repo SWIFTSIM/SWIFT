@@ -278,33 +278,36 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
     /* If so, attach send tasks. */
     if (l != NULL) {
         
-        /* Make sure this cell is tagged. */
-        cell_ensure_tagged(ci);
+        if (t_rho == NULL) {
         
-        t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
-                                  ci->mpi.tag, 0, ci, cj);
-        
-        t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart,
-                                 ci->mpi.tag, 0, ci, cj);
-        
-        t_sidm = scheduler_addtask(s, task_type_send, task_subtype_sidm,
-                                 ci->mpi.tag, 0, ci, cj);
+            /* Make sure this cell is tagged. */
+            cell_ensure_tagged(ci);
+            
+            t_rho = scheduler_addtask(s, task_type_send, task_subtype_dark_matter_density,
+                                      ci->mpi.tag, 0, ci, cj);
+            
+            t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart,
+                                     ci->mpi.tag, 0, ci, cj);
+            
+            t_sidm = scheduler_addtask(s, task_type_send, task_subtype_sidm,
+                                     ci->mpi.tag, 0, ci, cj);
 
-        /* The send_rho task should unlock the super-cell's ghost task. */
-        scheduler_addunlock(s, t_rho, ci->grav.super->dark_matter.ghost);
-        
-        /* The send_rho task depends on the cell's ghost task. */
-        scheduler_addunlock(s, ci->grav.super->dark_matter.ghost, t_sidm);
-        
-        scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_rho);
-        
-        /* Ghost before you send */
-        scheduler_addunlock(s, ci->grav.super->dark_matter.ghost, t_rho);
-        
-        /* Drift before you send */
-        scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_sidm);
-        
-        scheduler_addunlock(s, ci->super->timestep, t_ti);
+            /* The send_rho task should unlock the super-cell's ghost task. */
+            scheduler_addunlock(s, t_rho, ci->grav.super->dark_matter.ghost);
+            
+            /* The send_rho task depends on the cell's ghost task. */
+            scheduler_addunlock(s, ci->grav.super->dark_matter.ghost, t_sidm);
+            
+            scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_rho);
+            
+            /* Ghost before you send */
+            /*scheduler_addunlock(s, ci->grav.super->dark_matter.ghost, t_rho);*/
+            
+            /* Drift before you send */
+            /*scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_sidm);*/
+            
+            scheduler_addunlock(s, ci->super->timestep, t_ti);
+        }
         
         /* Add them to the local cell. */
         engine_addlink(e, &ci->mpi.send, t_rho);
@@ -662,7 +665,7 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
     /* Early abort (are we below the level where tasks are)? */
     if (!cell_get_flag(c, cell_flag_has_tasks)) return;
     
-    /* Have we reached a level where there are any hydro tasks ? */
+    /* Have we reached a level where there are any dark matter tasks ? */
     if (t_rho == NULL && c->dark_matter.density != NULL) {
         
 #ifdef SWIFT_DEBUG_CHECKS
@@ -671,25 +674,34 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
 #endif /* SWIFT_DEBUG_CHECKS */
         
         /* Create the tasks. */
+        t_rho = scheduler_addtask(s, task_type_recv, task_subtype_dark_matter_density, c->mpi.tag,
+                                  0, c, NULL);
+
         t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_dmpart,
                                  c->mpi.tag, 0, c, NULL);
         
         t_sidm = scheduler_addtask(s, task_type_recv, task_subtype_sidm, c->mpi.tag,
                                   0, c, NULL);
     }
+    
+    if (t_rho != NULL) {
 
-    if (t_sidm != NULL) {
+        engine_addlink(e, &c->mpi.recv, t_rho);
         engine_addlink(e, &c->mpi.recv, t_ti);
         engine_addlink(e, &c->mpi.recv, t_sidm);
-    
-        for (struct link *l = c->dark_matter.density; l != NULL; l = l->next) {
-            scheduler_addunlock(s, l->t, t_sidm);
-        }
+
+    /*for (struct link *l = c->dark_matter.density; l != NULL; l = l->next) {
+        scheduler_addunlock(s, l->t, t_rho);
+    }*/
+        
         for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) {
+            scheduler_addunlock(s, t_rho, l->t);
+            scheduler_addunlock(s, l->t, t_sidm);
             scheduler_addunlock(s, t_sidm, l->t);
             scheduler_addunlock(s, l->t, t_ti);
         }
     }
+
     
     /* Recurse? */
     if (c->split)
@@ -1081,36 +1093,23 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
     struct scheduler *s = &e->sched;
     
     /* Are we in a super-cell ? */
-    if (c->super == c) {
+    if (c->grav.super == c) {
         
         /* Local tasks only... */
         if (c->nodeID == e->nodeID) {
             
-            /* Add the two half kicks */
-            c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
-                                         c, NULL);
-            
-            c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0,
-                                         c, NULL);
-            
-            c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
-                                         c, NULL);
+            /* Add tasks */
+            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
             
             c->dark_matter.ghost = scheduler_addtask(s, task_type_dark_matter_ghost, task_subtype_none, 0, 0, c, NULL);
 
-            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
-            scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);
+            c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
+            
+            /* Link implicit tasks? */
+            /*scheduler_addunlock(s, c->dark_matter.drift, c->dark_matter.ghost);
+            scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm_kick);*/
+            /*scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);*/
 
-            struct task *kick2_or_logger = c->kick2;
-            
-            /* Add the time-step calculation task and its dependency */
-            c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
-                                            0, 0, c, NULL);
-            
-            scheduler_addunlock(s, kick2_or_logger, c->timestep);
-            scheduler_addunlock(s, c->timestep, c->kick1);
-            scheduler_addunlock(s, c->kick1, c->dark_matter.sidm_kick);
-            
         }
     } else { /* We are above the super-cell so need to go deeper */
         
@@ -1608,10 +1607,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             error("Multipole of ci was not exchanged properly via the proxies");
           if (multi_j == NULL && cj->nodeID != nodeID)
             error("Multipole of cj was not exchanged properly via the proxies");
-            
-          /* Let's do sidm calculation */
-          scheduler_addtask(sched, task_type_pair, task_subtype_sidm, 0, 0,
-                              ci, cj);
 
           /* Minimal distance between any pair of particles */
           const double min_radius2 =
@@ -2043,6 +2038,174 @@ void engine_link_gravity_tasks(struct engine *e) {
       }
     }
   }
+}
+
+
+/**
+ * @brief Creates all the task dependencies for the dark matter
+ *
+ * @param e The #engine
+ */
+void engine_link_dark_matter_tasks(struct engine *e) {
+    
+    struct scheduler *sched = &e->sched;
+    const int nodeID = e->nodeID;
+    const int nr_tasks = sched->nr_tasks;
+    struct task *t_sidm = NULL;
+    
+    for (int k = 0; k < nr_tasks; k++) {
+        
+        /* Get a pointer to the task. */
+        struct task *t = &sched->tasks[k];
+        
+        if (t->type == task_type_none) continue;
+        
+        /* Get the cells we act on */
+        struct cell *ci = t->ci;
+        struct cell *cj = t->cj;
+        const enum task_types t_type = t->type;
+        const enum task_subtypes t_subtype = t->subtype;
+        const long long flags = t->flags;
+        
+        /* Pointers to the parent cells for tasks going up and down the tree
+         * In the case where we are at the super-level we don't
+         * want the parent as no tasks are defined above that level. */
+        struct cell *ci_parent, *cj_parent;
+        if (ci->parent != NULL && ci->grav.super != ci)
+            ci_parent = ci->parent;
+        else
+            ci_parent = ci;
+        
+        if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
+            cj_parent = cj->parent;
+        else
+            cj_parent = cj;
+        
+        /* Node ID (if running with MPI) */
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+        const int ci_nodeID = nodeID;
+        const int cj_nodeID = nodeID;
+#endif
+        
+        /* Self-interaction for DM density? */
+        if (t_type == task_type_self && t_subtype == task_subtype_dark_matter_density) {
+            
+#ifdef SWIFT_DEBUG_CHECKS
+            if (ci_nodeID != nodeID) error("Non-local self task");
+#endif
+            
+            /* drift ---> density --> ghost */
+            /*scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);*/
+            scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
+
+            /* task for the second loop */
+            t_sidm = scheduler_addtask(sched, task_type_self, task_subtype_sidm, flags, 0, ci_parent, NULL);
+
+            /*Link the tasks to the cells */
+            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
+            
+            scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
+            scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
+
+        }
+        
+        /* Otherwise, pair interaction? */
+        else if (t_type == task_type_pair && t_subtype == task_subtype_dark_matter_density) {
+            
+            /* task for the second loop */
+            t_sidm = scheduler_addtask(sched, task_type_pair, task_subtype_sidm, flags, 0, ci_parent, cj_parent);
+            
+            /*Link the tasks to the cells */
+            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
+            engine_addlink(e, &cj_parent->dark_matter.sidm, t_sidm);
+
+            
+            if (ci_nodeID == nodeID) {
+                
+                /* drift ---> density --> ghost */
+                /*scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);*/
+                scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
+                
+                scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
+                scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
+
+                
+            }
+            if (cj_nodeID == nodeID) {
+                
+                /* drift ---> density --> ghost */
+                if (ci_parent != cj_parent) { /* Avoid double unlock */
+                    
+                    /*scheduler_addunlock(sched, cj->grav.super->dark_matter.drift, t);*/
+                    scheduler_addunlock(sched, t, cj->grav.super->dark_matter.ghost);
+                    
+                    scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
+                    scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
+
+                }
+            }
+        }
+        
+        /* Otherwise, sub-self interaction? */
+        else if (t_type == task_type_sub_self && t_subtype == task_subtype_dark_matter_density) {
+            
+#ifdef SWIFT_DEBUG_CHECKS
+            if (ci_nodeID != nodeID) error("Non-local sub-self task");
+#endif
+
+            /* drift ---> density --> ghost */
+            /*scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);*/
+            scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
+            
+            /* task for the second loop */
+            t_sidm = scheduler_addtask(sched, task_type_sub_self, task_subtype_sidm, flags, 0, ci_parent, NULL);
+            
+            /*Link the tasks to the cells */
+            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
+            
+            scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
+            scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
+
+
+        }
+        
+        /* Otherwise, sub-pair interaction? */
+        else if (t_type == task_type_sub_pair && t_subtype == task_subtype_dark_matter_density) {
+            
+            /* task for the second loop */
+            t_sidm = scheduler_addtask(sched, task_type_sub_pair, task_subtype_sidm, flags, 0, ci_parent, cj_parent);
+            
+            /*Link the tasks to the cells */
+            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
+            engine_addlink(e, &cj_parent->dark_matter.sidm, t_sidm);
+
+            if (ci_nodeID == nodeID) {
+                
+                /* drift ---> density --> ghost */
+                /*scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);*/
+                scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
+                
+                scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
+                scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
+
+            }
+            if (cj_nodeID == nodeID) {
+                
+                /* drift ---> density --> ghost */
+                if (ci_parent != cj_parent) { /* Avoid double unlock */
+                    /*scheduler_addunlock(sched, cj->grav.super->dark_matter.drift, t);*/
+                    scheduler_addunlock(sched, t, cj->grav.super->dark_matter.ghost);
+                    
+                    scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
+                    scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
+
+                }
+            }
+        }
+    }
 }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -3099,7 +3262,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
  * @param c The cell.
  */
 static inline void engine_make_dark_matter_dependencies(
-    struct scheduler *sched, struct task *density, struct task *ghost,
+    struct scheduler *sched, struct task *density,
     struct task *sidm, struct cell *c) {
     
     /* density loop --> ghost --> force loop (sidm) */
@@ -3124,9 +3287,9 @@ void engine_make_extra_dark_matter_tasks_mapper(void *map_data, int num_elements
     struct engine *e = (struct engine *)extra_data;
     struct scheduler *sched = &e->sched;
     const int nodeID = e->nodeID;
-    struct task *t_ghost = NULL;
+    /*struct task *t_ghost = NULL;*/
     struct task *t_sidm = NULL;
-    struct task *t_sidm_kick = NULL;
+    /*struct task *t_sidm_kick = NULL;*/
     
     for (int ind = 0; ind < num_elements; ind++) {
         
@@ -3154,7 +3317,7 @@ void engine_make_extra_dark_matter_tasks_mapper(void *map_data, int num_elements
             engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
             
             /* Now, build all the dependencies for the dark matter */
-            engine_make_dark_matter_dependencies(sched, t, t_ghost, t_sidm, ci);
+            engine_make_dark_matter_dependencies(sched, t, t_sidm, ci);
             
             /* Create the task dependencies */
             scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
@@ -3183,10 +3346,10 @@ void engine_make_extra_dark_matter_tasks_mapper(void *map_data, int num_elements
             /* Now, build all the dependencies for the hydro for the cells */
             /* that are local and are not descendant of the same super_hydro-cells */
             if (ci->nodeID == nodeID) {
-                engine_make_dark_matter_dependencies(sched, t, t_ghost, t_sidm, ci);
+                engine_make_dark_matter_dependencies(sched, t, t_sidm, ci);
             }
             if ((cj->nodeID == nodeID) && (ci->grav.super != cj->grav.super)) {
-                engine_make_dark_matter_dependencies(sched, t, t_ghost, t_sidm, cj);
+                engine_make_dark_matter_dependencies(sched, t, t_sidm, cj);
             }
             
             if (ci->nodeID == nodeID) {
@@ -3220,7 +3383,7 @@ void engine_make_extra_dark_matter_tasks_mapper(void *map_data, int num_elements
             
             /* Now, build all the dependencies for the hydro for the cells */
             /* that are local and are not descendant of the same super_hydro-cells */
-            engine_make_dark_matter_dependencies(sched, t, t_ghost, t_sidm, ci);
+            engine_make_dark_matter_dependencies(sched, t, t_sidm, ci);
 
             
             /* Create the task dependencies */
@@ -3249,10 +3412,10 @@ void engine_make_extra_dark_matter_tasks_mapper(void *map_data, int num_elements
             /* Now, build all the dependencies for the hydro for the cells */
             /* that are local and are not descendant of the same super_hydro-cells */
             if (ci->nodeID == nodeID) {
-                engine_make_dark_matter_dependencies(sched, t, t_sidm, t_sidm_kick, ci);
+                engine_make_dark_matter_dependencies(sched, t, t_sidm, ci);
             }
             if ((cj->nodeID == nodeID) && (ci->grav.super != cj->grav.super)) {
-                engine_make_dark_matter_dependencies(sched, t, t_sidm, t_sidm_kick, cj);
+                engine_make_dark_matter_dependencies(sched, t, t_sidm, cj);
             }
             
             if (ci->nodeID == nodeID) {
@@ -3444,7 +3607,7 @@ void engine_make_dark_matter_tasks_mapper(void *map_data, int num_elements,
         /* Get the cell */
         struct cell *ci = &cells[cid];
         
-        /* Skip cells without hydro or star particles */
+        /* Skip cells without DM particles */
         if (ci->dark_matter.count == 0)
             continue;
         
@@ -3863,10 +4026,17 @@ void engine_maketasks(struct engine *e) {
     message("Making extra hydroloop tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
     
-  /* Adding dark matter stuff */
+  tic2 = getticks();
+
+  /* Adding dependencies for dark matter stuff */
+  engine_link_dark_matter_tasks(e);
   /*threadpool_map(&e->threadpool, engine_make_extra_dark_matter_tasks_mapper,
                sched->tasks, sched->nr_tasks, sizeof(struct task),
                threadpool_auto_chunk_size, e);*/
+    
+  if (e->verbose)
+    message("Making links of dark matter tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 
   tic2 = getticks();

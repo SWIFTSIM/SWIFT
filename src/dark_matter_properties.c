@@ -34,6 +34,7 @@
 #define sidm_props_default_max_iterations 30
 #define sidm_props_default_h_max FLT_MAX
 #define sidm_props_default_h_min_ratio 0.f
+#define sidm_props_default_h_sidm FLT_MAX
 #define sidm_props_default_h_tolerance 1e-4
 
 
@@ -79,6 +80,9 @@ void sidm_props_init(struct sidm_props* sidm_props,
     /* Maximal smoothing length */
     sidm_props->h_max = parser_get_opt_param_float(params, "SIDM:h_max",
                                           sidm_props_default_h_max);
+    
+    sidm_props->h_search_radius = parser_get_opt_param_float(params, "SIDM:h_sidm",
+                                                   sidm_props_default_h_sidm);
     
     
     /* Temporarily set the minimal softening to 0. */

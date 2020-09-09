@@ -54,7 +54,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->sidm_data.sidm_flag = 0.0f;
     
     /*! Particle search radius */
-    /*dmp->sidm_data.h_sidm = sidm_props->h_search_radius;*/
+    dmp->sidm_data.h_sidm = sidm_props->h_search_radius;
     
     /*! Number of DM-DM particle collisions */
     dmp->sidm_data.num_sidm = 0.0f;
@@ -94,6 +94,8 @@ __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_va
  */
 __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     struct dmpart* gp, const struct cosmology* cosmo) {
+    
+    message("Doing DM end density");
     
     /* Some smoothing length multiples. */
     const float h = gp->h;

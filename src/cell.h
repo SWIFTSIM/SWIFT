@@ -778,7 +778,7 @@ struct cell {
         /*! Number of #spart updated in this cell. */
         int updated;
         
-        /*! Is the #spart data of this cell being used in a sub-cell? */
+        /*! Is the #dmpart data of this cell being used in a sub-cell? */
         int hold;
         
     } dark_matter;
@@ -1003,6 +1003,8 @@ int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
 int cell_sink_locktree(struct cell *c);
 void cell_sink_unlocktree(struct cell *c);
+int cell_dmlocktree(struct cell *c);
+void cell_dmunlocktree(struct cell *c);
 int cell_blocktree(struct cell *c);
 void cell_bunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
@@ -1373,6 +1375,41 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
+}
+
+
+/**
+ * @brief Can a pair hydro task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split ? */
+    /* If so, is the cut-off radius with some leeway smaller than */
+    /* the sub-cell sizes ? */
+    /* Note that since tasks are create after a rebuild no need to take */
+    /* into account any part motion (i.e. dx_max == 0 here) */
+    return c->split &&
+    (space_stretch * kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a self hydro task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split ? */
+    /* If so, is the cut-off radius with some leeway smaller than */
+    /* the sub-cell sizes ? */
+    /* Note: No need for more checks here as all the sub-pairs and sub-self */
+    /* tasks will be created. So no need to check for h_max */
+    return c->split &&
+    (space_stretch * kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
 }
 
 /**

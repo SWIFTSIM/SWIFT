@@ -1569,6 +1569,8 @@ void engine_print_task_counts(const struct engine *e) {
   const struct scheduler *sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
+    
+    message("in engine print task");
 
   /* Global tasks and cells when using MPI. */
 #ifdef WITH_MPI
@@ -2155,7 +2157,7 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart || t->type == task_type_drift_dmpart ||
         t->type == task_type_kick1 || t->type == task_type_sidm_kick || t->type == task_type_kick2 ||
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
@@ -2173,6 +2175,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_out || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
+        t->subtype == task_subtype_sidm ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
         t->subtype == task_subtype_bh_swallow ||
@@ -2213,7 +2216,7 @@ void engine_skip_drift(struct engine *e) {
 
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_drift_bpart)
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart || t->type == task_type_drift_dmpart)
       t->skip = 1;
   }
 
@@ -2347,6 +2350,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_bparts(s, e->verbose);
   space_init_dmparts(s, e->verbose);
   space_init_sinks(s, e->verbose);
+    
+    message("About to launch tasks?");
 
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
@@ -2423,6 +2428,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
+  message("printed tasks");
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run the brute-force gravity calculation for some gparts */
@@ -2550,6 +2556,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       }
     }
   }
+    
+    if (s->cells_top != NULL && s->nr_dmparts > 0) {
+        for (int i = 0; i < s->nr_cells; i++) {
+            struct cell *c = &s->cells_top[i];
+            if (c->nodeID == engine_rank && c->dark_matter.count > 0) {
+                float dmpart_h_max = c->dark_matter.parts[0].h;
+                for (int k = 1; k < c->dark_matter.count; k++) {
+                    if (c->dark_matter.parts[k].h > dmpart_h_max)
+                        dmpart_h_max = c->dark_matter.parts[k].h;
+                }
+                c->dark_matter.h_max = max(dmpart_h_max, c->dark_matter.h_max);
+            }
+        }
+    }
 
   clocks_gettime(&time2);
 
@@ -4809,6 +4829,10 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_sub_size_self_grav", space_subsize_self_grav);
     space_splitsize = parser_get_opt_param_int(
         params, "Scheduler:cell_split_size", space_splitsize);
+    space_subsize_self_dark_matter = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_self_dark_matter", space_subsize_self_dark_matter);
+    space_subsize_pair_dark_matter = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_pair_dark_matter", space_subsize_pair_dark_matter);
     space_subdepth_diff_grav =
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);

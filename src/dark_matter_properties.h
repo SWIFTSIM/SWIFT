@@ -63,6 +63,9 @@ struct sidm_props {
     /*! Minimal smoothing length (internal units) */
     float h_min;
     
+    /*! SIDM collisions search radius */
+    float h_search_radius;
+    
     /*! Smoothing length tolerance */
     float h_tolerance;
     

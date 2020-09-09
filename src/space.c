@@ -78,6 +78,8 @@ int space_subsize_pair_stars = space_subsize_pair_stars_default;
 int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subsize_pair_dark_matter = space_subsize_pair_dark_matter_default;
+int space_subsize_self_dark_matter = space_subsize_self_dark_matter_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 
@@ -6312,7 +6314,7 @@ void space_init(struct space *s, struct swift_params *params,
     
   /* Read in imposed dark matter smoothing length */
   s->initial_dmpart_h = parser_get_opt_param_float(
-      params, "InitialConditions:dark_matter_smoothing_length", -1.f);
+      params, "SIDM:h_sidm", -1.f);
   if (s->initial_dmpart_h != -1.f) {
         message("Imposing a DM smoothing length of %e", s->initial_dmpart_h);
   }

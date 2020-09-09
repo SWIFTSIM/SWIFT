@@ -165,6 +165,7 @@ enum task_categories {
   task_category_sort,
   task_category_hydro,
   task_category_gravity,
+  task_category_dark_matter,
   task_category_feedback,
   task_category_black_holes,
   task_category_cooling,

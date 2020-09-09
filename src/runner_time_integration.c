@@ -92,10 +92,12 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+    /*struct dmpart *restrict dmparts = c->dark_matter.parts;*/
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
+    /*const int dmcount = c->dark_matter.count;*/
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
