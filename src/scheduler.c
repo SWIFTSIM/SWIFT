@@ -1402,7 +1402,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_limiter)
           cost = 1.f * (wscale * count_i) * count_i;
         else if (t->subtype == task_subtype_rt_inject) {
-          /* TODO: does this make sense? */
           cost = 1.f * wscale * scount_i * count_i;
         } else
           error("Untreated sub-type for selfs: %s",
@@ -1453,8 +1452,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_rt_inject) {
-          /* TODO: does this make sense? */
-          cost = 1.f * wscale * scount_i * count_i;
+          cost = 1.f * wscale * scount_i * count_j;
         } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -1504,8 +1502,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
         } else if (t->subtype == task_subtype_rt_inject) {
-          /* TODO: does this make sense? */
-          cost = 1.f * wscale * scount_i * count_i;
+          cost = 1.f * wscale * scount_i * count_j;
         } else {
           error("Untreated sub-type for sub-pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -1530,7 +1527,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
         } else if (t->subtype == task_subtype_rt_inject) {
-          /* TODO: does this make sense? */
           cost = 1.f * wscale * scount_i * count_i;
         } else {
           error("Untreated sub-type for sub-selfs: %s",

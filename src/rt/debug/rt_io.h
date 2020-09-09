@@ -33,25 +33,22 @@
 INLINE static int rt_write_particles(const struct xpart* xparts,
                                      struct io_props* list) {
 
-  list[0] = io_make_output_field("RTStarIact", INT, 1, UNIT_CONV_NO_UNITS, 1.f,
+  list[0] = io_make_output_field("RTStarIact", INT, 1, UNIT_CONV_NO_UNITS, 0,
                                  xparts, rt_data.iact_stars,
                                  "number of interactions between this hydro "
                                  "particle and any star particle");
   list[1] = io_make_output_field(
-      "RTTotalCalls", INT, 1, UNIT_CONV_NO_UNITS, 1.f, xparts,
-      rt_data.calls_tot,
+      "RTTotalCalls", INT, 1, UNIT_CONV_NO_UNITS, 0, xparts, rt_data.calls_tot,
       "total number of calls to this particle during the run");
   list[2] = io_make_output_field(
-      "RTCallsThisStep", INT, 1, UNIT_CONV_NO_UNITS, 1.f, xparts,
+      "RTCallsThisStep", INT, 1, UNIT_CONV_NO_UNITS, 0, xparts,
       rt_data.calls_per_step,
       "number of calls to this particle during one time step");
   list[3] = io_make_output_field(
-      "RTCallsSelf", INT, 1, UNIT_CONV_NO_UNITS, 1.f, xparts,
-      rt_data.calls_self,
+      "RTCallsSelf", INT, 1, UNIT_CONV_NO_UNITS, 0, xparts, rt_data.calls_self,
       "number of calls to this particle during one time step in self task");
   list[4] = io_make_output_field(
-      "RTCallsPair", INT, 1, UNIT_CONV_NO_UNITS, 1.f, xparts,
-      rt_data.calls_pair,
+      "RTCallsPair", INT, 1, UNIT_CONV_NO_UNITS, 0, xparts, rt_data.calls_pair,
       "number of calls to this particle during one time step in self task");
 
   return (5);
@@ -64,25 +61,22 @@ INLINE static int rt_write_particles(const struct xpart* xparts,
 INLINE static int rt_write_stars(const struct spart* sparts,
                                  struct io_props* list) {
 
-  list[0] = io_make_output_field("RTHydroIact", INT, 1, UNIT_CONV_NO_UNITS, 1.f,
+  list[0] = io_make_output_field("RTHydroIact", INT, 1, UNIT_CONV_NO_UNITS, 0,
                                  sparts, rt_data.iact_hydro,
                                  "number of interactions between this hydro "
                                  "particle and any star particle");
   list[1] = io_make_output_field(
-      "RTRotalCalls", INT, 1, UNIT_CONV_NO_UNITS, 1.f, sparts,
-      rt_data.calls_tot,
+      "RTRotalCalls", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts, rt_data.calls_tot,
       "total number of calls to this particle during the run");
   list[2] = io_make_output_field(
-      "RTCallsThisStep", INT, 1, UNIT_CONV_NO_UNITS, 1.f, sparts,
+      "RTCallsThisStep", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts,
       rt_data.calls_per_step,
       "number of calls to this particle during one time step");
   list[3] = io_make_output_field(
-      "RTCallsSelf", INT, 1, UNIT_CONV_NO_UNITS, 1.f, sparts,
-      rt_data.calls_self,
+      "RTCallsSelf", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts, rt_data.calls_self,
       "number of calls to this particle during one time step in self task");
   list[4] = io_make_output_field(
-      "RTCallsPair", INT, 1, UNIT_CONV_NO_UNITS, 1.f, sparts,
-      rt_data.calls_pair,
+      "RTCallsPair", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts, rt_data.calls_pair,
       "number of calls to this particle during one time step in self task");
 
   return (5);

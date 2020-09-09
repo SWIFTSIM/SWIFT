@@ -137,7 +137,7 @@ void DOPAIR1_NONSYM_RT(struct runner *r, struct cell *ci, struct cell *cj) {
       float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      if (r2 < hjg2) IACT_RT(-1.f, dx, hi, hj, si, xpj);
+      if (r2 < hjg2) IACT_RT(r2, dx, hi, hj, si, xpj);
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
