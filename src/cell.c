@@ -63,6 +63,7 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "pressure_floor.h"
+#include "rt.h"
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
@@ -5281,6 +5282,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
+        rt_init_xpart(xp);
       }
     }
 
@@ -5602,6 +5604,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       if (spart_is_active(sp, e)) {
         stars_init_spart(sp);
         feedback_init_spart(sp);
+        rt_init_spart(sp);
       }
     }
 
