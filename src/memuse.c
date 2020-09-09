@@ -172,6 +172,10 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
   while (ind > memuse_log_size)
     ;
 
+  /* Guard against case when we have already overran the available new
+   * space. */
+  if (ind == memuse_log_size) memuse_log_reallocate(ind);
+
   /* Record the log. */
   memuse_log[ind].step = engine_current_step;
   memuse_log[ind].allocated = allocated;
