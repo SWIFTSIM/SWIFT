@@ -111,8 +111,8 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
 
-  struct gpart *restrict gparts = c->grav.parts;
-  const int gcount = c->grav.count;
+  // struct gpart *restrict gparts = c->grav.parts;
+  // const int gcount = c->grav.count;
   const struct engine *e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -134,7 +134,7 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     lock_lock(&c->grav.plock);
 #endif
-    pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
+    // pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
 #endif

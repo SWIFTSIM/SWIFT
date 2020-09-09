@@ -335,9 +335,9 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
   /* ---- */
 
   /* Store things back */
-  gp->a_grav[0] += fac * a[0];
-  gp->a_grav[1] += fac * a[1];
-  gp->a_grav[2] += fac * a[2];
+  gp->a_grav_mesh[0] = fac * a[0];
+  gp->a_grav_mesh[1] = fac * a[1];
+  gp->a_grav_mesh[2] = fac * a[2];
   gravity_add_comoving_potential(gp, p);
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = p;
@@ -650,11 +650,13 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
   const double* potential = mesh->potential;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
 
+  const float const_G = e->physical_constants->const_newton_G;
+
   /* Get the potential from the mesh to the active gparts using CIC */
   for (int i = 0; i < gcount; ++i) {
     struct gpart* gp = &gparts[i];
 
-    if (gpart_is_active(gp, e)) {
+    if (!gpart_is_inhibited(gp, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
@@ -666,7 +668,15 @@ void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
         error("Adding forces to an un-initialised gpart.");
 #endif
 
+      gp->a_grav_mesh[0] = 0.f;
+      gp->a_grav_mesh[1] = 0.f;
+      gp->a_grav_mesh[2] = 0.f;
+
       mesh_to_gparts_CIC(gp, potential, N, cell_fac, dim);
+
+      gp->a_grav_mesh[0] *= const_G;
+      gp->a_grav_mesh[1] *= const_G;
+      gp->a_grav_mesh[2] *= const_G;
     }
   }
 #else
@@ -747,6 +757,10 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
   mesh->potential = NULL;
+  mesh->ti_beg_mesh_last = -1;
+  mesh->ti_end_mesh_last = -1;
+  mesh->ti_beg_mesh_next = -1;
+  mesh->ti_end_mesh_next = -1;
 
   if (mesh->N > 1290)
     error(
@@ -793,6 +807,10 @@ void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]) {
   mesh->r_s = FLT_MAX;
   mesh->r_cut_min = FLT_MAX;
   mesh->r_cut_max = FLT_MAX;
+  mesh->ti_beg_mesh_last = -1;
+  mesh->ti_end_mesh_last = -1;
+  mesh->ti_beg_mesh_next = -1;
+  mesh->ti_end_mesh_next = -1;
 }
 
 /**
