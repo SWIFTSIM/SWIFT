@@ -1778,7 +1778,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         }
       }
 
-}
+    }
 
     /* Otherwise M-M interaction? */
     else if (t_type == task_type_grav_mm) {
@@ -2461,8 +2461,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        t_rt_inject = scheduler_addtask(
-            sched, task_type_sub_self, task_subtype_rt_inject, flags, 0, ci, NULL);
+        t_rt_inject =
+            scheduler_addtask(sched, task_type_sub_self, task_subtype_rt_inject,
+                              flags, 0, ci, NULL);
       }
 
       /* Add the link between the new loop and the cell */
@@ -2646,8 +2647,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        t_rt_inject = scheduler_addtask(
-            sched, task_type_sub_pair, task_subtype_rt_inject, flags, 0, ci, cj);
+        t_rt_inject =
+            scheduler_addtask(sched, task_type_sub_pair, task_subtype_rt_inject,
+                              flags, 0, ci, cj);
       }
 
       engine_addlink(e, &ci->hydro.force, t_force);

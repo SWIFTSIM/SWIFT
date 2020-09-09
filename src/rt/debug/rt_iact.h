@@ -50,7 +50,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   pd->calls_tot += 1;
   pd->calls_per_step += 1;
 
-  if (r2 > 0.f){
+  if (r2 > 0.f) {
     sd->calls_self += 1;
     pd->calls_self += 1;
   } else {

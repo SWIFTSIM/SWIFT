@@ -46,7 +46,7 @@ enum task_broad_types {
   task_broad_types_stars,
   task_broad_types_sinks,
   task_broad_types_black_holes,
-  task_broad_types_rt, 
+  task_broad_types_rt,
   task_broad_types_count,
 };
 
@@ -270,7 +270,6 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
   const int forcerebuild = cell_unskip_rt_tasks(c, &e->sched);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
-
 
 /**
  * @brief Mapper function to unskip active tasks.
