@@ -2462,7 +2462,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_rt) {
         t_rt_inject = scheduler_addtask(
-            sched, task_type_self, task_subtype_rt_inject, flags, 0, ci, NULL);
+            sched, task_type_sub_self, task_subtype_rt_inject, flags, 0, ci, NULL);
       }
 
       /* Add the link between the new loop and the cell */
@@ -2647,7 +2647,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_rt) {
         t_rt_inject = scheduler_addtask(
-            sched, task_type_pair, task_subtype_rt_inject, flags, 0, ci, cj);
+            sched, task_type_sub_pair, task_subtype_rt_inject, flags, 0, ci, cj);
       }
 
       engine_addlink(e, &ci->hydro.force, t_force);
