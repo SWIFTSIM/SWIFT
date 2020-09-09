@@ -1787,19 +1787,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     message("updating particle counts took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Re-compute the mesh forces */
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
-
-    /* Re-allocate the PM grid if we freed it... */
-    if (repartitioned) pm_mesh_allocate(e->mesh);
-
-    /* ... and recompute */
-    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
-  }
-
-  /* Re-compute the maximal RMS displacement constraint */
-  if (e->policy & engine_policy_cosmology)
-    engine_recompute_displacement_constraint(e);
+    /* Re-compute the maximal RMS displacement constraint */
+    // if (e->policy & engine_policy_cosmology)
+    //  engine_recompute_displacement_constraint(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
@@ -2276,6 +2266,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, e->s);
 
+  /* Re-compute the mesh forces */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+
+    /* Re-allocate the PM grid if we freed it... */
+    // pm_mesh_allocate(e->mesh);
+
+    /* ... and recompute */
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+
+    pm_mesh_interpolate_forces(e->mesh, e, e->s->gparts, e->s->nr_gparts);
+
+    engine_recompute_displacement_constraint(e);
+  }
+
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
     /* Mark the first time step in the particle logger file. */
@@ -2732,6 +2736,23 @@ void engine_step(struct engine *e) {
     }
   }
 #endif
+
+  /* Re-compute the mesh forces */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
+      e->mesh->ti_end_mesh_next == e->ti_current) {
+
+    /* Re-allocate the PM grid if we freed it... */
+    // pm_mesh_allocate(e->mesh);
+
+    engine_drift_all(e, /*drift_mpole=*/0);
+
+    /* ... and recompute */
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+
+    pm_mesh_interpolate_forces(e->mesh, e, e->s->gparts, e->s->nr_gparts);
+
+    engine_recompute_displacement_constraint(e);
+  }
 
   /* Get current CPU times.*/
 #ifdef WITH_MPI
@@ -5387,6 +5408,39 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   if (e->verbose)
     message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
+
+  /* Update the time-step */
+  if (e->s->periodic) {
+
+    e->mesh->ti_end_mesh_last = e->mesh->ti_end_mesh_next;
+    e->mesh->ti_beg_mesh_last = e->mesh->ti_beg_mesh_next;
+
+    if (e->step > 1 && e->mesh->ti_end_mesh_last != e->ti_current)
+      error("Weird time integration issue");
+
+    double dt_mesh =
+        e->dt_max_RMS_displacement * e->cosmology->time_step_factor;
+    dt_mesh = min(dt_mesh, e->dt_max);
+
+    /* Convert to integer time */
+    integertime_t new_dti = (integertime_t)(dt_mesh * e->time_base_inv);
+
+    integertime_t dti_timeline = max_nr_timesteps;
+    while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
+    new_dti = dti_timeline;
+
+    /* Make sure we are allowed to increase the timestep size */
+    // const integertime_t current_dti = e->step > 0 ?
+    //  get_integer_timestep(e->mesh->ti_end_mesh_last -
+    //  e->mesh->ti_beg_mesh_last) : max_nr_timesteps;
+    // if (new_dti > current_dti) {
+    //  if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
+    //}
+
+    e->mesh->ti_beg_mesh_next = e->ti_current;
+    e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
+    message("%lld %lld", e->mesh->ti_beg_mesh_next, e->mesh->ti_end_mesh_next);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

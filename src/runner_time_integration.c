@@ -115,6 +115,20 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_kick1(r, c->progeny[k], 0);
   } else {
 
+    integertime_t ti_begin_mesh = -1;
+    integertime_t ti_end_mesh = -1;
+    double dt_kick_mesh_grav = 0.;
+
+    /* Are we at a step where we do mesh-gravity time-integration? */
+    if (e->mesh->ti_beg_mesh_next == e->ti_current) {
+
+      ti_begin_mesh = e->mesh->ti_beg_mesh_next;
+      ti_end_mesh = e->mesh->ti_beg_mesh_next +
+                    (e->mesh->ti_end_mesh_next - e->mesh->ti_beg_mesh_next) / 2;
+      dt_kick_mesh_grav =
+          cosmology_get_grav_kick_factor(cosmo, ti_begin_mesh, ti_end_mesh);
+    }
+
     /* Loop over the parts in this cell. */
     for (int k = 0; k < count; k++) {
 
@@ -184,6 +198,12 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct gpart *restrict gp = &gparts[k];
 
+      if (ti_end_mesh != -1 && !gpart_is_starting(gp, e)) {
+        error(
+            "Particle on a time-step longer than the mesh synchronization "
+            "step!");
+      }
+
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter ||
            gp->type == swift_type_dark_matter_background) &&
@@ -215,6 +235,13 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
         /* do the kick */
         kick_gpart(gp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+
+        /* Do a long-range kick? */
+        if (ti_end_mesh != -1) {
+
+          // message("aa");
+          kick_gpart_mesh(gp, dt_kick_mesh_grav, ti_begin_mesh, ti_end_mesh);
+        }
       }
     }
 
@@ -380,6 +407,21 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_kick2(r, c->progeny[k], 0);
   } else {
 
+    integertime_t ti_begin_mesh = -1;
+    integertime_t ti_end_mesh = -1;
+    double dt_kick_mesh_grav = 0.;
+
+    /* Are we at a step where we do mesh-gravity time-integration? */
+    if (e->mesh->ti_end_mesh_last == e->ti_current) {
+
+      ti_begin_mesh =
+          e->mesh->ti_beg_mesh_last +
+          (e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last) / 2;
+      ti_end_mesh = e->mesh->ti_end_mesh_last;
+      dt_kick_mesh_grav =
+          cosmology_get_grav_kick_factor(cosmo, ti_begin_mesh, ti_end_mesh);
+    }
+
     /* Loop over the particles in this cell. */
     for (int k = 0; k < count; k++) {
 
@@ -449,6 +491,12 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct gpart *restrict gp = &gparts[k];
 
+      if (ti_end_mesh != -1 && !gpart_is_active(gp, e)) {
+        error(
+            "Particle on a time-step longer than the mesh synchronization "
+            "step!");
+      }
+
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter ||
            gp->type == swift_type_dark_matter_background) &&
@@ -481,6 +529,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         if (gp->ti_drift != gp->ti_kick)
           error("Error integrating g-part in time.");
 #endif
+
+        /* Do a long-range kick? */
+        if (ti_end_mesh != -1) {
+          kick_gpart_mesh(gp, dt_kick_mesh_grav, ti_begin_mesh, ti_end_mesh);
+        }
 
         /* Prepare the values to be drifted */
         gravity_reset_predicted_values(gp);

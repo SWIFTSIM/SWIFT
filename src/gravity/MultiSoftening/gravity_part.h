@@ -34,8 +34,11 @@ struct gpart {
   /*! Particle velocity. */
   float v_full[3];
 
-  /*! Particle acceleration. */
+  /*! Particle acceleration from the tree. */
   float a_grav[3];
+
+  /*! Particle acceleration from the mesh. */
+  float a_grav_mesh[3];
 
   /*! Gravitational potential */
   float potential;
@@ -76,6 +79,9 @@ struct gpart {
 
   /* Time of the last kick */
   integertime_t ti_kick;
+
+  /* Time of the last mesh kick */
+  integertime_t ti_kick_mesh;
 
   /* Has this particle been initialised? */
   int initialised;
