@@ -123,7 +123,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     $(COLIBRE_COOLING_SOURCES)
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_dark_matter.h kernel_gravity.h \
 		 gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h \
 	         runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h \
                  runner_doiact_dark_matter.h runner_doiact_grav.h \

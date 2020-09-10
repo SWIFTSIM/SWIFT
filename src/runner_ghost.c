@@ -1419,7 +1419,6 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     double h_max = c->dark_matter.h_max;
     
     TIMER_TIC;
-    message("Runner DM density ghost");
     
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;

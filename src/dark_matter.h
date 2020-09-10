@@ -104,10 +104,10 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
     
     /* Final operation on the density (add self-contribution). */
-    gp->rho += gp->mass * kernel_root;
-    gp->density.rho_dh -= hydro_dimension * gp->mass * kernel_root;
-    gp->density.wcount += kernel_root;
-    gp->density.wcount_dh -= hydro_dimension * kernel_root;
+    gp->rho += gp->mass * dm_kernel_root;
+    gp->density.rho_dh -= 3.f * gp->mass * dm_kernel_root;
+    gp->density.wcount += dm_kernel_root;
+    gp->density.wcount_dh -= 3.f * dm_kernel_root;
     
     /* Finish the calculation by inserting the missing h-factors */
     gp->rho *= h_inv_dim;
@@ -131,8 +131,8 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
     /* Re-set problematic values */
-    gp->rho = gp->mass * kernel_root * h_inv_dim;
-    gp->density.wcount = kernel_root * h_inv_dim;
+    gp->rho = gp->mass * dm_kernel_root * h_inv_dim;
+    gp->density.wcount = dm_kernel_root * h_inv_dim;
     gp->density.rho_dh = 0.f;
     gp->density.wcount_dh = 0.f;
 }
@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     const float CFL_condition = sidm_properties->CFL_condition;
     
     /* CFL condition */
-    const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * dmp->h / (cosmo->a_factor_sound_speed);
+    const float dt_cfl = 2.f * dm_kernel_gamma * CFL_condition * cosmo->a * dmp->h / (cosmo->a_factor_sound_speed);
     
     return dt_cfl;
 }
