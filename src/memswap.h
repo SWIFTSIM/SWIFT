@@ -20,8 +20,9 @@
 #define SWIFT_MEMSWAP_H
 
 /* Config parameters. */
-#include <stdint.h>
 #include "../config.h"
+
+#include <stdint.h>
 
 #ifdef HAVE_IMMINTRIN_H
 /* Include the header file with the intrinsics for Intel architecture. */

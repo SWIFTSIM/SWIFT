@@ -17,9 +17,10 @@
  *
  ******************************************************************************/
 
+#include "logger_time.h"
+
 #include <stdlib.h>
 #include <time.h>
-#include "logger_time.h"
 
 #define NUMBER_OF_ELEMENT 10000
 #define TIME_BASE 0.04
@@ -74,5 +75,6 @@ int main(int argc, char *argv[]) {
     assert(offset == times.records[ind].offset);
   }
 
+  time_array_free(&times);
   return 0;
 }

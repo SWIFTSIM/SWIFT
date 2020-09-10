@@ -22,7 +22,7 @@ TimeIntegration:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025
-  MAC:          adpative
+  MAC:          adaptive
   theta_cr:     0.7
   epsilon_fmm:  0.001
   comoving_DM_softening:         0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
@@ -77,6 +77,17 @@ EAGLECooling:
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
+
+# COLIBRE cooling parameters
+COLIBRECooling:
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5
+  H_reion_z:               11.5
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+  delta_logTEOS_subgrid_properties: 0.5
+  rapid_cooling_threshold:          0.333333
 
 # Impose primoridal metallicity
 EAGLEChemistry:

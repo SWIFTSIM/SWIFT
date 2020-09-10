@@ -95,6 +95,7 @@ int main(int argc, char *argv[]) {
   struct phys_const prog_const;
   struct space s;
   struct spart *sparts = NULL;
+  struct sink *sinks = NULL;
   struct bpart *bparts = NULL;
   struct unit_system us;
 
@@ -139,8 +140,9 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dump_tasks = 0;
   int dump_threadpool = 0;
-  int with_fof = 1;
   int with_fp_exceptions = 0;
+  int with_cosmology = 0;
+  int with_sinks = 0;
   int with_stars = 0;
   int with_black_holes = 0;
   int with_hydro = 0;
@@ -160,8 +162,12 @@ int main(int argc, char *argv[]) {
       OPT_HELP(),
 
       OPT_GROUP("  Friends-of-Friends options:\n"),
+      OPT_BOOLEAN('c', "cosmology", &with_cosmology,
+                  "Run with cosmological information.", NULL, 0, 0),
       OPT_BOOLEAN(0, "hydro", &with_hydro, "Read gas particles from the ICs.",
                   NULL, 0, 0),
+      OPT_BOOLEAN(0, "sinks", &with_sinks, "Read sinks from the ICs.", NULL, 0,
+                  0),
       OPT_BOOLEAN(0, "stars", &with_stars, "Read stars from the ICs.", NULL, 0,
                   0),
       OPT_BOOLEAN(0, "black-holes", &with_black_holes,
@@ -257,8 +263,7 @@ int main(int argc, char *argv[]) {
 
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
-    io_write_output_field_parameter(output_parameters_filename,
-                                    /*with_cosmology=*/1);
+    io_write_output_field_parameter(output_parameters_filename, with_cosmology);
     printf("End of run.\n");
     return 0;
   }
@@ -316,6 +321,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
     message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(sink)        is %4zi bytes.", sizeof(struct sink));
     message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
     message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
     message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
@@ -389,6 +395,10 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  /* Prepare and verify the selection of outputs */
+  io_prepare_output_fields(output_options, with_cosmology, /*with_fof=*/1,
+                           /*with_structure_finding=*/0);
+
   /* Initialize unit system and constants */
   units_init_from_params(&us, params, "InternalUnitSystem");
   phys_const_init(&us, params, &prog_const);
@@ -414,12 +424,23 @@ int main(int argc, char *argv[]) {
       params, "InitialConditions:cleanup_h_factors", 0);
   const int cleanup_sqrt_a = parser_get_opt_param_int(
       params, "InitialConditions:cleanup_velocity_factors", 0);
+
   /* Initialise the cosmology */
-  cosmology_init(params, &us, &prog_const, &cosmo);
+  if (with_cosmology)
+    cosmology_init(params, &us, &prog_const, &cosmo);
+  else
+    cosmology_init_no_cosmo(&cosmo);
+  if (myrank == 0 && with_cosmology) cosmology_print(&cosmo);
+
+  /* Initialise the equation of state */
+  if (with_hydro)
+    eos_init(&eos, &prog_const, &us, params);
+  else
+    bzero(&eos, sizeof(struct eos_parameters));
 
   /* Initialise the FOF properties */
   bzero(&fof_properties, sizeof(struct fof_props));
-  if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+  fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/1);
 
   /* Be verbose about what happens next */
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
@@ -431,34 +452,37 @@ int main(int argc, char *argv[]) {
 
   /* Get ready to read particles of all kinds */
   int flag_entropy_ICs = 0;
-  size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
+  size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0;
+  size_t Nsink = 0, Nspart = 0, Nbpart = 0;
   double dim[3] = {0., 0., 0.};
 
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(
-      ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
-      &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-      /*with_grav=*/1, with_stars, with_black_holes, /*with_cosmology=*/1,
-      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
-      MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-      /*dry_run=*/0);
+  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
+                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
+                   &Nbpart, &flag_entropy_ICs, with_hydro,
+                   /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
+                   with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   /*dry_run=*/0, /*remap_ids=*/0);
 #else
-  read_ic_serial(
-      ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
-      &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-      /*with_grav=*/1, with_stars, with_black_holes, /*with_cosmology=*/1,
-      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
-      MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, /*dry_run=*/0);
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
+                 &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
+                 &Nbpart, &flag_entropy_ICs, with_hydro,
+                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
+                 with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                 /*dry_run=*/0, /*remap_ids=*/0);
 #endif
 #else
-  read_ic_single(
-      ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
-      &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-      /*with_grav=*/1, with_stars, with_black_holes, /*with_cosmology=*/1,
-      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads, /*dry_run=*/0);
+  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
+                 &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
+                 &Nbpart, &flag_entropy_ICs, with_hydro,
+                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
+                 with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
+                 nr_threads, /*dry_run=*/0, /*remap_ids=*/0);
 #endif
 #endif
   if (myrank == 0) {
@@ -470,8 +494,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the other links are correctly set */
-  part_verify_links(parts, gparts, sparts, bparts, Ngas, Ngpart, Nspart, Nbpart,
-                    1);
+  part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart, Nsink,
+                    Nspart, Nbpart, /*verbose=*/1);
 #endif
 
   /* Get the total number of particles across all nodes. */
@@ -482,6 +506,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_gas] = Ngas;
   N_long[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
   N_long[swift_type_dark_matter_background] = Ngpart_background;
+  N_long[swift_type_sink] = Nsink;
   N_long[swift_type_stars] = Nspart;
   N_long[swift_type_black_hole] = Nbpart;
   N_long[swift_type_count] = Ngpart;
@@ -491,6 +516,7 @@ int main(int argc, char *argv[]) {
   N_total[swift_type_gas] = Ngas;
   N_total[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
   N_total[swift_type_dark_matter_background] = Ngpart_background;
+  N_total[swift_type_sink] = Nsink;
   N_total[swift_type_stars] = Nspart;
   N_total[swift_type_black_hole] = Nbpart;
   N_total[swift_type_count] = Ngpart;
@@ -498,17 +524,19 @@ int main(int argc, char *argv[]) {
 
   if (myrank == 0)
     message(
-        "Read %lld gas particles, %lld stars particles, %lld black hole "
+        "Read %lld gas particles, %lld sink particles, %lld stars particles, "
+        "%lld black hole "
         "particles, %lld DM particles and %lld DM background particles from "
         "the ICs.",
-        N_total[swift_type_gas], N_total[swift_type_stars],
-        N_total[swift_type_black_hole], N_total[swift_type_dark_matter],
+        N_total[swift_type_gas], N_total[swift_type_sink],
+        N_total[swift_type_stars], N_total[swift_type_black_hole],
+        N_total[swift_type_dark_matter],
         N_total[swift_type_dark_matter_background]);
 
   const int with_DM_particles = N_total[swift_type_dark_matter] > 0;
   const int with_baryon_particles =
-      (N_total[swift_type_gas] + N_total[swift_type_stars] +
-       N_total[swift_type_black_hole]) > 0;
+      (N_total[swift_type_gas] + N_total[swift_type_sink] +
+       N_total[swift_type_stars] + N_total[swift_type_black_hole]) > 0;
 
   /* Do we have background DM particles? */
   const int with_DM_background_particles =
@@ -517,7 +545,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
-             sparts, bparts, Ngas, Ngpart, Nspart, Nbpart, periodic, replicate,
+             sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
+             periodic, replicate, /*remap_ids=*/0,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, with_DM_background_particles, talking,
              /*dry_run=*/0, nr_nodes);
@@ -532,7 +561,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the gravity scheme */
   bzero(&gravity_properties, sizeof(struct gravity_props));
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
-                     /*with_cosmology=*/1, /*with_external_gravity=*/0,
+                     with_cosmology, /*with_external_gravity=*/0,
                      with_baryon_particles, with_DM_particles,
                      with_DM_background_particles, periodic, s.dim);
 
@@ -554,6 +583,7 @@ int main(int argc, char *argv[]) {
   N_long[swift_type_gas] = s.nr_parts;
   N_long[swift_type_dark_matter] = s.nr_gparts - Ngpart_background - Nbaryons;
   N_long[swift_type_count] = s.nr_gparts;
+  N_long[swift_type_sink] = s.nr_sinks;
   N_long[swift_type_stars] = s.nr_sparts;
   N_long[swift_type_black_hole] = s.nr_bparts;
   MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
@@ -562,6 +592,7 @@ int main(int argc, char *argv[]) {
   N_total[swift_type_gas] = s.nr_parts;
   N_total[swift_type_dark_matter] = s.nr_gparts - Ngpart_background - Nbaryons;
   N_total[swift_type_count] = s.nr_gparts;
+  N_total[swift_type_sink] = s.nr_sinks;
   N_total[swift_type_stars] = s.nr_sparts;
   N_total[swift_type_black_hole] = s.nr_bparts;
 #endif
@@ -575,6 +606,7 @@ int main(int argc, char *argv[]) {
             s.cdim[1], s.cdim[2]);
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
+    message("%zi sinks in %i cells.", s.nr_sinks, s.tot_cells);
     message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
     fflush(stdout);
@@ -583,14 +615,14 @@ int main(int argc, char *argv[]) {
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   engine_policies |= engine_policy_self_gravity;
-  engine_policies |= engine_policy_cosmology;
   engine_policies |= engine_policy_fof;
+  if (with_cosmology) engine_policies |= engine_policy_cosmology;
 
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
-              N_total[swift_type_count], N_total[swift_type_stars],
-              N_total[swift_type_black_hole],
+              N_total[swift_type_count], N_total[swift_type_sink],
+              N_total[swift_type_stars], N_total[swift_type_black_hole],
               N_total[swift_type_dark_matter_background], engine_policies,
               talking, &reparttype, &us, &prog_const, &cosmo,
               /*hydro_properties=*/NULL, /*entropy_floor=*/NULL,
@@ -614,10 +646,12 @@ int main(int argc, char *argv[]) {
     const long long N_DM = N_total[swift_type_dark_matter] +
                            N_total[swift_type_dark_matter_background];
     message(
-        "Running FOF on %lld gas particles, %lld stars particles %lld black "
+        "Running FOF on %lld gas particles, %lld sink particles, %lld stars "
+        "particles %lld black "
         "hole particles and %lld DM particles (%lld gravity particles)",
-        N_total[swift_type_gas], N_total[swift_type_stars],
-        N_total[swift_type_black_hole], N_DM, N_total[swift_type_count]);
+        N_total[swift_type_gas], N_total[swift_type_sink],
+        N_total[swift_type_stars], N_total[swift_type_black_hole], N_DM,
+        N_total[swift_type_count]);
     message(
         "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
         "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",

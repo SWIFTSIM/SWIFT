@@ -26,6 +26,11 @@
 #include "../config.h"
 
 /* Standard headers. */
+#include "engine.h"
+#include "error.h"
+#include "restart.h"
+#include "version.h"
+
 #include <errno.h>
 #include <glob.h>
 #include <stdio.h>
@@ -33,11 +38,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#include "engine.h"
-#include "error.h"
-#include "restart.h"
-#include "version.h"
 
 /* The signature for restart files. */
 #define SWIFT_RESTART_SIGNATURE "SWIFT-restart-file"

@@ -770,6 +770,7 @@ INPUT		       += @top_srcdir@/src/cooling/const_du
 INPUT		       += @top_srcdir@/src/cooling/const_lambda
 INPUT		       += @top_srcdir@/src/cooling/Compton
 INPUT		       += @top_srcdir@/src/cooling/EAGLE
+INPUT		       += @top_srcdir@/src/cooling/COLIBRE
 INPUT		       += @top_srcdir@/src/cooling/grackle
 INPUT		       += @top_srcdir@/src/chemistry/EAGLE
 INPUT		       += @top_srcdir@/src/chemistry/GEAR
@@ -783,6 +784,7 @@ INPUT		       += @top_srcdir@/src/stars/GEAR
 INPUT		       += @top_srcdir@/src/feedback/EAGLE
 INPUT		       += @top_srcdir@/src/feedback/GEAR
 INPUT		       += @top_srcdir@/src/black_holes/EAGLE
+INPUT		       += @top_srcdir@/src/sink/Default
 INPUT		       += @top_srcdir@/logger
 
 # This tag can be used to specify the character encoding of the source files

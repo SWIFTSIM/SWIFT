@@ -10,19 +10,24 @@ What is VELOCIraptor?
    :hidden:    
    :caption: Contents: 
 
-In SWIFT it is possible to run a cosmological simulation and at the same time
-do on the fly halo finding at specific predefined intervals. For finding the 
-halos SWIFT uses VELOCIraptor (Elahi, Thacker and Widrow; 2011) [#velo]_, this 
-is a C++ halo finder that can use MPI. It differs from other halo finder 
-algorithms in the sense that it uses the velocity distributions of the 
-particles in the simulations and the the positions of the particles to get
-a better estimate of which particles are part of a specific halo and 
-whether there are substructures in halos. 
+In SWIFT it is possible to run a cosmological simulation and at the same time do
+on the fly halo finding at specific predefined intervals. For finding the halos
+SWIFT uses VELOCIraptor (See `Elahi, Thacker and Widrow (2011)
+<https://ui.adsabs.harvard.edu/abs/2011MNRAS.418..320E>`_ and `Elahi et
+al. (2019) <https://ui.adsabs.harvard.edu/abs/2019PASA...36...21E/abstract>`_),
+this is a C++ halo finder that can use MPI. It differs from other halo finder
+algorithms in the sense that it uses the velocity distributions of the particles
+in the simulations and the the positions of the particles to get a better
+estimate of which particles are part of a specific halo and whether there are
+substructures in halos. The code is hosted and maintained publicly by the theory
+group at `ICRAR <https://www.icrar.org>`_ on their GitHub `repository
+<https://github.com/ICRAR/VELOCIraptor-STF>`_.
 
 The Algorithm
 -------------
 
-The VELOCIraptor algorithm consists basically of the following steps [#ref]_:
+The VELOCIraptor algorithm consists basically of the following steps (See papers
+for details):
 
 1. A kd-tree is constructed based on the maximization of the Shannon-entropy,
    this means that every level in the kd-tree an equal number of particles 
@@ -58,8 +63,3 @@ The VELOCIraptor algorithm consists basically of the following steps [#ref]_:
    is most sensitive for subhalos which are cold (slow rotating) but have 
    a large bulk velocity
 
-
-.. _Velociraptor: http://adsabs.harvard.edu/abs/2011MNRAS.418..320E
-.. [#velo] For technical information regarding VELOCIraptor see: Velociraptor_
-.. [#ref] This part is based on the explanation given in the Elahi, Thacker and
-   Widrow (2011) paper (Velociraptor_)

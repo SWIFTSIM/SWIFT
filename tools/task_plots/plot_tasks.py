@@ -162,6 +162,7 @@ TASKTYPES = [
     "extra_ghost",
     "drift_part",
     "drift_spart",
+    "drift_sink",
     "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
@@ -180,6 +181,8 @@ TASKTYPES = [
     "grav_mesh",
     "grav_end_force",
     "cooling",
+    "cooling_in",
+    "cooling_out",
     "star_formation",
     "star_formation_in",
     "star_formation_out",
@@ -582,7 +585,7 @@ for rank in ranks:
     ax.yaxis.set_major_locator(loc)
     ax.grid(True, which="major", axis="y", linestyle="-")
 
-    pl.show()
+    # pl.show()
     if mpimode:
         outpng = outbase + str(rank) + ".png"
     else:

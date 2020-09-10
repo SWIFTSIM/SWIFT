@@ -21,10 +21,9 @@
 
 #include "adiabatic_index.h"
 #include "hydro.h"
+#include "hydro_parameters.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
-
-#include "./hydro_parameters.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset

@@ -1,91 +1,95 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.08567758e21 # kpc in centimeters
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
-# Cosmological parameters
-Cosmology:
-  h:              0.673        # Reduced Hubble constant
-  a_begin:        0.9873046739     # Initial scale-factor of the simulation
-  a_end:          1.0           # Final scale factor of the simulation
-  Omega_m:        0.315         # Matter density parameter
-  Omega_lambda:   0.685         # Dark-energy density parameter
-  Omega_b:        0.0486        # Baryon density parameter
-  
 Scheduler:
-  max_top_level_cells:    8
+  max_top_level_cells: 16
+  cell_sub_size_self_grav:   2048
+  cell_subdepth_diff_grav:   2
+  cell_split_size:           200
+  cell_extra_gparts:         100         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
+
   
 # Parameters governing the time integration
 TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e-2  # The end time of the simulation (in internal units).
-  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
-  
+  dt_min:     1e-16 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     0.1  # The maximal time-step size of the simulation (in internal units).
+  max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
+
+# Cosmological parameters
+Cosmology:
+  h:              0.673        # Reduced Hubble constant
+  a_begin:        0.014084507042253521     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.315         # Matter density parameter
+  Omega_lambda:   0.685         # Dark-energy density parameter
+  Omega_b:        0.0486     # Baryon density parameter
+  Omega_r:        0.            # (Optional) Radiation density parameter
+  w_0:            -1.0          # (Optional) Dark-energy equation-of-state parameter at z=0.
+  w_a:            0.            # (Optional) Dark-energy equation-of-state time evolution parameter.
+
 # Parameters governing the snapshots
 Snapshots:
-  basename:            snapshot # Common part of the name of output files
-  scale_factor_first:  0.987345  # Scale-factor of the first snaphot (cosmological run)
-  time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
-  delta_time:          1.01  # Time difference between consecutive outputs (in internal units)
-  compression:         1
+  basename:            snap/h050 # Common part of the name of output files
+  time_first:          0.    # Time of the first output (in internal units)
+  delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
+  compression:         4
+  output_list_on:      1  # (Optional) Enable the output list
+  output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first:  0.987345 # Scale-factor of the first stat dump (cosmological run)
-  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
-  delta_time:          1.05 # Time between statistics output
+  scale_factor_first: 0.0141
+  delta_time:          1.02 # Time between statistics output
 
+# Parameters for the self-gravity scheme
 Gravity:
-  eta:                       0.002    # Constant dimensionless multiplier for time integration.
-  MAC:                       adaptive
-  theta_cr:                  0.7
-  epsilon_fmm:               0.001
-  use_tree_below_softening:  1
+  eta:                    0.05    # Constant dimensionless multiplier for time integration.
+  MAC:                           geometric  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
   comoving_DM_softening:     0.1278 # Comoving softening length (in internal units).
   max_physical_DM_softening: 0.03365    # Physical softening length (in internal units).
   comoving_baryon_softening:     0.03365 # Comoving softening length (in internal units).
   max_physical_baryon_softening: 0.00673    # Physical softening length (in internal units).
   softening_ratio_background:    0.0285714      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
   mesh_side_length:       128        # Number of cells along each axis for the periodic gravity mesh.
-
+  
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  minimal_temperature:   100      # (internal units)
+  minimal_temperature:   10.      # Kelvin
+  h_min_ratio:           0.0714285714285       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
+  h_max:                 100     # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
 
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./h050.hdf5     # The file to read
-  periodic:   1
-  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
-  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+  periodic:   1                     # Non-periodic BCs
+  cleanup_h_factors: 1              # Remove the h-factors inherited from Gadget
+  shift:    [0, 0, 0]   # Centre the box
+  cleanup_velocity_factors:    1    # (Optional) Clean up the scale-factors used in the definition of the velocity variable in the ICs (e.g. in Gadget files).
+  cleanup_smoothing_lengths:   1    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
 
-
-# Cooling with Grackle 3.0
+# Cooling with Grackle 2.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 1                   # Enable or not the UV background
-  redshift: -1                           # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1                   # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0      # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0        # (optional) User provide specific heating rates
-  self_shielding_method: 0                # (optional) Grackle (<= 3) or Gear self shielding method
-  max_steps: 10000                       # (optional) Max number of step when computing the initial composition
-  convergence_limit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
-  thermal_time_myr:  5
+  with_UV_background: 1 # Enable or not the UV background
+  redshift: -1 # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1 # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
+  provide_specific_heating_rates: 0 # User provide specific heating rates
+  self_shielding_method: -1 # Grackle (<= 3) or Gear self shielding method
+  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 5
 
-GEARChemistry:
-  initial_metallicity: 0.01295
-
-GEARFeedback:
-  supernovae_energy_erg: 1e50
-  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
-  discrete_yields: 1
 
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
@@ -94,4 +98,16 @@ GEARStarFormation:
   min_mass_frac: 0.5
 
 GEARPressureFloor:
-  jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+  jeans_factor: 10
+
+GEARFeedback:
+  supernovae_energy_erg: 0.135e51
+  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+  discrete_yields: 1
+
+GEARChemistry:
+  initial_metallicity: 0
+  scale_initial_metallicity: 0
+
+Restarts:
+  delta_hours:        1        # (Optional) decimal hours between dumps of restart files.

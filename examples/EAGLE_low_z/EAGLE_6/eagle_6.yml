@@ -96,7 +96,8 @@ InitialConditions:
   periodic:   1
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
-
+  remap_ids: 1
+  
 EAGLEChemistry: 	     # Solar abundances
   init_abundance_metal:      0.014
   init_abundance_Hydrogen:   0.70649785
@@ -109,6 +110,7 @@ EAGLEChemistry: 	     # Solar abundances
   init_abundance_Silicon:    6.825874e-4
   init_abundance_Iron:       1.1032152e-3
 
+# EAGLE cooling parameters
 EAGLECooling:
   dir_name:                ./coolingtables/
   H_reion_z:               11.5 
@@ -117,6 +119,17 @@ EAGLECooling:
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
 
+# COLIBRE cooling parameters
+COLIBRECooling:
+  dir_name:                ./UV_dust1_CR1_G1_shield1.hdf5
+  H_reion_z:               11.5
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+  delta_logTEOS_subgrid_properties: 0.3
+  rapid_cooling_threshold:          0.333333
+  
 # EAGLE star formation parameters
 EAGLEStarFormation:
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
@@ -124,10 +137,10 @@ EAGLEStarFormation:
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
   KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
-  min_over_density:                  57.7      # The over-density above which star-formation is allowed.
+  min_over_density:                  100.0     # The over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-  EOS_entropy_margin_dex:            0.5       # Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
+  EOS_entropy_margin_dex:            0.3       # Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
@@ -187,6 +200,7 @@ EAGLEFeedback:
 EAGLEAGN:
   subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
   multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
+  subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
   with_angmom_limiter:                1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
   radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.

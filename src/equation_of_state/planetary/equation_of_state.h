@@ -60,6 +60,9 @@ enum eos_planetary_type_id {
 
   /*! SESAME */
   eos_planetary_type_SESAME = 3,
+
+  /*! ANEOS */
+  eos_planetary_type_ANEOS = 4,
 };
 
 /**
@@ -80,6 +83,10 @@ enum eos_planetary_material_id {
   /*! Tillotson water */
   eos_planetary_id_Til_water =
       eos_planetary_type_Til * eos_planetary_type_factor + 2,
+
+  /*! Tillotson basalt */
+  eos_planetary_id_Til_basalt =
+      eos_planetary_type_Til * eos_planetary_type_factor + 3,
 
   /* Hubbard & MacFarlane (1980) Uranus/Neptune */
 
@@ -112,6 +119,20 @@ enum eos_planetary_material_id {
   /*! Senft & Stewart (2008) SESAME-like water */
   eos_planetary_id_SS08_water =
       eos_planetary_type_SESAME * eos_planetary_type_factor + 3,
+
+  /* ANEOS */
+
+  /*! ANEOS forsterite (Stewart et al. 2019) -- in SESAME-style tables */
+  eos_planetary_id_ANEOS_forsterite =
+      eos_planetary_type_ANEOS * eos_planetary_type_factor,
+
+  /*! ANEOS iron (Stewart 2020) -- in SESAME-style tables */
+  eos_planetary_id_ANEOS_iron =
+      eos_planetary_type_ANEOS * eos_planetary_type_factor + 1,
+
+  /*! ANEOS Fe85Si15 (Stewart 2020) -- in SESAME-style tables */
+  eos_planetary_id_ANEOS_Fe85Si15 =
+      eos_planetary_type_ANEOS * eos_planetary_type_factor + 2,
 };
 
 /* Individual EOS function headers. */
@@ -123,9 +144,10 @@ enum eos_planetary_material_id {
  * @brief The parameters of the equation of state.
  */
 struct eos_parameters {
-  struct Til_params Til_iron, Til_granite, Til_water;
+  struct Til_params Til_iron, Til_granite, Til_water, Til_basalt;
   struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
   struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water;
+  struct SESAME_params ANEOS_forsterite, ANEOS_iron, ANEOS_Fe85Si15;
 };
 
 /**
@@ -162,6 +184,11 @@ gas_internal_energy_from_entropy(float density, float entropy,
         case eos_planetary_id_Til_water:
           return Til_internal_energy_from_entropy(density, entropy,
                                                   &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_internal_energy_from_entropy(density, entropy,
+                                                  &eos.Til_basalt);
           break;
 
         default:
@@ -227,6 +254,32 @@ gas_internal_energy_from_entropy(float density, float entropy,
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -263,6 +316,10 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 
         case eos_planetary_id_Til_water:
           return Til_pressure_from_entropy(density, entropy, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_pressure_from_entropy(density, entropy, &eos.Til_basalt);
           break;
 
         default:
@@ -325,6 +382,32 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -362,6 +445,10 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
 
         case eos_planetary_id_Til_water:
           return Til_entropy_from_pressure(density, P, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_entropy_from_pressure(density, P, &eos.Til_basalt);
           break;
 
         default:
@@ -420,6 +507,30 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_entropy_from_pressure(density, P,
+                                              &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_entropy_from_pressure(density, P, &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_entropy_from_pressure(density, P, &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -457,6 +568,10 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
 
         case eos_planetary_id_Til_water:
           return Til_soundspeed_from_entropy(density, entropy, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_soundspeed_from_entropy(density, entropy, &eos.Til_basalt);
           break;
 
         default:
@@ -519,6 +634,32 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -555,6 +696,10 @@ gas_entropy_from_internal_energy(float density, float u,
 
         case eos_planetary_id_Til_water:
           return Til_entropy_from_internal_energy(density, u, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_entropy_from_internal_energy(density, u, &eos.Til_basalt);
           break;
 
         default:
@@ -617,6 +762,32 @@ gas_entropy_from_internal_energy(float density, float u,
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -655,6 +826,10 @@ gas_pressure_from_internal_energy(float density, float u,
 
         case eos_planetary_id_Til_water:
           return Til_pressure_from_internal_energy(density, u, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_pressure_from_internal_energy(density, u, &eos.Til_basalt);
           break;
 
         default:
@@ -717,6 +892,32 @@ gas_pressure_from_internal_energy(float density, float u,
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -758,6 +959,10 @@ gas_internal_energy_from_pressure(float density, float P,
 
         case eos_planetary_id_Til_water:
           return Til_internal_energy_from_pressure(density, P, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_internal_energy_from_pressure(density, P, &eos.Til_basalt);
           break;
 
         default:
@@ -820,6 +1025,32 @@ gas_internal_energy_from_pressure(float density, float P,
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -859,6 +1090,11 @@ gas_soundspeed_from_internal_energy(float density, float u,
         case eos_planetary_id_Til_water:
           return Til_soundspeed_from_internal_energy(density, u,
                                                      &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_soundspeed_from_internal_energy(density, u,
+                                                     &eos.Til_basalt);
           break;
 
         default:
@@ -924,6 +1160,32 @@ gas_soundspeed_from_internal_energy(float density, float u,
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -960,6 +1222,10 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 
         case eos_planetary_id_Til_water:
           return Til_soundspeed_from_pressure(density, P, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_soundspeed_from_pressure(density, P, &eos.Til_basalt);
           break;
 
         default:
@@ -1019,6 +1285,31 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
       };
       break;
 
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_soundspeed_from_pressure(density, P,
+                                                 &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_soundspeed_from_pressure(density, P, &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_soundspeed_from_pressure(density, P,
+                                                 &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
     default:
       error("Unknown material type! mat_id = %d", mat_id);
       return 0.f;
@@ -1043,6 +1334,9 @@ __attribute__((always_inline)) INLINE static void eos_init(
   char SESAME_basalt_table_file[PARSER_MAX_LINE_SIZE];
   char SESAME_water_table_file[PARSER_MAX_LINE_SIZE];
   char SS08_water_table_file[PARSER_MAX_LINE_SIZE];
+  char ANEOS_forsterite_table_file[PARSER_MAX_LINE_SIZE];
+  char ANEOS_iron_table_file[PARSER_MAX_LINE_SIZE];
+  char ANEOS_Fe85Si15_table_file[PARSER_MAX_LINE_SIZE];
 
   // Set the parameters and material IDs, load tables, etc. for each material
   // and convert to internal units
@@ -1051,10 +1345,12 @@ __attribute__((always_inline)) INLINE static void eos_init(
     set_Til_iron(&e->Til_iron, eos_planetary_id_Til_iron);
     set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
     set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
+    set_Til_basalt(&e->Til_basalt, eos_planetary_id_Til_basalt);
 
     convert_units_Til(&e->Til_iron, us);
     convert_units_Til(&e->Til_granite, us);
     convert_units_Til(&e->Til_water, us);
+    convert_units_Til(&e->Til_basalt, us);
   }
 
   // Hubbard & MacFarlane (1980)
@@ -1113,6 +1409,33 @@ __attribute__((always_inline)) INLINE static void eos_init(
     convert_units_SESAME(&e->SESAME_basalt, us);
     convert_units_SESAME(&e->SESAME_water, us);
     convert_units_SESAME(&e->SS08_water, us);
+  }
+
+  // ANEOS -- using SESAME-style tables
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS", 0)) {
+    set_ANEOS_forsterite(&e->ANEOS_forsterite,
+                         eos_planetary_id_ANEOS_forsterite);
+    set_ANEOS_iron(&e->ANEOS_iron, eos_planetary_id_ANEOS_iron);
+    set_ANEOS_Fe85Si15(&e->ANEOS_Fe85Si15, eos_planetary_id_ANEOS_Fe85Si15);
+
+    parser_get_param_string(params, "EoS:planetary_ANEOS_forsterite_table_file",
+                            ANEOS_forsterite_table_file);
+    parser_get_param_string(params, "EoS:planetary_ANEOS_iron_table_file",
+                            ANEOS_iron_table_file);
+    parser_get_param_string(params, "EoS:planetary_ANEOS_Fe85Si15_table_file",
+                            ANEOS_Fe85Si15_table_file);
+
+    load_table_SESAME(&e->ANEOS_forsterite, ANEOS_forsterite_table_file);
+    load_table_SESAME(&e->ANEOS_iron, ANEOS_iron_table_file);
+    load_table_SESAME(&e->ANEOS_Fe85Si15, ANEOS_Fe85Si15_table_file);
+
+    prepare_table_SESAME(&e->ANEOS_forsterite);
+    prepare_table_SESAME(&e->ANEOS_iron);
+    prepare_table_SESAME(&e->ANEOS_Fe85Si15);
+
+    convert_units_SESAME(&e->ANEOS_forsterite, us);
+    convert_units_SESAME(&e->ANEOS_iron, us);
+    convert_units_SESAME(&e->ANEOS_Fe85Si15, us);
   }
 }
 

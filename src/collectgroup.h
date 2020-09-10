@@ -36,10 +36,10 @@ struct engine;
 struct collectgroup1 {
 
   /* Number of particles updated */
-  long long updated, g_updated, s_updated, b_updated;
+  long long updated, g_updated, s_updated, b_updated, sink_updated;
 
   /* Number of particles inhibited */
-  long long inhibited, g_inhibited, s_inhibited, b_inhibited;
+  long long inhibited, g_inhibited, s_inhibited, b_inhibited, sink_inhibited;
 
   /* SFH logger */
   struct star_formation_history sfh;
@@ -50,6 +50,7 @@ struct collectgroup1 {
   integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
   integertime_t ti_black_holes_end_min, ti_black_holes_end_max,
       ti_black_holes_beg_max;
+  integertime_t ti_sinks_end_min, ti_sinks_end_max, ti_sinks_beg_max;
 
   /* Force the engine to rebuild? */
   int forcerebuild;
@@ -69,16 +70,19 @@ void collectgroup_init(void);
 void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e);
 void collectgroup1_init(
     struct collectgroup1 *grp1, size_t updated, size_t g_updated,
-    size_t s_updated, size_t b_updated, size_t inhibited, size_t g_inhibited,
-    size_t s_inhibited, size_t b_inhibited, integertime_t ti_hydro_end_min,
+    size_t s_updated, size_t b_updated, size_t sink_updated, size_t inhibited,
+    size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
+    size_t b_inhibited, integertime_t ti_hydro_end_min,
     integertime_t ti_hydro_end_max, integertime_t ti_hydro_beg_max,
     integertime_t ti_gravity_end_min, integertime_t ti_gravity_end_max,
     integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
     integertime_t ti_stars_end_max, integertime_t ti_stars_beg_max,
-    integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
-    integertime_t ti_black_holes_beg_max, int forcerebuild,
-    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh, float runtime);
+    integertime_t ti_sinks_end_min, integertime_t ti_sinks_end_max,
+    integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
+    integertime_t ti_black_holes_end_max, integertime_t ti_black_holes_beg_max,
+    int forcerebuild, long long total_nr_cells, long long total_nr_tasks,
+    float tasks_per_cell, const struct star_formation_history sfh,
+    float runtime);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);

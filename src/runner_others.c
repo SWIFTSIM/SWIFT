@@ -49,12 +49,12 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "logger.h"
+#include "logger_io.h"
 #include "pressure_floor.h"
 #include "space.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
-#include "task_order.h"
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
@@ -130,7 +130,7 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
   } else {
 
-  /* Get the forces from the gravity mesh */
+    /* Get the forces from the gravity mesh */
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     lock_lock(&c->grav.plock);
 #endif
@@ -328,15 +328,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Write the particle */
             /* Logs all the fields request by the user */
             // TODO select only the requested fields
-            logger_log_part(e->logger, p, xp,
-                            logger_mask_data[logger_x].mask |
-                                logger_mask_data[logger_v].mask |
-                                logger_mask_data[logger_a].mask |
-                                logger_mask_data[logger_u].mask |
-                                logger_mask_data[logger_h].mask |
-                                logger_mask_data[logger_rho].mask |
-                                logger_mask_data[logger_consts].mask |
-                                logger_mask_data[logger_special_flags].mask,
+            logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
                             logger_pack_flags_and_data(logger_flag_change_type,
                                                        swift_type_stars));
 #endif
@@ -346,7 +338,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             const int spawn_spart =
                 star_formation_should_spawn_spart(p, xp, sf_props);
 
+            /* Are we using a model that actually generates star particles? */
             if (swift_star_formation_model_creates_stars) {
+
               /* Check if we should create a new particle or transform one */
               if (spawn_spart) {
                 /* Spawn a new spart (+ gpart) */
@@ -355,7 +349,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 /* Convert the gas particle to a star particle */
                 sp = cell_convert_part_to_spart(e, c, p, xp);
               }
+
             } else {
+
+              /* We are in a model where spart don't exist
+               * --> convert the part to a DM gpart */
               cell_convert_part_to_gpart(e, c, p, xp);
             }
 
@@ -396,13 +394,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               sp->logger_data = xp->logger_data;
 
               /* Write the s-particle */
-              logger_log_spart(e->logger, sp,
-                               logger_mask_data[logger_x].mask |
-                                   logger_mask_data[logger_v].mask |
-                                   logger_mask_data[logger_consts].mask,
+              logger_log_spart(e->logger, sp, e,
+                               /* log_all */ 1,
                                /* special flags */ 0);
 #endif
-            } else {
+            } else if (swift_star_formation_model_creates_stars) {
 
               /* Do something about the fact no star could be formed.
                  Note that in such cases a tree rebuild to create more free
@@ -574,8 +570,10 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           id = e->s->parts[-gp->id_or_neg_offset].id;
         else if (gp->type == swift_type_stars)
           id = e->s->sparts[-gp->id_or_neg_offset].id;
+        else if (gp->type == swift_type_sink)
+          id = e->s->sinks[-gp->id_or_neg_offset].id;
         else if (gp->type == swift_type_black_hole)
-          error("Unexisting type");
+          id = e->s->bparts[-gp->id_or_neg_offset].id;
         else
           id = gp->id_or_neg_offset;
 
@@ -608,6 +606,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
               my_id = e->s->parts[-gp->id_or_neg_offset].id;
             else if (gp->type == swift_type_stars)
               my_id = e->s->sparts[-gp->id_or_neg_offset].id;
+            else if (gp->type == swift_type_sink)
+              my_id = e->s->sinks[-gp->id_or_neg_offset].id;
             else if (gp->type == swift_type_black_hole)
               error("Unexisting type");
             else
@@ -664,6 +664,9 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   if (c->black_holes.count != 0) {
     error("Black holes are not implemented in the logger.");
   }
+  if (c->sinks.count != 0) {
+    error("Sink particles are not implemented in the logger.");
+  }
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
@@ -689,14 +692,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
         if (logger_should_write(&xp->logger_data, e->logger)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_part(e->logger, p, xp,
-                          logger_mask_data[logger_x].mask |
-                              logger_mask_data[logger_v].mask |
-                              logger_mask_data[logger_a].mask |
-                              logger_mask_data[logger_u].mask |
-                              logger_mask_data[logger_h].mask |
-                              logger_mask_data[logger_rho].mask |
-                              logger_mask_data[logger_consts].mask,
+          logger_log_part(e->logger, p, xp, e, /* log_all */ 0,
                           /* special flags */ 0);
         } else
           /* Update counter */
@@ -719,11 +715,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
         if (logger_should_write(&gp->logger_data, e->logger)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_gpart(e->logger, gp,
-                           logger_mask_data[logger_x].mask |
-                               logger_mask_data[logger_v].mask |
-                               logger_mask_data[logger_a].mask |
-                               logger_mask_data[logger_consts].mask,
+          logger_log_gpart(e->logger, gp, e, /* log_all */ 0,
                            /* Special flags */ 0);
 
         } else
@@ -744,10 +736,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
         if (logger_should_write(&sp->logger_data, e->logger)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_spart(e->logger, sp,
-                           logger_mask_data[logger_x].mask |
-                               logger_mask_data[logger_v].mask |
-                               logger_mask_data[logger_consts].mask,
+          logger_log_spart(e->logger, sp, e, /* Log_all */ 0,
                            /* Special flags */ 0);
         } else
           /* Update counter */

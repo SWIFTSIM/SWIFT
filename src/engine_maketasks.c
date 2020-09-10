@@ -50,12 +50,12 @@
 #include "debug.h"
 #include "error.h"
 #include "proxy.h"
-#include "task_order.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_star_resort_task_depth;
+extern int engine_max_parts_per_cooling;
 
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
@@ -270,8 +270,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
-  if (task_order_star_formation_before_feedback && t_sf_counts == NULL &&
-      with_star_formation && ci->hydro.count > 0) {
+  if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
@@ -319,8 +318,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
     engine_addlink(e, &ci->mpi.send, t_feedback);
     engine_addlink(e, &ci->mpi.send, t_ti);
-    if (task_order_star_formation_before_feedback && with_star_formation &&
-        ci->hydro.count > 0) {
+    if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -584,8 +582,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  if (task_order_star_formation_before_feedback && t_sf_counts == NULL &&
-      with_star_formation && c->hydro.count > 0) {
+  if (t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
       error(
@@ -612,8 +609,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_spart,
                              c->mpi.tag, 0, c, NULL);
 
-    if (task_order_star_formation_before_feedback && with_star_formation &&
-        c->hydro.count > 0) {
+    if (with_star_formation && c->hydro.count > 0) {
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, t_feedback);
@@ -623,8 +619,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   if (t_feedback != NULL) {
     engine_addlink(e, &c->mpi.recv, t_feedback);
     engine_addlink(e, &c->mpi.recv, t_ti);
-    if (task_order_star_formation_before_feedback && with_star_formation &&
-        c->hydro.count > 0) {
+    if (with_star_formation && c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
@@ -1056,6 +1051,33 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
 }
 
 /**
+ * @brief Recursively add non-implicit cooling tasks to a cell hierarchy.
+ */
+void engine_add_cooling(struct engine *e, struct cell *c,
+                        struct task *cooling_in, struct task *cooling_out) {
+
+  /* Abort as there are no hydro particles here? */
+  if (c->hydro.count_total == 0) return;
+
+  /* If we have reached the leaf OR have to few particles to play with*/
+  if (!c->split || c->hydro.count_total < engine_max_parts_per_cooling) {
+
+    /* Add the cooling task and its dependencies */
+    struct scheduler *s = &e->sched;
+    c->hydro.cooling = scheduler_addtask(s, task_type_cooling,
+                                         task_subtype_none, 0, 0, c, NULL);
+    scheduler_addunlock(s, cooling_in, c->hydro.cooling);
+    scheduler_addunlock(s, c->hydro.cooling, cooling_out);
+
+  } else {
+    /* Keep recursing */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_add_cooling(e, c->progeny[k], cooling_in, cooling_out);
+  }
+}
+
+/**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
  * i.e. all the O(Npart) tasks -- hydro version
  *
@@ -1074,6 +1096,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
   struct scheduler *s = &e->sched;
   const int with_stars = (e->policy & engine_policy_stars);
+  const int with_sinks = (e->policy & engine_policy_sinks);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
@@ -1085,8 +1108,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
    * super-level is above the level we want */
-  if (task_order_star_formation_before_feedback && (c->nodeID == e->nodeID) &&
-      (star_resort_cell == NULL) &&
+  if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
 
     if (with_feedback && with_star_formation && c->hydro.count > 0) {
@@ -1153,6 +1175,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
 
+      /* Sinks */
+      if (with_sinks) {
+        c->sinks.drift = scheduler_addtask(s, task_type_drift_sink,
+                                           task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->sinks.drift, c->super->kick2);
+      }
+
       /* Black holes */
       if (with_black_holes) {
         c->black_holes.drift = scheduler_addtask(
@@ -1163,11 +1192,17 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       /* Subgrid tasks: cooling */
       if (with_cooling) {
 
-        c->hydro.cooling = scheduler_addtask(s, task_type_cooling,
-                                             task_subtype_none, 0, 0, c, NULL);
+        c->hydro.cooling_in =
+            scheduler_addtask(s, task_type_cooling_in, task_subtype_none, 0,
+                              /*implicit=*/1, c, NULL);
+        c->hydro.cooling_out =
+            scheduler_addtask(s, task_type_cooling_out, task_subtype_none, 0,
+                              /*implicit=*/1, c, NULL);
 
-        scheduler_addunlock(s, c->hydro.end_force, c->hydro.cooling);
-        scheduler_addunlock(s, c->hydro.cooling, c->super->kick2);
+        engine_add_cooling(e, c, c->hydro.cooling_in, c->hydro.cooling_out);
+
+        scheduler_addunlock(s, c->hydro.end_force, c->hydro.cooling_in);
+        scheduler_addunlock(s, c->hydro.cooling_out, c->super->kick2);
 
       } else {
         scheduler_addunlock(s, c->hydro.end_force, c->super->kick2);
@@ -1199,7 +1234,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_feedback && with_star_formation && c->hydro.count > 0) {
-          task_order_addunlock_star_formation_feedback(s, c, star_resort_cell);
+          scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
+                              c->stars.stars_in);
         }
       }
 
@@ -1518,14 +1554,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
       }
 
       /* Link pair tasks to cells. */
@@ -1539,18 +1567,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-        engine_addlink(e, &cj->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-        engine_addlink(e, &cj->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-        engine_addlink(e, &cj->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
-        engine_addlink(e, &cj->black_holes.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -1568,14 +1584,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
       }
 
       /* Link sub-pair tasks to cells. */
@@ -1589,18 +1597,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
-      } else if (t->subtype == task_subtype_stars_density) {
-        engine_addlink(e, &ci->stars.density, t);
-        engine_addlink(e, &cj->stars.density, t);
-      } else if (t->subtype == task_subtype_stars_feedback) {
-        engine_addlink(e, &ci->stars.feedback, t);
-        engine_addlink(e, &cj->stars.feedback, t);
-      } else if (t->subtype == task_subtype_bh_density) {
-        engine_addlink(e, &ci->black_holes.density, t);
-        engine_addlink(e, &cj->black_holes.density, t);
-      } else if (t->subtype == task_subtype_bh_feedback) {
-        engine_addlink(e, &ci->black_holes.feedback, t);
-        engine_addlink(e, &cj->black_holes.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -2850,6 +2846,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int periodic = e->s->periodic;
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
+  const int with_sinks = (e->policy & engine_policy_sinks);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
 
   struct space *s = e->s;
@@ -2874,6 +2871,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Skip cells without hydro or star particles */
     if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0) &&
+        (!with_sinks || ci->sinks.count == 0) &&
         (!with_black_holes || ci->black_holes.count == 0))
       continue;
 
@@ -2905,6 +2903,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           if ((cid >= cjd) ||
               ((cj->hydro.count == 0) &&
                (!with_feedback || cj->stars.count == 0) &&
+               (!with_sinks || cj->sinks.count == 0) &&
                (!with_black_holes || cj->black_holes.count == 0)) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;

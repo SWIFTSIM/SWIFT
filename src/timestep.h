@@ -97,7 +97,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
 
   const float a_hydro[3] = {0.f, 0.f, 0.f};
   if (e->policy & engine_policy_self_gravity)
-    new_dt_ext = gravity_compute_timestep_self(
+    new_dt_self = gravity_compute_timestep_self(
         gp, a_hydro, e->gravity_properties, e->cosmology);
 
   /* Take the minimum of all */
@@ -288,6 +288,53 @@ __attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
       new_dt, bp->time_bin, num_time_bins, e->ti_current, e->time_base_inv);
+
+  return new_dti;
+}
+
+/**
+ * @brief Compute the new (integer) time-step of a given #sink.
+ *
+ * @param sink The #sink.
+ * @param e The #engine (used to get some constants).
+ */
+__attribute__((always_inline)) INLINE static integertime_t get_sink_timestep(
+    const struct sink *restrict sink, const struct engine *restrict e) {
+
+  /* Sink time-step */
+  float new_dt_sink = sink_compute_timestep(sink);
+
+  /* Gravity time-step */
+  float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
+
+  if (e->policy & engine_policy_external_gravity)
+    new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
+                                           e->physical_constants, sink->gpart);
+
+  const float a_hydro[3] = {0.f, 0.f, 0.f};
+  if (e->policy & engine_policy_self_gravity)
+    new_dt_self = gravity_compute_timestep_self(
+        sink->gpart, a_hydro, e->gravity_properties, e->cosmology);
+
+  /* Take the minimum of all */
+  float new_dt = min3(new_dt_sink, new_dt_self, new_dt_ext);
+
+  /* Apply the maximal dibslacement constraint (FLT_MAX  if non-cosmological)*/
+  new_dt = min(new_dt, e->dt_max_RMS_displacement);
+
+  /* Apply cosmology correction (This is 1 if non-cosmological) */
+  new_dt *= e->cosmology->time_step_factor;
+
+  /* Limit timestep within the allowed range */
+  new_dt = min(new_dt, e->dt_max);
+  if (new_dt < e->dt_min) {
+    error("sink (id=%lld) wants a time-step (%e) below dt_min (%e)", sink->id,
+          new_dt, e->dt_min);
+  }
+
+  /* Convert to integer time */
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, sink->time_bin, num_time_bins, e->ti_current, e->time_base_inv);
 
   return new_dti;
 }

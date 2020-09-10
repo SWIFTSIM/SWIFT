@@ -26,7 +26,6 @@
 
 /* Config parameters. */
 #include "../config.h"
-
 #include "inline.h"
 
 /* Import the right black holes definition */

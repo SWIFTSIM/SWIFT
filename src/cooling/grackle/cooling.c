@@ -18,7 +18,7 @@
  ******************************************************************************/
 /**
  * @file src/cooling/grackle/cooling.c
- * @brief Cooling using the GRACKLE 3.0 library.
+ * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
 #include "../config.h"
@@ -284,6 +284,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
   if (cooling->self_shielding_method == -1) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
+  message("Thermal time = %g", cooling->thermal_time);
   message("Specific Heating Rates = %i",
           cooling->provide_specific_heating_rates);
   message("Volumetric Heating Rates = %i",
@@ -786,27 +787,10 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
 
   /* Calculate the cooling rate */
   float cool_du_dt = (u_new - u_ad_before) / dt_therm;
-
-  /* Check that the energy stays above the limits if the time step increase by 2
-   */
-  /* Hydro */
-  double u_ad = u_new + hydro_du_dt * dt_therm;
-  if (u_ad < u_minimal) {
-    hydro_du_dt = (u_ad - u_new) / dt_therm;
-    u_ad = u_minimal;
-  }
-
-  /* Cooling */
-  const double u_cool = u_ad + cool_du_dt * dt_therm;
-  if (u_cool < u_minimal) {
-    cool_du_dt = (u_cool - u_ad) / dt_therm;
-  }
-
-  cool_du_dt = (u_new - u_old) / dt_therm;
+  float du_dt = cool_du_dt + hydro_du_dt;
 
   /* Update the internal energy time derivative */
-  hydro_set_physical_internal_energy_dt(p, cosmo,
-                                        cool_du_dt /* + hydro_du_dt */);
+  hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cool_du_dt * dt_therm;

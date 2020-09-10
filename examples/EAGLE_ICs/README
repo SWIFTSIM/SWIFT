@@ -3,33 +3,66 @@ the EAGLE suite of simulations. The cosmology, resolution
 and phases are the same as used in the original suite. The only
 difference is the file format, adapted for SWIFT.
 
+For standard runs, the code should be configured with
+
+--with-subgrid=EAGLE-XL --with-hydro=sphenix --with-kernel=wendland-C2
+
+(and any other optimization, library or compiler parameters specific
+to your system.)
+
 Compared to the original EAGLE runs of Schaye et al. 2015),
 the following changes have been made (at standard resolution):
 
+ - The flavour of SPH has been changed from the Pressure-Entropy
+   "ANARCHY" implementation to the Density-energy based "SPHENIX"
+   implementation of Borrow+20.
  - The dark matter softening lengths have been increased to 1.3
    pkpc and 3.32 ckpc. The comoving baryon softening lengths have
    been changed to 1.79 ckpc. This follows the recommendations of
    Ludlow et al. 2019. Old values were 0.7 pkpc and 2.69 ckpc for
    all the particle species.
- - SPH particles with a mass larger than 7*10^6 Msun (~4x the initial
-   gas particle mass) are now split into 2 equal mass particles
-   within the smoothing length of the original particle.
+ - SPH particles reaching a mass larger than 7*10^6 Msun (~4x the
+   initial gas particle mass) are now split into 2 equal mass
+   particles within the smoothing length of the original particle.
  - The metallicity-dependent density threshold for star formation
    uses the smoothed metallicities and not the raw metallicities
    any more.
+ - The cooling uses the Ploeckinger+20 tables including an updated
+   UV background, newer version of CLOUDY and self-shielding
+   (was using the Wiersma+09 tables before).
  - The redshift of H reionization has been lowered to 7.5 (from 11.5).
+ - The entropy floor between n_H = 10^-5 and 10^-1 cm^3 at 8000K has
+   been removed as the new cooling tables handle this correctly. The
+   gamma=4/3 floor has been extended to lower densities
+   (i.e. 800K at n_H = 10^-4 cm^-3) as a fail-safe.
+ - Particles can be star-forming if they are within 0.3 dex of the
+   entropy floor (was 0.5 dex). These particles also get their
+   subgrid properties (rho, T as well as the HI and H_2 frac) computed.
+ - Particles can be star-forming if they are in an over-density of
+   at least 100 (was 57.7).
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
  - The SNII feedback delay is done by sampling the stellar age
    distribution and not using a fixed delay of 30 Myr any more.
+ - The halo mass for BH seeding has been lowered to 10^10 M_sun
+   (from 10^10/h Msun).
  - The black hole accretion rate is now limited to 100% of the
    Eddington rate (from 100/h = 150 %).
  - The circular velocity threshold for BH mergers is measured
    at the actual distance linking the BHs not at the kernel support
    length any more.
+ - The BHs can reposition only onto gas particles and not onto any
+   type as before.
+ - The maximal relative velocity between a BH and gas particle
+   eligible to be a reposition target has been increased to 0.5 times
+   the local sound-speed around the BH (was 0.25 * c_sound).
+
 
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided
 for basic quantities.
+
+To use the cooling model based on the Wiersma+09 tables, replace
+EAGLE-XL by EAGLE in the configuration command line.
 
 VELOCIraptor can be run on the output. The code is compiled
 using
@@ -38,5 +71,5 @@ cmake -DVR_USE_GAS=ON -DVR_USE_STAR=ON -DV_USE_BH=ON
 
 and run using
 
-stf -C vrconfig_3dfof_subhalos_SO_hydro.cfg -i eagle_0035 -o halos_0035 -I 2
+stf -C vrconfig_3dfof_subhalos_SO_hydro.cfg -i eagle_0036 -o halos_0036 -I 2
 

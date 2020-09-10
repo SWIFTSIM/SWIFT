@@ -61,7 +61,7 @@ struct pressure_floor_properties {
  * @param pressure_comoving The comoving pressure without any pressure floor.
  * @param cosmo The #cosmology model.
  *
- * @return The physical or comoving pressure with the floor.
+ * @return The comoving pressure with the floor.
  */
 __attribute__((always_inline)) static INLINE float
 pressure_floor_get_comoving_pressure(const struct part* p,

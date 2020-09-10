@@ -76,8 +76,13 @@ struct cooling_function_data {
   float omega;
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
-  float thermal_time;
+  double thermal_time;
 };
+
+/**
+ * @brief Properties of the cooling stored in the #part data.
+ */
+struct cooling_part_data {};
 
 /**
  * @brief Properties of the cooling stored in the extra particle data
@@ -88,7 +93,7 @@ struct cooling_xpart_data {
   float radiated_energy;
 
   /*! Last time the cooling was switch off */
-  float time_last_event;
+  double time_last_event;
 
 /* here all fractions are mass fraction */
 #if COOLING_GRACKLE_MODE >= 1

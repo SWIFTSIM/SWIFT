@@ -58,8 +58,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h \
     velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h \
     black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h \
-    feedback.h feedback_struct.h feedback_properties.h task_order.h \
-    space_unique_id.h line_of_sight.h
+    feedback.h feedback_struct.h feedback_properties.h \
+    space_unique_id.h line_of_sight.h io_compression.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =
@@ -71,6 +71,12 @@ endif
 EAGLE_COOLING_SOURCES =
 if HAVEEAGLECOOLING
 EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
+endif
+
+# source files for COLIBRE cooling
+COLIBRE_COOLING_SOURCES =
+if HAVECOLIBRECOOLING
+COLIBRE_COOLING_SOURCES += cooling/COLIBRE/cooling.c cooling/COLIBRE/cooling_tables.c
 endif
 
 # source files for EAGLE feedback
@@ -106,14 +112,15 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     threadpool.c cooling.c star_formation.c \
     statistics.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
-    collectgroup.c hydro_space.c equation_of_state.c \
+    collectgroup.c hydro_space.c equation_of_state.c io_compression.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
     hashmap.c pressure_floor.c space_unique_id.c output_options.c line_of_sight.c \
 	todo_temporary_globals.c \
     $(QLA_COOLING_SOURCES) \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
-    $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
+    $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) \
+    $(COLIBRE_COOLING_SOURCES)
 #TODO: temporarily added globals
 
 # Include files for distribution, not installation.
@@ -124,16 +131,17 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
                  kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \
                  timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h \
-                 dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_cache.h output_options.h \
+     dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_logger.h  gravity_cache.h output_options.h\
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \
 		 gravity/Potential/gravity_debug.h gravity/Potential/gravity_part.h  \
 		 gravity/MultiSoftening/gravity.h gravity/MultiSoftening/gravity_iact.h gravity/MultiSoftening/gravity_io.h \
-		 gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h  \
+		 gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h \
+     gravity/MultiSoftening/gravity_logger.h \
 		 equation_of_state.h \
 		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
-	 	 hydro.h hydro_io.h hydro_parameters.h \
+	   hydro.h hydro_io.h hydro_logger.h hydro_parameters.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
 		 hydro/Minimal/hydro_parameters.h \
@@ -142,7 +150,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 hydro/Default/hydro_parameters.h \
 		 hydro/Gadget2/hydro.h hydro/Gadget2/hydro_iact.h hydro/Gadget2/hydro_io.h \
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
-		 hydro/Gadget2/hydro_parameters.h \
+     hydro/Gadget2/hydro_parameters.h hydro/Gadget2/hydro_logger.h \
 		 hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
                  hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
 		 hydro/PressureEntropy/hydro_parameters.h \
@@ -202,9 +210,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
                  riemann/riemann_checks.h \
-	 	 stars.h stars_io.h \
+		 rt.h rt/none/rt.h rt/debug/rt.h rt/M1closure/rt.h \
+	 	 stars.h stars_io.h stars_logger.h \
+	   stars.h stars_io.h stars_logger.h \
 		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
-		 stars/Default/stars_debug.h stars/Default/stars_part.h  \
+     stars/Default/stars_debug.h stars/Default/stars_part.h stars/Default/stars_logger.h  \
 		 stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h \
 		 stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h \
 		 stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h \
@@ -240,7 +250,10 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h \
 		 cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h \
                  cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h \
-                 chemistry/none/chemistry.h \
+                 cooling/COLIBRE/cooling.h cooling/COLIBRE/cooling_struct.h cooling/COLIBRE/cooling_subgrid.h \
+                 cooling/COLIBRE/cooling_io.h cooling/COLIBRE/interpolate.h cooling/COLIBRE/cooling_rates.h \
+                 cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/cooling_subgrid.h \
+		 chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
 		 chemistry/none/chemistry_iact.h \
@@ -288,7 +301,6 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h \
 		 sink.h sink_io.h \
 		 todo_temporary_globals.h
-# TODO: added temporary globals
 
 
 # Sources and special flags for the gravity library

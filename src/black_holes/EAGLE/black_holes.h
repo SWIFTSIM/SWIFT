@@ -22,6 +22,7 @@
 /* Local includes */
 #include "black_holes_properties.h"
 #include "black_holes_struct.h"
+#include "cooling.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "gravity.h"
@@ -108,6 +109,9 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->density.wcount_dh = 0.f;
   bp->rho_gas = 0.f;
   bp->sound_speed_gas = 0.f;
+  bp->internal_energy_gas = 0.f;
+  bp->rho_subgrid_gas = -1.f;
+  bp->sound_speed_subgrid_gas = -1.f;
   bp->velocity_gas[0] = 0.f;
   bp->velocity_gas[1] = 0.f;
   bp->velocity_gas[2] = 0.f;
@@ -223,6 +227,7 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   /* For the following, we also have to undo the mass smoothing
    * (N.B.: bp->velocity_gas is in BH frame, in internal units). */
   bp->sound_speed_gas *= h_inv_dim * rho_inv;
+  bp->internal_energy_gas *= h_inv_dim * rho_inv;
   bp->velocity_gas[0] *= h_inv_dim * rho_inv;
   bp->velocity_gas[1] *= h_inv_dim * rho_inv;
   bp->velocity_gas[2] *= h_inv_dim * rho_inv;
@@ -417,6 +422,8 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
  * @param props The properties of the black hole scheme.
  * @param constants The physical constants (in internal units).
  * @param cosmo The cosmological model.
+ * @param cooling Properties of the cooling model.
+ * @param floor_props Properties of the entropy fllor.
  * @param time Time since the start of the simulation (non-cosmo mode).
  * @param with_cosmology Are we running with cosmology?
  * @param dt The time-step size (in physical internal units).
@@ -424,7 +431,9 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
 __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
-    const double time, const int with_cosmology, const double dt) {
+    const struct cooling_function_data* cooling,
+    const struct entropy_floor_properties* floor_props, const double time,
+    const int with_cosmology, const double dt) {
 
   /* Record that the black hole has another active time step */
   bp->number_of_time_steps++;
@@ -453,8 +462,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Convert the quantities we gathered to physical frame (all internal units).
    * Note: for the velocities this means peculiar velocities */
-  const double gas_c_phys = bp->sound_speed_gas * cosmo->a_factor_sound_speed;
-  const double gas_c_phys2 = gas_c_phys * gas_c_phys;
+  double gas_c_phys = bp->sound_speed_gas * cosmo->a_factor_sound_speed;
+  double gas_c_phys2 = gas_c_phys * gas_c_phys;
   const double gas_v_circular[3] = {
       bp->circular_velocity_gas[0] * cosmo->a_inv,
       bp->circular_velocity_gas[1] * cosmo->a_inv,
@@ -480,11 +489,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                  (4. * M_PI * G * G * BH_mass * BH_mass * hi_inv_dim);
   } else {
 
-    /* Standard approach: compute accretion rate for all gas simultaneously.
-     *
-     * Convert the quantities we gathered to physical frame (all internal
-     * units). Note: velocities are already in black hole frame. */
-    const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
+    /* Standard approach: compute accretion rate for all gas simultaneously */
+
+    /* Convert velocities to physical frame
+     * Note: velocities are already in black hole frame. */
     const double gas_v_phys[3] = {bp->velocity_gas[0] * cosmo->a_inv,
                                   bp->velocity_gas[1] * cosmo->a_inv,
                                   bp->velocity_gas[2] * cosmo->a_inv};
@@ -493,18 +501,94 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                                gas_v_phys[1] * gas_v_phys[1] +
                                gas_v_phys[2] * gas_v_phys[2];
 
-    const double denominator2 = gas_v_norm2 + gas_c_phys2;
+    if (props->subgrid_bondi) {
+
+      /* Use subgrid rho and c for Bondi model */
+
+      /* Construct basic properties of the gas around the BH in
+         physical coordinates */
+      const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
+      const double gas_u_phys =
+          bp->internal_energy_gas * cosmo->a_factor_internal_energy;
+      const double gas_P_phys =
+          gas_pressure_from_internal_energy(gas_rho_phys, gas_u_phys);
+
+      /* Assume primordial abundance and solar metallicity pattern
+       * (Yes, that is inconsitent but makes no difference) */
+      const double logZZsol = 0.;
+      const double XH = 0.75;
+      float abundance_ratio[colibre_cooling_N_elementtypes];
+      for (int i = 0; i < colibre_cooling_N_elementtypes; ++i)
+        abundance_ratio[i] = 1.f;
+
+      /* Get the gas temperature */
+      const float gas_T = cooling_get_temperature_from_gas(
+          constants, cosmo, cooling, gas_rho_phys, logZZsol, XH, gas_u_phys,
+          /*HII_region=*/0);
+      const float log10_gas_T = log10f(gas_T);
+
+      /* Get the temperature on the EOS at this physical density */
+      const float T_EOS = entropy_floor_gas_temperature(
+          gas_rho_phys, bp->rho_gas, cosmo, floor_props);
+
+      /* Add the allowed offset */
+      const float log10_T_EOS_max =
+          log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
+
+      /* Compute the subgrid density assuming pressure
+       * equilibirum if on the entropy floor */
+      const double rho_sub = compute_subgrid_property(
+          cooling, constants, floor_props, cosmo, gas_rho_phys, logZZsol, XH,
+          gas_P_phys, log10_gas_T, log10_T_EOS_max, /*HII_region=*/0,
+          abundance_ratio, 0.f, cooling_compute_subgrid_density);
+
+      /* Record what we used */
+      bp->rho_subgrid_gas = rho_sub;
+
+      /* And the subgrid sound-speed */
+      const float c_sub = gas_soundspeed_from_pressure(rho_sub, gas_P_phys);
+
+      /* Also update the sound-speed to use in the angular momentum limiter */
+      gas_c_phys = c_sub;
+      gas_c_phys2 = c_sub * c_sub;
+
+      /* Record what we used */
+      bp->sound_speed_subgrid_gas = c_sub;
+
+      /* Now, compute the Bondi rate based on the normal velocities and
+       * the subgrid density and sound-speed */
+      const double denominator2 = gas_v_norm2 + gas_c_phys2;
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure that the denominator is strictly positive */
-    if (denominator2 <= 0)
-      error(
-          "Invalid denominator for black hole particle %lld in Bondi rate "
-          "calculation.",
-          bp->id);
+      /* Make sure that the denominator is strictly positive */
+      if (denominator2 <= 0)
+        error(
+            "Invalid denominator for black hole particle %lld in Bondi rate "
+            "calculation.",
+            bp->id);
 #endif
-    const double denominator_inv = 1. / sqrt(denominator2);
-    Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * gas_rho_phys *
-                 denominator_inv * denominator_inv * denominator_inv;
+      const double denominator_inv = 1. / sqrt(denominator2);
+      Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * rho_sub *
+                   denominator_inv * denominator_inv * denominator_inv;
+
+    } else {
+
+      /* Use dynamical rho and c for Bondi model */
+
+      const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
+
+      const double denominator2 = gas_v_norm2 + gas_c_phys2;
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure that the denominator is strictly positive */
+      if (denominator2 <= 0)
+        error(
+            "Invalid denominator for black hole particle %lld in Bondi rate "
+            "calculation.",
+            bp->id);
+#endif
+      const double denominator_inv = 1. / sqrt(denominator2);
+      Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * gas_rho_phys *
+                   denominator_inv * denominator_inv * denominator_inv;
+    }
   }
 
   /* Compute the reduction factor from Rosas-Guevara et al. (2015) */
@@ -742,8 +826,9 @@ INLINE static void black_holes_create_from_gas(
    * in the FOF code. We update them here.
    * (i.e. position, velocity, mass, time-step have been set) */
 
-  /* Birth time */
+  /* Birth time and density */
   bp->formation_scale_factor = cosmo->a;
+  bp->formation_gas_density = hydro_get_physical_density(p, cosmo);
 
   /* Initial seed mass */
   bp->subgrid_mass = props->subgrid_seed_mass;

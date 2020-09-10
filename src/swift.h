@@ -75,6 +75,7 @@
 #include "queue.h"
 #include "random.h"
 #include "restart.h"
+#include "rt.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "serial_io.h"

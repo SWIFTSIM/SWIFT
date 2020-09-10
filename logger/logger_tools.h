@@ -29,6 +29,7 @@
 #include "../src/error.h"
 #include "../src/inline.h"
 #include "../src/logger.h"
+#include "../src/logger_io.h"
 #include "../src/part_type.h"
 
 #ifdef HAVE_PYTHON
@@ -42,9 +43,24 @@
 #include <string.h>
 
 #define STRING_SIZE 200
+#define LOGGER_DOUBLE_NOT_ASSIGNED nan("214");
 
 struct header;
 struct logger_reader;
+
+/**
+ * @brief Structure dealing with reading / interpolating a field.
+ */
+struct logger_field {
+  /* Value of the field. */
+  void *field;
+
+  /* Value of its first derivative (NULL if not existing). */
+  void *first_deriv;
+
+  /* Value of its second derivative (NULL if not existing). */
+  void *second_deriv;
+};
 
 int tools_get_next_record(const struct header *h, void *map, size_t *offset,
                           size_t file_size);
@@ -55,5 +71,12 @@ int _tools_get_next_record_forward(const struct header *h, void *map,
 size_t tools_reverse_offset(const struct header *h, void *map, size_t offset);
 size_t tools_check_record_consistency(const struct logger_reader *reader,
                                       size_t offset);
+
+double logger_tools_quintic_hermite_spline(double t0, double x0, float v0,
+                                           float a0, double t1, double x1,
+                                           float v1, float a1, double t);
+float logger_tools_cubic_hermite_spline(double t0, float v0, float a0,
+                                        double t1, float v1, float a1,
+                                        double t);
 
 #endif  // LOGGER_LOGGER_TOOLS_H

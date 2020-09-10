@@ -63,6 +63,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "extra_ghost",
                                              "drift_part",
                                              "drift_spart",
+                                             "drift_sink",
                                              "drift_bpart",
                                              "drift_gpart",
                                              "drift_gpart_out",
@@ -81,6 +82,8 @@ const char *taskID_names[task_type_count] = {"none",
                                              "grav_mesh",
                                              "grav_end_force",
                                              "cooling",
+                                             "cooling_in",
+                                             "cooling_out",
                                              "star_formation",
                                              "star_formation_in",
                                              "star_formation_out",
@@ -102,15 +105,37 @@ const char *taskID_names[task_type_count] = {"none",
                                              "fof_pair"};
 
 /* Sub-task type names. */
-const char *subtaskID_names[task_subtype_count] = {
-    "none",       "density",      "gradient",       "force",
-    "limiter",    "grav",         "external_grav",  "tend_part",
-    "tend_gpart", "tend_spart",   "tend_bpart",     "xv",
-    "rho",        "part_swallow", "bpart_merger",   "gpart",
-    "multipole",  "spart",        "stars_density",  "stars_feedback",
-    "sf_count",   "bpart_rho",    "bpart_swallow",  "bpart_feedback",
-    "bh_density", "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
-    "bh_feedback"};
+const char *subtaskID_names[task_subtype_count] = {"none",
+                                                   "density",
+                                                   "gradient",
+                                                   "force",
+                                                   "limiter",
+                                                   "grav",
+                                                   "external_grav",
+                                                   "tend_part",
+                                                   "tend_gpart",
+                                                   "tend_spart",
+                                                   "tend_sink",
+                                                   "tend_bpart",
+                                                   "xv",
+                                                   "rho",
+                                                   "part_swallow",
+                                                   "bpart_merger",
+                                                   "gpart",
+                                                   "multipole",
+                                                   "spart",
+                                                   "stars_density",
+                                                   "stars_feedback",
+                                                   "sf_count",
+                                                   "bpart_rho",
+                                                   "bpart_swallow",
+                                                   "bpart_feedback",
+                                                   "bh_density",
+                                                   "bh_swallow",
+                                                   "do_gas_swallow",
+                                                   "do_bh_swallow",
+                                                   "bh_feedback",
+                                                   "sink"};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sort",    "hydro",          "gravity", "feedback",
@@ -150,6 +175,7 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
 TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
 TASK_CELL_OVERLAP(gpart, grav.parts, grav.count);
 TASK_CELL_OVERLAP(spart, stars.parts, stars.count);
+TASK_CELL_OVERLAP(sink, sinks.parts, sinks.count);
 TASK_CELL_OVERLAP(bpart, black_holes.parts, black_holes.count);
 
 /**
@@ -183,6 +209,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_stars_sort:
     case task_type_stars_resort:
       return task_action_spart;
+      break;
+
+    case task_type_drift_sink:
+      return task_action_sink;
       break;
 
     case task_type_drift_bpart:
@@ -312,6 +342,7 @@ float task_overlap(const struct task *restrict ta,
       (ta_act == task_action_gpart || ta_act == task_action_all);
   const int ta_spart =
       (ta_act == task_action_spart || ta_act == task_action_all);
+  const int ta_sink = (ta_act == task_action_sink || ta_act == task_action_all);
   const int ta_bpart =
       (ta_act == task_action_bpart || ta_act == task_action_all);
   const int tb_part = (tb_act == task_action_part || tb_act == task_action_all);
@@ -319,6 +350,7 @@ float task_overlap(const struct task *restrict ta,
       (tb_act == task_action_gpart || tb_act == task_action_all);
   const int tb_spart =
       (tb_act == task_action_spart || tb_act == task_action_all);
+  const int tb_sink = (tb_act == task_action_sink || tb_act == task_action_all);
   const int tb_bpart =
       (tb_act == task_action_bpart || tb_act == task_action_all);
 
@@ -381,6 +413,27 @@ float task_overlap(const struct task *restrict ta,
                                   task_cell_overlap_spart(ta->ci, tb->cj) +
                                   task_cell_overlap_spart(ta->cj, tb->ci) +
                                   task_cell_overlap_spart(ta->cj, tb->cj);
+
+    return ((float)size_intersect) / (size_union - size_intersect);
+  }
+
+  /* In the case where both tasks act on sink */
+  else if (ta_sink && tb_sink) {
+
+    /* Compute the union of the cell data. */
+    size_t size_union = 0;
+    if (ta->ci != NULL) size_union += ta->ci->sinks.count;
+    if (ta->cj != NULL) size_union += ta->cj->sinks.count;
+    if (tb->ci != NULL) size_union += tb->ci->sinks.count;
+    if (tb->cj != NULL) size_union += tb->cj->sinks.count;
+
+    if (size_union == 0) return 0.f;
+
+    /* Compute the intersection of the cell data. */
+    const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
+                                  task_cell_overlap_sink(ta->ci, tb->cj) +
+                                  task_cell_overlap_sink(ta->cj, tb->ci) +
+                                  task_cell_overlap_sink(ta->cj, tb->cj);
 
     return ((float)size_intersect) / (size_union - size_intersect);
   }
@@ -1095,7 +1148,7 @@ void task_dump_all(struct engine *e, int step) {
  *
  * @param dumpfile name of the file for the output.
  * @param e the #engine
- * @param dump_task_threshold Fraction of the step time above whic any task
+ * @param dump_tasks_threshold Fraction of the step time above whic any task
  * triggers a call to task_dump_all().
  * @param header whether to write a header include file.
  * @param allranks do the statistics over all ranks, if not just the current
@@ -1352,6 +1405,7 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_drift_part:
     case task_type_drift_spart:
+    case task_type_drift_sink:
     case task_type_drift_bpart:
     case task_type_drift_gpart:
       return task_category_drift;

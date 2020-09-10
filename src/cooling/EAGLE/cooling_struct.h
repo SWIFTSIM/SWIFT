@@ -126,7 +126,15 @@ struct cooling_function_data {
 
   /*! Index of the previous tables along the redshift index of the tables */
   int previous_z_index;
+
+  /*! Dummy temporary value to compile the new temporary (?) BH model */
+  float dlogT_EOS;
 };
+
+/**
+ * @brief Properties of the cooling stored in the #part data.
+ */
+struct cooling_part_data {};
 
 /**
  * @brief Properties of the cooling stored in the extended particle data.
@@ -135,6 +143,17 @@ struct cooling_xpart_data {
 
   /*! Cumulative energy radiated by the particle */
   float radiated_energy;
+};
+
+/**
+ * @brief Subgrid properties to calculate
+ */
+enum cooling_subgrid_properties {
+  cooling_compute_subgrid_density,
+  cooling_compute_subgrid_temperature,
+  cooling_compute_subgrid_HI_fraction,
+  cooling_compute_subgrid_HII_fraction,
+  cooling_compute_subgrid_H2_fraction
 };
 
 #endif /* SWIFT_COOLING_STRUCT_EAGLE_H */

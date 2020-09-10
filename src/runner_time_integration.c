@@ -91,10 +91,12 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
+  struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
@@ -103,7 +105,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e) &&
-      !cell_is_starting_stars(c, e) && !cell_is_starting_black_holes(c, e))
+      !cell_is_starting_stars(c, e) && !cell_is_starting_sinks(c, e) &&
+      !cell_is_starting_black_holes(c, e))
     return;
 
   /* Recurse? */
@@ -253,6 +256,44 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       }
     }
 
+    /* Loop over the sink particles in this cell. */
+    for (int k = 0; k < sink_count; k++) {
+
+      /* Get a handle on the s-part. */
+      struct sink *restrict sink = &sinks[k];
+
+      /* If particle needs to be kicked */
+      if (sink_is_starting(sink, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(sink->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current + 1, sink->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current + 1, sink->time_bin);
+
+        if (ti_begin != ti_current)
+          error(
+              "Sink-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, sink->time_bin, ti_current);
+#endif
+
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                        ti_begin + ti_step / 2);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
+        /* do the kick */
+        kick_sink(sink, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+      }
+    }
+
     /* Loop over the black hole particles in this cell. */
     for (int k = 0; k < bcount; k++) {
 
@@ -314,11 +355,13 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
+  struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
@@ -327,7 +370,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
-      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e))
+      !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
+      !cell_is_active_black_holes(c, e))
     return;
 
   /* Recurse? */
@@ -485,6 +529,48 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       }
     }
 
+    /* Loop over the sink particles in this cell. */
+    for (int k = 0; k < sink_count; k++) {
+
+      /* Get a handle on the part. */
+      struct sink *restrict sink = &sinks[k];
+
+      /* If particle needs to be kicked */
+      if (sink_is_active(sink, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(sink->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, sink->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ti_begin + ti_step != ti_current)
+          error("Particle in wrong time-bin");
+#endif
+
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
+        /* Finish the time-step with a second half-kick */
+        kick_sink(sink, dt_kick_grav, ti_begin + ti_step / 2,
+                  ti_begin + ti_step);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that kick and the drift are synchronized */
+        if (sink->ti_drift != sink->ti_kick)
+          error("Error integrating sink-part in time.");
+#endif
+
+        /* Prepare the values to be drifted */
+        sink_reset_predicted_values(sink);
+      }
+    }
+
     /* Loop over the particles in this cell. */
     for (int k = 0; k < bcount; k++) {
 
@@ -547,32 +633,39 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
+  struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
-      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e)) {
+      !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
+      !cell_is_active_black_holes(c, e)) {
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
+    c->sinks.updated = 0;
     c->black_holes.updated = 0;
     return;
   }
 
-  int updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
+  int updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
+      b_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
+                ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
@@ -790,7 +883,67 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       }
     }
 
-    /* Loop over the star particles in this cell. */
+    /* Loop over the sink particles in this cell. */
+    for (int k = 0; k < sink_count; k++) {
+
+      /* Get a handle on the part. */
+      struct sink *restrict sink = &sinks[k];
+
+      /* need to be updated ? */
+      if (sink_is_active(sink, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, sink->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_sink_timestep(sink, e);
+
+        /* Update particle */
+        sink->time_bin = get_time_bin(ti_new_step);
+        sink->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Number of updated sink-particles */
+        sink_updated++;
+        g_updated++;
+
+        ti_sinks_end_min = min(ti_current + ti_new_step, ti_sinks_end_min);
+        ti_sinks_end_max = max(ti_current + ti_new_step, ti_sinks_end_max);
+        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_sinks_beg_max = max(ti_current, ti_sinks_beg_max);
+        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+        /* sink particle is inactive but not inhibited */
+      } else {
+
+        if (!sink_is_inhibited(sink, e)) {
+
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, sink->time_bin);
+
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, sink->time_bin);
+
+          ti_sinks_end_min = min(ti_end, ti_sinks_end_min);
+          ti_sinks_end_max = max(ti_end, ti_sinks_end_max);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+
+          /* What is the next starting point for this cell ? */
+          ti_sinks_beg_max = max(ti_beg, ti_sinks_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
+      }
+    }
+
+    /* Loop over the black hole particles in this cell. */
     for (int k = 0; k < bcount; k++) {
 
       /* Get a handle on the part. */
@@ -865,6 +1018,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* And aggregate */
         updated += cp->hydro.updated;
         g_updated += cp->grav.updated;
+        sink_updated += cp->sinks.updated;
         s_updated += cp->stars.updated;
         b_updated += cp->black_holes.updated;
 
@@ -880,6 +1034,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_stars_end_max = max(cp->stars.ti_end_max, ti_stars_end_max);
         ti_stars_beg_max = max(cp->stars.ti_beg_max, ti_stars_beg_max);
 
+        ti_sinks_end_min = min(cp->sinks.ti_end_min, ti_sinks_end_min);
+        ti_sinks_end_max = max(cp->sinks.ti_end_max, ti_sinks_end_max);
+        ti_sinks_beg_max = max(cp->sinks.ti_beg_max, ti_sinks_beg_max);
+
         ti_black_holes_end_min =
             min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
         ti_black_holes_end_max =
@@ -894,6 +1052,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
+  c->sinks.updated = sink_updated;
   c->black_holes.updated = b_updated;
 
   c->hydro.ti_end_min = ti_hydro_end_min;
@@ -905,6 +1064,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->stars.ti_end_min = ti_stars_end_min;
   c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
+  c->sinks.ti_end_min = ti_sinks_end_min;
+  c->sinks.ti_end_max = ti_sinks_end_max;
+  c->sinks.ti_beg_max = ti_sinks_beg_max;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
@@ -919,6 +1081,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   if (c->stars.ti_end_min == e->ti_current &&
       c->stars.ti_end_min < max_nr_timesteps)
     error("End of next stars step is current time!");
+  if (c->sinks.ti_end_min == e->ti_current &&
+      c->sinks.ti_end_min < max_nr_timesteps)
+    error("End of next sinks step is current time!");
   if (c->black_holes.ti_end_min == e->ti_current &&
       c->black_holes.ti_end_min < max_nr_timesteps)
     error("End of next black holes step is current time!");

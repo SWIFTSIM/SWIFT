@@ -15,3 +15,4 @@ parameter files.
 
    parameter_description
    output_selection
+   lossy_filters

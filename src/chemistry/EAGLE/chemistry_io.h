@@ -50,12 +50,15 @@ INLINE static int chemistry_read_particles(struct part* parts,
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
+ * @param xparts The extra particle array.
  * @param list The list of i/o properties to write.
  *
  * @return Returns the number of fields to write.
  */
 INLINE static int chemistry_write_particles(const struct part* parts,
-                                            struct io_props* list) {
+                                            const struct xpart* xparts,
+                                            struct io_props* list,
+                                            const int with_cosmology) {
 
   /* List what we want to write */
   list[0] = io_make_output_field(
@@ -271,7 +274,19 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
                            "Masses of the BH particles in iron that have been "
                            "produced by SNIa stars");
 
-  return 9;
+  list[9] =
+      io_make_output_field("BirthMetallicities", FLOAT, 1, UNIT_CONV_NO_UNITS,
+                           0.f, bparts, chemistry_data.formation_metallicity,
+                           "Metallicities (metal mass fractions) of the gas "
+                           "particles the black holes formed from");
+
+  list[10] = io_make_output_field(
+      "SmoothedBirthMetallicities", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      chemistry_data.smoothed_formation_metallicity,
+      "Smoothed metallicities (metal mass fractions) of the gas particles the "
+      "black holes formed from");
+
+  return 11;
 }
 
 #ifdef HAVE_HDF5

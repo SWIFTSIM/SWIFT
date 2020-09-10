@@ -1,3 +1,8 @@
 Initial conditions corresponding to the 12.5 Mpc volume
 of the EAGLE suite. The ICs only contain DM particles. The
 gas particles will be generated in SWIFT.
+
+This resolution corresponds to: EAGLE res (m_B = 1.81e6 Msol)
+
+MD5 hash:
+22529747075f94c6054548acdf09498e  EAGLE_L0012N0188_ICs.hdf5

@@ -203,6 +203,9 @@ void hydro_props_init(struct hydro_props *p,
   if (p->particle_splitting) {
     p->particle_splitting_mass_threshold =
         parser_get_param_float(params, "SPH:particle_splitting_mass_threshold");
+
+    p->generate_random_ids = parser_get_opt_param_int(
+        params, "SPH:particle_splitting_generate_random_ids", 0);
   }
 }
 

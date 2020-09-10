@@ -159,8 +159,8 @@ struct cell_pair_indices {
 
 /* Function prototypes. */
 void fof_init(struct fof_props *props, struct swift_params *params,
-              const struct phys_const *phys_const,
-              const struct unit_system *us);
+              const struct phys_const *phys_const, const struct unit_system *us,
+              const int stand_alone_fof);
 void fof_create_mpi_types(void);
 void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props);

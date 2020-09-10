@@ -54,6 +54,7 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
 #include "tools.h"
@@ -78,12 +79,12 @@
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void write_distributed_array(const struct engine* e, hid_t grp,
-                             const char* fileName,
-                             const char* partTypeGroupName,
-                             const struct io_props props, const size_t N,
-                             const struct unit_system* internal_units,
-                             const struct unit_system* snapshot_units) {
+void write_distributed_array(
+    const struct engine* e, hid_t grp, const char* fileName,
+    const char* partTypeGroupName, const struct io_props props, const size_t N,
+    const enum lossy_compression_schemes lossy_compression,
+    const struct unit_system* internal_units,
+    const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -110,7 +111,7 @@ void write_distributed_array(const struct engine* e, hid_t grp,
     error("Error while creating data space for field '%s'.", props.name);
 
   /* Decide what chunk size to use based on compression */
-  int log2_chunk_size = e->snapshot_compression > 0 ? 12 : 18;
+  int log2_chunk_size = 20;
 
   int rank;
   hsize_t shape[2];
@@ -138,8 +139,11 @@ void write_distributed_array(const struct engine* e, hid_t grp,
   if (h_err < 0)
     error("Error while changing data space shape for field '%s'.", props.name);
 
+  /* Dataset type */
+  hid_t h_type = H5Tcopy(io_hdf5_type(props.type));
+
   /* Dataset properties */
-  const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
+  hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
   /* Create filters and set compression level if we have something to write */
   if (N > 0) {
@@ -150,12 +154,12 @@ void write_distributed_array(const struct engine* e, hid_t grp,
       error("Error while setting chunk size (%llu, %llu) for field '%s'.",
             chunk_shape[0], chunk_shape[1], props.name);
 
-    /* Impose check-sum to verify data corruption */
-    h_err = H5Pset_fletcher32(h_prop);
-    if (h_err < 0)
-      error("Error while setting checksum options for field '%s'.", props.name);
+    /* Are we imposing some form of lossy compression filter? */
+    if (lossy_compression != compression_write_lossless)
+      set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
+                                 props.name);
 
-    /* Impose data compression */
+    /* Impose GZIP data compression */
     if (e->snapshot_compression > 0) {
       h_err = H5Pset_shuffle(h_prop);
       if (h_err < 0)
@@ -167,11 +171,16 @@ void write_distributed_array(const struct engine* e, hid_t grp,
         error("Error while setting compression options for field '%s'.",
               props.name);
     }
+
+    /* Impose check-sum to verify data corruption */
+    h_err = H5Pset_fletcher32(h_prop);
+    if (h_err < 0)
+      error("Error while setting checksum options for field '%s'.", props.name);
   }
 
   /* Create dataset */
-  const hid_t h_data = H5Dcreate(grp, props.name, io_hdf5_type(props.type),
-                                 h_space, H5P_DEFAULT, h_prop, H5P_DEFAULT);
+  const hid_t h_data = H5Dcreate(grp, props.name, h_type, h_space, H5P_DEFAULT,
+                                 h_prop, H5P_DEFAULT);
   if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write temporary buffer to HDF5 dataspace */
@@ -216,6 +225,7 @@ void write_distributed_array(const struct engine* e, hid_t grp,
 
   /* Free and close everything */
   swift_free("writebuff", temp);
+  H5Tclose(h_type);
   H5Pclose(h_prop);
   H5Dclose(h_data);
   H5Sclose(h_space);
@@ -248,6 +258,7 @@ void write_output_distributed(struct engine* e,
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
+  const struct sink* sinks = e->s->sinks;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
   struct output_options* output_options = e->output_options;
@@ -267,6 +278,7 @@ void write_output_distributed(struct engine* e,
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
+  const size_t Nsinks = e->s->nr_sinks;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nblackholes = e->s->nr_bparts;
 
@@ -281,12 +293,14 @@ void write_output_distributed(struct engine* e,
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
   const size_t Ngas_written =
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nsinks_written =
+      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
   const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written;
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
@@ -331,7 +345,7 @@ void write_output_distributed(struct engine* e,
 
   /* Compute offset in the file and total number of particles */
   const long long N[swift_type_count] = {Ngas_written,   Ndm_written,
-                                         Ndm_background, 0,
+                                         Ndm_background, Nsinks_written,
                                          Nstars_written, Nblackholes_written};
 
   /* Gather the total number of particles to write */
@@ -471,6 +485,7 @@ void write_output_distributed(struct engine* e,
     struct xpart* xparts_written = NULL;
     struct gpart* gparts_written = NULL;
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
+    struct sink* sinks_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
 
@@ -483,7 +498,8 @@ void write_output_distributed(struct engine* e,
           /* No inhibted particles: easy case */
           Nparticles = Ngas;
           hydro_write_particles(parts, xparts, list, &num_fields);
-          num_fields += chemistry_write_particles(parts, list + num_fields);
+          num_fields += chemistry_write_particles(
+              parts, xparts, list + num_fields, with_cosmology);
           if (with_cooling || with_temperature) {
             num_fields += cooling_write_particles(
                 parts, xparts, list + num_fields, e->cooling_func);
@@ -522,8 +538,8 @@ void write_output_distributed(struct engine* e,
           /* Select the fields to write */
           hydro_write_particles(parts_written, xparts_written, list,
                                 &num_fields);
-          num_fields +=
-              chemistry_write_particles(parts_written, list + num_fields);
+          num_fields += chemistry_write_particles(
+              parts_written, xparts_written, list + num_fields, with_cosmology);
           if (with_cooling || with_temperature) {
             num_fields +=
                 cooling_write_particles(parts_written, xparts_written,
@@ -632,6 +648,34 @@ void write_output_distributed(struct engine* e,
         }
       } break;
 
+      case swift_type_sink: {
+        if (Nsinks == Nsinks_written) {
+
+          /* No inhibted particles: easy case */
+          Nparticles = Nsinks;
+          sink_write_particles(sinks, list, &num_fields, with_cosmology);
+
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          Nparticles = Nsinks_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("sinks_written", (void**)&sinks_written,
+                             sink_align,
+                             Nsinks_written * sizeof(struct sink)) != 0)
+            error("Error while allocating temporary memory for sinks");
+
+          /* Collect the particles we want to write */
+          io_collect_sinks_to_write(sinks, sinks_written, Nsinks,
+                                    Nsinks_written);
+
+          /* Select the fields to write */
+          sink_write_particles(sinks_written, list, &num_fields,
+                               with_cosmology);
+        }
+      } break;
+
       case swift_type_stars: {
         if (Nstars == Nstars_written) {
 
@@ -729,23 +773,25 @@ void write_output_distributed(struct engine* e,
 
     /* Did the user specify a non-standard default for the entire particle
      * type? */
-    const enum compression_levels compression_level_current_default =
-        output_options_get_ptype_default(output_options->select_output,
-                                         current_selection_name,
-                                         (enum part_type)ptype);
+    const enum lossy_compression_schemes compression_level_current_default =
+        output_options_get_ptype_default_compression(
+            output_options->select_output, current_selection_name,
+            (enum part_type)ptype);
 
     /* Write everything that is not cancelled */
     int num_fields_written = 0;
     for (int i = 0; i < num_fields; ++i) {
 
       /* Did the user cancel this field? */
-      const int should_write = output_options_should_write_field(
-          output_options, current_selection_name, list[i].name,
-          (enum part_type)ptype, compression_level_current_default);
+      const enum lossy_compression_schemes compression_level =
+          output_options_get_field_compression(
+              output_options, current_selection_name, list[i].name,
+              (enum part_type)ptype, compression_level_current_default);
 
-      if (should_write) {
+      if (compression_level != compression_do_not_write) {
         write_distributed_array(e, h_grp, fileName, partTypeGroupName, list[i],
-                                Nparticles, internal_units, snapshot_units);
+                                Nparticles, compression_level, internal_units,
+                                snapshot_units);
         num_fields_written++;
       }
     }
@@ -759,6 +805,7 @@ void write_output_distributed(struct engine* e,
     if (gparts_written) swift_free("gparts_written", gparts_written);
     if (gpart_group_data_written)
       swift_free("gpart_group_written", gpart_group_data_written);
+    if (sinks_written) swift_free("sinks_written", sinks_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
 

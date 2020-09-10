@@ -31,6 +31,7 @@
 #include <time.h>
 
 /* Local includes. */
+#include "active.h"
 #include "chemistry.h"
 #include "cooling.h"
 #include "cooling_rates.h"
@@ -569,6 +570,30 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
 }
 
 /**
+ * @brief Compute the temperature based on gas properties.
+ *
+ * Dummy function!
+ *
+ * @param phys_const #phys_const data structure.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param u_phys Internal energy of the gas in internal physical units.
+ */
+float cooling_get_temperature_from_gas(
+    const struct phys_const *phys_const, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const float rho_phys,
+    const float XH, const float logZZsol, const float u_phys,
+    const int HII_region) {
+
+  error("Do not call this function");
+  return -1.f;
+}
+
+/**
  * @brief Compute the temperature of a #part based on the cooling function.
  *
  * We use the Temperature table of the Wiersma+08 set. This computes the
@@ -636,6 +661,52 @@ float cooling_get_temperature(
   return exp10(log_10_T);
 }
 
+double compute_subgrid_property(
+    const struct cooling_function_data *cooling,
+    const struct phys_const *phys_const,
+    const struct entropy_floor_properties *floor_props,
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max, const int HII_region,
+    const float *abundance_ratio, const double log_u_cgs,
+    const enum cooling_subgrid_properties isub) {
+
+  error("Do not call this function");
+  return -1.f;
+}
+
+/**
+ * @brief Compute the physical subgrid density of the gas.
+ *
+ * There is no subgrid density in this model so we just
+ * return the regular density.
+ *
+ * Note that we return the density in physical coordinates.
+ *
+ * @param cooling The properties of the cooling scheme.
+ * @param phys_const The physical constants.
+ * @param floor_props The properties of the entropy floor.
+ * @param cosmo The cosmological model.
+ * @param rho_phys Density of the gas in internal physical units.
+ * @param logZZsol Logarithm base 10 of the gas' metallicity in units of solar
+ * metallicity.
+ * @param XH The Hydrogen abundance of the gas.
+ * @param P_phys Pressure of the gas in internal physical units.
+ * @param log10_T The logarithm base 10 of the temperature of the gas.
+ * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
+ * to be considered on the EOS at the density of the gas.
+ */
+double compute_subgrid_density(
+    const struct cooling_function_data *cooling,
+    const struct phys_const *phys_const,
+    const struct entropy_floor_properties *floor_props,
+    const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
+    const float XH, const float P_phys, const float log10_T,
+    const float log10_T_EOS_max) {
+
+  return rho_phys;
+}
+
 /**
  * @brief Returns the total radiated energy by this particle.
  *
@@ -685,6 +756,8 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
 
     struct part *p = &parts[i];
     struct xpart *xp = &xparts[i];
+
+    if (part_is_inhibited(p, s->e)) continue;
 
     const float old_u = hydro_get_physical_internal_energy(p, xp, cosmo);
     const float new_u = old_u + extra_heat;

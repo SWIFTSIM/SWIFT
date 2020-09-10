@@ -243,7 +243,8 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
    * or a=1 is found in output_list.txt set the flag `final_step_dump`
    * to 1 - this is not special behaviour that is controlled by a
    * parameter file flag. */
-  if (time == time_end) {
+  if (time == time_end ||
+      (time > time_end && time - time_end < OUTPUT_LIST_EPS_TIME_END)) {
     t->final_step_dump = 1;
     if (e->verbose) {
       if (is_cosmo) {

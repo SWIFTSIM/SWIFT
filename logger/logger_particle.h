@@ -19,72 +19,18 @@
 #ifndef LOGGER_LOGGER_PARTICLE_H
 #define LOGGER_LOGGER_PARTICLE_H
 
-#include "logger_header.h"
-#include "logger_time.h"
+/* Include the tools. */
 #include "logger_tools.h"
+
+/* Include the other local files. */
+#include "logger_gravity.h"
+#include "logger_header.h"
+#include "logger_hydro.h"
+#include "logger_stars.h"
+#include "logger_time.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#if defined(HYDRO_DIMENSION_1D)
-#define DIM 1
-#elif defined(HYDRO_DIMENSION_2D)
-#define DIM 2
-#elif defined(HYDRO_DIMENSION_3D)
-#define DIM 3
-#endif
-
-struct logger_reader;
-
-/**
- * @brief Store the data from a record.
- *
- * This structure contains all the required fields
- * present in a file.
- *
- * As we need only a few particles, no need to keep it small.
- *
- * The particle is initialized with #logger_particle_init
- * and can be updated with a record through #logger_particle_read.
- *
- * In #logger_particle_read, we use #logger_particle_read_field on
- * each field and #logger_particle_interpolate if a linear
- * interpolation is required.
- */
-struct logger_particle {
-  /* position. */
-  double pos[3];
-
-  /* velocity. */
-  float vel[3];
-
-  /* acceleration. */
-  float acc[3];
-
-  /* entropy. */
-  float entropy;
-
-  /* smoothing length. */
-  float h;
-
-  /* density. */
-  float density;
-
-  /* mass. */
-  float mass;
-
-  /* unique id. */
-  long long id;
-
-  /* time of the record. */
-  double time;
-
-  /* offset of the particle */
-  size_t offset;
-
-  /* The particle type */
-  int type;
-};
 
 /**
  * @brief Defines the type of interpolation
@@ -94,20 +40,21 @@ enum logger_reader_type {
   logger_reader_lin,   /* Linear interpolation. */
 };
 
-void logger_particle_print(const struct logger_particle *p);
-
-size_t logger_particle_read(struct logger_particle *part,
-                            const struct logger_reader *reader, size_t offset,
-                            const double time,
-                            const enum logger_reader_type reader_type);
-
-void logger_particle_init(struct logger_particle *part);
-
-void *logger_particle_read_field(struct logger_particle *part, void *map,
-                                 const char *field, const size_t size);
-
-void logger_particle_interpolate(struct logger_particle *part_curr,
-                                 const struct logger_particle *part_next,
-                                 const double time);
+size_t logger_particle_read_field(const struct logger_reader *reader,
+                                  size_t offset, void *output,
+                                  const int *local_to_global,
+                                  const int local_count, int field,
+                                  size_t *mask, size_t *h_offset);
+/**
+ * @brief Generate the data for the special flags.
+ *
+ * @param flag The special flag to use.
+ * @param data The data to write in the .
+ */
+INLINE static enum logger_special_flags logger_unpack_flags_and_data(
+    uint32_t flag, int *data) {
+  *data = flag & 0xFFFFFF;
+  return flag >> (3 * 8);
+}
 
 #endif  // LOGGER_LOGGER_PARTICLE_H

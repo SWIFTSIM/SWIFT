@@ -340,6 +340,9 @@ void *runner_main(void *data) {
         case task_type_drift_spart:
           runner_do_drift_spart(r, ci, 1);
           break;
+        case task_type_drift_sink:
+          runner_do_drift_sink(r, ci, 1);
+          break;
         case task_type_drift_bpart:
           runner_do_drift_bpart(r, ci, 1);
           break;

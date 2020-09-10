@@ -42,12 +42,15 @@ INLINE static int chemistry_read_particles(struct part* parts,
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
+ * @param xparts The extra particle array.
  * @param list The list of i/o properties to write.
  *
  * @return Returns the number of fields to write.
  */
 INLINE static int chemistry_write_particles(const struct part* parts,
-                                            struct io_props* list) {
+                                            const struct xpart* xparts,
+                                            struct io_props* list,
+                                            const int with_cosmology) {
 
   /* update list according to hydro_io */
 
