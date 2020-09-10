@@ -51,7 +51,7 @@ INLINE static int rt_write_particles(const struct xpart* xparts,
       "RTCallsPair", INT, 1, UNIT_CONV_NO_UNITS, 0, xparts, rt_data.calls_pair,
       "number of calls to this particle during one time step in self task");
 
-  return (5);
+  return 5;
 }
 
 /**
@@ -79,6 +79,6 @@ INLINE static int rt_write_stars(const struct spart* sparts,
       "RTCallsPair", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts, rt_data.calls_pair,
       "number of calls to this particle during one time step in self task");
 
-  return (5);
+  return 5;
 }
 #endif /* SWIFT_RT_IO_DEBUG_H */
