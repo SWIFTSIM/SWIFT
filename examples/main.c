@@ -595,6 +595,11 @@ int main(int argc, char *argv[]) {
   error(
       "Error: Cannot use radiative transfer without GEAR star model for now\n");
 #endif
+#ifdef WITH_MPI
+  /* Temporary, this will be removed in due time */
+  error(
+      "Error: Cannot use radiative transfer with MPI\n");
+#endif
 #endif /* idfef RT_NONE */
 
 /* Let's pin the main thread, now we know if affinity will be used. */
