@@ -85,6 +85,7 @@ TASKTYPES = [
     "extra_ghost",
     "drift_part",
     "drift_spart",
+    "drift_sink",
     "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
