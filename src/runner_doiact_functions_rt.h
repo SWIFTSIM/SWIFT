@@ -38,6 +38,8 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+  const struct engine *e = r->e;
+
   /* Anything to do here? */
   if (c->hydro.count == 0 || c->stars.count == 0) return;
 
@@ -52,6 +54,10 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
   for (int sid = 0; sid < scount; sid++) {
 
     struct spart *restrict si = &sparts[sid];
+
+    /* Skip inhibited particles. */
+    if (spart_is_inhibited(si, e)) continue;
+
     const float hi = si->h;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
@@ -61,6 +67,10 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
     for (int pid = 0; pid < count; pid++) {
       struct xpart *restrict xpj = &xparts[pid];
       struct part *restrict pj = &parts[pid];
+
+      /* Skip inhibited particles. */
+      if (part_is_inhibited(pj, e)) continue;
+
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -113,6 +123,9 @@ void DOPAIR1_NONSYM_RT(struct runner *r, struct cell *ci, struct cell *cj) {
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
 
+    /* Skip inhibited particles. */
+    if (spart_is_inhibited(si, e)) continue;
+
     const float hi = si->h;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
@@ -128,7 +141,7 @@ void DOPAIR1_NONSYM_RT(struct runner *r, struct cell *ci, struct cell *cj) {
       const float hjg2 = hj * hj * kernel_gamma2;
 
       /* Skip inhibited particles. */
-      // if (part_is_inhibited(pj, e)) continue;
+      if (part_is_inhibited(pj, e)) continue;
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
