@@ -612,6 +612,30 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_hydro(
   return (c->hydro.ti_beg_max == e->ti_current);
 }
 
+/* Are cells / particles active for kick1 tasks ? */
+
+/**
+ * @brief Does a cell contain any particle starting their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_starting_dark_matter(
+     const struct cell *c, const struct engine *e) {
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->dark_matter.ti_beg_max > e->ti_current)
+        error(
+              "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
+              "e->ti_current=%lld (t=%e, a=%e)",
+              c->dark_matter.ti_beg_max, c->dark_matter.ti_beg_max * e->time_base, e->ti_current,
+              e->ti_current * e->time_base, e->cosmology->a);
+#endif
+    
+    return (c->dark_matter.ti_beg_max == e->ti_current);
+}
+
 /**
  * @brief Does a cell contain any g-particle starting their time-step now ?
  *

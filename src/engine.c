@@ -2351,8 +2351,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_dmparts(s, e->verbose);
   space_init_sinks(s, e->verbose);
     
-    message("About to launch tasks?");
-
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))

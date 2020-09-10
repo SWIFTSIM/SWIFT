@@ -876,7 +876,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_nodeID != nodeID) {
               
               if (cj_active_dark_matter) {
-                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dark_matter_density);
                   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);
 
                   /* If the local cell is active, more stuff will be needed. */
@@ -899,7 +899,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
                   
                   /* Is the foreign cell active and will need stuff from us? */
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_dark_matter_density,
                                           ci_nodeID);
                   scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm,
                                           ci_nodeID);
@@ -913,7 +913,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               
               /* If the local cell is active, receive data from the foreign cell. */
               if (ci_active_dark_matter) {
-                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dark_matter_density);
                   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);
 
                   /* If the local cell is active, more stuff will be needed. */
@@ -933,7 +933,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
                   
                   /* Is the foreign cell active and will need stuff from us? */
-                  scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_dark_matter_density,
                                           cj_nodeID);
                   scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm,
                                           cj_nodeID);
@@ -1059,7 +1059,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
       
       /* Dark matter stuff ? */
-    else if (t_type == task_type_dark_matter_ghost || t_type == task_type_sidm_kick) {
+    else if (t_type == task_type_dark_matter_ghost) {
         if (cell_is_active_dark_matter(t->ci, e)) scheduler_activate(s, t);
     }
 

@@ -41,12 +41,8 @@
 #include "timestep_limiter.h"
 #include "tracers.h"
 
-/* Import the density loop functions. */
-#define FUNCTION density
-#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+/* Import the dark matter functions. */
 #include "runner_doiact_dark_matter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -1423,6 +1419,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     double h_max = c->dark_matter.h_max;
     
     TIMER_TIC;
+    message("Runner DM density ghost");
     
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
@@ -1509,8 +1506,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                     const float n_sum = p->density.wcount * h_old_dim;
                     const float n_target = dark_matter_eta_dim;
                     const float f = n_sum - n_target;
-                    const float f_prime =
-                    p->density.wcount_dh * h_old_dim +
+                    const float f_prime = p->density.wcount_dh * h_old_dim +
                     hydro_dimension * p->density.wcount * h_old_dim_minus_one;
                     
                     /* Improve the bisection bounds */

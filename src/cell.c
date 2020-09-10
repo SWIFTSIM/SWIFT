@@ -575,6 +575,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.h_max = c->hydro.h_max;
   pc->stars.h_max = c->stars.h_max;
   pc->black_holes.h_max = c->black_holes.h_max;
+  pc->dark_matter.h_max = c->dark_matter.h_max;
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
@@ -587,6 +588,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
     pc->dark_matter.ti_end_max = c->dark_matter.ti_end_max;
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
+  pc->dark_matter.ti_old_part = c->dark_matter.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
   pc->stars.ti_old_part = c->stars.ti_old_part;
   pc->hydro.count = c->hydro.count;
@@ -731,6 +733,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
   c->black_holes.h_max = pc->black_holes.h_max;
+    c->dark_matter.h_max = pc->dark_matter.h_max;
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
@@ -746,6 +749,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
   c->stars.ti_old_part = pc->stars.ti_old_part;
   c->black_holes.ti_old_part = pc->black_holes.ti_old_part;
+    c->dark_matter.ti_old_part = pc->dark_matter.ti_old_part;
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
@@ -784,6 +788,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
+        temp->dark_matter.count = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -2357,6 +2362,9 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           } else if (gparts[j].type == swift_type_stars) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
+          } else if (gparts[j].type == swift_type_dark_matter) {
+              dmparts[-gparts[j].id_or_neg_offset - dmparts_offset].gpart =
+              &gparts[j];
           } else if (gparts[j].type == swift_type_sink) {
             sinks[-gparts[j].id_or_neg_offset - sinks_offset].gpart =
                 &gparts[j];
@@ -2373,6 +2381,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         } else if (gparts[k].type == swift_type_stars) {
           sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
               &gparts[k];
+        } else if (gparts[k].type == swift_type_dark_matter) {
+          dmparts[-gparts[k].id_or_neg_offset - dmparts_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_sink) {
           sinks[-gparts[k].id_or_neg_offset - sinks_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_black_hole) {
@@ -2406,10 +2416,13 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 void cell_sanitize(struct cell *c, int treated) {
   const int count = c->hydro.count;
   const int scount = c->stars.count;
+  const int dmcount = c->dark_matter.count;
   struct part *parts = c->hydro.parts;
   struct spart *sparts = c->stars.parts;
+  struct dmpart *dmparts = c->dark_matter.parts;
   float h_max = 0.f;
   float stars_h_max = 0.f;
+  float dark_matter_h_max = 0.f;
 
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
@@ -2425,6 +2438,10 @@ void cell_sanitize(struct cell *c, int treated) {
       if (sparts[i].h == 0.f || sparts[i].h > upper_h_max)
         sparts[i].h = upper_h_max;
     }
+      for (int i = 0; i < dmcount; ++i) {
+          if (dmparts[i].h == 0.f || dmparts[i].h > upper_h_max)
+              dmparts[i].h = upper_h_max;
+      }
   }
 
   /* Recurse and gather the new h_max values */
@@ -2437,18 +2454,20 @@ void cell_sanitize(struct cell *c, int treated) {
         /* And collect */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
+        dark_matter_h_max = max(dark_matter_h_max, c->progeny[k]->dark_matter.h_max);
       }
     }
   } else {
     /* Get the new value of h_max */
     for (int i = 0; i < count; ++i) h_max = max(h_max, parts[i].h);
-    for (int i = 0; i < scount; ++i)
-      stars_h_max = max(stars_h_max, sparts[i].h);
+    for (int i = 0; i < scount; ++i) stars_h_max = max(stars_h_max, sparts[i].h);
+    for (int i = 0; i < dmcount; ++i) dark_matter_h_max = max(dark_matter_h_max, dmparts[i].h);
   }
 
   /* Record the change */
   c->hydro.h_max = h_max;
   c->stars.h_max = stars_h_max;
+  c->dark_matter.h_max = dark_matter_h_max;
 }
 
 /**
@@ -2884,7 +2903,9 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
                          cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift |
                          cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift |
                          cell_flag_do_stars_drift |
-                         cell_flag_do_stars_sub_drift);
+                         cell_flag_do_stars_sub_drift |
+                         cell_flag_do_dark_matter_drift |
+                         cell_flag_do_dark_matter_sub_drift);
 }
 
 /**
@@ -5055,11 +5076,11 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             if (ci_nodeID != nodeID) {
                 
                 /* Receive the foreign parts to compute DM parts interactions */
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dark_matter_density);
                 scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);
                 
                 /* Send the local part information */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, ci_nodeID);
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_dark_matter_density, ci_nodeID);
                 scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm, ci_nodeID);
                 
                 /* Drift the cell which will be sent; note that not all sent
@@ -5078,11 +5099,11 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             } else if (cj_nodeID != nodeID) {
                 
                 /* Receive the foreign parts to compute DM parts interactions */
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dark_matter_density);
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);
 
                 /* Send the local part information */
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+                scheduler_activate_send(s, cj->mpi.send, task_subtype_dark_matter_density, ci_nodeID);
                 scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm, ci_nodeID);
                 
                 /* Drift the cell which will be sent; note that not all sent
@@ -5175,6 +5196,27 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
  * @param super_hydro Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
+void cell_set_super_dark_matter(struct cell *c, struct cell *super_grav) {
+    /* Are we in a cell with some kind of self/pair task ? */
+    if (super_grav == NULL && c->dark_matter.density != NULL) super_grav = c;
+    
+    /* Set the super-cell */
+    c->grav.super = super_grav;
+    
+    /* Recurse */
+    if (c->split)
+        for (int k = 0; k < 8; k++)
+            if (c->progeny[k] != NULL)
+                cell_set_super_dark_matter(c->progeny[k], super_grav);
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
   if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
@@ -5238,6 +5280,9 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
+
+    /* Super-pointer for dark matter */
+    cell_set_super_dark_matter(c, NULL);
 
     /* Super-pointer for common operations */
     cell_set_super(c, NULL, with_hydro, with_grav);

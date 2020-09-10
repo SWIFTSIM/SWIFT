@@ -29,6 +29,7 @@
 #include "sink.h"
 #include "stars.h"
 #include "timeline.h"
+#include "dark_matter.h"
 
 /**
  * @brief Perform the 'kick' operation on a #gpart
@@ -156,6 +157,43 @@ __attribute__((always_inline)) INLINE static void kick_spart(
 
   /* Kick extra variables */
   stars_kick_extra(sp, dt_kick_grav);
+}
+
+/**
+ * @brief Perform the 'kick' operation on a #spart
+ *
+ * @param sp The #spart to kick.
+ * @param dt_kick_grav The kick time-step for gravity accelerations.
+ * @param ti_start The starting (integer) time of the kick (for debugging
+ * checks).
+ * @param ti_end The ending (integer) time of the kick (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void kick_dmpart(
+    struct dmpart *restrict dmp, double dt_kick_grav,
+    integertime_t ti_start, integertime_t ti_end) {
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (dmp->ti_kick != ti_start)
+        error(
+              "dm-particle has not been kicked to the current time dmp->ti_kick=%lld, "
+              "ti_start=%lld, ti_end=%lld id=%lld",
+              dmp->ti_kick, ti_start, ti_end, sp->id);
+    
+    dmp->ti_kick = ti_end;
+#endif
+    
+    /* Kick particles in momentum space */
+    dmp->v_full[0] += dmp->gpart->a_grav[0] * dt_kick_grav;
+    dmp->v_full[1] += dmp->gpart->a_grav[1] * dt_kick_grav;
+    dmp->v_full[2] += dmp->gpart->a_grav[2] * dt_kick_grav;
+    
+    /* Give the gpart friend the same velocity */
+    dmp->gpart->v_full[0] = dmp->v_full[0];
+    dmp->gpart->v_full[1] = dmp->v_full[1];
+    dmp->gpart->v_full[2] = dmp->v_full[2];
+    
+    /* Kick extra variables Perform SIDM kick? */
+    dark_matter_kick_extra(dmp, dt_kick_grav);
 }
 
 /**

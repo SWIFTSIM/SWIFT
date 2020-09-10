@@ -33,7 +33,7 @@ INLINE static void darkmatter_read_as_dmparticles(struct dmpart* dmparts,
                                              int* num_fields) {
     
     /* Say how much we want to read */
-    *num_fields = 4;
+    *num_fields = 6;
     
     /* List what we want to read */
     list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -44,6 +44,11 @@ INLINE static void darkmatter_read_as_dmparticles(struct dmpart* dmparts,
                                   dmparts, mass);
     list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                   UNIT_CONV_NO_UNITS, dmparts, id_or_neg_offset);
+    list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
+                                  UNIT_CONV_LENGTH, dmparts, h);
+    list[5] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+                                  UNIT_CONV_DENSITY, dmparts, rho);
+
 }
 
 /**

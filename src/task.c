@@ -60,6 +60,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "ghost_in",
                                              "ghost",
                                              "ghost_out",
+                                             "dark_matter_ghost",
                                              "extra_ghost",
                                              "drift_part",
                                              "drift_spart",
@@ -99,7 +100,6 @@ const char *taskID_names[task_type_count] = {"none",
                                              "bh_in",
                                              "bh_out",
                                              "bh_density_ghost",
-                                             "dark_matter_ghost",
                                              "bh_swallow_ghost1",
                                              "bh_swallow_ghost2",
                                              "bh_swallow_ghost3",
@@ -108,8 +108,8 @@ const char *taskID_names[task_type_count] = {"none",
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none",       "density",      "gradient",   "force",
-    "limiter",    "DM_density",   "sidm",       "grav",         "external_grav",  "tend_part",
+    "none",       "density",      "DM_density",   "sidm", "gradient",   "force",
+    "limiter",    "grav",         "external_grav",  "tend_part",
     "tend_gpart", "tend_spart",   "tend_bpart", "tend_dmpart",  "xv",
     "rho",        "part_swallow", "bpart_merger",   "gpart",
     "multipole",  "spart",        "dmpart",      "stars_density",  "stars_feedback",
@@ -156,7 +156,7 @@ TASK_CELL_OVERLAP(part, hydro.parts, hydro.count);
 TASK_CELL_OVERLAP(gpart, grav.parts, grav.count);
 TASK_CELL_OVERLAP(spart, stars.parts, stars.count);
 TASK_CELL_OVERLAP(bpart, black_holes.parts, black_holes.count);
-/*TASK_CELL_OVERLAP(dmpart, dark_matter.parts, dark_matter.count);*/
+TASK_CELL_OVERLAP(dmpart, dark_matter.parts, dark_matter.count);
 
 /**
  * @brief Returns the #task_actions for a given task.
@@ -327,6 +327,8 @@ float task_overlap(const struct task *restrict ta,
   const int ta_part = (ta_act == task_action_part || ta_act == task_action_all);
   const int ta_gpart =
       (ta_act == task_action_gpart || ta_act == task_action_all);
+  const int ta_dmpart =
+    (ta_act == task_action_dmpart || ta_act == task_action_all);
   const int ta_spart =
       (ta_act == task_action_spart || ta_act == task_action_all);
   const int ta_bpart =
@@ -334,6 +336,8 @@ float task_overlap(const struct task *restrict ta,
   const int tb_part = (tb_act == task_action_part || tb_act == task_action_all);
   const int tb_gpart =
       (tb_act == task_action_gpart || tb_act == task_action_all);
+  const int tb_dmpart =
+    (tb_act == task_action_dmpart || tb_act == task_action_all);
   const int tb_spart =
       (tb_act == task_action_spart || tb_act == task_action_all);
   const int tb_bpart =
@@ -379,6 +383,27 @@ float task_overlap(const struct task *restrict ta,
                                   task_cell_overlap_gpart(ta->cj, tb->cj);
 
     return ((float)size_intersect) / (size_union - size_intersect);
+  }
+    
+    /* In the case where both tasks act on gparts */
+  else if (ta_dmpart && tb_dmpart) {
+      
+      /* Compute the union of the cell data. */
+      size_t size_union = 0;
+      if (ta->ci != NULL) size_union += ta->ci->dark_matter.count;
+      if (ta->cj != NULL) size_union += ta->cj->dark_matter.count;
+      if (tb->ci != NULL) size_union += tb->ci->dark_matter.count;
+      if (tb->cj != NULL) size_union += tb->cj->dark_matter.count;
+      
+      if (size_union == 0) return 0.f;
+      
+      /* Compute the intersection of the cell data. */
+      const size_t size_intersect = task_cell_overlap_dmpart(ta->ci, tb->ci) +
+      task_cell_overlap_dmpart(ta->ci, tb->cj) +
+      task_cell_overlap_dmpart(ta->cj, tb->ci) +
+      task_cell_overlap_dmpart(ta->cj, tb->cj);
+      
+      return ((float)size_intersect) / (size_union - size_intersect);
   }
 
   /* In the case where both tasks act on sparts */
@@ -647,9 +672,9 @@ int task_lock(struct task *t) {
       }
       break;
           
-    case task_type_sidm_kick:
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
+    case task_type_sidm_kick:
       if (ci->dark_matter.hold) return 0;
       if (cell_dmlocktree(ci) != 0) return 0;
       break;
@@ -958,6 +983,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
         strcpy(cluster, "Timestep_limiter");
       }
       break;
+    case task_subtype_dark_matter_density:
+        strcpy(cluster, "DMDensity");
+        break;
     case task_subtype_sidm:
       strcpy(cluster, "SIDM");
       break;

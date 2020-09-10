@@ -92,12 +92,12 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
-    /*struct dmpart *restrict dmparts = c->dark_matter.parts;*/
+  struct dmpart *restrict dmparts = c->dark_matter.parts;
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
-    /*const int dmcount = c->dark_matter.count;*/
+  const int dmcount = c->dark_matter.count;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -105,7 +105,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e) &&
-      !cell_is_starting_stars(c, e) && !cell_is_starting_black_holes(c, e))
+      !cell_is_starting_stars(c, e) && !cell_is_starting_black_holes(c, e) && !cell_is_starting_dark_matter(c, e))
     return;
 
   /* Recurse? */
@@ -184,8 +184,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if ((gp->type == swift_type_dark_matter ||
-           gp->type == swift_type_dark_matter_background ||
+      if ((gp->type == swift_type_dark_matter_background ||
            gp->type == swift_type_sink) &&
           // TODO loic remove this
 
@@ -219,6 +218,46 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         kick_gpart(gp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
       }
     }
+
+      
+      /* Loop over the dmparts in this cell. */
+      for (int k = 0; k < dmcount; k++) {
+          
+          /* Get a handle on the part. */
+          struct dmpart *restrict dmp = &dmparts[k];
+          
+          /* If the DM particle has no counterpart and needs to be kicked */
+          if (dmpart_is_starting(dmp, e)) {
+          
+          const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
+          const integertime_t ti_begin =
+          get_integer_time_begin(ti_current + 1, dmp->time_bin);
+          
+#ifdef SWIFT_DEBUG_CHECKS
+          const integertime_t ti_end =
+          get_integer_time_end(ti_current + 1, dmp->time_bin);
+          
+          if (ti_begin != ti_current)
+              error(
+                    "DM-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+                    "ti_step=%lld time_bin=%d ti_current=%lld",
+                    ti_end, ti_begin, ti_step, dmp->time_bin, ti_current);
+#endif
+          
+          /* Time interval for this half-kick */
+          double dt_kick_grav;
+          if (with_cosmology) {
+              dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                            ti_begin + ti_step / 2);
+          } else {
+              dt_kick_grav = (ti_step / 2) * time_base;
+          }
+          
+          /* do the kick */
+          kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+          }
+          
+      }
 
     /* Loop over the stars particles in this cell. */
     for (int k = 0; k < scount; k++) {
@@ -320,11 +359,13 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
+  const int dmcount = c->dark_matter.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+  struct dmpart *restrict dmparts = c->dark_matter.parts;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -332,7 +373,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
-      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e))
+      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e) && !cell_is_active_dark_matter(c, e))
     return;
 
   /* Recurse? */
@@ -411,8 +452,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if ((gp->type == swift_type_dark_matter ||
-           gp->type == swift_type_dark_matter_background ||
+      if ((gp->type == swift_type_dark_matter_background ||
            gp->type == swift_type_sink) &&
           // TODO loic remove this
 
@@ -450,6 +490,47 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         gravity_reset_predicted_values(gp);
       }
     }
+      
+      /* Loop over the DM-particles in this cell. */
+      for (int k = 0; k < dmcount; k++) {
+          
+          /* Get a handle on the part. */
+          struct dmpart *restrict dmp = &dmparts[k];
+          
+          /* If the g-particle has no counterpart and needs to be kicked */
+          if (dmpart_is_active(dmp, e)) {
+              
+              const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
+              const integertime_t ti_begin = get_integer_time_begin(ti_current, dmp->time_bin);
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              if (ti_begin + ti_step != ti_current)
+                  error("Particle in wrong time-bin");
+#endif
+              
+              /* Time interval for this half-kick */
+              double dt_kick_grav;
+              if (with_cosmology) {
+                  dt_kick_grav = cosmology_get_grav_kick_factor(
+                                                                cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+              } else {
+                  dt_kick_grav = (ti_step / 2) * time_base;
+              }
+              
+              /* Finish the time-step with a second half-kick */
+              kick_dmpart(dmp, dt_kick_grav, ti_begin + ti_step / 2,
+                         ti_begin + ti_step);
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              /* Check that kick and the drift are synchronized */
+              if (gp->ti_drift != gp->ti_kick)
+                  error("Error integrating g-part in time.");
+#endif
+              
+              /* Prepare the values to be drifted */
+              dark_matter_reset_predicted_values(dmp);
+          }
+      }
 
     /* Loop over the particles in this cell. */
     for (int k = 0; k < scount; k++) {
@@ -556,25 +637,28 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
+  const int dmcount = c->dark_matter.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
-      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e)) {
+      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e) && !cell_is_active_dark_matter(c, e)) {
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
     c->black_holes.updated = 0;
+    c->dark_matter.updated = 0;
     return;
   }
 
-  int updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
+  int updated = 0, g_updated = 0, s_updated = 0, b_updated = 0, dm_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -583,6 +667,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                 ti_stars_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+  integertime_t ti_dark_matter_end_min = max_nr_timesteps,
+    ti_dark_matter_end_max = 0, ti_dark_matter_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -679,8 +765,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
-      if (gp->type == swift_type_dark_matter ||
-          gp->type == swift_type_dark_matter_background ||
+      if (gp->type == swift_type_dark_matter_background ||
           gp->type == swift_type_sink) {
         // Loic TODO remove sink
 
@@ -741,6 +826,60 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         }
       }
     }
+      
+      /* Loop over the dm-particles in this cell. */
+      for (int k = 0; k < dmcount; k++) {
+          
+          /* Get a handle on the part. */
+          struct dmpart *restrict dmp = &dmparts[k];
+          
+          /* If the g-particle has no counterpart */
+          if (dmpart_is_active(dmp, e)) {
+                  
+#ifdef SWIFT_DEBUG_CHECKS
+                  /* Current end of time-step */
+                  const integertime_t ti_end =
+                  get_integer_time_end(ti_current, dmp->time_bin);
+                  
+                  if (ti_end != ti_current)
+                      error("Computing time-step of rogue particle.");
+#endif
+                  
+                  /* Get new time-step */
+                  const integertime_t ti_new_step = get_dmpart_timestep(dmp, e);
+                  
+                  /* Update particle */
+                  dmp->time_bin = get_time_bin(ti_new_step);
+                  
+                  /* Number of updated g-particles */
+                  dm_updated++;
+                  
+                  /* What is the next sync-point ? */
+                  ti_dark_matter_end_min = min(ti_current + ti_new_step, ti_dark_matter_end_min);
+                  ti_dark_matter_end_max = max(ti_current + ti_new_step, ti_dark_matter_end_max);
+                  
+                  /* What is the next starting point for this cell ? */
+                  ti_dark_matter_beg_max = max(ti_current, ti_dark_matter_beg_max);
+              
+              } else { /* dmpart is inactive */
+                  
+                  if (!dmpart_is_inhibited(dmp, e)) {
+                      
+                      const integertime_t ti_end =
+                      get_integer_time_end(ti_current, dmp->time_bin);
+                      
+                      /* What is the next sync-point ? */
+                      ti_dark_matter_end_min = min(ti_end, ti_dark_matter_end_min);
+                      ti_dark_matter_end_max = max(ti_end, ti_dark_matter_end_max);
+                      
+                      const integertime_t ti_beg =
+                      get_integer_time_begin(ti_current + 1, dmp->time_bin);
+                      
+                      /* What is the next starting point for this cell ? */
+                      ti_dark_matter_beg_max = max(ti_beg, ti_dark_matter_beg_max);
+                  }
+              }
+          }
 
     /* Loop over the star particles in this cell. */
     for (int k = 0; k < scount; k++) {
@@ -884,6 +1023,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         g_updated += cp->grav.updated;
         s_updated += cp->stars.updated;
         b_updated += cp->black_holes.updated;
+        dm_updated += cp->dark_matter.updated;
 
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
@@ -896,6 +1036,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
         ti_stars_end_max = max(cp->stars.ti_end_max, ti_stars_end_max);
         ti_stars_beg_max = max(cp->stars.ti_beg_max, ti_stars_beg_max);
+
+        ti_dark_matter_end_min = min(cp->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        ti_dark_matter_end_max = max(cp->dark_matter.ti_end_max, ti_dark_matter_end_max);
+        ti_dark_matter_beg_max = max(cp->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
 
         ti_black_holes_end_min =
             min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
@@ -912,6 +1056,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
   c->black_holes.updated = b_updated;
+  c->dark_matter.updated = dm_updated;
 
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
@@ -925,6 +1070,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->dark_matter.ti_end_min = ti_dark_matter_end_min;
+  c->dark_matter.ti_end_max = ti_dark_matter_end_max;
+  c->dark_matter.ti_beg_max = ti_dark_matter_beg_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min == e->ti_current &&

@@ -41,7 +41,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H) {
     
-    message("entering iact DM density");
     float wi, wj, wi_dx, wj_dx;
     
     const float r = sqrtf(r2);
@@ -89,8 +88,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     const struct dmpart* pj, float a, float H) {
     
-    message("entering iact nonsym DM density");
-
     float wi, wi_dx;
     
     /* Get the masses. */

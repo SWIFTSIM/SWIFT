@@ -70,42 +70,42 @@ void runner_dopair_dark_matter_density(struct runner *r, struct cell *restrict c
     for (int pid = 0; pid < count_i; pid++) {
         
         /* Get a hold of the ith part in ci. */
-        struct dmpart *restrict pi = &dmparts_i[pid];
+        struct dmpart *restrict dmpi = &dmparts_i[pid];
         
         /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
+        if (dmpart_is_inhibited(dmpi, e)) continue;
         
-        const int pi_active = dmpart_is_active(pi, e);
-        const float hi = pi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
-        const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
-            (float)(pi->x[1] - (cj->loc[1] + shift[1])),
-            (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
+        const int pi_active = dmpart_is_active(dmpi, e);
+        const float hi = dmpi->h;
+        const float hig2 = hi * hi;
+        const float pix[3] = {(float)(dmpi->x[0] - (cj->loc[0] + shift[0])),
+            (float)(dmpi->x[1] - (cj->loc[1] + shift[1])),
+            (float)(dmpi->x[2] - (cj->loc[2] + shift[2]))};
         
         /* Loop over the parts in cj. */
         for (int pjd = 0; pjd < count_j; pjd++) {
             
             /* Get a pointer to the jth particle. */
-            struct dmpart *restrict pj = &dmparts_j[pjd];
+            struct dmpart *restrict dmpj = &dmparts_j[pjd];
             
             /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
+            if (dmpart_is_inhibited(dmpj, e)) continue;
 
-            const float hj = pj->h;
-            const float hjg2 = hj * hj * kernel_gamma2;
-            const int pj_active = dmpart_is_active(pj, e);
+            const float hj = dmpj->h;
+            const float hjg2 = hj * hj;
+            const int pj_active = dmpart_is_active(dmpj, e);
             
             /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                (float)(pj->x[1] - cj->loc[1]),
-                (float)(pj->x[2] - cj->loc[2])};
+            const float pjx[3] = {(float)(dmpj->x[0] - cj->loc[0]),
+                (float)(dmpj->x[1] - cj->loc[1]),
+                (float)(dmpj->x[2] - cj->loc[2])};
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
             /* Hit or miss? */
             if (r2 < hig2 && pi_active) {
                 
-                runner_iact_nonsym_dark_matter_density(r2, dx, hi, hj, pi, pj, a, H);
+                runner_iact_nonsym_dark_matter_density(r2, dx, hi, hj, dmpi, dmpj, a, H);
             }
             if (r2 < hjg2 && pj_active) {
                 
@@ -113,7 +113,7 @@ void runner_dopair_dark_matter_density(struct runner *r, struct cell *restrict c
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
                 
-                runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, pj, pi, a, H);
+                runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, dmpj, dmpi, a, H);
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -157,7 +157,7 @@ void runner_doself_dark_matter_density(struct runner *r, struct cell *restrict c
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
             (float)(pi->x[2] - c->loc[2])};
@@ -172,7 +172,7 @@ void runner_doself_dark_matter_density(struct runner *r, struct cell *restrict c
             if (dmpart_is_inhibited(pj, e)) continue;
             
             const float hj = pj->h;
-            const float hjg2 = hj * hj * kernel_gamma2;
+            const float hjg2 = hj * hj;
             const int pj_active = dmpart_is_active(pj, e);
             
             /* Compute the pairwise distance. */
@@ -333,7 +333,7 @@ void runner_doself_subset_dark_matter_density(struct runner *r, struct cell *res
             (float)(pi->x[1] - ci->loc[1]),
             (float)(pi->x[2] - ci->loc[2])};
         const float hi = pi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
+        const float hig2 = hi * hi;
         
         /* Loop over the parts in cj. */
         for (int pjd = 0; pjd < count_i; pjd++) {
@@ -402,7 +402,7 @@ void runner_dopair_subset_dark_matter_density(struct runner *r, struct cell *res
         const double piy = pi->x[1]- ci->loc[1];
         const double piz = pi->x[2]- ci->loc[2];
         const float hi = pi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
+        const float hig2 = hi * hi;
         
         /* Loop over the parts in cj. */
         for (int pjd = 0; pjd < count_j; pjd++) {
@@ -470,7 +470,7 @@ void runner_do_self_dark_matter_sidm(struct runner *r, struct cell *c) {
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
             (float)(pi->x[2] - c->loc[2])};
@@ -508,7 +508,7 @@ void runner_do_self_dark_matter_sidm(struct runner *r, struct cell *c) {
             }
             
             const float hj = pj->h;
-            const float hjg2 = hj * hj * kernel_gamma2;
+            const float hjg2 = hj * hj;
             const int pj_active = dmpart_is_active(pj, e);
             
             /* Compute the pairwise distance. */
@@ -607,7 +607,7 @@ void runner_do_pair_dark_matter_sidm(struct runner *r, struct cell *ci,
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
             (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
@@ -633,7 +633,7 @@ void runner_do_pair_dark_matter_sidm(struct runner *r, struct cell *ci,
             }
             
             const float hj = pj->h;
-            const float hjg2 = hj * hj * kernel_gamma2;
+            const float hjg2 = hj * hj;
             const int pj_active = dmpart_is_active(pj, e);
             
             /* Compute the pairwise distance. */

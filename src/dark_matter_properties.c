@@ -36,6 +36,8 @@
 #define sidm_props_default_h_min_ratio 0.f
 #define sidm_props_default_h_sidm FLT_MAX
 #define sidm_props_default_h_tolerance 1e-4
+#define sidm_props_default_volume_change 1.4f
+
 
 
 /**
@@ -84,6 +86,9 @@ void sidm_props_init(struct sidm_props* sidm_props,
     sidm_props->h_search_radius = parser_get_opt_param_float(params, "SIDM:h_sidm",
                                                    sidm_props_default_h_sidm);
     
+    /* Minimal smoothing length ratio to softening */
+    sidm_props->h_min_ratio = parser_get_opt_param_float(params, "SIDM:h_min_ratio",
+                                                sidm_props_default_h_min_ratio);
     
     /* Temporarily set the minimal softening to 0. */
     sidm_props->h_min = 0.f;
@@ -100,6 +105,16 @@ void sidm_props_init(struct sidm_props* sidm_props,
     /* Non-conventional neighbour number definition */
     sidm_props->use_mass_weighted_num_ngb =
     parser_get_opt_param_int(params, "SIDM:use_mass_weighted_num_ngb", 0);
+    
+    /* ------ Time integration parameters ------------ */
+    
+    /* Time integration properties */
+    sidm_props->CFL_condition = parser_get_param_float(params, "SIDM:CFL_condition");
+    
+    const float max_volume_change = parser_get_opt_param_float(params, "SPH:max_volume_change", sidm_props_default_volume_change);
+    
+    sidm_props->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
     
 }
 

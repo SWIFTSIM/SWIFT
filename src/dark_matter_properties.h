@@ -69,6 +69,9 @@ struct sidm_props {
     /*! Smoothing length tolerance */
     float h_tolerance;
     
+    /*! Minimal smoothing length expressed as ratio to softening length */
+    float h_min_ratio;
+    
     /*! Resolution parameter */
     float eta_neighbours;
 
@@ -85,6 +88,15 @@ struct sidm_props {
     
     /*! Are we using the mass-weighted definition of neighbour number? */
     int use_mass_weighted_num_ngb;
+    
+    /* ------ Time integration parameters ------------ */
+    
+    /*! Time integration properties */
+    float CFL_condition;
+    
+    /*! Maximal change of h over one time-step */
+    float log_max_h_change;
+
 };
 
 /**

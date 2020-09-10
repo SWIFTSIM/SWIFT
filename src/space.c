@@ -1223,7 +1223,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
-      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
+      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0) ||
+      (nr_gparts > 0 && nr_dmparts > 0))
     part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                       nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
                       verbose);
@@ -4429,7 +4430,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-               c->black_holes.parts - s->bparts, c->dark_matter.parts - s->dmparts, c->sinks.parts - s->sinks,
+               c->black_holes.parts - s->bparts, c->dark_matter.parts - s->dmparts,
+               c->sinks.parts - s->sinks,
                buff, sbuff, bbuff, gbuff, dmbuff, sink_buff);
 
     /* Buffers for the progenitors */
@@ -5713,11 +5715,26 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
     struct dmpart *restrict dmp = (struct dmpart *)map_data;
     const struct space *restrict s = (struct space *)extra_data;
     const struct engine *e = s->e;
+    const struct gravity_props *grav_props = s->e->gravity_properties;
     const struct sidm_props *sidm_props = s->e->sidm_properties;
-    const float initial_h = s->initial_dmpart_h;
+    /*const float initial_h = s->initial_dmpart_h;*/
     
     const struct cosmology *cosmo = e->cosmology;
     const float a_factor_vel = cosmo->a;
+    const float sidm_h_min_ratio = e->sidm_properties->h_min_ratio;
+    
+    /* Check that the smoothing lengths are non-zero */
+    for (int k = 0; k < count; k++) {
+
+        /* Imposed smoothing length from parameter file */
+        /*if (initial_h != -1.f) {
+            dmp[k].h = initial_h;
+        }*/
+        
+        const struct gpart *gp = dmp[k].gpart;
+        const float softening = gravity_get_softening(gp, grav_props);
+        dmp->h = max(dmp->h, softening * sidm_h_min_ratio);
+    }
 
     
     /* Convert velocities to internal units */
@@ -5735,16 +5752,12 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
         dmp[k].x[1] = dmp[k].x[2] = 0.f;
         dmp[k].v_full[1] = dmp[k].v_full[2] = 0.f;
 #endif
-        /* Imposed smoothing length from parameter file */
-        if (initial_h != -1.f) {
-            dmp[k].h = initial_h;
-        }
     }
     
     /* Check that the smoothing lengths are non-zero */
     for (int k = 0; k < count; k++) {
         if (dmp[k].h <= 0.)
-            error("Invalid value of smoothing length for bpart %lld h=%e", dmp[k].id_or_neg_offset,
+            error("Invalid value of smoothing length for dmpart %lld h=%e", dmp[k].id_or_neg_offset,
                   dmp[k].h);
     }
     
@@ -5771,7 +5784,7 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
  */
 void space_first_init_dmparts(struct space *s, int verbose) {
     const ticks tic = getticks();
-    if (s->nr_bparts > 0)
+    if (s->nr_dmparts > 0)
         threadpool_map(&s->e->threadpool, space_first_init_dmparts_mapper, s->dmparts,
                        s->nr_dmparts, sizeof(struct dmpart),
                        threadpool_auto_chunk_size, s);
@@ -6313,11 +6326,11 @@ void space_init(struct space *s, struct swift_params *params,
   }
     
   /* Read in imposed dark matter smoothing length */
-  s->initial_dmpart_h = parser_get_opt_param_float(
+  /*s->initial_dmpart_h = parser_get_opt_param_float(
       params, "SIDM:h_sidm", -1.f);
   if (s->initial_dmpart_h != -1.f) {
         message("Imposing a DM smoothing length of %e", s->initial_dmpart_h);
-  }
+  }*/
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};

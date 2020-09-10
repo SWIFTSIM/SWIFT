@@ -1976,13 +1976,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->grav.super->owner;
         break;
       case task_type_drift_dmpart:
+      case task_type_dark_matter_ghost:
+      case task_type_sidm_kick:
         qid = t->ci->grav.super->owner;
         break;
       case task_type_kick1:
-      case task_type_sidm_kick:
       case task_type_kick2:
       case task_type_stars_ghost:
-      case task_type_dark_matter_ghost:
       case task_type_logger:
       case task_type_stars_sort:
       case task_type_timestep:

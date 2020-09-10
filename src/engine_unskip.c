@@ -176,6 +176,39 @@ static void engine_do_unskip_black_holes(struct cell *c, struct engine *e) {
 }
 
 /**
+ * @brief Unskip any black hole tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void engine_do_unskip_dark_matter(struct cell *c, struct engine *e) {
+    
+    /* Early abort (are we below the level where tasks are)? */
+    if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+    
+    /* Ignore empty cells. */
+    if (c->dark_matter.count == 0) return;
+    
+    /* Skip inactive cells. */
+    if (!cell_is_active_dark_matter(c, e)) return;
+    
+    /* Recurse */
+    if (c->split) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                struct cell *cp = c->progeny[k];
+                engine_do_unskip_dark_matter(cp, e);
+            }
+        }
+    }
+    
+    /* Unskip any active tasks. */
+    const int forcerebuild = cell_unskip_dark_matter_tasks(c, &e->sched);
+    if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+
+/**
  * @brief Unskip any gravity tasks associated with active cells.
  *
  * @param c The cell.
@@ -270,6 +303,9 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 #endif
         engine_do_unskip_stars(c, e, with_star_formation);
         break;
+      case task_broad_types_dark_matter:
+            engine_do_unskip_dark_matter(c, e);
+            break;
       case task_broad_types_black_holes:
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_black_holes))
@@ -321,6 +357,7 @@ void engine_unskip(struct engine *e) {
         (with_self_grav && cell_is_active_gravity(c, e)) ||
         (with_ext_grav && c->nodeID == nodeID &&
          cell_is_active_gravity(c, e)) ||
+        cell_is_active_dark_matter(c, e) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_black_holes && cell_is_active_black_holes(c, e))) {
@@ -351,6 +388,8 @@ void engine_unskip(struct engine *e) {
     data.task_types[multiplier] = task_broad_types_black_holes;
     multiplier++;
   }
+    data.task_types[multiplier] = task_broad_types_dark_matter;
+    multiplier++;
 
   /* Should we duplicate the list of active cells to better parallelise the
      unskip over the threads ? */

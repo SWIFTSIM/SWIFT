@@ -63,6 +63,8 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->sidm_data.si_v_full[0] = 0.0f;
     dmp->sidm_data.si_v_full[1] = 0.0f;
     dmp->sidm_data.si_v_full[2] = 0.0f;
+    
+    dmp->time_bin = 0;
 
     dark_matter_init_dmpart(dmp);
 }
@@ -94,9 +96,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_va
  */
 __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     struct dmpart* gp, const struct cosmology* cosmo) {
-    
-    message("Doing DM end density");
-    
+        
     /* Some smoothing length multiples. */
     const float h = gp->h;
     const float h_inv = 1.0f / h;                       /* 1/h */
@@ -178,6 +178,37 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
         
     }
 }
+
+/**
+ * @brief Computes the dark matter time-step of a given particle
+ *
+ * This function returns the time-step of a particle given its DM-dynamical
+ * state? A typical time-step calculation would be the use of the CFL condition.
+ *
+ * @param p Pointer to the particle data
+ * @param sidm_properties The SIDM parameters
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
+    const struct dmpart *restrict dmp, const struct sidm_props *restrict sidm_properties,
+    const struct cosmology *restrict cosmo) {
+    
+    const float CFL_condition = sidm_properties->CFL_condition;
+    
+    /* CFL condition */
+    const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * dmp->h / (cosmo->a_factor_sound_speed);
+    
+    return dt_cfl;
+}
+
+/**
+ * @brief Kick the additional variables
+ *
+ * @param dmp The particle to act upon
+ * @param dt The time-step for this kick
+ */
+__attribute__((always_inline)) INLINE static void dark_matter_kick_extra(struct dmpart* dmp, float dt) {}
+
 
 #endif
 
