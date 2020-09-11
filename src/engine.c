@@ -1309,6 +1309,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   tic = getticks();
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_parts_foreign = s->size_parts_foreign;
   if (count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
@@ -1318,6 +1319,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_gparts_foreign = s->size_gparts_foreign;
   if (count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
       swift_free("gparts_foreign", s->gparts_foreign);
@@ -1329,6 +1331,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_sparts_foreign = s->size_sparts_foreign;
   if (count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL)
       swift_free("sparts_foreign", s->sparts_foreign);
@@ -1340,6 +1343,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_bparts_foreign = s->size_bparts_foreign;
   if (count_bparts_in > s->size_bparts_foreign) {
     if (s->bparts_foreign != NULL)
       swift_free("bparts_foreign", s->bparts_foreign);
@@ -1350,7 +1354,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
       error("Failed to allocate foreign bpart data.");
   }
 
-  if (e->verbose)
+  if (e->verbose) {
     message(
         "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
         "(%zd/%zd/%zd/%zd MB)",
@@ -1360,6 +1364,28 @@ void engine_allocate_foreign_particles(struct engine *e) {
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
         s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+
+    if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
+        (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
+        (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
+        (s->size_bparts_foreign - old_size_bparts_foreign) > 0) {
+      message(
+          "Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
+          "(%zd/%zd/%zd/%zd MB)",
+          (s->size_parts_foreign - old_size_parts_foreign),
+          (s->size_gparts_foreign - old_size_gparts_foreign),
+          (s->size_sparts_foreign - old_size_sparts_foreign),
+          (s->size_bparts_foreign - old_size_bparts_foreign),
+          (s->size_parts_foreign - old_size_parts_foreign) *
+              sizeof(struct part) / (1024 * 1024),
+          (s->size_gparts_foreign - old_size_gparts_foreign) *
+              sizeof(struct gpart) / (1024 * 1024),
+          (s->size_sparts_foreign - old_size_sparts_foreign) *
+              sizeof(struct spart) / (1024 * 1024),
+          (s->size_bparts_foreign - old_size_bparts_foreign) *
+              sizeof(struct bpart) / (1024 * 1024));
+    }
+  }
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
