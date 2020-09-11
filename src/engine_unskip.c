@@ -388,8 +388,8 @@ void engine_unskip(struct engine *e) {
     data.task_types[multiplier] = task_broad_types_black_holes;
     multiplier++;
   }
-    data.task_types[multiplier] = task_broad_types_dark_matter;
-    multiplier++;
+  data.task_types[multiplier] = task_broad_types_dark_matter;
+  multiplier++;
 
   /* Should we duplicate the list of active cells to better parallelise the
      unskip over the threads ? */

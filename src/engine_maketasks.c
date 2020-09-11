@@ -1109,9 +1109,10 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
             
             /* Link implicit tasks? */
-            /*scheduler_addunlock(s, c->dark_matter.drift, c->dark_matter.ghost);
-            scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm_kick);*/
+            scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);
+            scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm_kick);
             /*scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);*/
+            scheduler_addunlock(s, c->dark_matter.ghost, c->super->kick2);
 
         }
     } else { /* We are above the super-cell so need to go deeper */

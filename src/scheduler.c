@@ -891,8 +891,9 @@ static void scheduler_splittask_dark_matter(struct task *t, struct scheduler *s)
                 }
                 
                 /* Replace by a single sub-task? */
-                if (scheduler_dosub && do_sub_dark_matter && !sort_is_corner(sid)) {
-                    
+                /*if (scheduler_dosub && do_sub_dark_matter && !sort_is_corner(sid)) {*/
+                if (scheduler_dosub && do_sub_dark_matter) {
+
                     /* Make this task a sub task. */
                     t->type = task_type_sub_pair;
                     
