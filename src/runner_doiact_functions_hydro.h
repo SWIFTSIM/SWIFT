@@ -2810,6 +2810,10 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
 
   TIMER_TIC;
 
+  /* Anything to do here? */
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
