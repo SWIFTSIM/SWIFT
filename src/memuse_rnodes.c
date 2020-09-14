@@ -147,7 +147,9 @@ static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
  * @param depth the depth of the parent node.
  * @param key the full key of the eventual leaf node.
  * @param keylen the numbers of bytes in the full key.
- * @param value pointer that will be stored as the value of the leaf node.
+ * @param value a value to be stored at the leaf node. Note -1 is used as the
+ *        NULL value, so storing signed values needs care and we limit the
+ *        range of unsigned values.
  */
 void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
                                uint8_t *key, uint8_t keylen, int64_t value) {
