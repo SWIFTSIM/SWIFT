@@ -101,6 +101,10 @@ static volatile size_t memuse_log_count = 0;
 static volatile size_t memuse_old_count = 0;
 static volatile size_t memuse_log_done = 0;
 
+/* Reallocation lock, we must wait for the reallocation to complete before
+ * dumping. */
+static swift_lock_type realloc_lock;
+
 /* Current sum of memory in use. Only used in dumping. */
 static size_t memuse_current = 0;
 
@@ -126,28 +130,44 @@ static void memuse_log_reallocate(size_t ind) {
              sizeof(struct memuse_log_entry) * MEMUSE_INITLOG)) == NULL)
       error("Failed to allocate memuse log.");
 
+    /* Initialize the lock, we need it next time. */
+    lock_init(&realloc_lock);
+
     /* Last action. */
     memuse_log_size = MEMUSE_INITLOG;
 
   } else {
-    struct memuse_log_entry *new_log;
-    if ((new_log = (struct memuse_log_entry *)malloc(
-             sizeof(struct memuse_log_entry) *
-             (memuse_log_size + MEMUSE_INITLOG))) == NULL)
-      error("Failed to re-allocate memuse log.");
 
-    /* Wait for all writes to the old buffer to complete. */
-    while (memuse_log_done < memuse_log_size)
-      ;
+    /* We need to lock this section so that any dumps wait for the updated
+     * memory, otherwise we could free the memory while the dump is underway. */
+    if (lock_lock(&realloc_lock) == 0) {
 
-    /* Copy to new buffer. */
-    memcpy(new_log, memuse_log,
-           sizeof(struct memuse_log_entry) * memuse_log_size);
-    free(memuse_log);
-    memuse_log = new_log;
+      struct memuse_log_entry *new_log;
+      if ((new_log = (struct memuse_log_entry *)malloc(
+               sizeof(struct memuse_log_entry) *
+               (memuse_log_size + MEMUSE_INITLOG))) == NULL)
+        error("Failed to re-allocate memuse log.");
 
-    /* Last action, releases waiting threads. */
-    atomic_add(&memuse_log_size, MEMUSE_INITLOG);
+      /* Wait for all writes to the old buffer to complete. */
+      while (memuse_log_done < memuse_log_size)
+        ;
+
+      /* Copy to new buffer. */
+      memcpy(new_log, memuse_log,
+             sizeof(struct memuse_log_entry) * memuse_log_size);
+
+      /* And carefully flip. */
+      struct memuse_log_entry *tmp = memuse_log;
+      memuse_log = new_log;
+      free(tmp);
+
+      /* Last action, releases waiting threads. */
+      atomic_add(&memuse_log_size, MEMUSE_INITLOG);
+
+      /* OK to dump now. */
+      if (lock_unlock(&realloc_lock) != 0)
+        message("Failed to unlock memuse reallocation lock");
+    }
   }
 }
 
@@ -204,201 +224,214 @@ void memuse_log_dump(const char *filename) {
   if (memuse_rnode_root_init) {
     memuse_rnode_root =
         (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    memuse_rnode_root->value = -1;
     memuse_rnode_root_init = 0;
   }
 
-  /* Stop any new logs from being processed while we are dumping.
-   * Remember to not abort with error() in this section, that is recursive
-   * with the exit handler. */
-  size_t log_count = memuse_log_count;
-  size_t old_count = memuse_old_count;
+  /* Stop any reallocations while we are reading the memory. */
+  if (lock_lock(&realloc_lock) == 0) {
 
-  /* Open the output file. */
-  FILE *fd;
-  if ((fd = fopen(filename, "w")) == NULL) {
-    message("Failed to create memuse log file '%s', logs not dumped.",
-            filename);
-    return;
-  }
+    /* Stop any new logs from being processed while we are dumping.
+     * Remember to not abort with error() in this section, that is recursive
+     * with the exit handler. */
+    size_t log_count = memuse_log_count;
+    size_t old_count = memuse_old_count;
 
-  /* Write a header. */
-  fprintf(fd, "# dtic step label size sum\n");
+    /* Open the output file. */
+    FILE *fd;
+    if ((fd = fopen(filename, "w")) == NULL) {
+      message("Failed to create memuse log file '%s', logs not dumped.",
+              filename);
+      return;
+    }
 
-  size_t memuse_maxmem = memuse_current;
-  for (size_t k = old_count; k < log_count; k++) {
+    /* Write a header. */
+    fprintf(fd, "# dtic step label size sum\n");
 
-    /* Check if this address has already been recorded. */
-    struct memuse_rnode *child = memuse_rnode_find_child(
-        memuse_rnode_root, 0, memuse_log[k].vptr, sizeof(uintptr_t));
+    size_t memuse_maxmem = memuse_current;
+    for (size_t k = old_count; k < log_count; k++) {
 
-    if (child != NULL && child->ptr != NULL) {
+      /* Check if this address has already been recorded. */
+      struct memuse_rnode *child = memuse_rnode_find_child(
+          memuse_rnode_root, 0, memuse_log[k].vptr, sizeof(uintptr_t));
 
-      /* Found the allocation, this should be the free. */
-      if (memuse_log[k].allocated) {
+      if (child != NULL && child->value != -1) {
 
-        /* Allocated twice, this is an error, but we cannot abort as that will
-         * attempt another memory dump, so just complain. */
+        /* Found the allocation, this should be the free. */
+        if (memuse_log[k].allocated) {
+
+          /* Allocated twice, this is an error, but we cannot abort as that will
+           * attempt another memory dump, so just complain. */
 #if SWIFT_DEBUG_CHECKS
-        message("Allocated the same address twice (%s: %zd)",
-                memuse_log[k].label, memuse_log[k].size);
+          message("Allocated the same address twice (%s: %zd)",
+                  memuse_log[k].label, memuse_log[k].size);
 #endif
+          continue;
+        }
+
+        /* Free, update the size to remove the allocation. */
+        int64_t allocindex = child->value;
+        memuse_log[k].size = -memuse_log[allocindex].size;
+
+        /* And deactivate this key. */
+        memuse_log[allocindex].ptr = NULL;
+
+        /* And mark this as matched. */
+        memuse_log[k].active = 0;
+        memuse_log[allocindex].active = 0;
+
+      } else if (child == NULL && memuse_log[k].allocated) {
+
+        /* Not found, so new allocation which we store the log against the
+         * log index. */
+        memuse_rnode_insert_child(memuse_rnode_root, 0, memuse_log[k].vptr,
+                                  sizeof(uintptr_t), k);
+
+      } else if (child == NULL && !memuse_log[k].allocated) {
+
+        /* Unmatched free, OK if NULL. */
+#if SWIFT_DEBUG_CHECKS
+        if (memuse_log[k].ptr != NULL) {
+          message("Unmatched non-NULL free: %s", memuse_log[k].label);
+        }
+#endif
+        continue;
+      } else if (memuse_log[k].allocated) {
+
+        /* Must be previously released allocation with same address, so we
+         * store the index. */
+        memuse_rnode_insert_child(memuse_rnode_root, 0, memuse_log[k].vptr,
+                                  sizeof(uintptr_t), k);
+
+      } else {
+        /* Should not happen ... */
+        message("weird memory log record for label '%s' skipped",
+                memuse_log[k].label);
         continue;
       }
 
-      /* Free, update the size to remove the allocation. */
-      struct memuse_log_entry *oldlog = (struct memuse_log_entry *)child->ptr;
-      memuse_log[k].size = -oldlog->size;
+      /* Keep maximum and rolling sum. */
+      memuse_current += memuse_log[k].size;
+      if (memuse_current > memuse_maxmem) memuse_maxmem = memuse_current;
 
-      /* And deactivate this key. */
-      child->ptr = NULL;
-
-      /* And mark this as matched. */
-      memuse_log[k].active = 0;
-      oldlog->active = 0;
-
-    } else if (child == NULL && memuse_log[k].allocated) {
-
-      /* Not found, so new allocation which we store the log against the
-       * address. */
-      memuse_rnode_insert_child(memuse_rnode_root, 0, memuse_log[k].vptr,
-                                sizeof(uintptr_t), &memuse_log[k]);
-
-    } else if (child == NULL && !memuse_log[k].allocated) {
-
-      /* Unmatched free, OK if NULL. */
-#if SWIFT_DEBUG_CHECKS
-      if (memuse_log[k].ptr != NULL) {
-        message("Unmatched non-NULL free: %s", memuse_log[k].label);
-      }
-#endif
-      continue;
-    } else if (memuse_log[k].allocated) {
-
-      /* Must be previously released allocation with same address, so we
-       * store. */
-      memuse_rnode_insert_child(memuse_rnode_root, 0, memuse_log[k].vptr,
-                                sizeof(uintptr_t), &memuse_log[k]);
-
-    } else {
-      /* Should not happen ... */
-      message("weird memory log record for label '%s' skipped",
-              memuse_log[k].label);
-      continue;
+      /* And output. */
+      fprintf(fd, "%lld %d %s %zd %zd\n", memuse_log[k].dtic,
+              memuse_log[k].step, memuse_log[k].label, memuse_log[k].size,
+              memuse_current);
     }
-
-    /* Keep maximum and rolling sum. */
-    memuse_current += memuse_log[k].size;
-    if (memuse_current > memuse_maxmem) memuse_maxmem = memuse_current;
-
-    /* And output. */
-    fprintf(fd, "%lld %d %s %zd %zd\n", memuse_log[k].dtic, memuse_log[k].step,
-            memuse_log[k].label, memuse_log[k].size, memuse_current);
-  }
 
 #ifdef MEMUSE_RNODE_DUMP
-  /* Debug dump of tree. */
-  // memuse_rnode_dump(0, memuse_rnode_root, 0);
+    /* Debug dump of tree. */
+    // memuse_rnode_dump(0, memuse_rnode_root, 0);
 #endif
 
-  /* Now we find all the still active nodes and gather their sizes against the
-   * labels. */
-  struct memuse_rnode *activernodes =
-      (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
-  size_t newcount = 0;
-  struct memuse_rnode *labellednodes =
-      (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
-  size_t *lindices = (size_t *)calloc(log_count, sizeof(size_t));
-  size_t lcount = 0;
-  for (size_t k = 0; k < log_count; k++) {
+    /* Now we find all the still active nodes and gather their sizes against the
+     * labels. */
+    struct memuse_rnode *activernodes =
+        (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    activernodes->value = -1;
+    size_t newcount = 0;
+    struct memuse_rnode *labelledrnodes =
+        (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    labelledrnodes->value = -1;
+    size_t *lindices = (size_t *)calloc(log_count, sizeof(size_t));
+    size_t lcount = 0;
+    for (size_t k = 0; k < log_count; k++) {
 
-    /* Only allocations are stored also is it active? */
-    if (memuse_log[k].allocated && memuse_log[k].active) {
+      /* Only allocations are stored also is it active? */
+      if (memuse_log[k].allocated && memuse_log[k].active) {
 
-      /* Look for this label in our tree. */
-      struct memuse_rnode *labelchild = memuse_rnode_find_child(
-          labellednodes, 0, (uint8_t *)memuse_log[k].label,
-          strlen(memuse_log[k].label));
-      struct memuse_labelled_item *item = NULL;
-      if (labelchild == NULL || labelchild->ptr == NULL) {
+        /* Look for this label in our tree. */
+        struct memuse_rnode *labelchild = memuse_rnode_find_child(
+            labelledrnodes, 0, (uint8_t *)memuse_log[k].label,
+            strlen(memuse_log[k].label));
+        struct memuse_labelled_item *item = NULL;
+        if (labelchild == NULL || labelchild->value == -1) {
 
-        /* New, so create an instance to keep the count. */
-        item = (struct memuse_labelled_item *)calloc(
-            1, sizeof(struct memuse_labelled_item));
-        item->sum = 0;
-        item->count = 0;
-        memuse_rnode_insert_child(labellednodes, 0,
-                                  (uint8_t *)memuse_log[k].label,
-                                  strlen(memuse_log[k].label), item);
+          /* New, so create an instance to keep the count. */
+          item = (struct memuse_labelled_item *)calloc(
+              1, sizeof(struct memuse_labelled_item));
+          item->sum = 0;
+          item->count = 0;
+          memuse_rnode_insert_child(labelledrnodes, 0,
+                                    (uint8_t *)memuse_log[k].label,
+                                    strlen(memuse_log[k].label), (int64_t)item);
 
-        /* Keep for indexing next time. */
-        lindices[lcount] = newcount;
-        lcount++;
-      } else {
-        item = (struct memuse_labelled_item *)labelchild->ptr;
+          /* Keep for indexing next time. */
+          lindices[lcount] = newcount;
+          lcount++;
+        } else {
+          item = (struct memuse_labelled_item *)labelchild->value;
+        }
+
+        /* And increment sum. */
+        item->sum += memuse_log[k].size;
+        item->count++;
+
+        /* Keep index in new log entry tree. Move to head. */
+        memcpy(&memuse_log[newcount], &memuse_log[k],
+               sizeof(struct memuse_log_entry));
+        memuse_rnode_insert_child(activernodes, 0, memuse_log[newcount].vptr,
+                                  sizeof(uintptr_t), newcount);
+        newcount++;
       }
-
-      /* And increment sum. */
-      item->sum += memuse_log[k].size;
-      item->count++;
-
-      /* Keep this in new log entry tree. Move to head. */
-      memcpy(&memuse_log[newcount], &memuse_log[k],
-             sizeof(struct memuse_log_entry));
-      memuse_rnode_insert_child(activernodes, 0, memuse_log[newcount].vptr,
-                                sizeof(uintptr_t), &memuse_log[newcount]);
-      newcount++;
     }
+
+    /* And move all active logs to a clean new tree for next time. */
+    memuse_log_count = newcount;
+    memuse_old_count = newcount;
+    memuse_rnode_cleanup(memuse_rnode_root);
+    free(memuse_rnode_root);
+    memuse_rnode_root = activernodes;
+
+    /* Now dump the labelled counts. */
+    fprintf(fd, "# Memory use by label:\n");
+    fprintf(fd, "##  %30s %16s %16s\n", "label", "MB", "numactive");
+    fprintf(fd, "##\n");
+
+    size_t total_mem = 0;
+    for (size_t k = 0; k < lcount; k++) {
+      size_t ind = lindices[k];
+
+      /* Find this entry. */
+      struct memuse_rnode *labelchild = memuse_rnode_find_child(
+          labelledrnodes, 0, (uint8_t *)memuse_log[ind].label,
+          strlen(memuse_log[ind].label));
+      struct memuse_labelled_item *item =
+          (struct memuse_labelled_item *)labelchild->value;
+      fprintf(fd, "## %30s %16.3f %16zd\n", memuse_log[ind].label,
+              item->sum / MEGABYTE, item->count);
+      total_mem += item->sum;
+
+      /* Don't need this again. */
+      free(item);
+    }
+    fprintf(fd, "##\n");
+    fprintf(fd, "# Total memory still in use : %.3f (MB)\n",
+            total_mem / MEGABYTE);
+    fprintf(fd, "# Peak memory usage         : %.3f (MB)\n",
+            memuse_maxmem / MEGABYTE);
+    fprintf(fd, "#\n");
+    fprintf(fd, "# Memory use by process (all/system): %s\n",
+            memuse_process(1));
+    fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
+
+    /* Clean up tree. */
+    memuse_rnode_cleanup(labelledrnodes);
+    free(labelledrnodes);
+    free(lindices);
+
+    /* Close the file. */
+    fflush(fd);
+    fclose(fd);
+
+    // message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+    //        clocks_getunit());
+
+    /* All accesses of the logs done, so we can release the lock. */
+    if (lock_unlock(&realloc_lock) != 0)
+      message("Failed to unlock memuse reallocation lock");
   }
-
-  /* And move all active logs to a clean new tree for next time. */
-  memuse_log_count = newcount;
-  memuse_old_count = newcount;
-  memuse_rnode_cleanup(memuse_rnode_root);
-  free(memuse_rnode_root);
-  memuse_rnode_root = activernodes;
-
-  /* Now dump the labelled counts. */
-  fprintf(fd, "# Memory use by label:\n");
-  fprintf(fd, "##  %30s %16s %16s\n", "label", "MB", "numactive");
-  fprintf(fd, "##\n");
-
-  size_t total_mem = 0;
-  for (size_t k = 0; k < lcount; k++) {
-    size_t ind = lindices[k];
-
-    /* Find this entry. */
-    struct memuse_rnode *labelchild = memuse_rnode_find_child(
-        labellednodes, 0, (uint8_t *)memuse_log[ind].label,
-        strlen(memuse_log[ind].label));
-    struct memuse_labelled_item *item =
-        (struct memuse_labelled_item *)labelchild->ptr;
-    fprintf(fd, "## %30s %16.3f %16zd\n", memuse_log[ind].label,
-            item->sum / MEGABYTE, item->count);
-    total_mem += item->sum;
-
-    /* Don't need this again. */
-    free(item);
-  }
-  fprintf(fd, "##\n");
-  fprintf(fd, "# Total memory still in use : %.3f (MB)\n",
-          total_mem / MEGABYTE);
-  fprintf(fd, "# Peak memory usage         : %.3f (MB)\n",
-          memuse_maxmem / MEGABYTE);
-  fprintf(fd, "#\n");
-  fprintf(fd, "# Memory use by process (all/system): %s\n", memuse_process(1));
-  fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
-
-  /* Clean up tree. */
-  memuse_rnode_cleanup(labellednodes);
-  free(labellednodes);
-  free(lindices);
-
-  /* Close the file. */
-  fflush(fd);
-  fclose(fd);
-
-  // message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-  //        clocks_getunit());
 }
 
 /**
