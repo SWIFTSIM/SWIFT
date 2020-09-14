@@ -382,6 +382,20 @@ elif test "$hydro_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_HYDRO_DENSITY_CHECKS], [$enableval] ,[Enable hydro density brute-force checks])
 fi
 
+# Check if stars density checks are on for some particles.
+AC_ARG_ENABLE([stars-density-checks],
+   [AS_HELP_STRING([--enable-stars-density-checks],
+     [Activate expensive brute-force stars density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [stars_density_checks="$enableval"],
+   [stars_density_checks="no"]
+)
+if test "$stars_density_checks" == "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
+elif test "$stars_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
+fi
+
 # Check whether we want to switch on glass making
 AC_ARG_ENABLE([glass-making],
    [AS_HELP_STRING([--enable-glass-making],
