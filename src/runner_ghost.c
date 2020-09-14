@@ -1661,7 +1661,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 /* Calculate the time-step for passing to hydro_prepare_force, used
                  * for the evolution of alpha factors (i.e. those involved in the
                  * artificial viscosity and thermal conduction terms) */
-                const double time_base = e->time_base;
+                /*const double time_base = e->time_base;
                 const integertime_t ti_current = e->ti_current;
                 double dt_alpha;
                 
@@ -1674,7 +1674,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                     cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
                 } else {
                     dt_alpha = get_timestep(p->time_bin, time_base);
-                }
+                }*/
                 
                 /* As of here, particle force variables will be set. */
                 
@@ -1724,16 +1724,16 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                         
                         /* Otherwise, sub-self interaction? */
                         else if (l->t->type == task_type_sub_self)
-                            runner_doself_subset_dark_matter_density(r, finger, dmparts, pid, count);
+                            runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, NULL);
                         
                         /* Otherwise, sub-pair interaction? */
                         else if (l->t->type == task_type_sub_pair) {
                             
                             /* Left or right? */
                             if (l->t->ci == finger)
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->cj, count);
+                                runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, l->t->cj);
                             else
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->ci, count);
+                                runner_dosub_subset_dark_matter_density(r, finger, dmparts, pid, count, l->t->ci);
                         }
                     }
                 }

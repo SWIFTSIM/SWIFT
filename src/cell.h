@@ -770,9 +770,6 @@ struct cell {
         /*! Bit-mask indicating the sorted directions */
         uint16_t sort_allocated;
 
-        /*! Pointer for the sorted indices. */
-        struct sort_entry *sort;
-        
         /*! Maximum end of (integer) time step in this cell for star tasks. */
         integertime_t ti_end_min;
         
@@ -798,8 +795,6 @@ struct cell {
         /*! Bit-mask indicating the sorted directions */
         uint16_t sorted;
         
-        /*! Bit-mask indicating the sorted directions */
-        uint16_t sort_allocated;
         
     } dark_matter;
 
