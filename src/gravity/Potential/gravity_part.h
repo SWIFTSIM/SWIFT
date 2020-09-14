@@ -60,7 +60,7 @@ struct gpart {
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
   /* Flag to indicate this particle should be output at subsequent VR invocations
      because it was the most bound in a group at some point */
-  int has_been_most_bound;
+  char has_been_most_bound;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
