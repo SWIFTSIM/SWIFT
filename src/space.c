@@ -52,6 +52,7 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
+#include "kernel_dark_matter.h"
 #include "lock.h"
 #include "memswap.h"
 #include "memuse.h"
@@ -407,6 +408,7 @@ void space_regrid(struct space *s, int verbose) {
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
+  float dm_h_max = s->cell_min / dm_kernel_gamma / space_stretch;
   if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
@@ -423,7 +425,7 @@ void space_regrid(struct space *s, int verbose) {
         if (c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
-        if (c->dark_matter.h_max > h_max) {
+        if (c->dark_matter.h_max > dm_h_max) {
           h_max = c->dark_matter.h_max;
         }
       }
@@ -441,7 +443,7 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
-          if (c->nodeID == engine_rank && c->dark_matter.h_max > h_max) {
+          if (c->nodeID == engine_rank && c->dark_matter.h_max > dm_h_max) {
               h_max = c->dark_matter.h_max;
           }
       }
@@ -458,7 +460,7 @@ void space_regrid(struct space *s, int verbose) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
         for (size_t k = 0; k < nr_dmparts; k++) {
-            if (s->dmparts[k].h > h_max) h_max = s->dmparts[k].h;
+            if (s->dmparts[k].h > dm_h_max) h_max = s->dmparts[k].h;
         }
     }
   }

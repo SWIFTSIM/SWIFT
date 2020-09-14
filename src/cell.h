@@ -34,6 +34,7 @@
 /* Local includes. */
 #include "align.h"
 #include "kernel_hydro.h"
+#include "kernel_dark_matter.h"
 #include "lock.h"
 #include "multipole_struct.h"
 #include "part.h"
@@ -341,7 +342,8 @@ enum cell_flags {
   cell_flag_do_hydro_sync = (1UL << 15),
   cell_flag_do_hydro_sub_sync = (1UL << 16),
   cell_flag_do_dark_matter_drift = (1UL << 17),
-  cell_flag_do_dark_matter_sub_drift = (1UL << 18)
+  cell_flag_do_dark_matter_sub_drift = (1UL << 18),
+  cell_flag_do_dark_matter_sub_sort = (1UL << 19)
 };
 
 /**
@@ -714,6 +716,12 @@ struct cell {
         /*! Pointer to the #dmpart data at rebuild time. */
         struct dmpart *parts_rebuild;
         
+        /*! Pointer for the sorted indices. */
+        struct sort_entry *sort;
+
+        /*! The task computing this cell's sorts. */
+        struct task *sorts;
+        
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
         struct link *sidm;
         
@@ -780,6 +788,18 @@ struct cell {
         
         /*! Is the #dmpart data of this cell being used in a sub-cell? */
         int hold;
+        
+        /*! Bit mask of sort directions that will be needed in the next timestep. */
+        uint16_t requires_sorts;
+        
+        /*! Bit mask of sorts that need to be computed for this cell. */
+        uint16_t do_sort;
+        
+        /*! Bit-mask indicating the sorted directions */
+        uint16_t sorted;
+        
+        /*! Bit-mask indicating the sorted directions */
+        uint16_t sort_allocated;
         
     } dark_matter;
 
@@ -1103,6 +1123,7 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_sync_part(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_dark_matter_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
@@ -1113,6 +1134,7 @@ void cell_check_spart_pos(const struct cell *c,
 void cell_check_sort_flags(const struct cell *c);
 void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
 void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_dark_matter_sort_flags(struct cell *c, const int unused_flags);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -1235,7 +1257,7 @@ cell_can_recurse_in_pair_dark_matter_task(const struct cell *c) {
     /* If so, is the cut-off radius plus the max distance the parts have moved */
     /* smaller than the sub-cell sizes ? */
     /* Note: We use the _old values as these might have been updated by a drift */
-    return c->split && ((kernel_gamma * c->dark_matter.h_max_old +
+    return c->split && ((dm_kernel_gamma * c->dark_matter.h_max_old +
                          c->dark_matter.dx_max_part_old) < 0.5f * c->dmin);
 }
 
@@ -1262,7 +1284,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_dark_matter_task(const struct cell *c) {
     
     /* Is the cell split and not smaller than the smoothing length? */
-    return c->split && (kernel_gamma * c->dark_matter.h_max_old < 0.5f * c->dmin);
+    return c->split && (dm_kernel_gamma * c->dark_matter.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -1393,7 +1415,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_dark_matter
     /* Note that since tasks are create after a rebuild no need to take */
     /* into account any part motion (i.e. dx_max == 0 here) */
     return c->split &&
-    (space_stretch * kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
+    (space_stretch * dm_kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1410,7 +1432,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_dark_matter
     /* Note: No need for more checks here as all the sub-pairs and sub-self */
     /* tasks will be created. So no need to check for h_max */
     return c->split &&
-    (space_stretch * kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
+    (space_stretch * dm_kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1532,7 +1554,7 @@ cell_need_rebuild_for_dark_matter_pair(const struct cell *ci,
     /* Is the cut-off radius plus the max distance the parts in both cells have */
     /* moved larger than the cell size ? */
     /* Note ci->dmin == cj->dmin */
-    if (kernel_gamma * max(ci->dark_matter.h_max, cj->dark_matter.h_max) +
+    if (dm_kernel_gamma * max(ci->dark_matter.h_max, cj->dark_matter.h_max) +
         ci->dark_matter.dx_max_part + cj->dark_matter.dx_max_part >
         cj->dmin) {
         return 1;

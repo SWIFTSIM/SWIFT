@@ -51,7 +51,7 @@
 
 static const float dm_kernel_coeffs[(dm_kernel_degree + 1) * (dm_kernel_ivals + 1)]
     __attribute__((aligned(16))) = {3.f,  -3.f, 0.f,  0.5f, /* 0 < u < 0.5 */
-                                   -1.f, 3.f,  -3.f, 1.f,  /* 0.5 < u < 1 */
+                                    -1.f, 3.f,  -3.f, 1.f,  /* 0.5 < u < 1 */
                                     0.f,  0.f,  0.f,  0.f}; /* 1 < u */
 
 /* First some powers of gamma = H/h */

@@ -37,86 +37,149 @@
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void runner_dopair_dark_matter_density(struct runner *r, struct cell *restrict ci,
-                   struct cell *restrict cj) {
+void runner_dopair_dark_matter_density(struct runner *r, struct cell *ci, struct cell *cj) {
     
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
+    
+    /* Get the sort ID. */
+    double shift[3] = {0.0, 0.0, 0.0};
+    const int sid = space_getsid(e->s, &ci, &cj, shift);
+    
+    /* Get the cutoff shift. */
+    double rshift = 0.0;
+    for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+    
+    /* Pick-out the sorted lists. */
+    /*const struct sort_entry *restrict sort_i = cell_get_dark_matter_sorts(ci, sid);
+    const struct sort_entry *restrict sort_j = cell_get_dark_matter_sorts(cj, sid);*/
 
     TIMER_TIC;
     
     /* Anything to do here? */
     if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
     
+    /* Get some other useful values. */
+    /*const double hi_max = ci->dark_matter.h_max * dm_kernel_gamma - rshift;
+    const double hj_max = cj->dark_matter.h_max * dm_kernel_gamma;*/
     const int count_i = ci->dark_matter.count;
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
     struct dmpart *restrict dmparts_j = cj->dark_matter.parts;
     
+    /*const double di_max = sort_i[count_i - 1].d - rshift;
+    const double dj_min = sort_j[0].d;
+    const float dx_max = (ci->dark_matter.dx_max_sort + cj->dark_matter.dx_max_sort);*/
+    
     /* Cosmological terms */
     const float a = cosmo->a;
     const float H = cosmo->H;
     
-    /* Get the relative distance between the pairs, wrapping. */
-    double shift[3] = {0.0, 0.0, 0.0};
-    for (int k = 0; k < 3; k++) {
-        if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-            shift[k] = e->s->dim[k];
-        else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-            shift[k] = -e->s->dim[k];
-    }
+    if (cell_is_active_dark_matter(ci, e)) {
+        
+        /* Loop over the parts in ci. */
+        /*for (int pid = count_i - 1;
+             pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {*/
+        
+        for (int pid = 0;  pid < count_i; pid++) {
+            
+            /* Get a hold of the ith part in ci. */
+            struct dmpart *restrict pi = &dmparts_i[pid];
+            const float hi = pi->h;
+            
+            /* Skip inactive particles */
+            if (!dmpart_is_active(pi, e)) continue;
+            
+            /* Is there anything we need to interact with ? */
+            /*const double di = sort_i[pid].d + hi * dm_kernel_gamma + dx_max - rshift;
+            if (di < dj_min) continue;*/
+            
+            /* Get some additional information about pi */
+            const float hig2 = hi * hi * dm_kernel_gamma2;
+            const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
+            const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
+            const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
+            
+            /* Loop over the parts in cj. */
+            /*for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {*/
+            for (int pjd = 0;  pjd < count_j; pjd++) {
+                
+                /* Recover pj */
+                struct dmpart *pj = &dmparts_j[pjd];
+                
+                /* Skip inhibited particles. */
+                if (dmpart_is_inhibited(pj, e)) continue;
+                
+                const float hj = pj->h;
+                const float pjx = pj->x[0] - cj->loc[0];
+                const float pjy = pj->x[1] - cj->loc[1];
+                const float pjz = pj->x[2] - cj->loc[2];
+                
+                /* Compute the pairwise distance. */
+                float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+                const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+                
+                /* Hit or miss? */
+                if (r2 < hig2) {
+                    
+                    runner_iact_nonsym_dark_matter_density(r2, dx, hi, hj, pi, pj, a, H);
+
+                }
+            } /* loop over the parts in cj. */
+        }   /* loop over the parts in ci. */
+    }     /* Cell ci is active */
     
-    /* Loop over the parts in ci. */
-    for (int pid = 0; pid < count_i; pid++) {
-        
-        /* Get a hold of the ith part in ci. */
-        struct dmpart *restrict dmpi = &dmparts_i[pid];
-        
-        /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(dmpi, e)) continue;
-        
-        const int pi_active = dmpart_is_active(dmpi, e);
-        const float hi = dmpi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
-        const float pix[3] = {(float)(dmpi->x[0] - (cj->loc[0] + shift[0])),
-            (float)(dmpi->x[1] - (cj->loc[1] + shift[1])),
-            (float)(dmpi->x[2] - (cj->loc[2] + shift[2]))};
+    if (cell_is_active_dark_matter(cj, e)) {
         
         /* Loop over the parts in cj. */
-        for (int pjd = 0; pjd < count_j; pjd++) {
+        /*for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+             pjd++) {*/
+        for (int pjd = 0;  pjd < count_j; pjd++) {
             
-            /* Get a pointer to the jth particle. */
-            struct dmpart *restrict dmpj = &dmparts_j[pjd];
+            /* Get a hold of the jth part in cj. */
+            struct dmpart *pj = &dmparts_j[pjd];
+            const float hj = pj->h;
             
-            /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(dmpj, e)) continue;
-
-            const float hj = dmpj->h;
+            /* Skip inactive particles */
+            if (!dmpart_is_active(pj, e)) continue;
+            
+            /* Is there anything we need to interact with ? */
+            /*const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
+            if (dj - rshift > di_max) continue;*/
+            
+            /* Get some additional information about pj */
             const float hjg2 = hj * hj * dm_kernel_gamma2;
-            const int pj_active = dmpart_is_active(dmpj, e);
+            const float pjx = pj->x[0] - cj->loc[0];
+            const float pjy = pj->x[1] - cj->loc[1];
+            const float pjz = pj->x[2] - cj->loc[2];
             
-            /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(dmpj->x[0] - cj->loc[0]),
-                (float)(dmpj->x[1] - cj->loc[1]),
-                (float)(dmpj->x[2] - cj->loc[2])};
-            float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
-            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-            
-            /* Hit or miss? */
-            if (r2 < hig2 && pi_active) {
+            /* Loop over the parts in ci. */
+            /*for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {*/
+            for (int pid = 0;  pid < count_i; pid++) {
                 
-                runner_iact_nonsym_dark_matter_density(r2, dx, hi, hj, dmpi, dmpj, a, H);
-            }
-            if (r2 < hjg2 && pj_active) {
+                /* Recover pi */
+                struct dmpart *pi = &dmparts_i[pid];
                 
-                dx[0] = -dx[0];
-                dx[1] = -dx[1];
-                dx[2] = -dx[2];
+                /* Skip inhibited particles. */
+                if (dmpart_is_inhibited(pi, e)) continue;
                 
-                runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, dmpj, dmpi, a, H);
-            }
-        } /* loop over the parts in cj. */
-    }   /* loop over the parts in ci. */
+                const float hi = pi->h;
+                const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
+                const float piy = pi->x[1] - (cj->loc[1] + shift[1]);
+                const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
+                
+                /* Compute the pairwise distance. */
+                float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+                const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+                
+                /* Hit or miss? */
+                if (r2 < hjg2) {
+                    
+                    runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, pj, pi, a, H);
+                }
+            } /* loop over the parts in ci. */
+        }   /* loop over the parts in cj. */
+    }     /* Cell cj is active */
     
     TIMER_TOC(TIMER_DOPAIR);
 }
@@ -136,72 +199,119 @@ void runner_doself_dark_matter_density(struct runner *r, struct cell *restrict c
     const struct cosmology *cosmo = e->cosmology;
     TIMER_TIC;
     
-    /* Anything to do here? */
-    if (!cell_is_active_dark_matter(c, e)) return;
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
+    const int count = c->dark_matter.count;
+    
+    /* Set up indt. */
+    int *indt = NULL;
+    int countdt = 0, firstdt = 0;
+    if (posix_memalign((void **)&indt, VEC_SIZE * sizeof(int),
+                       count * sizeof(int)) != 0)
+        error("Failed to allocate indt.");
+    for (int k = 0; k < count; k++)
+        if (dmpart_is_active(&dmparts[k], e)) {
+            indt[countdt] = k;
+            countdt += 1;
+        }
     
     /* Cosmological terms */
     const float a = cosmo->a;
     const float H = cosmo->H;
     
-    const int count = c->dark_matter.count;
-    struct dmpart *restrict dmparts = c->dark_matter.parts;
-    
-    /* Loop over the parts in ci. */
+    /* Loop over the particles in the cell. */
     for (int pid = 0; pid < count; pid++) {
         
-        /* Get a hold of the ith part in ci. */
+        /* Get a pointer to the ith particle. */
         struct dmpart *restrict pi = &dmparts[pid];
         
         /* Skip inhibited particles. */
         if (dmpart_is_inhibited(pi, e)) continue;
         
-        const int pi_active = dmpart_is_active(pi, e);
+        /* Get the particle position and radius. */
+        double pix[3];
+        for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
-        const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
-            (float)(pi->x[1] - c->loc[1]),
-            (float)(pi->x[2] - c->loc[2])};
         
-        /* Loop over the parts in cj. */
-        for (int pjd = pid + 1; pjd < count; pjd++) {
+        /* Is the ith particle inactive? */
+        if (!dmpart_is_active(pi, e)) {
             
-            /* Get a pointer to the jth particle. */
-            struct dmpart *restrict pj = &dmparts[pjd];
-            
-            /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
-            
-            const float hj = pj->h;
-            const float hjg2 = hj * hj * dm_kernel_gamma2;
-            const int pj_active = dmpart_is_active(pj, e);
-            
-            /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-                (float)(pj->x[1] - c->loc[1]),
-                (float)(pj->x[2] - c->loc[2])};
-            float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
-            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-            
-            const int doi = pi_active && (r2 < hig2);
-            const int doj = pj_active && (r2 < hjg2);
-            
-            /* Hit or miss? */
-            if (doi && doj) {
+            /* Loop over the other particles .*/
+            for (int pjd = firstdt; pjd < countdt; pjd++) {
                 
-                runner_iact_dark_matter_density(r2, dx, hi, hj, pi, pj, a, H);
-            } else if (doi) {
+                /* Get a pointer to the jth particle. */
+                struct dmpart *restrict pj = &dmparts[indt[pjd]];
+                const float hj = pj->h;
                 
-                runner_iact_nonsym_dark_matter_density(r2, dx, hi, hj, pi, pj, a, H);
-            } else if (doj) {
+                /* Compute the pairwise distance. */
+                float r2 = 0.0f;
+                float dx[3];
+                for (int k = 0; k < 3; k++) {
+                    dx[k] = pj->x[k] - pix[k];
+                    r2 += dx[k] * dx[k];
+                }
                 
-                dx[0] = -dx[0];
-                dx[1] = -dx[1];
-                dx[2] = -dx[2];
+                /* Hit or miss? */
+                if (r2 < hj * hj * dm_kernel_gamma2) {
+                    
+                    runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, pj, pi, a, H);
+
+                }
+            } /* loop over all other particles. */
+        }
+        
+        /* Otherwise, interact with all candidates. */
+        else {
+            
+            /* We caught a live one! */
+            firstdt += 1;
+            
+            /* Loop over the other particles .*/
+            for (int pjd = pid + 1; pjd < count; pjd++) {
                 
-                runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, pj, pi, a, H);
-            }
-        } /* loop over the parts in cj. */
-    }   /* loop over the parts in ci. */
+                /* Get a pointer to the jth particle. */
+                struct dmpart *restrict pj = &dmparts[pjd];
+                
+                /* Skip inhibited particles. */
+                if (dmpart_is_inhibited(pj, e)) continue;
+                
+                const float hj = pj->h;
+                
+                /* Compute the pairwise distance. */
+                float r2 = 0.0f;
+                float dx[3];
+                for (int k = 0; k < 3; k++) {
+                    dx[k] = pix[k] - pj->x[k];
+                    r2 += dx[k] * dx[k];
+                }
+                const int doj =
+                (dmpart_is_active(pj, e)) && (r2 < hj * hj * dm_kernel_gamma2);
+                
+                const int doi = (r2 < hig2);
+                
+                /* Hit or miss? */
+                if (doi || doj) {
+                    
+                    /* Which parts need to be updated? */
+                    if (doi && doj) {
+                        
+                        runner_iact_dark_matter_density(r2, dx, hi, hj, pi, pj, a, H);
+                    } else if (doi) {
+                        
+                        runner_iact_nonsym_dark_matter_density(r2, dx, hi, hj, pi, pj, a, H);
+                    } else if (doj) {
+                        
+                        dx[0] = -dx[0];
+                        dx[1] = -dx[1];
+                        dx[2] = -dx[2];
+                        runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, pj, pi, a, H);
+                    }
+                }
+            } /* loop over all other particles. */
+        }
+    } /* loop over all particles. */
+    
+    free(indt);
     
     TIMER_TOC(TIMER_DOSELF);
 }

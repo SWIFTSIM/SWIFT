@@ -2207,8 +2207,8 @@ void io_duplicate_darkmatter_gparts_mapper(void* restrict data, int Ndarkmatter,
     struct duplication_data* temp = (struct duplication_data*)extra_data;
     /*const int Ndm = temp->Ndm;*/
     struct dmpart* dmparts = (struct dmpart*)data;
-    const ptrdiff_t offset = dmparts - temp->dmparts;
-    struct gpart* gparts = temp->gparts + offset;
+    /*const ptrdiff_t offset = dmparts - temp->dmparts;*/
+    struct gpart* gparts = temp->gparts;
     
     for (int i = 0; i < Ndarkmatter; ++i) {
         
@@ -2227,7 +2227,7 @@ void io_duplicate_darkmatter_gparts_mapper(void* restrict data, int Ndarkmatter,
         gparts[i].type = swift_type_dark_matter;
         
         /* Link the particles */
-        gparts[i].id_or_neg_offset = -(long long)(offset + i);
+        gparts[i].id_or_neg_offset = -(long long)(i);
         dmparts[i].gpart = &gparts[i];
     }
 }

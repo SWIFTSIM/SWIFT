@@ -1408,10 +1408,8 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     const float dark_matter_h_max = e->sidm_properties->h_max;
     const float dark_matter_h_min = e->sidm_properties->h_min;
     const float eps = e->sidm_properties->h_tolerance;
-    const float dark_matter_eta_dim =
-    pow_dimension(e->sidm_properties->eta_neighbours);
-    const int use_mass_weighted_num_ngb =
-    e->sidm_properties->use_mass_weighted_num_ngb;
+    const float dark_matter_eta_dim = pow_dimension(e->sidm_properties->eta_neighbours);
+    const int use_mass_weighted_num_ngb = e->sidm_properties->use_mass_weighted_num_ngb;
     const int max_smoothing_iter = e->sidm_properties->max_smoothing_iterations;
     int redo = 0, count = 0;
     

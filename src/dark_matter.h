@@ -21,6 +21,8 @@
 
 /* Config parameters. */
 #include "../config.h"
+#include "approx_math.h"
+
 #include "./dark_matter_part.h"
 #include "./dark_matter_iact.h"
 
@@ -76,7 +78,29 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
-               struct dmpart* restrict gp, float dt_drift) {}
+               struct dmpart* restrict dmp, float dt_drift) {
+    
+    const float h = dmp->h;
+    const float h_inv = 1.0f / h;
+    
+    /* Predict smoothing length */
+    const float w1 = h_inv * dt_drift;
+    if (fabsf(w1) < 0.2f) {
+        dmp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+    } else {
+        dmp->h *= expf(w1);
+    }
+    
+    /* Predict density */
+    const float w2 = -hydro_dimension * w1;
+    if (fabsf(w2) < 0.2f) {
+        dmp->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
+    } else {
+        dmp->rho *= expf(w2);
+    }
+    
+    
+}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
