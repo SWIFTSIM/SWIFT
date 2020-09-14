@@ -60,6 +60,8 @@ struct spart {
   /* Particle cutoff radius. */
   float h;
 
+  float rho;
+
   struct {
 
     /* Number of neighbours. */
@@ -110,18 +112,19 @@ struct spart {
 
 #endif
 
-#ifdef DEBUG_INTERACTIONS_STARS
-  /*! Number of interactions in the density SELF and PAIR */
-  int num_ngb_density;
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
 
-  /*! List of interacting particles in the density SELF and PAIR */
-  long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS_STARS];
+  /* Integer number of neighbours in the density loop */
+  int N_density;
 
-  /*! Number of interactions in the force SELF and PAIR */
-  int num_ngb_force;
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
 
-  /*! List of interacting particles in the force SELF and PAIR */
-  long long ids_ngbs_force[MAX_NUM_OF_NEIGHBOURS_STARS];
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_exact;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

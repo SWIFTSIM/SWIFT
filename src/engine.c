@@ -1772,15 +1772,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_exact_density_check(e->s, e, 1e-3, 0);
 #endif
 
-#ifdef SWIFT_STARS_DENSITY_CHECKS
-  /* Run the brute-force stars calculation for some parts */
-  if (e->policy & engine_policy_stars) stars_exact_density_compute(e->s, e, 0);
-
-  /* Check the accuracy of the stars calculation */
-  if (e->policy & engine_policy_stars)
-    stars_exact_density_check(e->s, e, 1e-3, 0);
-#endif
-
   /* Apply some conversions (e.g. internal energy -> entropy) */
   if (!flag_entropy_ICs) {
 

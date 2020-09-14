@@ -76,8 +76,16 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->num_ngb_density = 0;
 #endif
 
+  sp->rho = 0.f;
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  sp->N_density = 0;
+  sp->N_density_exact = 0;
+  sp->rho_exact = 0.f;
+  sp->inhibited_exact = 0;
+#endif
 }
 
 /**
@@ -130,7 +138,10 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
+  message("aa");
+
   /* Finish the calculation by inserting the missing h-factors */
+  sp->rho *= h_inv_dim;
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
 }

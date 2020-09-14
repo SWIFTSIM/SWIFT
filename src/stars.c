@@ -35,50 +35,43 @@ struct exact_density_data {
   const struct engine *e;
   const struct space *s;
   int counter_global;
-  int check_force;
 };
 
-void stars_exact_density_compute_mapper(void *map_data, int nr_parts,
+void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
                                         void *extra_data) {
 #ifdef SWIFT_STARS_DENSITY_CHECKS
 
   /* Unpack the data */
-  struct part *restrict parts = (struct part *)map_data;
+  struct spart *restrict sparts = (struct spart *)map_data;
   struct exact_density_data *data = (struct exact_density_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int check_force = data->check_force;
   int counter = 0;
 
-  for (int i = 0; i < nr_parts; ++i) {
+  for (int i = 0; i < nr_sparts; ++i) {
 
-    struct part *pi = &parts[i];
-    const long long id = pi->id;
+    struct spart *spi = &sparts[i];
+    const long long id = spi->id;
 
     /* Is the particle active and part of the subset to be tested ? */
-    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
+    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e)) {
 
       /* Get some information about the particle */
-      const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
-      const double hi = pi->h;
+      const double pix[3] = {spi->x[0], spi->x[1], spi->x[2]};
+      const double hi = spi->h;
       const float hi_inv = 1.f / hi;
       const float hig2 = hi * hi * kernel_gamma2;
 
       /* Be ready for the calculation */
       int N_density_exact = 0;
-      int N_force_exact = 0;
       double rho_exact = 0.;
-      double n_force_exact = 0.;
 
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_parts; ++j) {
 
         const struct part *pj = &s->parts[j];
-        const double hj = pj->h;
-        const float hj_inv = 1.f / hj;
-        const float hjg2 = hj * hj * kernel_gamma2;
 
         /* Compute the pairwise distance. */
         double dx = pj->x[0] - pix[0];
@@ -108,7 +101,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_parts,
 
           /* Flag that we found an inhibited neighbour */
           if (part_is_inhibited(pj, e)) {
-            pi->inhibited_exact = 1;
+            spi->inhibited_exact = 1;
           } else {
 
             /* Density */
@@ -118,38 +111,11 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_parts,
             N_density_exact++;
           }
         }
-
-        /* Interact loop of type 2? */
-        if (check_force && (pi != pj) && (r2 < hig2 || r2 < hjg2)) {
-
-          float wi, wi_dx;
-          float wj, wj_dx;
-
-          /* Kernel function */
-          const float r = sqrtf(r2);
-          const float ui = r * hi_inv;
-          kernel_deval(ui, &wi, &wi_dx);
-          const float uj = r * hj_inv;
-          kernel_deval(uj, &wj, &wj_dx);
-
-          /* Flag that we found an inhibited neighbour */
-          if (part_is_inhibited(pj, e)) {
-            pi->inhibited_exact = 1;
-          } else {
-            /* Force count */
-            n_force_exact += wi + wj;
-          }
-
-          /* Number of neighbours */
-          N_force_exact++;
-        }
       }
 
       /* Store the exact answer */
-      pi->N_density_exact = N_density_exact;
-      pi->N_force_exact = N_force_exact;
-      pi->rho_exact = rho_exact * pow_dimension(hi_inv);
-      pi->n_force_exact = n_force_exact;
+      spi->N_density_exact = N_density_exact;
+      spi->rho_exact = rho_exact * pow_dimension(hi_inv);
 
       counter++;
     }
@@ -172,10 +138,9 @@ void stars_exact_density_compute(struct space *s, const struct engine *e,
   data.e = e;
   data.s = s;
   data.counter_global = 0;
-  data.check_force = check_force;
 
   threadpool_map(&s->e->threadpool, stars_exact_density_compute_mapper,
-                 s->parts, s->nr_parts, sizeof(struct part), 0, &data);
+                 s->sparts, s->nr_sparts, sizeof(struct spart), 0, &data);
 
   if (e->verbose)
     message("Computed exact densities for %d parts (took %.3f %s). ",
@@ -193,8 +158,8 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
 
   const ticks tic = getticks();
 
-  const struct part *parts = s->parts;
-  const size_t nr_parts = s->nr_parts;
+  const struct spart *sparts = s->sparts;
+  const size_t nr_sparts = s->nr_sparts;
 
   /* File name */
   char file_name_swift[100];
@@ -212,23 +177,22 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
           "N_ngb");
 
   /* Output particle SWIFT densities */
-  for (size_t i = 0; i < nr_parts; ++i) {
+  for (size_t i = 0; i < nr_sparts; ++i) {
 
-    const struct part *pi = &parts[i];
-    const long long id = pi->id;
-    if (pi->limited_part) continue;
+    const struct spart *spi = &sparts[i];
+    const long long id = spi->id;
 
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                         kernel_gamma * pi->h * pi->h * pi->h *
-                         (pi->rho / pi->mass);
+                         kernel_gamma * spi->h * spi->h * spi->h *
+                         (spi->rho / spi->mass);
 
-    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
+    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e)) {
 
       fprintf(
           file_swift,
           "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e %16.8e\n",
-          id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density, pi->N_force,
-          pi->rho, pi->n_force, N_ngb);
+          id, spi->x[0], spi->x[1], spi->x[2], spi->h, spi->N_density, 0,
+          spi->rho, 0.f, N_ngb);
     }
   }
 
@@ -254,39 +218,30 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
           "n_force_exact");
 
   int wrong_rho = 0;
-  int wrong_n_force = 0;
 
   /* Output particle SWIFT densities */
-  for (size_t i = 0; i < nr_parts; ++i) {
+  for (size_t i = 0; i < nr_sparts; ++i) {
 
-    const struct part *pi = &parts[i];
-    const long long id = pi->id;
-    const int found_inhibited = pi->inhibited_exact;
-    if (pi->limited_part) continue;
+    const struct spart *spi = &sparts[i];
+    const long long id = spi->id;
+    const int found_inhibited = spi->inhibited_exact;
 
-    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
+    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e)) {
 
       fprintf(file_swift,
               "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
-              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density_exact,
-              pi->N_force_exact, pi->rho_exact, pi->n_force_exact);
+              spi->x[0], spi->x[1], spi->x[2], spi->h, spi->N_density_exact, 0,
+              spi->rho_exact, 0.f);
 
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
       if (!found_inhibited &&
-          (fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol ||
-           fabsf(pi->rho_exact / pi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld swift=%e exact=%e", id, pi->rho, pi->rho_exact);
+          (fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
+           fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)) {
+        message("RHO: id=%lld swift=%e exact=%e", id, spi->rho, spi->rho_exact);
         wrong_rho++;
-      }
-      if (check_force && !found_inhibited &&
-          (fabsf(pi->n_force / pi->n_force_exact - 1.f) > 10. * rel_tol ||
-           fabsf(pi->n_force_exact / pi->n_force - 1.f) > 10. * rel_tol)) {
-        message("N_FORCE: id=%lld swift=%e exact=%e", id, pi->n_force,
-                pi->n_force_exact);
-        wrong_n_force++;
       }
     }
   }
@@ -302,12 +257,6 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
         "Density difference larger than the allowed tolerance for %d "
         "particles!",
         wrong_rho);
-
-  if (wrong_n_force)
-    error(
-        "N_force difference larger than the allowed tolerance for %d "
-        "particles!",
-        wrong_n_force);
 
   if (e->verbose)
     message("Writting brute-force density files took %.3f %s. ",
