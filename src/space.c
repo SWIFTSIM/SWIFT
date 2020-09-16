@@ -401,7 +401,7 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
-  const size_t nr_dmparts = s->nr_dmparts;
+  /*const size_t nr_dmparts = s->nr_dmparts;*/
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
