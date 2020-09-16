@@ -408,8 +408,7 @@ void space_regrid(struct space *s, int verbose) {
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
-  float dm_h_max = s->cell_min / dm_kernel_gamma / space_stretch;
-  if (nr_dmparts > 0) {
+  if (nr_parts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
     if (s->local_cells_with_particles_top != NULL) {
@@ -424,9 +423,6 @@ void space_regrid(struct space *s, int verbose) {
         }
         if (c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
-        }
-        if (c->dark_matter.h_max > dm_h_max) {
-          h_max = c->dark_matter.h_max;
         }
       }
 
@@ -443,9 +439,6 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
-          if (c->nodeID == engine_rank && c->dark_matter.h_max > dm_h_max) {
-              h_max = c->dark_matter.h_max;
-          }
       }
 
       /* Last option: run through the particles */
@@ -459,9 +452,9 @@ void space_regrid(struct space *s, int verbose) {
       for (size_t k = 0; k < nr_bparts; k++) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
-        for (size_t k = 0; k < nr_dmparts; k++) {
+        /*for (size_t k = 0; k < nr_dmparts; k++) {
             if (s->dmparts[k].h > dm_h_max) h_max = s->dmparts[k].h;
-        }
+        }*/
     }
   }
 
@@ -481,11 +474,11 @@ void space_regrid(struct space *s, int verbose) {
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
       (int)floor(s->dim[0] /
-                 fmax(h_max * dm_kernel_gamma * space_stretch, s->cell_min)),
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[1] /
-                 fmax(h_max * dm_kernel_gamma * space_stretch, s->cell_min)),
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[2] /
-                 fmax(h_max * dm_kernel_gamma * space_stretch, s->cell_min))};
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
