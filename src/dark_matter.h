@@ -129,15 +129,17 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     
     /* Final operation on the density (add self-contribution). */
     gp->rho += gp->mass * dm_kernel_root;
-    gp->density.rho_dh -= 3.f * gp->mass * dm_kernel_root;
+    gp->density.rho_dh -= hydro_dimension * gp->mass * dm_kernel_root;
     gp->density.wcount += dm_kernel_root;
-    gp->density.wcount_dh -= 3.f * dm_kernel_root;
-    
+    gp->density.wcount_dh -= hydro_dimension * dm_kernel_root;
+
     /* Finish the calculation by inserting the missing h-factors */
-    gp->rho *= h_inv_dim;
-    gp->density.rho_dh *= h_inv_dim_plus_one;
-    gp->density.wcount *= h_inv_dim;
-    gp->density.wcount_dh *= h_inv_dim_plus_one;}
+      gp->rho *= h_inv_dim;
+      gp->density.rho_dh *= h_inv_dim_plus_one;
+      gp->density.wcount *= h_inv_dim;
+      gp->density.wcount_dh *= h_inv_dim_plus_one;
+
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #spart has 0

@@ -5031,20 +5031,21 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         const int ci_nodeID = nodeID;
         const int cj_nodeID = nodeID;
 #endif
+
+        /* Activate the drifts */
+        if (t->type == task_type_self && ci_active) {
+            cell_activate_drift_dmpart(ci, s);
+        }
+
         
         /* Only activate tasks that involve a local active cell. */
         if ((ci_active || cj_active) &&
             (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
             
             scheduler_activate(s, t);
-            
+
             /* Activate the drifts */
-            if (t->type == task_type_self) {
-                cell_activate_drift_dmpart(ci, s);
-            }
-            
-            /* Activate the drifts */
-            else if (t->type == task_type_pair) {
+            if (t->type == task_type_pair) {
                 
                 /* Activate the drift tasks. */
                 if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
@@ -5076,13 +5077,11 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             if (ci_nodeID != nodeID) {
                 
                 /* Receive the foreign parts to compute DM parts interactions */
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dark_matter_density);
                 scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);
                 
                 /* Send the local part information */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_dark_matter_density, ci_nodeID);
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm, ci_nodeID);
-                
+                scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart, ci_nodeID);
+
                 /* Drift the cell which will be sent; note that not all sent
                  particles will be drifted, only those that are needed. */
                 cell_activate_drift_dmpart(ci, s);
@@ -5090,22 +5089,16 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 /* Send the new DM time-steps */
                 scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
                                         ci_nodeID);
-                
-                /* Receive the foreign DM time-steps */
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
-
 
                 
             } else if (cj_nodeID != nodeID) {
                 
                 /* Receive the foreign parts to compute DM parts interactions */
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dark_matter_density);
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);
 
                 /* Send the local part information */
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_dark_matter_density, ci_nodeID);
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm, ci_nodeID);
-                
+                scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart, ci_nodeID);
+
                 /* Drift the cell which will be sent; note that not all sent
                  particles will be drifted, only those that are needed. */
                 cell_activate_drift_dmpart(cj, s);
@@ -5113,10 +5106,6 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 /* Send the new DM time-steps */
                 scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
                                         cj_nodeID);
-                
-                /* Receive the foreign BH time-steps */
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
-
 
 
             }
@@ -5139,25 +5128,42 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         const int cj_nodeID = nodeID;
 #endif
         
-        /* Only activate tasks that involve a local active cell. */
-        if ((ci_active || cj_active) &&
-            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-            
+        if (t->type == task_type_self && ci_active) {
             scheduler_activate(s, t);
         }
-    }
-    
-    /* Unskip all the other task types. */
-    if (c->nodeID == nodeID && cell_is_active_dark_matter(c, e)) {
+
+        else if (t->type == task_type_sub_self && ci_active) {
+            scheduler_activate(s, t);
+        }
+
+        else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+            /* We only want to activate the task if the cell is active and is
+             going to update some gas on the *local* node */
+            if ((ci_nodeID == nodeID && cj_nodeID == nodeID) && (ci_active || cj_active)) {
+            scheduler_activate(s, t);
+
+            } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+            scheduler_activate(s, t);
+
+            } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+            scheduler_activate(s, t);
+
+            }
+       }
+
+    /* Nothing more to do here, all drifts and sorts activated above */
+  }
+
+
+  /* Unskip all the other task types. */
+  if (c->nodeID == nodeID && cell_is_active_dark_matter(c, e)) {
         
-        if (c->dark_matter.ghost != NULL)
-            scheduler_activate(s, c->dark_matter.ghost);
-        if (c->dark_matter.sidm_kick != NULL)
-            scheduler_activate(s, c->dark_matter.sidm_kick);
+        if (c->dark_matter.ghost != NULL) scheduler_activate(s, c->dark_matter.ghost);
+        if (c->dark_matter.sidm_kick != NULL) scheduler_activate(s, c->dark_matter.sidm_kick);
         if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
         if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
         if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-    }
+   }
     
     return rebuild;
 }

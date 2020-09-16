@@ -57,10 +57,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     dm_kernel_deval(ui, &wi, &wi_dx);
     
     pi->rho += mj * wi;
-    pi->density.rho_dh -= mj * (3.f * wi + ui * wi_dx);
+    pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
     pi->density.wcount += wi;
-    pi->density.wcount_dh -= (3.f * wi + ui * wi_dx);
+    pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
     /* Compute density of pj. */
     const float hj_inv = 1.f / hj;
@@ -68,9 +68,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     dm_kernel_deval(uj, &wj, &wj_dx);
     
     pj->rho += mi * wj;
-    pj->density.rho_dh -= mi * (3.f * wj + uj * wj_dx);
+    pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
     pj->density.wcount += wj;
-    pj->density.wcount_dh -= (3.f * wj + uj * wj_dx);
+    pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 }
 
 /**
@@ -102,10 +102,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     dm_kernel_deval(ui, &wi, &wi_dx);
     
     pi->rho += mj * wi;
-    pi->density.rho_dh -= mj * (3.f * wi + ui * wi_dx);
+    pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
     
     pi->density.wcount += wi;
-    pi->density.wcount_dh -= (3.f * wi + ui * wi_dx);
+    pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
 }
 

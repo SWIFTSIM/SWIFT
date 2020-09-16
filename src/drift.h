@@ -262,7 +262,7 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     dmp->x[2] += dmp->v_full[2] * dt_drift;
     
     /* Predict the values of the extra fields */
-    dark_matter_predict_extra(dmp, dt_drift);
+    /*dark_matter_predict_extra(dmp, dt_drift);*/
     
     /* Compute offsets since last cell construction */
     for (int k = 0; k < 3; k++) {
