@@ -453,7 +453,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter_background ||
-           gp->type == swift_type_sink) &&
+           gp->type == swift_type_sink ||
+           gp->type == swift_type_dark_matter) &&
           // TODO loic remove this
 
           gpart_is_active(gp, e)) {

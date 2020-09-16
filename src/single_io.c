@@ -1134,7 +1134,7 @@ void write_output_single(struct engine* e,
 
         /* Select the fields to write */
         darkmatter_write_particles(gparts_written, list, &num_fields);
-        num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);
+        /*num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);*/
         if (with_fof) {
           num_fields += fof_write_gparts(gparts_written, list + num_fields);
         }
@@ -1305,6 +1305,7 @@ void write_output_single(struct engine* e,
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
     if (sinks_written) swift_free("sinks_written", sinks_written);
+    if (dmparts_written) swift_free("dmparts_written", bparts_written);
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -1315,8 +1316,6 @@ void write_output_single(struct engine* e,
 
   /* Write LXMF file descriptor */
   xmf_write_outputfooter(xmfFile, e->snapshot_output_count, e->time);
-
-  /* message("Done writing particles..."); */
 
   /* Close file */
   H5Fclose(h_file);

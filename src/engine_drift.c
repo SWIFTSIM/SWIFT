@@ -343,15 +343,15 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
                      threadpool_auto_chunk_size, e);
     }
-    if (e->s->nr_dmparts > 0) {
-      threadpool_map(&e->threadpool, engine_do_drift_all_dmpart_mapper,
-                         e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                         threadpool_auto_chunk_size, e);
-    }
     if (e->s->nr_gparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
                      threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_dmparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_dmpart_mapper,
+                         e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
+                         threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_sparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
@@ -385,11 +385,6 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
                      threadpool_auto_chunk_size, e);
     }
-    if (e->s->nr_dmparts > 0) {
-      threadpool_map(&e->threadpool, engine_do_drift_all_dmpart_mapper,
-                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     threadpool_auto_chunk_size, e);
-    }
     if (e->s->nr_bparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_bpart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
@@ -397,6 +392,11 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
     }
     if (e->s->nr_gparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    }
+    if (e->s->nr_dmparts > 0) {
+      threadpool_map(&e->threadpool, engine_do_drift_all_dmpart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
                      threadpool_auto_chunk_size, e);
     }

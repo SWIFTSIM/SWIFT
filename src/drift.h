@@ -90,6 +90,7 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->x[1] += gp->v_full[1] * dt_drift;
   gp->x[2] += gp->v_full[2] * dt_drift;
 
+
   gravity_predict_extra(gp, grav_props);
 }
 
@@ -260,6 +261,11 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     dmp->x[0] += dmp->v_full[0] * dt_drift;
     dmp->x[1] += dmp->v_full[1] * dt_drift;
     dmp->x[2] += dmp->v_full[2] * dt_drift;
+
+    /* Give the gpart friend the same drift */
+    /*dmp->gpart->x[0] = dmp->x[0];
+    dmp->gpart->x[1] = dmp->x[1];
+    dmp->gpart->x[2] = dmp->x[2];*/
     
     /* Predict the values of the extra fields */
     /*dark_matter_predict_extra(dmp, dt_drift);*/
