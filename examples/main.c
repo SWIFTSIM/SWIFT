@@ -660,6 +660,15 @@ int main(int argc, char *argv[]) {
         SWIFT_HYDRO_DENSITY_CHECKS);
 #endif
 
+/* Do we have stars accuracy checks ? */
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  if (myrank == 0)
+    message(
+        "WARNING: Checking 1/%d of all part for stars accuracy. Code will be "
+        "slower !",
+        SWIFT_STARS_DENSITY_CHECKS);
+#endif
+
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
 #ifdef HAVE_FE_ENABLE_EXCEPT
