@@ -1678,6 +1678,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 #endif
   }
+    /* For dark matter 2 self (density, sidm), 26/2 density pairs,
+       26/2 sidm pairs, 1 drift, 1 ghosts, 1 kick, 1 time-step */
+    n1 += 32;
+    n2 += 2;
+    
   if (e->policy & engine_policy_timestep_limiter) {
     n1 += 18;
     n2 += 1;
@@ -1735,7 +1740,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     struct cell *c = &e->s->cells_top[k];
 
     /* Any cells with particles will have tasks (local & foreign). */
-    int nparts = c->hydro.count + c->grav.count + c->stars.count;
+    int nparts = c->hydro.count + c->grav.count + c->stars.count + c->dark_matter.count;
     if (nparts > 0) {
       ntop++;
       ncells++;

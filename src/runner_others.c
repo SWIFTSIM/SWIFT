@@ -72,17 +72,34 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
     
-    struct dmpart *restrict dmparts = c->dark_matter.parts;
-    const int count = c->dark_matter.count;
-    
-    /* Loop over the gparts in this cell. */
-    for (int k = 0; k < count; k++) {
+    /* Recurse? */
+    if (c->split) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                runner_do_sidm_kick(r, c->progeny[k]);
+                
+            }
+        }
+    } else {
+
         
-        /* Get a handle on the part. */
-        struct dmpart *restrict dmp = &dmparts[k];
+        struct dmpart *restrict dmparts = c->dark_matter.parts;
+        const int count = c->dark_matter.count;
         
-        /* do the kick */
-        communicate_sidm_kick_to_dmpart(dmp);
+        /* Loop over the gparts in this cell. */
+        for (int k = 0; k < count; k++) {
+            
+            /* Get a handle on the part. */
+            struct dmpart *restrict dmp = &dmparts[k];
+            
+            /* Is this part within the timestep? */
+            /* What to do if not? Should we woken it up? */
+            /*if (!dmpart_is_active(dmp, e)) error("Ghost applied to inactive particle");*/
+
+            
+            /* do the kick */
+            communicate_sidm_kick_to_dmpart(dmp);
+        }
     }
 }
 

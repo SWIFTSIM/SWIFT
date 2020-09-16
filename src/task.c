@@ -1519,7 +1519,7 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_dark_matter_density:
         case task_subtype_sidm:
-              return task_category_dark_matter;
+          return task_category_dark_matter;
 
         case task_subtype_grav:
         case task_subtype_external_grav:

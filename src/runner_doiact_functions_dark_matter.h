@@ -530,7 +530,7 @@ void runner_dosub_subset_dark_matter_density(struct runner *r, struct cell *ci,
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_self_dark_matter_sidm(struct runner *r, struct cell *c) {
+void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
     
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
@@ -644,7 +644,7 @@ void runner_do_self_dark_matter_sidm(struct runner *r, struct cell *c) {
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_do_pair_dark_matter_sidm(struct runner *r, struct cell *ci,
+void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
                                      struct cell *cj) {
     
     const struct engine *e = r->e;
@@ -751,4 +751,97 @@ void runner_do_pair_dark_matter_sidm(struct runner *r, struct cell *ci,
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
+}
+
+/**
+ * @brief Compute grouped sub-cell interactions for pairs
+ *
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param parts_i The #part to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param count The number of particles in @c ind.
+ * @param cj The second #cell.
+ */
+void runner_dosub_pair_dark_matter_sidm(struct runner *r, struct cell *ci, struct cell *cj) {
+    
+    struct space *s = r->e->s;
+    const struct engine *e = r->e;
+    
+    TIMER_TIC;
+    
+    /* Should we even bother? */
+    if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
+    if (ci->dark_matter.count == 0 || cj->dark_matter.count == 0) return;
+    
+    /* Get the type of pair and flip ci/cj if needed. */
+    double shift[3];
+    const int sid = space_getsid(s, &ci, &cj, shift);
+    
+    /* Recurse? */
+    if (cell_can_recurse_in_pair_dark_matter_task(ci) &&
+        cell_can_recurse_in_pair_dark_matter_task(cj)) {
+        struct cell_split_pair *csp = &cell_split_pairs[sid];
+        for (int k = 0; k < csp->count; k++) {
+            const int pid = csp->pairs[k].pid;
+            const int pjd = csp->pairs[k].pjd;
+            if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+            runner_dosub_pair_dark_matter_sidm(r, ci->progeny[pid], cj->progeny[pjd]);
+        }
+    }
+    
+    /* Otherwise, compute the pair directly. */
+    else if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
+        
+        /* Make sure both cells are drifted to the current timestep. */
+        if (!cell_are_dmpart_drifted(ci, e) || !cell_are_dmpart_drifted(cj, e))
+        error("Interacting undrifted cells.");
+        
+        /* Compute the interactions. */
+        runner_dopair_dark_matter_sidm(r, ci, cj);
+    }
+    
+}
+
+/**
+ * @brief Compute the interactions between a cell pair, but only for the
+ *      given indices in ci.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param parts The #part to interact.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param count The number of particles in @c ind.
+ */
+void runner_dosub_self_dark_matter_sidm(struct runner *r, struct cell *ci) {
+    
+    TIMER_TIC;
+    
+    /* Should we even bother? */
+    if (ci->dark_matter.count == 0 || !cell_is_active_dark_matter(ci, r->e)) return;
+    
+    /* Recurse? */
+    if (cell_can_recurse_in_self_dark_matter_task(ci)) {
+        
+        /* Loop over all progeny. */
+        for (int k = 0; k < 8; k++)
+        if (ci->progeny[k] != NULL) {
+            runner_dosub_self_dark_matter_sidm(r, ci->progeny[k]);
+            for (int j = k + 1; j < 8; j++)
+              if (ci->progeny[j] != NULL)
+                runner_dosub_pair_dark_matter_sidm(r, ci->progeny[k], ci->progeny[j]);
+        }
+    }
+    
+    /* Otherwise, compute self-interaction. */
+    else {
+        
+        /* Drift the cell to the current timestep if needed. */
+        if (!cell_are_dmpart_drifted(ci, r->e)) error("Interacting undrifted cell.");
+        
+        /* runner_dosub_self_dark_matter_density(r, ci); */
+        runner_doself_dark_matter_sidm(r, ci);
+    }
+    
 }

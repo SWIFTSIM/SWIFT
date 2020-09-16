@@ -342,8 +342,7 @@ enum cell_flags {
   cell_flag_do_hydro_sync = (1UL << 15),
   cell_flag_do_hydro_sub_sync = (1UL << 16),
   cell_flag_do_dark_matter_drift = (1UL << 17),
-  cell_flag_do_dark_matter_sub_drift = (1UL << 18),
-  cell_flag_do_dark_matter_sub_sort = (1UL << 19)
+  cell_flag_do_dark_matter_sub_drift = (1UL << 18)
 };
 
 /**

@@ -409,7 +409,7 @@ void space_regrid(struct space *s, int verbose) {
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   float dm_h_max = s->cell_min / dm_kernel_gamma / space_stretch;
-  if (nr_parts > 0) {
+  if (nr_dmparts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
     if (s->local_cells_with_particles_top != NULL) {
@@ -481,11 +481,11 @@ void space_regrid(struct space *s, int verbose) {
   /* Get the new putative cell dimensions. */
   const int cdim[3] = {
       (int)floor(s->dim[0] /
-                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+                 fmax(h_max * dm_kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[1] /
-                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+                 fmax(h_max * dm_kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[2] /
-                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+                 fmax(h_max * dm_kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
