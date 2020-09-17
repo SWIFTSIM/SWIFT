@@ -184,8 +184,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if ((gp->type == swift_type_dark_matter ||
-           gp->type == swift_type_dark_matter_background ||
+      if ((gp->type == swift_type_dark_matter_background ||
            gp->type == swift_type_sink) &&
           // TODO loic remove this
 
@@ -453,8 +452,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if ((gp->type == swift_type_dark_matter ||
-           gp->type == swift_type_dark_matter_background ||
+      if ((gp->type == swift_type_dark_matter_background ||
            gp->type == swift_type_sink) &&
           // TODO loic remove this
 
@@ -645,7 +643,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
-    struct dmpart *restrict dmparts = c->dark_matter.parts;
+  struct dmpart *restrict dmparts = c->dark_matter.parts;
 
   TIMER_TIC;
 
@@ -669,8 +667,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                 ti_stars_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
-  integertime_t ti_dark_matter_end_min = max_nr_timesteps,
-    ti_dark_matter_end_max = 0, ti_dark_matter_beg_max = 0;
+  integertime_t ti_dark_matter_end_min = max_nr_timesteps, ti_dark_matter_end_max = 0, ti_dark_matter_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -852,33 +849,38 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                   
                   /* Update particle */
                   dmp->time_bin = get_time_bin(ti_new_step);
-                  
+                  dmp->gpart->time_bin = get_time_bin(ti_new_step);
+              
                   /* Number of updated g-particles */
                   dm_updated++;
+                  g_updated++;
                   
                   /* What is the next sync-point ? */
                   ti_dark_matter_end_min = min(ti_current + ti_new_step, ti_dark_matter_end_min);
                   ti_dark_matter_end_max = max(ti_current + ti_new_step, ti_dark_matter_end_max);
-                  
+                  ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+                  ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+
                   /* What is the next starting point for this cell ? */
                   ti_dark_matter_beg_max = max(ti_current, ti_dark_matter_beg_max);
+                  ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
               
               } else { /* dmpart is inactive */
                   
                   if (!dmpart_is_inhibited(dmp, e)) {
                       
-                      const integertime_t ti_end =
-                      get_integer_time_end(ti_current, dmp->time_bin);
-                      
+                      const integertime_t ti_end = get_integer_time_end(ti_current, dmp->time_bin);
+                      const integertime_t ti_beg = get_integer_time_begin(ti_current + 1, dmp->time_bin);
+
                       /* What is the next sync-point ? */
                       ti_dark_matter_end_min = min(ti_end, ti_dark_matter_end_min);
                       ti_dark_matter_end_max = max(ti_end, ti_dark_matter_end_max);
-                      
-                      const integertime_t ti_beg =
-                      get_integer_time_begin(ti_current + 1, dmp->time_bin);
+                      ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+                      ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
                       
                       /* What is the next starting point for this cell ? */
                       ti_dark_matter_beg_max = max(ti_beg, ti_dark_matter_beg_max);
+                      ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
                   }
               }
           }

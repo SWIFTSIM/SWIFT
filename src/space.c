@@ -5247,21 +5247,21 @@ void space_synchronize_dmpart_positions_mapper(void *map_data, int nr_dmparts,
 #endif
         
         /* Synchronize positions, velocities and masses */
-        /*gp->x[0] = dmp->x[0];
+        gp->x[0] = dmp->x[0];
         gp->x[1] = dmp->x[1];
         gp->x[2] = dmp->x[2];
         
         gp->v_full[0] = dmp->v_full[0];
         gp->v_full[1] = dmp->v_full[1];
-        gp->v_full[2] = dmp->v_full[2];*/
+        gp->v_full[2] = dmp->v_full[2];
         
-        dmp->x[0] = dmp->gpart->x[0];
+        /*dmp->x[0] = dmp->gpart->x[0];
         dmp->x[1] = dmp->gpart->x[1];
         dmp->x[2] = dmp->gpart->x[2];
         
         dmp->v_full[0] = dmp->gpart->v_full[0];
         dmp->v_full[1] = dmp->gpart->v_full[1];
-        dmp->v_full[2] = dmp->gpart->v_full[2];
+        dmp->v_full[2] = dmp->gpart->v_full[2];*/
         
         gp->mass = dmp->mass;
     }
@@ -7583,8 +7583,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
     
     /* Re-link the dmparts. */
-    if (s->nr_dmparts > 0 && s->nr_gparts > 0)
-        part_relink_dmparts_to_gparts(s->gparts, s->nr_gparts, s->dmparts);
+  if (s->nr_dmparts > 0 && s->nr_gparts > 0)
+    part_relink_dmparts_to_gparts(s->gparts, s->nr_gparts, s->dmparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */

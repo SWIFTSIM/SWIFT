@@ -183,14 +183,14 @@ __attribute__((always_inline)) INLINE static void kick_dmpart(
 #endif
     
     /* Kick particles in momentum space */
-    /*dmp->v_full[0] += dmp->gpart->a_grav[0] * dt_kick_grav;
+    dmp->v_full[0] += dmp->gpart->a_grav[0] * dt_kick_grav;
     dmp->v_full[1] += dmp->gpart->a_grav[1] * dt_kick_grav;
-    dmp->v_full[2] += dmp->gpart->a_grav[2] * dt_kick_grav;*/
+    dmp->v_full[2] += dmp->gpart->a_grav[2] * dt_kick_grav;
     
     /* Give the gpart friend the same velocity */
-    /*dmp->gpart->v_full[0] = dmp->v_full[0];
+    dmp->gpart->v_full[0] = dmp->v_full[0];
     dmp->gpart->v_full[1] = dmp->v_full[1];
-    dmp->gpart->v_full[2] = dmp->v_full[2];*/
+    dmp->gpart->v_full[2] = dmp->v_full[2];
 
     /* Kick extra variables Perform SIDM kick? */
     dark_matter_kick_extra(dmp, dt_kick_grav);
