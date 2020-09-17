@@ -231,7 +231,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
   struct unit_system si;
   units_init_si(&si);
 
-  // All table values in SI
+  // All table values in SI, apart from sound speeds in km/s
   // Densities (log)
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     mat->table_log_rho[i_rho] +=
@@ -249,7 +249,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
           units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE) /
           units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
       mat->table_c_rho_T[i_rho * mat->num_T + i_T] *=
-          units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
+          1e3f * units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
           units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
       mat->table_s_rho_T[i_rho * mat->num_T + i_T] *=
           units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS) /
@@ -260,7 +260,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
   // Tiny pressure and sound speed
   mat->P_tiny *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE) /
                  units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-  mat->c_tiny *= units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
+  mat->c_tiny *= 1e3f * units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
                  units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 }
 
