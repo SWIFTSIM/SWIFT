@@ -89,7 +89,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   int redo = 0, scount = 0;
 
   /* Running value of the maximal smoothing length */
-  double h_max = c->stars.h_max;
+  float h_max = c->stars.h_max;
+  float h_max_active = c->stars.h_max_active;
 
   TIMER_TIC;
 
@@ -110,6 +111,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->stars.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->stars.h_max_active);
       }
     }
   } else {
@@ -349,6 +351,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Check if h_max has increased */
         h_max = max(h_max, sp->h);
+        h_max_active = max(h_max_active, sp->h);
 
         stars_reset_feedback(sp);
 
@@ -500,12 +503,26 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Update h_max */
   c->stars.h_max = h_max;
+  c->stars.h_max_active = h_max_active;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->stars.count; ++i) {
+    const struct spart *sp = &c->stars.parts[i];
+    const float h = c->stars.parts[i].h;
+    if (spart_is_inhibited(sp, e)) continue;
+
+    if (h > c->stars.h_max) error("Particle has h larger than h_max");
+    if (spart_is_active(sp, e) && h > c->stars.h_max_active)
+      error("Active particle has h larger than h_max_active");
+  }
+#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->stars.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->stars.h_max, h_max);
+      atomic_max_f(&tmp->stars.h_max_active, h_max_active);
     }
   }
 

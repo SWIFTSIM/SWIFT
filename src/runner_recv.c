@@ -224,6 +224,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
   float h_max = 0.f;
+  float h_max_active = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank) error("Updating a local cell!");
@@ -244,6 +245,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, sparts[k].time_bin);
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
       h_max = max(h_max, sparts[k].h);
+      if (sparts[k].time_bin <= max_active_bin)
+        h_max_active = max(h_max_active, sparts[k].h);
     }
 
     /* Convert into a time */
@@ -261,6 +264,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
         ti_stars_end_max =
             max(ti_stars_end_max, c->progeny[k]->stars.ti_end_max);
         h_max = max(h_max, c->progeny[k]->stars.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->stars.h_max_active);
       }
     }
   }
@@ -279,6 +283,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   // c->grav.ti_end_max = ti_gravity_end_max;
   c->stars.ti_old_part = ti_current;
   c->stars.h_max = h_max;
+  c->stars.h_max_active = h_max_active;
 
   if (timer) TIMER_TOC(timer_dorecv_spart);
 
