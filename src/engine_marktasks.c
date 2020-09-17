@@ -947,6 +947,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
+    /* Feedback implicit tasks? */
+    else if (t_type == task_type_sink_in || t_type == task_type_sink_out) {
+      if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e))
+        scheduler_activate(s, t);
+    }
+
     /* Black hole ghost tasks ? */
     else if (t_type == task_type_bh_density_ghost ||
              t_type == task_type_bh_swallow_ghost1 ||

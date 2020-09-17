@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct sink_props sink_properties;
   struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
   struct black_holes_props black_holes_properties;
@@ -988,6 +989,12 @@ int main(int argc, char *argv[]) {
     } else
       bzero(&black_holes_properties, sizeof(struct black_holes_props));
 
+    /* Initialise the sink properties */
+    if (with_sink) {
+      sink_props_init(&sink_properties, &prog_const, &us, params, &cosmo);
+    } else
+      bzero(&sink_properties, sizeof(struct sink_props));
+
       /* Initialise the cooling function properties */
 #ifdef COOLING_NONE
     if (with_cooling) {
@@ -1309,7 +1316,7 @@ int main(int argc, char *argv[]) {
                 N_total[swift_type_dark_matter_background], engine_policies,
                 talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
-                &stars_properties, &black_holes_properties,
+                &stars_properties, &black_holes_properties, &sink_properties,
                 &feedback_properties, &mesh, &potential, &cooling_func,
                 &starform, &chemistry, &fof_properties, &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
