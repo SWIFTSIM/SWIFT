@@ -24,6 +24,7 @@
 /* Local includes */
 #include "minmax.h"
 #include "sink_part.h"
+#include "sink_properties.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -45,8 +46,9 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
-    struct sink* sp) {
+    struct sink* sp, const struct sink_props* sink_props) {
 
+  sp->r_cut = sink_props->cut_off_radius;
   sp->time_bin = 0;
 }
 

@@ -766,6 +766,12 @@ struct cell {
     /*! Nr of #sink this cell can hold after addition of new one. */
     int count_total;
 
+    /*! Max cut off radius in this cell. */
+    float r_cut_max;
+
+    /*! Values of r_cut_max before the drifts, used for sub-cell tasks. */
+    float r_cut_max_old;
+
     /*! Number of #sink updated in this cell. */
     int updated;
 
@@ -797,6 +803,13 @@ struct cell {
 
     /*! The drift task for sinks */
     struct task *drift;
+
+    /*! Implicit tasks marking the entry of the sink block of tasks
+     */
+    struct task *sink_in;
+
+    /*! Implicit tasks marking the exit of the sink block of tasks */
+    struct task *sink_out;
 
   } sinks;
 
@@ -1214,9 +1227,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_sinks_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  // loic TODO: add cut off radius
-  return c->split &&
-         //(kernel_gamma * c->sinks.h_max_old < 0.5f * c->dmin) &&
+  return c->split && (c->sinks.r_cut_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
