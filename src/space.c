@@ -5227,12 +5227,12 @@ void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
 void space_synchronize_dmpart_positions_mapper(void *map_data, int nr_dmparts,
                                               void *extra_data) {
     /* Unpack the data */
-    const struct dmpart *dmparts = (struct dmpart *)map_data;
+    struct dmpart *dmparts = (struct dmpart *)map_data;
     
     for (int k = 0; k < nr_dmparts; k++) {
         
         /* Get the particle */
-        const struct dmpart *dmp = &dmparts[k];
+        struct dmpart *dmp = &dmparts[k];
         
         /* Skip unimportant particles */
         if (dmp->time_bin == time_bin_not_created ||
@@ -5247,13 +5247,21 @@ void space_synchronize_dmpart_positions_mapper(void *map_data, int nr_dmparts,
 #endif
         
         /* Synchronize positions, velocities and masses */
-        gp->x[0] = dmp->x[0];
+        /*gp->x[0] = dmp->x[0];
         gp->x[1] = dmp->x[1];
         gp->x[2] = dmp->x[2];
         
         gp->v_full[0] = dmp->v_full[0];
         gp->v_full[1] = dmp->v_full[1];
-        gp->v_full[2] = dmp->v_full[2];
+        gp->v_full[2] = dmp->v_full[2];*/
+        
+        dmp->x[0] = dmp->gpart->x[0];
+        dmp->x[1] = dmp->gpart->x[1];
+        dmp->x[2] = dmp->gpart->x[2];
+        
+        dmp->v_full[0] = dmp->gpart->v_full[0];
+        dmp->v_full[1] = dmp->gpart->v_full[1];
+        dmp->v_full[2] = dmp->gpart->v_full[2];
         
         gp->mass = dmp->mass;
     }
