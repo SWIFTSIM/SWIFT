@@ -43,6 +43,9 @@ struct sink {
   /*! Particle velocity. */
   float v[3];
 
+  /*! Cut off radius. */
+  float r_cut;
+
   /*! Sink particle mass */
   float mass;
 
