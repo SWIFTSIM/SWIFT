@@ -447,6 +447,9 @@ struct engine {
   /* Properties of the black hole model */
   const struct black_holes_props *black_holes_properties;
 
+  /* Properties of the sink model */
+  const struct sink_props *sink_properties;
+
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
 
@@ -569,6 +572,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  const struct black_holes_props *black_holes,
+                 const struct sink_props *sinks,
                  struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
