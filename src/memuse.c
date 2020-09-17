@@ -271,6 +271,7 @@ void memuse_log_dump(const char *filename) {
 
         /* Free, update the size to remove the allocation. */
         int64_t allocindex = child->value;
+        child->value = -1;
         memuse_log[k].size = -memuse_log[allocindex].size;
 
         /* And deactivate this key. */
