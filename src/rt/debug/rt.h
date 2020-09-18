@@ -25,8 +25,52 @@
  */
 
 /**
- * @brief Dummy function to test whether inclusions work properly.
+ * @brief First initialisation of the RT extra hydro particle data.
  */
-void rt_dummy_function(void) { message("Called debug RT scheme."); }
+__attribute__((always_inline)) INLINE static void rt_first_init_part(
+    struct part* restrict p) {
 
+  p->rt_data.iact_stars = 0;
+  p->rt_data.calls_tot = 0;
+  p->rt_data.calls_per_step = 0;
+  p->rt_data.calls_self = 0;
+  p->rt_data.calls_pair = 0;
+}
+
+/**
+ * @brief Initialisation of the RT extra hydro particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_part(
+    struct part* restrict p) {
+
+  p->rt_data.iact_stars = 0;
+  p->rt_data.calls_per_step = 0;
+  p->rt_data.calls_self = 0;
+  p->rt_data.calls_pair = 0;
+}
+
+/**
+ * @brief First initialisation of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_spart(
+    struct spart* restrict sp) {
+
+  sp->rt_data.iact_hydro = 0;
+  sp->rt_data.calls_tot = 0;
+  sp->rt_data.calls_per_step = 0;
+  sp->rt_data.calls_self = 0;
+  sp->rt_data.calls_pair = 0;
+}
+
+/**
+ * @brief First initialisation of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_spart(
+    struct spart* restrict sp) {
+
+  sp->rt_data.iact_hydro = 0;
+  sp->rt_data.calls_per_step = 0;
+  sp->rt_data.calls_self = 0;
+  sp->rt_data.calls_pair = 0;
+}
 #endif /* SWIFT_RT_DEBUG_H */

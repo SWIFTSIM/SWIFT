@@ -139,7 +139,8 @@ const char *subtaskID_names[task_subtype_count] = {"none",
                                                    "do_gas_swallow",
                                                    "do_bh_swallow",
                                                    "bh_feedback",
-                                                   "sink"};
+                                                   "sink",
+                                                   "rt_inject"};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sort",    "hydro",          "gravity", "feedback",
@@ -966,6 +967,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_bh_feedback:
       strcpy(cluster, "BHFeedback");
+      break;
+    case task_subtype_rt_inject:
+      strcpy(cluster, "RTinject");
       break;
     default:
       strcpy(cluster, "None");

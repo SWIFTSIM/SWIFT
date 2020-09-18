@@ -33,6 +33,7 @@
 #include "feedback.h"
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
+#include "rt.h"
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "stars.h"
@@ -315,6 +316,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             stars_init_spart(sp);
             feedback_init_spart(sp);
+            rt_init_spart(sp);
 
             /* Off we go ! */
             continue;

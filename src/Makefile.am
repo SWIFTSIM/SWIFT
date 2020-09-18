@@ -102,7 +102,8 @@ endif
 AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
     runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
     runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
-    runner_doiact_hydro_vec.c runner_others.c\
+    runner_doiact_hydro_vec.c runner_others.c \
+	runner_doiact_rt.c\
     queue.c task.c cell.c engine.c engine_maketasks.c engine_split_particles.c \
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
     engine_redistribute.c engine_fof.c serial_io.c timers.c debug.c scheduler.c \
@@ -127,6 +128,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	         runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h \
                  runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h \
 		 runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
+		 	runner_doiact_rt.h runner_doiact_functions_rt.h \
                  kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \
                  timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h \
      dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_logger.h  gravity_cache.h output_options.h\
@@ -208,8 +210,21 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
                  riemann/riemann_checks.h \
-		 rt.h rt/none/rt.h rt/debug/rt.h rt/M1closure/rt.h \
-	 	 stars.h stars_io.h stars_logger.h \
+		 rt.h  \
+		 rt_io.h \
+		 rt_struct.h \
+			 rt/none/rt.h  \
+			 rt/none/rt_iact.h \
+			 rt/none/rt_io.h \
+			 rt/none/rt_struct.h\
+			 rt/debug/rt.h  \
+			 rt/debug/rt_iact.h \
+			 rt/debug/rt_io.h \
+			 rt/debug/rt_struct.h\
+			 rt/M1closure/rt.h  \
+			 rt/M1closure/rt_iact.h \
+			 rt/M1closure/rt_io.h \
+			 rt/M1closure/rt_struct.h\
 	   stars.h stars_io.h stars_logger.h \
 		 stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
      stars/Default/stars_debug.h stars/Default/stars_part.h stars/Default/stars_logger.h  \

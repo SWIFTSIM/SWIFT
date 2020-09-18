@@ -1631,6 +1631,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 1;
   }
 #endif
+  if (e->policy & engine_policy_rt) {
+    /* 1 self (inject), (3^3-1)/2 = 26/2 = 13 inject pairs */
+    n1 += 14;
+  }
 
 #ifdef WITH_MPI
 
@@ -2102,7 +2106,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_spart ||
         t->subtype == task_subtype_tend_sink ||
         t->subtype == task_subtype_tend_bpart ||
-        t->subtype == task_subtype_rho || t->subtype == task_subtype_sf_counts)
+        t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_sf_counts ||
+        t->subtype == task_subtype_rt_inject)
       t->skip = 1;
   }
 
