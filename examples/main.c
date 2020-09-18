@@ -597,8 +597,7 @@ int main(int argc, char *argv[]) {
 #endif
 #ifdef WITH_MPI
   /* Temporary, this will be removed in due time */
-  error(
-      "Error: Cannot use radiative transfer with MPI\n");
+  error("Error: Cannot use radiative transfer with MPI\n");
 #endif
 #endif /* idfef RT_NONE */
 
