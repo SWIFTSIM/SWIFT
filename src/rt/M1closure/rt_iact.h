@@ -16,36 +16,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_M1_H
-#define SWIFT_RT_M1_H
+#ifndef SWIFT_RT_IACT_M1CLOSURE_H
+#define SWIFT_RT_IACT_M1CLOSURE_H
 
 /**
- * @file src/rt/M1closure/rt.h
- * @brief Main header file for the M1 Closure radiative transfer scheme.
+ * @file src/rt/M1closure/rt_iact.h
+ * @brief Main header file for the M1 closure radiative transfer scheme particle
+ * interactions.
  */
 
 /**
- * @brief First initialisation of the RT extra hydro particle data.
+ * @brief Injection step interaction between star and hydro particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si Star particle.
+ * @param xpj Hydro particle extra data.
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p) {}
+__attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
+    const float r2, float* dx, const float hi, const float hj,
+    struct spart* restrict si, struct part* restrict pj) {}
 
-/**
- * @brief Initialisation of the RT extra hydro particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
-
-/**
- * @brief First initialisation of the RT extra star particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart(
-    struct spart* restrict sp) {}
-
-/**
- * @brief First initialisation of the RT extra star particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
-
-#endif /* SWIFT_RT_M1_H */
+#endif /* SWIFT_RT_IACT_M1CLOSURE_H */

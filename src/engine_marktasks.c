@@ -261,6 +261,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Activate RT injection */
+      else if (t_subtype == task_subtype_rt_inject) {
+        if (ci_active_hydro) {
+          scheduler_activate(s, t);
+        }
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");
@@ -469,6 +476,24 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           error("Invalid task sub-type encountered");
         }
 #endif
+      }
+
+      /* RT injection tasks */
+      else if (t_subtype == task_subtype_rt_inject) {
+        /* We only want to activate the task if the cell is active and is
+           going to update some gas on the *local* node */
+        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+            (ci_active_hydro || cj_active_hydro)) {
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
+                   (cj_active_hydro)) {
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
+                   (ci_active_hydro)) {
+          scheduler_activate(s, t);
+        }
       }
 
       /* Only interested in density tasks as of here. */
@@ -858,6 +883,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_gpart,
                                     cj_nodeID);
         }
+#endif
+      } /* Only interested in RT tasks as of here. */
+      else if (t_subtype == task_subtype_rt_inject) {
+#ifdef WITH_MPI
+        error("RT doesn't work with MPI yet.");
 #endif
       }
     }

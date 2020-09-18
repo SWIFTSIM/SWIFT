@@ -16,36 +16,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_M1_H
-#define SWIFT_RT_M1_H
+#ifndef SWIFT_RT_STRUCT_DEBUG_H
+#define SWIFT_RT_STRUCT_DEBUG_H
 
 /**
- * @file src/rt/M1closure/rt.h
- * @brief Main header file for the M1 Closure radiative transfer scheme.
+ * @file src/rt/debug/rt_struct.h
+ * @brief Main header file for the debug radiative transfer struct.
  */
 
-/**
- * @brief First initialisation of the RT extra hydro particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p) {}
+/* Additional RT data in hydro particle struct */
+struct rt_part_data {
+  int iact_stars; /* how many stars this particle interacted with */
+  int calls_tot;  /* total number of calls to this particle during entire run */
+  int calls_per_step; /* calls per time step to this particle */
+  int calls_self;
+  int calls_pair;
+};
 
-/**
- * @brief Initialisation of the RT extra hydro particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
+/* Additional RT data in star particle struct */
+struct rt_spart_data {
+  int iact_hydro; /* how many hydro particles this particle interacted with */
+  int calls_tot;  /* total number of calls to this particle during entire run */
+  int calls_per_step; /* calls per time step to this particle */
+  int calls_self;
+  int calls_pair;
+};
 
-/**
- * @brief First initialisation of the RT extra star particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart(
-    struct spart* restrict sp) {}
-
-/**
- * @brief First initialisation of the RT extra star particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
-
-#endif /* SWIFT_RT_M1_H */
+#endif /* SWIFT_RT_STRUCT_DEBUG_H */

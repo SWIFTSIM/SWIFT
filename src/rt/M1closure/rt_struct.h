@@ -16,36 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_M1_H
-#define SWIFT_RT_M1_H
+#ifndef SWIFT_RT_STRUCT_M1CLOSURE_H
+#define SWIFT_RT_STRUCT_M1CLOSURE_H
 
 /**
- * @file src/rt/M1closure/rt.h
- * @brief Main header file for the M1 Closure radiative transfer scheme.
+ * @file src/rt/M1closure/rt_struct.h
+ * @brief Main header file for no radiative transfer struct.
  */
 
-/**
- * @brief First initialisation of the RT extra hydro particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p) {}
+/* Additional RT data in hydro particle struct */
+struct rt_part_data {};
 
-/**
- * @brief Initialisation of the RT extra hydro particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
+/* Additional RT data in star particle struct */
+struct rt_spart_data {};
 
-/**
- * @brief First initialisation of the RT extra star particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart(
-    struct spart* restrict sp) {}
-
-/**
- * @brief First initialisation of the RT extra star particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
-
-#endif /* SWIFT_RT_M1_H */
+#endif /* SWIFT_RT_STRUCT_M1CLOSURE_H */

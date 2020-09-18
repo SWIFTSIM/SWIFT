@@ -193,6 +193,7 @@ SUBTYPES = [
     "tend_part",
     "tend_gpart",
     "tend_spart",
+    "tend_sink",
     "tend_bpart",
     "xv",
     "rho",
@@ -211,6 +212,8 @@ SUBTYPES = [
     "bh_swallow",
     "do_swallow",
     "bh_feedback",
+    "sink",
+    "rt_inject",
     "count",
 ]
 

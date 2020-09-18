@@ -104,6 +104,11 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import radiative transfer loop functions. */
+#define FUNCTION inject
+#include "runner_doiact_rt.h"
+#undef FUNCTION
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -201,6 +206,8 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_doself_branch_bh_feedback(r, ci);
+          else if (t->subtype == task_subtype_rt_inject)
+            runner_doself_branch_rt_inject(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -233,6 +240,8 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
+          else if (t->subtype == task_subtype_rt_inject)
+            runner_dopair_branch_rt_inject(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -263,6 +272,8 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
+          else if (t->subtype == task_subtype_rt_inject)
+            runner_dosub_self_rt_inject(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -293,6 +304,8 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_rt_inject)
+            runner_dosub_pair_rt_inject(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

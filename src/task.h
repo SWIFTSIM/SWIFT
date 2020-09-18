@@ -137,6 +137,7 @@ enum task_subtypes {
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
   task_subtype_sink,
+  task_subtype_rt_inject,
   task_subtype_count
 } __attribute__((packed));
 
