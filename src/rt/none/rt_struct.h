@@ -24,8 +24,10 @@
  * @brief Main header file for no radiative transfer struct.
  */
 
-struct rt_xpart_data {};
+/* Additional RT data in hydro particle struct */
+struct rt_part_data {};
 
+/* Additional RT data in star particle struct */
 struct rt_spart_data {};
 
 #endif /* SWIFT_RT_STRUCT_NONE_H */

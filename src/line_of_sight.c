@@ -457,7 +457,7 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
   num_fields +=
       star_formation_write_particles(parts, xparts, list + num_fields);
   if (with_rt) {
-    num_fields += rt_write_particles(xparts, list + num_fields);
+    num_fields += rt_write_particles(parts, list + num_fields);
   }
 
   /* Loop over each output field */

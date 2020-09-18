@@ -4926,7 +4926,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
 
     /* And the radiative transfer */
-    rt_first_init_xpart(&xp[k]);
+    rt_first_init_part(&p[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
@@ -5283,7 +5283,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     black_holes_init_potential(&parts[k].black_holes_data);
     chemistry_init_part(&parts[k], e->chemistry);
     pressure_floor_init_part(&parts[k], &xparts[k]);
-    rt_init_xpart(&xparts[k]);
+    rt_init_part(&parts[k]);
     star_formation_init_part(&parts[k], e->star_formation);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,

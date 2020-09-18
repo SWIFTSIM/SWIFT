@@ -24,7 +24,8 @@
  * @brief Main header file for the debug radiative transfer struct.
  */
 
-struct rt_xpart_data {
+/* Additional RT data in hydro particle struct */
+struct rt_part_data {
   int iact_stars; /* how many stars this particle interacted with */
   int calls_tot;  /* total number of calls to this particle during entire run */
   int calls_per_step; /* calls per time step to this particle */
@@ -32,6 +33,7 @@ struct rt_xpart_data {
   int calls_pair;
 };
 
+/* Additional RT data in star particle struct */
 struct rt_spart_data {
   int iact_hydro; /* how many hydro particles this particle interacted with */
   int calls_tot;  /* total number of calls to this particle during entire run */

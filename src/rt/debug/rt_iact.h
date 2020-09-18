@@ -37,10 +37,10 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float* dx, const float hi, const float hj,
-    struct spart* restrict si, struct xpart* restrict xpj) {
+    struct spart* restrict si, struct part* restrict pj) {
 
   struct rt_spart_data* restrict sd = &(si->rt_data);
-  struct rt_xpart_data* restrict pd = &(xpj->rt_data);
+  struct rt_part_data* restrict pd = &(pj->rt_data);
 
   sd->iact_hydro += 1;
   sd->calls_tot += 1;

@@ -45,7 +45,6 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->stars.parts;
   struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
 
   const int scount = c->stars.count;
   const int count = c->hydro.count;
@@ -65,7 +64,6 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
 
     /* Loop over the (x)parts in cell */
     for (int pid = 0; pid < count; pid++) {
-      struct xpart *restrict xpj = &xparts[pid];
       struct part *restrict pj = &parts[pid];
 
       /* Skip inhibited particles. */
@@ -81,7 +79,7 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      if (r2 < hjg2) IACT_RT(r2, dx, hi, hj, si, xpj);
+      if (r2 < hjg2) IACT_RT(r2, dx, hi, hj, si, pj);
     }
   }
 
@@ -106,7 +104,6 @@ void DOPAIR1_NONSYM_RT(struct runner *r, struct cell *ci, struct cell *cj) {
   const int count_j = cj->hydro.count;
   struct spart *restrict sparts_i = ci->stars.parts;
   struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -136,7 +133,6 @@ void DOPAIR1_NONSYM_RT(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -150,7 +146,7 @@ void DOPAIR1_NONSYM_RT(struct runner *r, struct cell *ci, struct cell *cj) {
       float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      if (r2 < hjg2) IACT_RT(r2, dx, hi, hj, si, xpj);
+      if (r2 < hjg2) IACT_RT(r2, dx, hi, hj, si, pj);
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
