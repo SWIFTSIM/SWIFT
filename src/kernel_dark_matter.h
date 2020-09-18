@@ -57,6 +57,7 @@ static const float dm_kernel_coeffs[(dm_kernel_degree + 1) * (dm_kernel_ivals + 
 /* First some powers of gamma = H/h */
 #define dm_kernel_gamma_inv ((float)(1. / dm_kernel_gamma))
 #define dm_kernel_gamma2 ((float)(dm_kernel_gamma * dm_kernel_gamma))
+#define dm_kernel_gamma3 ((float)(dm_kernel_gamma * dm_kernel_gamma * dm_kernel_gamma))
 
 /* define gamma^d, gamma^(d+1), 1/gamma^d and 1/gamma^(d+1) */
 #define dm_kernel_gamma_dim ((float)(dm_kernel_gamma * dm_kernel_gamma * dm_kernel_gamma))
