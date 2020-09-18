@@ -194,8 +194,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double mass_j = pj->mass;
 
     /* DM-DM distance */
-    float hi_3 = hi * hi * hi * dm_kernel_gamma3;
-    float hj_3 = hj * hj * hj * dm_kernel_gamma3;
+    float hi_3 = hi * hi * hi; /* * dm_kernel_gamma3;*/
+    float hj_3 = hj * hj * hj; /* * dm_kernel_gamma3;*/
 
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
@@ -249,7 +249,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double mass_i = pi->mass;
     
     /* DM-DM distance */
-    float hi_3 = hi * hi * hi * dm_kernel_gamma3;
+    float hi_3 = hi * hi * hi; /* * dm_kernel_gamma3;*/
     
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
