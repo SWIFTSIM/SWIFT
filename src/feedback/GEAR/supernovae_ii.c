@@ -319,37 +319,19 @@ void supernovae_ii_read_yields(struct supernovae_ii *snii,
 };
 
 /**
- * @brief Reads the supernovae II parameters from parameters file.
- *
- * @param snii The #supernovae_ii model.
- * @param params The simulation parameters.
- */
-void supernovae_ii_read_from_params(struct supernovae_ii *snii,
-                                    struct swift_params *params) {
-
-  /* Read the minimal mass of a supernovae */
-  snii->mass_min = parser_get_opt_param_float(
-      params, "GEARSupernovaeII:min_mass", snii->mass_min);
-
-  /* Read the maximal mass of a supernovae */
-  snii->mass_max = parser_get_opt_param_float(
-      params, "GEARSupernovaeII:max_mass", snii->mass_max);
-}
-
-/**
  * @brief Reads the supernovae II parameters from tables.
  *
  * @param snii The #supernovae_ii model.
  * @param params The simulation parameters.
+ * @param filename The filename of the chemistry table.
  */
 void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
-                                    struct swift_params *params) {
+                                    struct swift_params *params,
+                                    const char *filename) {
 
   hid_t file_id, group_id;
 
   /* Open IMF group */
-  char filename[FILENAME_BUFFER_SIZE];
-  parser_get_param_string(params, "GEARFeedback:yields_table", filename);
   h5_open_group(filename, "Data/SNII", &file_id, &group_id);
 
   /* Read the minimal mass of a supernovae */
@@ -373,10 +355,7 @@ void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
                         const struct stellar_model *sm) {
 
   /* Read the parameters from the tables */
-  supernovae_ii_read_from_tables(snii, params);
-
-  /* Read the parameters from the params file */
-  supernovae_ii_read_from_params(snii, params);
+  supernovae_ii_read_from_tables(snii, params, sm->yields_table);
 
   /* Read the supernovae yields */
   supernovae_ii_read_yields(snii, params, sm, /* restart */ 0);
