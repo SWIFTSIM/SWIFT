@@ -37,6 +37,6 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float* dx, const float hi, const float hj,
-    struct spart* restrict si, struct xpart* restrict xpj) {}
+    struct spart* restrict si, struct part* restrict pj) {}
 
 #endif /* SWIFT_RT_IACT_M1CLOSURE_H */

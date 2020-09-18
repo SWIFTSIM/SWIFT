@@ -72,9 +72,6 @@ struct xpart {
   /* Additional data used by the feedback */
   struct feedback_part_data feedback_data;
 
-  /* Additional Radiative Transfer Data */
-  struct rt_xpart_data rt_data;
-
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */
   struct logger_part_data logger_data;
@@ -170,6 +167,9 @@ struct part {
 
   /*! Additional data used by the pressure floor */
   struct pressure_floor_part_data pressure_floor_data;
+
+  /* Additional Radiative Transfer Data */
+  struct rt_part_data rt_data;
 
   /*! Time-step length */
   timebin_t time_bin;

@@ -30,7 +30,7 @@
  * @brief Creates additional output fields for the radiative
  * transfer data of hydro particles.
  */
-INLINE static int rt_write_particles(const struct xpart* xparts,
+INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
   return 0;
 }

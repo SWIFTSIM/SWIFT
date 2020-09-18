@@ -27,14 +27,14 @@
 /**
  * @brief First initialisation of the RT extra hydro particle data.
  */
-__attribute__((always_inline)) INLINE static void rt_first_init_xpart(
-    struct xpart* restrict xp) {}
+__attribute__((always_inline)) INLINE static void rt_first_init_part(
+    struct part* restrict p) {}
 
 /**
  * @brief Initialisation of the RT extra hydro particle data.
  */
-__attribute__((always_inline)) INLINE static void rt_init_xpart(
-    struct xpart* restrict xp) {}
+__attribute__((always_inline)) INLINE static void rt_init_part(
+    struct part* restrict p) {}
 
 /**
  * @brief First initialisation of the RT extra star particle data.
