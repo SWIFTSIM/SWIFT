@@ -85,9 +85,6 @@ void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
 void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]);
 void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct space *s,
                                struct threadpool *tp, int verbose);
-void pm_mesh_interpolate_forces(const struct pm_mesh *mesh,
-                                const struct engine *e, struct gpart *gparts,
-                                int gcount);
 void pm_mesh_clean(struct pm_mesh *mesh);
 
 void pm_mesh_allocate(struct pm_mesh *mesh);
