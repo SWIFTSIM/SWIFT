@@ -174,9 +174,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Do the kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
-                  dt_kick_corr, cosmo, hydro_props, entropy_floor, ti_begin,
-                  ti_end);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
+                  dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
+                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
 
         /* Update the accelerations to be used in the drift for hydro */
         if (p->gpart != NULL) {
@@ -263,7 +263,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Do the kick */
-        kick_spart(sp, dt_kick_grav, ti_begin, ti_end);
+        kick_spart(sp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                   ti_begin_mesh, ti_end_mesh);
       }
     }
 
@@ -297,7 +298,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Do the kick */
-        kick_sink(sink, dt_kick_grav, ti_begin, ti_end);
+        kick_sink(sink, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                  ti_begin_mesh, ti_end_mesh);
       }
     }
 
@@ -331,7 +333,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Do the kick */
-        kick_bpart(bp, dt_kick_grav, ti_begin, ti_end);
+        kick_bpart(bp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                   ti_begin_mesh, ti_end_mesh);
       }
     }
   }
@@ -441,9 +444,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Finish the time-step with a second half-kick */
-        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
-                  dt_kick_corr, cosmo, hydro_props, entropy_floor, ti_begin,
-                  ti_end);
+        kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
+                  dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
+                  entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -525,7 +528,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Finish the time-step with a second half-kick */
-        kick_spart(sp, dt_kick_grav, ti_begin, ti_end);
+        kick_spart(sp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                   ti_begin_mesh, ti_end_mesh);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -561,7 +565,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Finish the time-step with a second half-kick */
-        kick_sink(sink, dt_kick_grav, ti_begin, ti_end);
+        kick_sink(sink, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                  ti_begin_mesh, ti_end_mesh);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
@@ -597,7 +602,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
             ti_begin, ti_end, time_base, with_cosmology, cosmo);
 
         /* Finish the time-step with a second half-kick */
-        kick_bpart(bp, dt_kick_grav, ti_begin, ti_end);
+        kick_bpart(bp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                   ti_begin_mesh, ti_end_mesh);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
