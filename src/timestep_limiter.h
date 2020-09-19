@@ -148,9 +148,9 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
       dt_kick_corr = -(dti_old / 2) * time_base;
     }
 
-    kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
-              e->cosmology, e->hydro_properties, e->entropy_floor,
-              ti_beg_old + dti_old / 2, ti_beg_old);
+    kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm,
+              dt_kick_corr, e->cosmology, e->hydro_properties, e->entropy_floor,
+              ti_beg_old + dti_old / 2, ti_beg_old, 0, 0);
 
     /* ...and apply the new one (dt is positiive).
      * This brings us to the current time. */
@@ -170,9 +170,9 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
       dt_kick_corr = (ti_beg_new - ti_beg_old) * time_base;
     }
 
-    kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
-              e->cosmology, e->hydro_properties, e->entropy_floor, ti_beg_old,
-              ti_beg_new);
+    kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm,
+              dt_kick_corr, e->cosmology, e->hydro_properties, e->entropy_floor,
+              ti_beg_old, ti_beg_new, 0, 0);
 
     /* The particle has now been kicked to the current time */
 
@@ -204,9 +204,9 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
         dt_kick_corr = (dti_new / 2) * time_base;
       }
 
-      kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
-                e->cosmology, e->hydro_properties, e->entropy_floor, ti_beg_new,
-                ti_beg_new + dti_new / 2);
+      kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm,
+                dt_kick_corr, e->cosmology, e->hydro_properties,
+                e->entropy_floor, ti_beg_new, ti_beg_new + dti_new / 2, 0, 0);
 
       /* Return the new end-of-step for this particle */
       return ti_beg_new + dti_new;

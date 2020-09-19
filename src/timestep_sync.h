@@ -113,9 +113,9 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
     dt_kick_corr = -(old_dti / 2) * time_base;
   }
 
-  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
+  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm, dt_kick_corr,
             e->cosmology, e->hydro_properties, e->entropy_floor,
-            old_ti_beg + old_dti / 2, old_ti_beg);
+            old_ti_beg + old_dti / 2, old_ti_beg, 0, 0);
 
   /* We can now produce a kick to the current point */
   if (with_cosmology) {
@@ -134,9 +134,9 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
     dt_kick_corr = (new_dti)*time_base;
   }
 
-  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
+  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm, dt_kick_corr,
             e->cosmology, e->hydro_properties, e->entropy_floor, new_ti_beg,
-            new_ti_beg + new_dti);
+            new_ti_beg + new_dti, 0, 0);
 
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
