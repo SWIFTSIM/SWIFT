@@ -108,6 +108,11 @@ gravity_compute_timestep_self(const struct gpart* const gp,
   float a_phys_y = gp->a_grav[1] * cosmo->a_factor_grav_accel;
   float a_phys_z = gp->a_grav[2] * cosmo->a_factor_grav_accel;
 
+  /* Get physical acceleration (gravity mesh contribution) */
+  a_phys_x += gp->a_grav_mesh[0] * cosmo->a_factor_grav_accel;
+  a_phys_y += gp->a_grav_mesh[1] * cosmo->a_factor_grav_accel;
+  a_phys_z += gp->a_grav_mesh[2] * cosmo->a_factor_grav_accel;
+
   /* Get physical acceleration (hydro contribution) */
   a_phys_x += a_hydro[0] * cosmo->a_factor_hydro_accel;
   a_phys_y += a_hydro[1] * cosmo->a_factor_hydro_accel;
@@ -327,6 +332,10 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 #endif
       break;
   }
+
+  gp->a_grav_mesh[0] = 0.f;
+  gp->a_grav_mesh[1] = 0.f;
+  gp->a_grav_mesh[2] = 0.f;
 
   gravity_init_gpart(gp);
 }
