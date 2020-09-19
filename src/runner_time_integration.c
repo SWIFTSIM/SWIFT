@@ -86,6 +86,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const int periodic = e->s->periodic;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -120,13 +121,18 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
     double dt_kick_mesh_grav = 0.;
 
     /* Are we at a step where we do mesh-gravity time-integration? */
-    if (e->mesh->ti_beg_mesh_next == e->ti_current) {
+    if (periodic && e->mesh->ti_beg_mesh_next == e->ti_current) {
 
       ti_begin_mesh = e->mesh->ti_beg_mesh_next;
       ti_end_mesh = e->mesh->ti_beg_mesh_next +
                     (e->mesh->ti_end_mesh_next - e->mesh->ti_beg_mesh_next) / 2;
-      dt_kick_mesh_grav =
-          cosmology_get_grav_kick_factor(cosmo, ti_begin_mesh, ti_end_mesh);
+
+      if (with_cosmology) {
+        dt_kick_mesh_grav =
+            cosmology_get_grav_kick_factor(cosmo, ti_begin_mesh, ti_end_mesh);
+      } else {
+        dt_kick_mesh_grav = (ti_end_mesh - ti_begin_mesh) * time_base;
+      }
     }
 
     /* Loop over the parts in this cell. */
@@ -198,11 +204,13 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct gpart *restrict gp = &gparts[k];
 
+#ifdef SWIFT_DEBUG_CHECKS
       if (ti_end_mesh != -1 && !gpart_is_starting(gp, e)) {
         error(
             "Particle on a time-step longer than the mesh synchronization "
             "step!");
       }
+#endif
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter ||
@@ -379,6 +387,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int periodic = e->s->periodic;
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -412,14 +421,19 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
     double dt_kick_mesh_grav = 0.;
 
     /* Are we at a step where we do mesh-gravity time-integration? */
-    if (e->mesh->ti_end_mesh_last == e->ti_current) {
+    if (periodic && e->mesh->ti_end_mesh_last == e->ti_current) {
 
       ti_begin_mesh =
           e->mesh->ti_beg_mesh_last +
           (e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last) / 2;
       ti_end_mesh = e->mesh->ti_end_mesh_last;
-      dt_kick_mesh_grav =
-          cosmology_get_grav_kick_factor(cosmo, ti_begin_mesh, ti_end_mesh);
+
+      if (with_cosmology) {
+        dt_kick_mesh_grav =
+            cosmology_get_grav_kick_factor(cosmo, ti_begin_mesh, ti_end_mesh);
+      } else {
+        dt_kick_mesh_grav = (ti_end_mesh - ti_begin_mesh) * time_base;
+      }
     }
 
     /* Loop over the particles in this cell. */
@@ -491,11 +505,13 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct gpart *restrict gp = &gparts[k];
 
+#ifdef SWIFT_DEBUG_CHECKS
       if (ti_end_mesh != -1 && !gpart_is_active(gp, e)) {
         error(
             "Particle on a time-step longer than the mesh synchronization "
             "step!");
       }
+#endif
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter ||
