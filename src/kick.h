@@ -159,8 +159,7 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
         gp->ti_kick_mesh, ti_start_mesh, ti_end_mesh, gp->id_or_neg_offset);
 
   /* Record the mesh kick if we are doing one */
-  if (ti_start_mesh != -1)
-    gp->ti_kick_mesh = ti_end_mesh;
+  if (ti_start_mesh != -1) gp->ti_kick_mesh = ti_end_mesh;
 
   if (ti_start_mesh == -1 && dt_kick_mesh_grav != 0.)
     error("Incorrect dt_kick for the mesh! %e (should be 0)",
