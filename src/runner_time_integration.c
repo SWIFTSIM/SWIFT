@@ -182,8 +182,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
         if (p->gpart != NULL) {
 
           xp->a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
-          xp->a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[0];
-          xp->a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[0];
+          xp->a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+          xp->a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
         }
       }
     }
