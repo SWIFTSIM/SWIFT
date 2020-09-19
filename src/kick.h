@@ -30,6 +30,54 @@
 #include "stars.h"
 #include "timeline.h"
 
+__attribute__((always_inline)) INLINE static double kick_get_grav_kick_dt(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology *cosmo) {
+
+  if (with_cosmology) {
+    return cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_end);
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
+}
+
+__attribute__((always_inline)) INLINE static double kick_get_hydro_kick_dt(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology *cosmo) {
+
+  if (with_cosmology) {
+    return cosmology_get_hydro_kick_factor(cosmo, ti_beg, ti_end);
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
+}
+
+__attribute__((always_inline)) INLINE static double kick_get_therm_kick_dt(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology *cosmo) {
+
+  if (with_cosmology) {
+    return cosmology_get_therm_kick_factor(cosmo, ti_beg, ti_end);
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
+}
+
+__attribute__((always_inline)) INLINE static double kick_get_corr_kick_dt(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology *cosmo) {
+
+  if (with_cosmology) {
+    return cosmology_get_corr_kick_factor(cosmo, ti_beg, ti_end);
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
+}
+
 /**
  * @brief Perform the 'kick' operation on a #gpart
  *
