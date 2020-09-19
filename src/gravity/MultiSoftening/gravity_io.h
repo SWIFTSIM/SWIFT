@@ -20,6 +20,7 @@
 #define SWIFT_MULTI_SOFTENING_GRAVITY_IO_H
 
 #include "io_properties.h"
+#include "kick.h"
 
 INLINE static void convert_gpart_pos(const struct engine* e,
                                      const struct gpart* gp, double* ret) {
@@ -48,19 +49,30 @@ INLINE static void convert_gpart_vel(const struct engine* e,
   const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
 
   /* Get time-step since the last kick */
-  float dt_kick_grav;
-  if (with_cosmology) {
-    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
-    dt_kick_grav -=
-        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-  } else {
-    dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-  }
+  const float dt_kick_grav =
+      kick_get_grav_kick_dt(ti_beg, ti_current, time_base, with_cosmology,
+                            cosmo) -
+      kick_get_grav_kick_dt(ti_beg, (ti_beg + ti_end) / 2, time_base,
+                            with_cosmology, cosmo);
+
+  /* Get time-step since the last mesh kick */
+  const float dt_kick_grav_mesh =
+      kick_get_grav_kick_dt(e->mesh->ti_beg_mesh_next, ti_current, time_base,
+                            with_cosmology, cosmo) -
+      kick_get_grav_kick_dt(
+          e->mesh->ti_beg_mesh_next,
+          (e->mesh->ti_beg_mesh_next + e->mesh->ti_end_mesh_next) / 2,
+          time_base, with_cosmology, cosmo);
 
   /* Extrapolate the velocites to the current time */
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+
+  /* Extrapolate the velocites to the current time (mesh forces) */
+  ret[0] += gp->a_grav_mesh[0] * dt_kick_grav_mesh;
+  ret[1] += gp->a_grav_mesh[1] * dt_kick_grav_mesh;
+  ret[2] += gp->a_grav_mesh[2] * dt_kick_grav_mesh;
 
   /* Conversion from internal units to peculiar velocities */
   ret[0] *= cosmo->a_inv;
