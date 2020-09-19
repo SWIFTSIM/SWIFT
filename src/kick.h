@@ -30,6 +30,17 @@
 #include "stars.h"
 #include "timeline.h"
 
+/**
+ * @brief Compute the time-step length for a gravity kick.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the gravity kick (internal units).
+ */
 __attribute__((always_inline)) INLINE static double kick_get_grav_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
@@ -42,6 +53,17 @@ __attribute__((always_inline)) INLINE static double kick_get_grav_kick_dt(
   }
 }
 
+/**
+ * @brief Compute the time-step length for a hydro kick.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the hydro kick (internal units).
+ */
 __attribute__((always_inline)) INLINE static double kick_get_hydro_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
@@ -54,6 +76,17 @@ __attribute__((always_inline)) INLINE static double kick_get_hydro_kick_dt(
   }
 }
 
+/**
+ * @brief Compute the time-step length for a thermal kick.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the thermal kick (internal units).
+ */
 __attribute__((always_inline)) INLINE static double kick_get_therm_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
@@ -66,6 +99,17 @@ __attribute__((always_inline)) INLINE static double kick_get_therm_kick_dt(
   }
 }
 
+/**
+ * @brief Compute the time-step length for a gravity correction kick.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the gravity correction kick (internal units).
+ */
 __attribute__((always_inline)) INLINE static double kick_get_corr_kick_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
