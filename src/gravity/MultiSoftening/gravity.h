@@ -194,7 +194,8 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   /* Apply the periodic correction to the peculiar potential */
   if (periodic) gp->potential += potential_normalisation;
 
-  /* Add back the long-range forces */
+  /* Add back the long-range forces
+   * Note that the mesh gravity had been multiplied by G. We undo this here. */
   float a_grav[3];
   a_grav[0] = gp->a_grav[0] + gp->a_grav_mesh[0] / const_G;
   a_grav[1] = gp->a_grav[1] + gp->a_grav_mesh[1] / const_G;
@@ -202,10 +203,10 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 
   /* Record the norm of the acceleration for the adaptive opening criteria.
    * Will always be an (active) timestep behind. */
-  gp->old_a_grav_norm =
+  const float old_a_grav_norm =
       a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] + a_grav[2] * a_grav[2];
 
-  gp->old_a_grav_norm = sqrtf(gp->old_a_grav_norm);
+  gp->old_a_grav_norm = sqrtf(old_a_grav_norm);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (with_self_gravity && gp->old_a_grav_norm == 0.f)
