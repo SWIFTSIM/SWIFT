@@ -154,11 +154,13 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   if (ti_start_mesh != -1 && gp->ti_kick_mesh != ti_start_mesh)
     error(
         "g-particle has not been kicked (mesh) to the current time "
-        "gp->ti_kick=%lld, "
-        "ti_start=%lld, ti_end=%lld id=%lld",
-        gp->ti_kick_mesh, ti_start, ti_end, gp->id_or_neg_offset);
+        "gp->ti_kick_mesh=%lld, "
+        "ti_start_mesh=%lld, ti_end_mesh=%lld id=%lld",
+        gp->ti_kick_mesh, ti_start_mesh, ti_end_mesh, gp->id_or_neg_offset);
 
-  gp->ti_kick_mesh = ti_end;
+  /* Record the mesh kick if we are doing one */
+  if (ti_start_mesh != -1)
+    gp->ti_kick_mesh = ti_end_mesh;
 
   if (ti_start_mesh == -1 && dt_kick_mesh_grav != 0.)
     error("Incorrect dt_kick for the mesh! %e (should be 0)",

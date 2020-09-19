@@ -5099,6 +5099,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
     /* Initialise the time-integration check variables */
     gp[k].ti_drift = 0;
     gp[k].ti_kick = 0;
+    gp[k].ti_kick_mesh = 0;
 #endif
   }
 }
