@@ -526,9 +526,6 @@ struct cell {
     /*! Implicit task for the down propagation */
     struct task *down_in;
 
-    /*! Task propagating the mesh forces to the particles */
-    struct task *mesh;
-
     /*! Task propagating the multipole to the particles */
     struct task *down;
 

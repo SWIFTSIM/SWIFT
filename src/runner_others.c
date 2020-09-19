@@ -103,47 +103,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Calculate gravity accelerations from the periodic mesh
- *
- * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
-
-  // struct gpart *restrict gparts = c->grav.parts;
-  // const int gcount = c->grav.count;
-  const struct engine *e = r->e;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!e->s->periodic) error("Calling mesh forces in non-periodic mode.");
-#endif
-
-  TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e)) return;
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
-  } else {
-
-    /* Get the forces from the gravity mesh */
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    lock_lock(&c->grav.plock);
-#endif
-    // pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
-#endif
-  }
-
-  if (timer) TIMER_TOC(timer_dograv_mesh);
-}
-
-/**
  * @brief Calculate change in thermal state of particles induced
  * by radiative cooling and heating.
  *

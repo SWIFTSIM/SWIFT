@@ -43,9 +43,6 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
     struct gpart *restrict gp, double dt_kick_grav, integertime_t ti_start,
     integertime_t ti_end) {
 
-  if (gp->id_or_neg_offset == 132137)
-    message("KICK! %lld %lld %lld", gp->ti_kick, ti_start, ti_end);
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_kick != ti_start)
     error(
@@ -77,9 +74,6 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
 __attribute__((always_inline)) INLINE static void kick_gpart_mesh(
     struct gpart *restrict gp, double dt_kick_grav, integertime_t ti_start,
     integertime_t ti_end) {
-
-  if (gp->id_or_neg_offset == 132137)
-    message("KICK MESH!  %lld %lld %lld", gp->ti_kick_mesh, ti_start, ti_end);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_kick_mesh != ti_start)
