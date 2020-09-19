@@ -557,7 +557,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
         struct dmpart *restrict pi = &dmparts[pid];
         
         /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
+        /*if (dmpart_is_inhibited(pi, e)) continue;*/
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
@@ -568,14 +568,14 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
             (float)(pi->x[2] - c->loc[2])};
         
         /* Get i particle time-step */
-        const integertime_t ti_step = get_integer_timestep(pi->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->time_bin);
+        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
         double dti;
         if (with_cosmology) {
             dti = cosmology_get_delta_time(e->cosmology, ti_begin,
                                            ti_begin + ti_step);
         } else {
-            dti = get_timestep(pi->time_bin, e->time_base);
+            dti = get_timestep(pi->gpart->time_bin, e->time_base);
         }
         
         
@@ -586,7 +586,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
             struct dmpart *restrict pj = &dmparts[pjd];
             
             /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
+            /*if (dmpart_is_inhibited(pj, e)) continue;*/
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -621,7 +621,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
                 
             } else if (doi) {
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
                 
             } else if (doj) {
                 
@@ -629,7 +629,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
+                runner_iact_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
                 
             }
         } /* loop over the parts in cj. */
@@ -685,7 +685,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
         struct dmpart *restrict pi = &dmparts_i[pid];
         
         /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
+        /*if (dmpart_is_inhibited(pi, e)) continue;*/
         
         /* Get i particle time-step */
         const integertime_t ti_step = get_integer_timestep(pi->time_bin);
@@ -700,8 +700,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
-        /*const float hig2 = hi * hi * dm_kernel_gamma2;*/
-        const float hig2 = hi * hi;
+        const float hig2 = hi * hi; /* * dm_kernel_gamma2;*/
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
             (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
@@ -713,7 +712,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
             struct dmpart *restrict pj = &dmparts_j[pjd];
             
             /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
+            /*if (dmpart_is_inhibited(pj, e)) continue;*/
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -727,8 +726,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
             }
             
             const float hj = pj->h;
-            /*const float hjg2 = hj * hj * dm_kernel_gamma2;*/
-            const float hjg2 = hj * hj;
+            const float hjg2 = hj * hj; /* * dm_kernel_gamma2;*/
             const int pj_active = dmpart_is_active(pj, e);
             
             /* Compute the pairwise distance. */
@@ -741,7 +739,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
             /* Hit or miss? */
             if (r2 < hig2 && pi_active) {
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
                 
             }
             if (r2 < hjg2 && pj_active) {
@@ -750,7 +748,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
+                runner_iact_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
                 
             }
         } /* loop over the parts in cj. */

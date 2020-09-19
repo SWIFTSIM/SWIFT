@@ -175,7 +175,7 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *rest
     gp->sidm_data.sidm_flag = 0.0f;
     
     /*! Particle search radius */
-    gp->sidm_data.h_sidm = 0.0f;
+    /*gp->sidm_data.h_sidm = 0.0f;*/
     
     /* Particle velocity */
     gp->sidm_data.si_v_full[0] = 0.0f;
