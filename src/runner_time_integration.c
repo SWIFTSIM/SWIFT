@@ -118,7 +118,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   } else {
 
     integertime_t ti_begin_mesh = -1;
-    integertime_t ti_end_mesh = -1;
+    integertime_t ti_end_mesh = 0;
     double dt_kick_mesh_grav = 0.;
 
     /* Are we at a step where we do mesh-gravity time-integration? */
@@ -195,7 +195,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
       struct gpart *restrict gp = &gparts[k];
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ti_end_mesh != -1 && !gpart_is_starting(gp, e)) {
+      if (ti_begin_mesh != -1 && !gpart_is_starting(gp, e)) {
         error(
             "Particle on a time-step longer than the mesh synchronization "
             "step!");
@@ -388,7 +388,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   } else {
 
     integertime_t ti_begin_mesh = -1;
-    integertime_t ti_end_mesh = -1;
+    integertime_t ti_end_mesh = 0;
     double dt_kick_mesh_grav = 0.;
 
     /* Are we at a step where we do mesh-gravity time-integration? */
@@ -465,7 +465,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
       struct gpart *restrict gp = &gparts[k];
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ti_end_mesh != -1 && !gpart_is_active(gp, e)) {
+      if (ti_begin_mesh != -1 && !gpart_is_active(gp, e)) {
         error(
             "Particle on a time-step longer than the mesh synchronization "
             "step!");
