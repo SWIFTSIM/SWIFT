@@ -80,7 +80,6 @@ const char *taskID_names[task_type_count] = {
     "grav_mm",
     "grav_down_in",
     "grav_down",
-    "grav_mesh",
     "grav_end_force",
     "cooling",
     "cooling_in",
@@ -309,7 +308,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_drift_gpart:
     case task_type_grav_down:
     case task_type_end_grav_force:
-    case task_type_grav_mesh:
       return task_action_gpart;
       break;
 
@@ -602,12 +600,6 @@ void task_unlock(struct task *t) {
 #endif
       break;
 
-    case task_type_grav_mesh:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      cell_gunlocktree(ci);
-#endif
-      break;
-
     case task_type_star_formation:
       cell_unlocktree(ci);
       cell_sunlocktree(ci);
@@ -872,14 +864,6 @@ int task_lock(struct task *t) {
         cell_munlocktree(ci);
         return 0;
       }
-#endif
-      break;
-
-    case task_type_grav_mesh:
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-      /* Lock the gparts */
-      if (ci->grav.phold) return 0;
-      if (cell_glocktree(ci) != 0) return 0;
 #endif
       break;
 
@@ -1484,7 +1468,6 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_grav_long_range:
     case task_type_grav_mm:
     case task_type_grav_down:
-    case task_type_grav_mesh:
     case task_type_end_grav_force:
       return task_category_gravity;
 

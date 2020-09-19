@@ -459,9 +459,6 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           runner_do_grav_down(r, t->ci, 1);
           break;
-        case task_type_grav_mesh:
-          runner_do_grav_mesh(r, t->ci, 1);
-          break;
         case task_type_grav_long_range:
           runner_do_grav_long_range(r, t->ci, 1);
           break;
