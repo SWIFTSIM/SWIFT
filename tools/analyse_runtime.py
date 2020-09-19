@@ -60,6 +60,7 @@ labels = [
     ["Forward Fourier transform", 1],
     ["Green function", 1],
     ["Backwards Fourier transform", 1],
+    ["Gpart mesh forces", 1],
     ["engine_recompute_displacement_constraint:", 1],
     ["engine_exchange_top_multipoles:", 1],
     ["updating particle counts", 1],
