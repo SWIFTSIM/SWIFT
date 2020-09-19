@@ -130,10 +130,17 @@ __attribute__((always_inline)) INLINE static double kick_get_corr_kick_dt(
  * @param ti_start The starting (integer) time of the kick (for debugging
  * checks).
  * @param ti_end The ending (integer) time of the kick (for debugging checks).
+ * @param dt_kick_mesh_grav The kick time-step for mesh gravity accelerations.
+ * @param ti_start_mesh The starting (integer) time of the mesh kick (for
+ * debugging checks).
+ * @param ti_end_mesh The ending (integer) time of the mesh kick (for debugging
+ * checks).
  */
 __attribute__((always_inline)) INLINE static void kick_gpart(
-    struct gpart *restrict gp, double dt_kick_grav, integertime_t ti_start,
-    integertime_t ti_end) {
+    struct gpart *restrict gp, const double dt_kick_grav,
+    const integertime_t ti_start, const integertime_t ti_end,
+    const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
+    const integertime_t ti_end_mesh) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_kick != ti_start)
@@ -143,6 +150,23 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
         gp->ti_kick, ti_start, ti_end, gp->id_or_neg_offset);
 
   gp->ti_kick = ti_end;
+
+  if (ti_start_mesh != -1 && gp->ti_kick_mesh != ti_start_mesh)
+    error(
+        "g-particle has not been kicked (mesh) to the current time "
+        "gp->ti_kick=%lld, "
+        "ti_start=%lld, ti_end=%lld id=%lld",
+        gp->ti_kick_mesh, ti_start, ti_end, gp->id_or_neg_offset);
+
+  gp->ti_kick_mesh = ti_end;
+
+  if (ti_start_mesh == -1 && dt_kick_mesh_grav != 0.)
+    error("Incorrect dt_kick for the mesh! %e (should be 0)",
+          dt_kick_mesh_grav);
+
+  if (ti_start_mesh != -1 && dt_kick_mesh_grav == 0.)
+    error("Incorrect dt_kick for the mesh! %e (should not be 0)",
+          dt_kick_mesh_grav);
 #endif
 
   /* Kick particles in momentum space */
@@ -150,38 +174,13 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   gp->v_full[1] += gp->a_grav[1] * dt_kick_grav;
   gp->v_full[2] += gp->a_grav[2] * dt_kick_grav;
 
+  /* Same for the long-range forces */
+  gp->v_full[0] += gp->a_grav_mesh[0] * dt_kick_mesh_grav;
+  gp->v_full[1] += gp->a_grav_mesh[1] * dt_kick_mesh_grav;
+  gp->v_full[2] += gp->a_grav_mesh[2] * dt_kick_mesh_grav;
+
   /* Kick extra variables */
   gravity_kick_extra(gp, dt_kick_grav);
-}
-
-/**
- * @brief Perform the 'kick' operation on a #gpart
- *
- * @param gp The #gpart to kick.
- * @param dt_kick_grav The kick time-step for gravity accelerations.
- * @param ti_start The starting (integer) time of the kick (for debugging
- * checks).
- * @param ti_end The ending (integer) time of the kick (for debugging checks).
- */
-__attribute__((always_inline)) INLINE static void kick_gpart_mesh(
-    struct gpart *restrict gp, double dt_kick_grav, integertime_t ti_start,
-    integertime_t ti_end) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (gp->ti_kick_mesh != ti_start)
-    error(
-        "g-particle has not been kicked to the current time gp->ti_kick=%lld, "
-        "ti_start=%lld, ti_end=%lld id=%lld %lld",
-        gp->ti_kick_mesh, ti_start, ti_end, gp->id_or_neg_offset,
-        max_nr_timesteps);
-
-  gp->ti_kick_mesh = ti_end;
-#endif
-
-  /* Kick particles in momentum space */
-  gp->v_full[0] += gp->a_grav_mesh[0] * dt_kick_grav;
-  gp->v_full[1] += gp->a_grav_mesh[1] * dt_kick_grav;
-  gp->v_full[2] += gp->a_grav_mesh[2] * dt_kick_grav;
 }
 
 /**
