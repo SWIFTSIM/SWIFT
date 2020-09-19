@@ -270,8 +270,6 @@ void *runner_main(void *data) {
               runner_dosub_self_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
-          else if (t->subtype == task_subtype_sidm)
-              runner_doself_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dosub_self_bh_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_do_gas_swallow)
@@ -304,8 +302,6 @@ void *runner_main(void *data) {
               runner_dosub_pair_dark_matter_density(r, ci, cj);
           else if (t->subtype == task_subtype_sidm)
               runner_dosub_pair_dark_matter_sidm(r, ci, cj);
-          else if (t->subtype == task_subtype_sidm)
-              runner_dopair_dark_matter_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
