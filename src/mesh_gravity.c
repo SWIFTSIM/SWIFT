@@ -630,7 +630,6 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Use the memory allocated for the potential to temporarily store rho */
   double* restrict rho = mesh->potential;
   if (rho == NULL) error("Error allocating memory for density mesh");
-  bzero(rho, N * N * N * sizeof(double));
 
   /* Allocates some memory for the mesh in Fourier space */
   fftw_complex* restrict frho =
