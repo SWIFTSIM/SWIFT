@@ -880,7 +880,7 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
  */
 void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
                           struct part *restrict parts_i, const int *ind,
-                          int count, struct cell *restrict cj) {
+                          const int count, struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
