@@ -615,11 +615,12 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
             const int doj = pj_active && (r2 < hjg2);
             
             /* Hit or miss? */
-            if (doi && doj) {
+            /*if (doi && doj) {
                 
                 runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
                 
-            } else if (doi) {
+            } else if (doi) {*/
+            if (doi) {
                 
                 runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
                 
