@@ -2245,13 +2245,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
 
+  /* Construct all cells and tasks to start everything */
+  engine_rebuild(e, 0, clean_h_values);
+
   /* Compute the mesh forces for the first time */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+    engine_recompute_displacement_constraint(e);
   }
-
-  /* Construct all cells and tasks to start everything */
-  engine_rebuild(e, 0, clean_h_values);
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
