@@ -1377,51 +1377,6 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
-#ifdef aSWIFT_DEBUG_CHECKS
-  /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
-
-  /* Check that the dx_max_sort values in the cell are indeed an upper
-     bound on particle movement. */
-  for (int pid = 0; pid < ci->hydro.count; pid++) {
-    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
-    if (part_is_inhibited(p, e)) continue;
-
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
-            ci->width[0] * 1.0e-10)
-      error(
-          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
-          "ci->hydro.dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
-          ci->hydro.dx_max_sort_old);
-  }
-  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
-    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
-    if (part_is_inhibited(p, e)) continue;
-
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if ((fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
-            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
-        (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
-            cj->width[0] * 1.0e-10)
-      error(
-          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
-          "cj->hydro.dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
-          cj->hydro.dx_max_sort_old);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
-
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
@@ -1433,7 +1388,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   if (!sort_is_corner(sid))
     runner_dopair1_density_vec(r, ci, cj, sid, shift);
   else
-    DOPAIR1(r, ci, cj, 0, 0, sid, shift);
+    DOPAIR1(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #else
   DOPAIR1(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #endif
