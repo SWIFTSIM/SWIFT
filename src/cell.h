@@ -777,6 +777,25 @@ cell_can_recurse_in_pair_stars_task1(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair star task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with stars.
+ * @param cj The #cell with hydro parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_stars_task2(const struct cell *c) {
+
+  // MATTHIEU !!!
+
+  /* Is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ((kernel_gamma * c->stars.h_max_old + c->stars.dx_max_part_old) <
+          0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-self stars task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -787,6 +806,20 @@ cell_can_recurse_in_self_stars_task1(const struct cell *c) {
 
   /* Is the cell not smaller than the smoothing length? */
   return (kernel_gamma * c->stars.h_max_active < 0.5f * c->dmin);
+}
+
+
+/**
+ * @brief Can a sub-self stars task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_stars_task2(const struct cell *c) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
 }
 
 /**
