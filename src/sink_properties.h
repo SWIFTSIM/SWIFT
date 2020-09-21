@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,29 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_H
-#define SWIFT_RT_H
-
-/**
- * @file src/rt.h
- * @brief Branches between the different radiative transfer schemes.
- */
+#ifndef SWIFT_SINK_PROPERTIES_H
+#define SWIFT_SINK_PROPERTIES_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right RT definition */
-#if defined(RT_NONE)
-#include "./rt/none/rt.h"
-#include "./rt/none/rt_iact.h"
-#elif defined(RT_DEBUG)
-#include "./rt/debug/rt.h"
-#include "./rt/debug/rt_iact.h"
-#elif defined(RT_M1)
-#include "./rt/M1closure/rt.h"
-#include "./rt/M1closure/rt_iact.h"
+/* Select the correct sink model */
+#if defined(SINK_NONE)
+#include "./sink/Default/sink_properties.h"
 #else
-#error "Invalid choice of radiation scheme"
+#error "Invalid choice of black hole model"
 #endif
 
-#endif /* SWIFT_RT_H */
+#endif /* SWIFT_SINK_PROPERTIES_H */

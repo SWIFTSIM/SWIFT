@@ -97,6 +97,8 @@ enum task_types {
   task_type_bh_swallow_ghost3, /* Implicit */
   task_type_fof_self,
   task_type_fof_pair,
+  task_type_sink_in,  /* Implicit */
+  task_type_sink_out, /* Implicit */
   task_type_count
 } __attribute__((packed));
 
@@ -135,6 +137,7 @@ enum task_subtypes {
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
   task_subtype_sink,
+  task_subtype_rt_inject,
   task_subtype_count
 } __attribute__((packed));
 

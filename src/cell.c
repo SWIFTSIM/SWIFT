@@ -63,6 +63,7 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "pressure_floor.h"
+#include "rt.h"
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
@@ -2214,6 +2215,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
+  c->hydro.rt_inject = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
   c->stars.density = NULL;
@@ -3608,11 +3610,13 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 
   /* Store the current dx_max and h_max values. */
   ci->sinks.dx_max_part_old = ci->sinks.dx_max_part;
+  ci->sinks.r_cut_max_old = ci->sinks.r_cut_max;
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
 
   if (cj != NULL) {
     cj->sinks.dx_max_part_old = cj->sinks.dx_max_part;
+    cj->sinks.r_cut_max_old = cj->sinks.r_cut_max;
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
   }
@@ -3833,6 +3837,99 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
   } else {
     /* We have reached the bottom of the tree: activate gpart drift */
     cell_activate_drift_gpart(ci, s);
+  }
+}
+
+/**
+ * @brief Traverse a sub-cell task and activate the radiative transfer tasks
+ *
+ * @param ci The first #cell we recurse in.
+ * @param cj The second #cell we recurse in.
+ * @param s The task #scheduler.
+ */
+void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
+                                    struct scheduler *s) {
+  const struct engine *e = s->space->e;
+
+  /* Self interaction? */
+  if (cj == NULL) {
+    /* Do anything? */
+    if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, e)) return;
+
+    /* Recurse? */
+    if (cell_can_recurse_in_self_hydro_task(ci)) {
+      /* Loop over all progenies and pairs of progenies */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
+          cell_activate_subcell_rt_tasks(ci->progeny[j], NULL, s);
+          for (int k = j + 1; k < 8; k++)
+            if (ci->progeny[k] != NULL)
+              cell_activate_subcell_rt_tasks(ci->progeny[j], ci->progeny[k], s);
+        }
+      }
+    } else {
+      /* We have reached the bottom of the tree: activate tasks */
+      for (struct link *l = ci->hydro.rt_inject; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        const int ci_active = cell_is_active_hydro(ci, e);
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+#else
+        const int ci_nodeID = e->nodeID;
+#endif
+        /* Only activate tasks that involve a local active cell. */
+        if (ci_active && ci_nodeID == e->nodeID) {
+          scheduler_activate(s, t);
+        }
+      }
+    }
+  }
+
+  /* Otherwise, pair interaction */
+  else {
+    /* Should we even bother? */
+    if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+    if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
+
+    /* recurse? */
+    if (cell_can_recurse_in_pair_hydro_task(ci) &&
+        cell_can_recurse_in_pair_hydro_task(cj)) {
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_rt_tasks(ci->progeny[pid], cj->progeny[pjd], s);
+      }
+    }
+
+    /* Otherwise, activate the RT tasks. */
+    else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
+
+      /* Activate the drifts if the cells are local. */
+      for (struct link *l = ci->hydro.rt_inject; l != NULL; l = l->next) {
+        struct task *t = l->t;
+        const int ci_active = cell_is_active_hydro(ci, e);
+        const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+#ifdef WITH_MPI
+        const int ci_nodeID = ci->nodeID;
+        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+        const int ci_nodeID = e->nodeID;
+        const int cj_nodeID = e->nodeID;
+#endif
+
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active && ci_nodeID == e->nodeID) ||
+            (cj_active && cj_nodeID == e->nodeID)) {
+          scheduler_activate(s, t);
+        }
+      }
+    }
   }
 }
 
@@ -4804,12 +4901,64 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_sinks(c, e)) {
+    if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
+    if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
 #ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
 #endif
+  }
+
+  return rebuild;
+}
+
+/**
+ * @brief Un-skips all the RT tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
+  struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
+
+  int rebuild = 0;
+  int counter = 0;
+
+  for (struct link *l = c->hydro.rt_inject; l != NULL; l = l->next) {
+    counter++;
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
+
+      if (t->type == task_type_sub_self) {
+        cell_activate_subcell_rt_tasks(ci, NULL, s);
+      }
+
+      else if (t->type == task_type_sub_pair) {
+        cell_activate_subcell_rt_tasks(ci, cj, s);
+      }
+    }
   }
 
   return rebuild;
@@ -5133,6 +5282,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
+        rt_init_part(p);
       }
     }
 
@@ -5454,6 +5604,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       if (spart_is_active(sp, e)) {
         stars_init_spart(sp);
         feedback_init_spart(sp);
+        rt_init_spart(sp);
       }
     }
 
@@ -5662,6 +5813,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
   struct sink *const sinks = c->sinks.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
+  float cell_r_max = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_sink_drift));
@@ -5701,10 +5853,12 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
         /* Update */
         dx_max = max(dx_max, cp->sinks.dx_max_part);
+        cell_r_max = max(cell_r_max, cp->sinks.r_cut_max);
       }
     }
 
     /* Store the values */
+    c->sinks.r_cut_max = cell_r_max;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -5769,11 +5923,16 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
         }
       }
 
+      /* sp->h does not need to be limited. */
+
       /* Compute (square of) motion since last cell construction */
       const float dx2 = sink->x_diff[0] * sink->x_diff[0] +
                         sink->x_diff[1] * sink->x_diff[1] +
                         sink->x_diff[2] * sink->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+
+      /* Maximal smoothing length */
+      cell_r_max = max(cell_r_max, sink->r_cut);
 
       /* Get ready for a density calculation */
       if (sink_is_active(sink, e)) {
@@ -5785,6 +5944,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
     dx_max = sqrtf(dx2_max);
 
     /* Store the values */
+    c->sinks.r_cut_max = cell_r_max;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */

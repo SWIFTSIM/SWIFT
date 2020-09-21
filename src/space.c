@@ -59,6 +59,7 @@
 #include "pressure_floor.h"
 #include "proxy.h"
 #include "restart.h"
+#include "rt.h"
 #include "sink.h"
 #include "sort_part.h"
 #include "space_unique_id.h"
@@ -260,6 +261,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.drift = NULL;
     c->black_holes.black_holes_in = NULL;
     c->black_holes.black_holes_out = NULL;
+    c->sinks.sink_in = NULL;
+    c->sinks.sink_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling_in = NULL;
@@ -293,6 +296,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
     c->black_holes.ti_end_max = -1;
+    c->hydro.rt_inject = NULL;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
@@ -380,6 +384,7 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_sinks = s->nr_sinks;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -402,6 +407,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
+        if (c->sinks.r_cut_max > h_max) {
+          h_max = c->sinks.r_cut_max / kernel_gamma;
+        }
       }
 
       /* Can we instead use all the top-level cells? */
@@ -417,6 +425,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
           h_max = c->black_holes.h_max;
         }
+        if (c->nodeID == engine_rank && c->sinks.r_cut_max > h_max) {
+          h_max = c->sinks.r_cut_max / kernel_gamma;
+        }
       }
 
       /* Last option: run through the particles */
@@ -429,6 +440,9 @@ void space_regrid(struct space *s, int verbose) {
       }
       for (size_t k = 0; k < nr_bparts; k++) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
+      }
+      for (size_t k = 0; k < nr_sinks; k++) {
+        if (s->sinks[k].r_cut > h_max) h_max = s->sinks[k].r_cut / kernel_gamma;
       }
     }
   }
@@ -3766,6 +3780,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
+  float sinks_h_max = 0.f;
   float stars_h_max = 0.f;
   float black_holes_h_max = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
@@ -3934,6 +3949,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.h_max = 0.f;
       cp->stars.dx_max_part = 0.f;
       cp->stars.dx_max_sort = 0.f;
+      cp->sinks.r_cut_max = 0.f;
       cp->sinks.dx_max_part = 0.f;
       cp->black_holes.h_max = 0.f;
       cp->black_holes.dx_max_part = 0.f;
@@ -3992,6 +4008,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max = max(h_max, cp->hydro.h_max);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+        sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
@@ -4246,6 +4263,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       ti_sinks_end_max = max(ti_sinks_end_max, ti_end);
       ti_sinks_beg_max = max(ti_sinks_beg_max, ti_beg);
 
+      sinks_h_max = max(sinks_h_max, sinks[k].r_cut);
+
       /* Reset x_diff */
       sinks[k].x_diff[0] = 0.f;
       sinks[k].x_diff[1] = 0.f;
@@ -4325,6 +4344,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->sinks.ti_end_min = ti_sinks_end_min;
   c->sinks.ti_end_max = ti_sinks_end_max;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
+  c->sinks.r_cut_max = sinks_h_max;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
@@ -4905,6 +4925,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     /* And the black hole markers */
     black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
 
+    /* And the radiative transfer */
+    rt_first_init_part(&p[k]);
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
     if (p[k].gpart && p[k].gpart->id_or_neg_offset != -(k + delta))
@@ -5064,6 +5087,9 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
 
+    /* And radiative transfer data */
+    rt_first_init_spart(&sp[k]);
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
       error("Invalid gpart -> spart link");
@@ -5181,6 +5207,7 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
   struct sink *restrict sink = (struct sink *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
+  const struct sink_props *props = e->sink_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sink - s->sinks;
@@ -5210,7 +5237,7 @@ void space_first_init_sinks_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    sink_first_init_sink(&sink[k]);
+    sink_first_init_sink(&sink[k], props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sink[k].gpart && sink[k].gpart->id_or_neg_offset != -(k + delta))
@@ -5256,6 +5283,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     black_holes_init_potential(&parts[k].black_holes_data);
     chemistry_init_part(&parts[k], e->chemistry);
     pressure_floor_init_part(&parts[k], &xparts[k]);
+    rt_init_part(&parts[k]);
     star_formation_init_part(&parts[k], e->star_formation);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
@@ -5313,7 +5341,10 @@ void space_init_sparts_mapper(void *restrict map_data, int scount,
                               void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
-  for (int k = 0; k < scount; k++) stars_init_spart(&sparts[k]);
+  for (int k = 0; k < scount; k++) {
+    stars_init_spart(&sparts[k]);
+    rt_init_spart(&sparts[k]);
+  }
 }
 
 /**

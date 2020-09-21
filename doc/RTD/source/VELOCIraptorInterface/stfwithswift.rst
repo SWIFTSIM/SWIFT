@@ -27,11 +27,13 @@ is needed besides fetching the latest version of the `NBodyLib` that the code
 relies upon::
   
   cd VELOCIraptor-STF 
-  git fetch 
+  git submodule update --init --recursive
 
 To get VELOCIraptor working with SWIFT simply use::
 
-  cmake . -DVR_USE_HYDRO=ON -DVR_USE_SWIFT_INTERFACE=ON -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release 
+  mkdir build
+  cd build
+  cmake ../ -DVR_USE_HYDRO=ON -DVR_USE_SWIFT_INTERFACE=ON -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release 
 
 The first parameter activates the processing of gas, stars and black holes. It
 can be omitted for simulations evolving only dark matter.

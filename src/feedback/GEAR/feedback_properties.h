@@ -31,11 +31,14 @@ struct feedback_props {
   /*! Energy per supernovae */
   float energy_per_supernovae;
 
-  /*! filename of the chemistry table */
-  char filename[PARSER_MAX_LINE_SIZE];
-
   /*! The stellar model */
   struct stellar_model stellar_model;
+
+  /*! The stellar model for first stars */
+  struct stellar_model stellar_model_first_stars;
+
+  /* Metallicity limits for the first stars */
+  float metallicity_max_first_stars;
 };
 
 /**
@@ -51,13 +54,36 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     return;
   }
 
+  /* Print the name of the elements */
+  char txt[GEAR_CHEMISTRY_ELEMENT_COUNT * (GEAR_LABELS_SIZE + 2)] = "";
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    if (i != 0) {
+      strcat(txt, ", ");
+    }
+    strcat(txt, stellar_evolution_get_element_name(
+                    &feedback_props->stellar_model, i));
+  }
+
+  if (engine_rank == 0) {
+    message("Chemistry elements: %s", txt);
+  }
+
   /* Print the feedback properties */
   message("Energy per supernovae = %.2g",
           feedback_props->energy_per_supernovae);
-  message("Yields table = %s", feedback_props->filename);
+  message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
   stellar_model_print(&feedback_props->stellar_model);
+
+  /* Print the first stars */
+  if (feedback_props->metallicity_max_first_stars != -1) {
+    message("Yields table first stars = %s",
+            feedback_props->stellar_model_first_stars.yields_table);
+    stellar_model_print(&feedback_props->stellar_model_first_stars);
+    message("Metallicity max for the first stars (in mass fraction) = %g",
+            feedback_props->metallicity_max_first_stars);
+  }
 }
 
 /**
@@ -81,12 +107,32 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   e_feedback /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
   fp->energy_per_supernovae = e_feedback;
 
-  /* filename of the chemistry table */
-  parser_get_param_string(params, "GEARFeedback:yields_table", fp->filename);
+  /* filename of the chemistry tables. */
+  parser_get_param_string(params, "GEARFeedback:yields_table",
+                          fp->stellar_model.yields_table);
 
-  /* Initialize the stellar model */
+  /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
                                cosmo);
+
+  /* Now the same for first stars. */
+  fp->metallicity_max_first_stars = parser_get_opt_param_float(
+      params, "GEARFeedback:metallicity_max_first_stars", -1);
+
+  if (fp->metallicity_max_first_stars == -1) {
+    message("First stars are disabled.");
+  } else {
+    if (fp->metallicity_max_first_stars < 0) {
+      error(
+          "The metallicity threshold for the first stars is in mass fraction. "
+          "It cannot be lower than 0.");
+    }
+    message("Reading the stellar model for the first stars");
+    parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
+                            fp->stellar_model_first_stars.yields_table);
+    stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
+                                 params, cosmo);
+  }
 
   /* Print the stellar properties */
   feedback_props_print(fp);
