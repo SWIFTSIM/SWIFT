@@ -700,8 +700,6 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   // message("\n\n\n DENSITY");
   // print_array(rho, N);
 
-  if (rho[0] == 0.) error("Empty density mesh!");
-
   tic = getticks();
 
   /* Fourier transform to go to magic-land */
