@@ -2934,7 +2934,7 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   /* Should we even bother? */
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!cell_is_active_hydro(ci, e)) return;
 
   /* Recurse? */
   if (ci->split && cell_can_recurse_in_pair_hydro_task1(ci) && cj->split &&
@@ -2995,7 +2995,6 @@ void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
         DOSUB_PAIR_SUBSET(r, sub, parts, ind, count, ci->progeny[j],
                           /*gettimer=*/0);
-
   }
 
   /* Otherwise, compute self-interaction. */

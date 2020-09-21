@@ -926,9 +926,9 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
  */
 void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
                                  struct spart *restrict sparts,
-                                 int *restrict ind, int scount) {
+                                 const int *restrict ind, const int scount) {
 
-  DOSELF1_SUBSET_STARS(r, ci, sparts, ind, scount);
+  //  DOSELF1_SUBSET_STARS(r, ci, sparts, ind, scount);
 }
 
 /**
@@ -945,9 +945,11 @@ void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
  */
 void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
                                  struct spart *restrict sparts_i,
-                                 int *restrict ind, int scount,
+                                 const int *restrict ind, const int scount,
                                  struct cell *restrict cj) {
 
+#if 0
+  
   const struct engine *e = r->e;
 
   /* Anything to do here? */
@@ -983,92 +985,7 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
 
   DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
 #endif
-}
-void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
-                        int *ind, int scount, struct cell *cj, int gettimer) {
 
-#if 0
-
-  
-  const struct engine *e = r->e;
-  struct space *s = e->s;
-
-  /* Should we even bother? */
-  if (!cell_is_active_stars(ci, e) &&
-      (cj == NULL || !cell_is_active_stars(cj, e)))
-    return;
-
-  /* Find out in which sub-cell of ci the parts are. */
-  struct cell *sub = NULL;
-  if (ci->split) {
-    for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] != NULL) {
-        if (&sparts[ind[0]] >= &ci->progeny[k]->stars.parts[0] &&
-            &sparts[ind[0]] <
-                &ci->progeny[k]->stars.parts[ci->progeny[k]->stars.count]) {
-          sub = ci->progeny[k];
-          break;
-        }
-      }
-    }
-  }
-
-  /* Is this a single cell? */
-  if (cj == NULL) {
-
-    /* Recurse? */
-    if (cell_can_recurse_in_self_stars_task(ci)) {
-
-      /* Loop over all progeny. */
-      DOSUB_SUBSET_STARS(r, sub, sparts, ind, scount, NULL, 0);
-      for (int j = 0; j < 8; j++)
-        if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET_STARS(r, sub, sparts, ind, scount, ci->progeny[j], 0);
-
-    }
-
-    /* Otherwise, compute self-interaction. */
-    else
-      DOSELF1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount);
-  } /* self-interaction. */
-
-  /* Otherwise, it's a pair interaction. */
-  else {
-
-    /* Recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
-        cell_can_recurse_in_pair_stars_task(cj, ci)) {
-
-      /* Get the type of pair and flip ci/cj if needed. */
-      double shift[3] = {0.0, 0.0, 0.0};
-      const int sid = space_getsid(s, &ci, &cj, shift);
-
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
-      for (int k = 0; k < csp->count; k++) {
-        const int pid = csp->pairs[k].pid;
-        const int pjd = csp->pairs[k].pjd;
-        if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET_STARS(r, ci->progeny[pid], sparts, ind, scount,
-                             cj->progeny[pjd], 0);
-        if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET_STARS(r, cj->progeny[pjd], sparts, ind, scount,
-                             ci->progeny[pid], 0);
-      }
-    }
-
-    /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_stars(ci, e) && cj->hydro.count > 0) {
-
-      /* Do any of the cells need to be drifted first? */
-      if (cell_is_active_stars(ci, e)) {
-        if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
-        if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
-      }
-
-      DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
-    }
-
-  } /* otherwise, pair interaction. */
 #endif
 }
 
@@ -1354,4 +1271,102 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, int recurse_below_h_max
   if(gettimer) TIMER_TOC(TIMER_DOSUB_SELF_STARS);
 }
 
+struct cell *FIND_SUB_STARS(const struct cell *const ci,
+			    const struct spart *const sparts, const int *ind) {
 
+  /* Find out in which sub-cell of ci the parts are. */
+  struct cell *sub = NULL;
+  if (ci->split) {
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] != NULL) {
+        if (&sparts[ind[0]] >= &ci->progeny[k]->stars.parts[0] &&
+            &sparts[ind[0]] <
+                &ci->progeny[k]->stars.parts[ci->progeny[k]->stars.count]) {
+          sub = ci->progeny[k];
+          break;
+        }
+      }
+    }
+  }
+
+  return sub;
+}
+
+
+void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
+			     const int *ind, const int scount, struct cell *cj,
+			     const int gettimer) {
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+
+
+  TIMER_TIC;
+
+  /* Should we even bother? */
+  if (ci->stars.count == 0 || cj->hydro.count == 0) return;
+  if (!cell_is_active_hydro(ci, e)) return;
+
+  /* Recurse? */
+  if (ci->split && cell_can_recurse_in_pair_stars_task1(ci) &&
+      cj->split && cell_can_recurse_in_pair_stars_task1(cj)) {
+
+    /* Find in which sub-cell of ci the particles are */
+    struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
+    
+    /* Get the type of pair and flip ci/cj if needed. */
+    double shift[3];
+    const int sid = space_getsid(s, &ci, &cj, shift);
+    
+      struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
+          DOSUB_PAIR_SUBSET_STARS(r, ci->progeny[pid], sparts, ind, scount,
+				  cj->progeny[pjd], /*gettimer=*/0);
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
+          DOSUB_PAIR_SUBSET_STARS(r, cj->progeny[pjd], sparts, ind, scount,
+				  ci->progeny[pid], /*gettimer=*/0);
+      }
+  }
+  
+  /* Otherwise, compute the pair directly. */
+  else if (cell_is_active_stars(ci, e) && cj->hydro.count > 0) {
+    
+    /* Do any of the cells need to be drifted first? */
+    if (cell_is_active_stars(ci, e)) {
+      if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
+      if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+    }
+    
+    DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
+  }
+}
+
+void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
+			     const int *ind, const int scount, const int gettimer) {
+  
+  const struct engine *e = r->e;
+
+  /* Should we even bother? */
+  if (ci->hydro.count == 0 || ci->stars.count == 0) return;
+  if (!cell_is_active_hydro(ci, e)) return;
+
+  /* Recurse? */
+  if (ci->split && cell_can_recurse_in_self_stars_task1(ci)) {
+
+    /* Find in which sub-cell of ci the particles are */
+    struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
+    
+    /* Loop over all progeny. */
+    DOSUB_SELF_SUBSET_STARS(r, sub, sparts, ind, scount, /*gettimer=*/0);
+    for (int j = 0; j < 8; j++)
+      if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
+	DOSUB_PAIR_SUBSET_STARS(r, sub, sparts, ind, scount, ci->progeny[j],
+				/*gettimer=*/0);
+  }
+
+  /* Otherwise, compute self-interaction. */
+  else
+    DOSELF1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount);
+}

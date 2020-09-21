@@ -56,9 +56,15 @@
   PASTE(runner_dopair_subset_branch_stars, f)
 #define DOPAIR1_SUBSET_BRANCH_STARS _DOPAIR1_SUBSET_BRANCH_STARS(FUNCTION)
 
-#define _DOSUB_SUBSET_STARS(f) PASTE(runner_dosub_subset_stars, f)
-#define DOSUB_SUBSET_STARS _DOSUB_SUBSET_STARS(FUNCTION)
+#define _DOSUB_SELF_SUBSET_STARS(f) PASTE(runner_dosub_self_subset_stars, f)
+#define DOSUB_SELF_SUBSET_STARS _DOSUB_SELF_SUBSET_STARS(FUNCTION)
 
+#define _DOSUB_PAIR_SUBSET_STARS(f) PASTE(runner_dosub_pair_subset_stars, f)
+#define DOSUB_PAIR_SUBSET_STARS _DOSUB_PAIR_SUBSET_STARS(FUNCTION)
+
+#define _FIND_SUB_STARS(f) PASTE(runner_find_sub_stars, f)
+#define FIND_SUB_STARS _FIND_SUB_STARS(FUNCTION)
+  
 #define _DOSELF1_BRANCH_STARS(f) PASTE(runner_doself_branch_stars, f)
 #define DOSELF1_BRANCH_STARS _DOSELF1_BRANCH_STARS(FUNCTION)
 
@@ -96,14 +102,8 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int recurse_below_h_ma
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                        int recurse_below_h_max, const int gettimer);
 
-void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
-                                 struct spart *restrict sparts,
-                                 int *restrict ind, int scount);
-
-void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
-                                 struct spart *restrict sparts_i,
-                                 int *restrict ind, int scount,
-                                 struct cell *restrict cj);
-
-void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
-                        int *ind, int scount, struct cell *cj, int gettimer);
+void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
+			     const int *ind, const int scount, const int gettimer);
+void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
+			     const int *ind, const int scount, struct cell *cj,
+			     const int gettimer);
