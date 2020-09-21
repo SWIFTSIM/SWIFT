@@ -557,10 +557,10 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
         struct dmpart *restrict pi = &dmparts[pid];
         
         /* Skip inhibited particles. */
-        /*if (dmpart_is_inhibited(pi, e)) continue;*/
+        if (dmpart_is_inhibited(pi, e)) continue;
         
         const int pi_active = dmpart_is_active(pi, e);
-        const float hi = pi->h;
+        const float hi = pi->sidm_data.h_sidm;
         const float hig2 = hi * hi;
         /*const float hig2 = hi * hi * dm_kernel_gamma2;*/
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -586,7 +586,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
             struct dmpart *restrict pj = &dmparts[pjd];
             
             /* Skip inhibited particles. */
-            /*if (dmpart_is_inhibited(pj, e)) continue;*/
+            if (dmpart_is_inhibited(pj, e)) continue;
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -599,7 +599,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
             
-            const float hj = pj->h;
+            const float hj = pj->sidm_data.h_sidm;
             const float hjg2 = hj * hj;
             /*const float hjg2 = hj * hj * dm_kernel_gamma2;*/
             const int pj_active = dmpart_is_active(pj, e);
@@ -685,7 +685,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
         struct dmpart *restrict pi = &dmparts_i[pid];
         
         /* Skip inhibited particles. */
-        /*if (dmpart_is_inhibited(pi, e)) continue;*/
+        if (dmpart_is_inhibited(pi, e)) continue;
         
         /* Get i particle time-step */
         const integertime_t ti_step = get_integer_timestep(pi->time_bin);
@@ -699,7 +699,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
         }
         
         const int pi_active = dmpart_is_active(pi, e);
-        const float hi = pi->h;
+        const float hi = pi->sidm_data.h_sidm;
         const float hig2 = hi * hi; /* * dm_kernel_gamma2;*/
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
@@ -712,7 +712,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
             struct dmpart *restrict pj = &dmparts_j[pjd];
             
             /* Skip inhibited particles. */
-            /*if (dmpart_is_inhibited(pj, e)) continue;*/
+            if (dmpart_is_inhibited(pj, e)) continue;
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -725,7 +725,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
             
-            const float hj = pj->h;
+            const float hj = pj->sidm_data.h_sidm;
             const float hjg2 = hj * hj; /* * dm_kernel_gamma2;*/
             const int pj_active = dmpart_is_active(pj, e);
             
