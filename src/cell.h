@@ -808,7 +808,6 @@ cell_can_recurse_in_self_stars_task1(const struct cell *c) {
   return (kernel_gamma * c->stars.h_max_active < 0.5f * c->dmin);
 }
 
-
 /**
  * @brief Can a sub-self stars task recurse to a lower level based
  * on the status of the particles in the cell.

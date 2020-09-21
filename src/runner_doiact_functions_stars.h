@@ -34,7 +34,7 @@
  * @param timer 1 if the time is to be recorded.
  */
 void DOSELF1_STARS(struct runner *r, struct cell *c, const int limit_min_h,
-		   const int limit_max_h) {
+                   const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -62,7 +62,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, const int limit_min_h,
   /* Get the limits in h (if any) */
   const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
   const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
-  
+
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount; sid++) {
 
@@ -70,16 +70,16 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, const int limit_min_h,
     struct spart *restrict si = &sparts[sid];
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    
+
     /* Skip inactive particles */
     if (!spart_is_active(si, e)) continue;
 
     /* Skip inactive particles */
     if (!feedback_is_active(si, e->time, cosmo, with_cosmology)) continue;
-    
+
     /* Skip particles not in the range of h we care about */
     if (hi >= h_max) continue;
-    if (hi < h_min) continue;   
+    if (hi < h_min) continue;
 
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
@@ -243,9 +243,10 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param sid The direction of the pair.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci, struct cell *restrict cj,
-			const int limit_min_h, const int limit_max_h,
-                        const int sid, const double shift[3]) {
+void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
+                        struct cell *restrict cj, const int limit_min_h,
+                        const int limit_max_h, const int sid,
+                        const double shift[3]) {
 
   TIMER_TIC;
 
@@ -278,7 +279,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci, struct cell 
   /* Get the limits in h (if any) */
   const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
   const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
-  
+
   if (do_ci_stars) {
 
     /* Pick-out the sorted lists. */
@@ -328,12 +329,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci, struct cell 
 #ifdef SWIFT_DEBUG_CHECKS
       if (hi > ci->hydro.h_max_active)
         error("Particle has h larger than h_max_active");
-#endif 
+#endif
 
       /* Skip particles not in the range of h we care about */
       if (hi >= h_max) continue;
       if (hi < h_min) continue;
-     
+
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].i + hi * kernel_gamma + hydro_dx_max_rshift;
       if (di < dj_min) continue;
@@ -462,12 +463,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci, struct cell 
 #ifdef SWIFT_DEBUG_CHECKS
       if (hj > ci->hydro.h_max_active)
         error("Particle has h larger than h_max_active");
-#endif 
+#endif
 
       /* Skip particles not in the range of h we care about */
       if (hj >= h_max) continue;
       if (hj < h_min) continue;
-      
+
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - hydro_dx_max_rshift;
       if (dj - rshift > di_max) continue;
@@ -998,7 +999,7 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
  *
  */
 void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c,
-			  const int limit_min_h, const int limit_max_h) {
+                          const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -1019,7 +1020,7 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c,
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e) || !cell_are_spart_drifted(c, e))
     error("Interacting undrifted cell.");
-  
+
   DOSELF1_STARS(r, c, limit_min_h, limit_max_h);
 }
 
@@ -1064,7 +1065,7 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c,
  *
  */
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-			  const int limit_min_h, const int limit_max_h) {
+                          const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -1073,9 +1074,9 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                     cell_is_active_stars(ci, e);
+                    cell_is_active_stars(ci, e);
   const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-		     cell_is_active_stars(cj, e);
+                    cell_is_active_stars(cj, e);
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
@@ -1089,7 +1090,6 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       (!cell_are_part_drifted(ci, e) || !cell_are_spart_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
-  
   /* Have the cells been sorted? */
   if (do_ci && (!(ci->stars.sorted & (1 << sid)) ||
                 ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin))
@@ -1114,8 +1114,6 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 }
 
-
-
 /**
  * @brief Compute grouped sub-cell interactions for pairs
  *
@@ -1134,47 +1132,44 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
-  
+
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
   message("sid=%d", sid);
-  
+
   /* What kind of pair are we doing here? */
-  const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 && cell_is_active_stars(ci, e);
-  const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 && cell_is_active_stars(cj, e);
-  
+  const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
+                    cell_is_active_stars(ci, e);
+  const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
+                    cell_is_active_stars(cj, e);
+
   /* Should we even bother? */
   if (!do_ci && !do_cj) return;
 
   if (!ci->split || ci->stars.count < space_recurse_size_pair_stars ||
       !cj->split || cj->stars.count < space_recurse_size_pair_stars) {
 
-
     /* We interact all particles in that cell:
        - No limit on the smallest h
        - Apply the max h limit if we are recursing below the level
        where h is smaller than the cell size */
     DOPAIR1_BRANCH_STARS(r, ci, cj, /*limit_h_min=*/0,
-			 /*limit_h_max=*/recurse_below_h_max);
+                         /*limit_h_max=*/recurse_below_h_max);
 
   } else {
-
-
 
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
     if (recurse_below_h_max) {
 
-
       /* Should we change the recursion regime because we encountered a large
-	 particle? */
+         particle? */
       if (!recurse_below_h_max && (!cell_can_recurse_in_pair_stars_task1(ci) ||
-				   !cell_can_recurse_in_pair_stars_task1(cj)))
-	recurse_below_h_max = 1;
-      
-      
+                                   !cell_can_recurse_in_pair_stars_task1(cj)))
+        recurse_below_h_max = 1;
+
       /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
        */
       /* 	      cj->hydro.count); */
@@ -1190,12 +1185,12 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
-        DOSUB_PAIR1_STARS(r, ci->progeny[pid], cj->progeny[pjd], recurse_below_h_max,
-			  /*gettimer=*/0);
+        DOSUB_PAIR1_STARS(r, ci->progeny[pid], cj->progeny[pjd],
+                          recurse_below_h_max,
+                          /*gettimer=*/0);
       }
-    }    
+    }
   }
-  
 
   TIMER_TOC(TIMER_DOSUB_PAIR_STARS);
 }
@@ -1207,10 +1202,10 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, int recurse_below_h_max, const int gettimer) {
+void DOSUB_SELF1_STARS(struct runner *r, struct cell *c,
+                       int recurse_below_h_max, const int gettimer) {
 
   TIMER_TIC;
-
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank)
@@ -1222,7 +1217,6 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, int recurse_below_h_max
       !cell_is_active_stars(c, r->e))
     return;
 
-
   /* We reached a leaf OR a cell small enough to process quickly */
   if (!c->split || c->stars.count < space_recurse_size_self_stars) {
 
@@ -1231,7 +1225,7 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, int recurse_below_h_max
        - Apply the max h limit if we are recursing below the level
        where h is smaller than the cell size */
     DOSELF1_BRANCH_STARS(r, c, /*limit_h_min=*/0,
-			 /*limit_h_max=*/recurse_below_h_max);
+                         /*limit_h_max=*/recurse_below_h_max);
 
   } else {
 
@@ -1240,7 +1234,6 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, int recurse_below_h_max
     if (!recurse_below_h_max && !cell_can_recurse_in_self_stars_task1(c))
       recurse_below_h_max = 1;
 
-    
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
     if (recurse_below_h_max) {
@@ -1251,28 +1244,28 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, int recurse_below_h_max
          with all their neighbours */
       DOSELF1_BRANCH_STARS(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
     }
-    
 
     /* Recurse to the lower levels. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        DOSUB_SELF1_STARS(r, c->progeny[k], recurse_below_h_max, /*gettimer=*/0);
+        DOSUB_SELF1_STARS(r, c->progeny[k], recurse_below_h_max,
+                          /*gettimer=*/0);
         for (int j = k + 1; j < 8; j++) {
           if (c->progeny[j] != NULL) {
-            DOSUB_PAIR1_STARS(r, c->progeny[k], c->progeny[j], recurse_below_h_max,
-			      /*gettimer=*/0);
+            DOSUB_PAIR1_STARS(r, c->progeny[k], c->progeny[j],
+                              recurse_below_h_max,
+                              /*gettimer=*/0);
           }
         }
       }
-    }    
+    }
   }
-    
-  
-  if(gettimer) TIMER_TOC(TIMER_DOSUB_SELF_STARS);
+
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF_STARS);
 }
 
 struct cell *FIND_SUB_STARS(const struct cell *const ci,
-			    const struct spart *const sparts, const int *ind) {
+                            const struct spart *const sparts, const int *ind) {
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
@@ -1292,13 +1285,12 @@ struct cell *FIND_SUB_STARS(const struct cell *const ci,
   return sub;
 }
 
-
-void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
-			     const int *ind, const int scount, struct cell *cj,
-			     const int gettimer) {
+void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
+                             struct spart *sparts, const int *ind,
+                             const int scount, struct cell *cj,
+                             const int gettimer) {
   const struct engine *e = r->e;
   struct space *s = e->s;
-
 
   TIMER_TIC;
 
@@ -1307,45 +1299,46 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sp
   if (!cell_is_active_hydro(ci, e)) return;
 
   /* Recurse? */
-  if (ci->split && cell_can_recurse_in_pair_stars_task1(ci) &&
-      cj->split && cell_can_recurse_in_pair_stars_task1(cj)) {
+  if (ci->split && cell_can_recurse_in_pair_stars_task1(ci) && cj->split &&
+      cell_can_recurse_in_pair_stars_task1(cj)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
-    
+
     /* Get the type of pair and flip ci/cj if needed. */
     double shift[3];
     const int sid = space_getsid(s, &ci, &cj, shift);
-    
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
-      for (int k = 0; k < csp->count; k++) {
-        const int pid = csp->pairs[k].pid;
-        const int pjd = csp->pairs[k].pjd;
-        if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_PAIR_SUBSET_STARS(r, ci->progeny[pid], sparts, ind, scount,
-				  cj->progeny[pjd], /*gettimer=*/0);
-        if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_PAIR_SUBSET_STARS(r, cj->progeny[pjd], sparts, ind, scount,
-				  ci->progeny[pid], /*gettimer=*/0);
-      }
+
+    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    for (int k = 0; k < csp->count; k++) {
+      const int pid = csp->pairs[k].pid;
+      const int pjd = csp->pairs[k].pjd;
+      if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
+        DOSUB_PAIR_SUBSET_STARS(r, ci->progeny[pid], sparts, ind, scount,
+                                cj->progeny[pjd], /*gettimer=*/0);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
+        DOSUB_PAIR_SUBSET_STARS(r, cj->progeny[pjd], sparts, ind, scount,
+                                ci->progeny[pid], /*gettimer=*/0);
+    }
   }
-  
+
   /* Otherwise, compute the pair directly. */
   else if (cell_is_active_stars(ci, e) && cj->hydro.count > 0) {
-    
+
     /* Do any of the cells need to be drifted first? */
     if (cell_is_active_stars(ci, e)) {
       if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
       if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
     }
-    
+
     DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
   }
 }
 
-void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
-			     const int *ind, const int scount, const int gettimer) {
-  
+void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
+                             struct spart *sparts, const int *ind,
+                             const int scount, const int gettimer) {
+
   const struct engine *e = r->e;
 
   /* Should we even bother? */
@@ -1357,13 +1350,13 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sp
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
-    
+
     /* Loop over all progeny. */
     DOSUB_SELF_SUBSET_STARS(r, sub, sparts, ind, scount, /*gettimer=*/0);
     for (int j = 0; j < 8; j++)
       if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-	DOSUB_PAIR_SUBSET_STARS(r, sub, sparts, ind, scount, ci->progeny[j],
-				/*gettimer=*/0);
+        DOSUB_PAIR_SUBSET_STARS(r, sub, sparts, ind, scount, ci->progeny[j],
+                                /*gettimer=*/0);
   }
 
   /* Otherwise, compute self-interaction. */

@@ -454,19 +454,20 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Sub-self interaction? */
             if (l->t->type == task_type_sub_self)
-              runner_dosub_self_subset_stars_density(r, finger, sparts, sid, scount,
-						     /*gettimer=*/1);
+              runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
+                                                     scount,
+                                                     /*gettimer=*/1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
-						       scount, l->t->cj, /*gettimer=*/1);
+                runner_dosub_pair_subset_stars_density(
+                    r, finger, sparts, sid, scount, l->t->cj, /*gettimer=*/1);
               else
-                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
-						       scount, l->t->ci, /*gettimer=*/1);
+                runner_dosub_pair_subset_stars_density(
+                    r, finger, sparts, sid, scount, l->t->ci, /*gettimer=*/1);
             }
           }
         }

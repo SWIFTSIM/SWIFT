@@ -217,7 +217,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   const size_t nr_sparts = c->stars.count;
   const integertime_t ti_current = r->e->ti_current;
   const timebin_t max_active_bin = r->e->max_active_bin;
-  
+
   TIMER_TIC;
 
   integertime_t ti_stars_end_min = max_nr_timesteps;
