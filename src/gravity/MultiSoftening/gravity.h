@@ -334,10 +334,6 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
       break;
   }
 
-  gp->a_grav_mesh[0] = 0.f;
-  gp->a_grav_mesh[1] = 0.f;
-  gp->a_grav_mesh[2] = 0.f;
-
   gravity_init_gpart(gp);
 }
 
