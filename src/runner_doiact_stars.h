@@ -86,12 +86,15 @@
 #define _IACT_STARS(f) PASTE(runner_iact_nonsym_stars, f)
 #define IACT_STARS _IACT_STARS(FUNCTION)
 
-void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c);
-void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj);
+void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c,
+			  const int limit_min, const int limit_max);
+void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+			  const int limit_min, const int limit_max);
 
-void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer);
+void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int recurse_below_h_max,
+		       const int gettimer);
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-                       int gettimer);
+                       int recurse_below_h_max, const int gettimer);
 
 void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
                                  struct spart *restrict sparts,
