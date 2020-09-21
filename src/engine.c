@@ -2249,7 +2249,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
   }
-  
+
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
 

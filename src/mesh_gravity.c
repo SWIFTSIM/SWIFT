@@ -224,7 +224,7 @@ void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
 
   /* Pointer to the chunk to be processed */
   const struct gpart* gparts = (const struct gpart*)map_data;
-  
+
   for (int i = 0; i < num; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
     gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
@@ -394,7 +394,6 @@ void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
   }
 }
 
-
 void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
 
   /* Unpack the shared information */
@@ -419,10 +418,10 @@ void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
     gp->a_grav_mesh[2] = 0.f;
 
     mesh_to_gpart_CIC(gp, potential, N, fac, dim);
-    
+
     gp->a_grav_mesh[0] *= const_G;
     gp->a_grav_mesh[1] *= const_G;
-    gp->a_grav_mesh[2] *= const_G;    
+    gp->a_grav_mesh[2] *= const_G;
   }
 }
 
@@ -668,18 +667,17 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
 
     /* We don't have a cell infrastructure in place so we need to
      * directly loop over the particles */
-    threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts,
-		   s->nr_gparts, sizeof(struct gpart),
-		   threadpool_auto_chunk_size,
-		   (void*)&data);
+    threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts,
+                   sizeof(struct gpart), threadpool_auto_chunk_size,
+                   (void*)&data);
 
   } else { /* Normal case */
-  
+
     /* Do a parallel CIC mesh assignment of the gparts but only using
      * the local top-level cells */
     threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-		   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-		   (void*)&data);
+                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                   (void*)&data);
   }
 
   if (verbose)
@@ -700,11 +698,11 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
-  //message("\n\n\n DENSITY");
-  //print_array(rho, N);
+  // message("\n\n\n DENSITY");
+  // print_array(rho, N);
 
   if (rho[0] == 0.) error("Empty density mesh!");
-  
+
   tic = getticks();
 
   /* Fourier transform to go to magic-land */
@@ -761,18 +759,17 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
 
     /* We don't have a cell infrastructure in place so we need to
      * directly loop over the particles */
-    threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts,
-		   s->nr_gparts, sizeof(struct gpart),
-		   threadpool_auto_chunk_size,
-		   (void*)&data);
+    threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
+                   sizeof(struct gpart), threadpool_auto_chunk_size,
+                   (void*)&data);
 
   } else { /* Normal case */
-  
+
     /* Do a parallel CIC mesh interpolation onto the gparts but only using
        the local top-level cells */
     threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-		   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-		   (void*)&data);
+                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                   (void*)&data);
   }
 
   if (verbose)
