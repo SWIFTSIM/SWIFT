@@ -20,13 +20,32 @@
 #define SWIFT_RT_NONE_H
 
 /**
- * @file src/rt/debug/rt.h
+ * @file src/rt/none/rt.h
  * @brief Main header file for no radiative transfer scheme.
  */
 
 /**
- * @brief Dummy function to test whether inclusions work properly.
+ * @brief First initialisation of the RT extra hydro particle data.
  */
-void rt_dummy_function(void) { message("Called no RT scheme."); }
+__attribute__((always_inline)) INLINE static void rt_first_init_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief Initialisation of the RT extra hydro particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief First initialisation of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_spart(
+    struct spart* restrict sp) {}
+
+/**
+ * @brief First initialisation of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_spart(
+    struct spart* restrict sp) {}
 
 #endif /* SWIFT_RT_NONE_H */

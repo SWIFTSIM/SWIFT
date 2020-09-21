@@ -43,6 +43,8 @@ the following changes have been made (at standard resolution):
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
  - The SNII feedback delay is done by sampling the stellar age
    distribution and not using a fixed delay of 30 Myr any more.
+ - The energy range for the SNII variable f_th is now 0.5 - 5.0
+   (from 0.3 - 3.0).
  - The halo mass for BH seeding has been lowered to 10^10 M_sun
    (from 10^10/h Msun).
  - The black hole accretion rate is now limited to 100% of the
@@ -52,6 +54,11 @@ the following changes have been made (at standard resolution):
    length any more.
  - The BHs can reposition only onto gas particles and not onto any
    type as before.
+ - BHs of all masses can be repositioned (was limited to
+   M_BH < 1.8*10^8 Msun).
+ - The angular momentum term in the BH accretion model of
+   Rosas-Guevara et al. (2015) is now switched off.
+ - The coupling efficency of the BH feedback is now 0.1 (was 0.15).
  - The maximal relative velocity between a BH and gas particle
    eligible to be a reposition target has been increased to 0.5 times
    the local sound-speed around the BH (was 0.25 * c_sound).

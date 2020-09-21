@@ -177,8 +177,8 @@ EAGLEFeedback:
   SNII_sampled_delay:               1               # Sample the SNII lifetimes to do feedback.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-  SNII_energy_fraction_min:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_max:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_min:         0.5             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:         5.0             # Maximal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
   SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
@@ -206,15 +206,15 @@ EAGLEAGN:
   subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
   multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
   subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
-  with_angmom_limiter:                1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
+  with_angmom_limiter:                0          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
   radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.
   max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
   eddington_fraction_for_recording:   0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
-  coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
+  coupling_efficiency:                0.1        # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
-  max_reposition_mass:                2e8        # Maximal BH mass considered for BH repositioning in solar masses.
+  max_reposition_mass:                1e20       # Maximal BH mass considered for BH repositioning in solar masses (large number implies we always reposition).
   max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
   with_reposition_velocity_threshold: 1          # Should we only reposition to particles that move slowly w.r.t. the black hole?
   max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_ratio is 1.
