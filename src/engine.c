@@ -2245,6 +2245,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->nodeID == 0)
     message("Computing initial gas densities and approximate gravity.");
 
+  /* Compute the mesh forces for the first time */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+  }
+  
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
 
@@ -2265,18 +2270,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, e->s);
-
-  /* Re-compute the mesh forces */
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
-
-    /* Re-allocate the PM grid if we freed it... */
-    // pm_mesh_allocate(e->mesh);
-
-    /* ... and recompute */
-    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
-
-    engine_recompute_displacement_constraint(e);
-  }
 
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
