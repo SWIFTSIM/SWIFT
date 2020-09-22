@@ -42,7 +42,7 @@ int tools_get_next_record(const struct header *h, void *map, size_t *offset,
   if (header_is_backward(h))
     return _tools_get_next_record_backward(h, map, offset, file_size);
   else
-    error("Offsets are corrupted.");
+    error_python("Offsets are corrupted.");
 }
 
 /**
@@ -84,7 +84,7 @@ int _tools_get_next_record_forward(const struct header *h, void *map,
 int _tools_get_next_record_backward(const struct header *h, void *map,
                                     size_t *offset, size_t file_size) {
 #ifndef SWIFT_DEBUG_CHECKS
-  error("Should not be used, method too slow");
+  error_python("Should not be used, method too slow");
 #endif
   size_t current_offset = *offset;
   size_t record_header = LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
@@ -141,8 +141,8 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
   if (prev_offset == cur_offset) return after_current_record;
 
   if (prev_offset > cur_offset)
-    error("Unexpected offset: header %lu, current %lu.", prev_offset,
-          cur_offset);
+    error_python("Unexpected offset: header %lu, current %lu.", prev_offset,
+                 cur_offset);
 
   /* modify previous offset. */
   map = (char *)file_map + cur_offset - prev_offset + LOGGER_MASK_SIZE;
@@ -156,7 +156,7 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
   /* Check if we are not mixing timestamp and particles */
   if ((prev_mask != h->timestamp_mask && mask == h->timestamp_mask) ||
       (prev_mask == h->timestamp_mask && mask != h->timestamp_mask))
-    error("Unexpected mask: %lu, got %lu.", mask, prev_mask);
+    error_python("Unexpected mask: %lu, got %lu.", mask, prev_mask);
 
 #endif  // SWIFT_DEBUG_CHECKS
 
@@ -177,7 +177,7 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
 size_t tools_check_record_consistency(const struct logger_reader *reader,
                                       size_t offset) {
 #ifndef SWIFT_DEBUG_CHECKS
-  error("Should not check in non debug mode.");
+  error_python("Should not check in non debug mode.");
 #endif
 
   const struct header *h = &reader->log.header;
@@ -195,11 +195,11 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
     pointed_offset += offset;
   else if (header_is_backward(h)) {
     if (offset < pointed_offset)
-      error("Offset too large (%lu) at %lu with mask %lu.", pointed_offset,
-            offset, mask);
+      error_python("Offset too large (%lu) at %lu with mask %lu.",
+                   pointed_offset, offset, mask);
     pointed_offset = offset - pointed_offset;
   } else {
-    error("Offset are corrupted.");
+    error_python("Offset are corrupted.");
   }
 
   /* set offset after current record. */
@@ -216,8 +216,8 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
   /* check if not mixing timestamp and particles. */
   if ((pointed_mask != h->timestamp_mask && mask == h->timestamp_mask) ||
       (pointed_mask == h->timestamp_mask && mask != h->timestamp_mask))
-    error("Error in the offset (mask %lu at %lu != %lu at %lu).", mask, offset,
-          pointed_mask, pointed_offset);
+    error_python("Error in the offset (mask %lu at %lu != %lu at %lu).", mask,
+                 offset, pointed_mask, pointed_offset);
 
   return (size_t)((char *)map - (char *)file_init);
 }
