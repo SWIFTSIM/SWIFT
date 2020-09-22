@@ -141,6 +141,7 @@ int engine_current_step;
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
+extern int engine_max_parts_per_cooling;
 
 /**
  * @brief Link a density/force task to a cell.
@@ -4734,10 +4735,14 @@ void engine_config(int restart, int fof, struct engine *e,
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
-                                 engine_max_parts_per_ghost_default);
+                                 engine_max_parts_per_ghost);
     engine_max_sparts_per_ghost = parser_get_opt_param_int(
         params, "Scheduler:engine_max_sparts_per_ghost",
-        engine_max_sparts_per_ghost_default);
+        engine_max_sparts_per_ghost);
+
+    engine_max_parts_per_cooling = parser_get_opt_param_int(
+        params, "Scheduler:engine_max_parts_per_cooling",
+        engine_max_parts_per_cooling);
   }
 
   /* Allocate and init the threads. */
