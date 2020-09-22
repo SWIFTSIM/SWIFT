@@ -93,11 +93,11 @@ void logger_reader_init_index(struct logger_reader *reader) {
   /* Initialize the arrays */
   if ((reader->index.times = (double *)malloc(count * sizeof(double))) ==
       NULL) {
-    error("Failed to allocate the list of times");
+    error_python("Failed to allocate the list of times");
   }
   if ((reader->index.int_times =
            (integertime_t *)malloc(count * sizeof(integertime_t))) == NULL) {
-    error("Failed to allocate the list of times");
+    error_python("Failed to allocate the list of times");
   }
 
   /* Get the information contained in the headers */
@@ -255,7 +255,7 @@ void logger_reader_read_field(struct logger_reader *reader, double time,
       field_count = stars_logger_field_count;
       break;
     default:
-      error("Particle type not implemented");
+      error_python("Particle type not implemented");
   }
 
   /* Get the masks. */
@@ -344,7 +344,7 @@ void logger_reader_read_field(struct logger_reader *reader, double time,
 
       /* Check if we can still move forward */
       if (h_offset == 0) {
-        error("There is no record after the current one");
+        error_python("There is no record after the current one");
       }
 
       /* Go to the next record. */
@@ -412,7 +412,7 @@ void logger_reader_read_field(struct logger_reader *reader, double time,
                                        output, time, field);
         break;
       default:
-        error("Particle type not implemented");
+        error_python("Particle type not implemented");
     }
   }
 }
@@ -460,7 +460,7 @@ void logger_reader_global_to_local(
       local_names = stars_logger_field_names;
       break;
     default:
-      error("Particle type not implemented yet.");
+      error_python("Particle type not implemented yet.");
   }
 
   /* Initialize the arrays */
@@ -495,8 +495,8 @@ void logger_reader_global_to_local(
   /* Check that we found the fields */
   for (int local = 0; local < n_fields_wanted; local++) {
     if (local_fields_wanted[local] < 0) {
-      error("Field %s not found in particle type %s", local_names[local],
-            part_type_names[type]);
+      error_python("Field %s not found in particle type %s", local_names[local],
+                   part_type_names[type]);
     }
   }
 }
@@ -525,21 +525,21 @@ void logger_reader_read_all_particles(struct logger_reader *reader, double time,
   /* fields_wanted sorted according to the fields order (local index). */
   int *local_fields_wanted = (int *)malloc(sizeof(int) * n_fields_wanted);
   if (local_fields_wanted == NULL) {
-    error("Failed to allocate the array of sorted fields.");
+    error_python("Failed to allocate the array of sorted fields.");
   }
 
   /* Fields corresponding to the first derivative of fields_wanted (sorted and
    * local index). */
   int *local_first_deriv = malloc(sizeof(int) * n_fields_wanted);
   if (local_first_deriv == NULL) {
-    error("Failed to allocate the list of first derivative.");
+    error_python("Failed to allocate the list of first derivative.");
   }
 
   /* Fields corresponding to the second derivative of fields_wanted (sorted and
    * local index). */
   int *local_second_deriv = malloc(sizeof(int) * n_fields_wanted);
   if (local_second_deriv == NULL) {
-    error("Failed to allocate the list of second derivative.");
+    error_python("Failed to allocate the list of second derivative.");
   }
 
   /* Do the hydro. */

@@ -132,7 +132,7 @@ void logger_index_map_file(struct logger_index *index, const char *filename,
                            int sorted) {
   /* Un-map previous file */
   if (index->index.map != NULL) {
-    error("Trying to remap.");
+    error_python("Trying to remap.");
   }
 
   /* Check if need to sort the file */
@@ -174,7 +174,7 @@ void logger_index_map_file(struct logger_index *index, const char *filename,
  */
 void logger_index_free(struct logger_index *index) {
   if (index->index.map == NULL) {
-    error("Trying to unmap an unexisting map");
+    error_python("Trying to unmap an unexisting map");
   }
   logger_loader_io_munmap_file(&index->index);
 }
