@@ -47,9 +47,9 @@ print("basename: %s" % basename)
 print("time: %g" % time)
 
 # read the logger
-t = logger.getTimeLimits(basename)
-pos, ent = logger.get_particle_data(basename, ["Coordinates", "Entropies"],
-                                    time)
+with logger.Reader(basename, verbose=0) as reader:
+    t = reader.get_time_limits()
+    pos, ent = reader.get_particle_data(["Coordinates", "Entropies"], time)
 
 print("Min/Max of the position:", pos.min(), pos.max())
 print("Min/Max of the entropy:", ent.min(), ent.max())

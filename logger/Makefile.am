@@ -61,6 +61,12 @@ if HAVEPYTHON
 AM_SOURCES += logger_python_wrapper.c
 endif
 
+if HAVEPYTHON
+# The main python structure is dependent on the version, thus we need to
+# remove this one in order to be safe.
+PYTHON_EXTRA_COMPILER_FLAG = -Wno-missing-field-initializers
+endif
+
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = logger_hydro.h hydro/Gadget2/logger_hydro.h \
 	logger_stars.h stars/Default/logger_stars.h \
@@ -68,12 +74,12 @@ nobase_noinst_HEADERS = logger_hydro.h hydro/Gadget2/logger_hydro.h \
 
 # Sources and flags for regular library
 liblogger_la_SOURCES = $(AM_SOURCES)
-liblogger_la_CFLAGS = $(AM_CFLAGS)
+liblogger_la_CFLAGS = $(AM_CFLAGS) $(PYTHON_EXTRA_COMPILER_FLAG)
 liblogger_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(BIN_LDFLAGS)
 
 # Sources and flags for MPI library
 # liblogger_mpi_la_SOURCES = $(AM_SOURCES)
-# liblogger_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS)
+# liblogger_mpi_la_CFLAGS = $(AM_CFLAGS) $(MPI_FLAGS) $(PYTHON_EXTRA_COMPILER_FLAG)
 # liblogger_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 # liblogger_mpi_la_SHORTNAME = mpi
 # liblogger_mpi_la_LIBADD =

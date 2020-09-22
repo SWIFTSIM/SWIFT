@@ -36,7 +36,8 @@
 size_t logger_loader_io_get_file_size(int fd) {
   struct stat s;
   int status = fstat(fd, &s);
-  if (status != 0) error("Unable to get file size (%s).", strerror(errno));
+  if (status != 0)
+    error_python("Unable to get file size (%s).", strerror(errno));
   return s.st_size;
 }
 
@@ -61,7 +62,7 @@ void logger_loader_io_mmap_file(struct mapped_file *map, const char *filename,
     fd = open(filename, O_RDWR);
 
   if (fd == -1)
-    error("Unable to open file %s (%s).", filename, strerror(errno));
+    error_python("Unable to open file %s (%s).", filename, strerror(errno));
 
   /* get the file size. */
   map->mmap_size = logger_loader_io_get_file_size(fd);
@@ -72,8 +73,8 @@ void logger_loader_io_mmap_file(struct mapped_file *map, const char *filename,
 
   map->map = mmap(NULL, map->mmap_size, mode, MAP_SHARED, fd, 0);
   if (map->map == MAP_FAILED)
-    error("Failed to allocate map of size %zi bytes (%s).", map->mmap_size,
-          strerror(errno));
+    error_python("Failed to allocate map of size %zi bytes (%s).",
+                 map->mmap_size, strerror(errno));
 
   /* Close the file. */
   close(fd);
@@ -88,7 +89,7 @@ void logger_loader_io_mmap_file(struct mapped_file *map, const char *filename,
 void logger_loader_io_munmap_file(struct mapped_file *map) {
   /* unmap the file. */
   if (munmap(map->map, map->mmap_size) != 0) {
-    error("Unable to unmap the file (%s).", strerror(errno));
+    error_python("Unable to unmap the file (%s).", strerror(errno));
   }
 
   /* Reset values */
