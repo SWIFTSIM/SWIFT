@@ -854,6 +854,54 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
 }
 
 /**
+ * @brief Compute the time corresponding to the timebase interval at the current
+ * redshift
+ *
+ * This function is slow as it performs the actual integral.
+ *
+ * @param c The comology model.
+ * @param ti_current The current point on the time-line.
+ *
+ * @return The time corresponding to c->time_base in internal time units.
+ */
+double cosmology_get_timebase(struct cosmology *c,
+                              const integertime_t ti_current) {
+
+#ifdef HAVE_LIBGSL
+
+  /* We are going to average over a number of time-bins
+   * as in some cases the smallest bin is too small for double accuracy */
+  const int num_bins = 24;
+
+  /* Range in log(a) */
+  const double log_a_start = c->log_a_begin + (ti_current)*c->time_base;
+  const double log_a_end =
+      c->log_a_begin + (ti_current + (1LL << num_bins)) * c->time_base;
+
+  /* Range in (a) */
+  const double a_start = exp(log_a_start);
+  const double a_end = exp(log_a_end);
+
+  /* Initalise the GSL workspace and function */
+  gsl_integration_workspace *space =
+      gsl_integration_workspace_alloc(GSL_workspace_size);
+  gsl_function F = {&time_integrand, c};
+
+  /* Perform the integral */
+  double result, abserr;
+  gsl_integration_qag(&F, a_start, a_end, 0, 1.0e-10, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+
+  result /= (1LL << num_bins);
+
+  return result;
+
+#else
+  error("Code not compiled with GSL. Can't compute cosmology integrals.");
+#endif
+}
+
+/**
  * @brief Compute scale factor from time since big bang (in internal units).
  *
  * @param c The current #cosmology.
