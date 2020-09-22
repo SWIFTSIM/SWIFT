@@ -113,7 +113,7 @@ void header_read(struct header *h, struct logger_logfile *log) {
   char file_format[STRING_SIZE];
   map = logger_loader_io_read_data(map, LOGGER_VERSION_SIZE, &file_format);
   if (strcmp(file_format, "SWIFT_LOGGER"))
-    error("Wrong file format (%s).", file_format);
+    error_python("Wrong file format (%s).", file_format);
 
   /* Read the major version number. */
   map = logger_loader_io_read_data(map, sizeof(int), &h->major_version);
@@ -122,7 +122,7 @@ void header_read(struct header *h, struct logger_logfile *log) {
   map = logger_loader_io_read_data(map, sizeof(int), &h->minor_version);
 
   struct logger_reader *reader = log->reader;
-  if (&reader->log != log) error("Wrong link to the reader.");
+  if (&reader->log != log) error_python("Wrong link to the reader.");
 
   if (reader->verbose > 0)
     message("File version %i.%i.", h->major_version, h->minor_version);
@@ -132,7 +132,7 @@ void header_read(struct header *h, struct logger_logfile *log) {
 
   if (!header_is_forward(h) && !header_is_backward(h) &&
       !header_is_corrupted(h))
-    error("Wrong offset value in the header (%i).", h->offset_direction);
+    error_python("Wrong offset value in the header (%i).", h->offset_direction);
 
   /* Read offset to first record. */
   h->offset_first_record = 0;
@@ -146,7 +146,7 @@ void header_read(struct header *h, struct logger_logfile *log) {
 
   /* Check if value defined in this file is large enough. */
   if (STRING_SIZE < h->string_length) {
-    error("Name too large in log file %i.", h->string_length);
+    error_python("Name too large in log file %i.", h->string_length);
   }
 
   /* Read the number of masks. */
@@ -155,7 +155,7 @@ void header_read(struct header *h, struct logger_logfile *log) {
   /* Allocate the masks memory. */
   h->masks = malloc(sizeof(struct mask_data) * h->masks_count);
   if (h->masks == NULL) {
-    error("Failed to allocate the memory for the masks.");
+    error_python("Failed to allocate the memory for the masks.");
   }
 
   /* Loop over all masks. */
@@ -179,14 +179,14 @@ void header_read(struct header *h, struct logger_logfile *log) {
 
   /* Check that the timestamp mask exists */
   if (h->timestamp_mask == 0) {
-    error("Unable to find the timestamp mask.");
+    error_python("Unable to find the timestamp mask.");
   }
 
   /* Check the logfile header's size. */
   if (map != (char *)log->log.map + h->offset_first_record) {
     size_t offset = (char *)map - (char *)log->log.map;
-    error("Wrong header size (in header %zi, current %zi).",
-          h->offset_first_record, offset);
+    error_python("Wrong header size (in header %zi, current %zi).",
+                 h->offset_first_record, offset);
   }
 
   /* Set the first and second derivatives as non existent. */
@@ -220,7 +220,6 @@ void header_read(struct header *h, struct logger_logfile *log) {
   hydro_logger_reader_link_derivatives(h);
 
   /* Gravity */
-
   /* Set the link between local and global */
   for (int j = 0; j < gravity_logger_field_count; j++) {
     gravity_logger_local_to_global[j] = -1;

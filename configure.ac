@@ -1130,6 +1130,7 @@ if test "x$with_python" != "xno"; then
       with_python="/usr/"
    fi
    AM_PATH_PYTHON([3], [], [AC_MSG_ERROR(python not found)])   
+   AC_ARG_VAR([PYTHON_LIBS], [Linking flags for python, bypassing python-config])
    AC_ARG_VAR([PYTHON_INCS], [Include flags for python, bypassing python-config])
    AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
    AS_IF([test -z "$PYTHON_INCS"], [
@@ -1142,12 +1143,15 @@ if test "x$with_python" != "xno"; then
       ])
       AC_MSG_CHECKING([python include flags])
       PYTHON_INCS=`$PYTHON_CONFIG --includes`
+      PYTHON_LIBS=`$PYTHON_CONFIG --ldflags`
       AC_MSG_RESULT([$PYTHON_INCS])
+      AC_MSG_RESULT([$PYTHON_LIBS])
   ])
   have_python="yes"
   AC_DEFINE([HAVE_PYTHON],1,[Python appears to be present.])
 fi
 AC_SUBST([PYTHON_INCS])
+AC_SUBST([PYTHON_LIBS])
 AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
 
 

@@ -36,7 +36,7 @@ void time_array_ensure_size(struct time_array *t) {
 
   /* Allocate the new array */
   struct time_record *tmp = malloc(sizeof(struct time_record) * t->capacity);
-  if (tmp == NULL) error("Failed to allocate the time records.");
+  if (tmp == NULL) error_python("Failed to allocate the time records.");
 
   /* Copy the memory */
   memcpy(tmp, t->records, sizeof(struct time_record) * t->size);
@@ -100,10 +100,10 @@ size_t time_read(integertime_t *int_time, double *time,
 
   /* check if time mask is present in log file header. */
   int ind = header_get_field_index(h, "Timestamp");
-  if (ind == -1) error("File header does not contain a mask for time.");
+  if (ind == -1) error_python("File header does not contain a mask for time.");
 
   /* check if reading a time record. */
-  if (h->masks[ind].mask != mask) error("Not a time record.");
+  if (h->masks[ind].mask != mask) error_python("Not a time record.");
 #endif
 
   /* read the record. */
@@ -130,12 +130,13 @@ size_t time_offset_first_record(const struct header *h) {
   /* Check that the first record is really a time record. */
   int i = header_get_field_index(h, "Timestamp");
 
-  if (i == -1) error("Time mask not present in the log file header.");
+  if (i == -1) error_python("Time mask not present in the log file header.");
 
   size_t mask = 0;
   logger_loader_io_read_mask(h, (char *)map + offset, &mask, NULL);
 
-  if (mask != h->masks[i].mask) error("Log file should begin by timestep.");
+  if (mask != h->masks[i].mask)
+    error_python("Log file should begin by timestep.");
 
   return h->offset_first_record;
 }
@@ -148,7 +149,8 @@ size_t time_offset_first_record(const struct header *h) {
 void time_array_init(struct time_array *t) {
   /* Allocate the arrays */
   t->records = malloc(sizeof(struct time_record) * LOGGER_TIME_INIT_SIZE);
-  if (t->records == NULL) error("Failed to initialize the time records.");
+  if (t->records == NULL)
+    error_python("Failed to initialize the time records.");
 
   /* Initialize the sizes */
   t->size = 0;
@@ -223,11 +225,11 @@ double time_array_get_time(const struct time_array *t, const size_t offset) {
 size_t time_array_get_index(const struct time_array *t, const size_t offset) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!t) error("NULL pointer.");
+  if (!t) error_python("NULL pointer.");
 
   if (offset < t->records[0].offset || offset > t->records[t->size - 1].offset)
-    error("Offset outside of range. %zi > %zi > %zi",
-          t->records[t->size - 1].offset, offset, t->records[0].offset);
+    error_python("Offset outside of range. %zi > %zi > %zi",
+                 t->records[t->size - 1].offset, offset, t->records[0].offset);
 #endif
 
   /* right will contain the index at the end of the loop */
@@ -257,7 +259,7 @@ size_t time_array_get_index(const struct time_array *t, const size_t offset) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (t->records[right].offset > offset ||
       t->records[right + 1].offset <= offset) {
-    error("Found the wrong element");
+    error_python("Found the wrong element");
   }
 
 #endif
@@ -277,11 +279,11 @@ size_t time_array_get_index_from_time(const struct time_array *t,
                                       const double time) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!t) error("NULL pointer.");
+  if (!t) error_python("NULL pointer.");
 
   if (time < t->records[0].time || time > t->records[t->size - 1].time)
-    error("Time outside of range (%g > %g).", time,
-          t->records[t->size - 1].time);
+    error_python("Time outside of range (%g > %g).", time,
+                 t->records[t->size - 1].time);
 #endif
 
   /* right will contain the index at the end of the loop */
@@ -309,7 +311,7 @@ size_t time_array_get_index_from_time(const struct time_array *t,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (t->records[right].time > time || t->records[right + 1].time <= time) {
-    error("Found the wrong element");
+    error_python("Found the wrong element");
   }
 
 #endif
