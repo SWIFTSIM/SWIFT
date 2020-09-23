@@ -70,6 +70,9 @@ struct hydro_props {
   /*! Minimal smoothing length (internal units) */
   float h_min;
 
+  /*! Minimal resolved density (internal units) */
+  float rho_min;
+
   /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;
 

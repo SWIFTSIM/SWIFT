@@ -964,6 +964,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
+  const float hydro_rho_min = e->hydro_properties->rho_min;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
@@ -1012,7 +1013,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         pid[count] = k;
         h_0[count] = parts[k].h;
         left[count] = 0.f;
-        right[count] = hydro_h_max;
+        
+        /* Calculate the particle based maximum smoothing length */
+        const float hydro_h_max_part = cbrtf(hydro_rho_min / parts[k].mass);
+  
+        /* See if we need to use the particle based or the global maximum smoothing length */
+        const float current_hydro_h_max = min(hydro_h_max, hydro_h_max_part);
+
+        right[count] = current_hydro_h_max;
         ++count;
       }
 
@@ -1041,6 +1049,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
 
+        /* Find the maximal smoothing length for this specific particle */
+        const float hydro_h_max_part = cbrtf(hydro_rho_min / p->mass);
+
+        /* Current maximal smoothing length */
+        const float current_hydro_h_max = min(hydro_h_max, hydro_h_max_part);
+          
         float h_new;
         int has_no_neighbours = 0;
 
@@ -1095,7 +1109,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Skip if h is already h_max and we don't have enough neighbours */
           /* Same if we are below h_min */
-          if (((p->h >= hydro_h_max) && (f < 0.f)) ||
+          if (((p->h >= current_hydro_h_max) && (f < 0.f)) ||
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
             /* We have a particle whose smoothing length is already set (wants
@@ -1207,7 +1221,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
 
           /* If within the allowed range, try again */
-          if (p->h < hydro_h_max && p->h > hydro_h_min) {
+          if (p->h < current_hydro_h_max && p->h > hydro_h_min) {
 
             /* Flag for another round of fun */
             pid[redo] = pid[i];
@@ -1233,10 +1247,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_min;
 
-          } else if (p->h >= hydro_h_max) {
+          } else if (p->h >= current_hydro_h_max) {
 
             /* Ok, this particle is a lost cause... */
-            p->h = hydro_h_max;
+            p->h = current_hydro_h_max;
 
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
