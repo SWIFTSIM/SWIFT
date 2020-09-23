@@ -5077,7 +5077,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             if (ci_nodeID != nodeID) {
                 
                 /* Receive the foreign parts to compute DM parts interactions */
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);
+                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);*/
                 
                 /* Send the local part information */
                 scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart, ci_nodeID);
@@ -5094,7 +5094,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             } else if (cj_nodeID != nodeID) {
                 
                 /* Receive the foreign parts to compute DM parts interactions */
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);
+                /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);*/
 
                 /* Send the local part information */
                 scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart, ci_nodeID);

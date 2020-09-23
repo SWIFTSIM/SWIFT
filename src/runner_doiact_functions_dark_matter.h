@@ -790,7 +790,7 @@ void runner_dosub_pair_dark_matter_sidm(struct runner *r, struct cell *ci, struc
             const int pid = csp->pairs[k].pid;
             const int pjd = csp->pairs[k].pjd;
             if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-            runner_dosub_pair_dark_matter_sidm(r, ci->progeny[pid], cj->progeny[pjd]);
+                runner_dosub_pair_dark_matter_sidm(r, ci->progeny[pid], cj->progeny[pjd]);
         }
     }
     

@@ -2053,7 +2053,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
         
-        } else if (t->subtype == task_subtype_sidm || t->subtype == task_subtype_dark_matter_density) {
+        } else if (t->subtype == task_subtype_dark_matter_density) {
             
             count = t->ci->dark_matter.count;
             size = count * sizeof(struct dmpart);
@@ -2220,7 +2220,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
-        } else if (t->subtype == task_subtype_sidm || t->subtype == task_subtype_dark_matter_density) {
+        } else if (t->subtype == task_subtype_dark_matter_density) {
             
             count = t->ci->dark_matter.count;
             size = count * sizeof(struct dmpart);
