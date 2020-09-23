@@ -258,7 +258,7 @@ void hydro_props_print(const struct hydro_props *p) {
     message("Maximal smoothing length allowed: %.4f", p->h_max);
 
   if (p->rho_min != hydro_props_default_rho_min)
-    message("Minimal resolved density: %.4f", p->rho_min);
+    message("Minimal resolved density: %.4e", p->rho_min);
 
   message("Maximal time-bin difference between neighbours: %d",
           time_bin_neighbour_max_delta_bin);
