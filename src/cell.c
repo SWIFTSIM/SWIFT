@@ -5254,8 +5254,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       }
 
       /* Calculate the particle based maximum smoothing length */
-      const float hydro_h_max_part = cbrtf(p->mass / hydro_rho_min );
-      
+      const float hydro_h_max_part = cbrtf(p->mass / hydro_rho_min);
+
       /* Use the minimum of the particle based and global h_max */
       const float current_hydro_h_max = min(hydro_h_max, hydro_h_max_part);
 

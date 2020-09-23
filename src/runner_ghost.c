@@ -1013,11 +1013,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         pid[count] = k;
         h_0[count] = parts[k].h;
         left[count] = 0.f;
-        
+
         /* Calculate the particle based maximum smoothing length */
         const float hydro_h_max_part = cbrtf(parts[k].mass / hydro_rho_min);
-  
-        /* See if we need to use the particle based or the global maximum smoothing length */
+
+        /* See if we need to use the particle based or the global maximum
+         * smoothing length */
         const float current_hydro_h_max = min(hydro_h_max, hydro_h_max_part);
 
         right[count] = current_hydro_h_max;
@@ -1054,7 +1055,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Current maximal smoothing length */
         const float current_hydro_h_max = min(hydro_h_max, hydro_h_max_part);
-          
+
         float h_new;
         int has_no_neighbours = 0;
 
