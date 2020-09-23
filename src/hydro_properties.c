@@ -196,13 +196,19 @@ void hydro_props_init(struct hydro_props *p,
   p->minimal_internal_energy = u_min / mean_molecular_weight;
 
   /* Minimal density to resolve in H/cm^3 */
-  const float number_density_H_p_cm3 = parser_get_opt_param_float(params, "SPH:minimum_number_density_H_p_cm3", hydro_props_default_rho_min);
+  const float number_density_H_p_cm3 = parser_get_opt_param_float(params, "SPH:minimal_number_density_H_p_cm3", hydro_props_default_rho_min);
 
   /* Get the proton mass */
-  const float m_p = phys_const->const_proton_mass;
+  const double m_p = phys_const->const_proton_mass;
+
+  /* Calculate the conversion factor for cm^-3 to L^-3 in internal units*/
+  const double conversion_factor = 1./units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+
+  /* Get the m_p times conversion factor in float */
+  const float m_p_times_conversion_factor = m_p * conversion_factor;
 
   /* Convert the minimum density to mass density in internal units */
-  p->rho_min = number_density_H_p_cm3 * m_p * p->mu_neutral / units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY); 
+  p->rho_min = number_density_H_p_cm3 *  p->mu_neutral * m_p_times_conversion_factor; 
 
   /* ------ Particle splitting parameters ---------- */
 
@@ -258,7 +264,7 @@ void hydro_props_print(const struct hydro_props *p) {
     message("Maximal smoothing length allowed: %.4f", p->h_max);
 
   if (p->rho_min != hydro_props_default_rho_min)
-    message("Minimal resolved density: %.4e", p->rho_min);
+    message("Minimal resolved density: %1.4e", p->rho_min);
 
   message("Maximal time-bin difference between neighbours: %d",
           time_bin_neighbour_max_delta_bin);
