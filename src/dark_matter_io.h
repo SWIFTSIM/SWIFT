@@ -112,7 +112,7 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     list[0] = io_make_output_field("SIDMevents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
                                    dmparts, sidm_data.num_sidm, "Number of DM-DM collisions the particle has had");
     
-    list[1] = io_make_output_field("SIDM_search_radius", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, dmparts, h,
+    list[1] = io_make_output_field("SIDM_search_radius", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, dmparts, sidm_data.h_sidm,
                                    "Co-moving smoothing lengths (FWHM of the kernel) of the DM particles");
     
     list[2] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, dmparts, rho,
