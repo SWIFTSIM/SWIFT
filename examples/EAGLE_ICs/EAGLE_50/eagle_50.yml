@@ -68,7 +68,7 @@ FOF:
   basename:                        fof_output  # Filename for the FOF outputs.
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
-  black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
+  black_hole_seed_halo_mass_Msun:  1.0e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   scale_factor_first:              0.05        # Scale-factor of first FoF black hole seeding calls.
   delta_time:                      1.00751     # Scale-factor ratio between consecutive FoF black hole seeding calls.
 
@@ -201,7 +201,7 @@ EAGLEFeedback:
 
 # EAGLE AGN model
 EAGLEAGN:
-  subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
+  subgrid_seed_mass_Msun:             1.0e4      # Black hole subgrid mass at creation time in solar masses.
   multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
   subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
   with_angmom_limiter:                0          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
@@ -214,9 +214,9 @@ EAGLEAGN:
   AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
   max_reposition_mass:                1e20       # Maximal BH mass considered for BH repositioning in solar masses (large number implies we always reposition).
   max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
-  with_reposition_velocity_threshold: 1          # Should we only reposition to particles that move slowly w.r.t. the black hole?
-  max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_ratio is 1.
-  min_reposition_velocity_threshold: -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_ratio is 1.
+  with_reposition_velocity_threshold: 0          # Should we only reposition to particles that move slowly w.r.t. the black hole?
+  max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_threshold is 1.
+  min_reposition_velocity_threshold: -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_threshold is 1.
   set_reposition_speed:               0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
   threshold_major_merger:             0.333      # Mass ratio threshold to consider a BH merger as 'major'
   threshold_minor_merger:             0.1        # Mass ratio threshold to consider a BH merger as 'minor'
