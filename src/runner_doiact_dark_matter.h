@@ -48,5 +48,7 @@ void runner_dosub_pair_dark_matter_sidm(struct runner *r, struct cell *ci, struc
 void runner_dosub_subset_dark_matter_density(struct runner *r, struct cell *ci, struct dmpart *dmparts,
                   int *ind, int count, struct cell *cj);
 
+void do_nonsym_pair_sidm(struct runner *r, struct cell *ci, struct cell *cj);
+
 
 #endif

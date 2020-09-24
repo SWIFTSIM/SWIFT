@@ -556,13 +556,12 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
         /* Get a hold of the ith part in ci. */
         struct dmpart *restrict pi = &dmparts[pid];
         
-        /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
+        /* Skip inact particles. */
+        if (!dmpart_is_active(pi, e)) continue;
         
-        const int pi_active = dmpart_is_active(pi, e);
+        /*const int pi_active = dmpart_is_active(pi, e);*/
         const float hi = pi->sidm_data.h_sidm;
         const float hig2 = hi * hi;
-        /*const float hig2 = hi * hi * dm_kernel_gamma2;*/
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
             (float)(pi->x[2] - c->loc[2])};
@@ -580,7 +579,10 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
         
         
         /* Loop over the parts in cj. */
-        for (int pjd = pid + 1; pjd < count; pjd++) {
+        for (int pjd = 0; pjd < count; pjd++) {
+            
+            /* No self interaction */
+            if (pid == pjd) continue;
             
             /* Get a pointer to the jth particle. */
             struct dmpart *restrict pj = &dmparts[pjd];
@@ -600,9 +602,9 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
             }
             
             const float hj = pj->sidm_data.h_sidm;
-            const float hjg2 = hj * hj;
+            /*const float hjg2 = hj * hj;*/
             /*const float hjg2 = hj * hj * dm_kernel_gamma2;*/
-            const int pj_active = dmpart_is_active(pj, e);
+            /*const int pj_active = dmpart_is_active(pj, e);*/
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -611,26 +613,13 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
-            const int doi = pi_active && (r2 < hig2);
-            const int doj = pj_active && (r2 < hjg2);
+            /*const int doi = pi_active && (r2 < hig2);
+            const int doj = pj_active && (r2 < hjg2);*/
             
             /* Hit or miss? */
-            /*if (doi && doj) {
+            if (r2 < hig2) {
                 
                 runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
-                
-            } else if (doi) {*/
-            if (doi) {
-                
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
-                
-            } else if (doj) {
-                
-                dx[0] = -dx[0];
-                dx[1] = -dx[1];
-                dx[2] = -dx[2];
-                
-                runner_iact_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
                 
             }
         } /* loop over the parts in cj. */
@@ -647,7 +636,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
+void do_nonsym_pair_sidm(struct runner *r, struct cell *ci,
                                      struct cell *cj) {
     
     const struct engine *e = r->e;
@@ -659,8 +648,9 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
     TIMER_TIC;
     
     /* Anything to do here? */
-    if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
-    
+    if (cj->dark_matter.count == 0 || ci->dark_matter.count == 0) return;
+    if (!cell_is_active_dark_matter(ci, e)) return;
+
     const int count_i = ci->dark_matter.count;
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
@@ -685,8 +675,8 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
         /* Get a hold of the ith part in ci. */
         struct dmpart *restrict pi = &dmparts_i[pid];
         
-        /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
+        /* Skip inactive particles. */
+        if (!dmpart_is_active(pi, e)) continue;
         
         /* Get i particle time-step */
         const integertime_t ti_step = get_integer_timestep(pi->time_bin);
@@ -699,9 +689,8 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
             dti = get_timestep(pi->time_bin, e->time_base);
         }
         
-        const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->sidm_data.h_sidm;
-        const float hig2 = hi * hi; /* * dm_kernel_gamma2;*/
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
             (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
@@ -727,8 +716,8 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
             }
             
             const float hj = pj->sidm_data.h_sidm;
-            const float hjg2 = hj * hj; /* * dm_kernel_gamma2;*/
-            const int pj_active = dmpart_is_active(pj, e);
+            /*const float hjg2 = hj * hj;
+            const int pj_active = dmpart_is_active(pj, e);*/
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -738,22 +727,36 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci,
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
             /* Hit or miss? */
-            if (r2 < hig2 && pi_active) {
+            if (r2 < hig2) {
                 
                 runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
                 
             }
-            if (r2 < hjg2 && pj_active) {
-                
-                dx[0] = -dx[0];
-                dx[1] = -dx[1];
-                dx[2] = -dx[2];
-                
-                runner_iact_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
-                
-            }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
+}
+
+/**
+ * @brief
+ *
+ * @param r The thread #runner.
+ * @param ci First #cell.
+ * @param cj Second #cell.
+ * @param timer Are we timing this?
+ */
+void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *restrict ci,
+                                    struct cell *restrict cj) {
+    
+    
+    /* here we are updating the hydro -> switch ci, cj */
+    const int do_ci_dark_matter = cj->nodeID == r->e->nodeID;
+    const int do_cj_dark_matter = ci->nodeID == r->e->nodeID;
+    
+    if (do_ci_dark_matter && ci->dark_matter.count != 0 && cj->dark_matter.count != 0)
+        do_nonsym_pair_sidm(r, ci, cj);
+    if (do_cj_dark_matter && cj->dark_matter.count != 0 && ci->dark_matter.count != 0)
+        do_nonsym_pair_sidm(r, cj, ci);
+    
 }
 
 /**
@@ -775,9 +778,14 @@ void runner_dosub_pair_dark_matter_sidm(struct runner *r, struct cell *ci, struc
     TIMER_TIC;
     
     /* Should we even bother? */
-    if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
-    if (ci->dark_matter.count == 0 || cj->dark_matter.count == 0) return;
+    const int should_do_ci = ci->dark_matter.count != 0 && cj->dark_matter.count != 0 &&
+    cell_is_active_dark_matter(ci, e);
+    const int should_do_cj = cj->dark_matter.count != 0 && ci->dark_matter.count != 0 &&
+    cell_is_active_dark_matter(cj, e);
     
+    if (!should_do_ci && !should_do_cj) return;
+    
+
     /* Get the type of pair and flip ci/cj if needed. */
     double shift[3];
     const int sid = space_getsid(s, &ci, &cj, shift);
@@ -836,6 +844,7 @@ void runner_dosub_self_dark_matter_sidm(struct runner *r, struct cell *ci) {
                 runner_dosub_pair_dark_matter_sidm(r, ci->progeny[k], ci->progeny[j]);
         }
     }
+    
     
     /* Otherwise, compute self-interaction. */
     else {

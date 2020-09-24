@@ -118,13 +118,11 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     list[2] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, dmparts, rho,
                                    "Co-moving mass densities of the particles");
 
-    list[3] = io_make_output_field_convert_dmpart("DMpos", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, dmparts, convert_dmpart_pos,
-                                                  "Co-moving position of the particles");
+    list[3] = io_make_output_field("DMParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+                                   id_or_neg_offset, "Unique ID of the particles");
 
-    list[4] = io_make_output_field_convert_dmpart("DMvel", FLOAT, 3, UNIT_CONV_SPEED, 0.f, dmparts, convert_dmpart_vel,
-                                                  "Velocities of the particles");
     
-    return 5;
+    return 4;
     
 }
 
