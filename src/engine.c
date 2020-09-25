@@ -2246,8 +2246,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Compute the mesh forces for the first time */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+
+    /* Compute mesh forces */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+
+    /* Compute mesh time-step length */
     engine_recompute_displacement_constraint(e);
+
+    e->step_props |= engine_step_prop_mesh;
   }
 
   /* No time integration. We just want the density and ghosts */
@@ -2729,15 +2735,19 @@ void engine_step(struct engine *e) {
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
+    /* We might need to drift things */
+    engine_drift_all(e, /*drift_mpole=*/0);
+
     /* Re-allocate the PM grid if we freed it... */
     // pm_mesh_allocate(e->mesh);
-
-    engine_drift_all(e, /*drift_mpole=*/0);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
+    /* Check whether we need to update the mesh time-step length */
     engine_recompute_displacement_constraint(e);
+
+    e->step_props |= engine_step_prop_mesh;
   }
 
   /* Get current CPU times.*/
@@ -4387,11 +4397,12 @@ void engine_config(int restart, int fof, struct engine *e,
       fprintf(
           e->file_timesteps,
           "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, logger=%d\n",
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d, "
+          "logger=%d\n",
           engine_step_prop_rebuild, engine_step_prop_redistribute,
           engine_step_prop_repartition, engine_step_prop_statistics,
           engine_step_prop_snapshot, engine_step_prop_restarts,
-          engine_step_prop_stf, engine_step_prop_fof,
+          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh,
           engine_step_prop_logger_index);
 
       fprintf(e->file_timesteps,
