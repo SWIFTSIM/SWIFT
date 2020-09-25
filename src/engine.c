@@ -5428,7 +5428,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
     e->mesh->ti_beg_mesh_next = e->ti_current;
     e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
-    message("%lld %lld", e->mesh->ti_beg_mesh_next, e->mesh->ti_end_mesh_next);
+    // message("%lld %lld", e->mesh->ti_beg_mesh_next, e->mesh->ti_end_mesh_next);
   }
 
   if (e->verbose)
