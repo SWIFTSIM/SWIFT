@@ -587,7 +587,7 @@ void engine_config(int restart, int fof, struct engine *e,
                    const char *restart_file);
 void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e, const char *call);
-void engine_prepare(struct engine *e);
+int engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 void engine_step(struct engine *e);
