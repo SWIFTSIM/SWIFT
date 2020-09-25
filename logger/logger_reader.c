@@ -221,11 +221,12 @@ const uint64_t *logger_reader_get_number_particles(struct logger_reader *reader,
  * @param offset_last_full_record The offset of this particle last record
  containing all the fields.
  * @param field The fields wanted in local index.
- * @param first_deriv_wanted The field that corresponds to the first derivative
- of fields (-1 if none)
- * @param second_deriv_wanted The field that corresponds to the second
- derivative of field (-1 if none)
+ * @param first The field that corresponds to the first derivative of fields (-1
+ if none)
+ * @param second The field that corresponds to the second derivative of field
+ (-1 if none)
  * @param output Pointers to the output array
+ * @param type The #part_type.
  */
 void logger_reader_read_field(struct logger_reader *reader, double time,
                               size_t offset_time,
