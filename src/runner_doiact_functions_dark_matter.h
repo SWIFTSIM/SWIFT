@@ -559,8 +559,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
         /* Skip inact particles. */
         if (!dmpart_is_active(pi, e)) continue;
         
-        /*const int pi_active = dmpart_is_active(pi, e);*/
-        const float hi = pi->sidm_data.h_sidm;
+        const float hi = pi->h;
         const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
@@ -601,7 +600,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
             
-            const float hj = pj->sidm_data.h_sidm;
+            const float hj = pj->h;
             /*const float hjg2 = hj * hj;*/
             /*const float hjg2 = hj * hj * dm_kernel_gamma2;*/
             /*const int pj_active = dmpart_is_active(pj, e);*/
@@ -612,9 +611,6 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
                 (float)(pj->x[2] - c->loc[2])};
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-            
-            /*const int doi = pi_active && (r2 < hig2);
-            const int doj = pj_active && (r2 < hjg2);*/
             
             /* Hit or miss? */
             if (r2 < hig2) {
@@ -689,7 +685,7 @@ void do_nonsym_pair_sidm(struct runner *r, struct cell *ci,
             dti = get_timestep(pi->time_bin, e->time_base);
         }
         
-        const float hi = pi->sidm_data.h_sidm;
+        const float hi = pi->h;
         const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
@@ -715,7 +711,7 @@ void do_nonsym_pair_sidm(struct runner *r, struct cell *ci,
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
             
-            const float hj = pj->sidm_data.h_sidm;
+            const float hj = pj->h;
             /*const float hjg2 = hj * hj;
             const int pj_active = dmpart_is_active(pj, e);*/
             

@@ -1656,10 +1656,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 
                 /* Check if h_max is increased */
                 h_max = max(h_max, p->h);
-                
-                /* Set SIDM search radius to the smoothing length */
-                /*if (p->sidm_data.h_sidm > 0) p->sidm_data.h_sidm = p->h;*/
-                
+                                
                 /* Calculate the time-step for passing to hydro_prepare_force, used
                  * for the evolution of alpha factors (i.e. those involved in the
                  * artificial viscosity and thermal conduction terms) */
