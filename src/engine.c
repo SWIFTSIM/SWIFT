@@ -5401,7 +5401,8 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     /* Store the previous time-step size */
     e->mesh->ti_end_mesh_last = e->mesh->ti_end_mesh_next;
     e->mesh->ti_beg_mesh_last = e->mesh->ti_beg_mesh_next;
-    const integertime_t old_dti = e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
+    const integertime_t old_dti =
+        e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
 
     if (e->step > 1 && e->mesh->ti_end_mesh_last != e->ti_current)
       error("Weird time integration issue");
@@ -5423,12 +5424,19 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     /* Make sure we are allowed to increase the timestep size */
     const integertime_t current_dti = e->step > 0 ? old_dti : max_nr_timesteps;
     if (new_dti > current_dti) {
-     if ((max_nr_timesteps - e->ti_current) % new_dti > 0) new_dti = current_dti;
+      if ((max_nr_timesteps - e->ti_current) % new_dti > 0) {
+        new_dti = current_dti;
+      }
     }
 
     e->mesh->ti_beg_mesh_next = e->ti_current;
     e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
-    // message("%lld %lld", e->mesh->ti_beg_mesh_next, e->mesh->ti_end_mesh_next);
+
+    const timebin_t bin = get_time_bin(new_dti);
+
+    if (new_dti != old_dti)
+      message("Mesh time-step changed to %e (time-bin %d)",
+              get_timestep(bin, e->time_base), bin);
   }
 
   if (e->verbose)
