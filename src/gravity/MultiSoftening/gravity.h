@@ -52,7 +52,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 }
 
 /**
- * @brief Add a contribution to this particle's potential.
+ * @brief Add a contribution to this particle's potential from the tree.
  *
  * @param gp The particle.
  * @param pot The contribution to add.
@@ -61,6 +61,18 @@ __attribute__((always_inline)) INLINE static void
 gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
 
   gp->potential += pot;
+}
+
+/**
+ * @brief Add a contribution to this particle's potential from the mesh.
+ *
+ * @param gp The particle.
+ * @param pot The contribution to add.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_add_comoving_mesh_potential(struct gpart* restrict gp, float pot) {
+
+  gp->potential_mesh += pot;
 }
 
 /**
@@ -218,6 +230,9 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
   gp->potential *= const_G;
+
+  /* Add the mesh contribution to the potential */
+  gp->potential += gp->potential_mesh;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM *= const_G;

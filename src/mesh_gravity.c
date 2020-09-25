@@ -359,7 +359,7 @@ void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
   gp->a_grav_mesh[0] = fac * a[0];
   gp->a_grav_mesh[1] = fac * a[1];
   gp->a_grav_mesh[2] = fac * a[2];
-  gravity_add_comoving_potential(gp, p);
+  gravity_add_comoving_mesh_potential(gp, p);
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = p;
   gp->a_grav_PM[0] = fac * a[0];
@@ -385,12 +385,14 @@ void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
     gp->a_grav_mesh[0] = 0.f;
     gp->a_grav_mesh[1] = 0.f;
     gp->a_grav_mesh[2] = 0.f;
+    gp->potential_mesh = 0.f;
 
     mesh_to_gpart_CIC(gp, potential, N, fac, dim);
 
     gp->a_grav_mesh[0] *= const_G;
     gp->a_grav_mesh[1] *= const_G;
     gp->a_grav_mesh[2] *= const_G;
+    gp->potential_mesh *= const_G;
   }
 }
 
@@ -416,12 +418,14 @@ void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
     gp->a_grav_mesh[0] = 0.f;
     gp->a_grav_mesh[1] = 0.f;
     gp->a_grav_mesh[2] = 0.f;
+    gp->potential_mesh = 0.f;
 
     mesh_to_gpart_CIC(gp, potential, N, fac, dim);
 
     gp->a_grav_mesh[0] *= const_G;
     gp->a_grav_mesh[1] *= const_G;
     gp->a_grav_mesh[2] *= const_G;
+    gp->potential_mesh *= const_G;
   }
 }
 
