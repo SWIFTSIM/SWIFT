@@ -44,6 +44,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  * read in to do some conversions.
  *
  * @param sp The particle to act upon
+ * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
     struct sink* sp, const struct sink_props* sink_props) {

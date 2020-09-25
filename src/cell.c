@@ -5802,7 +5802,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 }
 
 /**
- * @brief Recursively drifts the #sinks in a cell hierarchy.
+ * @brief Recursively drifts the #sink's in a cell hierarchy.
  *
  * @param c The #cell.
  * @param e The #engine (to get ti_current).
