@@ -1867,8 +1867,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
+ *
+ * @return 1 if the function drifted all particles 0 if not.
  */
-void engine_prepare(struct engine *e) {
+int engine_prepare(struct engine *e) {
 
   TIMER_TIC2;
   const ticks tic = getticks();
@@ -1927,6 +1929,10 @@ void engine_prepare(struct engine *e) {
     /* And repartition */
     engine_repartition(e);
     repartitioned = 1;
+
+    /* Reallocate the mesh */
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      pm_mesh_allocate(e->mesh);
   }
 
   /* Do we need rebuilding ? */
@@ -1934,6 +1940,8 @@ void engine_prepare(struct engine *e) {
 
     /* Let's start by drifting everybody to the current time */
     if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+
+    drifted_all = 1;
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
@@ -1961,6 +1969,8 @@ void engine_prepare(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including unskip, rebuild and reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  return drifted_all;
 }
 
 /**
@@ -2672,7 +2682,7 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
-  engine_prepare(e);
+  const int drifted_all = engine_prepare(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Print the number of active tasks */
@@ -2736,10 +2746,7 @@ void engine_step(struct engine *e) {
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
     /* We might need to drift things */
-    engine_drift_all(e, /*drift_mpole=*/0);
-
-    /* Re-allocate the PM grid if we freed it... */
-    // pm_mesh_allocate(e->mesh);
+    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
 
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
