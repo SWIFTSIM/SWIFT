@@ -35,6 +35,10 @@ struct phys_const;
 struct black_holes_props;
 struct cosmology;
 
+#define fof_props_default_group_id 2147483647
+#define fof_props_default_group_id_offset 1
+#define fof_props_default_group_link_size 20000
+
 /* MPI message required for FOF. */
 struct fof_mpi {
 

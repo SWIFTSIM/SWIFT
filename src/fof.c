@@ -44,10 +44,6 @@
 #include "proxy.h"
 #include "threadpool.h"
 
-#define fof_props_default_group_id 2147483647
-#define fof_props_default_group_id_offset 1
-#define fof_props_default_group_link_size 20000
-
 /* Constants. */
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
