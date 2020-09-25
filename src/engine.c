@@ -1787,10 +1787,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     message("updating particle counts took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-    /* Re-compute the maximal RMS displacement constraint */
-    // if (e->policy & engine_policy_cosmology)
-    //  engine_recompute_displacement_constraint(e);
-
 #ifdef SWIFT_DEBUG_CHECKS
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
@@ -5399,15 +5395,19 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   if (e->verbose)
     message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
 
-  /* Update the time-step */
+  /* Update the mesh time-step */
   if (e->s->periodic) {
 
+    /* Store the previous time-step size */
     e->mesh->ti_end_mesh_last = e->mesh->ti_end_mesh_next;
     e->mesh->ti_beg_mesh_last = e->mesh->ti_beg_mesh_next;
+    const integertime_t old_dti = e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
 
     if (e->step > 1 && e->mesh->ti_end_mesh_last != e->ti_current)
       error("Weird time integration issue");
 
+    /* What is the allowed time-step size
+     * Note: The cosmology factor is 1 in non-cosmo runs */
     double dt_mesh =
         e->dt_max_RMS_displacement * e->cosmology->time_step_factor;
     dt_mesh = min(dt_mesh, e->dt_max);
@@ -5415,17 +5415,16 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     /* Convert to integer time */
     integertime_t new_dti = (integertime_t)(dt_mesh * e->time_base_inv);
 
+    /* Find the max integer time-step on the timeline below new_dti */
     integertime_t dti_timeline = max_nr_timesteps;
     while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
     new_dti = dti_timeline;
 
     /* Make sure we are allowed to increase the timestep size */
-    // const integertime_t current_dti = e->step > 0 ?
-    //  get_integer_timestep(e->mesh->ti_end_mesh_last -
-    //  e->mesh->ti_beg_mesh_last) : max_nr_timesteps;
-    // if (new_dti > current_dti) {
-    //  if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
-    //}
+    const integertime_t current_dti = e->step > 0 ? old_dti : max_nr_timesteps;
+    if (new_dti > current_dti) {
+     if ((max_nr_timesteps - e->ti_current) % new_dti > 0) new_dti = current_dti;
+    }
 
     e->mesh->ti_beg_mesh_next = e->ti_current;
     e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
