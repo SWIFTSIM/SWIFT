@@ -509,6 +509,10 @@ struct engine {
   /* The globally agreed runtime, in hours. */
   float runtime;
 
+  /* Time-integration mesh kick to apply to the particle velocities for
+   * snapshots */
+  float dt_kick_grav_mesh_for_io;
+
   /* Label of the run */
   char run_name[PARSER_MAX_LINE_SIZE];
 

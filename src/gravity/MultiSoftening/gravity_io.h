@@ -44,6 +44,7 @@ INLINE static void convert_gpart_vel(const struct engine* e,
   const struct cosmology* cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
+  const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
 
   const integertime_t ti_beg = get_integer_time_begin(ti_current, gp->time_bin);
   const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
@@ -54,15 +55,6 @@ INLINE static void convert_gpart_vel(const struct engine* e,
                             cosmo) -
       kick_get_grav_kick_dt(ti_beg, (ti_beg + ti_end) / 2, time_base,
                             with_cosmology, cosmo);
-
-  /* Get time-step since the last mesh kick */
-  const float dt_kick_grav_mesh =
-      kick_get_grav_kick_dt(e->mesh->ti_beg_mesh_next, ti_current, time_base,
-                            with_cosmology, cosmo) -
-      kick_get_grav_kick_dt(
-          e->mesh->ti_beg_mesh_next,
-          (e->mesh->ti_beg_mesh_next + e->mesh->ti_end_mesh_next) / 2,
-          time_base, with_cosmology, cosmo);
 
   /* Extrapolate the velocites to the current time */
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;

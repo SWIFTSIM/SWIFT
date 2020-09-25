@@ -71,6 +71,7 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "kick.h"
 #include "line_of_sight.h"
 #include "logger.h"
 #include "logger_io.h"
@@ -3715,6 +3716,19 @@ void engine_dump_snapshot(struct engine *e) {
   engine_collect_stars_counter(e);
 #endif
 
+  /* Get time-step since the last mesh kick */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+    const int with_cosmology = e->policy & engine_policy_cosmology;
+
+    e->dt_kick_grav_mesh_for_io =
+        kick_get_grav_kick_dt(e->mesh->ti_beg_mesh_next, e->ti_current,
+                              e->time_base, with_cosmology, e->cosmology) -
+        kick_get_grav_kick_dt(
+            e->mesh->ti_beg_mesh_next,
+            (e->mesh->ti_beg_mesh_next + e->mesh->ti_end_mesh_next) / 2,
+            e->time_base, with_cosmology, e->cosmology);
+  }
+
 /* Dump (depending on the chosen strategy) ... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -4016,6 +4030,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
       params, "TimeIntegration:max_dt_RMS_factor", 0.25);
+  e->dt_kick_grav_mesh_for_io = 0.f;
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
   e->time_first_statistics =
