@@ -964,7 +964,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
-  const float hydro_rho_min = e->hydro_properties->rho_min;
+  const float hydro_rho_min_inv = e->hydro_properties->rho_min_inv;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
@@ -1015,7 +1015,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         left[count] = 0.f;
 
         /* Calculate the particle based maximum smoothing length */
-        const float hydro_h_max_part = cbrtf(parts[k].mass / hydro_rho_min);
+        const float hydro_h_max_part = cbrtf(parts[k].mass * hydro_rho_min_inv);
 
         /* See if we need to use the particle based or the global maximum
          * smoothing length */
@@ -1051,7 +1051,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
 
         /* Find the maximal smoothing length for this specific particle */
-        const float hydro_h_max_part = cbrtf(p->mass / hydro_rho_min);
+        const float hydro_h_max_part = cbrtf(p->mass * hydro_rho_min_inv);
 
         /* Current maximal smoothing length */
         const float current_hydro_h_max = min(hydro_h_max, hydro_h_max_part);

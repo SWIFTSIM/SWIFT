@@ -4417,7 +4417,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
-      if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+      if (e->nodeID == 0) hydro_props_print(e->hydro_properties, e->physical_constants);
       if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
     }
 
