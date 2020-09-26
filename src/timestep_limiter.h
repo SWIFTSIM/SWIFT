@@ -108,6 +108,12 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
 
     const integertime_t ti_beg_new = ti_beg_old + (k - 1) * dti_new;
 
+    /* End of the old half step */
+    const integertime_t ti_end_half_old = ti_beg_old + dti_old / 2;
+
+    /* End of the new half step */
+    const integertime_t ti_end_half_new = ti_beg_new + dti_new / 2;
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some basic safety checks */
     if (ti_beg_old >= e->ti_current)
@@ -131,48 +137,35 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     double dt_kick_grav = 0., dt_kick_hydro = 0., dt_kick_therm = 0.,
            dt_kick_corr = 0.;
 
-    /* Now we need to reverse the kick1... (the dt are negative here) */
-    if (with_cosmology) {
-      dt_kick_hydro = -cosmology_get_hydro_kick_factor(
-          cosmo, ti_beg_old, ti_beg_old + dti_old / 2);
-      dt_kick_grav = -cosmology_get_grav_kick_factor(cosmo, ti_beg_old,
-                                                     ti_beg_old + dti_old / 2);
-      dt_kick_therm = -cosmology_get_therm_kick_factor(
-          cosmo, ti_beg_old, ti_beg_old + dti_old / 2);
-      dt_kick_corr = -cosmology_get_corr_kick_factor(cosmo, ti_beg_old,
-                                                     ti_beg_old + dti_old / 2);
-    } else {
-      dt_kick_hydro = -(dti_old / 2) * time_base;
-      dt_kick_grav = -(dti_old / 2) * time_base;
-      dt_kick_therm = -(dti_old / 2) * time_base;
-      dt_kick_corr = -(dti_old / 2) * time_base;
-    }
+    /* Now we need to reverse the kick1...
+     * Note the minus sign! (the dt are negative here) */
+    dt_kick_hydro = -kick_get_hydro_kick_dt(ti_beg_old, ti_end_half_old,
+                                            time_base, with_cosmology, cosmo);
+    dt_kick_grav = -kick_get_grav_kick_dt(ti_beg_old, ti_end_half_old,
+                                          time_base, with_cosmology, cosmo);
+    dt_kick_therm = -kick_get_therm_kick_dt(ti_beg_old, ti_end_half_old,
+                                            time_base, with_cosmology, cosmo);
+    dt_kick_corr = -kick_get_corr_kick_dt(ti_beg_old, ti_end_half_old,
+                                          time_base, with_cosmology, cosmo);
 
     kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm,
               dt_kick_corr, e->cosmology, e->hydro_properties, e->entropy_floor,
-              ti_beg_old + dti_old / 2, ti_beg_old, 0, 0);
+              ti_end_half_old, ti_beg_old, -1, -1);
 
     /* ...and apply the new one (dt is positiive).
      * This brings us to the current time. */
-    if (with_cosmology) {
-      dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, ti_beg_new,
-                                                      ti_beg_new + dti_new / 2);
-      dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg_new,
-                                                    ti_beg_new + dti_new / 2);
-      dt_kick_therm = cosmology_get_therm_kick_factor(cosmo, ti_beg_new,
-                                                      ti_beg_new + dti_new / 2);
-      dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, ti_beg_new,
-                                                    ti_beg_new + dti_new / 2);
-    } else {
-      dt_kick_hydro = (ti_beg_new - ti_beg_old) * time_base;
-      dt_kick_grav = (ti_beg_new - ti_beg_old) * time_base;
-      dt_kick_therm = (ti_beg_new - ti_beg_old) * time_base;
-      dt_kick_corr = (ti_beg_new - ti_beg_old) * time_base;
-    }
+    dt_kick_hydro = kick_get_hydro_kick_dt(ti_beg_old, ti_beg_new, time_base,
+                                           with_cosmology, cosmo);
+    dt_kick_grav = kick_get_grav_kick_dt(ti_beg_old, ti_beg_new, time_base,
+                                         with_cosmology, cosmo);
+    dt_kick_therm = kick_get_therm_kick_dt(ti_beg_old, ti_beg_new, time_base,
+                                           with_cosmology, cosmo);
+    dt_kick_corr = kick_get_corr_kick_dt(ti_beg_old, ti_beg_new, time_base,
+                                         with_cosmology, cosmo);
 
     kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm,
               dt_kick_corr, e->cosmology, e->hydro_properties, e->entropy_floor,
-              ti_beg_old, ti_beg_new, 0, 0);
+              ti_beg_old, ti_beg_new, -1, -1);
 
     /* The particle has now been kicked to the current time */
 
@@ -188,25 +181,18 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
 
       /* Apply the missing kick1 */
 
-      if (with_cosmology) {
-        dt_kick_hydro = cosmology_get_hydro_kick_factor(
-            cosmo, ti_beg_new, ti_beg_new + dti_new / 2);
-        dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg_new,
-                                                      ti_beg_new + dti_new / 2);
-        dt_kick_therm = cosmology_get_therm_kick_factor(
-            cosmo, ti_beg_new, ti_beg_new + dti_new / 2);
-        dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, ti_beg_new,
-                                                      ti_beg_new + dti_new / 2);
-      } else {
-        dt_kick_hydro = (dti_new / 2) * time_base;
-        dt_kick_grav = (dti_new / 2) * time_base;
-        dt_kick_therm = (dti_new / 2) * time_base;
-        dt_kick_corr = (dti_new / 2) * time_base;
-      }
+      dt_kick_hydro = kick_get_hydro_kick_dt(ti_beg_new, ti_end_half_new,
+                                             time_base, with_cosmology, cosmo);
+      dt_kick_grav = kick_get_grav_kick_dt(ti_beg_new, ti_end_half_new,
+                                           time_base, with_cosmology, cosmo);
+      dt_kick_therm = kick_get_therm_kick_dt(ti_beg_new, ti_end_half_new,
+                                             time_base, with_cosmology, cosmo);
+      dt_kick_corr = kick_get_corr_kick_dt(ti_beg_new, ti_end_half_new,
+                                           time_base, with_cosmology, cosmo);
 
       kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm,
                 dt_kick_corr, e->cosmology, e->hydro_properties,
-                e->entropy_floor, ti_beg_new, ti_beg_new + dti_new / 2, 0, 0);
+                e->entropy_floor, ti_beg_new, ti_end_half_new, -1, -1);
 
       /* Return the new end-of-step for this particle */
       return ti_beg_new + dti_new;
