@@ -935,12 +935,25 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   struct scheduler *s = &e->sched;
   const int periodic = e->s->periodic;
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
+  const int stars_only_gravity =
+      (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
 
   /* Are we in a super-cell ? */
   if (c->grav.super == c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
+
+      if (stars_only_gravity) {
+
+        /* In the special case where we have stars that just act under gravity
+         * we must create their drift task here and not just copy over the hydro
+         * behaviour. */
+        c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
+                                           task_subtype_none, 0, 0, c, NULL);
+
+        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+      }
 
       c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
                                         task_subtype_none, 0, 0, c, NULL);
