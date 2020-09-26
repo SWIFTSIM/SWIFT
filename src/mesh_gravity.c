@@ -309,7 +309,7 @@ void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (gp->a_grav_PM[0] != 0. || gp->potential_PM != 0.)
+  if (gp->a_grav_mesh[0] != 0. || gp->potential_mesh != 0.)
     error("Particle with non-initalised stuff");
 #endif
 
@@ -360,12 +360,6 @@ void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
   gp->a_grav_mesh[1] = fac * a[1];
   gp->a_grav_mesh[2] = fac * a[2];
   gravity_add_comoving_mesh_potential(gp, p);
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->potential_PM = p;
-  gp->a_grav_PM[0] = fac * a[0];
-  gp->a_grav_PM[1] = fac * a[1];
-  gp->a_grav_PM[2] = fac * a[2];
-#endif
 }
 
 void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
