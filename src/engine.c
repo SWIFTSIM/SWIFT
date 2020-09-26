@@ -5312,6 +5312,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const ticks tic = getticks();
 
   /* Get the cosmological information */
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float Om = cosmo->Omega_m;
   const float Ob = cosmo->Omega_b;
@@ -5320,157 +5321,160 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const float G_newton = e->physical_constants->const_newton_G;
   const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
-  /* Start by reducing the minimal mass of each particle type */
-  float min_mass[swift_type_count] = {
-      e->s->min_part_mass, e->s->min_gpart_mass, FLT_MAX,
-      e->s->min_sink_mass, e->s->min_spart_mass, e->s->min_bpart_mass};
+  if (with_cosmology) {
+
+    /* Start by reducing the minimal mass of each particle type */
+    float min_mass[swift_type_count] = {
+        e->s->min_part_mass, e->s->min_gpart_mass, FLT_MAX,
+        e->s->min_sink_mass, e->s->min_spart_mass, e->s->min_bpart_mass};
 
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
+                  MPI_COMM_WORLD);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the minimal mass collection worked */
-  float min_part_mass_check = FLT_MAX;
-  for (size_t i = 0; i < e->s->nr_parts; ++i) {
-    if (e->s->parts[i].time_bin >= num_time_bins) continue;
-    min_part_mass_check =
-        min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
-  }
-  if (min_part_mass_check < min_mass[swift_type_gas])
-    error("Error collecting minimal mass of gas particles.");
+    /* Check that the minimal mass collection worked */
+    float min_part_mass_check = FLT_MAX;
+    for (size_t i = 0; i < e->s->nr_parts; ++i) {
+      if (e->s->parts[i].time_bin >= num_time_bins) continue;
+      min_part_mass_check =
+          min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
+    }
+    if (min_part_mass_check < min_mass[swift_type_gas])
+      error("Error collecting minimal mass of gas particles.");
 #endif
 
-  /* Do the same for the velocity norm sum */
-  float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
-                                      e->s->sum_gpart_vel_norm,
-                                      0.f,
-                                      e->s->sum_sink_vel_norm,
-                                      e->s->sum_spart_vel_norm,
-                                      e->s->sum_spart_vel_norm};
+    /* Do the same for the velocity norm sum */
+    float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
+                                        e->s->sum_gpart_vel_norm,
+                                        0.f,
+                                        e->s->sum_sink_vel_norm,
+                                        e->s->sum_spart_vel_norm,
+                                        e->s->sum_spart_vel_norm};
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
+                  MPI_COMM_WORLD);
 #endif
 
-  /* Get the counts of each particle types */
-  const long long total_nr_baryons =
-      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dm_gparts =
-      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
-  float count_parts[swift_type_count] = {
-      (float)e->total_nr_parts,
-      (float)total_nr_dm_gparts,
-      (float)e->total_nr_DM_background_gparts,
-      (float)e->total_nr_sinks,
-      (float)e->total_nr_sparts,
-      (float)e->total_nr_bparts};
+    /* Get the counts of each particle types */
+    const long long total_nr_baryons =
+        e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
+    const long long total_nr_dm_gparts = e->total_nr_gparts -
+                                         e->total_nr_DM_background_gparts -
+                                         total_nr_baryons;
+    float count_parts[swift_type_count] = {
+        (float)e->total_nr_parts,
+        (float)total_nr_dm_gparts,
+        (float)e->total_nr_DM_background_gparts,
+        (float)e->total_nr_sinks,
+        (float)e->total_nr_sparts,
+        (float)e->total_nr_bparts};
 
-  /* Count of particles for the two species */
-  const float N_dm = count_parts[1];
-  const float N_b =
-      count_parts[0] + count_parts[3] + count_parts[4] + count_parts[5];
+    /* Count of particles for the two species */
+    const float N_dm = count_parts[1];
+    const float N_b =
+        count_parts[0] + count_parts[3] + count_parts[4] + count_parts[5];
 
-  /* Peculiar motion norm for the two species */
-  const float vel_norm_dm = vel_norm[1];
-  const float vel_norm_b =
-      vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
+    /* Peculiar motion norm for the two species */
+    const float vel_norm_dm = vel_norm[1];
+    const float vel_norm_b =
+        vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
 
-  /* Mesh forces smoothing scale */
-  float r_s;
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
-    r_s = e->mesh->r_s;
-  else
-    r_s = FLT_MAX;
+    /* Mesh forces smoothing scale */
+    float r_s;
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      r_s = e->mesh->r_s;
+    else
+      r_s = FLT_MAX;
 
-  float dt_dm = FLT_MAX, dt_b = FLT_MAX;
+    float dt_dm = FLT_MAX, dt_b = FLT_MAX;
 
-  /* DM case */
-  if (N_dm > 0.f) {
+    /* DM case */
+    if (N_dm > 0.f) {
 
-    /* Minimal mass for the DM */
-    const float min_mass_dm = min_mass[1];
+      /* Minimal mass for the DM */
+      const float min_mass_dm = min_mass[1];
 
-    /* Inter-particle sepration for the DM */
-    const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit0));
+      /* Inter-particle sepration for the DM */
+      const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit0));
 
-    /* RMS peculiar motion for the DM */
-    const float rms_vel_dm = vel_norm_dm / N_dm;
+      /* RMS peculiar motion for the DM */
+      const float rms_vel_dm = vel_norm_dm / N_dm;
 
-    /* Time-step based on maximum displacement */
-    dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
-  }
-
-  /* Baryon case */
-  if (N_b > 0.f) {
-
-    /* Minimal mass for the baryons */
-    const float min_mass_b =
-        min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
-
-    /* Inter-particle sepration for the baryons */
-    const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
-
-    /* RMS peculiar motion for the baryons */
-    const float rms_vel_b = vel_norm_b / N_b;
-
-    /* Time-step based on maximum displacement */
-    dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
-  }
-
-  /* Use the minimum */
-  const float dt = min(dt_dm, dt_b);
-
-  /* Apply the dimensionless factor */
-  e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
-
-  if (e->verbose)
-    message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
-
-  /* Update the mesh time-step */
-  if (e->s->periodic) {
-
-    /* Store the previous time-step size */
-    e->mesh->ti_end_mesh_last = e->mesh->ti_end_mesh_next;
-    e->mesh->ti_beg_mesh_last = e->mesh->ti_beg_mesh_next;
-    const integertime_t old_dti =
-        e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
-
-    if (e->step > 1 && e->mesh->ti_end_mesh_last != e->ti_current)
-      error("Weird time integration issue");
-
-    /* What is the allowed time-step size
-     * Note: The cosmology factor is 1 in non-cosmo runs */
-    double dt_mesh =
-        e->dt_max_RMS_displacement * e->cosmology->time_step_factor;
-    dt_mesh = min(dt_mesh, e->dt_max);
-
-    /* Convert to integer time */
-    integertime_t new_dti = (integertime_t)(dt_mesh * e->time_base_inv);
-
-    /* Find the max integer time-step on the timeline below new_dti */
-    integertime_t dti_timeline = max_nr_timesteps;
-    while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
-    new_dti = dti_timeline;
-
-    /* Make sure we are allowed to increase the timestep size */
-    const integertime_t current_dti = e->step > 0 ? old_dti : max_nr_timesteps;
-    if (new_dti > current_dti) {
-      if ((max_nr_timesteps - e->ti_current) % new_dti > 0) {
-        new_dti = current_dti;
-      }
+      /* Time-step based on maximum displacement */
+      dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
     }
 
-    e->mesh->ti_beg_mesh_next = e->ti_current;
-    e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
+    /* Baryon case */
+    if (N_b > 0.f) {
 
-    const timebin_t bin = get_time_bin(new_dti);
+      /* Minimal mass for the baryons */
+      const float min_mass_b =
+          min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
 
-    if (new_dti != old_dti)
-      message("Mesh time-step changed to %e (time-bin %d)",
-              get_timestep(bin, e->time_base), bin);
+      /* Inter-particle sepration for the baryons */
+      const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
+
+      /* RMS peculiar motion for the baryons */
+      const float rms_vel_b = vel_norm_b / N_b;
+
+      /* Time-step based on maximum displacement */
+      dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
+    }
+
+    /* Use the minimum */
+    const float dt = min(dt_dm, dt_b);
+
+    /* Apply the dimensionless factor */
+    e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+
+    if (e->verbose)
+      message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
   }
+
+  /* Now, update the mesh time-step */
+
+  /* Store the previous time-step size */
+  e->mesh->ti_end_mesh_last = e->mesh->ti_end_mesh_next;
+  e->mesh->ti_beg_mesh_last = e->mesh->ti_beg_mesh_next;
+  const integertime_t old_dti =
+      e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->step > 1 && e->mesh->ti_end_mesh_last != e->ti_current)
+    error("Weird time integration issue");
+#endif
+
+  /* What is the allowed time-step size
+   * Note: The cosmology factor is 1 in non-cosmo runs */
+  double dt_mesh = e->dt_max_RMS_displacement * e->cosmology->time_step_factor;
+  dt_mesh = min(dt_mesh, e->dt_max);
+
+  /* Convert to integer time */
+  integertime_t new_dti = (integertime_t)(dt_mesh * e->time_base_inv);
+
+  /* Find the max integer time-step on the timeline below new_dti */
+  integertime_t dti_timeline = max_nr_timesteps;
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
+  new_dti = dti_timeline;
+
+  /* Make sure we are allowed to increase the timestep size */
+  const integertime_t current_dti = e->step > 0 ? old_dti : max_nr_timesteps;
+  if (new_dti > current_dti) {
+    if ((max_nr_timesteps - e->ti_current) % new_dti > 0) {
+      new_dti = current_dti;
+    }
+  }
+
+  e->mesh->ti_beg_mesh_next = e->ti_current;
+  e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
+
+  const timebin_t bin = get_time_bin(new_dti);
+
+  if (new_dti != old_dti)
+    message("Mesh time-step changed to %e (time-bin %d)",
+            get_timestep(bin, e->time_base), bin);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
