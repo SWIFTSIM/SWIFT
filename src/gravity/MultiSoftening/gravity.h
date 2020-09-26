@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
+gravity_add_comoving_potential(struct gpart* restrict gp, const float pot) {
 
   gp->potential += pot;
 }
@@ -70,7 +70,8 @@ gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_add_comoving_mesh_potential(struct gpart* restrict gp, float pot) {
+gravity_add_comoving_mesh_potential(struct gpart* restrict gp,
+                                    const float pot) {
 
   gp->potential_mesh += pot;
 }
@@ -161,11 +162,9 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->potential = 0.f;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->potential_PM = 0.f;
 
   /* Track accelerations of each component. */
   for (int i = 0; i < 3; i++) {
-    gp->a_grav_PM[i] = 0.f;
     gp->a_grav_p2p[i] = 0.f;
     gp->a_grav_m2p[i] = 0.f;
     gp->a_grav_m2l[i] = 0.f;
@@ -235,9 +234,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->potential += gp->potential_mesh;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->potential_PM *= const_G;
   for (int i = 0; i < 3; i++) {
-    gp->a_grav_PM[i] *= const_G;
     gp->a_grav_p2p[i] *= const_G;
     gp->a_grav_m2p[i] *= const_G;
     gp->a_grav_m2l[i] *= const_G;

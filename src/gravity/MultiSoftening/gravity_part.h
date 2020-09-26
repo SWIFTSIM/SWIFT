@@ -95,12 +95,6 @@ struct gpart {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  /*! Acceleration taken from the mesh only */
-  float a_grav_PM[3];
-
-  /*! Potential taken from the mesh only */
-  float potential_PM;
-
   /* Acceleration taken from each component of the tree */
   float a_grav_p2p[3];
   float a_grav_m2p[3];
