@@ -355,10 +355,8 @@ INLINE static float SESAME_pressure_from_internal_energy(
     intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
                (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
   } else {
-    intp_rho = 1.;
+    intp_rho = 1.f;
   }
-
-  // Check for duplicates in SESAME tables before interpolation
   if (mat->table_log_u_rho_T[idx_rho * mat->num_T + (idx_u_1 + 1)] !=
       mat->table_log_u_rho_T[idx_rho * mat->num_T + idx_u_1]) {
     intp_u_1 =
@@ -366,10 +364,8 @@ INLINE static float SESAME_pressure_from_internal_energy(
         (mat->table_log_u_rho_T[idx_rho * mat->num_T + (idx_u_1 + 1)] -
          mat->table_log_u_rho_T[idx_rho * mat->num_T + idx_u_1]);
   } else {
-    intp_u_1 = 1.;
+    intp_u_1 = 1.f;
   }
-
-  // Check for duplicates in SESAME tables before interpolation
   if (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] !=
       mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) {
     intp_u_2 =
@@ -377,7 +373,7 @@ INLINE static float SESAME_pressure_from_internal_energy(
         (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] -
          mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]);
   } else {
-    intp_u_2 = 1.;
+    intp_u_2 = 1.f;
   }
 
   // Table values
@@ -484,10 +480,8 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
     intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
                (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
   } else {
-    intp_rho = 1.;
+    intp_rho = 1.f;
   }
-
-  // Check for duplicates in SESAME tables before interpolation
   if (mat->table_log_u_rho_T[idx_rho * mat->num_T + (idx_u_1 + 1)] !=
       mat->table_log_u_rho_T[idx_rho * mat->num_T + idx_u_1]) {
     intp_u_1 =
@@ -495,10 +489,8 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
         (mat->table_log_u_rho_T[idx_rho * mat->num_T + (idx_u_1 + 1)] -
          mat->table_log_u_rho_T[idx_rho * mat->num_T + idx_u_1]);
   } else {
-    intp_u_1 = 1.;
+    intp_u_1 = 1.f;
   }
-
-  // Check for duplicates in SESAME tables before interpolation
   if (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] !=
       mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]) {
     intp_u_2 =
@@ -506,7 +498,7 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
         (mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + (idx_u_2 + 1)] -
          mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_u_2]);
   } else {
-    intp_u_2 = 1.;
+    intp_u_2 = 1.f;
   }
 
   // Table values
@@ -541,6 +533,13 @@ INLINE static float SESAME_soundspeed_from_internal_energy(
   c_2 = logf(c_2);
   c_3 = logf(c_3);
   c_4 = logf(c_4);
+
+  // If below the minimum u at this rho then just use the lowest table values
+  if ((idx_rho > 0.f) &&
+      ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (c_1 > c_2) || (c_3 > c_4))) {
+    intp_u_1 = 0;
+    intp_u_2 = 0;
+  }
 
   c = (1.f - intp_rho) * ((1.f - intp_u_1) * c_1 + intp_u_1 * c_2) +
       intp_rho * ((1.f - intp_u_2) * c_3 + intp_u_2 * c_4);
