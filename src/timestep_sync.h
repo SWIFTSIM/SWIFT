@@ -56,8 +56,6 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
     return;
   }
 
-  // message(" Synchronizing particle! %lld old bin=%d", p->id, p->time_bin);
-
   /* We want to make the particle finish it's time-step now. */
 
   /* Start by recovering the start and end point of the particle's time-step. */
@@ -68,6 +66,7 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
 
   /* Old time-step length on the time-line */
   const integertime_t old_dti = old_ti_end - old_ti_beg;
+  const integertime_t ti_end_half_old = old_ti_beg + old_dti / 2;
 
   /* The actual time-step size this particle will use */
   const integertime_t new_ti_beg = old_ti_beg;
@@ -96,47 +95,40 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   double dt_kick_grav = 0., dt_kick_hydro = 0., dt_kick_therm = 0.,
          dt_kick_corr = 0.;
 
-  /* Now we need to reverse the kick1... (the dt are negative here) */
-  if (with_cosmology) {
-    dt_kick_hydro = -cosmology_get_hydro_kick_factor(cosmo, old_ti_beg,
-                                                     old_ti_beg + old_dti / 2);
-    dt_kick_grav = -cosmology_get_grav_kick_factor(cosmo, old_ti_beg,
-                                                   old_ti_beg + old_dti / 2);
-    dt_kick_therm = -cosmology_get_therm_kick_factor(cosmo, old_ti_beg,
-                                                     old_ti_beg + old_dti / 2);
-    dt_kick_corr = -cosmology_get_corr_kick_factor(cosmo, old_ti_beg,
-                                                   old_ti_beg + old_dti / 2);
-  } else {
-    dt_kick_hydro = -(old_dti / 2) * time_base;
-    dt_kick_grav = -(old_dti / 2) * time_base;
-    dt_kick_therm = -(old_dti / 2) * time_base;
-    dt_kick_corr = -(old_dti / 2) * time_base;
-  }
+  /* Now we need to reverse the kick1...
+   * Note the minus sign! (the dt are negative here) */
+  dt_kick_hydro = -kick_get_hydro_kick_dt(old_ti_beg, ti_end_half_old,
+                                          time_base, with_cosmology, cosmo);
+  dt_kick_grav = -kick_get_grav_kick_dt(old_ti_beg, ti_end_half_old, time_base,
+                                        with_cosmology, cosmo);
+  dt_kick_therm = -kick_get_therm_kick_dt(old_ti_beg, ti_end_half_old,
+                                          time_base, with_cosmology, cosmo);
+  dt_kick_corr = -kick_get_corr_kick_dt(old_ti_beg, ti_end_half_old, time_base,
+                                        with_cosmology, cosmo);
 
-  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm, dt_kick_corr,
-            e->cosmology, e->hydro_properties, e->entropy_floor,
-            old_ti_beg + old_dti / 2, old_ti_beg, 0, 0);
+  /* Note that there is no need to change the mesh integration as we
+   * can't go back more than one global step */
+  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, /*dt_kick_mesh_grav=*/0.,
+            dt_kick_therm, dt_kick_corr, e->cosmology, e->hydro_properties,
+            e->entropy_floor, ti_end_half_old, old_ti_beg,
+            /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
 
   /* We can now produce a kick to the current point */
-  if (with_cosmology) {
-    dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, new_ti_beg,
-                                                    new_ti_beg + new_dti);
-    dt_kick_grav =
-        cosmology_get_grav_kick_factor(cosmo, old_ti_beg, new_ti_beg + new_dti);
-    dt_kick_therm = cosmology_get_therm_kick_factor(cosmo, old_ti_beg,
-                                                    new_ti_beg + new_dti);
-    dt_kick_corr =
-        cosmology_get_corr_kick_factor(cosmo, old_ti_beg, new_ti_beg + new_dti);
-  } else {
-    dt_kick_hydro = (new_dti)*time_base;
-    dt_kick_grav = (new_dti)*time_base;
-    dt_kick_therm = (new_dti)*time_base;
-    dt_kick_corr = (new_dti)*time_base;
-  }
+  dt_kick_hydro = kick_get_hydro_kick_dt(new_ti_beg, new_ti_end, time_base,
+                                         with_cosmology, cosmo);
+  dt_kick_grav = kick_get_grav_kick_dt(new_ti_beg, new_ti_end, time_base,
+                                       with_cosmology, cosmo);
+  dt_kick_therm = kick_get_therm_kick_dt(new_ti_beg, new_ti_end, time_base,
+                                         with_cosmology, cosmo);
+  dt_kick_corr = kick_get_corr_kick_dt(new_ti_beg, new_ti_end, time_base,
+                                       with_cosmology, cosmo);
 
-  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, 0., dt_kick_therm, dt_kick_corr,
-            e->cosmology, e->hydro_properties, e->entropy_floor, new_ti_beg,
-            new_ti_beg + new_dti, 0, 0);
+  /* Note that there is no need to change the mesh integration as we
+   * can't go back more than one global step */
+  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, /*dt_kick_mesh_grav=*/0.,
+            dt_kick_therm, dt_kick_corr, e->cosmology, e->hydro_properties,
+            e->entropy_floor, new_ti_beg, new_ti_end,
+            /*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
 
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
