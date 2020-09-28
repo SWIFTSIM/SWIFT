@@ -147,10 +147,12 @@ static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
  * @param depth the depth of the parent node.
  * @param key the full key of the eventual leaf node.
  * @param keylen the numbers of bytes in the full key.
- * @param value pointer that will be stored as the value of the leaf node.
+ * @param value a value to be stored at the leaf node. Note -1 is used as the
+ *        NULL value, so storing signed values needs care and we limit the
+ *        range of unsigned values.
  */
 void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
-                               uint8_t *key, uint8_t keylen, void *value) {
+                               uint8_t *key, uint8_t keylen, int64_t value) {
 
   /* Check if keypart this already exists at this level and add new child if
    * not. */
@@ -158,6 +160,7 @@ void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
   struct memuse_rnode *child = memuse_rnode_lookup(node, keypart);
   if (child == NULL) {
     child = (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    child->value = -1;
     child->keypart = keypart;
     memuse_rnode_add_child(node, child);
   }
@@ -171,7 +174,7 @@ void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
     if (child->ptr != NULL)
       message("Overwriting rnode value: %p with %p", child->ptr, value);
 #endif
-    child->ptr = value;
+    child->value = value;
     return;
   }
 
@@ -258,9 +261,9 @@ void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
   //    }
   //}
 
-  if (node->ptr != NULL || full) {
-    printf("dump @ depth: %d keypart: %d key: %p value: %p\n", depth,
-           node->keypart, keyparts.ptr, node->ptr);
+  if ((node->value != -1) || full) {
+    printf("dump @ depth: %d keypart: %d key: %p value: %" PRId64 "\n", depth,
+           node->keypart, keyparts.ptr, node->value);
   }
 
   /* Recurse to all children. */
