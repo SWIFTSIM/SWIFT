@@ -171,8 +171,8 @@ void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
     /* Our destination node. */
 
 #if SWIFT_DEBUG_CHECKS
-    if (child->ptr != NULL)
-      message("Overwriting rnode value: %p with %p", child->ptr, value);
+    if (child->value != -1)
+      message("Overwriting rnode value: %ld with %ld", child->value, value);
 #endif
     child->value = value;
     return;
