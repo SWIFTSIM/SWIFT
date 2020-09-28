@@ -423,6 +423,37 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
 
 /**
  * @brief Returns the total metallicity (metal mass fraction) of the
+ * gas particle to be used in feedback/enrichment related routines.
+ *
+ * We return the un-smoothed quantity here as the star will smooth
+ * over its gas neighbours.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction_for_feedback(
+    const struct part* restrict p) {
+
+  return p->chemistry_data.metal_mass_fraction_total;
+}
+
+/**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * gas particle to be used in feedback/enrichment related routines.
+ *
+ * We return the un-smoothed quantity here as the star will smooth
+ * over its gas neighbours.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
+
+  return p->chemistry_data.metal_mass_fraction;
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
  * star particle to be used in feedback/enrichment related routines.
  *
  * EAGLE uses smooth abundances for everything.
@@ -430,7 +461,7 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
  * @param sp Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
-chemistry_get_total_metal_mass_fraction_for_feedback(
+chemistry_get_star_total_metal_mass_fraction_for_feedback(
     const struct spart* restrict sp) {
 
   return sp->chemistry_data.smoothed_metal_mass_fraction_total;
@@ -445,7 +476,7 @@ chemistry_get_total_metal_mass_fraction_for_feedback(
  * @param sp Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float const*
-chemistry_get_metal_mass_fraction_for_feedback(
+chemistry_get_star_metal_mass_fraction_for_feedback(
     const struct spart* restrict sp) {
 
   return sp->chemistry_data.smoothed_metal_mass_fraction;
