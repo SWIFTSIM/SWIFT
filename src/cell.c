@@ -5192,6 +5192,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Ignore inhibited particles */
       if (part_is_inhibited(p, e)) continue;
 
+      /* Apply the effects of feedback on this particle
+       * (Note: Only used in schemes that have a delayed feedback mechanism
+       * otherwise just an empty function) */
+      feedback_update_part(p, xp, e);
+
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current, e->cosmology, e->hydro_properties,
@@ -5797,7 +5802,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 }
 
 /**
- * @brief Recursively drifts the #sinks in a cell hierarchy.
+ * @brief Recursively drifts the #sink's in a cell hierarchy.
  *
  * @param c The #cell.
  * @param e The #engine (to get ti_current).

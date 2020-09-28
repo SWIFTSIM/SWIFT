@@ -211,11 +211,6 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
         cooling_cool_part(constants, us, cosmo, hydro_props,
                           entropy_floor_props, cooling_func, p, xp, dt_cool,
                           dt_therm, time);
-
-        /* Apply the effects of feedback on this particle
-         * (Note: Only used in schemes that have a delayed feedback mechanism
-         * otherwise just an empty function) */
-        feedback_update_part(p, xp, e);
       }
     }
   }

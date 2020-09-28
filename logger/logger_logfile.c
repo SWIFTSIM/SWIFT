@@ -36,7 +36,7 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
 
   /* Set the pointer to the reader. */
   log->reader = reader;
-  if (&reader->log != log) error("Wrong link to the reader.");
+  if (&reader->log != log) error_python("Wrong link to the reader.");
 
   /* Set pointers to zero. */
   time_array_init(&log->times);
@@ -61,7 +61,7 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
 
   /* Check if the offset are corrupted. */
   if (header_is_corrupted(&log->header)) {
-    error("The offsets have been corrupted.");
+    error_python("The offsets have been corrupted.");
   }
 
   /* Reverse the offsets direction. */
@@ -108,11 +108,11 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   /* Get pointers */
   struct header *header = &log->header;
   const struct logger_reader *reader = log->reader;
-  if (&reader->log != log) error("Wrong link to the reader.");
+  if (&reader->log != log) error_python("Wrong link to the reader.");
 
   /* Check if the offsets need to be reversed. */
   if (!header_is_backward(header)) {
-    error("The offsets are already reversed.");
+    error_python("The offsets are already reversed.");
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

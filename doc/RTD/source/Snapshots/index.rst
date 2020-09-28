@@ -33,6 +33,15 @@ The ``RunName`` field contains the name of the simulation that was specified as
 the ``run_name`` in the :ref:`Parameters_meta_data` section of the YAML
 parameter file.
 
+The ``TimeBase_dloga`` field contains the change in logarithm of the
+scale-factor corresponding to a time-step of length 1 on the integer
+time-line. This is the smallest time-step size that the code can use. This field
+is zero in non-cosmological runs. Similarly, the field ``TimeBase_dt`` contains
+the smallest time-step size (in internal units) that the code can take. This
+would be the increase in time a particle in the time-bin one would have. Note
+that in cosmological runs this quantity evolves with redhsift as the (logarithm
+of the) scale-factor is used on the integer time-line.
+
 Meta-data about the code and run
 --------------------------------
 

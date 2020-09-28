@@ -582,6 +582,8 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
  * metallicity.
  * @param XH The Hydrogen abundance of the gas.
  * @param u_phys Internal energy of the gas in internal physical units.
+ * @param HII_region Is this patch of gas an HII region? (Not implemented in
+ * EAGLE)
  */
 float cooling_get_temperature_from_gas(
     const struct phys_const *phys_const, const struct cosmology *cosmo,
