@@ -151,7 +151,8 @@ void stellar_evolution_compute_continuous_feedback_properties(
         /* Supernovae II yields */
         snii_yields[i] +
         /* Gas contained in stars initial metallicity */
-        chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            non_processed;
 
     /* Convert it to total mass */
     sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
@@ -238,7 +239,8 @@ void stellar_evolution_compute_discrete_feedback_properties(
         /* Supernovae II yields */
         snii_yields[i] +
         /* Gas contained in stars initial metallicity */
-        chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            non_processed;
 
     /* Convert it to total mass */
     sp->feedback_data.metal_mass_ejected[i] *= m_avg * number_snii;
@@ -283,7 +285,7 @@ void stellar_evolution_evolve_spart(
 
   /* Get the metallicity */
   const float metallicity =
-      chemistry_get_total_metal_mass_fraction_for_feedback(sp);
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
   /* Compute masses range */
   const float log_m_beg_step =

@@ -265,6 +265,10 @@ struct feedback_props {
    */
   double n_Z;
 
+  /*! Are we using the birth properties to compute f_th or the properties at
+   * feedback time? */
+  int use_birth_props_for_feedback;
+
   /* ------------ Enrichment sampling properties ------------ */
 
   /*! Star age above which the enrichment will be downsampled (in internal
