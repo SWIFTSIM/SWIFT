@@ -391,11 +391,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_active_stars) {
 
             /* stars for ci */
-            atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+            atomic_or(&ci->stars.requires_sorts, 1 << sid);
             ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
 
             /* hydro for cj */
-            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+            atomic_or(&cj->hydro.requires_sorts, 1 << sid);
             cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
             /* Activate the drift tasks. */
@@ -405,19 +405,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               cell_activate_sync_part(cj, s);
 
             /* Check the sorts and activate them if needed. */
-            cell_activate_hydro_sorts(cj, t->flags, s);
-            cell_activate_stars_sorts(ci, t->flags, s);
+            cell_activate_hydro_sorts(cj, sid, s);
+            cell_activate_stars_sorts(ci, sid, s);
           }
 
           /* Do cj */
           if (cj_active_stars) {
 
             /* hydro for ci */
-            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+            atomic_or(&ci->hydro.requires_sorts, 1 << sid);
             ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
 
             /* stars for cj */
-            atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+            atomic_or(&cj->stars.requires_sorts, 1 << sid);
             cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
 
             /* Activate the drift tasks. */
@@ -427,8 +427,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               cell_activate_sync_part(ci, s);
 
             /* Check the sorts and activate them if needed. */
-            cell_activate_hydro_sorts(ci, t->flags, s);
-            cell_activate_stars_sorts(cj, t->flags, s);
+            cell_activate_hydro_sorts(ci, sid, s);
+            cell_activate_stars_sorts(cj, sid, s);
           }
         }
 
