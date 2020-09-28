@@ -222,9 +222,15 @@ double eagle_feedback_number_of_SNIa(const double M_init, const double t0,
  *
  * @param sp The #spart.
  * @param props The properties of the feedback model.
+ * @param ngb_nH_cgs Hydrogen number density of the gas surrounding the star
+ * (physical cgs units).
+ * @param ngb_Z Metallicity (metal mass fraction) of the gas surrounding the
+ * star.
  */
 double eagle_feedback_energy_fraction(const struct spart* sp,
-                                      const struct feedback_props* props) {
+                                      const struct feedback_props* props,
+                                      const double ngb_nH_cgs,
+                                      const double ngb_Z) {
 
   /* Model parameters */
   const double f_E_max = props->f_E_max;
@@ -234,18 +240,22 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
   const double n_Z = props->n_Z;
   const double n_n = props->n_n;
 
-  /* Star properties */
-
   /* Metallicity (metal mass fraction) at birth time of the star */
-  const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(sp);
+  const double Z_birth =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
   /* Physical density of the gas at the star's birth time */
   const double rho_birth = sp->birth_density;
-  const double n_birth = rho_birth * props->rho_to_n_cgs;
+  const double n_birth_cgs = rho_birth * props->rho_to_n_cgs;
+
+  /* Choose either the birth properties or current properties */
+  const double nH =
+      props->use_birth_props_for_feedback ? n_birth_cgs : ngb_nH_cgs;
+  const double Z = props->use_birth_props_for_feedback ? Z_birth : ngb_Z;
 
   /* Calculate f_E */
   const double Z_term = pow(max(Z, 1e-6) / Z_0, n_Z);
-  const double n_term = pow(n_birth / n_0, -n_n);
+  const double n_term = pow(nH / n_0, -n_n);
   const double denonimator = 1. + Z_term * n_term;
 
   return f_E_min + (f_E_max - f_E_min) / denonimator;
@@ -261,7 +271,12 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * @param sp The star particle.
  * @param star_age Age of star at the beginning of the step in internal units.
  * @param dt Length of time-step in internal units.
- * @param ngb_gas_mass Total un-weighted mass in the star's kernel.
+ * @param ngb_gas_mass Total un-weighted mass in the star's kernel (internal
+ * units)
+ * @param ngb_nH_cgs Hydrogen number density of the gas surrounding the star
+ * (physical cgs units).
+ * @param ngb_Z Metallicity (metal mass fraction) of the gas surrounding the
+ * star.
  * @param feedback_props The properties of the feedback model.
  * @param min_dying_mass_Msun Minimal star mass dying this step (in solar
  * masses).
@@ -270,7 +285,8 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  */
 INLINE static void compute_SNII_feedback(
     struct spart* sp, const double star_age, const double dt,
-    const float ngb_gas_mass, const struct feedback_props* feedback_props,
+    const float ngb_gas_mass, const double ngb_nH_cgs, const double ngb_Z,
+    const struct feedback_props* feedback_props,
     const double min_dying_mass_Msun, const double max_dying_mass_Msun) {
 
   /* Are we sampling the delay function or using a fixed delay? */
@@ -300,7 +316,8 @@ INLINE static void compute_SNII_feedback(
     const double delta_T =
         eagle_feedback_temperature_change(sp, feedback_props);
     const double E_SNe = feedback_props->E_SNII;
-    const double f_E = eagle_feedback_energy_fraction(sp, feedback_props);
+    const double f_E =
+        eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
 
     /* Number of SNe at this time-step */
     double N_SNe;
@@ -342,8 +359,15 @@ INLINE static void compute_SNII_feedback(
       error("f_E is not in the valid range! f_E=%f sp->id=%lld", f_E, sp->id);
 #endif
 
-    /* Store all of this in the star for delivery onto the gas */
-    sp->f_E = f_E;
+    /* Current total f_E for this star */
+    double star_f_E = sp->f_E * sp->number_of_SNII_events;
+
+    /* New total */
+    star_f_E = (star_f_E + f_E) / (sp->number_of_SNII_events + 1.);
+
+    /* Store all of this in the star for delivery onto the gas and recording */
+    sp->f_E = star_f_E;
+    sp->number_of_SNII_events++;
     sp->feedback_data.to_distribute.SNII_heating_probability = prob;
     sp->feedback_data.to_distribute.SNII_delta_u = delta_u;
   }
@@ -857,15 +881,20 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   /* Get the total metallicity (metal mass fraction) at birth time and impose a
    * minimum */
-  const double Z = max(chemistry_get_total_metal_mass_fraction_for_feedback(sp),
-                       exp10(log10_min_metallicity));
+  const double Z =
+      max(chemistry_get_star_total_metal_mass_fraction_for_feedback(sp),
+          exp10(log10_min_metallicity));
 
   /* Get the individual abundances (mass fractions at birth time) */
   const float* const abundances =
-      chemistry_get_metal_mass_fraction_for_feedback(sp);
+      chemistry_get_star_metal_mass_fraction_for_feedback(sp);
 
   /* Properties collected in the stellar density loop. */
   const float ngb_gas_mass = sp->feedback_data.to_collect.ngb_mass;
+  const float ngb_gas_Z = sp->feedback_data.to_collect.ngb_Z;
+  const float ngb_gas_rho = sp->feedback_data.to_collect.ngb_rho;
+  const float ngb_gas_phys_nH_cgs =
+      ngb_gas_rho * cosmo->a3_inv * feedback_props->rho_to_n_cgs;
 
   /* Check if there are neighbours, otherwise exit */
   if (ngb_gas_mass == 0.f || sp->density.wcount * pow_dimension(sp->h) < 1e-4) {
@@ -914,8 +943,9 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   /* Compute properties of the stochastic SNII feedback model. */
   if (feedback_props->with_SNII_feedback) {
-    compute_SNII_feedback(sp, age, dt, ngb_gas_mass, feedback_props,
-                          min_dying_mass_Msun, max_dying_mass_Msun);
+    compute_SNII_feedback(sp, age, dt, ngb_gas_mass, ngb_gas_phys_nH_cgs,
+                          ngb_gas_Z, feedback_props, min_dying_mass_Msun,
+                          max_dying_mass_Msun);
   }
 
   /* Integration interval is zero - this can happen if minimum and maximum
@@ -1083,6 +1113,10 @@ void feedback_props_init(struct feedback_props* fp,
   if (fp->f_E_max < fp->f_E_min) {
     error("Can't have the maximal energy fraction smaller than the minimal!");
   }
+
+  /* Are we using the stars' birth properties or at feedback time? */
+  fp->use_birth_props_for_feedback = parser_get_param_int(
+      params, "EAGLEFeedback:SNII_energy_faction_use_birth_props");
 
   /* Properties of the SNII enrichment model -------------------------------- */
 
