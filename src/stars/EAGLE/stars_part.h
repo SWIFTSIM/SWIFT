@@ -86,6 +86,9 @@ struct spart {
   /*! Initial star mass */
   float mass_init;
 
+  /*! Total number of SNII injection events this star performed */
+  int number_of_SNII_events;
+
   /*! Feedback energy fraction */
   float f_E;
 

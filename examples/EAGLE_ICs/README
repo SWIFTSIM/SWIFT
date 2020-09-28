@@ -45,6 +45,9 @@ the following changes have been made (at standard resolution):
    distribution and not using a fixed delay of 30 Myr any more.
  - The energy range for the SNII variable f_th is now 0.5 - 5.0
    (from 0.3 - 3.0).
+ - The density and metallicity used for the f_th scaling of the
+   SNII feedback are now computed at the time of feedback from the
+   gas neighbours and are not the birth quantities any more.
  - The halo mass for BH seeding has been lowered to 10^10 M_sun
    (from 10^10/h Msun).
  - The BH seed mass (subgrid mass at birth) has been lowered to
