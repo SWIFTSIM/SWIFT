@@ -327,7 +327,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
       if (!feedback_is_active(spi, e->time, cosmo, with_cosmology)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hi > ci->hydro.h_max_active)
+      if (hi > ci->stars.h_max_active)
         error("Particle has h larger than h_max_active");
 #endif
 
@@ -461,7 +461,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
       if (!feedback_is_active(spj, e->time, cosmo, with_cosmology)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hj > ci->hydro.h_max_active)
+      if (hj > cj->stars.h_max_active)
         error("Particle has h larger than h_max_active");
 #endif
 
