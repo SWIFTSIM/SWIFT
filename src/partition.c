@@ -2490,7 +2490,6 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
                              struct space *s) {
 
   /* Loop over all the new cells. */
-  int nr_nodes = 0;
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
@@ -2503,14 +2502,12 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
         const int cid = cell_getid(s->cdim, i, j, k);
         const int oldcid = cell_getid(oldcdim, ii, jj, kk);
         s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
-
-        if (oldnodeIDs[oldcid] > nr_nodes) nr_nodes = oldnodeIDs[oldcid];
       }
     }
   }
 
   /* Check we have all nodeIDs present in the resample. */
-  return check_complete(s, 1, nr_nodes + 1);
+  return check_complete(s, 1, s->e->nr_nodes);
 }
 
 /**
