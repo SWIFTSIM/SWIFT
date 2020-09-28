@@ -47,6 +47,8 @@ the following changes have been made (at standard resolution):
    (from 0.3 - 3.0).
  - The halo mass for BH seeding has been lowered to 10^10 M_sun
    (from 10^10/h Msun).
+ - The BH seed mass (subgrid mass at birth) has been lowered to
+   10^4 Msun (from 10^5/h Msun).
  - The black hole accretion rate is now limited to 100% of the
    Eddington rate (from 100/h = 150 %).
  - The circular velocity threshold for BH mergers is measured
@@ -54,6 +56,8 @@ the following changes have been made (at standard resolution):
    length any more.
  - The BHs can reposition only onto gas particles and not onto any
    type as before.
+ - No limit is imposed any more on the velocity (w.r.t. the BH)
+   of the gas particles onto which the BHs can reposition.
  - BHs of all masses can be repositioned (was limited to
    M_BH < 1.8*10^8 Msun).
  - The angular momentum term in the BH accretion model of

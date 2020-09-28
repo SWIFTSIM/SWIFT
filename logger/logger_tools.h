@@ -43,7 +43,6 @@
 #include <string.h>
 
 #define STRING_SIZE 200
-#define LOGGER_DOUBLE_NOT_ASSIGNED nan("214");
 
 struct header;
 struct logger_reader;
@@ -78,5 +77,28 @@ double logger_tools_quintic_hermite_spline(double t0, double x0, float v0,
 float logger_tools_cubic_hermite_spline(double t0, float v0, float a0,
                                         double t1, float v1, float a1,
                                         double t);
+
+#ifndef HAVE_PYTHON
+#define error_python(...) error(##__VA_ARGS__);
+#else
+/**
+ * @brief Print the python trace back
+ */
+__attribute__((always_inline)) INLINE static void logger_loader_print_traceback(
+    void) {
+
+  /* Import the traceback module */
+  PyObject *pyth_module = PyImport_ImportModule("traceback");
+  PyObject_CallMethod(pyth_module, "print_stack", "");
+
+  Py_DECREF(pyth_module);
+}
+
+#define error_python(s, ...)         \
+  ({                                 \
+    logger_loader_print_traceback(); \
+    error(s, ##__VA_ARGS__);         \
+  })
+#endif
 
 #endif  // LOGGER_LOGGER_TOOLS_H

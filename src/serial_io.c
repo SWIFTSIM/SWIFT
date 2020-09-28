@@ -380,6 +380,7 @@ void prepare_array_serial(
  * @param N The number of particles to write.
  * @param N_total The total number of particles on all ranks.
  * @param offset The offset position where this rank starts writing.
+ * @param lossy_compression Lossy compression filter to apply.
  * @param mpi_rank The MPI rank of this node
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
@@ -503,6 +504,7 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
  * @param info The MPI information object
  * @param n_threads The number of threads to use for local operations.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
+ * @param remap_ids Are we ignoring the ICs' IDs and remapping them to [1, N[ ?
  *
  * Opens the HDF5 file fileName and reads the particles contained
  * in the parts array. N is the returned number of particles found
@@ -1057,6 +1059,17 @@ void write_output_serial(struct engine* e,
     io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
     io_write_attribute_s(h_grp, "Code", "SWIFT");
     io_write_attribute_s(h_grp, "RunName", e->run_name);
+
+    /* Write out the time-base */
+    if (with_cosmology) {
+      io_write_attribute_d(h_grp, "TimeBase_dloga", e->time_base);
+      const double delta_t =
+          cosmology_get_timebase(e->cosmology, e->ti_current);
+      io_write_attribute_d(h_grp, "TimeBase_dt", delta_t);
+    } else {
+      io_write_attribute_d(h_grp, "TimeBase_dloga", 0);
+      io_write_attribute_d(h_grp, "TimeBase_dt", e->time_base);
+    }
 
     /* Store the time at which the snapshot was written */
     time_t tm = time(NULL);
