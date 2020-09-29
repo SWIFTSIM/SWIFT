@@ -40,7 +40,7 @@
 #define hydro_props_default_max_iterations 30
 #define hydro_props_default_volume_change 1.4f
 #define hydro_props_default_h_max FLT_MAX
-#define hydro_props_default_rho_min FLT_MIN
+#define hydro_props_default_rho_min 0.f 
 #define hydro_props_default_h_min_ratio 0.f
 #define hydro_props_default_h_tolerance 1e-4
 #define hydro_props_default_init_temp 0.f
@@ -214,7 +214,11 @@ void hydro_props_init(struct hydro_props *p,
   p->rho_min = number_density_H_p_cm3  * m_p_times_conversion_factor / p->hydrogen_mass_fraction;
 
   /* Inverse of the minimum density */
-  p->rho_min_inv = 1./p->rho_min;
+  if (p->rho_min == 0.f) {
+    p->rho_min_inv = FLT_MAX;
+  } else {
+    p->rho_min_inv = 1./p->rho_min;
+  }
 
   /* ------ Particle splitting parameters ---------- */
 
