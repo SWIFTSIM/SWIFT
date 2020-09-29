@@ -16,21 +16,32 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_COMPTON_H
-#define SWIFT_COOLING_STRUCT_COMPTON_H
+#ifndef SWIFT_COOLING_PROPERTIES_COMPTON_H
+#define SWIFT_COOLING_PROPERTIES_COMPTON_H
 
 /**
- * @brief Properties of the cooling stored in the #part data.
+ * @brief Properties of the cooling function.
  */
-struct cooling_part_data {};
+struct cooling_function_data {
 
-/**
- * @brief Properties of the cooling stored in the particle data.
- */
-struct cooling_xpart_data {
+  /*! Compton rate in cgs [g cm^2 s^-3 K^-1] */
+  double const_Compton_rate_cgs;
 
-  /*! Energy radiated away by this particle since the start of the run */
-  float radiated_energy;
+  /*! Temperature of the CMB at redshift 0 in cgs [K] */
+  double const_T_CMB_0;
+
+  /*! Conversion factor from internal units to cgs for density */
+  double conv_factor_density_to_cgs;
+
+  /*! Conversion factor from internal units to cgs for internal energy */
+  double conv_factor_energy_to_cgs;
+
+  /*! Conversion factor from internal units from cgs for internal energy
+   * derivative */
+  double conv_factor_energy_rate_from_cgs;
+
+  /*! Inverse of the proton mass in cgs units [g^-1] */
+  double proton_mass_cgs_inv;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_COMPTON_H */
+#endif /* SWIFT_COOLING_PROPERTIES_COMPTON_H */

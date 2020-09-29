@@ -16,21 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_EAGLE_H
-#define SWIFT_COOLING_STRUCT_EAGLE_H
+#ifndef SWIFT_COOLING_PROPERTIES_NONE_H
+#define SWIFT_COOLING_PROPERTIES_NONE_H
 
 /**
- * @brief Properties of the cooling stored in the #part data.
+ * @file src/cooling/none/cooling_properties.h
+ * @brief Empty infrastructure for the cases without cooling function
  */
-struct cooling_part_data {};
 
 /**
- * @brief Properties of the cooling stored in the extended particle data.
+ * @brief Properties of the cooling function.
  */
-struct cooling_xpart_data {
+struct cooling_function_data {};
 
-  /*! Cumulative energy radiated by the particle */
-  float radiated_energy;
-};
-
-#endif /* SWIFT_COOLING_STRUCT_EAGLE_H */
+#endif /* SWIFT_COOLING_PROPERTIES_NONE_H */

@@ -24,6 +24,7 @@
 
 /* Local includes. */
 #include "chemistry_struct.h"
+#include "cooling_properties.h"
 #include "cooling_tables.h"
 #include "error.h"
 #include "exp10.h"

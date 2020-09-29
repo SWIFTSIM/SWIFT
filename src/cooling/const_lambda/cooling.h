@@ -36,7 +36,7 @@
 #include <math.h>
 
 /* Local includes. */
-#include "const.h"
+#include "cooling_properties.h"
 #include "cosmology.h"
 #include "entropy_floor.h"
 #include "error.h"

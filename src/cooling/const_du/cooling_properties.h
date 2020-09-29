@@ -1,6 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Richard Bower (r.g.bower@durham.ac.uk)
+ *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,21 +18,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_EAGLE_H
-#define SWIFT_COOLING_STRUCT_EAGLE_H
+#ifndef SWIFT_COOLING_PROPERTIES_CONST_DU_H
+#define SWIFT_COOLING_PROPERTIES_CONST_DU_H
 
 /**
- * @brief Properties of the cooling stored in the #part data.
+ * @file src/cooling/const_du/cooling_properties.h
+ * @brief Structures related to the "constant cooling" cooling function.
+ *
+ * This is the simplest possible cooling function. A constant cooling rate
+ * (du/dt) with a minimal energy floor is applied. Should be used as a template
+ * for more realistic functions.
  */
-struct cooling_part_data {};
 
 /**
- * @brief Properties of the cooling stored in the extended particle data.
+ * @brief Properties of the cooling function.
  */
-struct cooling_xpart_data {
+struct cooling_function_data {
 
-  /*! Cumulative energy radiated by the particle */
-  float radiated_energy;
+  /*! Cooling rate in internal units. du_dt = -cooling_rate */
+  float cooling_rate;
+
+  /*! Minimally allowed internal energy of the particles */
+  float min_energy;
+
+  /*! Constant multiplication factor for time-step criterion */
+  float cooling_tstep_mult;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_EAGLE_H */
+#endif /* SWIFT_COOLING_PROPERTIES_CONST_DU_H */
