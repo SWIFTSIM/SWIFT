@@ -1116,7 +1116,7 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Are we using the stars' birth properties or at feedback time? */
   fp->use_birth_props_for_feedback = parser_get_param_int(
-      params, "EAGLEFeedback:SNII_energy_faction_use_birth_props");
+      params, "EAGLEFeedback:SNII_energy_fraction_use_birth_props");
 
   /* Properties of the SNII enrichment model -------------------------------- */
 

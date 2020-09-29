@@ -159,43 +159,43 @@ EAGLEEntropyFloor:
 
 # EAGLE feedback model
 EAGLEFeedback:
-  use_SNII_feedback:                   1               # Global switch for SNII thermal (stochastic) feedback.
-  use_SNIa_feedback:                   1               # Global switch for SNIa thermal (continuous) feedback.
-  use_AGB_enrichment:                  1               # Global switch for enrichement from AGB stars.
-  use_SNII_enrichment:                 1               # Global switch for enrichement from SNII stars.
-  use_SNIa_enrichment:                 1               # Global switch for enrichement from SNIa stars.
-  filename:                            ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
-  IMF_min_mass_Msun:                   0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
-  IMF_max_mass_Msun:                 100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-  SNII_min_mass_Msun:                  6.0             # Minimal mass considered for SNII stars in solar masses.
-  SNII_max_mass_Msun:                100.0             # Maximal mass considered for SNII stars in solar masses.
-  SNII_sampled_delay:                  0               # Sample the SNII lifetimes to do feedback.
-  SNII_wind_delay_Gyr:                 0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
-  SNII_delta_T_K:                      3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
-  SNII_energy_erg:                     1.0e51          # Energy of one SNII explosion in ergs.
-  SNII_energy_fraction_min:            0.3             # Minimal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_max:            3.0             # Maximal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_Z_0:            0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
-  SNII_energy_fraction_n_0_H_p_cm3:    1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
-  SNII_energy_fraction_n_Z:            0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
-  SNII_energy_fraction_n_n:            0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNII_energy_faction_use_birth_props: 1               # Are we using the density and metallicity at birth to compute f_E or at feedback time?
-  SNIa_DTD:                            PowerLaw        # Functional form of the SNIa delay time distribution.
-  SNIa_DTD_delay_Gyr:                  0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
-  SNIa_DTD_power_law_norm_p_Msun:      0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
-  SNIa_energy_erg:                    1.0e51           # Energy of one SNIa explosion in ergs.
-  AGB_ejecta_velocity_km_p_s:         10.0             # Velocity of the AGB ejectas in km/s.
-  stellar_evolution_age_cut_Gyr:       0.1             # Stellar age in Gyr above which the enrichment is down-sampled.
-  stellar_evolution_sampling_rate:      10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
-  SNII_yield_factor_Hydrogen:          1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
-  SNII_yield_factor_Helium:            1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
-  SNII_yield_factor_Carbon:            0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.
-  SNII_yield_factor_Nitrogen:          1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
-  SNII_yield_factor_Oxygen:            1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
-  SNII_yield_factor_Neon:              1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
-  SNII_yield_factor_Magnesium:         2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
-  SNII_yield_factor_Silicon:           1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
-  SNII_yield_factor_Iron:              0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
+  use_SNII_feedback:                    1               # Global switch for SNII thermal (stochastic) feedback.
+  use_SNIa_feedback:                    1               # Global switch for SNIa thermal (continuous) feedback.
+  use_AGB_enrichment:                   1               # Global switch for enrichement from AGB stars.
+  use_SNII_enrichment:                  1               # Global switch for enrichement from SNII stars.
+  use_SNIa_enrichment:                  1               # Global switch for enrichement from SNIa stars.
+  filename:                             ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
+  IMF_min_mass_Msun:                    0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
+  IMF_max_mass_Msun:                  100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
+  SNII_min_mass_Msun:                   6.0             # Minimal mass considered for SNII stars in solar masses.
+  SNII_max_mass_Msun:                 100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_sampled_delay:                   0               # Sample the SNII lifetimes to do feedback.
+  SNII_wind_delay_Gyr:                  0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
+  SNII_delta_T_K:                       3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
+  SNII_energy_erg:                      1.0e51          # Energy of one SNII explosion in ergs.
+  SNII_energy_fraction_min:             0.3             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:             3.0             # Maximal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_Z_0:             0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
+  SNII_energy_fraction_n_0_H_p_cm3:     1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+  SNII_energy_fraction_n_Z:             0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
+  SNII_energy_fraction_n_n:             0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
+  SNII_energy_fraction_use_birth_props: 1               # Are we using the density and metallicity at birth to compute f_E or at feedback time?
+  SNIa_DTD:                             PowerLaw        # Functional form of the SNIa delay time distribution.
+  SNIa_DTD_delay_Gyr:                   0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
+  SNIa_DTD_power_law_norm_p_Msun:       0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
+  SNIa_energy_erg:                     1.0e51           # Energy of one SNIa explosion in ergs.
+  AGB_ejecta_velocity_km_p_s:          10.0             # Velocity of the AGB ejectas in km/s.
+  stellar_evolution_age_cut_Gyr:        0.1             # Stellar age in Gyr above which the enrichment is down-sampled.
+  stellar_evolution_sampling_rate:       10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
+  SNII_yield_factor_Hydrogen:           1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
+  SNII_yield_factor_Helium:             1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
+  SNII_yield_factor_Carbon:             0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.
+  SNII_yield_factor_Nitrogen:           1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
+  SNII_yield_factor_Oxygen:             1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
+  SNII_yield_factor_Neon:               1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
+  SNII_yield_factor_Magnesium:          2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+  SNII_yield_factor_Silicon:            1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
+  SNII_yield_factor_Iron:               0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
 # EAGLE AGN model
 EAGLEAGN:
