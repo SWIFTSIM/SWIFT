@@ -250,22 +250,24 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h \
 		star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h \
 		cooling/none/cooling.h cooling/none/cooling_struct.h \
-		cooling/none/cooling_io.h \
+		cooling/none/cooling_io.h cooling/none/cooling_properties.h \
 		cooling/Compton/cooling.h cooling/Compton/cooling_struct.h \
-		cooling/Compton/cooling_io.h \
+		cooling/Compton/cooling_io.h cooling/Compton/cooling_properties.h \
 		cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
-		cooling/const_du/cooling_io.h \
+		cooling/const_du/cooling_io.h cooling/const_du/cooling_properties.h \
 		cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
-		cooling/const_lambda/cooling_io.h \
+		cooling/const_lambda/cooling_io.h cooling/const_lambda/cooling_properties.h \
 		cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
-		cooling/grackle/cooling_io.h \
+		cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h \
 		cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h \
 		cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h \
+		cooling/EAGLE/cooling_properties.h \
 		cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h \
 		cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h \
+		cooling/QLA/cooling_properties.h \
 		cooling/COLIBRE/cooling.h cooling/COLIBRE/cooling_struct.h cooling/COLIBRE/cooling_subgrid.h \
 		cooling/COLIBRE/cooling_io.h cooling/COLIBRE/interpolate.h cooling/COLIBRE/cooling_rates.h \
-		cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/cooling_subgrid.h \
+		cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/cooling_subgrid.h cooling_properties.h \
 		chemistry/none/chemistry.h \
 		chemistry/none/chemistry_io.h \
 		chemistry/none/chemistry_struct.h \
