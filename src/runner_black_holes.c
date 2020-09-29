@@ -100,7 +100,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
       /* Update mass of associated gpart, to reflect potential changes from
        * nibbling. In this case, we are already done. */
       if (use_nibbling) {
-        p->gpart->mass = p->mass;
+        p->gpart->mass = hydro_get_mass(p);
         continue;
       }
 
