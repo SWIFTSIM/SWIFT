@@ -201,6 +201,7 @@ EAGLEAGN:
   subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
   with_angmom_limiter:                1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
+  use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
   radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.
   max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
   eddington_fraction_for_recording:   0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
