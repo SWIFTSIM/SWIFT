@@ -20,16 +20,6 @@
 #define SWIFT_COOLING_STRUCT_NONE_H
 
 /**
- * @file src/cooling/none/cooling_struct.h
- * @brief Empty infrastructure for the cases without cooling function
- */
-
-/**
- * @brief Properties of the cooling function.
- */
-struct cooling_function_data {};
-
-/**
  * @brief Properties of the cooling stored in the #part data.
  */
 struct cooling_part_data {};

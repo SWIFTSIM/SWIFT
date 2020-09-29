@@ -17,21 +17,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_CONST_LAMBDA_H
-#define SWIFT_COOLING_STRUCT_CONST_LAMBDA_H
+#ifndef SWIFT_COOLING_PROPERTIES_CONST_LAMBDA_H
+#define SWIFT_COOLING_PROPERTIES_CONST_LAMBDA_H
 
 /**
- * @brief Properties of the cooling stored in the #part data.
+ * @file src/cooling/const_lambda/cooling_properties.h
+ * @brief Structures related to the "constant lambda" cooling function.
+ *
+ * This model assumes a constant cooling rate Lambda irrespective of redshift
+ * or density.
  */
-struct cooling_part_data {};
 
 /**
- * @brief Properties of the cooling stored in the particle data.
+ * @brief Properties of the cooling function.
  */
-struct cooling_xpart_data {
+struct cooling_function_data {
 
-  /*! Energy radiated away by this particle since the start of the run */
-  float radiated_energy;
+  /*! Cooling rate / nH^2 in physical cgs units [erg * s^-1 * cm^3] */
+  double lambda_nH2_cgs;
+
+  /*! Conversion factor from internal units to cgs for density */
+  double conv_factor_density_to_cgs;
+
+  /*! Conversion factor from internal units from cgs for internal energy
+   * derivative */
+  double conv_factor_energy_rate_from_cgs;
+
+  /*! Inverse of the proton mass in cgs units [g^-1] */
+  double proton_mass_cgs_inv;
+
+  /*! Constant multiplication factor for time-step criterion */
+  float cooling_tstep_mult;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_CONST_LAMBDA_H */
+#endif /* SWIFT_COOLING_PROPERTIES_CONST_LAMBDA_H */

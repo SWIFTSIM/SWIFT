@@ -36,7 +36,7 @@
 
 /* Local includes. */
 #include "chemistry_struct.h"
-#include "cooling_struct.h"
+#include "cooling_properties.h"
 #include "error.h"
 #include "exp10.h"
 #include "interpolate.h"

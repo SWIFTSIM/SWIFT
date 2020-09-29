@@ -22,30 +22,6 @@
 #define SWIFT_COOLING_STRUCT_CONST_DU_H
 
 /**
- * @file src/cooling/const_du/cooling_struct.h
- * @brief Structures related to the "constant cooling" cooling function.
- *
- * This is the simplest possible cooling function. A constant cooling rate
- * (du/dt) with a minimal energy floor is applied. Should be used as a template
- * for more realistic functions.
- */
-
-/**
- * @brief Properties of the cooling function.
- */
-struct cooling_function_data {
-
-  /*! Cooling rate in internal units. du_dt = -cooling_rate */
-  float cooling_rate;
-
-  /*! Minimally allowed internal energy of the particles */
-  float min_energy;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-};
-
-/**
  * @brief Properties of the cooling stored in the #part data.
  */
 struct cooling_part_data {};

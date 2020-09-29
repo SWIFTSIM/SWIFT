@@ -58,6 +58,7 @@
 #include "chemistry.h"
 #include "clocks.h"
 #include "cooling.h"
+#include "cooling_properties.h"
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
