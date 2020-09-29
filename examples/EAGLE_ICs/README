@@ -57,11 +57,8 @@ the following changes have been made (at standard resolution):
  - The circular velocity threshold for BH mergers is measured
    at the actual distance linking the BHs not at the kernel support
    length any more.
- - The BHs can reposition only onto gas particles and not onto any
-   type as before.
- - The maximal relative velocity between a BH and gas particle
-   eligible to be a reposition target has been increased to 0.5 times
-   the local sound-speed around the BH (was 0.25 * c_sound).
+ - The BHs can reposition only onto gas particles and BH particles
+   (not onto any type as before).
  - No limit is imposed any more on the velocity (w.r.t. the BH)
    of the gas particles onto which the BHs can reposition.
  - BHs of all masses can be repositioned (was limited to
