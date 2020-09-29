@@ -58,8 +58,8 @@ struct gpart {
   enum part_type type;
 
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
-  /* Flag to indicate this particle should be output at subsequent VR invocations
-     because it was the most bound in a group at some point */
+  /* Flag to indicate this particle should be output at subsequent VR
+     invocations because it was the most bound in a group at some point */
   char has_been_most_bound;
 #endif
 
