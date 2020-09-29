@@ -106,9 +106,9 @@ runner_iact_nonsym_bh_gas_density(
 
   /* Contribution to the specific angular momentum of gas, which is later
    * converted to the circular velocity at the smoothing length */
-  bi->spec_angular_momentum_gas[0] += mj * wi * (dx[1] * dv[2] - dx[2] * dv[1]);
-  bi->spec_angular_momentum_gas[1] += mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
-  bi->spec_angular_momentum_gas[2] += mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
+  bi->circular_velocity_gas[0] += mj * wi * (dx[1] * dv[2] - dx[2] * dv[1]);
+  bi->circular_velocity_gas[1] += mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
+  bi->circular_velocity_gas[2] += mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
 
   if (bh_props->multi_phase_bondi) {
     /* Contribution to BH accretion rate
@@ -258,14 +258,14 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
 
   /* Check if the BH needs to be fed. If not, we're done here */
   const float bh_mass_deficit = bi->subgrid_mass - bi->mass_at_start_of_step;
-  if (bh_mass_deficit <= 0) return;
+  if (bh_mass_deficit <= 0.f) return;
 
   if (bh_props->use_nibbling) {
 
     /* If we do nibbling, things are quite straightforward. We transfer
      * the mass and all associated quantities right here. */
 
-    if (bh_props->epsilon_r == 1) return;
+    if (bh_props->epsilon_r == 1.f) return;
 
     const float bi_mass_orig = bi->mass;
     const float pj_mass_orig = hydro_get_mass(pj);
@@ -279,7 +279,7 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
 
     /* We radiated away some of the accreted mass, so need to take slightly
      * more from the gas than the BH gained */
-    const float excess_fraction = 1.0 / (1.0 - bh_props->epsilon_r);
+    const float excess_fraction = 1.f / (1.f - bh_props->epsilon_r);
 
     /* Need to check whether nibbling would push gas mass below minimum
      * allowed mass */
