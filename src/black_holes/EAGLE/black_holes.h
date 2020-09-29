@@ -657,7 +657,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->mass -= epsilon_r * accr_rate * dt;
     if (bp->mass < 0)
       error("Black hole %lld reached negative mass (%g). Trouble ahead...",
-	    bp->id, bp->mass);
+            bp->id, bp->mass);
   }
 
   /* Increase the subgrid angular momentum according to what we accreted

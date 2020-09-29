@@ -50,7 +50,6 @@ struct black_holes_props {
 
   /*! Use nibbling? */
   int use_nibbling;
-  
 };
 
 /**
