@@ -1137,7 +1137,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  message("sid=%d", sid);
+  //message("sid=%d", sid);
 
   /* What kind of pair are we doing here? */
   const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
@@ -1296,7 +1296,7 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
 
   /* Should we even bother? */
   if (ci->stars.count == 0 || cj->hydro.count == 0) return;
-  if (!cell_is_active_hydro(ci, e)) return;
+  if (!cell_is_active_stars(ci, e)) return;
 
   /* Recurse? */
   if (ci->split && cell_can_recurse_in_pair_stars_task1(ci) && cj->split &&
@@ -1343,7 +1343,7 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
 
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0) return;
-  if (!cell_is_active_hydro(ci, e)) return;
+  if (!cell_is_active_stars(ci, e)) return;
 
   /* Recurse? */
   if (ci->split && cell_can_recurse_in_self_stars_task1(ci)) {
