@@ -58,9 +58,9 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
     struct bpart* bp, const struct black_holes_props* props) {
 
   bp->time_bin = 0;
-  if (props->use_subgrid_mass_from_ics == 0)
+  if (props->use_subgrid_mass_from_ics == 0) {
     bp->subgrid_mass = bp->mass;
-  else if (props->with_subgrid_mass_check && bp->subgrid_mass <= 0)
+  } else if (props->with_subgrid_mass_check && bp->subgrid_mass <= 0) {
     error(
         "Black hole %lld has a subgrid mass of %f (internal units).\n"
         "If this is because the ICs do not contain a 'SubgridMass' data "
@@ -71,6 +71,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
         "disable this error by setting 'EAGLEAGN:with_subgrid_mass_check' "
         "to 0.",
         bp->id, bp->subgrid_mass);
+  }
   bp->total_accreted_mass = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
@@ -118,9 +119,9 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->velocity_gas[0] = 0.f;
   bp->velocity_gas[1] = 0.f;
   bp->velocity_gas[2] = 0.f;
-  bp->spec_angular_momentum_gas[0] = 0.f;
-  bp->spec_angular_momentum_gas[1] = 0.f;
-  bp->spec_angular_momentum_gas[2] = 0.f;
+  bp->circular_velocity_gas[0] = 0.f;
+  bp->circular_velocity_gas[1] = 0.f;
+  bp->circular_velocity_gas[2] = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
   bp->reposition.delta_x[0] = -FLT_MAX;
@@ -235,15 +236,15 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   bp->velocity_gas[0] *= h_inv_dim * rho_inv;
   bp->velocity_gas[1] *= h_inv_dim * rho_inv;
   bp->velocity_gas[2] *= h_inv_dim * rho_inv;
-  bp->spec_angular_momentum_gas[0] *= h_inv_dim * rho_inv;
-  bp->spec_angular_momentum_gas[1] *= h_inv_dim * rho_inv;
-  bp->spec_angular_momentum_gas[2] *= h_inv_dim * rho_inv;
+  bp->circular_velocity_gas[0] *= h_inv_dim * rho_inv;
+  bp->circular_velocity_gas[1] *= h_inv_dim * rho_inv;
+  bp->circular_velocity_gas[2] *= h_inv_dim * rho_inv;
 
   /* Calculate circular velocity at the smoothing radius from specific
    * angular momentum (extra h_inv) */
-  bp->circular_velocity_gas[0] = bp->spec_angular_momentum_gas[0] * h_inv;
-  bp->circular_velocity_gas[1] = bp->spec_angular_momentum_gas[1] * h_inv;
-  bp->circular_velocity_gas[2] = bp->spec_angular_momentum_gas[2] * h_inv;
+  bp->circular_velocity_gas[0] *= h_inv;
+  bp->circular_velocity_gas[1] *= h_inv;
+  bp->circular_velocity_gas[2] *= h_inv;
 }
 
 /**
@@ -661,13 +662,16 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   }
 
   /* Increase the subgrid angular momentum according to what we accreted
-   * (already in physical units, a factors from velocity and radius cancel) */
+   * Note that this is already in physical units, a factors from velocity and r
+   * adius cancel each others.
+   * Also, the circular velocity contains an extra smoothing length factor that
+   * we undo here. */
   bp->accreted_angular_momentum[0] +=
-      bp->spec_angular_momentum_gas[0] * mass_rate * dt;
+      bp->circular_velocity_gas[0] * mass_rate * dt / bp->h;
   bp->accreted_angular_momentum[1] +=
-      bp->spec_angular_momentum_gas[1] * mass_rate * dt;
+      bp->circular_velocity_gas[1] * mass_rate * dt / bp->h;
   bp->accreted_angular_momentum[2] +=
-      bp->spec_angular_momentum_gas[2] * mass_rate * dt;
+      bp->circular_velocity_gas[2] * mass_rate * dt / bp->h;
 
   /* Energy required to have a feedback event
    * Note that we have subtracted the particles we swallowed from the ngb_mass
