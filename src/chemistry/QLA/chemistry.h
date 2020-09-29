@@ -211,6 +211,23 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
     const struct chemistry_part_data* p_data, const double gas_mass) {}
 
 /**
+ * @brief Transfer chemistry data of a gas particle to a black hole.
+ *
+ * Nothing to do here.
+ *
+ * @param bp_data The black hole data to add to.
+ * @param p_data The gas data to use.
+ * @param nibble_mass The mass to be removed from the gas particle.
+ * @param nibble_fraction The fraction of the (original) mass of the gas
+ *        particle that is removed.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_transfer_part_to_bpart(struct chemistry_bpart_data* bp_data,
+                                 struct chemistry_part_data* p_data,
+                                 const double nibble_mass,
+                                 const double nibble_fraction) {}
+
+/**
  * @brief Add the chemistry data of a black hole to another one.
  *
  * Nothing to do here.

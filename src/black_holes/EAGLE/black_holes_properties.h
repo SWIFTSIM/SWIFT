@@ -82,6 +82,12 @@ struct black_holes_props {
   /*! Eddington fraction threshold for recording */
   float f_Edd_recording;
 
+  /*! Switch for nibbling mode */
+  int use_nibbling;
+
+  /*! Minimum gas particle mass in nibbling mode */
+  float min_gas_mass_for_nibbling;
+
   /* ---- Properties of the feedback model ------- */
 
   /*! Feedback coupling efficiency of the black holes. */
@@ -227,10 +233,19 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->epsilon_r =
       parser_get_param_float(params, "EAGLEAGN:radiative_efficiency");
+  if (bp->epsilon_r > 1.f)
+    error("EAGLEAGN:radiative_efficiency must be <= 1, not %f.", bp->epsilon_r);
 
   bp->f_Edd = parser_get_param_float(params, "EAGLEAGN:max_eddington_fraction");
   bp->f_Edd_recording = parser_get_param_float(
       params, "EAGLEAGN:eddington_fraction_for_recording");
+
+  bp->use_nibbling = parser_get_param_int(params, "EAGLEAGN:use_nibbling");
+  if (bp->use_nibbling) {
+    bp->min_gas_mass_for_nibbling =
+        parser_get_param_float(params, "EAGLEAGN:min_gas_mass_for_nibbling");
+    bp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
+  }
 
   /* Feedback parameters ---------------------------------- */
 
