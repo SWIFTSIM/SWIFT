@@ -53,6 +53,9 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
+  const struct black_holes_props *props = e->black_holes_properties;
+  const int use_nibbling = props->use_nibbling;
+
   struct bpart *bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
@@ -93,6 +96,13 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (part_is_inhibited(p, e)) continue;
+
+      /* Update mass of associated gpart, to reflect potential changes from
+       * nibbling. In this case, we are already done. */
+      if (use_nibbling) {
+        p->gpart->mass = p->mass;
+        continue;
+      }
 
       /* Get the ID of the black holes that will swallow this part */
       const long long swallow_id =
@@ -275,6 +285,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
   struct space *s = e->s;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct black_holes_props *props = e->black_holes_properties;
+  const int use_nibbling = props->use_nibbling;
+
   struct bpart *bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
@@ -315,6 +327,13 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (bpart_is_inhibited(cell_bp, e)) continue;
+
+      /* Update mass of associated gpart, to reflect potential changes from
+       * nibbling. */
+      if (use_nibbling) {
+        cell_bp->gpart->mass = cell_bp->mass;
+        continue;
+      }
 
       /* Get the ID of the black holes that will swallow this bpart */
       const long long swallow_id =

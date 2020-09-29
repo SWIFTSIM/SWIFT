@@ -48,6 +48,9 @@ struct bpart {
   /*! Black hole mass */
   float mass;
 
+  /*! Black hole mass at the start of each step, prior to any nibbling */
+  float mass_at_start_of_step;
+
   /* Particle cutoff radius. */
   float h;
 
@@ -153,6 +156,9 @@ struct bpart {
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */
   float swallowed_angular_momentum[3];
+
+  /*! Total (physical) angular momentum accumulated from subgrid accretion */
+  float accreted_angular_momentum[3];
 
   /*! Union for the last high Eddington ratio point in time */
   union {
