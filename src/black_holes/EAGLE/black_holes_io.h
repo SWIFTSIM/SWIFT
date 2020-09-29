@@ -335,7 +335,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "We store the physical density at the birth redshift, no conversion is "
       "needed.");
 
-  list[30] = io_make_output_field(      
+  list[30] = io_make_output_field(
       "AccretedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
       bparts, accreted_angular_momentum,
       "Physical angular momenta that the black holes have accumulated through "
@@ -346,7 +346,6 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       num_ngbs,
       "Integer number of gas neighbour particles within the black hole "
       "kernels.");
-
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
