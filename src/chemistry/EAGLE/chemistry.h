@@ -391,6 +391,9 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
  * of the gas particle are adjusted as well.
  * Black holes don't store fractions so we need to add element masses.
  *
+ * We expect the nibble_mass to be the gas particle mass multiplied by the
+ * nibble_fraction.
+ *
  * @param bp_data The black hole data to add to.
  * @param p_data The gas data to use.
  * @param nibble_mass The mass to be removed from the gas particle.
@@ -424,9 +427,6 @@ chemistry_transfer_part_to_bpart(struct chemistry_bpart_data* bp_data,
       p_data->metal_mass_fraction_from_AGB * nibble_mass;
   bp_data->iron_mass_from_SNIa +=
       p_data->iron_mass_fraction_from_SNIa * nibble_mass;
-
-  /* TODO: Need to think about, and possibly implement, other transfers
-   * involving e.g. mass-weighted redshift of Fe enrichment */
 }
 
 /**
