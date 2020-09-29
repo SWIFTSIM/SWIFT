@@ -21,18 +21,19 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <hdf5.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <hdf5.h>
 
 /* This object's header. */
 #include "velociraptor_interface.h"
 
 /* Local includes. */
 #include "black_holes_io.h"
+#include "common_io.h"
 #include "cooling.h"
 #include "engine.h"
 #include "gravity_io.h"
@@ -42,11 +43,6 @@
 #include "swift_velociraptor_part.h"
 #include "threadpool.h"
 #include "velociraptor_struct.h"
-#include "gravity_io.h"
-#include "hydro_io.h"
-#include "stars_io.h"
-#include "black_holes_io.h"
-#include "common_io.h"
 
 #ifdef HAVE_VELOCIRAPTOR
 
@@ -213,14 +209,14 @@ struct vr_return_data {
 
   /*! Assignment of particles to groups (must be freed by Swift, may be NULL) */
   struct groupinfo *group_info;
-  
+
   /*! Number of most bound particles returned */
   int num_most_bound;
 
-  /*! Swift gpart indexes of most bound particles (must be freed by Swift, may be NULL) */
+  /*! Swift gpart indexes of most bound particles (must be freed by Swift, may
+   * be NULL) */
   int *most_bound_index;
 };
-
 
 int InitVelociraptor(char *config_name, struct unitinfo unit_info,
                      struct siminfo sim_info, const int numthreads);
@@ -451,7 +447,6 @@ void velociraptor_init(struct engine *e) {
 #endif /* HAVE_VELOCIRAPTOR */
 }
 
-
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
 
 /**
@@ -467,10 +462,12 @@ void velociraptor_init(struct engine *e) {
  * @param count Number of particles to write on this rank
  *
  */
-void write_orphan_particle_array(hid_t h_file, const char *name, const void *buf,
-                                 const hid_t dtype_id, const int ndims, const hsize_t *dims,
-                                 const hsize_t *start, const hsize_t *count, size_t nr_flagged_all,
-                                 const struct unit_system* snapshot_units,
+void write_orphan_particle_array(hid_t h_file, const char *name,
+                                 const void *buf, const hid_t dtype_id,
+                                 const int ndims, const hsize_t *dims,
+                                 const hsize_t *start, const hsize_t *count,
+                                 size_t nr_flagged_all,
+                                 const struct unit_system *snapshot_units,
                                  const struct io_props props) {
 
   /* Make dataset transfer property list */
@@ -481,9 +478,12 @@ void write_orphan_particle_array(hid_t h_file, const char *name, const void *buf
 
   /* Set up dataspaces */
   hid_t file_dspace_id = H5Screate_simple(ndims, dims, NULL);
-  if(dims[0] > 0) {
-    if(H5Sselect_hyperslab(file_dspace_id, H5S_SELECT_SET, start, NULL, count, NULL) < 0) {
-      error("Failed to select hyperslab to write while writing orphan particles.");
+  if (dims[0] > 0) {
+    if (H5Sselect_hyperslab(file_dspace_id, H5S_SELECT_SET, start, NULL, count,
+                            NULL) < 0) {
+      error(
+          "Failed to select hyperslab to write while writing orphan "
+          "particles.");
     }
   } else {
     H5Sselect_none(file_dspace_id);
@@ -491,9 +491,10 @@ void write_orphan_particle_array(hid_t h_file, const char *name, const void *buf
   hid_t mem_dspace_id = H5Screate_simple(ndims, count, NULL);
 
   /* Create the dataset */
-  hid_t dset_id = H5Dcreate(h_file, name, dtype_id, file_dspace_id,
-                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if(dset_id < 0) error("Failed to create dataset while writing orphan particles.");
+  hid_t dset_id = H5Dcreate(h_file, name, dtype_id, file_dspace_id, H5P_DEFAULT,
+                            H5P_DEFAULT, H5P_DEFAULT);
+  if (dset_id < 0)
+    error("Failed to create dataset while writing orphan particles.");
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
@@ -507,12 +508,14 @@ void write_orphan_particle_array(hid_t h_file, const char *name, const void *buf
   io_write_attribute_f(dset_id, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
   io_write_attribute_f(dset_id, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
   io_write_attribute_f(dset_id, "h-scale exponent", 0.f);
-  io_write_attribute_f(dset_id, "a-scale exponent", props.scale_factor_exponent);
+  io_write_attribute_f(dset_id, "a-scale exponent",
+                       props.scale_factor_exponent);
   io_write_attribute_s(dset_id, "Expression for physical CGS units", buffer);
 
   /* Write data, if there is any */
-  if(nr_flagged_all > 0) {
-    if(H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id, xfer_plist_id, buf) < 0) {
+  if (nr_flagged_all > 0) {
+    if (H5Dwrite(dset_id, dtype_id, mem_dspace_id, file_dspace_id,
+                 xfer_plist_id, buf) < 0) {
       error("Failed to write dataset while writing orphan particles.");
     }
   }
@@ -529,7 +532,8 @@ void write_orphan_particle_array(hid_t h_file, const char *name, const void *buf
  *
  * @param e The #engine.
  */
-void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) {
+void velociraptor_dump_orphan_particles(struct engine *e,
+                                        char *outputFileName) {
 
   const struct space *s = e->s;
   const size_t nr_gparts = s->nr_gparts;
@@ -540,66 +544,66 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   const struct xpart *xparts = s->xparts;
   const struct spart *sparts = s->sparts;
   const struct bpart *bparts = s->bparts;
-  
+
   /* Units */
   const struct unit_system *internal_units = e->internal_units;
   const struct unit_system *snapshot_units = e->snapshot_units;
 
   /* Count how many particles we need to write out */
   size_t nr_flagged = 0;
-  for(size_t i=0; i<nr_gparts; i+=1) {
-    if(gparts[i].has_been_most_bound)nr_flagged += 1;
+  for (size_t i = 0; i < nr_gparts; i += 1) {
+    if (gparts[i].has_been_most_bound) nr_flagged += 1;
   }
 
   /* Allocate write buffers */
   double *pos;
   if (swift_memalign("VR.pos", (void **)&pos, SWIFT_STRUCT_ALIGNMENT,
-                     3*nr_flagged*sizeof(double)) != 0)
+                     3 * nr_flagged * sizeof(double)) != 0)
     error("Failed to allocate pos buffer for orphan particles.");
   float *vel;
   if (swift_memalign("VR.vel", (void **)&vel, SWIFT_STRUCT_ALIGNMENT,
-                     3*nr_flagged*sizeof(float)) != 0)
+                     3 * nr_flagged * sizeof(float)) != 0)
     error("Failed to allocate vel buffer for orphan particles.");
   long long *ids;
   if (swift_memalign("VR.ids", (void **)&ids, SWIFT_STRUCT_ALIGNMENT,
-                     nr_flagged*sizeof(long long)) != 0)
+                     nr_flagged * sizeof(long long)) != 0)
     error("Failed to allocate ids buffer for orphan particles.");
 
   /* Populate write buffers */
-  for(size_t i=0, offset=0; i<nr_gparts; i+=1) {
-    if(gparts[i].has_been_most_bound) {
+  for (size_t i = 0, offset = 0; i < nr_gparts; i += 1) {
+    if (gparts[i].has_been_most_bound) {
       switch (gparts[i].type) {
-      case swift_type_gas: {
-        const struct part *p = &parts[-gparts[i].id_or_neg_offset];
-        const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
-        convert_part_pos(e, p, xp, &pos[3*offset]);
-        convert_part_vel(e, p, xp, &vel[3*offset]);
-        ids[offset] = parts[-gparts[i].id_or_neg_offset].id;
-      } break;
-      case swift_type_stars: {
-        const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
-        convert_spart_pos(e, sp, &pos[3*offset]);
-        convert_spart_vel(e, sp, &vel[3*offset]);
-        ids[offset] = sparts[-gparts[i].id_or_neg_offset].id;
-      } break;
-      case swift_type_black_hole: {
-        const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
-        convert_bpart_pos(e, bp, &pos[3*offset]);
-        convert_bpart_vel(e, bp, &vel[3*offset]);
-        ids[offset] = bparts[-gparts[i].id_or_neg_offset].id;
-      } break;
-      case swift_type_dark_matter: {
-        convert_gpart_pos(e, &gparts[i], &pos[3*offset]);
-        convert_gpart_vel(e, &gparts[i], &vel[3*offset]);
-        ids[offset] = gparts[i].id_or_neg_offset;
-      } break;
-      case swift_type_dark_matter_background: {
-        convert_gpart_pos(e, &gparts[i], &pos[3*offset]);
-        convert_gpart_vel(e, &gparts[i], &vel[3*offset]);
-        ids[offset] = gparts[i].id_or_neg_offset;
-      } break;
-      default:
-        error("Particle type not handled by VELOCIraptor.");
+        case swift_type_gas: {
+          const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+          const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+          convert_part_pos(e, p, xp, &pos[3 * offset]);
+          convert_part_vel(e, p, xp, &vel[3 * offset]);
+          ids[offset] = parts[-gparts[i].id_or_neg_offset].id;
+        } break;
+        case swift_type_stars: {
+          const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
+          convert_spart_pos(e, sp, &pos[3 * offset]);
+          convert_spart_vel(e, sp, &vel[3 * offset]);
+          ids[offset] = sparts[-gparts[i].id_or_neg_offset].id;
+        } break;
+        case swift_type_black_hole: {
+          const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
+          convert_bpart_pos(e, bp, &pos[3 * offset]);
+          convert_bpart_vel(e, bp, &vel[3 * offset]);
+          ids[offset] = bparts[-gparts[i].id_or_neg_offset].id;
+        } break;
+        case swift_type_dark_matter: {
+          convert_gpart_pos(e, &gparts[i], &pos[3 * offset]);
+          convert_gpart_vel(e, &gparts[i], &vel[3 * offset]);
+          ids[offset] = gparts[i].id_or_neg_offset;
+        } break;
+        case swift_type_dark_matter_background: {
+          convert_gpart_pos(e, &gparts[i], &pos[3 * offset]);
+          convert_gpart_vel(e, &gparts[i], &vel[3 * offset]);
+          ids[offset] = gparts[i].id_or_neg_offset;
+        } break;
+        default:
+          error("Particle type not handled by VELOCIraptor.");
       }
       offset += 1;
     }
@@ -609,7 +613,7 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
    * this is the nodeID, unless we're doing collective I/O */
 #if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
   const int filenum = 0;
-  const int write_metadata = e->nodeID==0;
+  const int write_metadata = e->nodeID == 0;
   const int num_files = 1;
 #else
   const int filenum = e->nodeID;
@@ -619,25 +623,29 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
 
   /* Determine output file name */
   char orphansFileName[FILENAME_BUFFER_SIZE];
-  if(num_files > 1) {
+  if (num_files > 1) {
     if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.%d.hdf5",
                  outputFileName, filenum) >= FILENAME_BUFFER_SIZE) {
-      error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
+      error(
+          "FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
     }
   } else {
     if (snprintf(orphansFileName, FILENAME_BUFFER_SIZE, "%s.orphans.hdf5",
                  outputFileName) >= FILENAME_BUFFER_SIZE) {
-      error("FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
+      error(
+          "FILENAME_BUFFER_SIZE is too small for orphan particles file name!");
     }
   }
 
   /* Create output file and write metadata */
   hid_t h_file;
-  if(write_metadata) {
-    h_file = H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    if(h_file < 0) error("Failed to open file for orphan particles.");
+  if (write_metadata) {
+    h_file =
+        H5Fcreate(orphansFileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_file < 0) error("Failed to open file for orphan particles.");
     io_write_meta_data(h_file, e, internal_units, snapshot_units);
-    hid_t h_grp = H5Gcreate(h_file, "Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t h_grp =
+        H5Gcreate(h_file, "Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files, 1);
     H5Gclose(h_grp);
     H5Fclose(h_file);
@@ -646,63 +654,68 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   /* Reopen the output file in MPI mode if necessary */
   hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
 #if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
-  if(H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL) < 0) {
+  if (H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL) < 0) {
     error("Unable to set MPI mode opening file for orphan particles.");
   }
 #endif
   h_file = H5Fopen(orphansFileName, H5F_ACC_RDWR, fapl_id);
-  if(h_file < 0) error("Failed to open file for orphan particles.");
+  if (h_file < 0) error("Failed to open file for orphan particles.");
   H5Pclose(fapl_id);
 
   /* Determine offsets and lengths to write in output file on this MPI rank */
   long long offset_ll = 0;
-  long long count_ll = (long long) nr_flagged;
+  long long count_ll = (long long)nr_flagged;
   long long ntot_ll = nr_flagged;
 #if defined(HAVE_PARALLEL_HDF5) && defined(WITH_MPI)
   MPI_Exscan(&count_ll, &offset_ll, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &ntot_ll, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD); 
+  MPI_Allreduce(MPI_IN_PLACE, &ntot_ll, 1, MPI_LONG_LONG, MPI_SUM,
+                MPI_COMM_WORLD);
 #endif
-  hsize_t start[2] = {(hsize_t) offset_ll, (hsize_t) 0};
-  hsize_t count[2] = {(hsize_t) count_ll, (hsize_t) 3};
-  hsize_t dims[2]  = {(hsize_t) ntot_ll, (hsize_t) 3};
-  size_t nr_flagged_all = (size_t) ntot_ll;
+  hsize_t start[2] = {(hsize_t)offset_ll, (hsize_t)0};
+  hsize_t count[2] = {(hsize_t)count_ll, (hsize_t)3};
+  hsize_t dims[2] = {(hsize_t)ntot_ll, (hsize_t)3};
+  size_t nr_flagged_all = (size_t)ntot_ll;
 
   /* Get list of DM output fields - need this to get metadata for pos/vel/ids.
-   * Note that this will be wrong if we have non-DM particles and they use different
-   * position and velocity units from the DM particles. */
+   * Note that this will be wrong if we have non-DM particles and they use
+   * different position and velocity units from the DM particles. */
   int num_fields = 0;
   struct io_props list[100];
   darkmatter_write_particles(gparts, list, &num_fields);
 
   /* Write all particles as PartType1 */
-  hid_t h_grp = H5Gcreate(h_file, "PartType1", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t h_grp =
+      H5Gcreate(h_file, "PartType1", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   /* Write the particle data */
-  for(int i=0; i<num_fields; i+=1) {
-    if(strcmp(list[i].name, "Coordinates")==0) {
+  for (int i = 0; i < num_fields; i += 1) {
+    if (strcmp(list[i].name, "Coordinates") == 0) {
       /* Convert length units if necessary */
-      const double factor = units_conversion_factor(internal_units, snapshot_units, list[i].units);
-      if(factor!=1.0) {
-        for(size_t j=0; j<3*nr_gparts; j+=1)
-          pos[j] *= factor;
+      const double factor = units_conversion_factor(
+          internal_units, snapshot_units, list[i].units);
+      if (factor != 1.0) {
+        for (size_t j = 0; j < 3 * nr_gparts; j += 1) pos[j] *= factor;
       }
       /* Write out the coordinates */
       write_orphan_particle_array(h_grp, list[i].name, pos, H5T_NATIVE_DOUBLE,
-                                  2, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
-    } else if(strcmp(list[i].name, "Velocities")==0) {
+                                  2, dims, start, count, nr_flagged_all,
+                                  snapshot_units, list[i]);
+    } else if (strcmp(list[i].name, "Velocities") == 0) {
       /* Convert velocity units if necessary */
-      const double factor = units_conversion_factor(internal_units, snapshot_units, list[i].units);
-      if(factor!=1.0) {
-        for(size_t j=0; j<3*nr_gparts; j+=1)
-          vel[j] *= factor;
+      const double factor = units_conversion_factor(
+          internal_units, snapshot_units, list[i].units);
+      if (factor != 1.0) {
+        for (size_t j = 0; j < 3 * nr_gparts; j += 1) vel[j] *= factor;
       }
       /* Write out the velocities */
-      write_orphan_particle_array(h_grp, list[i].name,  vel, H5T_NATIVE_FLOAT,
-                                  2, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
-    } else if(strcmp(list[i].name, "ParticleIDs")==0) {
-      /* Write out the particle IDs */      
-      write_orphan_particle_array(h_grp, list[i].name, ids, H5T_NATIVE_LLONG,
-                                  1, dims, start, count, nr_flagged_all, snapshot_units, list[i]);
+      write_orphan_particle_array(h_grp, list[i].name, vel, H5T_NATIVE_FLOAT, 2,
+                                  dims, start, count, nr_flagged_all,
+                                  snapshot_units, list[i]);
+    } else if (strcmp(list[i].name, "ParticleIDs") == 0) {
+      /* Write out the particle IDs */
+      write_orphan_particle_array(h_grp, list[i].name, ids, H5T_NATIVE_LLONG, 1,
+                                  dims, start, count, nr_flagged_all,
+                                  snapshot_units, list[i]);
     }
   }
 
@@ -716,7 +729,6 @@ void velociraptor_dump_orphan_particles(struct engine *e, char *outputFileName) 
   swift_free("VR.ids", ids);
 }
 #endif /* HAVE_VELOCIRAPTOR_ORPHANS */
-
 
 /**
  * @brief Run VELOCIraptor with current particle data.
@@ -1035,7 +1047,9 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     error("VELOCIraptor failed to return most bound particle indexes.");
   }
   if (!return_most_bound && most_bound_index != NULL) {
-    error("VELOCIraptor returned most bound particle indexes when it should not have.");
+    error(
+        "VELOCIraptor returned most bound particle indexes when it should not "
+        "have.");
   }
 
   /* Report timing */
@@ -1075,21 +1089,23 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
 
   /* Flag most bound particles */
-  if(most_bound_index) {
+  if (most_bound_index) {
     for (int i = 0; i < num_most_bound; i++) {
-      struct gpart* const gp = &(e->s->gparts[most_bound_index[i]]);
+      struct gpart *const gp = &(e->s->gparts[most_bound_index[i]]);
       gp->has_been_most_bound = 1;
     }
   }
 
-  /* Output flagged particles (including those flagged in previous invocations) */
+  /* Output flagged particles (including those flagged in previous invocations)
+   */
   if (e->verbose) message("Writing out orphan particles");
   velociraptor_dump_orphan_particles(e, outputFileName);
 
 #endif
 
-  /* Deallocate most bound particle indexes if necessary (may be allocated by VELOCIraptor) */
-  if(most_bound_index)free(most_bound_index);
+  /* Deallocate most bound particle indexes if necessary (may be allocated by
+   * VELOCIraptor) */
+  if (most_bound_index) free(most_bound_index);
 
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
