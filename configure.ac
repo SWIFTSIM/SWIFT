@@ -1294,6 +1294,18 @@ if test "$enable_dummy_velociraptor" = "yes"; then
   AC_DEFINE(HAVE_DUMMY_VELOCIRAPTOR,1,[The dummy VELOCIraptor library is present.])
 fi
 
+# Check if we should be writing out most bound "orphan" particles from Velociraptor
+AC_ARG_ENABLE([velociraptor-orphans],
+    [AS_HELP_STRING([--enable-velociraptor-orphans],
+       [Enable output of orphan particles @<:@yes/no@:>@]
+    )],
+    [enable_velociraptor_orphans="$enableval"],
+    [enable_velociraptor_orphans="no"]
+)
+if test "$enable_velociraptor_orphans" = "yes"; then
+   AC_DEFINE([HAVE_VELOCIRAPTOR_ORPHANS], 1, [Orphan particles should be written out])
+fi
+
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
     [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
