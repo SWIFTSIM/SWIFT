@@ -68,6 +68,7 @@ the following changes have been made (at standard resolution):
    M_BH < 1.8*10^8 Msun).
  - BHs do not swallow gas particles any more. They nibble small
    amounts of mass from the eligible neighbours within their kernel.
+ - Gas particles can be nibbled down to 50% of their initial mass.
  - The angular momentum term in the BH accretion model of
    Rosas-Guevara et al. (2015) is now switched off.
  - The coupling efficency of the BH feedback is now 0.1 (was 0.15).
