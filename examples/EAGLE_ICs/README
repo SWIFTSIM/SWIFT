@@ -57,6 +57,8 @@ the following changes have been made (at standard resolution):
  - The circular velocity threshold for BH mergers is measured
    at the actual distance linking the BHs not at the kernel support
    length any more.
+ - When two BHs merge, the one with the largest subgrid mass swallows
+   the other one (not the one with the largest ID anymore).
  - The BHs can reposition only onto gas particles and BH particles
    (not onto any type as before).
  - No limit is imposed any more on the velocity (w.r.t. the BH)
