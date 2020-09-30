@@ -454,6 +454,8 @@ GEARChemistry:
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
+  SF_model:                     SchmidtLaw     # (Optional) If set to "SchmidtLaw", the SFR is calculated using a Schmidt law, defaults to the pressure law
+  star_formation_efficiency:         0.01      # (Optional) If a Schmidt law is used, this regulates the star formation efficiency per free-fall time (defaults to 0.01)
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EoS assumed for the star-forming gas in Hydrogen atoms per cm^3.
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EoS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EoS assumed for the star-forming gas.
