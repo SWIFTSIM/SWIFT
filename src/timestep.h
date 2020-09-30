@@ -208,7 +208,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     const struct spart *restrict sp, const struct engine *restrict e) {
 
   /* Stellar time-step */
-  float new_dt_stars = stars_compute_timestep(sp);
+  float new_dt_stars = stars_compute_timestep(
+      sp, e->stars_properties, (e->policy & engine_policy_cosmology),
+      e->cosmology, e->time);
 
   /* Gravity time-step */
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;

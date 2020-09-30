@@ -188,6 +188,19 @@ struct stars_props {
 
   /*! Value to set birth temperature of stars read from ICs */
   float spart_first_init_birth_temperature;
+
+  /*! Maximal time-step length of young stars (internal units) */
+  double max_time_step_young;
+
+  /*! Maximal time-step length of old stars (internal units) */
+  double max_time_step_old;
+
+  /*! Age threshold for the young/old transition (internal units) */
+  double age_threshold;
+
+  /*! Age threshold for the transition to unlimited time-step size (internal
+   * units) */
+  double age_threshold_unlimited;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
