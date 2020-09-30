@@ -41,12 +41,35 @@
  * @brief Star formation model used in the EAGLE model
  */
 
+/**
+ * @brief Functional form of the star formation law
+ */
+enum star_formation_law {
+  eagle_star_formation_schmidt_law, /*< Schmidt law */
+  eagle_star_formation_pressure_law /*< Pressure law */
+};
+
 #define star_formation_need_update_dx_max 0
 
 /**
  * @brief Properties of the EAGLE star formation model.
  */
 struct star_formation {
+
+  /* Which model are we using */
+  enum star_formation_law SF_law;
+
+  /* The Schmidt model parameters */
+  struct {
+
+    /*! Star formation efficiency */
+    double sfe;
+
+    /*! star formation efficiency over free fall time constant (cm^1.5 g^-.5
+     * s^-1) */
+    double mdot_const;
+
+  } schmidt_law;
 
   /*! Normalization of the KS star formation law (internal units) */
   double KS_normalization;
@@ -272,10 +295,96 @@ INLINE static int star_formation_is_star_forming(
   const double entropy_eos = max(entropy_floor(p, cosmo, entropy_floor_props),
                                  EOS_entropy(n_H, starform, physical_density));
 
-  /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
+  /* Check the Schaye & Dalla Vecchia 2012 EOS-based temperature criterion */
   return (entropy <
           entropy_eos * starform->ten_to_entropy_margin_threshold_dex);
 }
+
+/**
+ * @brief Compute the star-formation rate of a given particle and store
+ * it into the #xpart. The star formation is calculated as a simple
+ * Schmidt law with an efficiency per free-fall time that can be specified,
+ * the free-fall time is based on the total SPH density.
+ *
+ * @param p #part.
+ * @param xp the #xpart.
+ * @param starform the star formation law properties to use
+ * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo the cosmological parameters and properties.
+ * @param dt_star The time-step of this particle.
+ */
+INLINE static void star_formation_compute_SFR_schmidt_law(
+    const struct part* p, struct xpart* xp,
+    const struct star_formation* starform, const struct phys_const* phys_const,
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {
+
+  /* Mass density of this particle */
+  const double physical_density = hydro_get_physical_density(p, cosmo);
+
+  /* Calculate the SFR per gas mass */
+  const double SFRpergasmass =
+      starform->schmidt_law.mdot_const * sqrt(physical_density);
+
+  /* Store the SFR */
+  xp->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
+}
+
+/**
+ * @brief Compute the star-formation rate of a given particle and store
+ * it into the #xpart. The star formation is calculated using a pressure
+ * law based on Schaye and Dalla Vecchia (2008), the star formation
+ * rate is calculated as:
+ *
+ * \dot{m}_\star = A (1 Msun / pc^-2)^-n m_gas (\gamma/G * f_g *
+ *                 pressure)**((n-1)/2)
+ *
+ * @param p #part.
+ * @param xp the #xpart.
+ * @param starform the star formation law properties to use
+ * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo the cosmological parameters and properties.
+ * @param dt_star The time-step of this particle.
+ */
+INLINE static void star_formation_compute_SFR_pressure_law(
+    const struct part* p, struct xpart* xp,
+    const struct star_formation* starform, const struct phys_const* phys_const,
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {
+
+  /* Hydrogen number density of this particle (assuming primordial H abundance)
+   */
+  const double physical_density = hydro_get_physical_density(p, cosmo);
+  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
+
+  /* Get the pressure used for the star formation, this is
+   * the maximum of the star formation EOS pressure,
+   * the physical pressure of the particle and the
+   * floor pressure. The floor pressure is used implicitly
+   * when getting the physical pressure. */
+  const double pressure =
+      max(EOS_pressure(n_H, starform), hydro_get_physical_pressure(p, cosmo));
+
+  /* Calculate the specific star formation rate */
+  double SFRpergasmass;
+  if (physical_density <
+      starform->KS_high_den_thresh * phys_const->const_proton_mass) {
+
+    SFRpergasmass =
+        starform->SF_normalization * pow(pressure, starform->SF_power_law);
+
+  } else {
+
+    SFRpergasmass = starform->SF_high_den_normalization *
+                    pow(pressure, starform->SF_high_den_power_law);
+  }
+
+  /* Store the SFR */
+  xp->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
+}
+
 
 /**
  * @brief Compute the star-formation rate of a given particle and store
@@ -305,7 +414,6 @@ INLINE static void star_formation_compute_SFR(
   /* Hydrogen number density of this particle (assuming primordial H abundance)
    */
   const double physical_density = hydro_get_physical_density(p, cosmo);
-  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
 
   /* Are we above the threshold for automatic star formation? */
   if (physical_density >
@@ -315,30 +423,21 @@ INLINE static void star_formation_compute_SFR(
     return;
   }
 
-  /* Get the pressure used for the star formation, this is
-   * the maximum of the star formation EOS pressure,
-   * the physical pressure of the particle and the
-   * floor pressure. The floor pressure is used implicitly
-   * when getting the physical pressure. */
-  const double pressure =
-      max(EOS_pressure(n_H, starform), hydro_get_physical_pressure(p, cosmo));
+  /* Determine which star formation model to use */
+  switch (starform->SF_law) {
 
-  /* Calculate the specific star formation rate */
-  double SFRpergasmass;
-  if (physical_density <
-      starform->KS_high_den_thresh * phys_const->const_proton_mass) {
-
-    SFRpergasmass =
-        starform->SF_normalization * pow(pressure, starform->SF_power_law);
-
-  } else {
-
-    SFRpergasmass = starform->SF_high_den_normalization *
-                    pow(pressure, starform->SF_high_den_power_law);
+    case eagle_star_formation_schmidt_law:
+      star_formation_compute_SFR_schmidt_law(p, xp, starform, phys_const,
+                                             hydro_props, cosmo, dt_star);
+      break;
+    case eagle_star_formation_pressure_law:
+      star_formation_compute_SFR_pressure_law(p, xp, starform, phys_const,
+                                              hydro_props, cosmo, dt_star);
+      break;
+    default:
+      error("Invalid star formation model!!!");
   }
 
-  /* Store the SFR */
-  xp->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
 }
 
 /**
@@ -508,6 +607,31 @@ INLINE static void starformation_init_backend(
   const double number_density_from_cgs =
       1. / units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
+
+  /* Check if we are using the Schmidt law for the star formation rate, 
+   * defaults to pressure law if is not explicitely set to a Schmidt law */
+  char temp[32] = {0};
+  parser_get_opt_param_string(parameter_file, "EAGLEStarFormation:SF_model",
+                              temp, "PressureLaw");
+
+  if (strcmp(temp, "SchmidtLaw") == 0) {
+    /* Schmidt model */
+    starform->SF_law = eagle_star_formation_schmidt_law;
+
+    /* Get the star formation efficiency */
+    starform->schmidt_law.sfe = parser_get_opt_param_double(
+        parameter_file, "EAGLEStarFormation:star_formation_efficiency", 0.01);
+
+    /* Calculate the ff constant */
+    const double ff_const = sqrt(3.0 * M_PI / (32.0 * G_newton));
+
+    /* Calculate the constant */
+    starform->schmidt_law.mdot_const = starform->schmidt_law.sfe / ff_const;
+  } else {
+    /* Pressure model */
+    starform->SF_law = eagle_star_formation_pressure_law;
+  }
+
   /* Quantities that have to do with the Normal Kennicutt-
    * Schmidt law will be read in this part of the code*/
 
@@ -639,6 +763,8 @@ INLINE static void starformation_init_backend(
   /* Convert to internal units */
   starform->density_threshold_max =
       starform->density_threshold_max_HpCM3 * number_density_from_cgs;
+
+
 }
 
 /**
@@ -649,14 +775,30 @@ INLINE static void starformation_init_backend(
 INLINE static void starformation_print_backend(
     const struct star_formation* starform) {
 
-  message("Star formation law is EAGLE (Schaye & Dalla Vecchia 2008)");
-  message(
-      "With properties: normalization = %e Msun/kpc^2/yr, slope of the"
-      "Kennicutt-Schmidt law = %e and gas fraction = %e ",
-      starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law,
-      starform->fgas);
-  message("At densities of %e H/cm^3 the slope changes to %e.",
+  message("Star formation law is EAGLE");
+
+  switch (starform->SF_law) {
+    case eagle_star_formation_schmidt_law:
+      message(
+          "Star formation law is a Schmidt law: Star formation efficiency = %e",
+          starform->schmidt_law.sfe);
+      break;
+    case eagle_star_formation_pressure_law:
+      message(
+          "Star formation law is a pressure law (Schaye & Dalla Vecchia "
+          "2008): ");
+      message(
+          "With properties: normalization = %e Msun/kpc^2/yr, slope of the"
+          "Kennicutt-Schmidt law = %e and gas fraction = %e ",
+          starform->KS_normalization_MSUNpYRpKPC2, starform->KS_power_law,
+          starform->fgas);
+      message("At densities of %e H/cm^3 the slope changes to %e.",
           starform->KS_high_den_thresh_HpCM3, starform->KS_high_den_power_law);
+      break;
+    default:
+      error("Invalid star formation model!!!");
+  }  
+
   message(
       "The effective equation of state is given by: polytropic "
       "index = %e , normalization density = %e #/cm^3 and normalization "
