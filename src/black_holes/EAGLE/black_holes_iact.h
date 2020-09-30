@@ -506,8 +506,8 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
     if ((v2_pec < v2_threshold) && (r2 < max_dist_merge2)) {
 
-      /* This particle is swallowed by the BH with the largest ID of all the
-       * candidates wanting to swallow it */
+      /* This particle is swallowed by the BH with the largest mass of all the
+       * candidates wanting to swallow it (we use IDs to break ties)*/
       if ((bj->merger_data.swallow_mass < bi->subgrid_mass) ||
           (bj->merger_data.swallow_mass == bi->subgrid_mass &&
            bj->merger_data.swallow_id < bi->id)) {
