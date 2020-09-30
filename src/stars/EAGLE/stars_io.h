@@ -254,6 +254,35 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->spart_first_init_birth_temperature =
         parser_get_param_float(params, "Stars:birth_temperature");
   }
+
+  /* Maximal time-step lengths */
+  const double Myr = 1e6 * 365.25 * 24. * 60. * 60.;
+  const double conv_fac = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+
+  const double max_time_step_young_Myr = parser_get_opt_param_float(
+      params, "Stars:max_timestep_young_Myr", FLT_MAX);
+  const double max_time_step_old_Myr =
+      parser_get_opt_param_float(params, "Stars:max_timestep_old_Myr", FLT_MAX);
+  const double age_threshold_Myr = parser_get_opt_param_float(
+      params, "Stars:timestep_age_threshold_Myr", FLT_MAX);
+  const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
+      params, "Stars:timestep_age_threshold_unlimited_Myr", 0.);
+
+  /* Check for consistency */
+  if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
+    if (age_threshold_unlimited_Myr < age_threshold_Myr)
+      error(
+          "The age threshold for unlimited stellar time-step sizes (%e Myr) is "
+          "smaller than the transition threshold from young to old ages (%e "
+          "Myr)",
+          age_threshold_unlimited_Myr, age_threshold_Myr);
+  }
+
+  /* Convert to internal units */
+  sp->max_time_step_young = max_time_step_young_Myr * Myr / conv_fac;
+  sp->max_time_step_old = max_time_step_old_Myr * Myr / conv_fac;
+  sp->age_threshold = age_threshold_Myr * Myr / conv_fac;
+  sp->age_threshold_unlimited = age_threshold_unlimited_Myr * Myr / conv_fac;
 }
 
 /**
@@ -263,7 +292,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
  */
 INLINE static void stars_props_print(const struct stars_props *sp) {
 
-  /* Now stars */
   message("Stars kernel: %s with eta=%f (%.2f neighbours).", kernel_name,
           sp->eta_neighbours, sp->target_neighbours);
 
@@ -281,6 +309,13 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
   if (sp->overwrite_birth_time)
     message("Stars' birth time read from the ICs will be overwritten to %f",
             sp->spart_first_init_birth_time);
+
+  message("Stars' age threshold for unlimited dt: %e [U_t]",
+          sp->age_threshold_unlimited);
+  message("Stars' young/old age threshold: %e [U_t]", sp->age_threshold);
+  message("Max time-step size of young stars: %e [U_t]",
+          sp->max_time_step_young);
+  message("Max time-step size of old stars: %e [U_t]", sp->max_time_step_old);
 }
 
 #if defined(HAVE_HDF5)

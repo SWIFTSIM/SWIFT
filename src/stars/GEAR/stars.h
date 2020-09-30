@@ -24,12 +24,20 @@
 #include <float.h>
 
 /**
- * @brief Computes the gravity time-step of a given star particle.
+ * @brief Computes the time-step length of a given star particle from star
+ * physics
  *
  * @param sp Pointer to the s-particle data.
+ * @param stars_properties Properties of the stars model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param cosmo The current cosmological model (used if running with
+ * cosmology).
+ * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static float stars_compute_timestep(
-    const struct spart* const sp) {
+    const struct spart* const sp, const struct stars_props* stars_properties,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const double time) {
 
   return FLT_MAX;
 }
