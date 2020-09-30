@@ -629,11 +629,72 @@ INLINE static void starformation_init_backend(
     starform->schmidt_law.mdot_const = starform->schmidt_law.sfe / ff_const;
   } else {
     /* Pressure model */
+    /* Quantities that have to do with the Normal Kennicutt-
+     * Schmidt law will be read in this part of the code*/
     starform->SF_law = eagle_star_formation_pressure_law;
-  }
 
-  /* Quantities that have to do with the Normal Kennicutt-
-   * Schmidt law will be read in this part of the code*/
+    /* Read the gas fraction from the file */
+    starform->fgas = parser_get_opt_param_double(
+        parameter_file, "EAGLEStarFormation:gas_fraction", 1.);
+
+    /* Read the Kennicutt-Schmidt power law exponent */
+    starform->KS_power_law =
+        parser_get_param_double(parameter_file, "EAGLEStarFormation:KS_exponent");
+
+    /* Calculate the power law of the corresponding star formation Schmidt law */
+    starform->SF_power_law = (starform->KS_power_law - 1.) / 2.;
+
+    /* Read the normalization of the KS law in KS law units */
+    starform->KS_normalization_MSUNpYRpKPC2 = parser_get_param_double(
+        parameter_file, "EAGLEStarFormation:KS_normalisation");
+  
+    /* Convert to internal units */
+    starform->KS_normalization =
+        starform->KS_normalization_MSUNpYRpKPC2 * Msun_per_kpc2_per_year;
+  
+    /* Calculate the starformation pre-factor (eq. 12 of Schaye & Dalla Vecchia
+     * 2008) */
+    starform->SF_normalization =
+        starform->KS_normalization * pow(Msun_per_pc2, -starform->KS_power_law) *
+        pow(hydro_gamma * starform->fgas / G_newton, starform->SF_power_law);
+  
+    /* Read the high density Kennicutt-Schmidt power law exponent */
+    starform->KS_high_den_power_law = parser_get_param_double(
+        parameter_file, "EAGLEStarFormation:KS_high_density_exponent");
+  
+    /* Calculate the SF high density power law */
+    starform->SF_high_den_power_law = (starform->KS_high_den_power_law - 1.) / 2.;
+  
+    /* Read the high density criteria for the KS law in number density per cm^3 */
+    starform->KS_high_den_thresh_HpCM3 = parser_get_param_double(
+        parameter_file, "EAGLEStarFormation:KS_high_density_threshold_H_p_cm3");
+  
+    /* Transform the KS high density criteria to simulation units */
+    starform->KS_high_den_thresh =
+        starform->KS_high_den_thresh_HpCM3 * number_density_from_cgs;
+  
+    /* Pressure at the high-density threshold */
+    const double EOS_high_den_pressure =
+        EOS_pressure(starform->KS_high_den_thresh, starform);
+  
+    /* Calculate the KS high density normalization
+     * We want the SF law to be continous so the normalisation of the second
+     * power-law is the value of the first power-law at the high-density threshold
+     */
+    starform->KS_high_den_normalization =
+        starform->KS_normalization *
+        pow(Msun_per_pc2,
+            starform->KS_high_den_power_law - starform->KS_power_law) *
+        pow(hydro_gamma * EOS_high_den_pressure * starform->fgas / G_newton,
+            (starform->KS_power_law - starform->KS_high_den_power_law) * 0.5f);
+  
+    /* Calculate the SF high density normalization */
+    starform->SF_high_den_normalization =
+        starform->KS_high_den_normalization *
+        pow(Msun_per_pc2, -starform->KS_high_den_power_law) *
+        pow(hydro_gamma * starform->fgas / G_newton,
+            starform->SF_high_den_power_law);
+  }
 
   /* Load the equation of state for this model */
   starform->EOS_polytropic_index = parser_get_param_double(
@@ -660,68 +721,6 @@ INLINE static void starformation_init_backend(
   /* Read the critical density contrast from the parameter file*/
   starform->min_over_den = parser_get_param_double(
       parameter_file, "EAGLEStarFormation:min_over_density");
-
-  /* Read the gas fraction from the file */
-  starform->fgas = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:gas_fraction", 1.);
-
-  /* Read the Kennicutt-Schmidt power law exponent */
-  starform->KS_power_law =
-      parser_get_param_double(parameter_file, "EAGLEStarFormation:KS_exponent");
-
-  /* Calculate the power law of the corresponding star formation Schmidt law */
-  starform->SF_power_law = (starform->KS_power_law - 1.) / 2.;
-
-  /* Read the normalization of the KS law in KS law units */
-  starform->KS_normalization_MSUNpYRpKPC2 = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:KS_normalisation");
-
-  /* Convert to internal units */
-  starform->KS_normalization =
-      starform->KS_normalization_MSUNpYRpKPC2 * Msun_per_kpc2_per_year;
-
-  /* Calculate the starformation pre-factor (eq. 12 of Schaye & Dalla Vecchia
-   * 2008) */
-  starform->SF_normalization =
-      starform->KS_normalization * pow(Msun_per_pc2, -starform->KS_power_law) *
-      pow(hydro_gamma * starform->fgas / G_newton, starform->SF_power_law);
-
-  /* Read the high density Kennicutt-Schmidt power law exponent */
-  starform->KS_high_den_power_law = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:KS_high_density_exponent");
-
-  /* Calculate the SF high density power law */
-  starform->SF_high_den_power_law = (starform->KS_high_den_power_law - 1.) / 2.;
-
-  /* Read the high density criteria for the KS law in number density per cm^3 */
-  starform->KS_high_den_thresh_HpCM3 = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:KS_high_density_threshold_H_p_cm3");
-
-  /* Transform the KS high density criteria to simulation units */
-  starform->KS_high_den_thresh =
-      starform->KS_high_den_thresh_HpCM3 * number_density_from_cgs;
-
-  /* Pressure at the high-density threshold */
-  const double EOS_high_den_pressure =
-      EOS_pressure(starform->KS_high_den_thresh, starform);
-
-  /* Calculate the KS high density normalization
-   * We want the SF law to be continous so the normalisation of the second
-   * power-law is the value of the first power-law at the high-density threshold
-   */
-  starform->KS_high_den_normalization =
-      starform->KS_normalization *
-      pow(Msun_per_pc2,
-          starform->KS_high_den_power_law - starform->KS_power_law) *
-      pow(hydro_gamma * EOS_high_den_pressure * starform->fgas / G_newton,
-          (starform->KS_power_law - starform->KS_high_den_power_law) * 0.5f);
-
-  /* Calculate the SF high density normalization */
-  starform->SF_high_den_normalization =
-      starform->KS_high_den_normalization *
-      pow(Msun_per_pc2, -starform->KS_high_den_power_law) *
-      pow(hydro_gamma * starform->fgas / G_newton,
-          starform->SF_high_den_power_law);
 
   /* Get the maximum physical density for SF */
   starform->max_gas_density_HpCM3 = parser_get_opt_param_double(
