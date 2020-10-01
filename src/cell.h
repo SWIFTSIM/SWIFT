@@ -407,6 +407,12 @@ struct cell {
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
+    /*! Radiative transfer ghost in task */
+    struct task *rt_in;
+
+    /*! Radiative transfer ghost out task */
+    struct task *rt_out;
+
     /*! Task for self/pair injection step of radiative transfer */
     struct link *rt_inject;
 
