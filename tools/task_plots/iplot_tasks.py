@@ -179,6 +179,8 @@ TASKTYPES = [
     "bh_swallow_ghost3",
     "fof_self",
     "fof_pair",
+    "rt_in",
+    "rt_out",
     "count",
 ]
 

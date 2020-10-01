@@ -579,12 +579,6 @@ int main(int argc, char *argv[]) {
         "Error: Cannot use radiative transfer without stars, --stars must be "
         "chosen\n");
   }
-  /* Temporary, this dependency will be removed later */
-  if (with_rt && !with_feedback) {
-    error(
-        "Error: Cannot use radiative transfer without feedback for now,"
-        " --feedback must be chosen\n");
-  }
 
 #ifndef GADGET2_SPH
   /* Temporary, this dependency will be removed later */
