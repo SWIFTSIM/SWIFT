@@ -236,6 +236,8 @@ def taskIsRT(name):
     """
     if "_rt" in name:
         return True
+    elif name.startswith("rt_"):
+        return True
     return False
 
 
