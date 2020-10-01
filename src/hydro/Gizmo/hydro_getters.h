@@ -281,10 +281,12 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
     v[2] = p->fluid_v[2];
   }
 
-  // MATTHIEU: Bert is this correct?
-  v[0] += xp->a_grav[0] * dt_kick_grav;
-  v[1] += xp->a_grav[1] * dt_kick_grav;
-  v[2] += xp->a_grav[2] * dt_kick_grav;
+  // MATTHIEU: Bert is this correct? Also, we need to add the mesh kick!
+  if (p->gpart) {
+    v[0] += p->gpart->a_grav[0] * dt_kick_grav;
+    v[1] += p->gpart->a_grav[1] * dt_kick_grav;
+    v[2] += p->gpart->a_grav[2] * dt_kick_grav;
+  }
 }
 
 /**
