@@ -71,9 +71,10 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   /* The actual time-step size this particle will use */
   const integertime_t new_ti_beg = old_ti_beg;
   const integertime_t new_ti_end = ti_current;
-  const integertime_t new_dti = new_ti_end - new_ti_beg;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const integertime_t new_dti = new_ti_end - new_ti_beg;
+
   /* Some basic safety checks */
   if (old_ti_beg >= ti_current)
     error(
