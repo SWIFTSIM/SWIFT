@@ -399,7 +399,7 @@ void engine_split_gas_particles(struct engine *e) {
 
     /* We now need to correct all the pointers of the other particle arrays */
     part_relink_all_parts_to_gparts(gparts_new, s->nr_gparts, s->parts,
-                                    s->sinks, s->sparts, s->bparts, s->dmparts,
+                                    s->sinks, s->sparts, s->dmparts, s->bparts,
                                     &e->threadpool);
     s->gparts = gparts_new;
   }
@@ -407,8 +407,8 @@ void engine_split_gas_particles(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that whatever reallocation happened we are still having correct
    * links */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
                     s->nr_bparts, e->verbose);
 #endif
 

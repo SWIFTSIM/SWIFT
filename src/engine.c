@@ -1888,9 +1888,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     engine_recompute_displacement_constraint(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts, e->s->dmparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
-                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_dmparts, e->s->nr_bparts,
                     e->verbose);
 #endif
 
@@ -2578,9 +2578,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts, e->s->dmparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
-                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_bparts,
+                    e->s->nr_sinks, e->s->nr_sparts, e->s->nr_dmparts, e->s->nr_bparts,
                     e->verbose);
 #endif
 
@@ -3667,14 +3667,14 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link everything to the gparts. */
   if (s->nr_gparts > 0)
     part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts, s->sinks,
-                                    s->sparts, s->bparts, s->dmparts, &e->threadpool);
+                                    s->sparts, s->dmparts, s->bparts, &e->threadpool);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts, s->dmparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, s->nr_dmparts, e->verbose);
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
+                    s->nr_bparts, e->verbose);
 #endif
 
   if (e->verbose)

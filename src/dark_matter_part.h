@@ -55,6 +55,16 @@ struct dmpart {
 
   /*! Particle time bin */
   timebin_t time_bin;
+    
+    /* Time of the last drift */
+    integertime_t ti_drift;
+    
+    /* Time of the last kick */
+    integertime_t ti_kick;
+    
+    /* Has this particle been initialised? */
+    int initialised;
+
 
   struct {
 

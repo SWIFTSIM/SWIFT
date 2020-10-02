@@ -258,8 +258,9 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
  */
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
-                                     struct spart *sparts, struct bpart *bparts,
+                                     struct spart *sparts,
                                      struct dmpart *dmparts,
+                                     struct bpart *bparts,
                                      struct threadpool *tp) {
 
   struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts, dmparts};

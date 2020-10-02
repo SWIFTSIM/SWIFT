@@ -1093,8 +1093,8 @@ int main(int argc, char *argv[]) {
 
     /* Check that the other links are correctly set */
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart,
-                        Nsink, Nspart, Nbpart, 1);
+      part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Ngas, Ngpart,
+                        Nsink, Nspart, Ndmpart, Nbpart, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */

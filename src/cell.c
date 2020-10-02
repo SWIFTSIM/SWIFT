@@ -5758,9 +5758,9 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Make sure the particle does not drift by more than a box length. */
-            if (fabs(dmp->v[0] * dt_drift) > e->s->dim[0] ||
-                fabs(dmp->v[1] * dt_drift) > e->s->dim[1] ||
-                fabs(dmp->v[2] * dt_drift) > e->s->dim[2]) {
+            if (fabs(dmp->v_full[0] * dt_drift) > e->s->dim[0] ||
+                fabs(dmp->v_full[1] * dt_drift) > e->s->dim[1] ||
+                fabs(dmp->v_full[2] * dt_drift) > e->s->dim[2]) {
                 error("DM Particle drifts by more than a box length!");
             }
 #endif

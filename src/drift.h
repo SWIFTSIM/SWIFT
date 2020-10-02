@@ -242,6 +242,17 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     struct dmpart *restrict dmp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current) {
     
+#ifdef SWIFT_DEBUG_CHECKS
+    if (dmp->ti_drift != ti_old)
+    error(
+          "s-particle has not been drifted to the current time "
+          "sp->ti_drift=%lld, "
+          "c->ti_old=%lld, ti_current=%lld",
+          dmp->ti_drift, ti_old, ti_current);
+    
+    dmp->ti_drift = ti_current;
+#endif
+    
 #ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
     
     /* Get the ID of the gpart */
@@ -251,9 +262,9 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     if (id < SWIFT_FIXED_BOUNDARY_PARTICLES) {
         
         /* Don't move! */
-        dmp->v[0] = 0.f;
-        dmp->v[1] = 0.f;
-        dmp->v[2] = 0.f;
+        dmp->v_full[0] = 0.f;
+        dmp->v_full[1] = 0.f;
+        dmp->v_full[2] = 0.f;
     }
 #endif
     
@@ -262,11 +273,6 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     dmp->x[1] += dmp->v_full[1] * dt_drift;
     dmp->x[2] += dmp->v_full[2] * dt_drift;
 
-    /* Give the gpart friend the same drift */
-    /*dmp->gpart->x[0] = dmp->x[0];
-    dmp->gpart->x[1] = dmp->x[1];
-    dmp->gpart->x[2] = dmp->x[2];*/
-
     /* Predict the values of the extra fields */
     /*dark_matter_predict_extra(dmp, dt_drift);*/
     
@@ -274,6 +280,7 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     for (int k = 0; k < 3; k++) {
         const float dx = dmp->v_full[k] * dt_drift;
         dmp->x_diff[k] -= dx;
+
     }
 }
 

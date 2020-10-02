@@ -196,7 +196,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
             struct dmpart *restrict pj = &dmparts[pjd];
             
             /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
+            /*if (dmpart_is_inhibited(pj, e)) continue;*/
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -287,8 +287,8 @@ void do_nonsym_pair_sidm(struct runner *r, struct cell *ci,
         if (!dmpart_is_active(pi, e)) continue;
         
         /* Get i particle time-step */
-        const integertime_t ti_step = get_integer_timestep(pi->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->time_bin);
+        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
         double dti;
         if (with_cosmology) {
             dti = cosmology_get_delta_time(e->cosmology, ti_begin,
@@ -310,7 +310,7 @@ void do_nonsym_pair_sidm(struct runner *r, struct cell *ci,
             struct dmpart *restrict pj = &dmparts_j[pjd];
             
             /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
+            /*if (dmpart_is_inhibited(pj, e)) continue;*/
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);

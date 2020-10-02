@@ -1220,8 +1220,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
       (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0) ||
       (nr_gparts > 0 && nr_dmparts > 0))
-    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
+    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_dmparts, nr_bparts,
                       verbose);
 #endif
 
@@ -2249,8 +2249,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
       (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
-    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
+    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_dmparts, nr_bparts,
                       verbose);
 #endif
 
@@ -5722,6 +5722,10 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
     const struct sidm_props *sidm_props = s->e->sidm_properties;
     /*const float initial_h = s->initial_dmpart_h;*/
     
+#ifdef SWIFT_DEBUG_CHECKS
+    const ptrdiff_t delta = dmp - s->dmparts;
+#endif
+    
     const struct cosmology *cosmo = e->cosmology;
     const float a_factor_vel = cosmo->a;
     /*const float sidm_h_min_ratio = e->sidm_properties->h_min_ratio;*/
@@ -6197,8 +6201,8 @@ void space_init(struct space *s, struct swift_params *params,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                        Nsink, Nspart, Nbpart, 1);
+      part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Npart, Ngpart,
+                        Nsink, Nspart, Ndmpart, Nbpart, 1);
 #endif
   }
 
@@ -6225,8 +6229,8 @@ void space_init(struct space *s, struct swift_params *params,
     Nsink = s->nr_sinks;
             
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                      Nsink, Nspart, Nbpart, 1);
+    part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Npart, Ngpart,
+                      Nsink, Nspart, Ndmpart, Nbpart, 1);
 #endif
   }
 
@@ -6694,8 +6698,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
                     s->nr_bparts, verbose);
 #endif
 }
@@ -7588,8 +7592,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
                     s->nr_bparts, 1);
 #endif
 }
