@@ -36,11 +36,17 @@ struct gpart {
   /*! Particle velocity. */
   float v_full[3];
 
-  /*! Particle acceleration. */
+  /*! Particle acceleration from the tree. */
   float a_grav[3];
+
+  /*! Particle acceleration from the mesh. */
+  float a_grav_mesh[3];
 
   /*! Gravitational potential */
   float potential;
+
+  /*! Gravitational potential from the mesh.*/
+  float potential_mesh;
 
   /*! Particle mass. */
   float mass;
@@ -74,6 +80,9 @@ struct gpart {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+  /* Time of the last mesh kick */
+  integertime_t ti_kick_mesh;
+
   /* Has this particle been initialised? */
   int initialised;
 
@@ -81,17 +90,24 @@ struct gpart {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
-  /*! Acceleration taken from the mesh only */
-  float a_grav_PM[3];
+  /* Acceleration taken from each component of the tree */
+  float a_grav_p2p[3];
+  float a_grav_m2p[3];
+  float a_grav_m2l[3];
 
-  /*! Potential taken from the mesh only */
-  float potential_PM;
-
-  /* Brute-force particle acceleration. */
+  /* Brute-force particle accelerations */
   double a_grav_exact[3];
+  double a_grav_exact_long[3];
+  double a_grav_exact_short[3];
 
   /* Brute-force particle potential. */
   double potential_exact;
+
+  /* Type specific interaction counters */
+  long long num_interacted_m2p;
+  long long num_interacted_m2l;
+  long long num_interacted_p2p;
+  long long num_interacted_pm;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
