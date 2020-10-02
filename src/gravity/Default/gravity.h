@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 }
 
 /**
- * @brief Add a contribution to this particle's potential.
+ * @brief Add a contribution to this particle's potential from the tree.
  *
  * Here we do nothing as this version does not accumulate potential.
  *
@@ -64,7 +64,19 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {}
+gravity_add_comoving_potential(struct gpart* restrict gp, const float pot) {}
+
+/**
+ * @brief Add a contribution to this particle's potential from the mesh.
+ *
+ * Here we do nothing as this version does not accumulate potential.
+ *
+ * @param gp The particle.
+ * @param pot The contribution to add.
+ */
+__attribute__((always_inline)) INLINE static void
+gravity_add_comoving_mesh_potential(struct gpart* restrict gp,
+                                    const float pot) {}
 
 /**
  * @brief Returns the comoving potential of a particle.
@@ -116,6 +128,11 @@ gravity_compute_timestep_self(const struct gpart* const gp,
   float a_phys_x = gp->a_grav[0] * cosmo->a_factor_grav_accel;
   float a_phys_y = gp->a_grav[1] * cosmo->a_factor_grav_accel;
   float a_phys_z = gp->a_grav[2] * cosmo->a_factor_grav_accel;
+
+  /* Get physical acceleration (gravity mesh contribution) */
+  a_phys_x += gp->a_grav_mesh[0] * cosmo->a_factor_grav_accel;
+  a_phys_y += gp->a_grav_mesh[1] * cosmo->a_factor_grav_accel;
+  a_phys_z += gp->a_grav_mesh[2] * cosmo->a_factor_grav_accel;
 
   /* Get physical acceleration (hydro contribution) */
   a_phys_x += a_hydro[0] * cosmo->a_factor_hydro_accel;
@@ -194,13 +211,19 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
     struct gpart* gp, const float const_G, const float potential_normalisation,
     const int periodic, const int with_self_gravity) {
 
+  /* Add back the long-range forces
+   * Note that the mesh gravity had been multiplied by G. We undo this here. */
+  float a_grav[3];
+  a_grav[0] = gp->a_grav[0] + gp->a_grav_mesh[0] / const_G;
+  a_grav[1] = gp->a_grav[1] + gp->a_grav_mesh[1] / const_G;
+  a_grav[2] = gp->a_grav[2] + gp->a_grav_mesh[2] / const_G;
+
   /* Record the norm of the acceleration for the adaptive opening criteria.
    * Will always be an (active) timestep behind. */
-  gp->old_a_grav_norm = gp->a_grav[0] * gp->a_grav[0] +
-                        gp->a_grav[1] * gp->a_grav[1] +
-                        gp->a_grav[2] * gp->a_grav[2];
+  const float old_a_grav_norm =
+      a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] + a_grav[2] * a_grav[2];
 
-  gp->old_a_grav_norm = sqrtf(gp->old_a_grav_norm);
+  gp->old_a_grav_norm = sqrtf(old_a_grav_norm);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (with_self_gravity && gp->old_a_grav_norm == 0.f)
@@ -215,7 +238,6 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM *= const_G;
   for (int i = 0; i < 3; i++) {
-    gp->a_grav_PM[i] *= const_G;
     gp->a_grav_p2p[i] *= const_G;
     gp->a_grav_m2p[i] *= const_G;
     gp->a_grav_m2l[i] *= const_G;
