@@ -23,7 +23,7 @@
 #include "kick.h"
 
 INLINE static void convert_gpart_pos(const struct engine* e,
-                                     const struct gpart* gp, double* ret) {
+                                     const struct gpart* gp, double ret[3]) {
 
   const struct space* s = e->s;
   if (s->periodic) {
@@ -38,7 +38,7 @@ INLINE static void convert_gpart_pos(const struct engine* e,
 }
 
 INLINE static void convert_gpart_vel(const struct engine* e,
-                                     const struct gpart* gp, float* ret) {
+                                     const struct gpart* gp, float ret[3]) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology* cosmo = e->cosmology;
