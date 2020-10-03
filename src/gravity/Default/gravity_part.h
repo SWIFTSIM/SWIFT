@@ -42,6 +42,12 @@ struct gpart {
   /*! Particle acceleration from the mesh. */
   float a_grav_mesh[3];
 
+  /*! Gravitational potential from the tree.*/
+  float potential;
+
+  /*! Gravitational potential from the mesh.*/
+  float potential_mesh;
+
   /*! Particle mass. */
   float mass;
 
