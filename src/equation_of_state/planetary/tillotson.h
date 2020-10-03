@@ -298,7 +298,7 @@ INLINE static float Til_soundspeed_from_internal_energy(
            (mat->u_cv - mat->u_iv);
   }
   
-  c_sq = fmax(c_sq, mat->A * rho_0_inv);
+  c_sq = fmaxf(c_sq, mat->A * rho_0_inv);
   
   return sqrtf(c_sq);
 }
