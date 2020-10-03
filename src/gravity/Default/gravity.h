@@ -191,6 +191,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
 
+  /* Zero the potential */
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential = 0.f;
 #endif
@@ -235,6 +236,11 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
 __attribute__((always_inline)) INLINE static void gravity_end_force(
     struct gpart* gp, const float const_G, const float potential_normalisation,
     const int periodic, const int with_self_gravity) {
+
+  /* Apply the periodic correction to the peculiar potential */
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  if (periodic) gp->potential += potential_normalisation;
+#endif
 
   /* Add back the long-range forces
    * Note that the mesh gravity had been multiplied by G. We undo this here. */
