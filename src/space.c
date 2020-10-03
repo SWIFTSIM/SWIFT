@@ -1708,7 +1708,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         nr_gparts -= 1;
 
         /* Swap the particle */
-        memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
+        memswap_unaligned(&s->gparts[k], &s->gparts[nr_gparts],
+                          sizeof(struct gpart));
 
         /* Swap the link with part/spart */
         if (s->gparts[k].type == swift_type_gas) {
@@ -3664,7 +3665,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
         while (ind[j] == target_cid) {
           j = offsets[target_cid] + counts[target_cid]++;
         }
-        memswap(&gparts[j], &temp_gpart, sizeof(struct gpart));
+        memswap_unaligned(&gparts[j], &temp_gpart, sizeof(struct gpart));
         memswap(&ind[j], &target_cid, sizeof(int));
         if (gparts[j].type == swift_type_gas) {
           parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
