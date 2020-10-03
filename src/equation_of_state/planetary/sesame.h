@@ -48,7 +48,7 @@ struct SESAME_params {
   float *table_P_rho_T;
   float *table_c_rho_T;
   float *table_s_rho_T;
-  int num_rho, num_T;
+  int date, num_rho, num_T;
   float P_tiny, c_tiny;
   enum eos_planetary_material_id mat_id;
 };
@@ -58,36 +58,43 @@ INLINE static void set_SESAME_iron(struct SESAME_params *mat,
                                    enum eos_planetary_material_id mat_id) {
   // SESAME 2140
   mat->mat_id = mat_id;
+  mat->date = 20201003;
 }
 INLINE static void set_SESAME_basalt(struct SESAME_params *mat,
                                      enum eos_planetary_material_id mat_id) {
   // SESAME 7530
   mat->mat_id = mat_id;
+  mat->date = 20201003;
 }
 INLINE static void set_SESAME_water(struct SESAME_params *mat,
                                     enum eos_planetary_material_id mat_id) {
   // SESAME 7154
   mat->mat_id = mat_id;
+  mat->date = 20201003;
 }
 INLINE static void set_SS08_water(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Senft & Stewart (2008)
   mat->mat_id = mat_id;
+  mat->date = 20201003;
 }
 INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
                                         enum eos_planetary_material_id mat_id) {
   // Stewart et al. (2019)
   mat->mat_id = mat_id;
+  mat->date = 20201003;
 }
 INLINE static void set_ANEOS_iron(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
+  mat->date = 20201003;
 }
 INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
                                       enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
+  mat->date = 20201003;
 }
 
 // Read the tables from file
@@ -100,13 +107,19 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
 
   // Ignore header lines
   char buffer[100];
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 6; i++) {
     if (fgets(buffer, 100, f) == NULL)
       error("Failed to read the SESAME EoS file header %s", table_file);
   }
   float ignore;
 
   // Table properties
+  int date;
+  fscanf(f, "%d", &date);
+  if (date != mat->date)
+    error("EoS file %s date %d does not match expected %d"
+          "\nPlease download the file using examples/Planetary/EoSTables/get_eos_tables.sh", 
+          table_file, date, mat->date);
   int c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
   if (c != 2) error("Failed to read the SESAME EoS table %s", table_file);
 
