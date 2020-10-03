@@ -309,8 +309,10 @@ void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (gp->a_grav_mesh[0] != 0. || gp->potential_mesh != 0.)
-    error("Particle with non-initalised stuff");
+  if (gp->a_grav_mesh[0] != 0.) error("Particle with non-initalised stuff");
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  if (gp->potential_mesh != 0.) error("Particle with non-initalised stuff");
+#endif
 #endif
 
   /* First, copy the necessary part of the mesh for stencil operations */
@@ -379,14 +381,18 @@ void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
     gp->a_grav_mesh[0] = 0.f;
     gp->a_grav_mesh[1] = 0.f;
     gp->a_grav_mesh[2] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
     gp->potential_mesh = 0.f;
+#endif
 
     mesh_to_gpart_CIC(gp, potential, N, fac, dim);
 
     gp->a_grav_mesh[0] *= const_G;
     gp->a_grav_mesh[1] *= const_G;
     gp->a_grav_mesh[2] *= const_G;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
     gp->potential_mesh *= const_G;
+#endif
   }
 }
 
@@ -412,14 +418,18 @@ void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
     gp->a_grav_mesh[0] = 0.f;
     gp->a_grav_mesh[1] = 0.f;
     gp->a_grav_mesh[2] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
     gp->potential_mesh = 0.f;
+#endif
 
     mesh_to_gpart_CIC(gp, potential, N, fac, dim);
 
     gp->a_grav_mesh[0] *= const_G;
     gp->a_grav_mesh[1] *= const_G;
     gp->a_grav_mesh[2] *= const_G;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
     gp->potential_mesh *= const_G;
+#endif
   }
 }
 

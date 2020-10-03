@@ -60,7 +60,9 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 __attribute__((always_inline)) INLINE static void
 gravity_add_comoving_potential(struct gpart* restrict gp, const float pot) {
 
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential += pot;
+#endif
 }
 
 /**
@@ -73,7 +75,9 @@ __attribute__((always_inline)) INLINE static void
 gravity_add_comoving_mesh_potential(struct gpart* restrict gp,
                                     const float pot) {
 
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential_mesh += pot;
+#endif
 }
 
 /**
@@ -84,7 +88,26 @@ gravity_add_comoving_mesh_potential(struct gpart* restrict gp,
 __attribute__((always_inline)) INLINE static float
 gravity_get_comoving_potential(const struct gpart* restrict gp) {
 
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   return gp->potential;
+#else
+  return 0.f;
+#endif
+}
+
+/**
+ * @brief Returns the comoving potential of a particle.
+ *
+ * @param gp The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float
+gravity_get_comoving_mesh_potential(const struct gpart* restrict gp) {
+
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  return gp->potential_mesh;
+#else
+  return 0.f;
+#endif
 }
 
 /**
@@ -97,7 +120,11 @@ __attribute__((always_inline)) INLINE static float
 gravity_get_physical_potential(const struct gpart* restrict gp,
                                const struct cosmology* cosmo) {
 
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   return gp->potential * cosmo->a_inv;
+#else
+  return 0.f;
+#endif
 }
 
 /**
@@ -159,7 +186,11 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+
+  /* Zero the potential */
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential = 0.f;
+#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
@@ -203,7 +234,9 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
     const int periodic, const int with_self_gravity) {
 
   /* Apply the periodic correction to the peculiar potential */
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   if (periodic) gp->potential += potential_normalisation;
+#endif
 
   /* Add back the long-range forces
    * Note that the mesh gravity had been multiplied by G. We undo this here. */
@@ -228,10 +261,14 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential *= const_G;
+#endif
 
   /* Add the mesh contribution to the potential */
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
   gp->potential += gp->potential_mesh;
+#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   for (int i = 0; i < 3; i++) {
