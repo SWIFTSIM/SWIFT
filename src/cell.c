@@ -2102,7 +2102,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap(&gparts[j], &gpart, sizeof(struct gpart));
+          memswap_unaligned(&gparts[j], &gpart, sizeof(struct gpart));
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
@@ -7511,7 +7511,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 #endif
 
       /* Swap everything (including pointers) */
-      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct gpart));
+      memswap_unaligned(&gparts[i], &gparts[first_not_extra],
+                        sizeof(struct gpart));
       if (gparts[i].type == swift_type_gas) {
         parts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {

@@ -117,7 +117,6 @@ struct gpart {
   long long num_interacted_p2p;
   long long num_interacted_pm;
 #endif
-
-} SWIFT_STRUCT_ALIGN;
+};
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
