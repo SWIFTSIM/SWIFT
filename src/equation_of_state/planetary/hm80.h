@@ -103,9 +103,11 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
   int date;
   fscanf(f, "%d", &date);
   if (date != mat->date)
-    error("EoS file %s date %d does not match expected %d"
-          "\nPlease download the file using examples/Planetary/EoSTables/get_eos_tables.sh",
-          table_file, date, mat->date);
+    error(
+        "EoS file %s date %d does not match expected %d"
+        "\nPlease download the file using "
+        "examples/Planetary/EoSTables/get_eos_tables.sh",
+        table_file, date, mat->date);
   int c = fscanf(f, "%f %f %d %f %f %d", &mat->log_rho_min, &mat->log_rho_max,
                  &mat->num_rho, &mat->log_u_min, &mat->log_u_max, &mat->num_u);
   if (c != 6) error("Failed to read the HM80 EoS table %s", table_file);

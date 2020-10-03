@@ -117,9 +117,11 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
   int date;
   fscanf(f, "%d", &date);
   if (date != mat->date)
-    error("EoS file %s date %d does not match expected %d"
-          "\nPlease download the file using examples/Planetary/EoSTables/get_eos_tables.sh", 
-          table_file, date, mat->date);
+    error(
+        "EoS file %s date %d does not match expected %d"
+        "\nPlease download the file using "
+        "examples/Planetary/EoSTables/get_eos_tables.sh",
+        table_file, date, mat->date);
   int c = fscanf(f, "%d %d", &mat->num_rho, &mat->num_T);
   if (c != 2) error("Failed to read the SESAME EoS table %s", table_file);
 
