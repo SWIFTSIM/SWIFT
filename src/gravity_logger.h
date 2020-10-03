@@ -32,8 +32,6 @@
 /* Import the right functions */
 #if defined(DEFAULT_GRAVITY)
 #error TODO
-#elif defined(POTENTIAL_GRAVITY)
-#error TODO
 #elif defined(MULTI_SOFTENING_GRAVITY)
 #include "./gravity/MultiSoftening/gravity_logger.h"
 #else

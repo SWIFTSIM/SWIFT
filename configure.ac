@@ -1612,16 +1612,13 @@ AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 # Gravity scheme.
 AC_ARG_WITH([gravity],
    [AS_HELP_STRING([--with-gravity=<scheme>],
-      [Gravity scheme to use @<:@basic, with-potential, with-multi-softening default: with-multi-softening@:>@]
+      [Gravity scheme to use @<:@basic, with-multi-softening default: with-multi-softening@:>@]
    )],
    [with_gravity="$withval"],
    [with_gravity="with-multi-softening"]
 )
 
 case "$with_gravity" in
-   with-potential)
-      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Basic gravity scheme with potential calculation])
-   ;;
    with-multi-softening)
       AC_DEFINE([MULTI_SOFTENING_GRAVITY], [1], [Gravity scheme with per-particle type softening value and background particles])
    ;;
@@ -1632,6 +1629,17 @@ case "$with_gravity" in
       AC_MSG_ERROR([Unknown gravity scheme: $with_gravity])
    ;;
 esac
+
+AC_ARG_ENABLE([gravitational-potential],
+   [AS_HELP_STRING([--disable-gravitational-potential],
+     [Disable calculation of the gravitational potential.]
+   )],
+   [enable_gravitational_potential="$enableval"],
+   [enable_gravitational_potential="yes"]
+)
+if test "$enable_gravitational_potential" = "no"; then
+   AC_DEFINE([SWIFT_GRAVITY_NO_POTENTIAL],1,[Disable calculation of the gravitational potential])
+fi
 
 # Hydro scheme.
 AC_ARG_WITH([hydro],
@@ -2400,6 +2408,7 @@ AC_MSG_RESULT([
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
+   Compute potential   : $enable_gravitational_potential
    No gravity below ID : $no_gravity_below_id
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
