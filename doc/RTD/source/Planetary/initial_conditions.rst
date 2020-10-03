@@ -19,6 +19,5 @@ Ruiz-Bonilla et al. (2020).
 
 They are available with documentation and examples at 
 https://github.com/srbonilla/WoMa and https://github.com/jkeger/seagen,
-or can be installed directly with ``pip`` as 
-`woma <https://pypi.org/project/woma/>`_ and 
-`seagen <https://pypi.org/project/seagen/>`_.
+or can be installed directly with ``pip``
+(https://pypi.org/project/woma/, https://pypi.org/project/seagen/).
