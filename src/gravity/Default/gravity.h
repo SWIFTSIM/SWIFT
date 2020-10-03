@@ -58,25 +58,27 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 /**
  * @brief Add a contribution to this particle's potential from the tree.
  *
- * Here we do nothing as this version does not accumulate potential.
- *
  * @param gp The particle.
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_add_comoving_potential(struct gpart* restrict gp, const float pot) {}
+gravity_add_comoving_potential(struct gpart* restrict gp, const float pot) {
+
+  gp->potential += pot;
+}
 
 /**
  * @brief Add a contribution to this particle's potential from the mesh.
- *
- * Here we do nothing as this version does not accumulate potential.
  *
  * @param gp The particle.
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
 gravity_add_comoving_mesh_potential(struct gpart* restrict gp,
-                                    const float pot) {}
+                                    const float pot) {
+
+  gp->potential_mesh += pot;
+}
 
 /**
  * @brief Returns the comoving potential of a particle.
@@ -167,13 +169,12 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+  gp->potential = 0.f;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->potential_PM = 0.f;
 
   /* Track accelerations of each component. */
   for (int i = 0; i < 3; i++) {
-    gp->a_grav_PM[i] = 0.f;
     gp->a_grav_p2p[i] = 0.f;
     gp->a_grav_m2p[i] = 0.f;
     gp->a_grav_m2l[i] = 0.f;
@@ -234,9 +235,12 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
+  gp->potential *= const_G;
+
+  /* Add the mesh contribution to the potential */
+  gp->potential += gp->potential_mesh;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->potential_PM *= const_G;
   for (int i = 0; i < 3; i++) {
     gp->a_grav_p2p[i] *= const_G;
     gp->a_grav_m2p[i] *= const_G;
