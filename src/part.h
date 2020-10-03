@@ -91,8 +91,6 @@ struct threadpool;
 /* Import the right gravity particle definition */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_part.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_part.h"
 #elif defined(MULTI_SOFTENING_GRAVITY)
 #include "./gravity/MultiSoftening/gravity_part.h"
 #else

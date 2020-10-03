@@ -30,10 +30,7 @@
 /* Import the right functions */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity.h"
-#define GRAVITY_IMPLEMENTATION "Default (no potential)"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity.h"
-#define GRAVITY_IMPLEMENTATION "With potential calculation"
+#define GRAVITY_IMPLEMENTATION "Basic scheme"
 #elif defined(MULTI_SOFTENING_GRAVITY)
 #include "./gravity/MultiSoftening/gravity.h"
 #define GRAVITY_IMPLEMENTATION "With per-particle softening"
