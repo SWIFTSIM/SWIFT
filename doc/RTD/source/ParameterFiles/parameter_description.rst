@@ -842,6 +842,49 @@ be processed by the ``SpecWizard`` tool
      range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
      range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
 
+.. _Parameters_eos:
+
+Equation of State (EoS)
+-----------------------
+
+The ``EoS`` section contains options for the equations of state.
+Multiple EoS can be used for :ref:`planetary`,
+see :ref:`planetary_eos` for more information. 
+
+To enable one or multiple of these EoS, the corresponding ``planetary_use_*:``
+flag(s) must be set to ``1`` in the parameter file for a simulation,
+along with the path to any table files, which are provided with the 
+``planetary_*_table_file:`` parameters.
+This currently means that all EoS within each base type are prepared at once, 
+which we intend to simplify in the future.
+
+The data files for the tabulated EoS can be downloaded using 
+the ``examples/EoSTables/get_eos_tables.sh`` script.
+
+For the (non-planetary) isothermal EoS, the ``isothermal_internal_energy:``
+parameter sets the thermal energy per unit mass.
+
+.. code:: YAML
+
+   EoS:
+     isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+
+     planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EoS
+     planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EoS
+     planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EoS
+     planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EoS
+                               # (Optional) Table file paths
+     planetary_HM80_HHe_table_file:            ./EoSTables/HM80_HHe.txt
+     planetary_HM80_ice_table_file:            ./EoSTables/HM80_ice.txt
+     planetary_HM80_rock_table_file:           ./EoSTables/HM80_rock.txt
+     planetary_SESAME_iron_table_file:         ./EoSTables/SESAME_iron_2140.txt
+     planetary_SESAME_basalt_table_file:       ./EoSTables/SESAME_basalt_7530.txt
+     planetary_SESAME_water_table_file:        ./EoSTables/SESAME_water_7154.txt
+     planetary_SS08_water_table_file:          ./EoSTables/SS08_water.txt
+     planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
+     planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
+     planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+
 .. _Parameters_fof:
 
 Friends-Of-Friends (FOF)
