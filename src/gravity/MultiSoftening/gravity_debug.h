@@ -24,10 +24,13 @@ __attribute__((always_inline)) INLINE static void gravity_debug_particle(
   printf(
       "mass=%.3e time_bin=%d\n"
       "x=[%.5e,%.5e,%.5e], v_full=[%.5e,%.5e,%.5e], type=%d, "
-      "a=[%.5e,%.5e,%.5e], pot=%.5e\n",
+      "a=[%.5e,%.5e,%.5e]\n",
       p->mass, p->time_bin, p->x[0], p->x[1], p->x[2], p->v_full[0],
       p->v_full[1], p->v_full[2], (int)p->type, p->a_grav[0], p->a_grav[1],
-      p->a_grav[2], p->potential);
+      p->a_grav[2]);
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  printf("pot=%e\n", p->potential);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   printf("num_interacted=%lld ti_drift=%lld ti_kick=%lld\n", p->num_interacted,
          p->ti_drift, p->ti_kick);

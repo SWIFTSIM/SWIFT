@@ -731,12 +731,13 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
               gpi->a_grav[1] + gpi->a_grav_mesh[1],
               gpi->a_grav[2] + gpi->a_grav_mesh[2],
               gravity_get_comoving_potential(gpi), gpi->a_grav_mesh[0],
-              gpi->a_grav_mesh[1], gpi->a_grav_mesh[2], gpi->potential_mesh,
-              gpi->a_grav_p2p[0], gpi->a_grav_p2p[1], gpi->a_grav_p2p[2],
-              gpi->a_grav_m2p[0], gpi->a_grav_m2p[1], gpi->a_grav_m2p[2],
-              gpi->a_grav_m2l[0], gpi->a_grav_m2l[1], gpi->a_grav_m2l[2],
-              gpi->num_interacted_p2p, gpi->num_interacted_m2p,
-              gpi->num_interacted_m2l, gpi->num_interacted_pm);
+              gpi->a_grav_mesh[1], gpi->a_grav_mesh[2],
+              gravity_get_comoving_mesh_potential(gpi), gpi->a_grav_p2p[0],
+              gpi->a_grav_p2p[1], gpi->a_grav_p2p[2], gpi->a_grav_m2p[0],
+              gpi->a_grav_m2p[1], gpi->a_grav_m2p[2], gpi->a_grav_m2l[0],
+              gpi->a_grav_m2l[1], gpi->a_grav_m2l[2], gpi->num_interacted_p2p,
+              gpi->num_interacted_m2p, gpi->num_interacted_m2l,
+              gpi->num_interacted_pm);
     }
   }
 
