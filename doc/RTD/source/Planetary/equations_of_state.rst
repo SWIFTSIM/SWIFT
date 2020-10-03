@@ -48,7 +48,7 @@ To enable one or multiple EoS, the corresponding ``planetary_use_*:``
 flag(s) must be set to ``1`` in the parameter file for a simulation,
 along with the path to any table files, which are provided with the 
 ``planetary_*_table_file:`` parameters,
-as detailed in ``examples/parameter_example.yml``.
+as detailed in :ref:`Parameters_eos` and ``examples/parameter_example.yml``.
 This currently means that all EoS within each base type are prepared at once, 
 which we intend to simplify in the future.
 
@@ -64,5 +64,5 @@ The Tillotson sound speed was derived using
 as described in 
 `Kegerreis et al. (2019)  <https://doi.org/10.1093/mnras/stz1606>`_. 
 Note that there is a typo in the sign of
-\\(du = T dS - P dV = T dS + (P / \\rho^2) d\\rho \\) in the appendix,
-which was not used in the actual derivation.
+\\(du = T dS - P dV = T dS + (P / \\rho^2) d\\rho \\) in the appendix;
+the correct version was used in the derivation.

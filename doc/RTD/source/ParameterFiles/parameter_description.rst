@@ -861,6 +861,9 @@ which we intend to simplify in the future.
 The data files for the tabulated EoS can be downloaded using 
 the ``examples/EoSTables/get_eos_tables.sh`` script.
 
+For the (non-planetary) isothermal EoS, the ``isothermal_internal_energy:``
+parameter sets the thermal energy per unit mass.
+
 .. code:: YAML
 
    EoS:
