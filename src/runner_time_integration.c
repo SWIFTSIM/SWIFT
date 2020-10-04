@@ -187,7 +187,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
       struct gpart *restrict gp = &gparts[k];
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ti_begin_mesh != -1 && !gpart_is_starting(gp, e)) {
+      if (ti_begin_mesh != -1 && !gpart_is_starting(gp, e) &&
+          !gpart_is_inhibited(gp, e)) {
         error(
             "Particle on a time-step longer than the mesh synchronization "
             "step!");
