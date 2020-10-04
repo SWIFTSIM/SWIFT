@@ -45,8 +45,14 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
   /* Star age (in internal units) */
   double star_age;
   if (with_cosmology) {
-    star_age = cosmology_get_delta_time_from_scale_factors(
-        cosmo, sp->birth_scale_factor, cosmo->a);
+
+    /* Deal with rounding issues */
+    if (sp->birth_scale_factor >= cosmo->a) {
+      star_age = 0.;
+    } else {
+      star_age = cosmology_get_delta_time_from_scale_factors(
+          cosmo, sp->birth_scale_factor, cosmo->a);
+    }
   } else {
     star_age = time - sp->birth_time;
   }
