@@ -134,6 +134,7 @@ COLIBRECooling:
 
 # EAGLE star formation parameters
 EAGLEStarFormation:
+  SF_model:                          PressureLaw
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
