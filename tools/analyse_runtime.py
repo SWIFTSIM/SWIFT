@@ -55,12 +55,12 @@ num_files = len(sys.argv) - 1
 
 labels = [
     ["engine_split_gas_particles:", 1],
-    ["Gpart assignment", 1],
-    ["Mesh communication", 1],
-    ["Forward Fourier transform", 1],
-    ["Green function", 1],
-    ["Backwards Fourier transform", 1],
-    ["Gpart mesh forces", 1],
+    ["Gpart assignment", 4],
+    ["Mesh communication", 4],
+    ["Forward Fourier transform", 4],
+    ["Green function", 4],
+    ["Backwards Fourier transform", 4],
+    ["Gpart mesh forces", 4],
     ["engine_recompute_displacement_constraint:", 1],
     ["engine_exchange_top_multipoles:", 1],
     ["updating particle counts", 1],
@@ -265,6 +265,7 @@ important_ratios = [0.0]
 important_is_rebuild = [0]
 important_is_fof = [0]
 important_is_VR = [0]
+important_is_mesh = [0]
 important_labels = ["Others (all below %.1f\%%)" % (threshold * 100)]
 need_print = True
 print("Time spent in the different code sections:")
@@ -275,6 +276,7 @@ for i in range(len(labels)):
         important_is_rebuild.append(labels[i][1] == 1)
         important_is_fof.append(labels[i][1] == 2)
         important_is_VR.append(labels[i][1] == 3)
+        important_is_mesh.append(labels[i][1] == 4)
         important_labels.append(labels[i][0])
     else:
         if need_print:
@@ -330,12 +332,17 @@ code_pie, _, _ = pie(
 # Use hashing for the FOF and VR wedges
 for i in range(len(code_pie)):
     if important_is_fof[i]:
-        code_pie[i].set_hatch("o")
+        code_pie[i].set_hatch("+")
         code_pie[i].set_edgecolor(code_pie[i].get_facecolor())
         code_pie[i].set_fill(False)
 for i in range(len(code_pie)):
     if important_is_VR[i]:
-        code_pie[i].set_hatch("+")
+        code_pie[i].set_hatch("*")
+        code_pie[i].set_edgecolor(code_pie[i].get_facecolor())
+        code_pie[i].set_fill(False)
+for i in range(len(code_pie)):
+    if important_is_mesh[i]:
+        code_pie[i].set_hatch(".")
         code_pie[i].set_edgecolor(code_pie[i].get_facecolor())
         code_pie[i].set_fill(False)
 
