@@ -175,10 +175,10 @@ struct star_formation {
   /* Density for direct conversion to star -------------------------------- */
 
   /*! Max physical density (H atoms per cm^3)*/
-  double max_gas_density_HpCM3;
+  double gas_density_direct_HpCM3;
 
   /*! Max physical density (internal units) */
-  double max_gas_density;
+  double gas_density_direct;
 };
 
 /**
@@ -429,7 +429,7 @@ INLINE static void star_formation_compute_SFR(
 
   /* Are we above the threshold for automatic star formation? */
   if (physical_density >
-      starform->max_gas_density * phys_const->const_proton_mass) {
+      starform->gas_density_direct * phys_const->const_proton_mass) {
 
     xp->sf_data.SFR = hydro_get_mass(p) / dt_star;
     return;
@@ -748,13 +748,12 @@ INLINE static void starformation_init_backend(
       parameter_file, "EAGLEStarFormation:min_over_density");
 
   /* Get the maximum physical density for SF */
-  starform->max_gas_density_HpCM3 = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:KS_max_density_threshold_H_p_cm3",
-      FLT_MAX);
+  starform->gas_density_direct_HpCM3 = parser_get_opt_param_double(
+      parameter_file, "EAGLEStarFormation:density_direct_H_p_cm3", FLT_MAX);
 
   /* Convert the maximum physical density to internal units */
-  starform->max_gas_density =
-      starform->max_gas_density_HpCM3 * number_density_from_cgs;
+  starform->gas_density_direct =
+      starform->gas_density_direct_HpCM3 * number_density_from_cgs;
 
   starform->entropy_margin_threshold_dex = parser_get_opt_param_double(
       parameter_file, "EAGLEStarFormation:EOS_entropy_margin_dex", FLT_MAX);
@@ -838,8 +837,8 @@ INLINE static void starformation_print_backend(
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
   message("The temperature threshold offset from the EOS is given by: %e dex",
           starform->entropy_margin_threshold_dex);
-  message("Running with a maximum gas density given by: %e #/cm^3",
-          starform->max_gas_density_HpCM3);
+  message("Running with a direct conversion density of: %e #/cm^3",
+          starform->gas_density_direct_HpCM3);
 }
 
 /**
