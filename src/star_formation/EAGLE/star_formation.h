@@ -629,8 +629,8 @@ INLINE static void starformation_init_backend(
     starform->SF_law = eagle_star_formation_schmidt_law;
 
     /* Get the star formation efficiency */
-    starform->schmidt_law.sfe = parser_get_opt_param_double(
-        parameter_file, "EAGLEStarFormation:star_formation_efficiency", 0.01);
+    starform->schmidt_law.sfe = parser_get_param_double(
+        parameter_file, "EAGLEStarFormation:star_formation_efficiency");
 
     /* Calculate the ff constant */
     const double ff_const = sqrt(3.0 * M_PI / (32.0 * G_newton));
