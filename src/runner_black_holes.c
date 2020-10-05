@@ -66,6 +66,11 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
 
+  /* Nothing to do here if the cell is foreign and we are nibbling */
+  if (c->nodeID != e->nodeID && use_nibbling) {
+    return;
+  }
+
   /* Early abort?
    * (We only want cells for which we drifted the gas as these are
    * the only ones that could have gas particles that have been flagged
@@ -330,9 +335,11 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Update mass of associated gpart, to reflect potential changes from
        * nibbling. */
-      if (use_nibbling) {
+      if (use_nibbling && c->nodeID == e->nodeID) {
         cell_bp->gpart->mass = cell_bp->mass;
-        continue;
+	cell_bp->gpart->v_full[0] = cell_bp->v[0];
+	cell_bp->gpart->v_full[1] = cell_bp->v[1];
+	cell_bp->gpart->v_full[2] = cell_bp->v[2];
       }
 
       /* Get the ID of the black holes that will swallow this bpart */
