@@ -459,7 +459,7 @@ GEARChemistry:
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
   SF_model:                     SchmidtLaw     # "SchmidtLaw" or "PressureLaw".
-  star_formation_efficiency:         0.01      # In the SchmidtLaw model this regulates the star formation efficiency per free-fall time (defaults to 0.01)
+  star_formation_efficiency:         0.01      # In the SchmidtLaw model this regulates the star formation efficiency per free-fall time.
   KS_normalisation:                  1.515e-4  # In the PressureLaw model, normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # In the PressureLaw model, exponent of the Kennicutt-Schmidt law.
   KS_high_density_threshold_H_p_cm3: 1e3       # In the PressureLaw model, Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
