@@ -124,19 +124,11 @@ void stellar_evolution_compute_continuous_feedback_properties(
   /* Check if we can ejected the required amount of elements. */
   const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
   if (negative_mass) {
-    /* Raises an error if running without first stars. */
-    if (feedback_props->metallicity_max_first_stars == -1) {
-      error("Stars cannot have negative mass. (%g <= %g). Initial mass = %g",
-            sp->mass, sp->feedback_data.mass_ejected, sp->sf_data.birth_mass);
-    }
-    /* Otherwise skip this one. */
-    else {
-      message("Negative mass, skipping current star: %lli", sp->id);
-      /* Reset everything */
-      sp->feedback_data.number_sn = 0;
-      sp->feedback_data.mass_ejected = 0;
-      return;
-    }
+    message("Negative mass, skipping current star: %lli", sp->id);
+    /* Reset everything */
+    sp->feedback_data.number_sn = 0;
+    sp->feedback_data.mass_ejected = 0;
+    return;
   }
 
   /* Update the mass */
@@ -228,19 +220,11 @@ void stellar_evolution_compute_discrete_feedback_properties(
   /* Check if we can ejected the required amount of elements. */
   const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
   if (negative_mass) {
-    /* Raises an error if running without first stars. */
-    if (feedback_props->metallicity_max_first_stars == -1) {
-      error("Stars cannot have negative mass. (%g <= %g). Initial mass = %g",
-            sp->mass, sp->feedback_data.mass_ejected, sp->sf_data.birth_mass);
-    }
-    /* Otherwise skip this one. */
-    else {
-      message("Negative mass, skipping current star: %lli", sp->id);
-      /* Reset everything */
-      sp->feedback_data.number_sn = 0;
-      sp->feedback_data.mass_ejected = 0;
-      return;
-    }
+    message("Negative mass, skipping current star: %lli", sp->id);
+    /* Reset everything */
+    sp->feedback_data.number_sn = 0;
+    sp->feedback_data.mass_ejected = 0;
+    return;
   }
 
   /* Update the mass */

@@ -243,7 +243,8 @@ void feedback_evolve_spart(struct spart* restrict sp,
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
-  const float metal = chemistry_get_total_metal_mass_fraction_for_feedback(sp);
+  const float metal =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
   const struct stellar_model* model =
