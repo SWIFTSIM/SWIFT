@@ -315,9 +315,6 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
     bi->v[0] = bi_mom[0] / bi->mass;
     bi->v[1] = bi_mom[1] / bi->mass;
     bi->v[2] = bi_mom[2] / bi->mass;
-    bi->gpart->v_full[0] = bi->v[0];
-    bi->gpart->v_full[1] = bi->v[1];
-    bi->gpart->v_full[2] = bi->v[2];
 
     /* Update the BH and also gas metal masses */
     struct chemistry_bpart_data *bi_chem = &bi->chemistry_data;
