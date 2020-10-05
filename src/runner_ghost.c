@@ -1399,5 +1399,4 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
-    
 }

@@ -169,15 +169,15 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
  *
  * @param gp Pointer to the gparticle data.
  */
-__attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *restrict gp) {
+__attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart *restrict gp) {
     
     /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
     gp->sidm_data.sidm_flag = 0.0f;
     
-    /* Particle velocity */
-    gp->sidm_data.si_v_full[0] = 0.0f;
-    gp->sidm_data.si_v_full[1] = 0.0f;
-    gp->sidm_data.si_v_full[2] = 0.0f;
+    /* Set copy of particle velocity */
+    gp->sidm_data.si_v_full[0] = gp->v_full[0];
+    gp->sidm_data.si_v_full[1] = gp->v_full[1];
+    gp->sidm_data.si_v_full[2] = gp->v_full[2];
 }
 
 
@@ -191,13 +191,10 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
     
     if (gp->sidm_data.sidm_flag > 0) {
         
-        /* Rewrite gparticle's velocity */
-        /*gp->v_full[0] = gp->sidm_data.si_v_full[0];
+        /* Rewrite DM particle's velocity */
+         gp->v_full[0] = gp->sidm_data.si_v_full[0];
          gp->v_full[1] = gp->sidm_data.si_v_full[1];
-         gp->v_full[2] = gp->sidm_data.si_v_full[2];*/
-        
-        /* Reset particle SIDM variables */
-        sidm_reset(gp);
+         gp->v_full[2] = gp->sidm_data.si_v_full[2];
         
     }
 }

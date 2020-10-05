@@ -5772,7 +5772,8 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
     for (int k = 0; k < count; k++) {
         
         dark_matter_first_init_dmpart(&dmp[k], sidm_props);
-        
+        sidm_init_dmpart(&dmp[k]);
+
 #ifdef SWIFT_DEBUG_CHECKS
         if (dmp[k].gpart && dmp[k].gpart->id_or_neg_offset != -(k + delta))
             error("Invalid gpart -> dmpart link");
