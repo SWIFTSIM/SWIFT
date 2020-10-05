@@ -25,7 +25,7 @@ def getSFH(filename):
         coordinates = f["/PartType4/Coordinates"][:, :]
         mass = f["/PartType4/Masses"][:]
         # flag = f["/PartType4/NewStarFlag"][:]
-        birth_time = f["/PartType4/Birth_time"][:]
+        birth_time = f["/PartType4/BirthTimes"][:]
 
     absmaxz = 2  # kpc
     absmaxxy = 10  # kpc
@@ -62,7 +62,7 @@ def getsfrsnapwide():
         with h5.File(filename, "r") as f:
             box_size = f["/Header"].attrs["BoxSize"][0]
             coordinates = f["/PartType0/Coordinates"][:, :]
-            SFR = f["/PartType0/SFR"][:]
+            SFR = f["/PartType0/StarFormationRates"][:]
             coordinates_star = f["/PartType4/Coordinates"][:, :]
             masses_star = f["/PartType4/Masses"][:]
 

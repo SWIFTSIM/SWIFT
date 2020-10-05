@@ -12,6 +12,12 @@ then
     ./getEagleCoolingTable.sh
 fi
 
+if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
+then
+    echo "Fetching PS20 cooling tables for the isolated galaxy example..."
+    ./getPS20CoolingTables.sh
+fi
+
 if [ ! -e yieldtables ] 
 then     
     echo "Fetching EAGLE stellar yield tables for the isolated galaxy example..."
@@ -21,7 +27,7 @@ fi
 ../../swift --threads=16 --feedback --external-gravity --self-gravity --stars --star-formation --cooling --hydro --limiter --sync isolated_galaxy.yml 2>&1 | tee output.log
 
 # Kennicutt-Schmidt law plot
-python3 plotSolution.py
+python3 plotSolution.py 100
 
 # Plot that the random star formation matches the expected SFH
 python3 SFH.py
