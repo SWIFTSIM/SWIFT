@@ -337,9 +337,9 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
        * nibbling. */
       if (use_nibbling && c->nodeID == e->nodeID) {
         cell_bp->gpart->mass = cell_bp->mass;
-	cell_bp->gpart->v_full[0] = cell_bp->v[0];
-	cell_bp->gpart->v_full[1] = cell_bp->v[1];
-	cell_bp->gpart->v_full[2] = cell_bp->v[2];
+        cell_bp->gpart->v_full[0] = cell_bp->v[0];
+        cell_bp->gpart->v_full[1] = cell_bp->v[1];
+        cell_bp->gpart->v_full[2] = cell_bp->v[2];
       }
 
       /* Get the ID of the black holes that will swallow this bpart */
