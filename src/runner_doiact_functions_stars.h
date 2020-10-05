@@ -591,9 +591,10 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
-                          struct spart *restrict sparts_i, int *restrict ind,
-                          int scount, struct cell *restrict cj, const int sid,
-                          const int flipped, const double *shift) {
+                          struct spart *sparts_i, const int *ind,
+                          const int scount, struct cell *restrict cj,
+                          const int sid, const int flipped,
+                          const double shift[3]) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -750,9 +751,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-                                struct spart *restrict sparts_i,
-                                int *restrict ind, int scount,
-                                struct cell *restrict cj, const double *shift) {
+                                struct spart *sparts_i, const int *ind,
+                                const int scount, struct cell *restrict cj,
+                                const double shift[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -840,9 +841,10 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
-                          struct spart *restrict sparts, int *restrict ind,
-                          int scount) {
+void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *ci,
+                          struct spart *sparts, const int *ind,
+                          const int scount) {
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
@@ -855,7 +857,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   const float H = cosmo->H;
 
   const int count_i = ci->hydro.count;
-  struct part *restrict parts_j = ci->hydro.parts;
+  struct part *parts_j = ci->hydro.parts;
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -880,7 +882,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_i; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part *pj = &parts_j[pjd];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -925,11 +927,11 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  */
-void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
-                                 struct spart *restrict sparts,
-                                 const int *restrict ind, const int scount) {
+void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *ci,
+                                 struct spart *sparts, const int *const ind,
+                                 const int scount) {
 
-  //  DOSELF1_SUBSET_STARS(r, ci, sparts, ind, scount);
+  DOSELF1_SUBSET_STARS(r, ci, sparts, ind, scount);
 }
 
 /**
@@ -945,12 +947,9 @@ void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  */
 void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
-                                 struct spart *restrict sparts_i,
-                                 const int *restrict ind, const int scount,
-                                 struct cell *restrict cj) {
+                                 struct spart *sparts_i, const int *ind,
+                                 const int scount, struct cell *restrict cj) {
 
-#if 0
-  
   const struct engine *e = r->e;
 
   /* Anything to do here? */
@@ -965,9 +964,6 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
-  DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
-#else
   /* Get the sorting index. */
   int sid = 0;
   for (int k = 0; k < 3; k++)
@@ -981,13 +977,19 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
 
   /* Has the cell cj been sorted? */
   if (!(cj->hydro.sorted & (1 << sid)) ||
-      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin) {
 
-  DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
-#endif
+    /* --> Use the naive N^2 loop */
+    DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
 
+  } else {
+
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
+    DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
+#else
+    DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
 #endif
+  }
 }
 
 /**

@@ -911,7 +911,7 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
   if (!(cj->hydro.sorted & (1 << sid)) ||
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin) {
 
-    message("Not sorted! depth=%d maxdepth=%d", cj->depth, cj->maxdepth);
+    // message("Not sorted! depth=%d maxdepth=%d", cj->depth, cj->maxdepth);
 
     /* --> Use the naive N^2 loop */
     DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
@@ -945,6 +945,10 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 void DOSELF_SUBSET(struct runner *r, const struct cell *ci, struct part *parts,
                    const int *ind, int count) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank) error("Should be run on a different node");
+#endif
+
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
@@ -961,6 +965,7 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *ci, struct part *parts,
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
+
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
 
