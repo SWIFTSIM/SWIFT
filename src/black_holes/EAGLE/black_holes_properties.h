@@ -141,6 +141,11 @@ struct black_holes_props {
   /*! Maximal distance over which BHs merge, in units of softening length */
   float max_merging_distance_ratio;
 
+  /* ---- Black hole time-step properties ---------- */
+
+  /*! Minimum allowed time-step of BH (internal units) */
+  float time_step_min;
+
   /* ---- Common conversion factors --------------- */
 
   /*! Conversion factor from temperature to internal energy */
@@ -321,6 +326,16 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->max_merging_distance_ratio =
       parser_get_param_float(params, "EAGLEAGN:merger_max_distance_ratio");
+
+  /* ---- Black hole time-step properties ------------------ */
+
+  const double Myr_in_cgs = 1e6 * 365.25 * 24. * 60. * 60.;
+
+  const double time_step_min_Myr = parser_get_opt_param_float(
+      params, "EAGLEAGN:minimum_timestep_Myr", FLT_MAX);
+
+  bp->time_step_min = time_step_min_Myr * Myr_in_cgs /
+                      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
   /* Common conversion factors ----------------------------- */
 
