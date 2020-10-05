@@ -138,8 +138,6 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
-  message("aa");
-
   /* Finish the calculation by inserting the missing h-factors */
   sp->rho *= h_inv_dim;
   sp->density.wcount *= h_inv_dim;
