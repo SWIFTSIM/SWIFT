@@ -30,12 +30,15 @@
 #include "minmax.h"
 
 /**
- * @brief Computes the gravity time-step of a given black hole particle.
+ * @brief Computes the time-step of a given black hole particle.
  *
  * @param bp Pointer to the s-particle data.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
  */
 __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
-    const struct bpart* const bp) {
+    const struct bpart* const bp, const struct black_holes_props* props,
+    const struct phys_const* constants) {
 
   return FLT_MAX;
 }
