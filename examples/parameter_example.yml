@@ -458,17 +458,19 @@ GEARChemistry:
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
+  SF_model:                     SchmidtLaw     # "SchmidtLaw" or "PressureLaw".
+  star_formation_efficiency:         0.01      # In the SchmidtLaw model this regulates the star formation efficiency per free-fall time (defaults to 0.01)
+  KS_normalisation:                  1.515e-4  # In the PressureLaw model, normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # In the PressureLaw model, exponent of the Kennicutt-Schmidt law.
+  KS_high_density_threshold_H_p_cm3: 1e3       # In the PressureLaw model, Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # In the PressureLaw model, Slope of the Kennicut-Schmidt law above the high-density threshold.
+  gas_fraction:                      0.25      # (Optional) In the PressureLaw model, The gas fraction used internally by the model (Defaults to 1).
+  density_direct_H_p_cm3:            1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EoS assumed for the star-forming gas in Hydrogen atoms per cm^3.
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EoS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EoS assumed for the star-forming gas.
-  gas_fraction:                      0.25      # (Optional) The gas fraction used internally by the model (Defaults to 1).
-  KS_normalisation:                  1.515e-4  # Normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
-  KS_exponent:                       1.4       # Exponent of the Kennicutt-Schmidt law.
-  min_over_density:                  57.7      # Over-density above which star-formation is allowed.
-  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
-  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-  KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
   EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EoS at which stars can form.
+  min_over_density:                  57.7      # Over-density above which star-formation is allowed.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold

@@ -40,6 +40,8 @@ the following changes have been made (at standard resolution):
    subgrid properties (rho, T as well as the HI and H_2 frac) computed.
  - Particles can be star-forming if they are in an over-density of
    at least 100 (was 57.7).
+ - Particles with a density above 10^5 cm^-3 are not turned into
+   stars instantaneously any more.
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
  - The SNII feedback delay is done by sampling the stellar age
    distribution and not using a fixed delay of 30 Myr any more.
