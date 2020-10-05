@@ -1137,7 +1137,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  //message("sid=%d", sid);
+  // message("sid=%d", sid);
 
   /* What kind of pair are we doing here? */
   const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
@@ -1150,6 +1150,29 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
   if (!ci->split || ci->stars.count < space_recurse_size_pair_stars ||
       !cj->split || cj->stars.count < space_recurse_size_pair_stars) {
+
+    /* Do any of the cells need to be sorted first?
+     * Since h_max might have changed, we may not have sorted at this level */
+    if (do_ci) {
+      if (!(ci->stars.sorted & (1 << sid)) ||
+          ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_stars_sort(r, ci, (1 << sid), 0, 0);
+      }
+      if (!(cj->hydro.sorted & (1 << sid)) ||
+          cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+      }
+    }
+    if (do_cj) {
+      if (!(ci->hydro.sorted & (1 << sid)) ||
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+      }
+      if (!(cj->stars.sorted & (1 << sid)) ||
+          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
+      }
+    }
 
     /* We interact all particles in that cell:
        - No limit on the smallest h
