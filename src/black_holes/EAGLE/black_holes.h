@@ -35,14 +35,47 @@
 #include <math.h>
 
 /**
- * @brief Computes the gravity time-step of a given black hole particle.
+ * @brief Computes the time-step of a given black hole particle.
  *
  * @param bp Pointer to the s-particle data.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
  */
 __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
-    const struct bpart* const bp) {
+    const struct bpart* const bp, const struct black_holes_props* props,
+    const struct phys_const* constants) {
 
-  return FLT_MAX;
+  /* Gather some physical constants (in internal units) */
+  const double c = constants->const_speed_light_c;
+
+  /* Compute instantaneous energy supply rate to the BH energy reservoir
+   * which is proportional to the BH mass accretion rate */
+  const double Energy_rate =
+      props->epsilon_r * props->epsilon_f * bp->accretion_rate * c * c;
+
+  /* BHs not accreting can't estimate their time-step length based on the
+   * the time-scale for heating */
+  if (Energy_rate == 0.) {
+    return FLT_MAX;
+  }
+
+  /* Average particle mass in BH's kernel */
+  const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
+  /* Without multiplying by mean_ngb_mass we'd get energy per unit mass */
+  const double E_heat =
+      props->AGN_delta_T_desired * props->temp_to_u_factor * mean_ngb_mass;
+
+  /* Compute average time between heating events for the given accretion
+   * rate. The time is multiplied by the number of Ngbs to heat because
+   * if more particles are heated at once then the time between different
+   * AGN feedback events increases proportionally. */
+  const double dt_heat = E_heat * props->num_ngbs_to_heat / Energy_rate;
+
+  /* The new timestep of the BH cannot be smaller than the miminum allowed
+   * time-step */
+  const double bh_timestep = max(dt_heat, props->time_step_min);
+
+  return bh_timestep;
 }
 
 /**
