@@ -268,7 +268,7 @@ def task_is_hydro(name):
         return True
     if "gradient" in name:
         return True
-    if "force" in name:
+    if "force" in name and "grav" not in name:
         return True
     if "xv" in name and "bpart" not in name:
         return True
