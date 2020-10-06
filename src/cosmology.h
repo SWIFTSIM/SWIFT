@@ -159,6 +159,12 @@ struct cosmology {
   /*! Dark-energy evolution parameter */
   double w_a;
 
+  /*! CMB temperature at z = 0 derived from Omega_r (internal units) */
+  double T_CMB_0;
+
+  /*! CMB temperature at z = 0 derived from Omega_r (Kelvins) */
+  double T_CMB_0_K;
+
   /*! Log of starting expansion factor */
   double log_a_begin;
 
