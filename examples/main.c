@@ -456,6 +456,13 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  if (with_sink && with_star_formation) {
+    printf(
+        "Error: The sink particles are not supposed to be run with star "
+        "formation.\n");
+    return 1;
+  }
+
   /* The CPU frequency is a long long, so we need to parse that ourselves. */
   if (cpufreqarg != NULL) {
     if (sscanf(cpufreqarg, "%llu", &cpufreq) != 1) {

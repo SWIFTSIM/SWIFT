@@ -188,10 +188,10 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Ignore empty cells. */
-  if (c->sinks.count == 0) return;
+  if (c->sinks.count == 0 && c->hydro.count == 0) return;
 
   /* Skip inactive cells. */
-  if (!cell_is_active_sinks(c, e)) return;
+  if (!cell_is_active_sinks(c, e) && !cell_is_active_hydro(c, e)) return;
 
   /* Recurse */
   if (c->split) {

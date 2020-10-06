@@ -233,6 +233,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
+    c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.ghost = NULL;
@@ -617,6 +618,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for stars.");
       if (lock_init(&s->cells_top[k].sinks.lock) != 0)
         error("Failed to init spinlock for sinks.");
+      if (lock_init(&s->cells_top[k].sinks.sink_formation_lock) != 0)
+        error("Failed to init spinlock for sink formation.");
       if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
         error("Failed to init spinlock for black holes.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
@@ -752,7 +755,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Anything to do here? (Abort if we don't want extras)*/
   if (space_extra_parts == 0 && space_extra_gparts == 0 &&
-      space_extra_sparts == 0 && space_extra_bparts == 0)
+      space_extra_sparts == 0 && space_extra_bparts == 0 &&
+      space_extra_sinks == 0)
     return;
 
   /* The top-level cells */
@@ -780,6 +784,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
   size_t size_bparts = s->size_bparts;
+  size_t size_sinks = s->size_sinks;
 
   int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
   if (local_cells == NULL)
@@ -1020,7 +1025,82 @@ void space_allocate_extras(struct space *s, int verbose) {
   /* Do we have enough space for the extra sinks (i.e. we haven't used up any)
    * ? */
   if (nr_actual_sinks + expected_num_extra_sinks > nr_sinks) {
-    error("Not implemented yet");
+    /* Ok... need to put some more in the game */
+
+    /* Do we need to reallocate? */
+    if (nr_actual_sinks + expected_num_extra_sinks > size_sinks) {
+
+      size_sinks = (nr_actual_sinks + expected_num_extra_sinks) *
+                   engine_redistribute_alloc_margin;
+
+      if (verbose)
+        message("Re-allocating sinks array from %zd to %zd", s->size_sinks,
+                size_sinks);
+
+      /* Create more space for parts */
+      struct sink *sinks_new = NULL;
+      if (swift_memalign("sinks", (void **)&sinks_new, sink_align,
+                         sizeof(struct sink) * size_sinks) != 0)
+        error("Failed to allocate new sink data");
+      memcpy(sinks_new, s->sinks, sizeof(struct sink) * s->size_sinks);
+      swift_free("sinks", s->sinks);
+      s->sinks = sinks_new;
+
+      /* Update the counter */
+      s->size_sinks = size_sinks;
+    }
+
+    /* Turn some of the allocated spares into particles we can use */
+    for (size_t i = nr_sinks; i < nr_actual_sinks + expected_num_extra_sinks;
+         ++i) {
+      bzero(&s->sinks[i], sizeof(struct sink));
+      s->sinks[i].time_bin = time_bin_not_created;
+      s->sinks[i].id = -42;
+    }
+
+    /* Put the spare particles in their correct cell */
+    size_t local_cell_id = 0;
+    int current_cell = local_cells[local_cell_id];
+    int count_in_cell = 0;
+    size_t count_extra_sinks = 0;
+    for (size_t i = 0; i < nr_actual_sinks + expected_num_extra_sinks; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (current_cell == s->nr_cells)
+        error("Cell counter beyond the maximal nr. cells.");
+#endif
+
+      if (s->sinks[i].time_bin == time_bin_not_created) {
+
+        /* We want the extra particles to be at the centre of their cell */
+        s->sinks[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
+        s->sinks[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
+        s->sinks[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        ++count_in_cell;
+        count_extra_sinks++;
+      }
+
+      /* Once we have reached the number of extra sink per cell, we move to the
+       * next */
+      if (count_in_cell == space_extra_sinks) {
+        ++local_cell_id;
+
+        if (local_cell_id == nr_local_cells) break;
+
+        current_cell = local_cells[local_cell_id];
+        count_in_cell = 0;
+      }
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (count_extra_sinks != expected_num_extra_sinks)
+      error("Constructed the wrong number of extra sinks (%zd vs. %zd)",
+            count_extra_sinks, expected_num_extra_sinks);
+#endif
+
+    /* Update the counters */
+    s->nr_sinks = nr_actual_sinks + expected_num_extra_sinks;
+    s->nr_extra_sinks = expected_num_extra_sinks;
   }
 
   /* Do we have enough space for the extra sparts (i.e. we haven't used up any)
@@ -1267,7 +1347,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (s->with_self_gravity && with_dithering) space_dither(s, verbose);
 
   /* Allocate extra space for particles that will be created */
-  if (s->with_star_formation) space_allocate_extras(s, verbose);
+  if (s->with_star_formation || s->e->policy & engine_policy_sinks)
+    space_allocate_extras(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -2175,7 +2256,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
-  if (s->with_star_formation) space_reorder_extras(s, verbose);
+  if (s->with_star_formation || s->e->policy & engine_policy_sinks)
+    space_reorder_extras(s, verbose);
 
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
@@ -2257,6 +2339,19 @@ void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
   }
 }
 
+void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
+                                      void *extra_data) {
+
+  int *local_cells = (int *)map_data;
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
+
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[local_cells[ind]];
+    cell_reorder_extra_sinks(c, c->sinks.parts - s->sinks);
+  }
+}
+
 /**
  * @brief Re-orders the particles in each cell such that the extra particles
  * for on-the-fly creation are located at the end of their respective cells.
@@ -2293,7 +2388,9 @@ void space_reorder_extras(struct space *s, int verbose) {
 
   /* Re-order the sink particles */
   if (space_extra_sinks)
-    error("Missing implementation of sink extra reordering");
+    threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, s);
 }
 
 /**
@@ -4425,6 +4522,7 @@ void space_recycle(struct space *s, struct cell *c) {
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
       lock_destroy(&c->grav.mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
       lock_destroy(&c->sinks.lock) != 0 ||
+      lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
       lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->grav.star_formation_lock) != 0 ||
       lock_destroy(&c->stars.star_formation_lock) != 0)
@@ -4480,6 +4578,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
         lock_destroy(&c->grav.mlock) != 0 ||
         lock_destroy(&c->stars.lock) != 0 ||
         lock_destroy(&c->sinks.lock) != 0 ||
+        lock_destroy(&c->sinks.sink_formation_lock) != 0 ||
         lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock) != 0 ||
         lock_destroy(&c->grav.star_formation_lock) != 0)
@@ -4583,6 +4682,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
         lock_init(&cells[j]->sinks.lock) != 0 ||
+        lock_init(&cells[j]->sinks.sink_formation_lock) != 0 ||
         lock_init(&cells[j]->black_holes.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0 ||
         lock_init(&cells[j]->grav.star_formation_lock) != 0)
@@ -5656,9 +5756,6 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
   space_extra_sinks = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
-  if (space_extra_sinks != 0) {
-    error("Extra sink particles not implemented yet.");
-  }
 
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",

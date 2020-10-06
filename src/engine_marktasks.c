@@ -1034,6 +1034,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_stars(t->ci, e))
         scheduler_activate(s, t);
     }
+
+    /* Subgrid tasks: sink formation */
+    else if (t_type == task_type_sink_formation) {
+      if (cell_is_active_hydro(t->ci, e)) {
+        cell_activate_sink_formation_tasks(t->ci, s);
+        cell_activate_super_sink_drifts(t->ci, s);
+      }
+    }
   }
 }
 
