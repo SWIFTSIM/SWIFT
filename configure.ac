@@ -356,7 +356,7 @@ fi
 
 # Check if gravity force checks are on for some particles.
 AC_ARG_ENABLE([gravity-force-checks],
-   [AS_HELP_STRING([--enable-gravity-force-checks],
+   [AS_HELP_STRING([--enable-gravity-force-checks=<N>],
      [Activate expensive brute-force gravity checks for a fraction 1/N of all particles @<:@N@:>@]
    )],
    [gravity_force_checks="$enableval"],
@@ -382,7 +382,7 @@ fi
 
 # Check if we want to zero the gravity forces for all particles below some ID.
 AC_ARG_ENABLE([no-gravity-below-id],
-   [AS_HELP_STRING([--enable-no-gravity-below-id],
+   [AS_HELP_STRING([--enable-no-gravity-below-id=<N>],
      [Zeros the gravitational acceleration of all particles with an ID smaller than @<:@N@:>@]
    )],
    [no_gravity_below_id="$enableval"],
@@ -396,7 +396,7 @@ fi
 
 # Check if we want to use boundary particles.
 AC_ARG_ENABLE([boundary-particles],
-   [AS_HELP_STRING([--enable-boundary-particles],
+   [AS_HELP_STRING([--enable-boundary-particles=<N>],
      [Set all particles with an ID smaller than @<:@N@:>@ as boundary particles (i.e. receive zero gravity + hydro forces).]
    )],
    [boundary_particles="$enableval"],
@@ -411,7 +411,7 @@ fi
 
 # Check if we want to use fixed boundary particles.
 AC_ARG_ENABLE([fixed-boundary-particles],
-   [AS_HELP_STRING([--enable-fixed-boundary-particles],
+   [AS_HELP_STRING([--enable-fixed-boundary-particles=<N>],
      [Set all particles with an ID smaller than @<:@N@:>@ as fixed boundary particles (i.e. receive zero gravity + hydro forces + zero velocity), this mode enables also --enable-boundary-particles and --enable-no-gravity-below-id.]
    )],
    [fixed_boundary_particles="$enableval"],
@@ -1863,7 +1863,7 @@ case "$with_riemann" in
 esac
 #  Cooling function
 AC_ARG_WITH([cooling],
-   [AS_HELP_STRING([--with-cooling=<function>],
+   [AS_HELP_STRING([--with-cooling=<model>],
       [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
