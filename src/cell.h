@@ -404,6 +404,9 @@ struct cell {
     /*! Task for star formation */
     struct task *star_formation;
 
+    /*! Task for sink formation */
+    struct task *sink_formation;
+
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
@@ -790,6 +793,9 @@ struct cell {
     /*! Spin lock for various uses (#sink case). */
     swift_lock_type lock;
 
+    /*! Spin lock for sink formation use. */
+    swift_lock_type sink_formation_lock;
+
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
 
@@ -1000,6 +1006,7 @@ void cell_store_pre_drift_values(struct cell *c);
 void cell_set_star_resort_flag(struct cell *c);
 void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
                                         const int with_feedback);
+void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s);
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_limiter);
@@ -1017,6 +1024,7 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
                                     struct scheduler *s);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
+void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
@@ -1054,10 +1062,13 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
                                           struct cell *c, struct spart *sp);
 struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
+struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
+                                       struct part *p, struct xpart *xp);
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
                                struct spart *sparts);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
+void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);

@@ -832,7 +832,7 @@ void write_output_single(struct engine* e,
   /* Format things in a Gadget-friendly array */
   long long N_total[swift_type_count] = {
       (long long)Ngas_written,   (long long)Ndm_written,
-      (long long)Ndm_background, (long long)Nsinks,
+      (long long)Ndm_background, (long long)Nsinks_written,
       (long long)Nstars_written, (long long)Nblackholes_written};
 
   /* File name */

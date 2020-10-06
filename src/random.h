@@ -42,10 +42,18 @@
  * generator.
  * In case new numbers need to be added other possible
  * numbers could be:
- * 5947309451
+ * 59969537
+ * 65610001
+ * 126247697
+ * 193877777
+ * 303595777
+ * 384160001
+ * 406586897
+ * 562448657
  */
 enum random_number_type {
   random_number_star_formation = 0LL,
+  random_number_sink_formation = 5947309451LL,
   random_number_stellar_feedback_1 = 3947008991LL,
   random_number_stellar_feedback_2 = 6977309513LL,
   random_number_stellar_enrichment = 2936881973LL,

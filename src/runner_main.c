@@ -477,6 +477,9 @@ void *runner_main(void *data) {
         case task_type_stars_resort:
           runner_do_stars_resort(r, t->ci, 1);
           break;
+        case task_type_sink_formation:
+          runner_do_sink_formation(r, t->ci);
+          break;
         case task_type_fof_self:
           runner_do_fof_self(r, t->ci, 1);
           break;
