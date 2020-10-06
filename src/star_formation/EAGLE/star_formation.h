@@ -618,6 +618,28 @@ INLINE static void starformation_init_backend(
   const double number_density_from_cgs =
       1. / units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
+  /* Load the equation of state for this model */
+  starform->EOS_polytropic_index = parser_get_param_double(
+      parameter_file, "EAGLEStarFormation:EOS_gamma_effective");
+  starform->EOS_temperature_norm_K = parser_get_param_double(
+      parameter_file, "EAGLEStarFormation:EOS_temperature_norm_K");
+  starform->EOS_density_norm_HpCM3 = parser_get_param_double(
+      parameter_file, "EAGLEStarFormation:EOS_density_norm_H_p_cm3");
+  starform->EOS_density_c =
+      starform->EOS_density_norm_HpCM3 * number_density_from_cgs;
+  starform->EOS_density_c_inv = 1. / starform->EOS_density_c;
+
+  /* Calculate the EOS pressure normalization */
+  starform->EOS_pressure_c =
+      starform->EOS_density_c * starform->EOS_temperature_norm_K *
+      phys_const->const_boltzmann_k / mean_molecular_weight / X_H;
+
+  /* Normalisation of the temperature in the EOS calculatio */
+  starform->EOS_temperature_c =
+      starform->EOS_pressure_c / phys_const->const_boltzmann_k;
+  starform->EOS_temperature_c *=
+      pow(starform->EOS_density_c, starform->EOS_polytropic_index);
+
   /* Check if we are using the Schmidt law for the star formation rate,
    * defaults to pressure law if is not explicitely set to a Schmidt law */
   char temp[32];
@@ -720,28 +742,6 @@ INLINE static void starformation_init_backend(
   } else {
     error("Invalid SF law model: '%s'", temp);
   }
-
-  /* Load the equation of state for this model */
-  starform->EOS_polytropic_index = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:EOS_gamma_effective");
-  starform->EOS_temperature_norm_K = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:EOS_temperature_norm_K");
-  starform->EOS_density_norm_HpCM3 = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:EOS_density_norm_H_p_cm3");
-  starform->EOS_density_c =
-      starform->EOS_density_norm_HpCM3 * number_density_from_cgs;
-  starform->EOS_density_c_inv = 1. / starform->EOS_density_c;
-
-  /* Calculate the EOS pressure normalization */
-  starform->EOS_pressure_c =
-      starform->EOS_density_c * starform->EOS_temperature_norm_K *
-      phys_const->const_boltzmann_k / mean_molecular_weight / X_H;
-
-  /* Normalisation of the temperature in the EOS calculatio */
-  starform->EOS_temperature_c =
-      starform->EOS_pressure_c / phys_const->const_boltzmann_k;
-  starform->EOS_temperature_c *=
-      pow(starform->EOS_density_c, starform->EOS_polytropic_index);
 
   /* Read the critical density contrast from the parameter file*/
   starform->min_over_den = parser_get_param_double(
