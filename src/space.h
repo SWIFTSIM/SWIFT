@@ -83,6 +83,7 @@ extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
+extern int space_extra_sinks;
 
 /**
  * @brief The space in which the cells and particles reside.

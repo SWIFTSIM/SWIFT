@@ -822,6 +822,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
+  const int with_sinks = (e->policy & engine_policy_sinks);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
@@ -836,6 +837,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
     if (with_star_formation && c->hydro.count > 0) {
       c->hydro.star_formation = scheduler_addtask(
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
+    }
+
+    if (with_sinks && c->hydro.count > 0) {
+      c->hydro.sink_formation = scheduler_addtask(
+          s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
     }
   }
 
@@ -1290,8 +1296,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_sink_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        /* TODO */
-        scheduler_addunlock(s, c->sinks.sink_in, c->sinks.sink_out);
+        scheduler_addunlock(s, c->sinks.sink_in, c->top->hydro.sink_formation);
+        scheduler_addunlock(s, c->top->hydro.sink_formation, c->sinks.sink_out);
 
         /* Link to the main tasks */
         scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
@@ -1942,6 +1948,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     if (t->type == task_type_none) continue;
     if (t->type == task_type_stars_resort) continue;
     if (t->type == task_type_star_formation) continue;
+    if (t->type == task_type_sink_formation) continue;
 
     /* Sort tasks depend on the drift of the cell (gas version). */
     if (t_type == task_type_sort && ci->nodeID == nodeID) {
