@@ -563,6 +563,15 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->critical_density_0 =
       3. * c->H0 * c->H0 / (8. * M_PI * phys_const->const_newton_G);
 
+  /* CMB temperature in internal units */
+  const double cc = phys_const->const_speed_light_c;
+  const double T_CMB_0_4 = c->Omega_r * c->critical_density_0 * cc * cc * cc /
+                           (4. * phys_const->const_stefan_boltzmann);
+  c->T_CMB_0 = pow(T_CMB_0_4, 1. / 4.);
+
+  c->T_CMB_0_K =
+      c->T_CMB_0 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
   c->grav_kick_fac_interp_table = NULL;
@@ -630,6 +639,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->critical_density_0 = 0.;
   c->mean_density = 0.;
   c->mean_density_Omega_b = 0;
+  c->T_CMB_0 = 0.;
+  c->T_CMB_0_K = 0.;
 
   c->time_step_factor = 1.;
 
@@ -931,6 +942,8 @@ void cosmology_print(const struct cosmology *c) {
   message("Dark energy equation of state: w_0=%f w_a=%f", c->w_0, c->w_a);
   message("Hubble constant: h = %f, H_0 = %e U_t^(-1)", c->h, c->H0);
   message("Hubble time: 1/H0 = %e U_t", c->Hubble_time);
+  message("CMB temperature at z=0 derived from O_r: T_CMB = %e U_T",
+          c->T_CMB_0);
   message("Universe age at present day: %e U_t",
           c->universe_age_at_present_day);
 }
@@ -965,6 +978,8 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "Omega_k", c->Omega_k);
   io_write_attribute_d(h_grp, "Omega_lambda", c->Omega_lambda);
   io_write_attribute_d(h_grp, "Omega_nu", c->Omega_nu);
+  io_write_attribute_d(h_grp, "T_CMB_0 [internal units]", c->T_CMB_0);
+  io_write_attribute_d(h_grp, "T_CMB_0 [K]", c->T_CMB_0_K);
   io_write_attribute_d(h_grp, "w_0", c->w_0);
   io_write_attribute_d(h_grp, "w_a", c->w_a);
   io_write_attribute_d(h_grp, "w", c->w);
