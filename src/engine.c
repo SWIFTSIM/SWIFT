@@ -1515,7 +1515,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
         /* For dark matter, we just use the numbers in the top-level cells */
         /*cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);*/
         const size_t count_dmparts = cell_link_foreign_dmparts(e->proxies[k].cells_in[j], dmparts);
-        dmparts = &dmparts[count_gparts];
+        dmparts = &dmparts[count_dmparts];
     }
   }
 
@@ -2563,20 +2563,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       }
     }
   }
-    
-    if (s->cells_top != NULL && s->nr_dmparts > 0) {
-        for (int i = 0; i < s->nr_cells; i++) {
-            struct cell *c = &s->cells_top[i];
-            if (c->nodeID == engine_rank && c->dark_matter.count > 0) {
-                float dmpart_h_max = c->dark_matter.parts[0].h;
-                for (int k = 1; k < c->dark_matter.count; k++) {
-                    if (c->dark_matter.parts[k].h > dmpart_h_max)
-                        dmpart_h_max = c->dark_matter.parts[k].h;
-                }
-                c->dark_matter.h_max = max(dmpart_h_max, c->dark_matter.h_max);
-            }
-        }
-    }
 
   clocks_gettime(&time2);
 

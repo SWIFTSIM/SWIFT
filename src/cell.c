@@ -665,7 +665,6 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.h_max = c->hydro.h_max;
   pc->stars.h_max = c->stars.h_max;
   pc->black_holes.h_max = c->black_holes.h_max;
-  pc->dark_matter.h_max = c->dark_matter.h_max;
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
@@ -2505,7 +2504,6 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
 void cell_sanitize(struct cell *c, int treated) {
   const int count = c->hydro.count;
   const int scount = c->stars.count;
-  const int dmcount = c->dark_matter.count;
   struct part *parts = c->hydro.parts;
   struct spart *sparts = c->stars.parts;
   float h_max = 0.f;
@@ -3906,33 +3904,26 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s) {
     const struct engine *e = s->space->e;
     
-    /* Store the current dx_max and h_max values. */
-    ci->dark_matter.dx_max_part_old = ci->dark_matter.dx_max_part;
-    
-    if (cj != NULL) {
-        cj->dark_matter.dx_max_part_old = cj->dark_matter.dx_max_part;
-    }
-    
     /* Self interaction? */
     if (cj == NULL) {
         /* Do anything? */
         if (!cell_is_active_dark_matter(ci, e) || ci->dark_matter.count == 0 ||
             ci->dark_matter.count == 0)
             return;
-        
-        /* Recurse? */
-        if (cell_can_recurse_in_self_dark_matter_task(ci)) {
-            /* Loop over all progenies and pairs of progenies */
-            for (int j = 0; j < 8; j++) {
-                if (ci->progeny[j] != NULL) {
-                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s);
-                    for (int k = j + 1; k < 8; k++)
-                        if (ci->progeny[k] != NULL)
-                            cell_activate_subcell_dark_matter_tasks(
-                                                                    ci->progeny[j], ci->progeny[k], s);
-                }
+
+    /* Recurse? */
+    if (ci->split) {
+        /* Loop over all progenies and pairs of progenies */
+        for (int j = 0; j < 8; j++) {
+            if (ci->progeny[j] != NULL) {
+                cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s);
+                for (int k = j + 1; k < 8; k++)
+                    if (ci->progeny[k] != NULL)
+                        cell_activate_subcell_dark_matter_tasks(
+                                                                ci->progeny[j], ci->progeny[k], s);
             }
-        } else {
+        }
+    } else {
             /* We have reached the bottom of the tree: activate drift */
             cell_activate_drift_dmpart(ci, s);
         }
@@ -3945,32 +3936,19 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             !cell_is_active_dark_matter(cj, e))
             return;
         
-        /* Get the orientation of the pair. */
-        double shift[3];
-        const int sid = space_getsid(s->space, &ci, &cj, shift);
+        if (ci->dark_matter.count == 0 || cj->dark_matter.count == 0) return;
         
         /* recurse? */
-        if (cell_can_recurse_in_pair_dark_matter_task(ci) &&
-            cell_can_recurse_in_pair_dark_matter_task(cj)) {
-            const struct cell_split_pair *csp = &cell_split_pairs[sid];
-            for (int k = 0; k < csp->count; k++) {
-                const int pid = csp->pairs[k].pid;
-                const int pjd = csp->pairs[k].pjd;
-                if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-                    cell_activate_subcell_dark_matter_tasks(
-                                                            ci->progeny[pid], cj->progeny[pjd], s);
-            }
-        }
-        
-        /* Otherwise, activate the drifts. */
-        else if (cell_is_active_dark_matter(ci, e) ||
-                 cell_is_active_dark_matter(cj, e)) {
+        else if (!ci->split && !cj->split) {
+            /* Activate the drifts if the cells are local. */
+            if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
             
             /* Activate the drifts if the cells are local. */
             if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
             if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
-        }
-    } /* Otherwise, pair interation */
+         }
+      }
+   }
 }
 
 /**
@@ -5113,7 +5091,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             if (t->type == task_type_self) {
                 cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
             } else if (t->type == task_type_pair) {
-                cell_activate_subcell_dark_matte_tasks(ci, cj, s);
+                cell_activate_subcell_dark_matter_tasks(ci, cj, s);
             }
         }
         
@@ -5710,7 +5688,6 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
     const integertime_t ti_old_dmpart = c->dark_matter.ti_old_part;
     const integertime_t ti_current = e->ti_current;
     struct dmpart *const dmparts = c->dark_matter.parts;
-    const struct gravity_props *grav_props = e->gravity_properties;
     
     /* Drift irrespective of cell flags? */
     force = (force || cell_get_flag(c, cell_flag_do_dark_matter_drift));
@@ -5772,7 +5749,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             if (dmpart_is_inhibited(dmp, e)) continue;
             
             /* Drift... */
-            drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current, grav_props, e);
+            drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);
             
 #ifdef SWIFT_DEBUG_CHECKS
             /* Make sure the particle does not drift by more than a box length. */

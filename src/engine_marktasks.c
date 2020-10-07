@@ -856,10 +856,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         
         /* Only interested in dark matter density tasks as of here. */
       else if (t->subtype == task_subtype_sidm) {
-          
-          /* Too much particle movement? */
-          if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) *rebuild_space = 1;
-          
+                    
 #ifdef WITH_MPI
           /* Activate the send/recv tasks. */
           if (ci_nodeID != nodeID) {

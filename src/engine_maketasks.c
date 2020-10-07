@@ -2028,7 +2028,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
         struct cell *cj = t->cj;
         const enum task_types t_type = t->type;
         const enum task_subtypes t_subtype = t->subtype;
-        const long long flags = t->flags;
         
         /* Pointers to the parent cells for tasks going up and down the tree
          * In the case where we are at the super-level we don't

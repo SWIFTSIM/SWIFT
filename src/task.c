@@ -107,7 +107,7 @@ const char *taskID_names[task_type_count] = {"none",
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none",       "density",      "DM_density",   "sidm", "gradient",   "force",
+    "none",       "density",      "sidm",    "gradient",   "force",
     "limiter",    "grav",         "external_grav",  "tend_part",
     "tend_gpart", "tend_spart",   "tend_bpart", "tend_dmpart",  "xv",
     "rho",        "part_swallow", "bpart_merger",   "gpart",

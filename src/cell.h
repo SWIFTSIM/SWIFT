@@ -1224,22 +1224,6 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
                        c->hydro.dx_max_part_old) < 0.5f * c->dmin);
 }
 
-/**
- * @brief Can a sub-pair dark_matter task recurse to a lower level based
- * on the status of the particles in the cell.
- *
- * @param c The #cell.
- */
-__attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_dark_matter_task(const struct cell *c) {
-    
-    /* Is the cell split ? */
-    /* If so, is the cut-off radius plus the max distance the parts have moved */
-    /* smaller than the sub-cell sizes ? */
-    /* Note: We use the _old values as these might have been updated by a drift */
-    return c->split && ((dm_kernel_gamma * c->dark_matter.h_max_old +
-                         c->dark_matter.dx_max_part_old) < 0.5f * c->dmin);
-}
 
 /**
  * @brief Can a sub-self hydro task recurse to a lower level based
@@ -1254,18 +1238,6 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
   return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
-/**
- * @brief Can a sub-self dark matter task recurse to a lower level based
- * on the status of the particles in the cell.
- *
- * @param c The #cell.
- */
-__attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_self_dark_matter_task(const struct cell *c) {
-    
-    /* Is the cell split and not smaller than the smoothing length? */
-    return c->split && (dm_kernel_gamma * c->dark_matter.h_max_old < 0.5f * c->dmin);
-}
 
 /**
  * @brief Can a sub-pair star task recurse to a lower level based
@@ -1518,27 +1490,6 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
   return 0;
 }
 
-/**
- * @brief Have dark matter particles in a pair of cells moved too much and require a
- * rebuild?
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
- */
-__attribute__((always_inline, nonnull)) INLINE static int
-cell_need_rebuild_for_dark_matter_pair(const struct cell *ci,
-                                       const struct cell *cj) {
-    
-    /* Is the cut-off radius plus the max distance the parts in both cells have */
-    /* moved larger than the cell size ? */
-    /* Note ci->dmin == cj->dmin */
-    if (dm_kernel_gamma * max(ci->dark_matter.h_max, cj->dark_matter.h_max) +
-        ci->dark_matter.dx_max_part + cj->dark_matter.dx_max_part >
-        cj->dmin) {
-        return 1;
-    }
-    return 0;
-}
 
 /**
  * @brief Add a unique tag to a cell, mostly for MPI communications.

@@ -305,7 +305,6 @@ void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
     integertime_t ti_dark_matter_end_max = 0;
     timebin_t time_bin_min = num_time_bins;
     timebin_t time_bin_max = 0;
-    float h_max = 0.f;
     
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == engine_rank) error("Updating a local cell!");
@@ -320,7 +319,6 @@ void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
             if (dmparts[k].time_bin == time_bin_inhibited) continue;
             time_bin_min = min(time_bin_min, dmparts[k].time_bin);
             time_bin_max = max(time_bin_max, dmparts[k].time_bin);
-            h_max = max(h_max, dmparts[k].h);
         }
         
         /* Convert into a time */
@@ -337,18 +335,16 @@ void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
                 min(ti_dark_matter_end_min, c->progeny[k]->dark_matter.ti_end_min);
                 ti_dark_matter_end_max =
                 max(ti_dark_matter_end_max, c->progeny[k]->dark_matter.ti_end_max);
-                h_max = max(h_max, c->progeny[k]->dark_matter.h_max);
             }
         }
     }
     
     /* ... and store. */
-    // c->grav.ti_end_min = ti_gravity_end_min;
-    // c->grav.ti_end_max = ti_gravity_end_max;
+    c->dark_matter.ti_end_min = ti_dark_matter_end_min;
+    c->dark_matter.ti_end_max = ti_dark_matter_end_max;
     c->dark_matter.ti_old_part = ti_current;
-    c->dark_matter.h_max = h_max;
     
-    if (timer) TIMER_TOC(timer_dorecv_spart);
+    if (timer) TIMER_TOC(timer_dorecv_dmpart);
     
 #else
     error("SWIFT was not compiled with MPI support.");

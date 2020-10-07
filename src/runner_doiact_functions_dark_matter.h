@@ -292,8 +292,7 @@ void runner_dosub_pair_dark_matter_sidm(struct runner *r, struct cell *ci, struc
     const int sid = space_getsid(s, &ci, &cj, shift);
     
     /* Recurse? */
-    if (cell_can_recurse_in_pair_dark_matter_task(ci) &&
-        cell_can_recurse_in_pair_dark_matter_task(cj)) {
+    if (!ci->split && !cj->split) {
         struct cell_split_pair *csp = &cell_split_pairs[sid];
         for (int k = 0; k < csp->count; k++) {
             const int pid = csp->pairs[k].pid;
@@ -334,7 +333,7 @@ void runner_dosub_self_dark_matter_sidm(struct runner *r, struct cell *ci) {
     if (ci->dark_matter.count == 0 || !cell_is_active_dark_matter(ci, r->e)) return;
     
     /* Recurse? */
-    if (cell_can_recurse_in_self_dark_matter_task(ci)) {
+    if (ci->split) {
         
         /* Loop over all progeny. */
         for (int k = 0; k < 8; k++)
