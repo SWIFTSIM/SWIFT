@@ -650,7 +650,7 @@ void read_ic_single(const char* fileName,
 
       case swift_type_dark_matter:
         if (with_gravity) {
-          Nparticles = Ndm;
+          Nparticles = *Ndarkmatter;
           darkmatter_read_particles(*gparts, list, &num_fields);
           darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
         }
@@ -706,7 +706,7 @@ void read_ic_single(const char* fileName,
     threadpool_init(&tp, n_threads);
 
     /* Prepare the DM particles */
-    /*io_prepare_dm_gparts(&tp, *gparts, Ndm);*/
+    io_prepare_dm_gparts(&tp, *gparts, Ndm);
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);

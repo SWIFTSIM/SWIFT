@@ -34,7 +34,6 @@
 /* Local includes. */
 #include "align.h"
 #include "kernel_hydro.h"
-#include "kernel_dark_matter.h"
 #include "lock.h"
 #include "multipole_struct.h"
 #include "part.h"
@@ -198,11 +197,8 @@ struct pcell {
     /*! Dark matter variables */
     struct {
         
-        /*! Number of #spart in this cell. */
+        /*! Number of #dmpart in this cell. */
         int count;
-        
-        /*! Maximal smoothing length. */
-        float h_max;
         
         /*! Minimal integer end-of-timestep in this cell for stars tasks */
         integertime_t ti_end_min;
@@ -719,7 +715,7 @@ struct cell {
         struct sort_entry *sort;
 
         /*! The task computing this cell's sorts. */
-        /*struct task *sorts;*/
+        struct task *sorts;
         
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
         struct link *sidm;
@@ -727,12 +723,6 @@ struct cell {
         /*! The drift task for parts */
         struct task *drift;
 
-        /*! The dark matter ghost task itself */
-        struct task *ghost;
-        
-        /*! Linked list of the tasks computing this cell's dark matter density. */
-        struct link *density;
-        
         /*! kick due to DM-DM interactions */
         struct task *sidm_kick;
         
@@ -747,12 +737,6 @@ struct cell {
         
         /*! Nr of #dmpart this cell can hold after addition of new #dmpart. */
         int count_total;
-        
-        /*! Max smoothing length in this cell. */
-        float h_max;
-        
-        /*! Values of h_max before the drifts, used for sub-cell tasks. */
-        float h_max_old;
         
         /*! Maximum part movement in this cell since last construction. */
         float dx_max_part;
@@ -1058,9 +1042,11 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts);
 int cell_link_dmparts(struct cell *c, struct dmpart *dmparts);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
+int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts);
 void cell_unlink_foreign_particles(struct cell *c);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
+int cell_count_dmparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current,
                           const struct gravity_props *const grav_props);
@@ -1408,8 +1394,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_dark_matter
     /* the sub-cell sizes ? */
     /* Note that since tasks are create after a rebuild no need to take */
     /* into account any part motion (i.e. dx_max == 0 here) */
-    return c->split &&
-    (space_stretch * dm_kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
+    /* Is the cell split and still far from the leaves ? */
+    return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
 /**
@@ -1423,10 +1409,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_dark_matter
     /* Is the cell split ? */
     /* If so, is the cut-off radius with some leeway smaller than */
     /* the sub-cell sizes ? */
-    /* Note: No need for more checks here as all the sub-pairs and sub-self */
-    /* tasks will be created. So no need to check for h_max */
-    return c->split &&
-    (space_stretch * dm_kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
+    /* Is the cell split and still far from the leaves ? */
+    return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
 /**

@@ -31,14 +31,7 @@
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct dmpart* gp) {
-    
-    gp->density.wcount = 0.f;
-    gp->density.wcount_dh = 0.f;
-    gp->rho = 0.f;
-    gp->density.rho_dh = 0.f;
-
-}
+__attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct dmpart* gp) {}
 
 /**
  * @brief Initialises the dark matter particles for the first time
@@ -78,29 +71,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
-               struct dmpart* restrict dmp, float dt_drift) {
-    
-    const float h = dmp->h;
-    const float h_inv = 1.0f / h;
-    
-    /* Predict smoothing length */
-    const float w1 = h_inv * dt_drift;
-    if (fabsf(w1) < 0.2f) {
-        dmp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-    } else {
-        dmp->h *= expf(w1);
-    }
-    
-    /* Predict density */
-    const float w2 = -hydro_dimension * w1;
-    if (fabsf(w2) < 0.2f) {
-        dmp->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-    } else {
-        dmp->rho *= expf(w2);
-    }
-    
-    
-}
+               struct dmpart* restrict dmp, float dt_drift) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -113,35 +84,6 @@ __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_va
 
 
 /**
- * @brief Finishes the calculation of density on dark matter particles
- *
- * @param sp The particle to act upon
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void dark_matter_end_density(
-    struct dmpart* gp, const struct cosmology* cosmo) {
-        
-    /* Some smoothing length multiples. */
-    const float h = gp->h;
-    const float h_inv = 1.0f / h;                       /* 1/h */
-    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
-    const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
-    
-    /* Final operation on the density (add self-contribution). */
-    gp->rho += gp->mass * dm_kernel_root;
-    gp->density.rho_dh -= hydro_dimension * gp->mass * dm_kernel_root;
-    gp->density.wcount += dm_kernel_root;
-    gp->density.wcount_dh -= hydro_dimension * dm_kernel_root;
-
-    /* Finish the calculation by inserting the missing h-factors */
-      gp->rho *= h_inv_dim;
-      gp->density.rho_dh *= h_inv_dim_plus_one;
-      gp->density.wcount *= h_inv_dim;
-      gp->density.wcount_dh *= h_inv_dim_plus_one;
-
-}
-
-/**
  * @brief Sets all particle fields to sensible values when the #spart has 0
  * ngbs.
  *
@@ -149,19 +91,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighbours(
-    struct dmpart* restrict gp, const struct cosmology* cosmo) {
-    
-    /* Some smoothing length multiples. */
-    const float h = gp->h;
-    const float h_inv = 1.0f / h;                 /* 1/h */
-    const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
-    /* Re-set problematic values */
-    gp->rho = gp->mass * dm_kernel_root * h_inv_dim;
-    gp->density.wcount = dm_kernel_root * h_inv_dim;
-    gp->density.rho_dh = 0.f;
-    gp->density.wcount_dh = 0.f;
-}
+    struct dmpart* restrict gp, const struct cosmology* cosmo) {}
 
 
 /**
@@ -170,9 +100,6 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
  * @param gp Pointer to the gparticle data.
  */
 __attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart *restrict gp) {
-    
-    /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
-    gp->sidm_data.sidm_flag = 0.0f;
     
     /* Set copy of particle velocity */
     gp->sidm_data.si_v_full[0] = gp->v_full[0];
@@ -196,6 +123,9 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
          gp->v_full[1] = gp->sidm_data.si_v_full[1];
          gp->v_full[2] = gp->sidm_data.si_v_full[2];
         
+        /* Reset flag */
+        gp->sidm_data.sidm_flag = 0;
+        
     }
 }
 
@@ -211,15 +141,7 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
  */
 __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     const struct dmpart *restrict dmp, const struct sidm_props *restrict sidm_properties,
-    const struct cosmology *restrict cosmo) {
-    
-    const float CFL_condition = sidm_properties->CFL_condition;
-    
-    /* CFL condition */
-    const float dt_cfl = 2.f * dm_kernel_gamma * CFL_condition * cosmo->a * dmp->h / (cosmo->a_factor_sound_speed);
-    
-    return dt_cfl;
-}
+    const struct cosmology *restrict cosmo) {}
 
 /**
  * @brief Kick the additional variables

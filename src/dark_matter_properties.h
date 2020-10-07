@@ -56,46 +56,8 @@ struct sidm_props {
     /* Scattering cross section (in internal units) */
     double sigma;
     
-    /* Parameters for smoothing length calculation */
-    /*! Maximal smoothing length (internal units) */
-    float h_max;
-    
-    /*! Minimal smoothing length (internal units) */
-    float h_min;
-    
     /*! SIDM collisions search radius */
     float h_search_radius;
-    
-    /*! Smoothing length tolerance */
-    float h_tolerance;
-    
-    /*! Minimal smoothing length expressed as ratio to softening length */
-    float h_min_ratio;
-    
-    /*! Resolution parameter */
-    float eta_neighbours;
-
-    /*! Target neighbours */
-    float target_neighbours;
-
-    /*!  */
-    float delta_neighbours;
-
-    /*! Maximal number of iterations to converge h */
-    int max_smoothing_iterations;
-    
-    /* ------ Neighbour number definition ------------ */
-    
-    /*! Are we using the mass-weighted definition of neighbour number? */
-    int use_mass_weighted_num_ngb;
-    
-    /* ------ Time integration parameters ------------ */
-    
-    /*! Time integration properties */
-    float CFL_condition;
-    
-    /*! Maximal change of h over one time-step */
-    float log_max_h_change;
 
 };
 

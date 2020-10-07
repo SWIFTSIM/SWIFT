@@ -47,12 +47,6 @@ struct dmpart {
   /*! Dark matter mass */
   float mass;
 
-  /*! Dark matter density */
-  float rho;
-
-  /* Particle cutoff radius. */
-  float h;
-
   /*! Particle time bin */
   timebin_t time_bin;
     
@@ -64,20 +58,6 @@ struct dmpart {
     
     /* Has this particle been initialised? */
     int initialised;
-
-
-  struct {
-
-      /*! Neighbour number count. */
-      float wcount;
-      
-      /*! Derivative of the neighbour number with respect to h. */
-      float wcount_dh;
-      
-      /*! Derivative of density with respect to h */
-      float rho_dh;
-      
-  } density;
 
   /*! Add self-interacting DM specific stuff. */
   struct sidm_dmpart_data sidm_data;

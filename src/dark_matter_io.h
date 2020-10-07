@@ -79,7 +79,7 @@ INLINE static void darkmatter_read_as_dmparticles(struct dmpart* dmparts,
                                              int* num_fields) {
     
     /* Say how much we want to read */
-    *num_fields = 6;
+    *num_fields = 4;
     
     /* List what we want to read */
     list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -90,11 +90,6 @@ INLINE static void darkmatter_read_as_dmparticles(struct dmpart* dmparts,
                                   dmparts, mass);
     list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                   UNIT_CONV_NO_UNITS, dmparts, id_or_neg_offset);
-    list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
-                                  UNIT_CONV_LENGTH, dmparts, h);
-    list[5] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
-                                  UNIT_CONV_DENSITY, dmparts, rho);
-
 }
 
 /**
@@ -112,17 +107,13 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     list[0] = io_make_output_field("SIDMevents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
                                    dmparts, sidm_data.num_sidm, "Number of DM-DM collisions the particle has had");
     
-    list[1] = io_make_output_field("SIDM_search_radius", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, dmparts, sidm_data.h_sidm,
-                                   "Co-moving smoothing lengths (FWHM of the kernel) of the DM particles");
+    list[1] = io_make_output_field("SIDM_search_radius", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, dmparts, sidm_data.h_sidm,"Co-moving smoothing lengths (FWHM of the kernel) of the DM particles");
     
-    list[2] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, dmparts, rho,
-                                   "Co-moving mass densities of the particles");
-
-    list[3] = io_make_output_field("DMParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+    list[2] = io_make_output_field("DMParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
                                    id_or_neg_offset, "Unique ID of the particles");
 
     
-    return 4;
+    return 3;
     
 }
 

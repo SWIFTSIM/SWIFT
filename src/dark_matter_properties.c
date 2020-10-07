@@ -31,15 +31,6 @@
 #include "units.h"
 #include "error.h"
 
-#define sidm_props_default_max_iterations 30
-#define sidm_props_default_h_max FLT_MAX
-#define sidm_props_default_h_min_ratio 0.f
-#define sidm_props_default_h_sidm FLT_MAX
-#define sidm_props_default_h_tolerance 1e-4
-#define sidm_props_default_volume_change 1.4f
-
-
-
 /**
  * @brief Initialize the global properties of the self-interacting dark matter scheme.
  *
@@ -62,60 +53,6 @@ void sidm_props_init(struct sidm_props* sidm_props,
     sidm_props->sigma = sidm_props->sigma_cgs / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
     
     sidm_props->sigma *= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-    
-    /* ------ Smoothing lengths parameters ---------- */
-    
-    /* Kernel properties */
-    sidm_props->eta_neighbours = parser_get_param_float(params, "SIDM:resolution_eta");
-    
-    /* Tolerance for the smoothing length Newton-Raphson scheme */
-    sidm_props->h_tolerance = parser_get_opt_param_float(params, "SIDM:h_tolerance",
-                                                sidm_props_default_h_tolerance);
-    
-    /* Get derived properties */
-    sidm_props->target_neighbours = pow_dimension(sidm_props->eta_neighbours);
-    
-    const float delta_eta = sidm_props->eta_neighbours * (1.f + sidm_props->h_tolerance);
-
-    sidm_props->delta_neighbours = (pow_dimension(delta_eta) - pow_dimension(sidm_props->eta_neighbours));
-    
-    /* Maximal smoothing length */
-    sidm_props->h_max = parser_get_opt_param_float(params, "SIDM:h_max",
-                                          sidm_props_default_h_max);
-    
-    sidm_props->h_search_radius = parser_get_opt_param_float(params, "SIDM:h_sidm",
-                                                   sidm_props_default_h_sidm);
-    
-    /* Minimal smoothing length ratio to softening */
-    sidm_props->h_min_ratio = parser_get_opt_param_float(params, "SIDM:h_min_ratio",
-                                                sidm_props_default_h_min_ratio);
-    
-    /* Temporarily set the minimal softening to 0. */
-    sidm_props->h_min = 0.f;
-    
-    /* Number of iterations to converge h */
-    sidm_props->max_smoothing_iterations = parser_get_opt_param_int(
-                                                           params, "SIDM:max_ghost_iterations", sidm_props_default_max_iterations);
-    
-    if (sidm_props->max_smoothing_iterations <= 10)
-        error("The number of smoothing length iterations for DM density should be > 10");
-    
-    /* ------ Neighbour number definition ------------ */
-    
-    /* Non-conventional neighbour number definition */
-    sidm_props->use_mass_weighted_num_ngb =
-    parser_get_opt_param_int(params, "SIDM:use_mass_weighted_num_ngb", 0);
-    
-    /* ------ Time integration parameters ------------ */
-    
-    /* Time integration properties */
-    sidm_props->CFL_condition = parser_get_param_float(params, "SIDM:CFL_condition");
-    
-    const float max_volume_change = parser_get_opt_param_float(params, "SPH:max_volume_change", sidm_props_default_volume_change);
-    
-    sidm_props->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
-
-    
 }
 
 /**
