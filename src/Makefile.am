@@ -103,7 +103,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
     runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
     runner_doiact_hydro_vec.c runner_others.c \
-	runner_doiact_rt.c\
+    runner_doiact_rt.c\
     queue.c task.c cell.c engine.c engine_maketasks.c engine_split_particles.c \
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
     engine_redistribute.c engine_fof.c serial_io.c timers.c debug.c scheduler.c \
@@ -123,197 +123,198 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     $(COLIBRE_COOLING_SOURCES)
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
-		gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h \
-		runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h \
-		runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h \
-		runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
-		runner_doiact_rt.h runner_doiact_functions_rt.h \
-		kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \
-		timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h \
-		dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_logger.h  gravity_cache.h output_options.h\
-		gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
-		gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
-		gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \
-		gravity/Potential/gravity_debug.h gravity/Potential/gravity_part.h  \
-		gravity/MultiSoftening/gravity.h gravity/MultiSoftening/gravity_iact.h gravity/MultiSoftening/gravity_io.h \
-		gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h \
-		gravity/MultiSoftening/gravity_logger.h \
-		equation_of_state.h \
-		equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
-		hydro.h hydro_io.h hydro_logger.h hydro_parameters.h \
-		hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
-		hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
-		hydro/Minimal/hydro_parameters.h \
-		hydro/Default/hydro.h hydro/Default/hydro_iact.h hydro/Default/hydro_io.h \
-		hydro/Default/hydro_debug.h hydro/Default/hydro_part.h \
-		hydro/Default/hydro_parameters.h \
-		hydro/Gadget2/hydro.h hydro/Gadget2/hydro_iact.h hydro/Gadget2/hydro_io.h \
-		hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
-		hydro/Gadget2/hydro_parameters.h hydro/Gadget2/hydro_logger.h \
-		hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h \
-		hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h \
-		hydro/PressureEntropy/hydro_parameters.h \
-		hydro/PressureEnergy/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
-		hydro/PressureEnergy/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
-		hydro/PressureEnergy/hydro_parameters.h \
-		hydro/PressureEnergyMorrisMonaghanAV/hydro.h hydro/PressureEnergyMorrisMonaghanAV/hydro_iact.h hydro/PressureEnergyMorrisMonaghanAV/hydro_io.h \
-		hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h \
-		hydro/PressureEnergyMorrisMonaghanAV/hydro_parameters.h \
-		hydro/AnarchyPU/hydro.h hydro/AnarchyPU/hydro_iact.h hydro/AnarchyPU/hydro_io.h \
-		hydro/AnarchyPU/hydro_debug.h hydro/AnarchyPU/hydro_part.h \
-		hydro/AnarchyPU/hydro_parameters.h \
-		hydro/SPHENIX/hydro.h hydro/SPHENIX/hydro_iact.h hydro/SPHENIX/hydro_io.h \
-		hydro/SPHENIX/hydro_debug.h hydro/SPHENIX/hydro_part.h \
-		hydro/SPHENIX/hydro_parameters.h \
-		hydro/Gizmo/hydro_parameters.h \
-		hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
-		hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
-		hydro/Gizmo/hydro_part.h \
-		hydro/Gizmo/hydro_gradients.h \
-		hydro/Gizmo/hydro_getters.h \
-		hydro/Gizmo/hydro_setters.h \
-		hydro/Gizmo/hydro_flux.h \
-		hydro/Gizmo/hydro_slope_limiters.h \
-		hydro/Gizmo/hydro_slope_limiters_face.h \
-		hydro/Gizmo/hydro_slope_limiters_cell.h \
-		hydro/Gizmo/hydro_unphysical.h \
-		hydro/Gizmo/hydro_gradients_sph.h \
-		hydro/Gizmo/hydro_gradients_gizmo.h \
-		hydro/Gizmo/hydro_velocities.h \
-		hydro/Gizmo/hydro_lloyd.h \
-		hydro/Gizmo/MFV/hydro_debug.h \
-		hydro/Gizmo/MFV/hydro_part.h \
-		hydro/Gizmo/MFV/hydro_velocities.h \
-		hydro/Gizmo/MFV/hydro_flux.h \
-		hydro/Gizmo/MFM/hydro_debug.h \
-		hydro/Gizmo/MFM/hydro_part.h \
-		hydro/Gizmo/MFM/hydro_flux.h \
-		hydro/Gizmo/MFM/hydro_velocities.h \
-		hydro/Shadowswift/hydro_debug.h \
-		hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
-		hydro/Shadowswift/hydro_iact.h \
-		hydro/Shadowswift/hydro_io.h \
-		hydro/Shadowswift/hydro_part.h \
-		hydro/Shadowswift/hydro_slope_limiters_cell.h \
-		hydro/Shadowswift/hydro_slope_limiters_face.h \
-		hydro/Shadowswift/hydro_slope_limiters.h \
-		hydro/Shadowswift/voronoi1d_algorithm.h \
-		hydro/Shadowswift/voronoi1d_cell.h \
-		hydro/Shadowswift/voronoi2d_algorithm.h \
-		hydro/Shadowswift/voronoi2d_cell.h \
-		hydro/Shadowswift/voronoi3d_algorithm.h \
-		hydro/Shadowswift/voronoi3d_cell.h \
-		hydro/Shadowswift/voronoi_algorithm.h \
-		hydro/Shadowswift/voronoi_cell.h \
-		hydro/Shadowswift/hydro_parameters.h \
-		riemann/riemann_hllc.h riemann/riemann_trrs.h \
-		riemann/riemann_exact.h riemann/riemann_vacuum.h \
-		riemann/riemann_checks.h \
-		rt.h  \
-		rt_io.h \
-		rt_struct.h \
-		rt/none/rt.h  \
-		rt/none/rt_iact.h \
-		rt/none/rt_io.h \
-		rt/none/rt_struct.h\
-		rt/debug/rt.h  \
-		rt/debug/rt_iact.h \
-		rt/debug/rt_io.h \
-		rt/debug/rt_struct.h\
-		rt/M1closure/rt.h  \
-		rt/M1closure/rt_iact.h \
-		rt/M1closure/rt_io.h \
-		rt/M1closure/rt_struct.h\
-		stars.h stars_io.h stars_logger.h \
-		stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h \
-		stars/Default/stars_debug.h stars/Default/stars_part.h stars/Default/stars_logger.h  \
-		stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h \
-		stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h \
-		stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h \
-		stars/GEAR/stars_debug.h stars/GEAR/stars_part.h \
-		potential/none/potential.h potential/point_mass/potential.h \
-		potential/isothermal/potential.h potential/disc_patch/potential.h \
-		potential/sine_wave/potential.h potential/constant/potential.h \
-		potential/hernquist/potential.h potential/nfw/potential.h \
-		potential/nfw_mn/potential.h potential/point_mass_softened/potential.h \
-		potential/point_mass_ring/potential.h \
-		star_formation/none/star_formation.h star_formation/none/star_formation_struct.h \
-		star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h \
-		star_formation/QLA/star_formation.h star_formation/QLA/star_formation_struct.h \
-		star_formation/QLA/star_formation_io.h star_formation/QLA/star_formation_iact.h \
-		star_formation/EAGLE/star_formation.h star_formation/EAGLE/star_formation_struct.h \
-		star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h \
-		star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h \
-		star_formation/GEAR/star_formation_io.h star_formation/GEAR/star_formation_iact.h \
-		star_formation/EAGLE/star_formation_logger.h star_formation/EAGLE/star_formation_logger_struct.h \
-		star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h \
-		star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h \
-		cooling/none/cooling.h cooling/none/cooling_struct.h \
-		cooling/none/cooling_io.h cooling/none/cooling_properties.h \
-		cooling/Compton/cooling.h cooling/Compton/cooling_struct.h \
-		cooling/Compton/cooling_io.h cooling/Compton/cooling_properties.h \
-		cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
-		cooling/const_du/cooling_io.h cooling/const_du/cooling_properties.h \
-		cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h \
-		cooling/const_lambda/cooling_io.h cooling/const_lambda/cooling_properties.h \
-		cooling/grackle/cooling.h cooling/grackle/cooling_struct.h \
-		cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h \
-		cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h \
-		cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h \
-		cooling/EAGLE/cooling_properties.h \
-		cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h \
-		cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h \
-		cooling/QLA/cooling_properties.h \
-		cooling/COLIBRE/cooling.h cooling/COLIBRE/cooling_struct.h cooling/COLIBRE/cooling_subgrid.h \
-		cooling/COLIBRE/cooling_io.h cooling/COLIBRE/interpolate.h cooling/COLIBRE/cooling_rates.h \
-		cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/cooling_subgrid.h cooling_properties.h \
-		chemistry/none/chemistry.h \
-		chemistry/none/chemistry_io.h \
-		chemistry/none/chemistry_struct.h \
-		chemistry/none/chemistry_iact.h \
-		chemistry/GEAR/chemistry.h \
-		chemistry/GEAR/chemistry_io.h \
-		chemistry/GEAR/chemistry_struct.h \
-		chemistry/GEAR/chemistry_iact.h \
-		chemistry/EAGLE/chemistry.h \
-		chemistry/EAGLE/chemistry_io.h \
-		chemistry/EAGLE/chemistry_struct.h\
-		chemistry/EAGLE/chemistry_iact.h \
-		chemistry/QLA/chemistry.h \
-		chemistry/QLA/chemistry_io.h \
-		chemistry/QLA/chemistry_struct.h\
-		chemistry/QLA/chemistry_iact.h \
-		entropy_floor/none/entropy_floor.h \
-		entropy_floor/EAGLE/entropy_floor.h \
-		entropy_floor/QLA/entropy_floor.h \
-		tracers/none/tracers.h tracers/none/tracers_struct.h \
-		tracers/none/tracers_io.h \
-		tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h \
-		tracers/EAGLE/tracers_io.h \
-		feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h \
-		feedback/none/feedback_properties.h \
-		feedback/EAGLE/feedback.h feedback/EAGLE/feedback_struct.h feedback/EAGLE/feedback_iact.h \
-		feedback/EAGLE/feedback_properties.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h \
-		feedback/EAGLE/yield_tables.h \
-		feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h \
-		feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h \
-		feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h \
-		feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h \
-		feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h \
-		black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h \
-		black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h \
-		black_holes/Default/black_holes_properties.h \
-		black_holes/Default/black_holes_struct.h \
-		black_holes/EAGLE/black_holes.h black_holes/EAGLE/black_holes_io.h \
-		black_holes/EAGLE/black_holes_part.h black_holes/EAGLE/black_holes_iact.h \
-		black_holes/EAGLE/black_holes_properties.h black_holes/EAGLE/black_holes_parameters.h \
-		black_holes/EAGLE/black_holes_struct.h \
-		pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h \
-		pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h \
-		pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h \
-		sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h sink/Default/sink_properties.h \
-		sink.h sink_io.h sink_properties.h
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
+nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h 
+nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h 
+nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
+nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h 
+nobase_noinst_HEADERS += runner_doiact_rt.h runner_doiact_functions_rt.h 
+nobase_noinst_HEADERS += kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h 
+nobase_noinst_HEADERS += timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h 
+nobase_noinst_HEADERS += dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_logger.h  gravity_cache.h output_options.h
+nobase_noinst_HEADERS += gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h 
+nobase_noinst_HEADERS += gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  
+nobase_noinst_HEADERS += gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h 
+nobase_noinst_HEADERS += gravity/Potential/gravity_debug.h gravity/Potential/gravity_part.h  
+nobase_noinst_HEADERS += gravity/MultiSoftening/gravity.h gravity/MultiSoftening/gravity_iact.h gravity/MultiSoftening/gravity_io.h 
+nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h 
+nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_logger.h 
+nobase_noinst_HEADERS += equation_of_state.h 
+nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h 
+nobase_noinst_HEADERS += hydro.h hydro_io.h hydro_logger.h hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h 
+nobase_noinst_HEADERS += hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h 
+nobase_noinst_HEADERS += hydro/Minimal/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/Default/hydro.h hydro/Default/hydro_iact.h hydro/Default/hydro_io.h 
+nobase_noinst_HEADERS += hydro/Default/hydro_debug.h hydro/Default/hydro_part.h 
+nobase_noinst_HEADERS += hydro/Default/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/Gadget2/hydro.h hydro/Gadget2/hydro_iact.h hydro/Gadget2/hydro_io.h 
+nobase_noinst_HEADERS += hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h 
+nobase_noinst_HEADERS += hydro/Gadget2/hydro_parameters.h hydro/Gadget2/hydro_logger.h 
+nobase_noinst_HEADERS += hydro/PressureEntropy/hydro.h hydro/PressureEntropy/hydro_iact.h hydro/PressureEntropy/hydro_io.h 
+nobase_noinst_HEADERS += hydro/PressureEntropy/hydro_debug.h hydro/PressureEntropy/hydro_part.h 
+nobase_noinst_HEADERS += hydro/PressureEntropy/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/PressureEnergy/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h 
+nobase_noinst_HEADERS += hydro/PressureEnergy/hydro_debug.h hydro/PressureEnergy/hydro_part.h 
+nobase_noinst_HEADERS += hydro/PressureEnergy/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/PressureEnergyMorrisMonaghanAV/hydro.h hydro/PressureEnergyMorrisMonaghanAV/hydro_iact.h hydro/PressureEnergyMorrisMonaghanAV/hydro_io.h 
+nobase_noinst_HEADERS += hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h 
+nobase_noinst_HEADERS += hydro/PressureEnergyMorrisMonaghanAV/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/AnarchyPU/hydro.h hydro/AnarchyPU/hydro_iact.h hydro/AnarchyPU/hydro_io.h 
+nobase_noinst_HEADERS += hydro/AnarchyPU/hydro_debug.h hydro/AnarchyPU/hydro_part.h 
+nobase_noinst_HEADERS += hydro/AnarchyPU/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/SPHENIX/hydro.h hydro/SPHENIX/hydro_iact.h hydro/SPHENIX/hydro_io.h 
+nobase_noinst_HEADERS += hydro/SPHENIX/hydro_debug.h hydro/SPHENIX/hydro_part.h 
+nobase_noinst_HEADERS += hydro/SPHENIX/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_parameters.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_part.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_gradients.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_getters.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_setters.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_flux.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_slope_limiters.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_slope_limiters_face.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_slope_limiters_cell.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_unphysical.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_gradients_sph.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_gradients_gizmo.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_velocities.h 
+nobase_noinst_HEADERS += hydro/Gizmo/hydro_lloyd.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFV/hydro_debug.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFV/hydro_part.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFV/hydro_velocities.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFV/hydro_flux.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_debug.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_part.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_flux.h 
+nobase_noinst_HEADERS += hydro/Gizmo/MFM/hydro_velocities.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_debug.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_iact.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_io.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_part.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_slope_limiters_cell.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_slope_limiters_face.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_slope_limiters.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi1d_algorithm.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi1d_cell.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi2d_algorithm.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi2d_cell.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi3d_algorithm.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi3d_cell.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi_algorithm.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/voronoi_cell.h 
+nobase_noinst_HEADERS += hydro/Shadowswift/hydro_parameters.h 
+nobase_noinst_HEADERS += riemann/riemann_hllc.h riemann/riemann_trrs.h 
+nobase_noinst_HEADERS += riemann/riemann_exact.h riemann/riemann_vacuum.h 
+nobase_noinst_HEADERS += riemann/riemann_checks.h 
+nobase_noinst_HEADERS += rt.h  
+nobase_noinst_HEADERS += rt_io.h 
+nobase_noinst_HEADERS += rt_struct.h 
+nobase_noinst_HEADERS += rt/none/rt.h  
+nobase_noinst_HEADERS += rt/none/rt_iact.h 
+nobase_noinst_HEADERS += rt/none/rt_io.h 
+nobase_noinst_HEADERS += rt/none/rt_struct.h
+nobase_noinst_HEADERS += rt/debug/rt.h  
+nobase_noinst_HEADERS += rt/debug/rt_iact.h 
+nobase_noinst_HEADERS += rt/debug/rt_io.h 
+nobase_noinst_HEADERS += rt/debug/rt_struct.h
+nobase_noinst_HEADERS += rt/M1closure/rt.h  
+nobase_noinst_HEADERS += rt/M1closure/rt_iact.h 
+nobase_noinst_HEADERS += rt/M1closure/rt_io.h 
+nobase_noinst_HEADERS += rt/M1closure/rt_struct.h
+nobase_noinst_HEADERS += stars.h stars_io.h stars_logger.h 
+nobase_noinst_HEADERS += stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h 
+nobase_noinst_HEADERS += stars/Default/stars_debug.h stars/Default/stars_part.h stars/Default/stars_logger.h  
+nobase_noinst_HEADERS += stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h 
+nobase_noinst_HEADERS += stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h 
+nobase_noinst_HEADERS += stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h 
+nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_part.h 
+nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h 
+nobase_noinst_HEADERS += potential/isothermal/potential.h potential/disc_patch/potential.h 
+nobase_noinst_HEADERS += potential/sine_wave/potential.h potential/constant/potential.h 
+nobase_noinst_HEADERS += potential/hernquist/potential.h potential/nfw/potential.h 
+nobase_noinst_HEADERS += potential/nfw_mn/potential.h potential/point_mass_softened/potential.h 
+nobase_noinst_HEADERS += potential/point_mass_ring/potential.h 
+nobase_noinst_HEADERS += star_formation/none/star_formation.h star_formation/none/star_formation_struct.h 
+nobase_noinst_HEADERS += star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h 
+nobase_noinst_HEADERS += star_formation/QLA/star_formation.h star_formation/QLA/star_formation_struct.h 
+nobase_noinst_HEADERS += star_formation/QLA/star_formation_io.h star_formation/QLA/star_formation_iact.h 
+nobase_noinst_HEADERS += star_formation/EAGLE/star_formation.h star_formation/EAGLE/star_formation_struct.h 
+nobase_noinst_HEADERS += star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h 
+nobase_noinst_HEADERS += star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h 
+nobase_noinst_HEADERS += star_formation/GEAR/star_formation_io.h star_formation/GEAR/star_formation_iact.h 
+nobase_noinst_HEADERS += star_formation/EAGLE/star_formation_logger.h star_formation/EAGLE/star_formation_logger_struct.h 
+nobase_noinst_HEADERS += star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h 
+nobase_noinst_HEADERS += star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h 
+nobase_noinst_HEADERS += cooling/none/cooling.h cooling/none/cooling_struct.h 
+nobase_noinst_HEADERS += cooling/none/cooling_io.h cooling/none/cooling_properties.h 
+nobase_noinst_HEADERS += cooling/Compton/cooling.h cooling/Compton/cooling_struct.h 
+nobase_noinst_HEADERS += cooling/Compton/cooling_io.h cooling/Compton/cooling_properties.h 
+nobase_noinst_HEADERS += cooling/const_du/cooling.h cooling/const_du/cooling_struct.h 
+nobase_noinst_HEADERS += cooling/const_du/cooling_io.h cooling/const_du/cooling_properties.h 
+nobase_noinst_HEADERS += cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h 
+nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/cooling_properties.h 
+nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h 
+nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h 
+nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h 
+nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h 
+nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h 
+nobase_noinst_HEADERS += cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h 
+nobase_noinst_HEADERS += cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h 
+nobase_noinst_HEADERS += cooling/QLA/cooling_properties.h 
+nobase_noinst_HEADERS += cooling/COLIBRE/cooling.h cooling/COLIBRE/cooling_struct.h cooling/COLIBRE/cooling_subgrid.h 
+nobase_noinst_HEADERS += cooling/COLIBRE/cooling_io.h cooling/COLIBRE/interpolate.h cooling/COLIBRE/cooling_rates.h 
+nobase_noinst_HEADERS += cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/cooling_subgrid.h
+nobase_noinst_HEADERS += cooling/COLIBRE/cooling_properties.h 
+nobase_noinst_HEADERS += chemistry/none/chemistry.h 
+nobase_noinst_HEADERS += chemistry/none/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/none/chemistry_struct.h 
+nobase_noinst_HEADERS += chemistry/none/chemistry_iact.h 
+nobase_noinst_HEADERS += chemistry/GEAR/chemistry.h 
+nobase_noinst_HEADERS += chemistry/GEAR/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/GEAR/chemistry_struct.h 
+nobase_noinst_HEADERS += chemistry/GEAR/chemistry_iact.h 
+nobase_noinst_HEADERS += chemistry/EAGLE/chemistry.h 
+nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_struct.h
+nobase_noinst_HEADERS += chemistry/EAGLE/chemistry_iact.h 
+nobase_noinst_HEADERS += chemistry/QLA/chemistry.h 
+nobase_noinst_HEADERS += chemistry/QLA/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/QLA/chemistry_struct.h
+nobase_noinst_HEADERS += chemistry/QLA/chemistry_iact.h 
+nobase_noinst_HEADERS += entropy_floor/none/entropy_floor.h 
+nobase_noinst_HEADERS += entropy_floor/EAGLE/entropy_floor.h 
+nobase_noinst_HEADERS += entropy_floor/QLA/entropy_floor.h 
+nobase_noinst_HEADERS += tracers/none/tracers.h tracers/none/tracers_struct.h 
+nobase_noinst_HEADERS += tracers/none/tracers_io.h 
+nobase_noinst_HEADERS += tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h 
+nobase_noinst_HEADERS += tracers/EAGLE/tracers_io.h 
+nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/none/feedback_properties.h 
+nobase_noinst_HEADERS += feedback/EAGLE/feedback.h feedback/EAGLE/feedback_struct.h feedback/EAGLE/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/EAGLE/feedback_properties.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h 
+nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h 
+nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h 
+nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h 
+nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h 
+nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h 
+nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h 
+nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h 
+nobase_noinst_HEADERS += black_holes/Default/black_holes_struct.h 
+nobase_noinst_HEADERS += black_holes/EAGLE/black_holes.h black_holes/EAGLE/black_holes_io.h 
+nobase_noinst_HEADERS += black_holes/EAGLE/black_holes_part.h black_holes/EAGLE/black_holes_iact.h 
+nobase_noinst_HEADERS += black_holes/EAGLE/black_holes_properties.h black_holes/EAGLE/black_holes_parameters.h 
+nobase_noinst_HEADERS += black_holes/EAGLE/black_holes_struct.h 
+nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h 
+nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h 
+nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h 
+nobase_noinst_HEADERS += sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h sink/Default/sink_properties.h 
+nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
 
 
 # Sources and special flags for the gravity library
