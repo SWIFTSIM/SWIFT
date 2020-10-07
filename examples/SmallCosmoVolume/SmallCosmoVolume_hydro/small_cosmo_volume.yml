@@ -48,7 +48,7 @@ Snapshots:
   
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1.02
+  delta_time:          1.01
   scale_factor_first:  0.02
   
 Scheduler:
