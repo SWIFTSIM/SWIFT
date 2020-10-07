@@ -168,12 +168,12 @@ Logger:
   
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1e-2     # Time between statistics output
-  scale_factor_first:     0.1    # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
-  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
-  energy_file_name:    energy    # (Optional) File name for energy output
-  timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
-  output_list_on:      0   	 # (Optional) Enable the output list
+  delta_time:           1e-2        # Time between statistics output
+  scale_factor_first:     0.1       # (Optional) Scale-factor of the first statistics dump if cosmological time-integration.
+  time_first:             0.        # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+  energy_file_name:    statistics   # (Optional) File name for statistics output
+  timestep_file_name:  timesteps    # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name
+  output_list_on:      0   	    # (Optional) Enable the output list
   output_list:         statlist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters related to the initial conditions
