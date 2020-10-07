@@ -1570,8 +1570,6 @@ void engine_print_task_counts(const struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
     
-    message("in engine print task");
-
   /* Global tasks and cells when using MPI. */
 #ifdef WITH_MPI
   if (e->nodeID == 0 && e->total_nr_tasks > 0)
