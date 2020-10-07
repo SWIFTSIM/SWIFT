@@ -32,8 +32,8 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first:  0.05 # Scale-factor of the first stat dump
-  delta_time:          1.05 # Time between statistics output
+  scale_factor_first:  0.01 # Scale-factor of the first stat dump
+  delta_time:          1.01 # Time between statistics output
 
 # Parameters for the self-gravity scheme
 Gravity:
