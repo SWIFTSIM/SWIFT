@@ -1402,10 +1402,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_bparts_get_cell_index(s, b_index, cell_bpart_counts,
                                 &count_inhibited_bparts, &count_extra_bparts,
                                 verbose);
-    if (nr_dmparts > 0)
-        space_dmparts_get_cell_index(s, dm_index, cell_dmpart_counts,
-                                    &count_inhibited_dmparts, &count_extra_dmparts,
-                                    verbose);
+  if (nr_dmparts > 0)
+    space_dmparts_get_cell_index(s, dm_index, cell_dmpart_counts,
+                                 &count_inhibited_dmparts, &count_extra_dmparts,
+                                 verbose);
   if (nr_sinks > 0)
     space_sinks_get_cell_index(s, sink_index, cell_sink_counts,
                                &count_inhibited_sinks, &count_extra_sinks,
@@ -5329,10 +5329,10 @@ void space_synchronize_particle_positions(struct space *s) {
                    s->bparts, s->nr_bparts, sizeof(struct bpart),
                    threadpool_auto_chunk_size, /*extra_data=*/NULL);
 
-    if (s->nr_gparts > 0 && s->nr_dmparts > 0)
-        threadpool_map(&s->e->threadpool, space_synchronize_dmpart_positions_mapper,
-                       s->dmparts, s->nr_dmparts, sizeof(struct dmpart),
-                       threadpool_auto_chunk_size, /*extra_data=*/NULL);
+  if (s->nr_gparts > 0 && s->nr_dmparts > 0)
+    threadpool_map(&s->e->threadpool, space_synchronize_dmpart_positions_mapper,
+                   s->dmparts, s->nr_dmparts, sizeof(struct dmpart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
 
     
   if (s->nr_gparts > 0 && s->nr_sinks > 0)
@@ -7418,9 +7418,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0)
     restart_write_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                          "bparts", "bparts");
-    if (s->nr_dmparts > 0)
-        restart_write_blocks(s->dmparts, s->nr_dmparts, sizeof(struct dmpart), stream,
-                             "dmparts", "dmparts");
+  if (s->nr_dmparts > 0)
+    restart_write_blocks(s->dmparts, s->nr_dmparts, sizeof(struct dmpart), stream,
+                         "dmparts", "dmparts");
 }
 
 /**
@@ -7463,8 +7463,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_sparts");
   restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
                       "space_extra_bparts");
-    restart_read_blocks(&space_extra_dmparts, sizeof(int), 1, stream, NULL,
-                        "space_extra_dmparts");
+  restart_read_blocks(&space_extra_dmparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_dmparts");
   restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                       NULL, "space_expected_max_nr_strays");
   restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
@@ -7496,8 +7496,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_sparts_foreign = 0;
   s->bparts_foreign = NULL;
   s->size_bparts_foreign = 0;
-    s->dmparts_foreign = NULL;
-    s->size_dmparts_foreign = 0;
+  s->dmparts_foreign = NULL;
+  s->size_dmparts_foreign = 0;
 #endif
 
   /* More things to read. */
@@ -7557,15 +7557,15 @@ void space_struct_restore(struct space *s, FILE *stream) {
     restart_read_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                         NULL, "bparts");
   }
-    s->dmparts = NULL;
-    if (s->nr_dmparts > 0) {
-        if (swift_memalign("dmparts", (void **)&s->dmparts, dmpart_align,
-                           s->size_dmparts * sizeof(struct dmpart)) != 0)
-            error("Failed to allocate restore dmpart array.");
+  s->dmparts = NULL;
+  if (s->nr_dmparts > 0) {
+    if (swift_memalign("dmparts", (void **)&s->dmparts, dmpart_align,
+                       s->size_dmparts * sizeof(struct dmpart)) != 0)
+      error("Failed to allocate restore dmpart array.");
         
-        restart_read_blocks(s->dmparts, s->nr_dmparts, sizeof(struct dmpart), stream,
-                            NULL, "dmparts");
-    }
+     restart_read_blocks(s->dmparts, s->nr_dmparts, sizeof(struct dmpart), stream,
+                         NULL, "dmparts");
+  }
 
   /* Need to reconnect the gravity parts to their hydro, star and BH particles.
    * Note that we can't use the threadpool here as we have not restored it yet.

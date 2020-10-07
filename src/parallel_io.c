@@ -1583,6 +1583,7 @@ void write_output_parallel(struct engine* e,
     struct part* parts_written = NULL;
     struct xpart* xparts_written = NULL;
     struct gpart* gparts_written = NULL;
+    struct dmpart* dmparts_written = NULL;
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
