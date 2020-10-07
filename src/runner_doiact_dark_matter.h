@@ -26,19 +26,6 @@
 struct runner;
 struct cell;
 
-void runner_doself_dark_matter_density(struct runner *r, struct cell *c);
-void runner_dopair_dark_matter_density(struct runner *r, struct cell *ci, struct cell *cj);
-
-void runner_dosub_self_dark_matter_density(struct runner *r, struct cell *ci);
-void runner_dosub_pair_dark_matter_density(struct runner *r, struct cell *ci, struct cell *cj);
-
-void runner_doself_subset_dark_matter_density(struct runner *r, struct cell *restrict ci,
-                          struct dmpart *restrict dmparts, int *restrict ind, int count);
-
-void runner_dopair_subset_dark_matter_density(struct runner *r, struct cell *restrict ci,
-                                              struct dmpart *restrict dmparts_i, int *restrict ind,
-                                              struct cell *restrict cj, int count);
-
 void runner_doself_dark_matter_sidm(struct runner *r, struct cell *ci);
 void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci, struct cell *cj);
 

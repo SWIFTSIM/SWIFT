@@ -52,7 +52,6 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
-#include "kernel_dark_matter.h"
 #include "lock.h"
 #include "memswap.h"
 #include "memuse.h"
@@ -257,8 +256,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
-    c->dark_matter.density = NULL;
-    c->dark_matter.ghost = NULL;
     c->dark_matter.sidm = NULL;
     c->dark_matter.sidm_kick = NULL;
     c->dark_matter.drift = NULL;
@@ -4221,7 +4218,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   float h_max = 0.0f;
   float stars_h_max = 0.f;
   float black_holes_h_max = 0.f;
-  float dark_matter_h_max = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -4404,7 +4400,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.h_max = 0.f;
       cp->stars.dx_max_part = 0.f;
       cp->stars.dx_max_sort = 0.f;
-      cp->dark_matter.h_max = 0.f;
       cp->black_holes.h_max = 0.f;
       cp->black_holes.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
@@ -4465,7 +4460,6 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max = max(h_max, cp->hydro.h_max);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
-        dark_matter_h_max = max(dark_matter_h_max, cp->dark_matter.h_max);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
@@ -4751,8 +4745,6 @@ void space_split_recursive(struct space *s, struct cell *c,
           ti_dark_matter_end_max = max(ti_dark_matter_end_max, ti_end);
           ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, ti_beg);
           
-          dark_matter_h_max = max(dark_matter_h_max, dmparts[k].h);
-          
           /* Reset x_diff */
           dmparts[k].x_diff[0] = 0.f;
           dmparts[k].x_diff[1] = 0.f;
@@ -4810,7 +4802,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->dark_matter.ti_end_min = ti_dark_matter_end_min;
   c->dark_matter.ti_end_max = ti_dark_matter_end_max;
   c->dark_matter.ti_beg_max = ti_dark_matter_beg_max;
-  c->dark_matter.h_max = dark_matter_h_max;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
