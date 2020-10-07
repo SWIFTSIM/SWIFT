@@ -94,10 +94,12 @@ EAGLECooling:
 
 # EAGLE AGN model
 EAGLEAGN:
-  subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
-  max_eddington_fraction:           1.         # Maximal allowed accretion rate in units of the Eddington rate.
-  viscous_alpha:                    1e6        # Normalisation constant of the Bondi viscuous time-scale accretion reduction term.
-  radiative_efficiency:             0.1        # Fraction of the accreted mass that gets radiated.
-  coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
-  AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
-  AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
+  subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
+  max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
+  viscous_alpha:                      1e6        # Normalisation constant of the Bondi viscuous time-scale accretion reduction term.
+  radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.
+  coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
+  use_variable_delta_T:               0          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  AGN_with_locally_adaptive_delta_T:  0          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (only used if use_variable_delta_T is 0).
+  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
