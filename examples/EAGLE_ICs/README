@@ -73,7 +73,12 @@ the following changes have been made (at standard resolution):
  - The angular momentum term in the BH accretion model of
    Rosas-Guevara et al. (2015) is now switched off.
  - The coupling efficency of the BH feedback is now 0.1 (was 0.15).
-
+ - The AGN feedback temperature jump is now a function of the BH
+   subgrid mass (was a constant at 10^8.5K). The temperature varies
+   between 10^7 and 3*10^9 K with a power-law of the subgrid mass
+   exponent of 2/3 and a reference point of 10^8 Msun. The temperature
+   jump also has to be larger than the T_crit for efficiency given
+   by the Dalla Vecchia & Schaye 2012 criterion.
 
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided

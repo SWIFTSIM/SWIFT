@@ -139,7 +139,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 32;
+  *num_fields = 33;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -346,6 +346,12 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       num_ngbs,
       "Integer number of gas neighbour particles within the black hole "
       "kernels.");
+
+  list[32] = io_make_output_field(
+      "FeedbackDeltaT", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
+      AGN_delta_T,
+      "Temperature by which gas particles have been heated by the black hole "
+      "particles in the most recent feedback event.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
