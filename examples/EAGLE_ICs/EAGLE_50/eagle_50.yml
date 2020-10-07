@@ -32,8 +32,8 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1.02
-  scale_factor_first:   0.05
+  delta_time:           1.01
+  scale_factor_first:   0.01
 
 # Parameters for the self-gravity scheme
 Gravity:
