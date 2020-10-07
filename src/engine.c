@@ -2045,11 +2045,12 @@ void engine_print_stats(struct engine *e) {
 #endif
 
   /* Finalize operations */
-  stats_finalize(&stats);
+  stats_finalize(&global_stats);
 
   /* Print info */
   if (e->nodeID == 0)
-    stats_print_to_file(e->file_stats, &global_stats, e->time);
+    stats_write_to_file(e->file_stats, &global_stats, e->time, e->cosmology->a,
+                        e->cosmology->z, e->step);
 
   /* Flag that we dumped some statistics */
   e->step_props |= engine_step_prop_statistics;
@@ -4348,16 +4349,9 @@ void engine_config(int restart, int fof, struct engine *e,
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, mode);
 
-    if (!restart) {
-      fprintf(
-          e->file_stats,
-          "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-          "%14s %14s %14s %14s %14s %14s\n",
-          "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
-          "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
-          "ang_y", "ang_z", "com_x", "com_y", "com_z");
-      fflush(e->file_stats);
-    }
+    if (!restart)
+      stats_write_file_header(e->file_stats, e->internal_units,
+                              e->physical_constants);
 
     char timestepsfileName[200] = "";
     parser_get_opt_param_string(params, "Statistics:timestep_file_name",

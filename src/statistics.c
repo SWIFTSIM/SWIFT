@@ -33,11 +33,15 @@
 #include "statistics.h"
 
 /* Local headers. */
+#include "black_holes_io.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "engine.h"
 #include "error.h"
-#include "gravity.h"
-#include "hydro.h"
+#include "gravity_io.h"
+#include "hydro_io.h"
+#include "sink_io.h"
+#include "stars_io.h"
 #include "threadpool.h"
 
 /**
@@ -68,7 +72,14 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->E_pot_ext += b->E_pot_ext;
   a->E_rad += b->E_rad;
   a->entropy += b->entropy;
-  a->mass += b->mass;
+  a->gas_mass += b->gas_mass;
+  a->dm_mass += b->dm_mass;
+  a->sink_mass += b->sink_mass;
+  a->star_mass += b->star_mass;
+  a->bh_mass += b->bh_mass;
+  a->gas_Z_mass += b->gas_Z_mass;
+  a->star_Z_mass += b->star_Z_mass;
+  a->bh_Z_mass += b->bh_Z_mass;
   a->mom[0] += b->mom[0];
   a->mom[1] += b->mom[1];
   a->mom[2] += b->mom[2];
@@ -107,15 +118,11 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const struct index_data *data = (struct index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
-  const integertime_t ti_current = e->ti_current;
-  const double time_base = e->time_base;
   const double time = e->time;
-  const struct part *restrict parts = (struct part *)map_data;
-  const struct xpart *restrict xparts =
-      s->xparts + (ptrdiff_t)(parts - s->parts);
+  const struct part *const parts = (struct part *)map_data;
+  const struct xpart *const xparts = s->xparts + (ptrdiff_t)(parts - s->parts);
   struct statistics *const global_stats = data->stats;
 
   /* Some information about the physical model */
@@ -144,39 +151,21 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
         p->time_bin == time_bin_not_created)
       continue;
 
-    /* Get useful time variables */
-    const integertime_t ti_beg =
-        get_integer_time_begin(ti_current, p->time_bin);
-    const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
-
-    /* Get time-step since the last kick */
-    float dt_kick_grav, dt_kick_hydro, dt_therm;
-    if (with_cosmology) {
-      dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
-      dt_kick_grav -=
-          cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-      dt_kick_hydro =
-          cosmology_get_hydro_kick_factor(cosmo, ti_beg, ti_current);
-      dt_kick_hydro -=
-          cosmology_get_hydro_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-      dt_therm = cosmology_get_therm_kick_factor(cosmo, ti_beg, ti_current);
-      dt_therm -=
-          cosmology_get_therm_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-    } else {
-      dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-      dt_kick_hydro = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-      dt_therm = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-    }
-
+    /* Get position and velocity */
+    double x[3];
     float v[3];
-    hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, v);
-    const double x[3] = {p->x[0], p->x[1], p->x[2]};
+    convert_part_pos(e, p, xp, x);
+    convert_part_vel(e, p, xp, v);
+
     const float m = hydro_get_mass(p);
     const float entropy = hydro_get_drifted_physical_entropy(p, cosmo);
     const float u_inter = hydro_get_drifted_physical_internal_energy(p, cosmo);
 
     /* Collect mass */
-    stats.mass += m;
+    stats.gas_mass += m;
+
+    /* Collect metal mass */
+    stats.gas_Z_mass += chemistry_get_total_metal_mass_for_stats(p);
 
     /* Collect centre of mass */
     stats.centre_of_mass[0] += m * x[0];
@@ -214,6 +203,269 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 }
 
 /**
+ * @brief The #threadpool mapper function used to collect statistics for #spart.
+ *
+ * @param map_data Pointer to the particles.
+ * @param nr_parts The number of particles in this chunk
+ * @param extra_data The #statistics aggregator.
+ */
+void stats_collect_spart_mapper(void *map_data, int nr_sparts,
+                                void *extra_data) {
+
+  /* Unpack the data */
+  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space *s = data->s;
+  const struct engine *e = s->e;
+  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
+  const double time = e->time;
+  const struct spart *const sparts = (struct spart *)map_data;
+  struct statistics *const global_stats = data->stats;
+
+  /* Some information about the physical model */
+  const struct external_potential *potential = e->external_potential;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cosmology *cosmo = e->cosmology;
+
+  /* Some constants from cosmology */
+  const float a_inv = cosmo->a_inv;
+  const float a_inv2 = a_inv * a_inv;
+
+  /* Local accumulator */
+  struct statistics stats;
+  stats_init(&stats);
+
+  /* Loop over particles */
+  for (int k = 0; k < nr_sparts; k++) {
+
+    /* Get the particle */
+    const struct spart *sp = &sparts[k];
+    const struct gpart *gp = sp->gpart;
+
+    /* Ignore non-existing particles */
+    if (sp->time_bin == time_bin_inhibited ||
+        sp->time_bin == time_bin_not_created)
+      continue;
+
+    /* Get position and velocity */
+    double x[3];
+    float v[3];
+    convert_spart_pos(e, sp, x);
+    convert_spart_vel(e, sp, v);
+
+    const float m = sp->mass;
+
+    /* Collect mass */
+    stats.star_mass += m;
+
+    /* Collect metal mass */
+    stats.star_Z_mass += chemistry_get_star_total_metal_mass_for_stats(sp);
+
+    /* Collect centre of mass */
+    stats.centre_of_mass[0] += m * x[0];
+    stats.centre_of_mass[1] += m * x[1];
+    stats.centre_of_mass[2] += m * x[2];
+
+    /* Collect momentum */
+    stats.mom[0] += m * v[0];
+    stats.mom[1] += m * v[1];
+    stats.mom[2] += m * v[2];
+
+    /* Collect angular momentum */
+    stats.ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
+    stats.ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
+    stats.ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
+
+    /* Collect energies. */
+    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) *
+                   a_inv2; /* 1/2 m a^2 \dot{r}^2 */
+    if (gp != NULL && with_self_grav)
+      stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
+    if (gp != NULL && with_ext_grav)
+      stats.E_pot_ext += m * external_gravity_get_potential_energy(
+                                 time, potential, phys_const, gp);
+  }
+
+  /* Now write back to memory */
+  if (lock_lock(&global_stats->lock) == 0) stats_add(global_stats, &stats);
+  if (lock_unlock(&global_stats->lock) != 0) error("Failed to unlock stats.");
+}
+
+/**
+ * @brief The #threadpool mapper function used to collect statistics for #sink.
+ *
+ * @param map_data Pointer to the particles.
+ * @param nr_parts The number of particles in this chunk
+ * @param extra_data The #statistics aggregator.
+ */
+void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
+
+  /* Unpack the data */
+  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space *s = data->s;
+  const struct engine *e = s->e;
+  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
+  const double time = e->time;
+  const struct sink *const sinks = (struct sink *)map_data;
+  struct statistics *const global_stats = data->stats;
+
+  /* Some information about the physical model */
+  const struct external_potential *potential = e->external_potential;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cosmology *cosmo = e->cosmology;
+
+  /* Some constants from cosmology */
+  const float a_inv = cosmo->a_inv;
+  const float a_inv2 = a_inv * a_inv;
+
+  /* Local accumulator */
+  struct statistics stats;
+  stats_init(&stats);
+
+  /* Loop over particles */
+  for (int k = 0; k < nr_sinks; k++) {
+
+    /* Get the particle */
+    const struct sink *sp = &sinks[k];
+    const struct gpart *gp = sp->gpart;
+
+    /* Ignore non-existing particles */
+    if (sp->time_bin == time_bin_inhibited ||
+        sp->time_bin == time_bin_not_created)
+      continue;
+
+    /* Get position and velocity */
+    double x[3];
+    float v[3];
+    convert_sink_pos(e, sp, x);
+    convert_sink_vel(e, sp, v);
+
+    const float m = sp->mass;
+
+    /* Collect mass */
+    stats.star_mass += m;
+
+    /* Collect centre of mass */
+    stats.centre_of_mass[0] += m * x[0];
+    stats.centre_of_mass[1] += m * x[1];
+    stats.centre_of_mass[2] += m * x[2];
+
+    /* Collect momentum */
+    stats.mom[0] += m * v[0];
+    stats.mom[1] += m * v[1];
+    stats.mom[2] += m * v[2];
+
+    /* Collect angular momentum */
+    stats.ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
+    stats.ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
+    stats.ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
+
+    /* Collect energies. */
+    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) *
+                   a_inv2; /* 1/2 m a^2 \dot{r}^2 */
+    if (gp != NULL && with_self_grav)
+      stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
+    if (gp != NULL && with_ext_grav)
+      stats.E_pot_ext += m * external_gravity_get_potential_energy(
+                                 time, potential, phys_const, gp);
+  }
+
+  /* Now write back to memory */
+  if (lock_lock(&global_stats->lock) == 0) stats_add(global_stats, &stats);
+  if (lock_unlock(&global_stats->lock) != 0) error("Failed to unlock stats.");
+}
+
+/**
+ * @brief The #threadpool mapper function used to collect statistics for #bpart.
+ *
+ * @param map_data Pointer to the particles.
+ * @param nr_parts The number of particles in this chunk
+ * @param extra_data The #statistics aggregator.
+ */
+void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
+                                void *extra_data) {
+
+  /* Unpack the data */
+  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space *s = data->s;
+  const struct engine *e = s->e;
+  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
+  const double time = e->time;
+  const struct bpart *const bparts = (struct bpart *)map_data;
+  struct statistics *const global_stats = data->stats;
+
+  /* Some information about the physical model */
+  const struct external_potential *potential = e->external_potential;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct cosmology *cosmo = e->cosmology;
+
+  /* Some constants from cosmology */
+  const float a_inv = cosmo->a_inv;
+  const float a_inv2 = a_inv * a_inv;
+
+  /* Local accumulator */
+  struct statistics stats;
+  stats_init(&stats);
+
+  /* Loop over particles */
+  for (int k = 0; k < nr_bparts; k++) {
+
+    /* Get the particle */
+    const struct bpart *bp = &bparts[k];
+    const struct gpart *gp = bp->gpart;
+
+    /* Ignore non-existing particles */
+    if (bp->time_bin == time_bin_inhibited ||
+        bp->time_bin == time_bin_not_created)
+      continue;
+
+    /* Get position and velocity */
+    double x[3];
+    float v[3];
+    convert_bpart_pos(e, bp, x);
+    convert_bpart_vel(e, bp, v);
+
+    const float m = bp->mass;
+
+    /* Collect mass */
+    stats.bh_mass += m;
+
+    /* Collect metal mass */
+    stats.bh_Z_mass += chemistry_get_bh_total_metal_mass_for_stats(bp);
+
+    /* Collect centre of mass */
+    stats.centre_of_mass[0] += m * x[0];
+    stats.centre_of_mass[1] += m * x[1];
+    stats.centre_of_mass[2] += m * x[2];
+
+    /* Collect momentum */
+    stats.mom[0] += m * v[0];
+    stats.mom[1] += m * v[1];
+    stats.mom[2] += m * v[2];
+
+    /* Collect angular momentum */
+    stats.ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
+    stats.ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
+    stats.ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
+
+    /* Collect energies. */
+    stats.E_kin += 0.5f * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) *
+                   a_inv2; /* 1/2 m a^2 \dot{r}^2 */
+    if (gp != NULL && with_self_grav)
+      stats.E_pot_self += 0.5f * m * gravity_get_physical_potential(gp, cosmo);
+    if (gp != NULL && with_ext_grav)
+      stats.E_pot_ext += m * external_gravity_get_potential_energy(
+                                 time, potential, phys_const, gp);
+  }
+
+  /* Now write back to memory */
+  if (lock_lock(&global_stats->lock) == 0) stats_add(global_stats, &stats);
+  if (lock_unlock(&global_stats->lock) != 0) error("Failed to unlock stats.");
+}
+
+/**
  * @brief The #threadpool mapper function used to collect statistics for #gpart.
  *
  * @param map_data Pointer to the g-particles.
@@ -227,11 +479,8 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
   const struct index_data *data = (struct index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
-  const integertime_t ti_current = e->ti_current;
-  const double time_base = e->time_base;
   const double time = e->time;
   const struct gpart *restrict gparts = (struct gpart *)map_data;
   struct statistics *const global_stats = data->stats;
@@ -256,38 +505,25 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     const struct gpart *gp = &gparts[k];
 
     /* Ignore the hydro particles as they are already computed */
-    if (gp->type == swift_type_gas) continue;
+    if (gp->type != swift_type_dark_matter &&
+        gp->type != swift_type_dark_matter_background)
+      continue;
 
     /* Ignore non-existing particles */
     if (gp->time_bin == time_bin_inhibited ||
         gp->time_bin == time_bin_not_created)
       continue;
 
-    /* Get useful variables */
-    const integertime_t ti_beg =
-        get_integer_time_begin(ti_current, gp->time_bin);
-    const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
-
-    /* Get time-step since the last kick */
-    float dt_kick_grav;
-    if (with_cosmology) {
-      dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
-      dt_kick_grav -=
-          cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-    } else {
-      dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-    }
-
-    /* Extrapolate velocities */
-    const float v[3] = {gp->v_full[0] + gp->a_grav[0] * dt_kick_grav,
-                        gp->v_full[1] + gp->a_grav[1] * dt_kick_grav,
-                        gp->v_full[2] + gp->a_grav[2] * dt_kick_grav};
+    /* Get position and velocity */
+    double x[3];
+    float v[3];
+    convert_gpart_pos(e, gp, x);
+    convert_gpart_vel(e, gp, v);
 
     const float m = gravity_get_mass(gp);
-    const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
 
     /* Collect mass */
-    stats.mass += m;
+    stats.dm_mass += m;
 
     /* Collect centre of mass */
     stats.centre_of_mass[0] += m * x[0];
@@ -338,6 +574,24 @@ void stats_collect(const struct space *s, struct statistics *stats) {
                    s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
                    &extra_data);
 
+  /* Run parallel collection of statistics for sparts */
+  if (s->nr_sparts > 0)
+    threadpool_map(&s->e->threadpool, stats_collect_spart_mapper, s->sparts,
+                   s->nr_sparts, sizeof(struct spart),
+                   threadpool_auto_chunk_size, &extra_data);
+
+  /* Run parallel collection of statistics for sparts */
+  if (s->nr_sinks > 0)
+    threadpool_map(&s->e->threadpool, stats_collect_sink_mapper, s->sinks,
+                   s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
+                   &extra_data);
+
+  /* Run parallel collection of statistics for sparts */
+  if (s->nr_bparts > 0)
+    threadpool_map(&s->e->threadpool, stats_collect_bpart_mapper, s->bparts,
+                   s->nr_bparts, sizeof(struct bpart),
+                   threadpool_auto_chunk_size, &extra_data);
+
   /* Run parallel collection of statistics for gparts */
   if (s->nr_gparts > 0)
     threadpool_map(&s->e->threadpool, stats_collect_gpart_mapper, s->gparts,
@@ -352,11 +606,155 @@ void stats_collect(const struct space *s, struct statistics *stats) {
  */
 void stats_finalize(struct statistics *stats) {
 
-  if (stats->mass > 0.) {
-    stats->centre_of_mass[0] /= stats->mass;
-    stats->centre_of_mass[1] /= stats->mass;
-    stats->centre_of_mass[2] /= stats->mass;
+  stats->total_mass = stats->gas_mass + stats->dm_mass + stats->sink_mass +
+                      stats->star_mass + stats->bh_mass;
+
+  if (stats->total_mass > 0.) {
+    stats->centre_of_mass[0] /= stats->total_mass;
+    stats->centre_of_mass[1] /= stats->total_mass;
+    stats->centre_of_mass[2] /= stats->total_mass;
   }
+}
+
+void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
+                             const struct phys_const *phys_const) {
+
+  fprintf(file, "# Global statistics file\n");
+  fprintf(file, "######################################################\n");
+  fprintf(file, "# The quantities are all given in internal units!\n");
+  fprintf(file, "#\n");
+  fprintf(file, "# (0)  Simulation step\n");
+  fprintf(file, "#      Unit = dimensionless\n");
+  fprintf(file,
+          "# (1)  Time since Big Bang (cosmological run), Time since start of "
+          "the simulation (non-cosmological run).\n");
+  fprintf(file, "#      Unit = %e s\n", us->UnitTime_in_cgs);
+  fprintf(file, "#      Unit = %e yr \n", 1.f / phys_const->const_year);
+  fprintf(file, "#      Unit = %e Myr \n", 1.f / phys_const->const_year / 1e6);
+  fprintf(file, "# (2)  Scale factor\n");
+  fprintf(file, "#      Unit = dimensionless\n");
+  fprintf(file, "# (3)  Redshift\n");
+  fprintf(file, "#      Unit = dimensionless\n");
+  fprintf(file, "# (4)  Total mass in the simulation. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (5)  Total gas mass in the simulation (Particle type %d). \n",
+          swift_type_gas);
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (6)  Total dark matter mass in the simulation (Particle type %d & "
+          "%d). \n",
+          swift_type_dark_matter, swift_type_dark_matter_background);
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (7)  Total sink mass in the simulation (Particle type %d). \n",
+          swift_type_sink);
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (8)  Total stellar mass in the simulation (Particle type %d). \n",
+          swift_type_stars);
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(
+      file,
+      "# (9)  Total black hole mass in the simulation (Particle type %d). \n",
+      swift_type_black_hole);
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file, "# (10) Total metal mass in the gas phase. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file, "# (11) Total metal mass locked in stars. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file, "# (12) Total metal mass locked in black holes. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file, "# (13) Total kinetic energy (physical). \n");
+  fprintf(file, "#      Unit = %e erg\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  fprintf(file,
+          "# (14) Total internal (thermal) energy of the gas (physical). \n");
+  fprintf(file, "#      Unit = %e erg\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  fprintf(file, "# (15) Total potential energy (physical). \n");
+  fprintf(file, "#      Unit = %e erg\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  fprintf(file, "# (16) Total radiated energy of the gas (physical). \n");
+  fprintf(file, "#      Unit = %e erg\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  fprintf(file, "# (17) Total gas entropy (physical). \n");
+  fprintf(file, "#      Unit = %e erg * gram**(%.3f) * cm**(%.3f)\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENTROPY),
+          hydro_gamma_minus_one, -3.f * hydro_gamma_minus_one);
+  fprintf(
+      file,
+      "# (18) Comoving centre of mass of the simulation (x coordinate). \n");
+  fprintf(file, "#      Unit = %e cm\n", us->UnitLength_in_cgs);
+  fprintf(file, "#      Unit = %e pc\n", 1. / phys_const->const_parsec);
+  fprintf(file, "#      Unit = %e Mpc\n", 1. / phys_const->const_parsec / 1e6);
+  fprintf(
+      file,
+      "# (19) Comoving centre of mass of the simulation (y coordinate). \n");
+  fprintf(file, "#      Unit = %e cm\n", us->UnitLength_in_cgs);
+  fprintf(file, "#      Unit = %e pc\n", 1. / phys_const->const_parsec);
+  fprintf(file, "#      Unit = %e Mpc\n", 1. / phys_const->const_parsec / 1e6);
+  fprintf(
+      file,
+      "# (20) Comoving centre of mass of the simulation (z coordinate). \n");
+  fprintf(file, "#      Unit = %e cm\n", us->UnitLength_in_cgs);
+  fprintf(file, "#      Unit = %e pc\n", 1. / phys_const->const_parsec);
+  fprintf(file, "#      Unit = %e Mpc\n", 1. / phys_const->const_parsec / 1e6);
+  fprintf(file,
+          "# (21) Comoving momentum of the simulation (x coordinate). \n");
+  fprintf(file, "#      Unit = %e gram * cm * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_MOMENTUM));
+  fprintf(file,
+          "# (22) Comoving momentum of the simulation (y coordinate). \n");
+  fprintf(file, "#      Unit = %e gram * cm * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_MOMENTUM));
+  fprintf(file,
+          "# (23) Comoving momentum of the simulation (z coordinate). \n");
+  fprintf(file, "#      Unit = %e gram * cm * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_MOMENTUM));
+  fprintf(
+      file,
+      "# (24) Comoving angular momentum of the simulation (x coordinate). \n");
+  fprintf(file, "#      Unit = %e gram * cm**2 * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ANGULAR_MOMENTUM));
+  fprintf(
+      file,
+      "# (25) Comoving angular momentum of the simulation (y coordinate). \n");
+  fprintf(file, "#      Unit = %e gram * cm**2 * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ANGULAR_MOMENTUM));
+  fprintf(
+      file,
+      "# (26) Comoving angular momentum of the simulation (z coordinate). \n");
+  fprintf(file, "#      Unit = %e gram * cm**2 * s**-1\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ANGULAR_MOMENTUM));
+  fprintf(file, "#\n");
+  fprintf(
+      file,
+      "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
+      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+      "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
+      "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
+      "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)");
+  fprintf(
+      file,
+      "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
+      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+      "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
+      "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
+      "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
+      "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
+      "Ang. mom. x", "Ang. mom. y", "Ang. mom. z");
+
+  fflush(file);
 }
 
 /**
@@ -365,21 +763,26 @@ void stats_finalize(struct statistics *stats) {
  * @param file File to write to.
  * @param stats The #statistics object to write to the file
  * @param time The current physical time.
+ * @param a The current scale-factor.
+ * @param z The current redshift.
+ * @param step The current time-step.
  */
-void stats_print_to_file(FILE *file, const struct statistics *stats,
-                         double time) {
+void stats_write_to_file(FILE *file, const struct statistics *stats,
+                         const double time, const double a, const double z,
+                         const int step) {
 
-  const double E_pot = stats->E_pot_self + stats->E_pot_ext;
-  const double E_tot = stats->E_kin + stats->E_int + E_pot;
+  fprintf(
+      file,
+      " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
+      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+      step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
+      stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
+      stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int,
+      stats->E_pot, stats->E_rad, stats->entropy, stats->centre_of_mass[0],
+      stats->centre_of_mass[1], stats->centre_of_mass[2], stats->mom[0],
+      stats->mom[1], stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
+      stats->ang_mom[2]);
 
-  fprintf(file,
-          " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-          "%14e %14e %14e %14e %14e %14e\n",
-          time, stats->mass, E_tot, stats->E_kin, stats->E_int, E_pot,
-          stats->E_pot_self, stats->E_pot_ext, stats->E_rad, stats->entropy,
-          stats->mom[0], stats->mom[1], stats->mom[2], stats->ang_mom[0],
-          stats->ang_mom[1], stats->ang_mom[2], stats->centre_of_mass[0],
-          stats->centre_of_mass[1], stats->centre_of_mass[2]);
   fflush(file);
 }
 
