@@ -719,7 +719,7 @@ struct cell {
         struct sort_entry *sort;
 
         /*! The task computing this cell's sorts. */
-        struct task *sorts;
+        /*struct task *sorts;*/
         
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
         struct link *sidm;

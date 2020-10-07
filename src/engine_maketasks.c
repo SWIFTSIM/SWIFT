@@ -1087,8 +1087,8 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
             
             /* Link implicit tasks? */
-            /*scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);
-            scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm_kick);*/
+            /*scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);*/
+            scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm_kick);
             scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
             /*scheduler_addunlock(s, c->dark_matter.ghost, c->super->kick2);*/
 
@@ -1794,7 +1794,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t->subtype == task_subtype_dark_matter_density) {
         engine_addlink(e, &ci->dark_matter.density, t);
       } else if (t_subtype == task_subtype_sidm) {
-          engine_addlink(e, &ci->dark_matter.sidm, t);
+        engine_addlink(e, &ci->dark_matter.sidm, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -4010,10 +4010,10 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Adding dependencies for dark matter stuff */
-  engine_link_dark_matter_tasks(e);
-  /*threadpool_map(&e->threadpool, engine_make_extra_dark_matter_tasks_mapper,
+  /*engine_link_dark_matter_tasks(e);*/
+  threadpool_map(&e->threadpool, engine_make_extra_dark_matter_tasks_mapper,
                sched->tasks, sched->nr_tasks, sizeof(struct task),
-               threadpool_auto_chunk_size, e);*/
+               threadpool_auto_chunk_size, e);
     
   if (e->verbose)
     message("Making links of dark matter tasks took %.3f %s.",

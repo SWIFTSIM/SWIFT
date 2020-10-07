@@ -514,7 +514,7 @@ void task_unlock(struct task *t) {
           
       } else if ((subtype == task_subtype_dark_matter_density) ||
                  (subtype == task_subtype_sidm)) {
-          cell_dmunlocktree(ci);
+        cell_dmunlocktree(ci);
 
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
