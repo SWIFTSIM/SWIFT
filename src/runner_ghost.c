@@ -29,7 +29,6 @@
 #include "active.h"
 #include "black_holes.h"
 #include "cell.h"
-#include "dark_matter.h"
 #include "engine.h"
 #include "feedback.h"
 #include "pressure_floor.h"
@@ -40,9 +39,6 @@
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
-
-/* Import the dark matter functions. */
-#include "runner_doiact_dark_matter.h"
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -1390,13 +1386,4 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_do_ghost);
 }
 
-/**
- * @brief Intermediate task after the density loop to check that the smoothing
- * lengths for dark matter particles are correct.
- *
- * @param r The runner thread.
- * @param c The cell.
- * @param timer Are we timing this ?
- */
-void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
-}
+

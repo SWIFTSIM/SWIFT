@@ -1206,7 +1206,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
-    } else if (t->subtype == task_subtype_dark_matter_density) {
+    } else if (t->subtype == task_subtype_sidm) {
       scheduler_splittask_dark_matter(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
         scheduler_splittask_gravity(t, s);
@@ -1568,8 +1568,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
-        else if (t->subtype == task_subtype_dark_matter_density ||
-                 t->subtype == task_subtype_sidm)
+        else if (t->subtype == task_subtype_sidm)
           cost = 1.f * wscale * dmcount_i * dmcount_i;
         else if (t->subtype == task_subtype_stars_density ||
                  t->subtype == task_subtype_stars_feedback)
@@ -1599,8 +1598,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
 
-        } else if (t->subtype == task_subtype_dark_matter_density ||
-                   t->subtype == task_subtype_sidm) {
+        } else if (t->subtype == task_subtype_sidm) {
             if (t->ci->nodeID != nodeID)
                 cost = 3.f * wscale * dmcount_i * dmcount_j * sid_scale[t->flags];
             else if (t->cj->nodeID != nodeID)
@@ -1655,8 +1653,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (t->flags < 0) error("Negative flag value!");
 #endif
-        if (t->subtype == task_subtype_dark_matter_density ||
-            t->subtype == task_subtype_sidm) {
+        if (t->subtype == task_subtype_sidm) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * dmcount_i) * dmcount_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
@@ -1715,8 +1712,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->subtype == task_subtype_stars_density ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_dark_matter_density ||
-                   t->subtype == task_subtype_sidm) {
+        } else if (t->subtype == task_subtype_sidm) {
             cost = 1.f * (wscale * dmcount_i) * dmcount_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
@@ -1744,9 +1740,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_stars_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
-        break;
-      case task_type_dark_matter_ghost:
-        if (t->ci == t->ci->grav.super) cost = wscale * dmcount_i;
         break;
       case task_type_bh_density_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
@@ -1977,7 +1970,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->grav.super->owner;
         break;
       case task_type_drift_dmpart:
-      case task_type_dark_matter_ghost:
       case task_type_sidm_kick:
         qid = t->ci->grav.super->owner;
         break;
@@ -2053,7 +2045,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
         
-        } else if (t->subtype == task_subtype_dark_matter_density) {
+        } else if (t->subtype == task_subtype_sidm) {
             
             count = t->ci->dark_matter.count;
             size = count * sizeof(struct dmpart);
@@ -2220,7 +2212,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
-        } else if (t->subtype == task_subtype_dark_matter_density) {
+        } else if (t->subtype == task_subtype_sidm) {
             
             count = t->ci->dark_matter.count;
             size = count * sizeof(struct dmpart);

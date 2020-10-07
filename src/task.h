@@ -54,7 +54,6 @@ enum task_types {
   task_type_ghost_in,      /* Implicit */
   task_type_ghost,
   task_type_ghost_out, /* Implicit */
-  task_type_dark_matter_ghost,
   task_type_extra_ghost,
   task_type_drift_part,
   task_type_drift_spart,
@@ -108,7 +107,6 @@ enum task_types {
 enum task_subtypes {
   task_subtype_none = 0,
   task_subtype_density,
-  task_subtype_dark_matter_density,
   task_subtype_sidm,
   task_subtype_gradient,
   task_subtype_force,

@@ -186,8 +186,6 @@ void *runner_main(void *data) {
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci);
-          else if (t->subtype == task_subtype_dark_matter_density)
-            runner_doself_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
             runner_doself_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_grav)
@@ -224,8 +222,6 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
-          else if (t->subtype == task_subtype_dark_matter_density)
-            runner_dopair_dark_matter_density(r, ci, cj);
           else if (t->subtype == task_subtype_sidm)
             runner_dopair_dark_matter_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
@@ -264,8 +260,6 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, 1);
-          else if (t->subtype == task_subtype_dark_matter_density)
-              runner_dosub_self_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
               runner_dosub_self_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_bh_density)
@@ -298,8 +292,6 @@ void *runner_main(void *data) {
             runner_dosub_pair_stars_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_dark_matter_density)
-              runner_dosub_pair_dark_matter_density(r, ci, cj);
           else if (t->subtype == task_subtype_sidm)
               runner_dosub_pair_dark_matter_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_bh_density)
@@ -346,9 +338,6 @@ void *runner_main(void *data) {
 #endif
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, 1);
-          break;
-        case task_type_dark_matter_ghost:
-          runner_do_dark_matter_density_ghost(r, ci);
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);

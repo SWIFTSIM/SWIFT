@@ -248,7 +248,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         
         
         /* Activate the DM drift */
-        if (t_type == task_type_self && t_subtype == task_subtype_dark_matter_density) {
+        if (t_type == task_type_self && t_subtype == task_subtype_sidm) {
             if (ci_active_dark_matter) {
                 scheduler_activate(s, t);
                 cell_activate_drift_dmpart(ci, s);
@@ -256,19 +256,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
         
         /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_self && t_subtype == task_subtype_dark_matter_density) {
+        else if (t_type == task_type_sub_self && t_subtype == task_subtype_sidm) {
             if (ci_active_dark_matter) {
                 scheduler_activate(s, t);
                 cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
             }
-        }
-        
-        else if (t_type == task_type_self && t_subtype == task_subtype_sidm) {
-            if (ci_active_dark_matter) scheduler_activate(s, t);
-        }
-        
-        else if (t_type == task_type_sub_self && t_subtype == task_subtype_sidm) {
-            if (ci_active_dark_matter) scheduler_activate(s, t);
         }
         
       /* Activate the gravity drift */
@@ -482,23 +474,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
         
         /* Only activate tasks that involve a local active cell. */
-     else if ((t_subtype == task_subtype_dark_matter_density ||
-               t_subtype == task_subtype_sidm) &&
+     else if ((t_subtype == task_subtype_sidm) &&
              ((ci_active_dark_matter && ci_nodeID == nodeID) ||
               (cj_active_dark_matter && cj_nodeID == nodeID))) {
                 
                 scheduler_activate(s, t);
                 
                 /* Set the correct sorting flags */
-                if (t_type == task_type_pair && t_subtype == task_subtype_dark_matter_density) {
+                if (t_type == task_type_pair && t_subtype == task_subtype_sidm) {
                     
-                    /* Store some values. */
-                    /*atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-                    atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-                    ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-                    cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;*/
-                    
-                    /* Activate the hydro drift tasks. */
+                    /* Activate the DM drift tasks. */
                     if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
                     
@@ -506,7 +491,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 
                 /* Store current values of dx_max and h_max. */
                 else if (t_type == task_type_sub_pair &&
-                         t_subtype == task_subtype_dark_matter_density) {
+                         t_subtype == task_subtype_sidm) {
                     cell_activate_subcell_dark_matter_tasks(t->ci, t->cj, s);
                 }
             }
@@ -870,7 +855,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
         
         /* Only interested in dark matter density tasks as of here. */
-      else if (t->subtype == task_subtype_dark_matter_density) {
+      else if (t->subtype == task_subtype_sidm) {
           
           /* Too much particle movement? */
           if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) *rebuild_space = 1;
@@ -1057,10 +1042,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
       
-      /* Dark matter stuff ? */
-    else if (t_type == task_type_dark_matter_ghost) {
-        if (cell_is_active_dark_matter(t->ci, e)) scheduler_activate(s, t);
-    }
 
     /* Multipole - Multipole interaction task */
     else if (t_type == task_type_grav_mm) {
