@@ -82,6 +82,19 @@ struct black_holes_props {
   /*! Eddington fraction threshold for recording */
   float f_Edd_recording;
 
+  /*! Switch for the Booth & Schaye 2009 model */
+  int with_boost_factor;
+
+  /*! Lowest value of the boost of the Booth & Schaye 2009 model */
+  float boost_alpha;
+
+  /*! Power law slope for the boost of the Booth & Schaye 2009 model */
+  float boost_beta;
+
+  /*! Normalisation density (internal units) for the boost of the Booth & Schaye
+   * 2009 model */
+  double boost_n_h_star;
+
   /*! Switch for nibbling mode */
   int use_nibbling;
 
@@ -276,6 +289,21 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->f_Edd = parser_get_param_float(params, "EAGLEAGN:max_eddington_fraction");
   bp->f_Edd_recording = parser_get_param_float(
       params, "EAGLEAGN:eddington_fraction_for_recording");
+
+  /*  Booth & Schaye (2009) Parameters */
+  bp->with_boost_factor =
+      parser_get_param_int(params, "EAGLEAGN:with_boost_factor");
+
+  if (bp->with_boost_factor) {
+    bp->boost_alpha = parser_get_param_float(params, "EAGLEAGN:boost_alpha");
+
+    bp->boost_beta = parser_get_param_float(params, "EAGLEAGN:boost_beta");
+
+    /* Load the density in cgs and convert to internal units */
+    bp->boost_n_h_star =
+        parser_get_param_float(params, "EAGLEAGN:boost_n_h_star_H_p_cm3") /
+        units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+  }
 
   bp->use_nibbling = parser_get_param_int(params, "EAGLEAGN:use_nibbling");
   if (bp->use_nibbling) {
