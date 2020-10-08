@@ -1084,14 +1084,33 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
 
         }
-    } else { /* We are above the super-cell so need to go deeper */
+    }
+    
+    /* We are below the super-cell but not below the maximal splitting depth */
+    else if ((c->grav.super != NULL) &&
+             ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
         
-        /* Recurse. */
-        if (c->split)
+        /* Local tasks only... */
+        if (c->nodeID == e->nodeID) {
+            
+            /* Add tasks */
+            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
+            
+            
+            c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
+            
+            /* Link implicit tasks? */
+            scheduler_addunlock(s, c->dark_matter.drift, c->dark_matter.sidm_kick);
+            scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
+            
+        }
+    }
+
+    /* Recurse but not below the maximal splitting depth */
+    if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav))
             for (int k = 0; k < 8; k++)
                 if (c->progeny[k] != NULL)
                     engine_make_hierarchical_tasks_dark_matter(e, c->progeny[k]);
-    }
 }
 
 /**

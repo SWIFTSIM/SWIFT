@@ -830,19 +830,19 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_max = pc->stars.ti_end_max;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->black_holes.ti_end_max = pc->black_holes.ti_end_max;
-    c->dark_matter.ti_end_min = pc->dark_matter.ti_end_min;
-    c->dark_matter.ti_end_max = pc->dark_matter.ti_end_max;
+  c->dark_matter.ti_end_min = pc->dark_matter.ti_end_min;
+  c->dark_matter.ti_end_max = pc->dark_matter.ti_end_max;
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
   c->stars.ti_old_part = pc->stars.ti_old_part;
   c->black_holes.ti_old_part = pc->black_holes.ti_old_part;
-    c->dark_matter.ti_old_part = pc->dark_matter.ti_old_part;
+  c->dark_matter.ti_old_part = pc->dark_matter.ti_old_part;
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
   c->black_holes.count = pc->black_holes.count;
-    c->dark_matter.count = pc->dark_matter.count;
+  c->dark_matter.count = pc->dark_matter.count;
   c->maxdepth = pc->maxdepth;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -894,7 +894,6 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->stars.dx_max_part = 0.f;
       temp->stars.dx_max_sort = 0.f;
       temp->black_holes.dx_max_part = 0.f;
-      temp->dark_matter.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -1228,7 +1227,6 @@ int cell_pack_end_step_dark_matter(
     /* Pack this cell's data. */
     pcells[0].ti_end_min = c->dark_matter.ti_end_min;
     pcells[0].ti_end_max = c->dark_matter.ti_end_max;
-    pcells[0].dx_max_part = c->dark_matter.dx_max_part;
     
     /* Fill in the progeny, depth-first recursion. */
     int count = 1;
@@ -1261,7 +1259,6 @@ int cell_unpack_end_step_dark_matter(struct cell *restrict c, struct pcell_step_
     /* Unpack this cell's data. */
     c->dark_matter.ti_end_min = pcells[0].ti_end_min;
     c->dark_matter.ti_end_max = pcells[0].ti_end_max;
-    c->dark_matter.dx_max_part = pcells[0].dx_max_part;
     
     /* Fill in the progeny, depth-first recursion. */
     int count = 1;

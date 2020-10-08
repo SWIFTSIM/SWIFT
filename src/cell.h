@@ -280,8 +280,6 @@ struct pcell_step_dark_matter {
     /*! Maximal integer end-of-timestep in this cell (dark_matter) */
     integertime_t ti_end_max;
     
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
 };
 
 /**
@@ -712,10 +710,10 @@ struct cell {
         struct dmpart *parts_rebuild;
         
         /*! Pointer for the sorted indices. */
-        struct sort_entry *sort;
+        /*struct sort_entry *sort;*/
 
         /*! The task computing this cell's sorts. */
-        struct task *sorts;
+        /*struct task *sorts;*/
         
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
         struct link *sidm;
@@ -739,19 +737,19 @@ struct cell {
         int count_total;
         
         /*! Maximum part movement in this cell since last construction. */
-        float dx_max_part;
+        /*float dx_max_part;*/
         
         /*! Maximum particle movement in this cell since the last sort. */
-        float dx_max_sort;
+        /*float dx_max_sort;*/
         
         /*! Values of dx_max before the drifts, used for sub-cell tasks. */
-        float dx_max_part_old;
+        /*float dx_max_part_old;*/
         
         /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
-        float dx_max_sort_old;
+        /*float dx_max_sort_old;*/
         
         /*! Bit-mask indicating the sorted directions */
-        uint16_t sort_allocated;
+        /*uint16_t sort_allocated;*/
 
         /*! Maximum end of (integer) time step in this cell for star tasks. */
         integertime_t ti_end_min;
@@ -770,13 +768,13 @@ struct cell {
         int hold;
         
         /*! Bit mask of sort directions that will be needed in the next timestep. */
-        uint16_t requires_sorts;
+        /*uint16_t requires_sorts;*/
         
         /*! Bit mask of sorts that need to be computed for this cell. */
-        uint16_t do_sort;
+        /*uint16_t do_sort;*/
         
         /*! Bit-mask indicating the sorted directions */
-        uint16_t sorted;
+        /*uint16_t sorted;*/
         
         
     } dark_matter;
@@ -1634,8 +1632,8 @@ cell_get_hydro_sorts(const struct cell *c, const int sid) {
  * @param c The #cell.
  * @param sid the direction id.
  */
-__attribute__((always_inline)) INLINE static struct sort_entry *
-cell_get_dark_matter_sorts(const struct cell *c, const int sid) {
+/*__attribute__((always_inline)) INLINE static struct sort_entry *
+cell_get_dark_matter_sorts(const struct cell *c, const int sid) {*/
     
     /* We need to find at what position in the meta-array of
      sorts where the corresponding sid has been allocated since
@@ -1645,11 +1643,11 @@ cell_get_dark_matter_sorts(const struct cell *c, const int sid) {
      and apply it on the list of allocated directions. We then count
      the number of bits that are in the results to obtain the position
      of the correspondin sid in the meta-array */
-    const int j = intrinsics_popcount(c->dark_matter.sort_allocated & ((1 << sid) - 1));
+ /*   const int j = intrinsics_popcount(c->dark_matter.sort_allocated & ((1 << sid) - 1));*/
     
     /* Return the corresponding array */
-    return &c->dark_matter.sort[j * (c->dark_matter.count + 1)];
-}
+ /*   return &c->dark_matter.sort[j * (c->dark_matter.count + 1)];
+}*/
 
 
 /**

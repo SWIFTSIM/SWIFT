@@ -449,9 +449,6 @@ void space_regrid(struct space *s, int verbose) {
       for (size_t k = 0; k < nr_bparts; k++) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
-        /*for (size_t k = 0; k < nr_dmparts; k++) {
-            if (s->dmparts[k].h > dm_h_max) h_max = s->dmparts[k].h;
-        }*/
     }
   }
 
@@ -625,8 +622,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for sinks.");
       if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
         error("Failed to init spinlock for black holes.");
-        if (lock_init(&s->cells_top[k].dark_matter.lock) != 0)
-            error("Failed to init spinlock for dark matter.");
+      if (lock_init(&s->cells_top[k].dark_matter.lock) != 0)
+        error("Failed to init spinlock for dark matter.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
         error("Failed to init spinlock for star formation (spart).");
     }
@@ -2145,8 +2142,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   swift_free("cell_spart_counts", cell_spart_counts);
   swift_free("b_index", b_index);
   swift_free("cell_bpart_counts", cell_bpart_counts);
-    swift_free("dm_index", dm_index);
-    swift_free("cell_dmpart_counts", cell_dmpart_counts);
+  swift_free("dm_index", dm_index);
+  swift_free("cell_dmpart_counts", cell_dmpart_counts);
   swift_free("sink_index", sink_index);
   swift_free("cell_sink_counts", cell_sink_counts);
 
@@ -3415,13 +3412,13 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   data.count_inhibited_gpart = 0;
   data.count_inhibited_spart = 0;
   data.count_inhibited_bpart = 0;
-    data.count_inhibited_dmpart = 0;
+  data.count_inhibited_dmpart = 0;
   data.count_inhibited_sink = 0;
   data.count_extra_part = 0;
   data.count_extra_gpart = 0;
   data.count_extra_spart = 0;
   data.count_extra_bpart = 0;
-    data.count_extra_dmpart = 0;
+  data.count_extra_dmpart = 0;
   data.count_extra_sink = 0;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
@@ -6205,8 +6202,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Decide on the minimal top-level cell size */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
-  int maxtcells =
-      parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+  int maxtcells = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                space_max_top_level_cells_default);
   s->cell_min = 0.99 * dmax / maxtcells;
 
@@ -6301,13 +6297,6 @@ void space_init(struct space *s, struct swift_params *params,
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
     
-  /* Read in imposed dark matter smoothing length */
-  /*s->initial_dmpart_h = parser_get_opt_param_float(
-      params, "SIDM:h_sidm", -1.f);
-  if (s->initial_dmpart_h != -1.f) {
-        message("Imposing a DM smoothing length of %e", s->initial_dmpart_h);
-  }*/
-
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
