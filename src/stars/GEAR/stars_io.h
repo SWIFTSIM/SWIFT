@@ -132,7 +132,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            sparts, id, "Unique IDs of the particles");
 
   list[4] = io_make_output_field(
-      "SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   if (with_cosmology) {
