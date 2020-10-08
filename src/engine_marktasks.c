@@ -473,17 +473,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
         
-        /* Only activate tasks that involve a local active cell. */
+     /* Only activate tasks that involve a local active cell. */
      else if ((t_subtype == task_subtype_sidm) &&
-             ((ci_active_dark_matter && ci_nodeID == nodeID) ||
-              (cj_active_dark_matter && cj_nodeID == nodeID))) {
-                
+              (ci_active_dark_matter || cj_active_dark_matter) &&
+              (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+         
                 scheduler_activate(s, t);
                 
-                /* Set the correct sorting flags */
+                /* Set the correct drifting flags */
                 if (t_type == task_type_pair && t_subtype == task_subtype_sidm) {
-                    
-                    /* Activate the DM drift tasks. */
                     if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
                     
@@ -854,7 +852,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
         
-        /* Only interested in dark matter density tasks as of here. */
+        /* Only interested in dark matter sidm tasks as of here. */
       else if (t->subtype == task_subtype_sidm) {
                     
 #ifdef WITH_MPI
@@ -863,8 +861,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               
               if (cj_active_dark_matter) {
                   
-                  /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);*/
-
                   /* If the local cell is active, more stuff will be needed. */
                   scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart,
                                           ci_nodeID);
@@ -879,14 +875,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               }
               
               if (ci_active_dark_matter) {
+                  
                   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart);
                   
                   /* If the foreign cell is active, we want its ti_end values. */
                   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
-                  
-                  /* Is the foreign cell active and will need stuff from us? */
-                  /*scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm,
-                                          ci_nodeID);*/
                   
                   /* Drift the cell which will be sent; note that not all sent
                    particles will be drifted, only those that are needed. */
@@ -897,11 +890,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               
               /* If the local cell is active, receive data from the foreign cell. */
               if (ci_active_dark_matter) {
-                  /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);*/
 
                   /* If the local cell is active, more stuff will be needed. */
                   scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart,
                                           cj_nodeID);
+                  
                   cell_activate_drift_dmpart(ci, s);
                   
                   /* If the local cell is active, send its ti_end values. */

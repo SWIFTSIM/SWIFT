@@ -2014,7 +2014,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
     struct scheduler *sched = &e->sched;
     const int nodeID = e->nodeID;
     const int nr_tasks = sched->nr_tasks;
-    struct task *t_sidm = NULL;
     
     for (int k = 0; k < nr_tasks; k++) {
         
@@ -2061,39 +2060,24 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             
             /* drift ---> sidm ---> kick */
             scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
-
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t);
-            
             scheduler_addunlock(sched, t, ci->grav.super->dark_matter.sidm_kick);
-
         }
         
         /* Otherwise, pair interaction? */
         else if (t_type == task_type_pair && t_subtype == task_subtype_sidm) {
-            
-            
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t);
-            engine_addlink(e, &cj_parent->dark_matter.sidm, t);
-
             
             if (ci_nodeID == nodeID) {
                 
                 /* drift ---> sidm ---> kick */
                 scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
                 scheduler_addunlock(sched, t, ci->grav.super->dark_matter.sidm_kick);
-
-                
             }
             if (cj_nodeID == nodeID) {
                 
                 /* drift ---> sidm ---> kick */
                 if (ci_parent != cj_parent) { /* Avoid double unlock */
-                    
                     scheduler_addunlock(sched, cj->grav.super->dark_matter.drift, t);
                     scheduler_addunlock(sched, t, cj->grav.super->dark_matter.sidm_kick);
-
                 }
             }
         }
@@ -2108,36 +2092,21 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             /* drift ---> sidm ---> kick */
             scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
             scheduler_addunlock(sched, t, ci->grav.super->dark_matter.sidm_kick);
-            
-            
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
-            
-
         }
         
         /* Otherwise, sub-pair interaction? */
         else if (t_type == task_type_sub_pair && t_subtype == task_subtype_sidm) {
             
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t);
-            engine_addlink(e, &cj_parent->dark_matter.sidm, t);
-
             if (ci_nodeID == nodeID) {
-                
                 /* drift ---> sidm ---> kick */
                 scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
                 scheduler_addunlock(sched, t, ci->grav.super->dark_matter.sidm_kick);
-
             }
             if (cj_nodeID == nodeID) {
-                
                 /* drift ---> sidm ---> kick */
                 if (ci_parent != cj_parent) { /* Avoid double unlock */
-                    
                     scheduler_addunlock(sched, cj->grav.super->dark_matter.drift, t);
                     scheduler_addunlock(sched, t, cj->grav.super->dark_matter.sidm_kick);
-
                 }
             }
         }

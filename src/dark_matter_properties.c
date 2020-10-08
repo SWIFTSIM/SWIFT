@@ -31,6 +31,8 @@
 #include "units.h"
 #include "error.h"
 
+#define sidm_props_default_h_sidm FLT_MAX
+
 /**
  * @brief Initialize the global properties of the self-interacting dark matter scheme.
  *
@@ -53,6 +55,9 @@ void sidm_props_init(struct sidm_props* sidm_props,
     sidm_props->sigma = sidm_props->sigma_cgs / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
     
     sidm_props->sigma *= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+    
+    sidm_props->h_search_radius = parser_get_opt_param_float(params, "SIDM:h_sidm", sidm_props_default_h_sidm);
+
 }
 
 /**

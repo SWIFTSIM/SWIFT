@@ -60,9 +60,6 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
         /* Get a hold of the ith part in ci. */
         struct dmpart *restrict pi = &dmparts[pid];
         
-        /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
-        
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->sidm_data.h_sidm;
         const float hig2 = hi * hi;
@@ -83,7 +80,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
         
         
         /* Loop over the parts in cj. */
-        for (int pjd = pid + 1; pjd < count; pjd++) {
+        for (int pjd = 0; pjd < count; pjd++) {
             
             /* No self interaction */
             if (pid == pjd) continue;
@@ -150,7 +147,7 @@ void runner_doself_dark_matter_sidm(struct runner *r, struct cell *c) {
 void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *restrict ci,
                                     struct cell *restrict cj) {
     
-
+    
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
     const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -162,7 +159,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *restrict ci,
     /* Anything to do here? */
     if (cj->dark_matter.count == 0 || ci->dark_matter.count == 0) return;
     if (!cell_is_active_dark_matter(ci, e)) return;
-
+    
     const int count_i = ci->dark_matter.count;
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
@@ -176,9 +173,9 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *restrict ci,
     double shift[3] = {0.0, 0.0, 0.0};
     for (int k = 0; k < 3; k++) {
         if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-            shift[k] = e->s->dim[k];
+        shift[k] = e->s->dim[k];
         else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-            shift[k] = -e->s->dim[k];
+        shift[k] = -e->s->dim[k];
     }
     
     /* Loop over the parts in ci. */
@@ -231,7 +228,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *restrict ci,
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->sidm_data.h_sidm;
             const float hjg2 = hj * hj;
-
+            
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                 (float)(pj->x[1] - cj->loc[1]),
@@ -246,7 +243,7 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *restrict ci,
                 
             }
             if (r2 < hjg2 && pj_active) {
-                    
+                
                 dx[0] = -dx[0];
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
@@ -257,6 +254,9 @@ void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *restrict ci,
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
 }
+
+
+
 
 
 
@@ -352,7 +352,6 @@ void runner_dosub_self_dark_matter_sidm(struct runner *r, struct cell *ci) {
         /* Drift the cell to the current timestep if needed. */
         if (!cell_are_dmpart_drifted(ci, r->e)) error("Interacting undrifted cell.");
         
-        /* runner_dosub_self_dark_matter_density(r, ci); */
         runner_doself_dark_matter_sidm(r, ci);
     }
     

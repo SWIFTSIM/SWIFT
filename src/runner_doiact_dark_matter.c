@@ -30,6 +30,6 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-/* Import the dark matter density loop functions. */
+/* Import the dark matter sidm loop functions. */
 #include "runner_doiact_functions_dark_matter.h"
 
