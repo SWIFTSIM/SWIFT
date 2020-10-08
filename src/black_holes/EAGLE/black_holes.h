@@ -108,6 +108,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->total_accreted_mass = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
+  bp->energy_reservoir = 0.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
   bp->number_of_gas_swallows = 0;
