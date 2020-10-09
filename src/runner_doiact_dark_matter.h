@@ -20,19 +20,45 @@
 #ifndef SWIFT_RUNNER_DOIACT_DARK_MATTER_H
 #define SWIFT_RUNNER_DOIACT_DARK_MATTER_H
 
+#define PASTE(x, y) x##_##y
 
-#include "../config.h"
+#define _DOSELF2_NAIVE(f) PASTE(runner_doself2_naive, f)
+#define DOSELF2_NAIVE _DOSELF2_NAIVE(FUNCTION)
 
-struct runner;
-struct cell;
+#define _DOSELF2_BRANCH(f) PASTE(runner_doself2_branch, f)
+#define DOSELF2_BRANCH _DOSELF2_BRANCH(FUNCTION)
 
-void runner_doself_dark_matter_sidm(struct runner *r, struct cell *ci);
-void runner_dopair_dark_matter_sidm(struct runner *r, struct cell *ci, struct cell *cj);
+#define _DOSELF2(f) PASTE(runner_doself2, f)
+#define DOSELF2 _DOSELF2(FUNCTION)
 
-void runner_dosub_self_dark_matter_sidm(struct runner *r, struct cell *ci);
-void runner_dosub_pair_dark_matter_sidm(struct runner *r, struct cell *ci, struct cell *cj);
+#define _DOPAIR2_NAIVE(f) PASTE(runner_dopair2_naive, f)
+#define DOPAIR2_NAIVE _DOPAIR2_NAIVE(FUNCTION)
 
+#define _DOPAIR2_BRANCH(f) PASTE(runner_dopair2_branch, f)
+#define DOPAIR2_BRANCH _DOPAIR2_BRANCH(FUNCTION)
 
+#define _DOPAIR2(f) PASTE(runner_dopair2, f)
+#define DOPAIR2 _DOPAIR2(FUNCTION)
+
+#define _DOSUB_SELF2(f) PASTE(runner_dosub_self2, f)
+#define DOSUB_SELF2 _DOSUB_SELF2(FUNCTION)
+
+#define _DOSUB_PAIR2(f) PASTE(runner_dosub_pair2, f)
+#define DOSUB_PAIR2 _DOSUB_PAIR2(FUNCTION)
+
+#define _TIMER_DOSELF(f) PASTE(timer_doself, f)
+#define TIMER_DOSELF _TIMER_DOSELF(FUNCTION)
+
+#define _TIMER_DOPAIR(f) PASTE(timer_dopair, f)
+#define TIMER_DOPAIR _TIMER_DOPAIR(FUNCTION)
+
+void DOSELF2_BRANCH(struct runner *r, struct cell *c);
+
+void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj);
+
+void DOSUB_SELF2(struct runner *r, struct cell *ci);
+
+void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj);
 
 
 #endif
