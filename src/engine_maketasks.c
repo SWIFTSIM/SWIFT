@@ -288,12 +288,10 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
             t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart,
                                      ci->mpi.tag, 0, ci, cj);
 
-            /* The send_rho task should unlock the super-cell's ghost task. */
+            scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_sidm);
+            
             scheduler_addunlock(s, t_sidm, ci->grav.super->dark_matter.sidm_kick);
             
-            /* The send_rho task depends on the cell's ghost task. */
-            scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_sidm);
-
             scheduler_addunlock(s, ci->super->timestep, t_ti);
         }
         
@@ -1074,13 +1072,9 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
         if (c->nodeID == e->nodeID) {
             
             /* Add tasks */
-            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
-            
-
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
             
             /* Link implicit tasks? */
-            scheduler_addunlock(s, c->dark_matter.drift, c->dark_matter.sidm_kick);
             scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
 
         }
@@ -1094,13 +1088,9 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
         if (c->nodeID == e->nodeID) {
             
             /* Add tasks */
-            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
-            
-            
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
             
             /* Link implicit tasks? */
-            scheduler_addunlock(s, c->dark_matter.drift, c->dark_matter.sidm_kick);
             scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
             
         }
