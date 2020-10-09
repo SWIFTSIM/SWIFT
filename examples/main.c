@@ -513,14 +513,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (with_fof && !with_black_holes) {
-    if (myrank == 0)
-      printf(
-          "Error: Cannot perform FOF seeding without black holes being in use, "
-          "-B must be chosen.\n");
-    return 1;
-  }
-
   if (!with_stars && with_star_formation) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -1055,8 +1047,14 @@ int main(int argc, char *argv[]) {
     /* Initialise the FOF properties */
     bzero(&fof_properties, sizeof(struct fof_props));
 #ifdef WITH_FOF
-    if (with_fof)
+    if (with_fof) {
       fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0);
+      if (fof_properties.seed_black_holes_enabled && !with_black_holes) {
+	if (myrank == 0)
+	  printf("Error: Cannot perform FOF seeding without black holes being in use\n");
+	return 1;
+      }
+    }
 #endif
 
     /* Be verbose about what happens next */
