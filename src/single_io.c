@@ -592,7 +592,7 @@ void read_ic_single(const char* fileName,
 
   /* Allocate memory to store all gravity particles */
   if (with_gravity) {
-    *NdarkmatterNdm = N[swift_type_dark_matter];
+    *Ndarkmatter = N[swift_type_dark_matter];
     Ndm = *Ndarkmatter;
     if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
                          *Ndarkmatter * sizeof(struct dmpart)) != 0)

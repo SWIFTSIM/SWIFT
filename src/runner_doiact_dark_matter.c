@@ -37,10 +37,4 @@
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
 
-/* Import the dark matter sidm loop functions. */
-#define FUNCTION dark_matter_sidm
-#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
-#include "runner_doiact_functions_dark_matter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
 

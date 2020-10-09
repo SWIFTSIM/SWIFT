@@ -22,30 +22,6 @@
 
 #define PASTE(x, y) x##_##y
 
-#define _DOSELF2_NAIVE(f) PASTE(runner_doself2_naive, f)
-#define DOSELF2_NAIVE _DOSELF2_NAIVE(FUNCTION)
-
-#define _DOSELF2_BRANCH(f) PASTE(runner_doself2_branch, f)
-#define DOSELF2_BRANCH _DOSELF2_BRANCH(FUNCTION)
-
-#define _DOSELF2(f) PASTE(runner_doself2, f)
-#define DOSELF2 _DOSELF2(FUNCTION)
-
-#define _DOPAIR2_NAIVE(f) PASTE(runner_dopair2_naive, f)
-#define DOPAIR2_NAIVE _DOPAIR2_NAIVE(FUNCTION)
-
-#define _DOPAIR2_BRANCH(f) PASTE(runner_dopair2_branch, f)
-#define DOPAIR2_BRANCH _DOPAIR2_BRANCH(FUNCTION)
-
-#define _DOPAIR2(f) PASTE(runner_dopair2, f)
-#define DOPAIR2 _DOPAIR2(FUNCTION)
-
-#define _DOSUB_SELF2(f) PASTE(runner_dosub_self2, f)
-#define DOSUB_SELF2 _DOSUB_SELF2(FUNCTION)
-
-#define _DOSUB_PAIR2(f) PASTE(runner_dosub_pair2, f)
-#define DOSUB_PAIR2 _DOSUB_PAIR2(FUNCTION)
-
 #define _DOSELF1_NAIVE(f) PASTE(runner_doself1_naive, f)
 #define DOSELF1_NAIVE _DOSELF1_NAIVE(FUNCTION)
 
@@ -101,24 +77,16 @@
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
 void DOSELF1_BRANCH(struct runner *r, struct cell *c);
-void DOSELF2_BRANCH(struct runner *r, struct cell *c);
-
 void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj);
-void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj);
-
 void DOSUB_SELF1(struct runner *r, struct cell *ci);
-void DOSUB_SELF2(struct runner *r, struct cell *ci);
-
 void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj);
-void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj);
-
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
                           struct dmpart *restrict dmparts, int *restrict ind,
                           int count);
 
 void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
                           struct dmpart *restrict dmparts_i, int *restrict ind,
-                          int count, struct cell *restrict cj);
+                          struct cell *restrict cj, int count);
 
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct dmpart *dmparts,
                   int *ind, int count, struct cell *cj);
