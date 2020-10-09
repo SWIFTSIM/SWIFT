@@ -3988,13 +3988,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
-  /* Check the depth. */
-  while (depth > (maxdepth = s->maxdepth)) {
-    atomic_cas(&s->maxdepth, maxdepth, depth);
-  }
-
   /* If the depth is too large, we have a problem and should stop. */
-  if (maxdepth > space_cell_maxdepth) {
+  if (depth > space_cell_maxdepth) {
     error(
         "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
         "most likely due to having too many particles at the exact same "
@@ -4131,7 +4126,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
-        if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
+        maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
 
@@ -4468,6 +4463,9 @@ void space_split_recursive(struct space *s, struct cell *c,
                s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
+
+  /* Store the global max depth */
+  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 
   /* Clean up. */
   if (allocate_buffer) {
