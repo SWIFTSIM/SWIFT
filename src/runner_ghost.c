@@ -42,7 +42,9 @@
 #include "tracers.h"
 
 /* Import the dark matter functions. */
+#define FUNCTION dark_matter_density
 #include "runner_doiact_dark_matter.h"
+#undef FUNCTION
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -1716,9 +1718,9 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                             
                             /* Left or right? */
                             if (l->t->ci == finger)
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->cj, count);
+                                runner_dopair_subset_branch_dark_matter_density(r, finger, dmparts, pid, l->t->cj, count);
                             else
-                                runner_dopair_subset_dark_matter_density(r, finger, dmparts, pid, l->t->ci, count);
+                                runner_dopair_subset_branch_dark_matter_density(r, finger, dmparts, pid, l->t->ci, count);
                         }
                         
                         /* Otherwise, sub-self interaction? */
