@@ -2845,6 +2845,7 @@ void engine_check_for_dumps(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
   const int with_los = (e->policy & engine_policy_line_of_sight);
+  const int with_fof = (e->policy & engine_policy_fof);
 
   /* What kind of output are we getting? */
   enum output_type {
@@ -2927,6 +2928,11 @@ void engine_check_for_dumps(struct engine *e) {
         /* Indicate we are allowed to do a brute force calculation now */
         e->force_checks_snapshot_flag = 1;
 #endif
+
+	/* Do we want FoF group IDs in the snapshot? */
+	if(with_fof && e->snapshot_invoke_fof) {
+	  engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
+	}
 
         /* Do we want a corresponding VELOCIraptor output? */
         if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
@@ -3982,6 +3988,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
   e->snapshot_invoke_stf =
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
+  e->snapshot_invoke_fof =
+      parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;

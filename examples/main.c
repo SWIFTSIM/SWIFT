@@ -1635,6 +1635,11 @@ int main(int argc, char *argv[]) {
     /* Write final snapshot? */
     if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
         !e.output_list_snapshots) {
+
+      if(with_fof && e.snapshot_invoke_fof) {
+	engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+      }
+
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           !e.stf_this_timestep)
