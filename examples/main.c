@@ -1082,10 +1082,10 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_black_hole) error("Linking problem");
     }
-    if (!with_hydro && !dry_run) {
+    /*if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
-    }
+    }*/
     if (!with_sink && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_sink) error("Linking problem");

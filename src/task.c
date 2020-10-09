@@ -512,9 +512,9 @@ void task_unlock(struct task *t) {
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
           
-      } else if ((subtype == task_subtype_dark_matter_density) ||
+      /*} else if ((subtype == task_subtype_dark_matter_density) ||
                  (subtype == task_subtype_sidm)) {
-          cell_dmunlocktree(ci);
+          cell_dmunlocktree(ci);*/
 
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
@@ -544,10 +544,10 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
-      } else if ((subtype == task_subtype_dark_matter_density) ||
+      /*} else if ((subtype == task_subtype_dark_matter_density) ||
                  (subtype == task_subtype_sidm)) {
           cell_dmunlocktree(ci);
-          cell_dmunlocktree(cj);
+          cell_dmunlocktree(cj);*/
           
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
@@ -726,10 +726,10 @@ int task_lock(struct task *t) {
           return 0;
         }
     
-      } else if ((subtype == task_subtype_dark_matter_density) ||
+      /*} else if ((subtype == task_subtype_dark_matter_density) ||
                  (subtype == task_subtype_sidm)) {
           if (ci->dark_matter.hold) return 0;
-          if (cell_dmlocktree(ci) != 0) return 0;
+          if (cell_dmlocktree(ci) != 0) return 0;*/
           
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
@@ -800,10 +800,10 @@ int task_lock(struct task *t) {
         }
         
       
-      } else if ((subtype == task_subtype_dark_matter_density) ||
-                 (subtype == task_subtype_sidm)) {
+      /*} else if ((subtype == task_subtype_dark_matter_density) ||
+                 (subtype == task_subtype_sidm)) {*/
           /* Lock the stars and the gas particles in both cells */
-          if (ci->dark_matter.hold || cj->dark_matter.hold) return 0;
+         /* if (ci->dark_matter.hold || cj->dark_matter.hold) return 0;
           if (cell_dmlocktree(ci) != 0) {
               cell_dmunlocktree(ci);
               cell_dmunlocktree(cj);
@@ -813,7 +813,7 @@ int task_lock(struct task *t) {
               cell_dmunlocktree(ci);
               cell_dmunlocktree(cj);
               return 0;
-          }
+          }*/
           
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||

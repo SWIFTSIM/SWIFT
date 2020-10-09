@@ -21,11 +21,6 @@
 #define SWIFT_RUNNER_DOIACT_DARK_MATTER_H
 
 
-#include "../config.h"
-
-struct runner;
-struct cell;
-
 void runner_doself_dark_matter_density(struct runner *r, struct cell *c);
 void runner_dopair_dark_matter_density(struct runner *r, struct cell *ci, struct cell *cj);
 

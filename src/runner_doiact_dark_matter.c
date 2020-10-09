@@ -31,5 +31,12 @@
 #include "timers.h"
 
 /* Import the dark matter density loop functions. */
+#define FUNCTION dark_matter_density
 #include "runner_doiact_functions_dark_matter.h"
+#undef
+
+/* Import the dark matter sidm loop functions. */
+#define FUNCTION dark_matter_sidm
+#include "runner_doiact_functions_dark_matter.h"
+#undef
 

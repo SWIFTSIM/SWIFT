@@ -17,15 +17,6 @@
  *
  ******************************************************************************/
 
-
-/* Local headers. */
-#include "active.h"
-#include "dark_matter.h"
-#include "dark_matter_iact.h"
-#include "cell.h"
-#include "engine.h"
-#include "timers.h"
-
 #include "runner_doiact_dark_matter.h"
 
 /**
