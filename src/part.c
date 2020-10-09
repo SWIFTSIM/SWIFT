@@ -316,7 +316,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             gparts[k].x[2] != dmpart->x[2])
             error(
                   "Linked particles are not at the same position !\n"
-                  "gp->x=[%e %e %e] sp->x=[%e %e %e] diff=[%e %e %e]",
+                  "gp->x=[%e %e %e] dmp->x=[%e %e %e] diff=[%e %e %e]",
                   gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], dmpart->x[0],
                   dmpart->x[1], dmpart->x[2], gparts[k].x[0] - dmpart->x[0],
                   gparts[k].x[1] - dmpart->x[1], gparts[k].x[2] - dmpart->x[2]);

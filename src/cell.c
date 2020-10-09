@@ -5694,7 +5694,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
     if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
     
     /* Check that we are actually going to move forward. */
-    if (ti_current < ti_old_gpart) error("Attempt to drift to the past");
+    if (ti_current < ti_old_dmpart) error("Attempt to drift to the past");
 #endif
     
     /* Early abort? */

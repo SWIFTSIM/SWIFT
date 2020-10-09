@@ -6521,9 +6521,9 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_bparts * sizeof(struct bpart)) != 0)
     error("Failed to allocate new bpart array.");
 
-    if (swift_memalign("dmparts", (void **)&dmparts, dmpart_align,
-                       s->nr_dmparts * sizeof(struct dmpart)) != 0)
-        error("Failed to allocate new DMpart array.");
+  if (swift_memalign("dmparts", (void **)&dmparts, dmpart_align,
+                     s->nr_dmparts * sizeof(struct dmpart)) != 0)
+    error("Failed to allocate new DMpart array.");
 
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
@@ -6568,11 +6568,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           bparts[n].x[1] += shift[1];
           bparts[n].x[2] += shift[2];
         }
-          for (size_t n = offset * nr_dmparts; n < (offset + 1) * nr_dmparts; ++n) {
+        for (size_t n = offset * nr_dmparts; n < (offset + 1) * nr_dmparts; ++n) {
               dmparts[n].x[0] += shift[0];
               dmparts[n].x[1] += shift[1];
               dmparts[n].x[2] += shift[2];
-          }
+        }
         for (size_t n = offset * nr_sinks; n < (offset + 1) * nr_sinks; ++n) {
           sinks[n].x[0] += shift[0];
           sinks[n].x[1] += shift[1];
@@ -6582,7 +6582,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
         /* Set the correct links (recall gpart are sorted by type at start-up):
            first DM (unassociated gpart), then gas, then sinks, then stars */
           
-          if (nr_dmparts > 0 && nr_gparts > 0) {
+        if (nr_dmparts > 0 && nr_gparts > 0) {
               const size_t offset_dmpart = offset * nr_dmparts;
               const size_t offset_gpart = offset * nr_gparts;
               
@@ -6748,7 +6748,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
     s->dmparts[i].id_or_neg_offset = offset_dmparts + i;
   }
   for (size_t i = 0; i < local_nr_dmparts; ++i) {
-    if (s->gparts[i].type == swift_type_dark_matter_background)
+    if (s->gparts[i].type == swift_type_dark_matter ||
+        s->gparts[i].type == swift_type_dark_matter_background)
       s->gparts[i].id_or_neg_offset = offset_dmparts + i;
   }
 }

@@ -592,8 +592,8 @@ void read_ic_single(const char* fileName,
 
   /* Allocate memory to store all gravity particles */
   if (with_gravity) {
+    *Ndarkmatter = N[swift_type_dark_matter];
     Ndm = N[swift_type_dark_matter];
-    *Ndarkmatter = Ndm;
     if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
                          *Ndarkmatter * sizeof(struct dmpart)) != 0)
         error("Error while allocating memory for dark matter particles");
@@ -651,7 +651,7 @@ void read_ic_single(const char* fileName,
       case swift_type_dark_matter:
         if (with_gravity) {
           Nparticles = *Ndarkmatter;
-          darkmatter_read_particles(*gparts, list, &num_fields);
+          /*darkmatter_read_particles(*gparts, list, &num_fields);*/
           darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
         }
         break;
@@ -706,7 +706,7 @@ void read_ic_single(const char* fileName,
     threadpool_init(&tp, n_threads);
 
     /* Prepare the DM particles */
-    io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    /*io_prepare_dm_gparts(&tp, *gparts, Ndm);*/
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
