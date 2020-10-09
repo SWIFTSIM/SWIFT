@@ -109,6 +109,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   /* Read the minimum group size. */
   props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");
 
+  /* Read whether we're doing FoF calls to seed black holes. */
+  props->group_id_default = parser_get_param_int(
+      params, "FOF:seed_black_holes_enabled");
+
   /* Read the default group ID of particles in groups below the minimum group
    * size. */
   props->group_id_default = parser_get_opt_param_int(
