@@ -222,7 +222,7 @@ EAGLEAGN:
   AGN_with_locally_adaptive_delta_T:  1          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
   AGN_delta_T_mass_norm:              3e8        # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
   AGN_delta_T_mass_reference:         1e8        # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
-  AGN_delta_T_mass_exponent:          0.666667.  # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_exponent:          0.666667   # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
   AGN_delta_T_crit_factor:            1.0        # Multiple of critical dT for numerical efficiency (Dalla Vecchia & Schaye 2012) to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
   AGN_delta_T_background_factor:      0.0        # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
   AGN_delta_T_min:                    1e7        # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
