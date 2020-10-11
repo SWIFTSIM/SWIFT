@@ -350,10 +350,18 @@ and give the task an estimate of the computational cost that it will have in
 Similarly, you'll need to update ``case task_type_sub_self``, ``task_type_pair``, 
 and ``task_type_sub_pair`` as well.
 
+This activates your tasks once they've been created.
 
 
 Initially, the engine will need to skip the task that updates the particles.
 If this is the case for your task, you will need to add it in ``engine_skip_force_and_kick``.
+Additionally, the tasks will be marked as 'to be skipped' once they've been
+executed during a time step, and then reactivated during the next time step if
+they need to be executed again. This way, all the created tasks can be kept and
+don't need to be recreated every time step. In order to be unskipped however, 
+you need to add the unskipping manually to ``engine_do_unskip_mapper()`` in 
+``engine_unskip.c``.
+
 
 Finally, you also need to initialize your new variables and pointers in 
 ``space_rebuild_recycle_mapper`` in ``space.c``. Additionally, you need to 
