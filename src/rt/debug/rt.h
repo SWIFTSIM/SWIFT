@@ -37,6 +37,18 @@ rt_injection_update_photon_density(struct part* restrict p) {
 }
 
 /**
+ * @brief Compute the photon emission rates for this stellar particle
+ *        This function is called every time the spart is initialized
+ *        and assumes that the photon emission rate is an intrinsic
+ *        stellar property, i.e. doesn't depend on the environment.
+ */
+__attribute__((always_inline)) INLINE static void
+rt_compute_stellar_emission_rate(struct spart* restrict sp) {
+
+  sp->rt_data.emission_rate_set += 1;
+}
+
+/**
  * @brief Initialisation of the RT extra hydro particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
@@ -65,10 +77,15 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 __attribute__((always_inline)) INLINE static void rt_init_spart(
     struct spart* restrict sp) {
 
+  /* reset everything */
   sp->rt_data.calls_per_step = 0;
   sp->rt_data.iact_hydro_inject = 0;
   sp->rt_data.calls_self_inject = 0;
   sp->rt_data.calls_pair_inject = 0;
+  sp->rt_data.emission_rate_set = 0;
+
+  /* get current emission rate */
+  rt_compute_stellar_emission_rate(sp);
 }
 
 /**

@@ -32,6 +32,13 @@ __attribute__((always_inline)) INLINE static void
 rt_injection_update_photon_density(struct part* restrict p) {}
 
 /**
+ * @brief Compute the photon emission rates for this stellar particle
+ *        This function is called every time the spart is initialized
+ */
+__attribute__((always_inline)) INLINE static void
+rt_compute_stellar_emission_rate(struct spart* restrict sp) {}
+
+/**
  * @brief First initialisation of the RT extra hydro particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
@@ -53,6 +60,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
  * @brief First initialisation of the RT extra star particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+  rt_compute_stellar_emission_rate(sp);
+}
 
 #endif /* SWIFT_RT_NONE_H */

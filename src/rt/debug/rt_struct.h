@@ -50,6 +50,7 @@ struct rt_spart_data {
                             with */
   int calls_self_inject; /* calls from self inject tasks */
   int calls_pair_inject; /* calls from pair inject tasks */
+  int emission_rate_set; /* stellar photon emisison rate has been computed */
 };
 
 #endif /* SWIFT_RT_STRUCT_DEBUG_H */
