@@ -94,6 +94,9 @@ INLINE static int rt_write_stars(const struct spart* sparts,
                            "number of calls to this particle during one time "
                            "step in injection pair task");
 
-  return 5;
+  list[5] = io_make_output_field(
+      "RTEmissionRateSet", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts,
+      rt_data.emission_rate_set, "Stellar photon emission rates set?");
+  return 6;
 }
 #endif /* SWIFT_RT_IO_DEBUG_H */
