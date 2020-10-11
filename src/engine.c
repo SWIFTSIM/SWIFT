@@ -60,7 +60,7 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "cycle.h"
-#include "dark_matter.h"
+#include "dark_matter_properties.h"
 #include "debug.h"
 #include "distributed_io.h"
 #include "entropy_floor.h"
@@ -5568,6 +5568,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
+    free((void *)e->sidm_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->hydro_properties);
@@ -5637,6 +5638,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
+  dark_matter_props_struct_dump(e->sidm_properties, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
 #endif
@@ -5715,6 +5717,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   hydro_props_struct_restore(hydro_properties, stream);
   e->hydro_properties = hydro_properties;
 
+  struct sidm_props *sidm_properties =
+      (struct sidm_props *)malloc(sizeof(struct sidm_props));
+  dark_matter_props_struct_restore(sidm_properties, stream);
+  e->sidm_properties = sidm_properties;
+
   struct entropy_floor_properties *entropy_floor =
       (struct entropy_floor_properties *)malloc(
           sizeof(struct entropy_floor_properties));
@@ -5756,11 +5763,6 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
     
-  struct sidm_props *sidm_properties =
-    (struct sidm_props *)malloc(sizeof(struct sidm_props));
-  /*sidm_struct_restore(sidm, stream);*/
-  e->sidm_properties = sidm_properties;
-   
   struct black_holes_props *black_holes_properties =
       (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
   black_holes_struct_restore(black_holes_properties, stream);

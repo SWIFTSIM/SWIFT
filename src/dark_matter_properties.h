@@ -86,8 +86,8 @@ void sidm_props_init(struct sidm_props* sidm_props,
                      const struct cosmology* cosmo);
 
 /* Dump/restore. */
-/*void sidm_props_struct_dump(const struct sidm_props *p, FILE *stream);
-void sidm_props_struct_restore(struct sidm_props *p, FILE *stream);
-*/
+void dark_matter_props_struct_dump(struct sidm_props *sidm_props, FILE *stream);
+void dark_matter_props_struct_restore(struct sidm_props *sidm_props, FILE *stream);
+
 
 #endif /* SWIFT_DARK_MATTER_PROPERTIES_H */

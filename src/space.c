@@ -6323,11 +6323,11 @@ void space_init(struct space *s, struct swift_params *params,
       bparts[k].x[1] += shift[1];
       bparts[k].x[2] += shift[2];
     }
-      for (size_t k = 0; k < Ndmpart; k++) {
-          dmparts[k].x[0] += shift[0];
-          dmparts[k].x[1] += shift[1];
-          dmparts[k].x[2] += shift[2];
-      }
+    for (size_t k = 0; k < Ndmpart; k++) {
+      dmparts[k].x[0] += shift[0];
+      dmparts[k].x[1] += shift[1];
+      dmparts[k].x[2] += shift[2];
+    }
     for (size_t k = 0; k < Nsink; k++) {
       sinks[k].x[0] += shift[0];
       sinks[k].x[1] += shift[1];

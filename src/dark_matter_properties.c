@@ -30,6 +30,8 @@
 #include "parser.h"
 #include "units.h"
 #include "error.h"
+#include "restart.h"
+
 
 #define sidm_props_default_h_sidm FLT_MAX
 
@@ -61,24 +63,26 @@ void sidm_props_init(struct sidm_props* sidm_props,
 }
 
 /**
- * @brief Write a sidm_props struct to the given FILE as a stream of bytes.
- *
- * @param p the struct
- * @param stream the file stream
- */
-/*void sidm_props_struct_dump(const struct sidm_props *p, FILE *stream) {
-    restart_write_blocks((void *)p, sizeof(struct sidm_props), 1, stream,
-                         "sidm", "sidm props");
-}*/
-
-/**
- * @brief Restore a sidm_props struct from the given FILE as a stream of
+ * @brief Write a black_holes_props struct to the given FILE as a stream of
  * bytes.
  *
- * @param p the struct
+ * @param props the black hole properties struct
  * @param stream the file stream
  */
-/*void sidm_props_struct_restore(struct sidm_props *p, FILE *stream) {
-    restart_read_blocks((void *)p, sizeof(struct sidm_props), 1, stream, NULL,
-                        "sidm props");
-}*/
+void dark_matter_props_struct_dump(struct sidm_props *sidm_props, FILE *stream) {
+    restart_write_blocks((void *)sidm_props, sizeof(struct sidm_props), 1,
+                         stream, "sidmprops", "sidm props");
+}
+
+/**
+ * @brief Restore a black_holes_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param props the black hole properties struct
+ * @param stream the file stream
+ */
+void dark_matter_props_struct_restore(struct sidm_props *sidm_props, FILE *stream) {
+    restart_read_blocks((void *)sidm_props, sizeof(struct sidm_props), 1,
+                        stream, NULL, "sidm props");
+}
+
