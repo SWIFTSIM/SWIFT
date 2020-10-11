@@ -283,15 +283,16 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
             cell_ensure_tagged(ci);
 
             t_sidm = scheduler_addtask(s, task_type_send, task_subtype_dmpart,
-                                     ci->mpi.tag, 0, ci, cj);
+                                       ci->mpi.tag, 0, ci, cj);
             
             t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart,
                                      ci->mpi.tag, 0, ci, cj);
 
-            scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_sidm);
             
             scheduler_addunlock(s, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-            
+
+            scheduler_addunlock(s, ci->grav.super->dark_matter.drift, t_sidm);
+
             scheduler_addunlock(s, ci->super->timestep, t_ti);
         }
         
@@ -1072,6 +1073,8 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
         if (c->nodeID == e->nodeID) {
             
             /* Add tasks */
+            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart,task_subtype_none, 0, 0, c, NULL);
+
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
             
             /* Link implicit tasks? */
@@ -1080,24 +1083,11 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
         }
     }
     
-    /* We are below the super-cell but not below the maximal splitting depth */
-    else if ((c->grav.super != NULL) &&
-             ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
-        
-        /* Local tasks only... */
-        if (c->nodeID == e->nodeID) {
-            
-            /* Add tasks */
-            c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
-            
-            /* Link implicit tasks? */
-            scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
-            
-        }
-    }
-
     /* Recurse but not below the maximal splitting depth */
-    if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav))
+    /*if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav))*/
+
+    /* Recurse. */
+    if (c->split)
             for (int k = 0; k < 8; k++)
                 if (c->progeny[k] != NULL)
                     engine_make_hierarchical_tasks_dark_matter(e, c->progeny[k]);
@@ -3371,15 +3361,12 @@ void engine_make_dark_matter_tasks_mapper(void *map_data, int num_elements,
                     struct cell *cj = &cells[cjd];
                     
                     /* Is that neighbour local and does it have gas or star particles ? */
-                    if ((cid >= cjd) ||
-                        (cj->dark_matter.count == 0) ||
-                        (ci->nodeID != nodeID && cj->nodeID != nodeID))
+                    if ((cid >= cjd) || (cj->dark_matter.count == 0) || (ci->nodeID != nodeID && cj->nodeID != nodeID))
                         continue;
                     
                     /* Construct the pair task */
                     const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-                    scheduler_addtask(sched, task_type_pair, task_subtype_sidm, sid, 0,
-                                      ci, cj);
+                    scheduler_addtask(sched, task_type_pair, task_subtype_sidm, sid, 0, ci, cj);
                     
                 }
             }
@@ -3762,7 +3749,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Adding dependencies for dark matter stuff */
-  engine_link_dark_matter_tasks(e);
+  /*engine_link_dark_matter_tasks(e);*/
     
   if (e->verbose)
     message("Making links of dark matter tasks took %.3f %s.",

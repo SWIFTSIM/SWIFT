@@ -1956,7 +1956,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_self:
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
-            t->subtype == task_subtype_external_grav)
+            t->subtype == task_subtype_external_grav ||
+            t->subtype == task_subtype_sidm)
           qid = t->ci->grav.super->owner;
         else
           qid = t->ci->hydro.super->owner;
@@ -2045,7 +2046,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
         
-        } else if (t->subtype == task_subtype_sidm) {
+        } else if (t->subtype == task_subtype_dmpart) {
             
             count = t->ci->dark_matter.count;
             size = count * sizeof(struct dmpart);
@@ -2066,13 +2067,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = spart_mpi_type;
           buff = t->ci->stars.parts;
             
-        } else if (t->subtype == task_subtype_dmpart) {
-            
-            count = t->ci->dark_matter.count;
-            size = count * sizeof(struct dmpart);
-            type = dmpart_mpi_type;
-            buff = t->ci->dark_matter.parts;
-
         } else if (t->subtype == task_subtype_bpart_rho ||
                    t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
@@ -2211,13 +2205,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_sidm) {
-            
-            count = t->ci->dark_matter.count;
-            size = count * sizeof(struct dmpart);
-            type = dmpart_mpi_type;
-            buff = t->ci->dark_matter.parts;
 
         } else if (t->subtype == task_subtype_multipole) {
 

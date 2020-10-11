@@ -133,8 +133,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
                           int timer);
 void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
                           int timer);
-void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
-                          int timer);
+void runner_do_recv_dmpart(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
 
 #endif /* SWIFT_RUNNER_H */

@@ -283,19 +283,17 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 
 
 /**
- * @brief Construct the cell properties from the received #dmpart.
+ * @brief Construct the cell properties from the received #gpart.
  *
  * @param r The runner thread.
  * @param c The cell.
- * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
  * @param timer Are we timing this ?
  */
-void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
-                          int timer) {
+void runner_do_recv_dmpart(struct runner *r, struct cell *c, int timer) {
     
 #ifdef WITH_MPI
     
-    struct dmpart *restrict dmparts = c->dark_matter.parts;
+    const struct dmpart *restrict dmparts = c->dark_matter.parts;
     const size_t nr_dmparts = c->dark_matter.count;
     const integertime_t ti_current = r->e->ti_current;
     
@@ -315,7 +313,6 @@ void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
         
         /* Collect everything... */
         for (size_t k = 0; k < nr_dmparts; k++) {
-            
             if (dmparts[k].time_bin == time_bin_inhibited) continue;
             time_bin_min = min(time_bin_min, dmparts[k].time_bin);
             time_bin_max = max(time_bin_max, dmparts[k].time_bin);
@@ -330,18 +327,26 @@ void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
     else {
         for (int k = 0; k < 8; k++) {
             if (c->progeny[k] != NULL && c->progeny[k]->dark_matter.count > 0) {
-                runner_do_recv_dmpart(r, c->progeny[k], clear_sorts, 0);
-                ti_dark_matter_end_min =
-                min(ti_dark_matter_end_min, c->progeny[k]->dark_matter.ti_end_min);
-                ti_dark_matter_end_max =
-                max(ti_dark_matter_end_max, c->progeny[k]->dark_matter.ti_end_max);
+                runner_do_recv_dmpart(r, c->progeny[k], 0);
+                ti_dark_matter_end_min = min(ti_dark_matter_end_min, c->progeny[k]->dark_matter.ti_end_min);
+                ti_dark_matter_end_max = max(ti_dark_matter_end_max, c->progeny[k]->dark_matter.ti_end_max);
             }
         }
     }
     
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!(r->e->policy & engine_policy_timestep_sync) &&
+        !(r->e->policy & engine_policy_timestep_limiter) &&
+        ti_dark_matter_end_min < ti_current)
+    error(
+          "Received a cell at an incorrect time c->ti_end_min=%lld, "
+          "e->ti_current=%lld.",
+          ti_dark_matter_end_min, ti_current);
+#endif
+    
     /* ... and store. */
-    c->dark_matter.ti_end_min = ti_dark_matter_end_min;
-    c->dark_matter.ti_end_max = ti_dark_matter_end_max;
+    // c->dark_matter.ti_end_min = ti_dark_matter_end_min;
+    // c->dark_matter.ti_end_max = ti_dark_matter_end_max;
     c->dark_matter.ti_old_part = ti_current;
     
     if (timer) TIMER_TOC(timer_dorecv_dmpart);
