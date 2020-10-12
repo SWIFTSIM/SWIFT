@@ -7323,6 +7323,10 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_subsize_pair_stars", "space_subsize_pair_stars");
   restart_write_blocks(&space_subsize_self_stars, sizeof(int), 1, stream,
                        "space_subsize_self_stars", "space_subsize_self_stars");
+  restart_write_blocks(&space_subsize_pair_dark_matter, sizeof(int), 1, stream,
+                       "space_subsize_pair_dark_matter", "space_subsize_pair_dark_matter");
+  restart_write_blocks(&space_subsize_self_dark_matter, sizeof(int), 1, stream,
+                       "space_subsize_self_dark_matter", "space_subsize_self_dark_matter");
   restart_write_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream,
                        "space_subsize_pair_grav", "space_subsize_pair_grav");
   restart_write_blocks(&space_subsize_self_grav, sizeof(int), 1, stream,
@@ -7339,6 +7343,8 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_extra_dmparts, sizeof(int), 1, stream,
+                       "space_extra_dmparts", "space_extra_dmparts");
   restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                        "space_expected_max_nr_strays",
                        "space_expected_max_nr_strays");
@@ -7405,6 +7411,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_subsize_pair_stars");
   restart_read_blocks(&space_subsize_self_stars, sizeof(int), 1, stream, NULL,
                       "space_subsize_self_stars");
+  restart_read_blocks(&space_subsize_pair_dark_matter, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_dark_matter");
+  restart_read_blocks(&space_subsize_self_dark_matter, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_dark_matter");
   restart_read_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream, NULL,
                       "space_subsize_pair_grav");
   restart_read_blocks(&space_subsize_self_grav, sizeof(int), 1, stream, NULL,

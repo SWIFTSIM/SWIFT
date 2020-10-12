@@ -5581,7 +5581,6 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->cooling_func);
     free((void *)e->star_formation);
     free((void *)e->feedback_props);
-    free((void *)e->sidm_properties);
 #ifdef WITH_FOF
     free((void *)e->fof_properties);
 #endif
