@@ -31,6 +31,9 @@
 #include <hdf5.h>
 #endif
 
+/* Local includes. */
+#include "restart.h"
+
 /* Forward declarations */
 struct phys_const;
 struct unit_system;
@@ -86,8 +89,8 @@ void sidm_props_init(struct sidm_props* sidm_props,
                      const struct cosmology* cosmo);
 
 /* Dump/restore. */
-void dark_matter_props_struct_dump(struct sidm_props *sidm_props, FILE *stream);
-void dark_matter_props_struct_restore(struct sidm_props *sidm_props, FILE *stream);
+void dark_matter_props_struct_dump(const struct sidm_props *sidm_props, FILE *stream);
+void dark_matter_props_struct_restore(const struct sidm_props *sidm_props, FILE *stream);
 
 
 #endif /* SWIFT_DARK_MATTER_PROPERTIES_H */

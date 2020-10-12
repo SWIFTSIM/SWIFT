@@ -959,7 +959,7 @@ int main(int argc, char *argv[]) {
       bzero(&feedback_properties, sizeof(struct feedback_props));
 
     /* Initialise sidm properties */
-    bzero(&sidm_properties, sizeof(struct sidm_props));
+    /*bzero(&sidm_properties, sizeof(struct sidm_props));*/
     sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
 
       
