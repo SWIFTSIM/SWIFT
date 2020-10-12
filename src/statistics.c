@@ -746,6 +746,9 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           "the simulation. \n");
   fprintf(file, "#      Unit = %e gram * s**-1\n",
           units_cgs_conversion_factor(us, UNIT_CONV_MASS_PER_UNIT_TIME));
+  fprintf(file, "#      Unit = %e Msun/yr\n",
+          phys_const->const_year / phys_const->const_solar_mass);
+
   fprintf(file, "#\n");
   fprintf(
       file,
