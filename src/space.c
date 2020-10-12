@@ -3988,13 +3988,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
-  /* Check the depth. */
-  while (depth > (maxdepth = s->maxdepth)) {
-    atomic_cas(&s->maxdepth, maxdepth, depth);
-  }
-
   /* If the depth is too large, we have a problem and should stop. */
-  if (maxdepth > space_cell_maxdepth) {
+  if (depth > space_cell_maxdepth) {
     error(
         "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
         "most likely due to having too many particles at the exact same "
@@ -4131,7 +4126,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
-        if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
+        maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
 
@@ -4468,6 +4463,9 @@ void space_split_recursive(struct space *s, struct cell *c,
                s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
+
+  /* Store the global max depth */
+  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 
   /* Clean up. */
   if (allocate_buffer) {
@@ -7019,7 +7017,8 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
           c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-  fprintf(f, "%g, %g\n", c->hydro.h_max, c->stars.h_max);
+  fprintf(f, "%g, %g %i %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
+          c->maxdepth);
 
   /* Write children */
   for (int i = 0; i < 8; i++) {
@@ -7051,7 +7050,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
     fprintf(f,
             "hydro_count,stars_count,gpart_count,super,hydro_super,"
             "loc1,loc2,loc3,width1,width2,width3,");
-    fprintf(f, "hydro_h_max,stars_h_max\n");
+    fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
 
     /* Write root data */
     fprintf(f, "%i, ,-1,", root_id);
