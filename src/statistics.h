@@ -86,6 +86,9 @@ struct statistics {
   /*! Total metal mass in BH (internal units)*/
   double bh_Z_mass;
 
+  /*! Sum of instantaneous accretion rate of all BHs (internal units)*/
+  double bh_accretion_rate;
+
   /*! Momentum (internal units)*/
   double mom[3];
 
