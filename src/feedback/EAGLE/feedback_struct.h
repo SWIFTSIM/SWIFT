@@ -20,6 +20,10 @@
 #define SWIFT_FEEDBACK_STRUCT_EAGLE_H
 
 #include "chemistry_struct.h"
+#include "rays_struct.h"
+
+/*! The total number of rays used in stellar feedback */
+#define eagle_SNII_feedback_num_of_rays 1
 
 /**
  * @brief Feedback fields carried by each hydro particles
@@ -54,6 +58,9 @@ struct feedback_spart_data {
       /*! SPH-weighted metallicity of the neighbouring gas particles
        * (dimensionless) */
       float ngb_Z;
+
+      /*! Total (unweighted) number gas neighbours in the stellar kernel */
+      int ngb_N;
 
     } to_collect;
 
@@ -100,14 +107,17 @@ struct feedback_spart_data {
       /*! Energy change due to thermal and kinetic energy of ejecta */
       float energy;
 
-      /*! Probability to heating neighbouring gas particle for SNII feedback */
-      float SNII_heating_probability;
+      /*! Number of SNII energy injections in thermal form */
+      int SNII_num_of_thermal_energy_inj;
 
       /*! Change in energy from SNII feedback energy injection */
       float SNII_delta_u;
 
     } to_distribute;
   };
+
+  /* Instantiate ray structs for SNII isotropic feedback  */
+  struct ray_data SNII_rays[eagle_SNII_feedback_num_of_rays];
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_EAGLE_H */
