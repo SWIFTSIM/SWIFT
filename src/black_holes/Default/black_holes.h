@@ -157,6 +157,18 @@ black_holes_get_accretion_rate(const struct bpart* bp) {
 }
 
 /**
+ * @brief Return the total accreted gas mass of this BH.
+ *
+ * Empty BH model --> return 0.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double
+black_holes_get_accreted_mass(const struct bpart* bp) {
+  return 0.;
+}
+
+/**
  * @brief Update the properties of a black hole particles by swallowing
  * a gas particle.
  *
