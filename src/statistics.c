@@ -82,6 +82,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->star_Z_mass += b->star_Z_mass;
   a->bh_Z_mass += b->bh_Z_mass;
   a->bh_accretion_rate += b->bh_accretion_rate;
+  a->bh_accreted_mass += b->bh_accreted_mass;
   a->mom[0] += b->mom[0];
   a->mom[1] += b->mom[1];
   a->mom[2] += b->mom[2];
@@ -461,8 +462,9 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
       stats.E_pot_ext += m * external_gravity_get_potential_energy(
                                  time, potential, phys_const, gp);
 
-    /* Collect accretion rates. */
+    /* Collect accretion data. */
     stats.bh_accretion_rate += black_holes_get_accretion_rate(bp);
+    stats.bh_accreted_mass += black_holes_get_accreted_mass(bp);
   }
 
   /* Now write back to memory */
@@ -748,24 +750,34 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           units_cgs_conversion_factor(us, UNIT_CONV_MASS_PER_UNIT_TIME));
   fprintf(file, "#      Unit = %e Msun/yr\n",
           phys_const->const_year / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (28)  Total mass accreted by black holes in the simulation (not "
+          "including mass accreted by progenitors that have merged in the "
+          "current BHs). \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
 
   fprintf(file, "#\n");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
+      "%14s\n",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
-      "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)");
+      "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
+      "(28)");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+      "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
+      "%14s\n",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
       "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
-      "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate");
+      "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
+      "BH acc. mass");
 
   fflush(file);
 }
@@ -788,14 +800,14 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e\n",
+      "%14e %14e\n",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
       stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int,
       stats->E_pot, stats->E_rad, stats->entropy, stats->centre_of_mass[0],
       stats->centre_of_mass[1], stats->centre_of_mass[2], stats->mom[0],
       stats->mom[1], stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
-      stats->ang_mom[2], stats->bh_accretion_rate);
+      stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass);
 
   fflush(file);
 }
