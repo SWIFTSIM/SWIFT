@@ -24,6 +24,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "rays.h"
 #include "units.h"
 
 #include <strings.h>
@@ -32,7 +33,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct phys_const* phys_const,
                                const struct cosmology* cosmo, struct spart* sp,
                                const struct unit_system* us, const double age,
-                               const double dt);
+                               const double dt, const integertime_t ti_begin);
 
 /**
  * @brief Update the properties of a particle fue to feedback effects after
@@ -72,10 +73,13 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
     struct spart* sp) {
 
   sp->feedback_data.to_collect.enrichment_weight_inv = 0.f;
+  sp->feedback_data.to_collect.ngb_N = 0;
   sp->feedback_data.to_collect.ngb_mass = 0.f;
   sp->feedback_data.to_collect.ngb_rho = 0.f;
   sp->feedback_data.to_collect.ngb_Z = 0.f;
-  sp->feedback_data.to_collect.num_ngbs = 0;
+
+  /* Reset all ray structs carried by this star particle */
+  ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
 }
 
 /**
@@ -131,11 +135,11 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   /* Zero the energy to inject */
   sp->feedback_data.to_distribute.energy = 0.f;
 
-  /* Zero the SNII feedback probability */
-  sp->feedback_data.to_distribute.SNII_heating_probability = 0.f;
-
   /* Zero the SNII feedback energy */
   sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
+
+  /* Zero the SNII feedback properties */
+  sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj = 0;
 }
 
 /**
@@ -205,8 +209,8 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
 
   /* Compute amount of enrichment and feedback that needs to be done in this
    * step */
-  compute_stellar_evolution(feedback_props, phys_const, cosmo, sp, us,
-                            star_age_beg_step, dt);
+  compute_stellar_evolution(feedback_props, cosmo, sp, us, star_age_beg_step,
+                            dt, ti_begin);
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;
