@@ -30,7 +30,6 @@
 #include "parser.h"
 #include "units.h"
 #include "error.h"
-#include "restart.h"
 
 
 #define sidm_props_default_h_sidm FLT_MAX
@@ -44,23 +43,34 @@
  * @param params The parsed parameters.
  * @param hydro_props The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
- */
-void sidm_props_init(struct sidm_props* sidm_props,
-                     const struct phys_const* phys_const,
-                     const struct unit_system* us,
-                     struct swift_params* params,
-                     const struct cosmology* cosmo) {
+ */ 
+void sidm_props_init(struct sidm_props *p,
+                     const struct phys_const *phys_const,
+                     const struct unit_system *us,
+                     struct swift_params *params,
+                     const struct cosmology *cosmo) {
     
     /* Scattering cross section in physical units */
-    sidm_props->sigma_cgs = parser_get_param_double(params, "SIDM:sigma_cm2_g");
+    p->sigma_cgs = parser_get_param_float(params, "SIDM:sigma_cm2_g");
     
-    sidm_props->sigma = sidm_props->sigma_cgs / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+    p->sigma = p->sigma_cgs / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
     
-    sidm_props->sigma *= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+    p->sigma *= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) * units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
     
-    sidm_props->h_search_radius = parser_get_opt_param_float(params, "SIDM:h_sidm", sidm_props_default_h_sidm);
+    p->h_search_radius = parser_get_opt_param_float(params, "SIDM:h_sidm", sidm_props_default_h_sidm);
 
 }
+
+
+#if defined(HAVE_HDF5)
+void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p) {
+    
+    io_write_attribute_f(h_grpsph, "SIDM cross section [cgs units]", p->sigma_cgs);
+    io_write_attribute_f(h_grpsph, "SIDM cross section [internal units]", p->sigma);
+    io_write_attribute_f(h_grpsph, "SIDM search radius [internal units]", p->h_search_radius);
+
+}
+#endif
 
 /**
  * @brief Write a black_holes_props struct to the given FILE as a stream of
@@ -69,8 +79,8 @@ void sidm_props_init(struct sidm_props* sidm_props,
  * @param props the black hole properties struct
  * @param stream the file stream
  */
-void dark_matter_props_struct_dump(const struct sidm_props *sidm_props, FILE *stream) {
-    restart_write_blocks((void *)sidm_props, sizeof(struct sidm_props), 1,
+void dark_matter_props_struct_dump(const struct sidm_props *p, FILE *stream) {
+    restart_write_blocks((void *)p, sizeof(struct sidm_props), 1,
                          stream, "sidmprops", "sidm props");
 }
 
@@ -81,8 +91,8 @@ void dark_matter_props_struct_dump(const struct sidm_props *sidm_props, FILE *st
  * @param props the black hole properties struct
  * @param stream the file stream
  */
-void dark_matter_props_struct_restore(const struct sidm_props *sidm_props, FILE *stream) {
-    restart_read_blocks((void *)sidm_props, sizeof(struct sidm_props), 1,
+void dark_matter_props_struct_restore(const struct sidm_props *p, FILE *stream) {
+    restart_read_blocks((void *)p, sizeof(struct sidm_props), 1,
                         stream, NULL, "sidm props");
 }
 

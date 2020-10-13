@@ -37,6 +37,7 @@
 #include "cosmology.h"
 #include "cycle.h"
 #include "dark_matter.h"
+#include "dark_matter_properties.h"
 #include "debug.h"
 #include "dump.h"
 #include "engine.h"

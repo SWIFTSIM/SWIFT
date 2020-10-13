@@ -102,7 +102,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     double vij = sqrt(v2);
     
     /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    const float sigma = sidm_props->sigma;
     
     /* DM particle mass */
     const double mass_i = pi->mass;
@@ -156,7 +156,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     double vij = sqrt(v2);
     
     /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    const float sigma = sidm_props->sigma;
     
     /* DM particle mass */
     const double mass_i = pi->mass;

@@ -5629,6 +5629,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   hydro_props_struct_dump(e->hydro_properties, stream);
   entropy_floor_struct_dump(e->entropy_floor, stream);
   gravity_props_struct_dump(e->gravity_properties, stream);
+  dark_matter_props_struct_dump(e->sidm_properties, stream);
   stars_props_struct_dump(e->stars_properties, stream);
   pm_mesh_struct_dump(e->mesh, stream);
   potential_struct_dump(e->external_potential, stream);
@@ -5637,7 +5638,6 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
-  dark_matter_props_struct_dump(e->sidm_properties, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
 #endif
@@ -5716,11 +5716,6 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   hydro_props_struct_restore(hydro_properties, stream);
   e->hydro_properties = hydro_properties;
 
-  struct sidm_props *sidm_properties =
-      (struct sidm_props *)malloc(sizeof(struct sidm_props));
-  dark_matter_props_struct_restore(sidm_properties, stream);
-  e->sidm_properties = sidm_properties;
-
   struct entropy_floor_properties *entropy_floor =
       (struct entropy_floor_properties *)malloc(
           sizeof(struct entropy_floor_properties));
@@ -5731,6 +5726,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct gravity_props *)malloc(sizeof(struct gravity_props));
   gravity_props_struct_restore(gravity_properties, stream);
   e->gravity_properties = gravity_properties;
+    
+  struct sidm_props *sidm_properties =
+    (struct sidm_props *)malloc(sizeof(struct sidm_props));
+  dark_matter_props_struct_restore(sidm_properties, stream);
+  e->sidm_properties = sidm_properties;
 
   struct stars_props *stars_properties =
       (struct stars_props *)malloc(sizeof(struct stars_props));

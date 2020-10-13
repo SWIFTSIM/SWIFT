@@ -54,10 +54,10 @@ struct sidm_props {
     /*int with_sigma_constant;*/
 
     /* Scattering cross section (in physical units: cm^2/g) */
-    double sigma_cgs;
+    float sigma_cgs;
 
     /* Scattering cross section (in internal units) */
-    double sigma;
+    float sigma;
     
     /*! SIDM collisions search radius */
     float h_search_radius;
@@ -82,15 +82,20 @@ struct sidm_dmpart_data {
     float num_sidm;
 };
 
-void sidm_props_init(struct sidm_props* sidm_props,
-                     const struct phys_const* phys_const,
-                     const struct unit_system* us,
-                     struct swift_params* params,
-                     const struct cosmology* cosmo);
+
+void sidm_props_init(struct sidm_props *p,
+                     const struct phys_const *phys_const,
+                     const struct unit_system *us,
+                     struct swift_params *params,
+                     const struct cosmology *cosmo);
+
+#if defined(HAVE_HDF5)
+void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p);
+#endif
 
 /* Dump/restore. */
-void dark_matter_props_struct_dump(const struct sidm_props *sidm_props, FILE *stream);
-void dark_matter_props_struct_restore(const struct sidm_props *sidm_props, FILE *stream);
+void dark_matter_props_struct_dump(const struct sidm_props *p, FILE *stream);
+void dark_matter_props_struct_restore(const struct sidm_props *p, FILE *stream);
 
 
 #endif /* SWIFT_DARK_MATTER_PROPERTIES_H */
