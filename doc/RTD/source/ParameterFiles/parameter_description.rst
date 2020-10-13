@@ -285,7 +285,7 @@ along each axis needs to be specified. The mesh dithering is mostly used
 for simulations using periodic boundary conditions and in the absence of an
 external potential.  At each tree rebuild time, all the particles are moved
 by a random vector (the same for all particles) and the periodic BCs are
-then applied. This reduces the correlation of erros across time but is a
+then applied. This reduces the correlation of errors across time but is a
 very expensive operation. The remaining three values are best described in
 the context of the full set of equations in the theory documents.
 
@@ -297,7 +297,7 @@ simulation:
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
      eta:                    0.025
-     MAC:                    adpative
+     MAC:                    adaptive
      theta_cr:               0.6
      epsilon_fmm:            0.001
      mesh_side_length:       512
