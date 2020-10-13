@@ -45,7 +45,7 @@
 #include "proxy.h"
 #include "threadpool.h"
 
-void fof6d_calc_vel_disp(struct fof_props *props, const size_t num_parts_in_groups, struct space *s) {
+void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t num_parts_in_groups) {
 
   const int num_groups = props->num_groups;
   struct gpart *gparts = s->gparts;
@@ -58,20 +58,30 @@ void fof6d_calc_vel_disp(struct fof_props *props, const size_t num_parts_in_grou
   size_t *part_index = NULL;
 
   /* Allocate and initialise a velocity dispersion array. */
-  if (swift_memalign("6dfof_v_disp", (void **)&v_disp, 64,
+  if (swift_memalign("fof6d_v_disp", (void **)&v_disp, SWIFT_STRUCT_ALIGNMENT,
                      num_groups * sizeof(double)) != 0)
     error("Failed to allocate list of group velocity dispersions for 6DFOF search.");
 
-  if (swift_memalign("6dfof_v_mean", (void **)&v_mean, 64,
-                     num_groups * 3 * sizeof(double)) != 0)
+  if (swift_memalign("fof6d_v_mean[0]", (void **)&v_mean[0], SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(double)) != 0)
     error("Failed to allocate list of mean velocity for 6DFOF search.");
 
-  if (swift_memalign("6dfof_part_index", (void **)&part_index, 64,
+  if (swift_memalign("fof6d_v_mean[1]", (void **)&v_mean[1], SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(double)) != 0)
+    error("Failed to allocate list of mean velocity for 6DFOF search.");
+
+  if (swift_memalign("fof6d_v_mean[2]", (void **)&v_mean[2], SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(double)) != 0)
+    error("Failed to allocate list of mean velocity for 6DFOF search.");
+
+  if (swift_memalign("fof6d_part_index", (void **)&part_index, SWIFT_STRUCT_ALIGNMENT,
                      num_parts_in_groups * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle indices in groups for 6DFOF search.");
 
   bzero(v_disp, num_groups * sizeof(double));
-  bzero(v_mean, num_groups * sizeof(double));
+  bzero(v_mean[0], num_groups * sizeof(double));
+  bzero(v_mean[1], num_groups * sizeof(double));
+  bzero(v_mean[2], num_groups * sizeof(double));
   bzero(part_index, num_parts_in_groups * sizeof(size_t));
   
   size_t part_ctr = 0;
@@ -82,32 +92,32 @@ void fof6d_calc_vel_disp(struct fof_props *props, const size_t num_parts_in_grou
     const size_t group_id = gparts[i].fof_data.group_id;
 
     if(group_id != fof_props_default_group_id) {
-       v_mean[group_id][0] += gparts[i].mass * gparts[i].v_full[0]; 
-       v_mean[group_id][1] += gparts[i].mass * gparts[i].v_full[1]; 
-       v_mean[group_id][2] += gparts[i].mass * gparts[i].v_full[2];
+       v_mean[0][group_id - 1] += gparts[i].mass * gparts[i].v_full[0]; 
+       v_mean[1][group_id - 1] += gparts[i].mass * gparts[i].v_full[1]; 
+       v_mean[2][group_id - 1] += gparts[i].mass * gparts[i].v_full[2];
 
        /* JSW TODO: Could be calculated in fof_search_tree */
        part_index[part_ctr++] = i;
-    } 
+    }
   }
   
   for (int i = 0; i < num_groups; i++) {
     const double one_over_mass = 1.0 / group_mass[i];
 
-    v_mean[i][0] *= one_over_mass; 
-    v_mean[i][1] *= one_over_mass; 
-    v_mean[i][2] *= one_over_mass;
+    v_mean[0][i] *= one_over_mass; 
+    v_mean[1][i] *= one_over_mass; 
+    v_mean[2][i] *= one_over_mass;
   }
 
   /* Calculate the velocity dispersion for each group. */
   for (size_t i = 0; i < num_parts_in_groups; i++) {
     
     const size_t index = part_index[i];
-    const size_t group_id = gparts[index].fof_data.group_id;
+    const size_t group_id = gparts[index].fof_data.group_id - 1;
 
-    const double v_diff[3] = {gparts[index].v_full[0] - v_mean[group_id][0],
-                              gparts[index].v_full[1] - v_mean[group_id][1],
-                              gparts[index].v_full[2] - v_mean[group_id][2]};
+    const double v_diff[3] = {gparts[index].v_full[0] - v_mean[0][group_id],
+                              gparts[index].v_full[1] - v_mean[1][group_id],
+                              gparts[index].v_full[2] - v_mean[2][group_id]};
 
     v_disp[group_id] += (v_diff[0] * v_diff[0] + 
                          v_diff[1] * v_diff[1] + 
@@ -116,7 +126,14 @@ void fof6d_calc_vel_disp(struct fof_props *props, const size_t num_parts_in_grou
 
   for (int i = 0; i < num_groups; i++) {
     v_disp[i] /= group_mass[i];
+    message("v_disp[%d]: %lf, v_mean: [%lf, %lf, %lf], group_mass: %lf", i, v_disp[i], v_mean[0][i], v_mean[1][i], v_mean[2][i], group_mass[i]);
   }
+
+  swift_free("fof6d_v_disp", v_disp);
+  swift_free("fof6d_v_mean[0]", v_mean[0]);
+  swift_free("fof6d_v_mean[1]", v_mean[1]);
+  swift_free("fof6d_v_mean[2]", v_mean[2]);
+  swift_free("fof6d_part_index", part_index);
 
 }
 

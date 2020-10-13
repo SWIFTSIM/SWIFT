@@ -43,6 +43,7 @@
 #include "memuse.h"
 #include "proxy.h"
 #include "threadpool.h"
+#include "fof6d.h"
 
 /* Constants. */
 #define UNION_BY_SIZE_OVER_MPI (1)
@@ -2966,6 +2967,9 @@ void fof_search_tree(struct fof_props *props,
     fof_seed_black_holes(props, bh_props, constants, cosmo, s, num_groups_local,
                          high_group_sizes);
   }
+
+  /* Find 6DFOF groups. */
+  fof6d_calc_vel_disp(props, s, num_parts_in_groups);
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);

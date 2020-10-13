@@ -36,6 +36,6 @@ struct phys_const;
 struct cosmology;
 
 /* Function prototypes. */
-void fof6d_calc_vel_disp(struct fof_props *props, const size_t num_parts_in_groups, struct space *s);
+void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t num_parts_in_groups); 
 
 #endif /* SWIFT_FOF6D_H */
