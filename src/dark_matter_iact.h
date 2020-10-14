@@ -33,7 +33,8 @@
  *
  */
 __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict pj,
-                                                               struct dmpart *restrict pi, const integertime_t ti_current) {
+                                                               struct dmpart *restrict pi,
+                                                               const integertime_t ti_current) {
     
     /* Center of Mass Velocity of interacting particles */
     const double VCM[3] = {(pi->sidm_data.si_v_full[0] + pj->sidm_data.si_v_full[0])/2.0, (pi->sidm_data.si_v_full[1] + pj->sidm_data.si_v_full[1])/2.0, (pi->sidm_data.si_v_full[2] + pj->sidm_data.si_v_full[2])/2.0};
@@ -128,8 +129,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
     
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) sidm_do_kick(pi, pj, ti_current);
+    if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
+        
+        /*! change flag to indicate the particles have collided! */
+        pj->sidm_data.sidm_flag = 1;
+        pi->sidm_data.sidm_flag = 1;
 
+    }
+    /*sidm_do_kick(pi, pj, ti_current);*/
 }
 
 /**
@@ -177,7 +184,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > rand) sidm_do_kick(pi, pj, ti_current);    
+    if (Probability_SIDM_i > rand) {
+        
+        /*! change flag to indicate the particles have collided! */
+        pj->sidm_data.sidm_flag = 1;
+        pi->sidm_data.sidm_flag = 1;
+
+    }/*sidm_do_kick(pi, pj, ti_current);  */
 }
 
 

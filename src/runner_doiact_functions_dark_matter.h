@@ -36,6 +36,13 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     const int with_cosmology = e->policy & engine_policy_cosmology;
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
+        
+#ifdef WITH_MPI
+    struct space *s = e->s;
+    struct dmpart *dmparts_foreign = s->dmparts_foreign;
+    const size_t nr_dmparts_foreign = s->nr_dmparts_foreign;
+#endif
+
     
     TIMER_TIC;
     
@@ -140,6 +147,31 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
                 
             }
+            
+#ifdef WITH_MPI
+
+            /* If hit then calculate collisions/change of direction and update velocities */
+            if (pi->sidm_data.sidm_flag == 1){
+
+                /* First check whether one of the local particles has been hit by foreign part */
+                for (size_t pidf = 0; pidf < nr_dmparts_foreign; ++pidf) {
+                    
+                    struct dmpart *dmpf = &dmparts_foreign[pidf];
+                    
+                    /* Get a handle on the dm foreign part. */
+                    if ((dmpf->id_or_neg_offset == pi->id_or_neg_offset) || (dmpf->id_or_neg_offset == pj->id_or_neg_offset)) {
+                        
+                        if (dmpf->sidm_data.sidm_flag == 1) {
+                        
+                        message("Local dmpart has been hit by a foreign one)");
+                        
+                        }
+                    }
+                }
+            }
+#endif
+
+            
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
         
