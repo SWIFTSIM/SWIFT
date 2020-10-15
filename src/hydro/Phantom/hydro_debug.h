@@ -18,14 +18,17 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_DEFAULT_HYDRO_DEBUG_H
-#define SWIFT_DEFAULT_HYDRO_DEBUG_H
+#ifndef SWIFT_PHANTOM_HYDRO_DEBUG_H
+#define SWIFT_PHANTOM_HYDRO_DEBUG_H
 
 /**
- * @file Default/hydro_debug.h
+ * @file Phantom/hydro_debug.h
  * @brief Density-Energy conservative implementation of SPH,
  *        with added diffusive physics (Cullen & Denhen 2011 AV,
  *        Price 2017 (PHANTOM) diffusion) (Debugging routines)
+ *
+ *        This is a base reference implementation
+ *        similar to the one presented in Price 2018.
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
@@ -44,4 +47,4 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->viscosity.alpha, p->time_bin);
 }
 
-#endif /* SWIFT_DEFAULT_HYDRO_DEBUG_H */
+#endif /* SWIFT_PHANTOM_HYDRO_DEBUG_H */
