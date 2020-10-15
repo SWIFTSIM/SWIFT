@@ -19,6 +19,9 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLE_PART_H
 #define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
+/*! The total number of rays used in AGN feedback */
+#define eagle_blackhole_number_of_rays 50
+
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "timeline.h"
@@ -169,11 +172,35 @@ struct bpart {
   /*! Instantaneous temperature increase for feedback */
   float AGN_delta_T;
 
-  /*! Instantaneous energy reservoir threshold (num-to-heat) */
-  float num_ngbs_to_heat;
-
   /*! Eddington fractions */
   float eddington_fraction;
+
+  /*! Integer (cumulative) number of energy injections in AGN feedback. At a
+   * given time-step, an AGN-active BH may produce multiple energy injections.
+   * The number of energy injections is equal to or more than the number of
+   * particles heated by the BH during this time-step. */
+  int AGN_number_of_energy_injections;
+
+  /*! Integer (cumulative) number of AGN events. If a BH does feedback at a
+   * given time-step, the number of its AGN events is incremented by 1. Each
+   * AGN event may have multiple energy injections. */
+  int AGN_number_of_AGN_events;
+
+  /* Total energy injected into the gas in AGN feedback by this BH */
+  float AGN_cumulative_energy;
+
+  /*! BH accretion-limited time-step */
+  float dt_heat;
+
+  /*! Union for the last AGN event time and the last AGN event scale factor */
+  union {
+
+    /*! Last AGN event time */
+    float last_AGN_event_time;
+
+    /*! Last AGN event scale-factor */
+    float last_AGN_event_scale_factor;
+  };
 
   /*! Union for the last high Eddington ratio point in time */
   union {
@@ -208,8 +235,8 @@ struct bpart {
   /*! Properties used in the feedback loop to distribute to gas neighbours. */
   struct {
 
-    /*! Probability of heating neighbouring gas particles for AGN feedback */
-    float AGN_heating_probability;
+    /*! Number of energy injections per time-step */
+    int AGN_number_of_energy_injections;
 
     /*! Change in energy from SNII feedback energy injection */
     float AGN_delta_u;
@@ -235,6 +262,9 @@ struct bpart {
 
   /*! Black holes merger information (e.g. merging ID) */
   struct black_holes_bpart_data merger_data;
+
+  /*! Isotropic AGN feedback information */
+  struct ray_data rays[eagle_blackhole_number_of_rays];
 
 #ifdef SWIFT_DEBUG_CHECKS
 

@@ -22,6 +22,13 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
+#include <string.h>
+
+enum AGN_feedback_models {
+  AGN_isotropic_model,       /*< Isotropic model of AGN feedback */
+  AGN_minimum_distance_model /*< Minimum-distance model of AGN feedback */
+};
+
 /**
  * @brief Properties of black holes and AGN feedback in the EAGEL model.
  */
@@ -105,6 +112,12 @@ struct black_holes_props {
   float min_gas_mass_for_nibbling;
 
   /* ---- Properties of the feedback model ------- */
+
+  /*! AGN feedback model: isotropic or minimum distance */
+  enum AGN_feedback_models feedback_model;
+
+  /*! Is the AGN feedback model deterministic or stochastic? */
+  int AGN_deterministic;
 
   /*! Feedback coupling efficiency of the black holes. */
   float epsilon_f;
@@ -347,6 +360,21 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   }
 
   /* Feedback parameters ---------------------------------- */
+
+  char temp[40];
+  parser_get_param_string(params, "EAGLEAGN:AGN_feedback_model", temp);
+  if (strcmp(temp, "Isotropic") == 0)
+    bp->feedback_model = AGN_isotropic_model;
+  else if (strcmp(temp, "MinimumDistance") == 0)
+    bp->feedback_model = AGN_minimum_distance_model;
+  else
+    error(
+        "The AGN feedback model must be either MinimumDistance or Isotropic, "
+        "not %s",
+        temp);
+
+  bp->AGN_deterministic =
+      parser_get_param_int(params, "EAGLEAGN:AGN_use_deterministic_feedback");
 
   bp->epsilon_f =
       parser_get_param_float(params, "EAGLEAGN:coupling_efficiency");
