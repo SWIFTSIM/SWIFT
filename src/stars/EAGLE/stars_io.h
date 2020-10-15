@@ -120,7 +120,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 11;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -181,6 +181,11 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            0.f, sparts, birth_temperature,
                            "Temperatures at the time of birth of the gas "
                            "particles that turned into stars");
+
+  list[11] = io_make_output_field(
+      "FeedbackNumberOfHeatingEvents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      sparts, number_of_heating_events,
+      "Expected number of particles that were heated by each star particle.");
 }
 
 /**

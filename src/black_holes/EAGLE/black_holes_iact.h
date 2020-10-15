@@ -81,11 +81,9 @@ runner_iact_nonsym_bh_gas_density(
   /* Contribution to the total neighbour mass */
   bi->ngb_mass += mj;
 
-  /* Neighbour sound speed */
-  const float cj = hydro_get_comoving_soundspeed(pj);
-
   /* Contribution to the smoothed sound speed */
-  bi->sound_speed_gas += mj * cj * wi;
+  const float cj = hydro_get_comoving_soundspeed(pj);
+  bi->sound_speed_gas += mj * wi * cj;
 
   /* Neighbour internal energy */
   const float uj = hydro_get_drifted_comoving_internal_energy(pj);

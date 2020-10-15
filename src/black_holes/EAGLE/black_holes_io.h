@@ -21,6 +21,7 @@
 
 #include "adiabatic_index.h"
 #include "black_holes_part.h"
+#include "black_holes_properties.h"
 #include "io_properties.h"
 
 /**
@@ -125,6 +126,18 @@ INLINE static void convert_bpart_gas_circular_vel(const struct engine* e,
   ret[2] = bp->circular_velocity_gas[2] * cosmo->a_inv;
 }
 
+INLINE static void convert_bpart_gas_temperatures(const struct engine* e,
+                                                  const struct bpart* bp,
+                                                  float* ret) {
+
+  const struct black_holes_props* props = e->black_holes_properties;
+  const struct cosmology* cosmo = e->cosmology;
+
+  /* Conversion from specific internal energy to temperature */
+  ret[0] = bp->internal_energy_gas * cosmo->a_factor_internal_energy /
+           props->temp_to_u_factor;
+}
+
 /**
  * @brief Specifies which b-particle fields to write to a dataset
  *
@@ -139,7 +152,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 33;
+  *num_fields = 38;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -352,6 +365,39 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       AGN_delta_T,
       "Temperature by which gas particles have been heated by the black hole "
       "particles in the most recent feedback event.");
+
+  list[33] = io_make_output_field(
+      "LastRepositionVelocities", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,
+      last_repos_vel,
+      "Physical speeds at which the black holes repositioned most recently. "
+      "This is 0 for black holes that have never repositioned, or if the "
+      "simulation has been run without prescribed repositioning speed.");
+
+  list[34] = io_make_output_field(
+      "AccretionBoostFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      accretion_boost_factor,
+      "Multiplicative factors by which the Bondi-Hoyle-Lyttleton accretion "
+      "rates have been increased by the density-dependent Booth & Schaye "
+      "(2009) accretion model.");
+
+  list[35] = io_make_output_field_convert_bpart(
+      "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
+      convert_bpart_gas_temperatures,
+      "Temperature of the gas surrounding the black holes.");
+
+  list[36] = io_make_output_field(
+      "EnergyReservoirThresholds", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      num_ngbs_to_heat,
+      "Minimum energy reservoir required for the black holes to do feedback, "
+      "expressed in units of the (constant) target heating temperature "
+      "increase.");
+
+  list[37] = io_make_output_field(
+      "EddingtonFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      eddington_fraction,
+      "Accretion rates of black holes in units of their Eddington rates. "
+      "This is based on the unlimited accretion rates, so these fractions "
+      "can be above the limiting fEdd.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

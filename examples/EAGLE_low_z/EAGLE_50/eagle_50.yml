@@ -168,7 +168,8 @@ EAGLEFeedback:
   SNII_energy_fraction_n_0_H_p_cm3:     1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:             0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:             0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNII_energy_fraction_use_birth_props: 1               # Are we using the density and metallicity at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_density: 1             # Are we using the density at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_metallicity: 1         # Are we using the metallicity at birth to compuote f_E or at feedback time?
   SNIa_DTD:                             PowerLaw        # Functional form of the SNIa delay time distribution.
   SNIa_DTD_delay_Gyr:                   0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
   SNIa_DTD_power_law_norm_p_Msun:       0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
@@ -205,8 +206,10 @@ EAGLEAGN:
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   use_variable_delta_T:               0          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
   AGN_with_locally_adaptive_delta_T:  0          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
-  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (only used if use_variable_delta_T is 0).
-  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (only used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1).
+  AGN_use_nheat_with_fixed_dT:        0          # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
+  AGN_use_adaptive_energy_reservoir_threshold: 0 # Switch to calculate an adaptive AGN energy reservoir threshold.
+  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
   max_reposition_mass:                2e8        # Maximal BH mass considered for BH repositioning in solar masses.
   max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
   with_reposition_velocity_threshold: 1          # Should we only reposition to particles that move slowly w.r.t. the black hole?
