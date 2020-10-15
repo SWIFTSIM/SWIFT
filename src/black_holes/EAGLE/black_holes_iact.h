@@ -197,6 +197,26 @@ runner_iact_nonsym_bh_gas_density(
       ray_minimise_distance(r, bi->rays, arr_size, gas_id, pj->mass);
       break;
     }
+    case AGN_random_ngb_model: {
+      /* Compute the size of the array that we want to sort. If the current
+       * function is called for the first time (at this time-step for this BH),
+       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
+       * maximum size of the sorted array cannot be larger then the maximum
+       * number of rays. */
+      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
+
+      /* To mimic a random draw among all the particles in the kernel, we
+       * draw random distances in [0,1) and then pick the particle(s) with
+       * the smallest of these 'fake' distances */
+      const float dist = random_unit_interval_two_IDs(
+          bi->id, pj->id, ti_current, random_number_BH_feedback);
+
+      /* Minimise separation between the gas particles and the BH. The rays
+       * structs with smaller ids in the ray array will refer to the particles
+       * with smaller distances to the BH. */
+      ray_minimise_distance(dist, bi->rays, arr_size, gas_id, pj->mass);
+      break;
+    }
   }
 }
 
