@@ -183,6 +183,10 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          struct cell *restrict ci, struct cell *restrict cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
+void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
+                                        void *extra_data);
+size_t fof_find(const size_t i, size_t *group_index);
+void fof_union(size_t *root_i, const size_t root_j, size_t *group_index);
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype fof_mpi_type;

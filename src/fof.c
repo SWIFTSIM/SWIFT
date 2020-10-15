@@ -528,7 +528,7 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
  * @param i The index of the particle.
  * @param group_index Array of group root indices.
  */
-__attribute__((always_inline)) INLINE static size_t fof_find(
+__attribute__((always_inline)) INLINE size_t fof_find(
     const size_t i, size_t *group_index) {
 
   size_t root = i;
@@ -585,7 +585,7 @@ __attribute__((always_inline)) INLINE static int atomic_update_root(
  * @param root_j The root of the second group.
  * @param group_index The list of group roots.
  */
-__attribute__((always_inline)) INLINE static void fof_union(
+__attribute__((always_inline)) INLINE void fof_union(
     size_t *root_i, const size_t root_j, size_t *group_index) {
 
   int result = 0;
