@@ -348,12 +348,19 @@ __attribute__((always_inline)) INLINE static float colibre_convert_u_to_temp(
       colibre_cooling_N_internalenergy, colibre_cooling_N_metallicity,
       colibre_cooling_N_density);
 
-  /* Special case for temperatures below the start of the table */
+  /* General interpolation returns u for the first (or last) element
+   * but we want to extrapolate in this case. We assume that the u-T relation
+   * does not change outside the table range */
   if (u_index == 0 && d_u == 0.f) {
 
     /* The temperature is multiplied by u / 10^T[0]
      * where T[0] is the first entry in the table */
     log_10_T += log_10_u_cgs - cooling->Temp[0];
+
+  } else if (u_index >= colibre_cooling_N_internalenergy - 2 && d_u == 1.f) {
+
+    log_10_T +=
+        log_10_u_cgs - cooling->Therm[colibre_cooling_N_internalenergy - 1];
   }
 
   return log_10_T;
@@ -400,6 +407,17 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
       d_T, d_met, d_n_H, colibre_cooling_N_redshifts,
       colibre_cooling_N_temperature, colibre_cooling_N_metallicity,
       colibre_cooling_N_density);
+
+  /* General interpolation returns u for the first (or last) element
+   * but we want to extrapolate in this case. We assume that the u-T relation
+   * does not change outside the table range */
+  if (T_index == 0 && d_T == 0.f) {
+
+    log_10_U += cooling->Temp[0] - log_10_T;
+  } else if (T_index >= colibre_cooling_N_temperature - 2 && d_T == 1.f) {
+
+    log_10_U += cooling->Temp[colibre_cooling_N_temperature - 1] - log_10_T;
+  }
 
   return log_10_U;
 }
