@@ -29,6 +29,7 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "physical_constants.h"
+#include "random.h"
 
 /* Standard includes */
 #include <float.h>
@@ -72,7 +73,7 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
    * rate. The time is multiplied by the number of Ngbs to heat because
    * if more particles are heated at once then the time between different
    * AGN feedback events increases proportionally. */
-  const double dt_heat = E_heat * bp->num_ngbs_to_heat / Energy_rate;
+  const double dt_heat = E_heat * props->num_ngbs_to_heat / Energy_rate;
 
   /* The new timestep of the BH cannot be smaller than the miminum allowed
    * time-step */
@@ -174,7 +175,6 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.potential = FLT_MAX;
   bp->accretion_rate = 0.f; /* Optionally accumulated ngb-by-ngb */
   bp->f_visc = FLT_MAX;
-  bp->accretion_boost_factor = -FLT_MAX;
   bp->mass_at_start_of_step = bp->mass; /* bp->mass may grow in nibbling mode */
 }
 
@@ -600,7 +600,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     const struct phys_const* constants, const struct cosmology* cosmo,
     const struct cooling_function_data* cooling,
     const struct entropy_floor_properties* floor_props, const double time,
-    const int with_cosmology, const double dt) {
+    const int with_cosmology, const double dt, const integertime_t ti_begin) {
 
   /* Record that the black hole has another active time step */
   bp->number_of_time_steps++;
@@ -618,6 +618,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double f_Edd_recording = props->f_Edd_recording;
   const double epsilon_r = props->epsilon_r;
   const double epsilon_f = props->epsilon_f;
+  const double num_ngbs_to_heat = props->num_ngbs_to_heat;
   const int with_angmom_limiter = props->with_angmom_limiter;
 
   /* (Subgrid) mass of the BH (internal units) */
@@ -841,56 +842,157 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   bp->accreted_angular_momentum[2] +=
       bp->circular_velocity_gas[2] * mass_rate * dt / bp->h;
 
+  /* Below we compute energy required to have a feedback event(s)
+   * Note that we have subtracted the particles we swallowed from the ngb_mass
+   * and num_ngbs accumulators. */
+
   /* Now find the temperature increase for a possible feedback event */
   const double delta_T = black_hole_feedback_delta_T(bp, props, cosmo);
   bp->AGN_delta_T = delta_T;
-  const double delta_u = delta_T * props->temp_to_u_factor;
+  double delta_u = delta_T * props->temp_to_u_factor;
   const double delta_u_ref =
       props->AGN_use_nheat_with_fixed_dT
           ? props->AGN_delta_T_desired * props->temp_to_u_factor
           : delta_u;
 
-  /* Energy required to have a feedback event.
-   * Note that we have subtracted particles we may have swallowed from the
-   * ngb_mass and num_ngbs accumulators already. */
-  const double num_ngbs_to_heat =
-      black_hole_energy_reservoir_threshold(bp, props);
+  /* Energy required to have a feedback event
+   * Note that we have subtracted the particles we swallowed from the ngb_mass
+   * and num_ngbs accumulators. */
   const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
   const double E_feedback_event =
       num_ngbs_to_heat * delta_u_ref * mean_ngb_mass;
 
+  /* Compute and store BH accretion-limited time-step */
+  if (luminosity > 0.) {
+    const float dt_acc = delta_u * mean_ngb_mass * props->num_ngbs_to_heat /
+                         (luminosity * props->epsilon_f);
+    bp->dt_heat = max(dt_acc, props->time_step_min);
+  } else {
+    bp->dt_heat = FLT_MAX;
+  }
+
   /* Are we doing some feedback? */
   if (bp->energy_reservoir > E_feedback_event) {
 
-    /* Default probability of heating */
-    double target_prob = bp->energy_reservoir / (delta_u * bp->ngb_mass);
+    int number_of_energy_injections;
 
-    /* Calculate the change in internal energy of the gas particles that get
-     * heated. Adjust the prbability if needed. */
-    double gas_delta_u;
-    double prob;
-    if (target_prob <= 1.) {
+    /* How are we doing feedback? */
+    if (props->AGN_deterministic) {
 
-      /* Normal case */
-      prob = target_prob;
-      gas_delta_u = delta_u;
+      number_of_energy_injections =
+          (int)(bp->energy_reservoir / (delta_u * mean_ngb_mass));
 
     } else {
 
-      /* Special case: we need to adjust the energy irrespective of the
-       * desired deltaT to ensure we inject all the available energy. */
+      /* Probability of heating. */
+      const double prob = bp->energy_reservoir / (delta_u * bp->ngb_mass);
 
-      prob = 1.;
-      gas_delta_u = bp->energy_reservoir / bp->ngb_mass;
+      /* Compute the number of energy injections based on probability */
+      if (prob < 1.) {
+
+        /* Initialise counter of energy injections */
+        number_of_energy_injections = 0;
+
+        /* How many AGN energy injections will we get? */
+        for (int i = 0; i < bp->num_ngbs; i++) {
+          const double rand = random_unit_interval_part_ID_and_ray_idx(
+              bp->id, i, ti_begin, random_number_BH_feedback);
+          /* Increase the counter if we are lucky */
+          if (rand < prob) number_of_energy_injections++;
+        }
+
+      } else {
+
+        /* We want to use up all energy avaliable in the reservoir. Therefore,
+         * number_of_energy_injections is > or = props->num_ngbs_to_heat */
+        number_of_energy_injections =
+            (int)(bp->energy_reservoir / (delta_u * mean_ngb_mass));
+      }
+    }
+
+    /* Maximum number of energy injections allowed */
+    const int N_energy_injections_allowed =
+        min(eagle_blackhole_number_of_rays, bp->num_ngbs);
+
+    /* If there are more energy-injection events than min(the number of Ngbs in
+     * the kernel, maximum number of rays) then lower the number of events &
+     * proportionally increase the energy per event */
+    if (number_of_energy_injections > N_energy_injections_allowed) {
+
+      /* Increase the thermal energy per event */
+      const double alpha_thermal = (double)number_of_energy_injections /
+                                   (double)N_energy_injections_allowed;
+
+      delta_u *= alpha_thermal;
+
+      /* Lower the maximum number of events to the max allowed value */
+      number_of_energy_injections = N_energy_injections_allowed;
+    }
+
+    /* Compute how much energy will be deposited onto the gas */
+    /* Note that it will in general be different from E_feedback_event if
+     * gas particles are of different mass. */
+    double Energy_deposited = 0.0;
+
+    /* Count the number of unsuccessful energy injections (e.g., if the particle
+     * that the BH wants to heat has been swallowed and thus no longer exists)
+     */
+    int N_unsuccessful_energy_injections = 0;
+
+    for (int i = 0; i < number_of_energy_injections; i++) {
+
+      /* If the gas particle that the BH wants to heat has just been swallowed
+       * by the same BH, increment the counter of unsuccessful injections. If
+       * the particle has not been swallowed by the BH, increase the energy that
+       * will later be subtracted from the BH's energy reservoir. */
+      if (bp->rays[i].id_min_length != -1)
+        Energy_deposited += delta_u * bp->rays[i].mass;
+      else
+        N_unsuccessful_energy_injections++;
     }
 
     /* Store all of this in the black hole for delivery onto the gas. */
-    bp->to_distribute.AGN_heating_probability = prob;
-    bp->to_distribute.AGN_delta_u = gas_delta_u;
+    bp->to_distribute.AGN_delta_u = delta_u;
+    bp->to_distribute.AGN_number_of_energy_injections =
+        number_of_energy_injections;
 
-    /* Decrement the energy in the reservoir by the mean expected energy */
-    const double energy_used = bp->energy_reservoir / max(prob, 1.);
-    bp->energy_reservoir -= energy_used;
+    /* Subtract the deposited energy from the BH energy reservoir. Note
+     * that in the stochastic case, the resulting value might be negative.
+     * This happens when (due to the probabilistic nature of the model) the
+     * BH injects more energy than it actually has in the reservoir. */
+    bp->energy_reservoir -= Energy_deposited;
+
+    /* Total number successful energy injections at this time-step. In each
+     * energy injection, a certain gas particle from the BH's kernel gets
+     * heated. (successful = the particle(s) that is going to get heated by
+     * this BH has not been swallowed by the same BH). */
+    const int N_successful_energy_injections =
+        number_of_energy_injections - N_unsuccessful_energy_injections;
+
+    /* Increase the number of energy injections the black hole has heated so
+     * far. Note that in the isotropic model, a gas particle may receive AGN
+     * energy several times at the same time-step. In this case, the number of
+     * particles heated at this time-step for this BH will be smaller than the
+     * total number of energy injections for this BH. */
+    bp->AGN_number_of_energy_injections += N_successful_energy_injections;
+
+    /* Increase the number of AGN events the black hole has had so far.
+     * If the BH does feedback, the number of AGN events is incremented by one.
+     */
+    bp->AGN_number_of_AGN_events += N_successful_energy_injections > 0;
+
+    /* Update the total (cumulative) energy used for gas heating in AGN feedback
+     * by this BH */
+    bp->AGN_cumulative_energy += Energy_deposited;
+
+    /* Store the time/scale factor when the BH last did AGN feedback */
+    if (N_successful_energy_injections) {
+      if (with_cosmology) {
+        bp->last_AGN_event_scale_factor = cosmo->a;
+      } else {
+        bp->last_AGN_event_time = time;
+      }
+    }
 
   } else {
 
@@ -1019,8 +1121,8 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
 __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
     struct bpart* restrict bp) {
 
-  bp->to_distribute.AGN_heating_probability = 0.f;
   bp->to_distribute.AGN_delta_u = 0.f;
+  bp->to_distribute.AGN_number_of_energy_injections = 0;
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
