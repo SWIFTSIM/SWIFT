@@ -61,10 +61,10 @@ struct black_holes_props {
   /* ----- Properties of the accretion model ------ */
 
   /*! Calculate Bondi accretion rate for individual neighbours? */
-  int multi_phase_bondi;
+  int use_multi_phase_bondi;
 
   /*! Are we using the subgrid gas properties in the Bondi model? */
-  int subgrid_bondi;
+  int use_subgrid_bondi;
 
   /*! Are we applying the angular-momentum-based multiplicative term from
    * Rosas-Guevara et al. (2015)? */
@@ -294,12 +294,13 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   /* Accretion parameters ---------------------------------- */
 
-  bp->multi_phase_bondi =
-      parser_get_param_int(params, "EAGLEAGN:multi_phase_bondi");
+  bp->use_multi_phase_bondi =
+      parser_get_param_int(params, "EAGLEAGN:use_multi_phase_bondi");
 
-  bp->subgrid_bondi = parser_get_param_int(params, "EAGLEAGN:subgrid_bondi");
+  bp->use_subgrid_bondi =
+      parser_get_param_int(params, "EAGLEAGN:use_subgrid_bondi");
 
-  if (bp->multi_phase_bondi && bp->subgrid_bondi)
+  if (bp->use_multi_phase_bondi && bp->use_subgrid_bondi)
     error(
         "Cannot run with both the multi-phase Bondi and subgrid Bondi models "
         "at the same time!");
