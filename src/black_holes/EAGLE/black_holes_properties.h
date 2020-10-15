@@ -25,6 +25,7 @@
 #include <string.h>
 
 enum AGN_feedback_models {
+  AGN_random_ngb_model,      /*< Random neighbour model for AGN feedback */
   AGN_isotropic_model,       /*< Isotropic model of AGN feedback */
   AGN_minimum_distance_model /*< Minimum-distance model of AGN feedback */
 };
@@ -362,15 +363,17 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   /* Feedback parameters ---------------------------------- */
 
   char temp[40];
-  parser_get_param_string(params, "EAGLEAGN:AGN_feedback_model", temp);
-  if (strcmp(temp, "Isotropic") == 0)
+  parser_get_param_string(params, "COLIBREAGN:AGN_feedback_model", temp);
+  if (strcmp(temp, "Random") == 0)
+    bp->feedback_model = AGN_random_ngb_model;
+  else if (strcmp(temp, "Isotropic") == 0)
     bp->feedback_model = AGN_isotropic_model;
   else if (strcmp(temp, "MinimumDistance") == 0)
     bp->feedback_model = AGN_minimum_distance_model;
   else
     error(
-        "The AGN feedback model must be either MinimumDistance or Isotropic, "
-        "not %s",
+        "The AGN feedback model must be either 'Random', 'MinimumDistance' or "
+        "'Isotropic', not %s",
         temp);
 
   bp->AGN_deterministic =
