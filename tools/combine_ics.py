@@ -63,6 +63,10 @@ tot_num_parts = tot_num_parts.astype(np.int64)
 for i in range(6):
     tot_num_parts[i] += (np.int64(tot_num_parts_high_word[i]) << 32)
 
+tot_num_parts_swift = np.copy(tot_num_parts)
+tot_num_parts_swift[2] += tot_num_parts_swift[3]
+tot_num_parts_swift[3] = 0
+
 # Some basic information
 print("Reading", tot_num_parts, "particles from", num_files, "files.")
 
@@ -85,9 +89,9 @@ output_file = h5.File(output_file_name, "w-")
 # Header
 grp = output_file.create_group("/Header")
 grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["NumPart_Total"] = tot_num_parts
+grp.attrs["NumPart_Total"] = tot_num_parts_swift
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = tot_num_parts
+grp.attrs["NumPart_ThisFile"] = tot_num_parts_swift
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["BoxSize"] = box_size
 grp.attrs["Flag_Entropy_ICs"] = entropy_flag
@@ -98,6 +102,8 @@ if tot_num_parts[0] > 0:
     grp0 = output_file.create_group("/PartType0")
 if tot_num_parts[1] > 0:
     grp1 = output_file.create_group("/PartType1")
+if tot_num_parts_swift[2] > 0:
+    grp2 = output_file.create_group("/PartType2")
 if tot_num_parts[4] > 0:
     grp4 = output_file.create_group("/PartType4")
 if tot_num_parts[5] > 0:
@@ -147,6 +153,12 @@ if tot_num_parts[1] > 0:
     create_set(grp1, "Masses", tot_num_parts[1], 1, "f")
     create_set(grp1, "ParticleIDs", tot_num_parts[1], 1, "l")
 
+if tot_num_parts_swift[2] > 0:
+    create_set(grp2, "Coordinates", tot_num_parts_swift[2], 3, "d")
+    create_set(grp2, "Velocities", tot_num_parts_swift[2], 3, "f")
+    create_set(grp2, "Masses", tot_num_parts_swift[2], 1, "f")
+    create_set(grp2, "ParticleIDs", tot_num_parts_swift[2], 1, "l")
+
 if tot_num_parts[4] > 0:
     create_set(grp4, "Coordinates", tot_num_parts[4], 3, "d")
     create_set(grp4, "Velocities", tot_num_parts[4], 3, "f")
@@ -188,6 +200,8 @@ for f in range(num_files):
         ": num_parts = [",
         num_parts[0],
         num_parts[1],
+        num_parts[2],
+        num_parts[3],
         num_parts[4],
         num_parts[5],
         "]",
@@ -205,6 +219,14 @@ for f in range(num_files):
     def copy_grp_same_name(name, ptype):
         copy_grp(name, name, ptype)
 
+    def copy_grp_pt3(name):
+        full_name_new = "/PartType2/" + name
+        full_name_old = "/PartType3/" + name
+        output_file[full_name_new][
+            cumul_parts[2] : cumul_parts[2] + num_parts[3]
+        ] = file[full_name_old]
+
+
     if num_parts[0] > 0:
         copy_grp_same_name("Coordinates", 0)
         copy_grp_same_name("Velocities", 0)
@@ -220,6 +242,21 @@ for f in range(num_files):
         if DM_mass == 0.0:  # Do not overwrite values if there was a mass table
             copy_grp_same_name("Masses", 1)
 
+    if num_parts[2] > 0:
+        copy_grp_same_name("Coordinates", 2)
+        copy_grp_same_name("Velocities", 2)
+        copy_grp_same_name("ParticleIDs", 2)
+        copy_grp_same_name("Masses", 2)
+
+    # Need to update part counter for pt2 already here, so we append 3 in correct place
+    cumul_parts[2] += num_parts[2]
+
+    if num_parts[3] > 0:
+        copy_grp_pt3("Coordinates")
+        copy_grp_pt3("Velocities")
+        copy_grp_pt3("ParticleIDs")
+        copy_grp_pt3("Masses")
+
     if num_parts[4] > 0:
         copy_grp_same_name("Coordinates", 4)
         copy_grp_same_name("Velocities", 4)
@@ -234,6 +271,7 @@ for f in range(num_files):
 
     cumul_parts[0] += num_parts[0]
     cumul_parts[1] += num_parts[1]
+    cumul_parts[2] += num_parts[3]   # Need to adjust for added pt-3
     cumul_parts[4] += num_parts[4]
     cumul_parts[5] += num_parts[5]
     file.close()
