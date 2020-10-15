@@ -213,7 +213,7 @@ runner_iact_nonsym_bh_gas_density(
 
       /* Minimise separation between the gas particles and the BH. The rays
        * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the BH. */
+       * with smaller 'fake' distances to the BH. */
       ray_minimise_distance(dist, bi->rays, arr_size, gas_id, pj->mass);
       break;
     }

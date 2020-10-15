@@ -893,10 +893,17 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
         /* Initialise counter of energy injections */
         number_of_energy_injections = 0;
 
-        /* How many AGN energy injections will we get? */
+        /* How many AGN energy injections will we get?
+         *
+         * Note that we use the particles here to draw random numbers. This does
+         * not mean that the 'lucky' particles here are the ones that will be
+         * heated. If we get N lucky particles, we will use the first N random
+         * ray directions in the isotropic case or the first N closest particles
+         * in the other modes. */
         for (int i = 0; i < bp->num_ngbs; i++) {
           const double rand = random_unit_interval_part_ID_and_ray_idx(
               bp->id, i, ti_begin, random_number_BH_feedback);
+
           /* Increase the counter if we are lucky */
           if (rand < prob) number_of_energy_injections++;
         }
