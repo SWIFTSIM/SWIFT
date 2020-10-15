@@ -265,9 +265,13 @@ struct feedback_props {
    */
   double n_Z;
 
-  /*! Are we using the birth properties to compute f_th or the properties at
+  /*! Are we using the birth density to compute f_th or the properties at
    * feedback time? */
-  int use_birth_props_for_feedback;
+  int use_birth_density_for_f_th;
+
+  /*! Are we using the birth metallicity to compute f_th or the properties at
+   * feedback time? */
+  int use_birth_Z_for_f_th;
 
   /* ------------ Enrichment sampling properties ------------ */
 
