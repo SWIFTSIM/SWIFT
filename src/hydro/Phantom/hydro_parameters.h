@@ -18,8 +18,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_DEFAULT_HYDRO_PARAMETERS_H
-#define SWIFT_DEFAULT_HYDRO_PARAMETERS_H
+#ifndef SWIFT_PHANTOM_HYDRO_PARAMETERS_H
+#define SWIFT_PHANTOM_HYDRO_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
@@ -35,11 +35,14 @@
 #include "inline.h"
 
 /**
- * @file Default/hydro_parameters.h
+ * @file Phantom/hydro_parameters.h
  * @brief Density-Energy conservative implementation of SPH,
  *        with added diffusive physics (Cullen & Denhen 2011 AV,
  *        Price 2017 (PHANTOM) diffusion) (default compile-time
  *        parameters).
+ *
+ *        This is a base reference implementation
+ *        similar to the one presented in Price 2018.
  *
  *        This file defines a number of things that are used in
  *        hydro_properties.c as defaults for run-time parameters
@@ -253,4 +256,4 @@ static INLINE void diffusion_print_snapshot(
 }
 #endif
 
-#endif /* SWIFT_DEFAULT_HYDRO_PARAMETERS_H */
+#endif /* SWIFT_PHANTOM_HYDRO_PARAMETERS_H */

@@ -114,7 +114,7 @@ void prepare_force(struct part *parts, size_t count) {
 #if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) &&            \
     !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&              \
     !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) && !defined(DEFAULT_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) && !defined(PHANTOM_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -142,7 +142,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
           hydro_get_comoving_density(p),
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) || \
-    defined(SHADOWFAX_SPH) || defined(DEFAULT_SPH)
+    defined(SHADOWFAX_SPH) || defined(PHANTOM_SPH)
           0.f,
 #else
           p->density.div_v,
@@ -153,11 +153,11 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->force.h_dt,
 #if defined(GADGET2_SPH)
           p->force.v_sig, p->entropy_dt, 0.f
-#elif defined(DEFAULT_SPH)
+#elif defined(PHANTOM_SPH)
           p->force.v_sig, 0.f, p->force.u_dt
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
           p->force.v_sig, 0.f, p->u_dt
 #else
           0.f, 0.f, 0.f
