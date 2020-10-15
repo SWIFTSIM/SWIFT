@@ -35,8 +35,15 @@ struct unit_system;
 struct phys_const;
 struct cosmology;
 
+struct fof_6d {
+    
+  struct gpart **gparts;
+
+} SWIFT_STRUCT_ALIGN;
+
 /* Function prototypes. */
 void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t num_parts_in_groups); 
 void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t num_parts_in_groups, const double *v_disp, const size_t *part_index); 
+void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_groups, const size_t num_parts_in_groups, const double *v_disp, size_t *group_index, const size_t *group_size, const double l_x2);
 
 #endif /* SWIFT_FOF6D_H */

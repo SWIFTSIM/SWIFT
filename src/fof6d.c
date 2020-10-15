@@ -139,75 +139,11 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
 
 }
 
-struct fof_6d {
-    
-  struct gpart **gparts;
 
-} SWIFT_STRUCT_ALIGN;
+void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_groups, const size_t num_parts_in_groups, const double *v_disp, size_t *group_index, const size_t *group_size, const double l_x2) {
 
-void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t num_parts_in_groups, const double *v_disp, const size_t *part_index) {
-
-  const int num_groups = props->num_groups;
-  struct gpart *gparts = s->gparts;
-  //const size_t nr_gparts = s->nr_gparts;
-  size_t *group_index = NULL;
-  //size_t *group_size = props->group_size;
-  size_t *group_size = NULL;
-
-  //double *group_mass = props->group_mass;
-  struct fof_6d groups[num_groups];
-  size_t *group_part_ctr = NULL;
   double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double l_x2 = props->l_x2;
 
-  if (swift_memalign("fof6d_group_part_ctr", (void **)&group_part_ctr, SWIFT_STRUCT_ALIGNMENT,
-                     num_groups * sizeof(size_t)) != 0)
-    error("Failed to allocate list of group particle counters for 6DFOF search.");
-
-  if (swift_memalign("fof6d_group_size", (void **)&group_size, SWIFT_STRUCT_ALIGNMENT,
-                     num_groups * sizeof(size_t)) != 0)
-    error("Failed to allocate list of group sizes for 6DFOF search.");
-
-
-  bzero(group_size, num_groups * sizeof(size_t));
-
-  /* Get ptrs to particles in groups */
-  for (size_t i = 0; i < num_parts_in_groups; i++) {
-    
-    const size_t index = part_index[i];
-    const size_t group_id = gparts[index].fof_data.group_id - 1;
-    group_size[group_id]++;
-  }
- 
-  /* Allocate gpart* arrays */
-  for (int i = 0; i < num_groups; i++) {
-    if (posix_memalign((void **)&groups[i].gparts, 32,
-          group_size[i] * sizeof(struct gpart*)) != 0)
-      error("Failed to allocate list of group masses for FOF search.");
-  }
-
-  bzero(group_part_ctr, num_groups * sizeof(size_t));
-
-  /* Allocate and initialise a new group index array. */
-  if (swift_memalign("fof6d_group_index", (void **)&group_index, SWIFT_STRUCT_ALIGNMENT,
-                     num_parts_in_groups * sizeof(size_t)) != 0)
-    error("Failed to allocate list of particle group indices for 6DFOF search.");
-
-  /* Set initial group index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 group_index, num_parts_in_groups, sizeof(size_t),
-                 threadpool_auto_chunk_size, group_index);
-
-  /* Get ptrs to particles in groups */
-  for (size_t i = 0; i < num_parts_in_groups; i++) {
-    
-    const size_t index = part_index[i];
-    const size_t group_id = gparts[index].fof_data.group_id - 1;
-    const size_t part_ctr = group_part_ctr[group_id];
-    groups[group_id].gparts[part_ctr] = &gparts[index];
-    group_part_ctr[group_id] = group_part_ctr[group_id] + 1;
-  }
- 
   /* Perform a neighbour search over each group. */ 
   for (int i = 0; i < num_groups; i++) {
   
@@ -260,6 +196,71 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
       }
     }
   }
+
+}
+
+void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t num_parts_in_groups, const double *v_disp, const size_t *part_index) {
+
+  const int num_groups = props->num_groups;
+  struct gpart *gparts = s->gparts;
+  //const size_t nr_gparts = s->nr_gparts;
+  size_t *group_index = NULL;
+  //size_t *group_size = props->group_size;
+  size_t *group_size = NULL;
+  //double *group_mass = props->group_mass;
+  struct fof_6d groups[num_groups];
+  size_t *group_part_ctr = NULL;
+  const double l_x2 = props->l_x2;
+
+  if (swift_memalign("fof6d_group_part_ctr", (void **)&group_part_ctr, SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(size_t)) != 0)
+    error("Failed to allocate list of group particle counters for 6DFOF search.");
+
+  if (swift_memalign("fof6d_group_size", (void **)&group_size, SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(size_t)) != 0)
+    error("Failed to allocate list of group sizes for 6DFOF search.");
+
+
+  bzero(group_size, num_groups * sizeof(size_t));
+
+  /* Get ptrs to particles in groups */
+  for (size_t i = 0; i < num_parts_in_groups; i++) {
+    
+    const size_t index = part_index[i];
+    const size_t group_id = gparts[index].fof_data.group_id - 1;
+    group_size[group_id]++;
+  }
+ 
+  /* Allocate gpart* arrays */
+  for (int i = 0; i < num_groups; i++) {
+    if (posix_memalign((void **)&groups[i].gparts, 32,
+          group_size[i] * sizeof(struct gpart*)) != 0)
+      error("Failed to allocate list of group masses for FOF search.");
+  }
+
+  bzero(group_part_ctr, num_groups * sizeof(size_t));
+
+  /* Allocate and initialise a new group index array. */
+  if (swift_memalign("fof6d_group_index", (void **)&group_index, SWIFT_STRUCT_ALIGNMENT,
+                     num_parts_in_groups * sizeof(size_t)) != 0)
+    error("Failed to allocate list of particle group indices for 6DFOF search.");
+
+  /* Set initial group index */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
+                 group_index, num_parts_in_groups, sizeof(size_t),
+                 threadpool_auto_chunk_size, group_index);
+
+  /* Get ptrs to particles in groups */
+  for (size_t i = 0; i < num_parts_in_groups; i++) {
+    
+    const size_t index = part_index[i];
+    const size_t group_id = gparts[index].fof_data.group_id - 1;
+    const size_t part_ctr = group_part_ctr[group_id];
+    groups[group_id].gparts[part_ctr] = &gparts[index];
+    group_part_ctr[group_id] = group_part_ctr[group_id] + 1;
+  }
+ 
+  fof6d_n2_search(groups, s, num_groups, num_parts_in_groups, v_disp, group_index, group_size, l_x2);
 
   int num_6d_groups = 0;
   for (size_t i = 0; i < num_parts_in_groups; i++) {
