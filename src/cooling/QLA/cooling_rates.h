@@ -258,9 +258,7 @@ __attribute__((always_inline)) INLINE static float qla_convert_u_to_temp(
    * does not change outside the table range */
   if (u_index == 0 && d_u == 0.f) {
 
-    /* The temperature is multiplied by u / 10^T[0]
-     * where T[0] is the first entry in the table */
-    log_10_T += log_10_u_cgs - cooling->Temp[0];
+    log_10_T += log_10_u_cgs - cooling->Therm[0];
 
   } else if (u_index >= qla_cooling_N_internalenergy - 2 && d_u == 1.f) {
 
