@@ -114,34 +114,34 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
     }
     case SNII_minimum_distance_model: {
       /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
+       * function is called for the first time (at this time-step for this star),
        * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
        * maximum size of the sorted array cannot be larger then the maximum
        * number of rays. */
       const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_blackhole_number_of_rays);
+                               eagle_SNII_feedback_num_of_rays);
 
-      /* Minimise separation between the gas particles and the BH. The rays
+      /* Minimise separation between the gas particles and the star. The rays
        * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the BH. */
+       * with smaller distances to the star. */
       ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
                             pj->mass);
       break;
     }
     case SNII_random_ngb_model: {
       /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
+       * function is called for the first time (at this time-step for this star),
        * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
        * maximum size of the sorted array cannot be larger then the maximum
        * number of rays. */
       const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_blackhole_number_of_rays);
+                               eagle_SNII_feedback_num_of_rays);
 
       /* To mimic a random draw among all the particles in the kernel, we
        * draw random distances in [0,1) and then pick the particle(s) with
        * the smallest of these 'fake' distances */
       const float dist = random_unit_interval_two_IDs(
-          si->id, pj->id, ti_current, random_number_BH_feedback);
+          si->id, pj->id, ti_current, random_number_stellar_feedback_1);
 
       /* Minimise separation between the gas particles and the BH. The rays
        * structs with smaller ids in the ray array will refer to the particles
