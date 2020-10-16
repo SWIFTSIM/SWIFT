@@ -208,7 +208,7 @@ runner_iact_nonsym_bh_gas_density(
       /* Minimise separation between the gas particles and the BH. The rays
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the BH. */
-      ray_minimise_distance(-pj->rho, bi->rays, arr_size, gas_id, pj->mass);
+      ray_minimise_distance(pj->rho, bi->rays, arr_size, gas_id, pj->mass);
       break;
     }
     case AGN_random_ngb_model: {
