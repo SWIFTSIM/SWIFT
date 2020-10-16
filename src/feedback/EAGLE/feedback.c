@@ -1095,10 +1095,12 @@ void feedback_props_init(struct feedback_props* fp,
     fp->feedback_model = SNII_isotropic_model;
   else if (strcmp(model, "MinimumDistance") == 0)
     fp->feedback_model = SNII_minimum_distance_model;
+  else if (strcmp(model, "MinimumDensity") == 0)
+    fp->feedback_model = SNII_minimum_density_model;
   else
     error(
-        "The SNII feedback model must be either 'Random', 'MinimumDistance' or "
-        "'Isotropic', not %s",
+        "The SNII feedback model must be either 'Random', 'MinimumDistance', "
+        "'MinimumDensity' or 'Isotropic', not %s",
         model);
 
   /* Are we sampling the SNII lifetimes for feedback or using a fixed delay? */
