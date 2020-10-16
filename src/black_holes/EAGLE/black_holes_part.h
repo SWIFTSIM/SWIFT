@@ -172,6 +172,9 @@ struct bpart {
   /*! Instantaneous temperature increase for feedback */
   float AGN_delta_T;
 
+  /*! Instantaneous energy reservoir threshold (num-to-heat) */
+  float num_ngbs_to_heat;
+
   /*! Eddington fractions */
   float eddington_fraction;
 

@@ -656,9 +656,6 @@ runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 
-      /* Update cooling properties. */
-      cooling_update_feedback_particle(xpj);
-
       /* Store the feedback energy */
       const double delta_energy = delta_u * hydro_get_mass(pj);
       tracers_after_black_holes_feedback(xpj, with_cosmology, cosmo->a, time,
