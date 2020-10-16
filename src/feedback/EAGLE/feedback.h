@@ -209,8 +209,8 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
 
   /* Compute amount of enrichment and feedback that needs to be done in this
    * step */
-  compute_stellar_evolution(feedback_props, cosmo, sp, us, star_age_beg_step,
-                            dt, ti_begin);
+  compute_stellar_evolution(feedback_props, phys_const, cosmo, sp, us,
+                            star_age_beg_step, dt, ti_begin);
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;

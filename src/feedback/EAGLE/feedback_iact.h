@@ -44,6 +44,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
                                     struct spart *si, const struct part *pj,
                                     const struct xpart *xpj,
                                     const struct cosmology *cosmo,
+                                    const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
@@ -82,25 +83,73 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
   if (rho != 0.f)
     si->feedback_data.to_collect.enrichment_weight_inv += wi / rho;
 
-  /* Compute arc lengths in stellar isotropic feedback and collect
-   * relevant data for later use in the feedback_apply loop */
-  for (int i = 0; i < eagle_SNII_feedback_num_of_rays; i++) {
+  /* Choose SNII feedback model */
+  switch (fb_props->feedback_model) {
+    case SNII_isotropic_model: {
 
-    /* We generate two random numbers that we use
-     * to randomly select the direction of the ith ray
-     * in SNII feedback */
+      /* Compute arc lengths in stellar isotropic feedback and collect
+       * relevant data for later use in the feedback_apply loop */
 
-    /* Two random numbers in [0, 1[ */
-    const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
-        si->id, i, ti_current, random_number_isotropic_SNII_feedback_ray_theta);
-    const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
-        si->id, i, ti_current, random_number_isotropic_SNII_feedback_ray_phi);
+      /* Loop over rays */
+      for (int i = 0; i < eagle_SNII_feedback_num_of_rays; i++) {
 
-    /* Compute arclength (SNII feedback, only thermal feedback) */
-    ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays + i,
-                           /*switch=*/-1, pj->id, rand_theta_SNII,
-                           rand_phi_SNII, pj->mass, /*ray_ext=*/NULL,
-                           /*v=*/NULL);
+        /* We generate two random numbers that we use
+         * to randomly select the direction of the ith ray */
+
+        /* Two random numbers in [0, 1[ */
+        const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
+            si->id, i, ti_current,
+            random_number_isotropic_SNII_feedback_ray_theta);
+        const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
+            si->id, i, ti_current,
+            random_number_isotropic_SNII_feedback_ray_phi);
+
+        /* Compute arclength */
+        ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays + i,
+                               /*switch=*/-1, pj->id, rand_theta_SNII,
+                               rand_phi_SNII, pj->mass, /*ray_ext=*/NULL,
+                               /*v=*/NULL);
+      }
+      break;
+    }
+    case SNII_minimum_distance_model: {
+      /* Compute the size of the array that we want to sort. If the current
+       * function is called for the first time (at this time-step for this BH),
+       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
+       * maximum size of the sorted array cannot be larger then the maximum
+       * number of rays. */
+      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
+                               eagle_blackhole_number_of_rays);
+
+      /* Minimise separation between the gas particles and the BH. The rays
+       * structs with smaller ids in the ray array will refer to the particles
+       * with smaller distances to the BH. */
+      ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
+                            pj->mass);
+      break;
+    }
+    case SNII_random_ngb_model: {
+      /* Compute the size of the array that we want to sort. If the current
+       * function is called for the first time (at this time-step for this BH),
+       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
+       * maximum size of the sorted array cannot be larger then the maximum
+       * number of rays. */
+      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
+                               eagle_blackhole_number_of_rays);
+
+      /* To mimic a random draw among all the particles in the kernel, we
+       * draw random distances in [0,1) and then pick the particle(s) with
+       * the smallest of these 'fake' distances */
+      const float dist = random_unit_interval_two_IDs(
+          si->id, pj->id, ti_current, random_number_BH_feedback);
+
+      /* Minimise separation between the gas particles and the BH. The rays
+       * structs with smaller ids in the ray array will refer to the particles
+       * with smaller 'fake' distances to the BH. */
+      ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
+                            pj->mass);
+      break;
+    }
   }
 }
 
@@ -125,6 +174,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const struct spart *si, struct part *pj,
                                   struct xpart *xpj,
                                   const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
                                   const integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS

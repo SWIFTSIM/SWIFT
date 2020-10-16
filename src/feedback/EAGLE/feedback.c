@@ -886,6 +886,7 @@ INLINE static void evolve_AGB(const double log10_min_mass,
  * @param ti_begin The current integer time (for random number hashing).
  */
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
+                               const struct phys_const* phys_const,
                                const struct cosmology* cosmo, struct spart* sp,
                                const struct unit_system* us, const double age,
                                const double dt, const integertime_t ti_begin) {
@@ -1085,6 +1086,20 @@ void feedback_props_init(struct feedback_props* fp,
   fp->log10_imf_min_mass_msun = log10(fp->imf_min_mass_msun);
 
   /* Properties of the SNII energy feedback model ------------------------- */
+
+  char model[64];
+  parser_get_param_string(params, "EAGLEFeedback:SNII_feedback_model", model);
+  if (strcmp(model, "Random") == 0)
+    fp->feedback_model = SNII_random_ngb_model;
+  else if (strcmp(model, "Isotropic") == 0)
+    fp->feedback_model = SNII_isotropic_model;
+  else if (strcmp(model, "MinimumDistance") == 0)
+    fp->feedback_model = SNII_minimum_distance_model;
+  else
+    error(
+        "The SNII feedback model must be either 'Random', 'MinimumDistance' or "
+        "'Isotropic', not %s",
+        model);
 
   /* Are we sampling the SNII lifetimes for feedback or using a fixed delay? */
   fp->SNII_sampled_delay =
