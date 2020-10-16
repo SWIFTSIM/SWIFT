@@ -114,7 +114,7 @@ struct black_holes_props {
 
   /* ---- Properties of the feedback model ------- */
 
-  /*! AGN feedback model: isotropic or minimum distance */
+  /*! AGN feedback model: random, isotropic or minimum distance */
   enum AGN_feedback_models feedback_model;
 
   /*! Is the AGN feedback model deterministic or stochastic? */
@@ -363,7 +363,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   /* Feedback parameters ---------------------------------- */
 
   char temp[40];
-  parser_get_param_string(params, "COLIBREAGN:AGN_feedback_model", temp);
+  parser_get_param_string(params, "EAGLEAGN:AGN_feedback_model", temp);
   if (strcmp(temp, "Random") == 0)
     bp->feedback_model = AGN_random_ngb_model;
   else if (strcmp(temp, "Isotropic") == 0)
