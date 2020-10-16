@@ -22,6 +22,12 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
+enum SNII_feedback_models {
+  SNII_random_ngb_model,      /*< Random neighbour model for SNII feedback */
+  SNII_isotropic_model,       /*< Isotropic model of SNII feedback */
+  SNII_minimum_distance_model /*< Minimum-distance model of SNII feedback */
+};
+
 /**
  * @brief Stores AGB and SNII yield tables
  */
@@ -211,6 +217,9 @@ struct feedback_props {
   double log10_imf_max_mass_msun;
 
   /* ------------ SNe feedback properties ------------ */
+
+  /*! SNII feedback model: random, isotropic or minimum distance */
+  enum SNII_feedback_models feedback_model;
 
   /*! Minimal stellar mass considered for SNII feedback (in solar masses) */
   double SNII_min_mass_msun;
