@@ -36,7 +36,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     const int with_cosmology = e->policy & engine_policy_cosmology;
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
-        
+    
 #ifdef WITH_MPI
     struct space *s = e->s;
     struct dmpart *dmparts_foreign = s->dmparts_foreign;

@@ -1034,7 +1034,7 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                     &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink,
+                     &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink,
                      &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                      with_gravity, with_sink, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
@@ -1042,7 +1042,7 @@ int main(int argc, char *argv[]) {
                      nr_threads, dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
+                   &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                    &Nbpart, &flag_entropy_ICs, with_hydro, with_gravity,
                    with_sink, with_stars, with_black_holes, with_cosmology,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
