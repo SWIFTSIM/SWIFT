@@ -23,9 +23,10 @@
 #include "hydro_properties.h"
 
 enum SNII_feedback_models {
-  SNII_random_ngb_model,      /*< Random neighbour model for SNII feedback */
-  SNII_isotropic_model,       /*< Isotropic model of SNII feedback */
-  SNII_minimum_distance_model /*< Minimum-distance model of SNII feedback */
+  SNII_random_ngb_model,       /*< Random neighbour model for SNII feedback */
+  SNII_isotropic_model,        /*< Isotropic model of SNII feedback */
+  SNII_minimum_distance_model, /*< Minimum-distance model of SNII feedback */
+  SNII_minimum_density_model   /*< Minimum-density model of SNII feedback */
 };
 
 /**
