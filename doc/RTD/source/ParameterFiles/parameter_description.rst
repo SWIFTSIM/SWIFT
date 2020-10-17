@@ -275,19 +275,10 @@ Particle-Mesh part of the calculation. The last five are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
-* Whether or not to dither the particles randomly at each tree rebuild:
-  ``dithering`` (default: ``0``),
-* The magnitude of each component of the dithering vector to use in units of the
-  top-level cell sizes: ``dithering_ratio`` (default: ``1.0``).
 
-For most runs, the default values can be used. Only the number of cells
-along each axis needs to be specified. The mesh dithering is mostly used
-for simulations using periodic boundary conditions and in the absence of an
-external potential.  At each tree rebuild time, all the particles are moved
-by a random vector (the same for all particles) and the periodic BCs are
-then applied. This reduces the correlation of errors across time but is a
-very expensive operation. The remaining three values are best described in
-the context of the full set of equations in the theory documents.
+For most runs, the default values can be used. Only the number of cells along
+each axis needs to be specified. The remaining three values are best described
+in the context of the full set of equations in the theory documents.
 
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
 simulation:
@@ -309,8 +300,6 @@ simulation:
      a_smooth:          1.25        # Default optional value
      r_cut_max:         4.5         # Default optional value
      r_cut_min:         0.1         # Default optional value
-     dithering:         0           # Default optional value
-     dithering_ratio:   1.0         # Default optional value
      use_tree_below_softening: 0    # Default optional value
      allow_truncation_in_MAC:  0    # Default optional value
 

@@ -122,12 +122,6 @@ struct gravity_props {
   /*! Inverse of the long-range gravity mesh scale. */
   float r_s_inv;
 
-  /*! Are we dithering the particles at every rebuild? */
-  int with_dithering;
-
-  /*! Fraction of the top-level cell size used to normalize the dithering */
-  double dithering_ratio;
-
   /* ------------- Physical constants ---------------------------------- */
 
   /*! Gravitational constant (in internal units, copied from the physical

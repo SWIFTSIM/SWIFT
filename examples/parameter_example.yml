@@ -87,8 +87,6 @@ Gravity:
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
-  dithering:                     0         # (Optional) Activate the dithering of the gravity mesh at every rebuild (this is the default value).
-  dithering_ratio:               1.0       # (Optional) Magnitude of each component of the dithering vector in units of the top-level cell sizes (this is the default value).
 
 # Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
 ForceChecks:

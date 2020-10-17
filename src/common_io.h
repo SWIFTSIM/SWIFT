@@ -103,7 +103,6 @@ void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
-                           const double pos_dithering[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const int distributed,
