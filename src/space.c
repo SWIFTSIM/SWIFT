@@ -2394,7 +2394,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2425,7 +2424,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     double old_pos_z = p->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && p->time_bin != time_bin_inhibited) {
+    if (!s->periodic && p->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2522,7 +2521,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2552,7 +2550,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     double old_pos_z = gp->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && gp->time_bin != time_bin_inhibited) {
+    if (!s->periodic && gp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2655,7 +2653,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   int *const ind = data->ind + (ptrdiff_t)(sparts - s->sparts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2685,7 +2682,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     double old_pos_z = sp->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && sp->time_bin != time_bin_inhibited) {
+    if (!s->periodic && sp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2784,7 +2781,6 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   int *const ind = data->ind + (ptrdiff_t)(bparts - s->bparts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2814,7 +2810,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     double old_pos_z = bp->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && bp->time_bin != time_bin_inhibited) {
+    if (!s->periodic && bp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2913,7 +2909,6 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   int *const ind = data->ind + (ptrdiff_t)(sinks - s->sinks);
 
   /* Get some constants */
-  const int periodic = s->periodic;
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2941,7 +2936,7 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     double old_pos_z = sink->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && sink->time_bin != time_bin_inhibited) {
+    if (!s->periodic && sink->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
