@@ -1280,44 +1280,6 @@ void space_allocate_extras(struct space *s, int verbose) {
 }
 
 /**
- * @brief Compute a new dithering vector to apply to all the particles
- * in the simulation.
- *
- * @param s The #space.
- * @param verbose Are we talkative?
- */
-void space_dither(struct space *s, int verbose) {
-
-  /* Store the old dithering vector */
-  s->pos_dithering_old[0] = s->pos_dithering[0];
-  s->pos_dithering_old[1] = s->pos_dithering[1];
-  s->pos_dithering_old[2] = s->pos_dithering[2];
-
-  if (s->e->nodeID == 0) {
-
-    const double dithering_ratio = s->e->gravity_properties->dithering_ratio;
-
-    /* Compute the new dithering vector */
-    const double rand_x = rand() / ((double)RAND_MAX);
-    const double rand_y = rand() / ((double)RAND_MAX);
-    const double rand_z = rand() / ((double)RAND_MAX);
-
-    s->pos_dithering[0] = dithering_ratio * s->width[0] * rand_x;
-    s->pos_dithering[1] = dithering_ratio * s->width[1] * rand_y;
-    s->pos_dithering[2] = dithering_ratio * s->width[2] * rand_z;
-  }
-
-#ifdef WITH_MPI
-  /* Tell everyone what value to use */
-  MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-  if (verbose)
-    message("Dithering the particle positions by [%e %e %e]",
-            s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
-}
-
-/**
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
@@ -1340,10 +1302,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
-
-  /* Are we dithering the particles? */
-  const int with_dithering = s->e->gravity_properties->with_dithering;
-  if (s->with_self_gravity && with_dithering) space_dither(s, verbose);
 
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->e->policy & engine_policy_sinks)
@@ -1487,8 +1445,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   const ticks tic2 = getticks();
 
   /* Move non-local parts and inhibited parts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
 
     for (size_t k = 0; k < nr_parts; /* void */) {
 
@@ -1540,8 +1497,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
 
     for (size_t k = 0; k < nr_sparts; /* void */) {
 
@@ -1591,8 +1547,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local bparts and inhibited bparts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
 
     for (size_t k = 0; k < nr_bparts; /* void */) {
 
@@ -1642,8 +1597,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sinks and inhibited sinks to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_sinks > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sinks > 0)) {
 
     for (size_t k = 0; k < nr_sinks; /* void */) {
 
@@ -1696,8 +1650,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
 
     for (size_t k = 0; k < nr_gparts; /* void */) {
 
@@ -1772,7 +1725,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. This can be skipped if we just repartitioned space
      as there should be no strays in that case */
-  if (with_dithering || !repartitioned) {
+  if (!repartitioned) {
 
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
@@ -2442,13 +2395,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2477,12 +2423,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     double old_pos_x = p->x[0];
     double old_pos_y = p->x[1];
     double old_pos_z = p->x[2];
-
-    if (periodic && dithering && p->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!periodic && p->time_bin != time_bin_inhibited) {
@@ -2583,13 +2523,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2617,12 +2550,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     double old_pos_x = gp->x[0];
     double old_pos_y = gp->x[1];
     double old_pos_z = gp->x[2];
-
-    if (periodic && dithering && gp->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!periodic && gp->time_bin != time_bin_inhibited) {
@@ -2729,13 +2656,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2763,12 +2683,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     double old_pos_x = sp->x[0];
     double old_pos_y = sp->x[1];
     double old_pos_z = sp->x[2];
-
-    if (periodic && dithering && sp->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!periodic && sp->time_bin != time_bin_inhibited) {
@@ -2871,13 +2785,6 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2905,12 +2812,6 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     double old_pos_x = bp->x[0];
     double old_pos_y = bp->x[1];
     double old_pos_z = bp->x[2];
-
-    if (periodic && dithering && bp->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!periodic && bp->time_bin != time_bin_inhibited) {
@@ -3013,13 +2914,6 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -3045,12 +2939,6 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     double old_pos_x = sink->x[0];
     double old_pos_y = sink->x[1];
     double old_pos_z = sink->x[2];
-
-    if (periodic && dithering && sink->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!periodic && sink->time_bin != time_bin_inhibited) {
