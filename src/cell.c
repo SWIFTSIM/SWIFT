@@ -1739,11 +1739,14 @@ void cell_bunlocktree(struct cell *c) {
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff,
-                struct cell_buff *sinkbuff) {
+void cell_split(struct cell *c, const ptrdiff_t parts_offset,
+                const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
+                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
+                struct cell_buff *restrict sbuff,
+                struct cell_buff *restrict bbuff,
+                struct cell_buff *restrict gbuff,
+                struct cell_buff *restrict sinkbuff) {
+
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
             sink_count = c->sinks.count;
