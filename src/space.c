@@ -3749,9 +3749,11 @@ void space_map_cells_pre(struct space *s, int full,
  *        c->sinks.count or @c NULL.
  */
 void space_split_recursive(struct space *s, struct cell *c,
-                           struct cell_buff *buff, struct cell_buff *sbuff,
-                           struct cell_buff *bbuff, struct cell_buff *gbuff,
-                           struct cell_buff *sink_buff) {
+                           struct cell_buff *restrict buff,
+                           struct cell_buff *restrict sbuff,
+                           struct cell_buff *restrict bbuff,
+                           struct cell_buff *restrict gbuff,
+                           struct cell_buff *restrict sink_buff) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
