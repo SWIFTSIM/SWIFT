@@ -1095,19 +1095,19 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Have the cells been sorted? */
   if (do_ci && (!(ci->stars.sorted & (1 << sid)) ||
                 ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin))
-    error("Interacting unsorted cells.");
+    error("Interacting unsorted cells (ci stars).");
 
   if (do_ci && (!(cj->hydro.sorted & (1 << sid)) ||
                 cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin))
-    error("Interacting unsorted cells.");
+    error("Interacting unsorted cells (ci hydro).");
 
   if (do_cj && (!(ci->hydro.sorted & (1 << sid)) ||
                 ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin))
-    error("Interacting unsorted cells.");
+    error("Interacting unsorted cells (cj stars).");
 
   if (do_cj && (!(cj->stars.sorted & (1 << sid)) ||
                 cj->stars.dx_max_sort_old > space_maxreldx * cj->dmin))
-    error("Interacting unsorted cells.");
+    error("Interacting unsorted cells (cj hydro).");
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
   DOPAIR1_STARS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
@@ -1185,15 +1185,17 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
   } else {
 
+    /* Both ci and cj are split */
+
+    /* Should we change the recursion regime because we encountered a large
+       particle? */
+    if (!recurse_below_h_max && (!cell_can_recurse_in_pair_stars_task1(ci) ||
+                                 !cell_can_recurse_in_pair_stars_task1(cj)))
+      recurse_below_h_max = 1;
+
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
     if (recurse_below_h_max) {
-
-      /* Should we change the recursion regime because we encountered a large
-         particle? */
-      if (!recurse_below_h_max && (!cell_can_recurse_in_pair_stars_task1(ci) ||
-                                   !cell_can_recurse_in_pair_stars_task1(cj)))
-        recurse_below_h_max = 1;
 
       /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
        */
