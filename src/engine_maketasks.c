@@ -1283,6 +1283,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_rt_out, task_subtype_none, 0,
                               /* implicit= */ 1, c, NULL);
         scheduler_addunlock(s, c->hydro.rt_out, c->super->timestep);
+
+        /* non-implicit ghost 1 */
+        c->hydro.rt_ghost1 = scheduler_addtask(
+            s, task_type_rt_ghost1, task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->hydro.rt_ghost1, c->hydro.rt_out);
       }
 
       /* Subgrid tasks: sink */
@@ -2125,7 +2130,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         } else {
           scheduler_addunlock(sched, ci->hydro.super->hydro.rt_in, t_rt_inject);
         }
-        scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_out);
+        scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_ghost1);
       }
     }
 
@@ -2347,7 +2352,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, ci->hydro.super->hydro.rt_in,
                                 t_rt_inject);
           }
-          scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_out);
+          scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_ghost1);
         }
 
       } else /*(ci->nodeID != nodeID) */ {
@@ -2432,7 +2437,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
               scheduler_addunlock(sched, cj->hydro.super->hydro.rt_in,
                                   t_rt_inject);
             }
-            scheduler_addunlock(sched, t_rt_inject, cj->super->hydro.rt_out);
+            scheduler_addunlock(sched, t_rt_inject, cj->super->hydro.rt_ghost1);
           }
 
           if (with_timestep_limiter) {
@@ -2651,7 +2656,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         } else {
           scheduler_addunlock(sched, ci->hydro.super->hydro.rt_in, t_rt_inject);
         }
-        scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_out);
+        scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_ghost1);
       }
     }
 
@@ -2877,7 +2882,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, ci->hydro.super->hydro.rt_in,
                                 t_rt_inject);
           }
-          scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_out);
+          scheduler_addunlock(sched, t_rt_inject, ci->super->hydro.rt_ghost1);
         }
       } else /* ci->nodeID != nodeID */ {
 
@@ -2961,7 +2966,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
               scheduler_addunlock(sched, cj->hydro.super->hydro.rt_in,
                                   t_rt_inject);
             }
-            scheduler_addunlock(sched, t_rt_inject, cj->super->hydro.rt_out);
+            scheduler_addunlock(sched, t_rt_inject, cj->super->hydro.rt_ghost1);
           }
 
           if (with_timestep_limiter) {

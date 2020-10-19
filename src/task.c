@@ -109,6 +109,7 @@ const char *taskID_names[task_type_count] = {
     "rt_in",
     "rt_out",
     "sink_formation",
+    "rt_ghost1",
 };
 
 /* Sub-task type names. */

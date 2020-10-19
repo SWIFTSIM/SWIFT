@@ -1593,6 +1593,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_sink_formation:
         cost = wscale * (count_i + sink_count_i);
         break;
+      case task_type_rt_ghost1:
+        cost = wscale * count_i;
+        break;
       case task_type_kick1:
         cost =
             wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);

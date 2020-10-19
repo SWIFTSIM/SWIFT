@@ -25,6 +25,13 @@
  */
 
 /**
+ * @brief Update the photon number of a particle, i.e. compute
+ *        E^{n+1} = E^n + dt * dE_* / dt
+ */
+__attribute__((always_inline)) INLINE static void
+rt_injection_update_photon_density(struct part* restrict p) {}
+
+/**
  * @brief First initialisation of the RT extra hydro particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(

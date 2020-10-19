@@ -1029,8 +1029,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
-    /* Radiative transfer ghost out */
-    else if (t->type == task_type_rt_out) {
+    /* Radiative transfer ghost out and others*/
+    else if (t->type == task_type_rt_out || t->type == task_type_rt_ghost1) {
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_stars(t->ci, e))
         scheduler_activate(s, t);
     }
