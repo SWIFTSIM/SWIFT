@@ -1197,6 +1197,29 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
        process them at this level before going deeper */
     if (recurse_below_h_max) {
 
+      /* Do any of the cells need to be sorted first?
+       * Since h_max might have changed, we may not have sorted at this level */
+      if (do_ci) {
+        if (!(ci->stars.sorted & (1 << sid)) ||
+            ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
+          runner_do_stars_sort(r, ci, (1 << sid), 0, 0);
+        }
+        if (!(cj->hydro.sorted & (1 << sid)) ||
+            cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+          runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+        }
+      }
+      if (do_cj) {
+        if (!(ci->hydro.sorted & (1 << sid)) ||
+            ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+          runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+        }
+        if (!(cj->stars.sorted & (1 << sid)) ||
+            cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
+          runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
+        }
+      }
+
       /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
        */
       /* 	      cj->hydro.count); */
