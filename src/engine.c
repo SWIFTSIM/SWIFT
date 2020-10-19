@@ -1635,8 +1635,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   if (e->policy & engine_policy_rt) {
     /* inject: 1 self + (3^3-1)/2 = 26/2 = 13 pairs  |  14
-     * ghosts: in + out                              | + 2 */
-    n1 += 16;
+     * ghosts: in + out, ghost1,                     | + 3 */
+    n1 += 17;
   }
 
 #ifdef WITH_MPI
@@ -2092,7 +2092,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
-        t->type == task_type_bh_out || t->subtype == task_subtype_force ||
+        t->type == task_type_bh_out || t->type == task_type_rt_ghost1 ||
+        t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||

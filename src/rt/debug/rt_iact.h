@@ -42,20 +42,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   struct rt_spart_data* restrict sd = &(si->rt_data);
   struct rt_part_data* restrict pd = &(pj->rt_data);
 
-  sd->iact_hydro += 1;
   sd->calls_tot += 1;
   sd->calls_per_step += 1;
+  sd->iact_hydro_inject += 1;
 
-  pd->iact_stars += 1;
   pd->calls_tot += 1;
   pd->calls_per_step += 1;
+  pd->iact_stars_inject += 1;
 
   if (r2 > 0.f) {
-    sd->calls_self += 1;
-    pd->calls_self += 1;
+    sd->calls_self_inject += 1;
+    pd->calls_self_inject += 1;
   } else {
-    sd->calls_pair += 1;
-    pd->calls_pair += 1;
+    sd->calls_pair_inject += 1;
+    pd->calls_pair_inject += 1;
   }
 }
 

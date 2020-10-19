@@ -4985,11 +4985,10 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
 
+  /* TODO: implement rebuild conditions */
   int rebuild = 0;
-  int counter = 0;
 
   for (struct link *l = c->hydro.rt_inject; l != NULL; l = l->next) {
-    counter++;
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -5016,6 +5015,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_rt_tasks(ci, cj, s);
       }
+    }
+  }
+
+  /* Unskip all the other task types */
+  if (c->nodeID == nodeID) {
+    if (cell_is_active_hydro(c, e)) {
+      if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
+      if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
+      if (c->hydro.rt_out != NULL) scheduler_activate(s, c->hydro.rt_out);
     }
   }
 

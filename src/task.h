@@ -102,6 +102,7 @@ enum task_types {
   task_type_rt_in,
   task_type_rt_out,
   task_type_sink_formation,
+  task_type_rt_ghost1,
   task_type_count
 } __attribute__((packed));
 

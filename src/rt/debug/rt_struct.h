@@ -26,20 +26,30 @@
 
 /* Additional RT data in hydro particle struct */
 struct rt_part_data {
-  int iact_stars; /* how many stars this particle interacted with */
-  int calls_tot;  /* total number of calls to this particle during entire run */
-  int calls_per_step; /* calls per time step to this particle */
-  int calls_self;
-  int calls_pair;
+
+  /* data to store during entire run */
+  int calls_tot; /* total number of calls to this particle during entire run */
+
+  /* data to store during one time step */
+  int calls_per_step;        /* calls per time step to this particle */
+  int iact_stars_inject;     /* how many stars this particle interacted with */
+  int calls_self_inject;     /* calls from self inject tasks */
+  int calls_pair_inject;     /* calls from pair inject tasks */
+  int photon_number_updated; /* calls from ghost1 tasks */
 };
 
 /* Additional RT data in star particle struct */
 struct rt_spart_data {
-  int iact_hydro; /* how many hydro particles this particle interacted with */
-  int calls_tot;  /* total number of calls to this particle during entire run */
-  int calls_per_step; /* calls per time step to this particle */
-  int calls_self;
-  int calls_pair;
+
+  /* data to store during entire run */
+  int calls_tot; /* total number of calls to this particle during entire run */
+
+  /* data to store during one time step */
+  int calls_per_step;    /* calls per time step to this particle */
+  int iact_hydro_inject; /* how many hydro particles this particle interacted
+                            with */
+  int calls_self_inject; /* calls from self inject tasks */
+  int calls_pair_inject; /* calls from pair inject tasks */
 };
 
 #endif /* SWIFT_RT_STRUCT_DEBUG_H */
