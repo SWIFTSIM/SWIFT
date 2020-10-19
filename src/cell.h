@@ -416,6 +416,9 @@ struct cell {
     /*! Radiative transfer ghost out task */
     struct task *rt_out;
 
+    /*! Radiative transfer ghost1 task (finishes up injection) */
+    struct task *rt_ghost1;
+
     /*! Task for self/pair injection step of radiative transfer */
     struct link *rt_inject;
 
