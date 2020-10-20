@@ -125,6 +125,20 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[3] =
       io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            sinks, id, "Unique ID of the particles");
+
+#ifdef DEBUG_INTERACTIONS_SINKS
+
+  list += *num_fields;
+  *num_fields += 2;
+
+  list[0] =
+      io_make_output_field("Num_ngb_formation", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           sinks, num_ngb_formation, "Number of neighbors");
+  list[1] =
+      io_make_output_field("Ids_ngb_formation", LONGLONG,
+                           MAX_NUM_OF_NEIGHBOURS_SINKS, UNIT_CONV_NO_UNITS, 0.f,
+                           sinks, ids_ngbs_formation, "IDs of the neighbors");
+#endif
 }
 
 #endif /* SWIFT_DEFAULT_SINK_IO_H */
