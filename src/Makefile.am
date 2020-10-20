@@ -102,7 +102,7 @@ endif
 AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
     runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
     runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
-    runner_doiact_hydro_vec.c runner_others.c \
+    runner_doiact_hydro_vec.c runner_others.c runner_doiact_sinks.c \
     runner_doiact_rt.c\
     queue.c task.c cell.c engine.c engine_maketasks.c engine_split_particles.c \
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
@@ -128,7 +128,7 @@ nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulat
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h 
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h 
-nobase_noinst_HEADERS += runner_doiact_rt.h runner_doiact_functions_rt.h 
+nobase_noinst_HEADERS += runner_doiact_rt.h runner_doiact_functions_rt.h runner_doiact_sinks.h
 nobase_noinst_HEADERS += kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h 
 nobase_noinst_HEADERS += timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h 
 nobase_noinst_HEADERS += dump.h logger.h sign.h logger_io.h hashmap.h gravity.h gravity_io.h gravity_logger.h  gravity_cache.h output_options.h
@@ -314,6 +314,7 @@ nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor.h pressure_floor/non
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h 
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h 
 nobase_noinst_HEADERS += sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h sink/Default/sink_properties.h 
+nobase_noinst_HEADERS += sink/Default/sink_iact.h
 nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
 
 
