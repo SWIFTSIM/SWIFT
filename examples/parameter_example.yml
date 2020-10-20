@@ -185,6 +185,8 @@ InitialConditions:
   cleanup_velocity_factors:    0    # (Optional) Clean up the scale-factors used in the definition of the velocity variable in the ICs (e.g. in Gadget files).
   cleanup_smoothing_lengths:   0    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
   smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
+  stars_smoothing_length:       -1. # (Optional) Set the smoothing length of all the stars to this value (disabled by default).
+  black_holes_smoothing_length: -1. # (Optional) Set the smoothing length of all the black hole to this value (disabled by default).
   shift:      [0.0,0.0,0.0]         # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
   remap_ids:  0                     # (Optional) Remap all the particle IDs to the range [1, NumPart].
