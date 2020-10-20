@@ -5791,7 +5791,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (s->initial_spart_h != -1.f) {
     message("Imposing a star smoothing length of %e", s->initial_spart_h);
   }
-  /* Read in imposed star smoothing length */
+  /* Read in imposed black hole smoothing length */
   s->initial_bpart_h = parser_get_opt_param_float(
       params, "InitialConditions:black_holes_smoothing_length", -1.f);
   if (s->initial_bpart_h != -1.f) {
