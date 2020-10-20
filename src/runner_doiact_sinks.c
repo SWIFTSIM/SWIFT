@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,18 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_H
-#define SWIFT_SINK_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Select the correct sink model */
-#if defined(SINK_NONE)
-#include "./sink/Default/sink.h"
-#include "./sink/Default/sink_iact.h"
-#else
-#error "Invalid choice of sink model"
-#endif
+/* Local headers. */
+#include "active.h"
+#include "cell.h"
+#include "engine.h"
+#include "feedback.h"
+#include "runner.h"
+#include "sink.h"
+#include "space_getsid.h"
+#include "timers.h"
 
-#endif
+/* Import the sink compute formation loop functions. */
+#define FUNCTION compute_formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORMATION
+#include "runner_doiact_functions_sinks.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION

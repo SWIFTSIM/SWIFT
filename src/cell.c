@@ -3703,45 +3703,67 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 
   /* Otherwise, pair interation */
   else {
-    error("Not implemented yet.");
-    /* /\* Should we even bother? *\/ */
-    /* if (!cell_is_active_sinks(ci, e) && */
-    /*     !cell_is_active_sinks(cj, e)) */
-    /*   return; */
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
 
-    /* /\* Get the orientation of the pair. *\/ */
-    /* double shift[3]; */
-    /* const int sid = space_getsid(s->space, &ci, &cj, shift); */
+    const int ci_active =
+        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
+    const int cj_active =
+        cell_is_active_sinks(cj, e) || cell_is_active_hydro(cj, e);
 
-    /* /\* recurse? *\/ */
-    /* if (cell_can_recurse_in_pair_sinks_task(ci, cj) && */
-    /*     cell_can_recurse_in_pair_sinks_task(cj, ci)) { */
-    /*   const struct cell_split_pair *csp = &cell_split_pairs[sid]; */
-    /*   for (int k = 0; k < csp->count; k++) { */
-    /*     const int pid = csp->pairs[k].pid; */
-    /*     const int pjd = csp->pairs[k].pjd; */
-    /*     if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) */
-    /*       cell_activate_subcell_sinks_tasks( */
-    /*           ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync); */
-    /*   } */
-    /* } */
+    /* Should we even bother? */
+    if (!ci_active && !cj_active) return;
 
-    /* /\* Otherwise, activate the drifts. *\/ */
-    /* else if (cell_is_active_sinks(ci, e) || */
-    /*          cell_is_active_sinks(cj, e)) { */
+    /* recurse? */
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
+        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
 
-    /*   /\* Activate the drifts if the cells are local. *\/ */
-    /*   if (ci->nodeID == engine_rank) cell_activate_drift_sinks(ci, s); */
-    /*   if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s); */
-    /*   if (cj->nodeID == engine_rank && with_timestep_sync) */
-    /*     cell_activate_sync_part(cj, s); */
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_sinks_tasks(ci->progeny[pid], cj->progeny[pjd],
+                                            s, with_timestep_sync);
+      }
+    }
 
-    /*   /\* Activate the drifts if the cells are local. *\/ */
-    /*   if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s); */
-    /*   if (cj->nodeID == engine_rank) cell_activate_drift_sinks(cj, s); */
-    /*   if (ci->nodeID == engine_rank && with_timestep_sync) */
-    /*     cell_activate_sync_part(ci, s); */
-    /* } */
+    /* Otherwise, activate the sorts and drifts. */
+    else {
+
+      if (ci_active) {
+
+        /* We are going to interact this pair, so store some values. */
+        atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_sink(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+        if (cj->nodeID == engine_rank && with_timestep_sync)
+          cell_activate_sync_part(cj, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_hydro_sorts(cj, sid, s);
+      }
+
+      if (cj_active) {
+
+        /* We are going to interact this pair, so store some values. */
+        atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_sink(cj, s);
+        if (ci->nodeID == engine_rank && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_hydro_sorts(ci, sid, s);
+      }
+    }
   } /* Otherwise, pair interation */
 }
 

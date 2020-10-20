@@ -1731,6 +1731,24 @@ if test "$enable_debug_interactions" != "no"; then
   fi
 fi
 
+# Check if debugging interactions sinks is switched on.
+AC_ARG_ENABLE([debug-interactions-sinks],
+   [AS_HELP_STRING([--enable-debug-interactions-sinks],
+     [Activate interaction debugging for sinks, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
+   )],
+   [enable_debug_interactions_sinks="$enableval"],
+   [enable_debug_interactions_sinks="no"]
+)
+if test "$enable_debug_interactions_sinks" != "no"; then
+    AC_DEFINE([DEBUG_INTERACTIONS_SINKS],1,[Enable interaction debugging for sinks])
+    if test "$enable_debug_interactions_sinks" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS_SINKS],256,[The maximum number of particle neighbours to be logged for sinks])
+      [enable_debug_interactions_sinks="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS_SINKS], [$enableval] ,[The maximum number of particle neighbours to be logged for sinks])
+      [enable_debug_interactions_sinks="yes (Logging up to $enableval neighbours)"]
+    fi
+fi
 
 # SPH Kernel function
 AC_ARG_WITH([kernel],
