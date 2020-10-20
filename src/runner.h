@@ -41,6 +41,7 @@ struct task;
 #define TASK_LOOP_LIMITER 3
 #define TASK_LOOP_FEEDBACK 4
 #define TASK_LOOP_SWALLOW 5
+#define TASK_LOOP_SINK_FORMATION 6
 
 /**
  * @brief A struct representing a runner's thread and its data.

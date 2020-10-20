@@ -1926,6 +1926,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
+  const int with_sink = (e->policy & engine_policy_sinks);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
 #endif
@@ -1939,6 +1940,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_do_bh_swallow = NULL;
   struct task *t_bh_feedback = NULL;
   struct task *t_rt_inject = NULL;
+  struct task *t_sink_formation = NULL;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -1993,6 +1995,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               task_subtype_stars_feedback, flags, 0, ci, NULL);
       }
 
+      /* The sink tasks */
+      if (with_sink) {
+        t_sink_formation = scheduler_addtask(
+            sched, task_type_self, task_subtype_sink_compute_formation, flags,
+            0, ci, NULL);
+      }
+
       /* The black hole feedback tasks */
       if (with_black_holes && bcount_i > 0) {
         t_bh_density = scheduler_addtask(
@@ -2023,6 +2032,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_feedback) {
         engine_addlink(e, &ci->stars.density, t_star_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+      }
+      if (with_sink) {
+        engine_addlink(e, &ci->sinks.compute_formation, t_sink_formation);
       }
       if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -2072,6 +2084,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_star_feedback);
         scheduler_addunlock(sched, t_star_feedback,
                             ci->hydro.super->stars.stars_out);
+      }
+
+      /* The sink's tasks. */
+      if (with_sink) {
+
+        scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                            t_sink_formation);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                            t_sink_formation);
+        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
+                            t_sink_formation);
+        scheduler_addunlock(sched, t_sink_formation,
+                            ci->hydro.super->hydro.sink_formation);
       }
 
       if (with_black_holes && bcount_i > 0) {
@@ -2174,6 +2199,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               task_subtype_stars_feedback, flags, 0, ci, cj);
       }
 
+      /* The sink tasks */
+      if (with_sink) {
+        t_sink_formation = scheduler_addtask(
+            sched, task_type_pair, task_subtype_sink_compute_formation, flags,
+            0, ci, cj);
+      }
+
       /* The black hole feedback tasks */
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         t_bh_density = scheduler_addtask(
@@ -2206,6 +2238,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->stars.density, t_star_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
         engine_addlink(e, &cj->stars.feedback, t_star_feedback);
+      }
+      if (with_sink) {
+        engine_addlink(e, &ci->sinks.compute_formation, t_sink_formation);
+        engine_addlink(e, &cj->sinks.compute_formation, t_sink_formation);
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -2271,7 +2307,15 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_density);
         }
       }
+      if (with_sink) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                            t_sink_formation);
 
+        if (ci->hydro.super != cj->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_sink_formation);
+        }
+      }
       if (ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
@@ -2291,6 +2335,18 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_feedback);
           scheduler_addunlock(sched, t_star_feedback,
                               ci->hydro.super->stars.stars_out);
+        }
+
+        if (with_sink) {
+
+          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                              t_sink_formation);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_formation);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
+                              t_sink_formation);
+          scheduler_addunlock(sched, t_sink_formation,
+                              ci->hydro.super->hydro.sink_formation);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -2389,6 +2445,18 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_star_feedback);
             scheduler_addunlock(sched, t_star_feedback,
                                 cj->hydro.super->stars.stars_out);
+          }
+
+          if (with_sink) {
+
+            scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+                                t_sink_formation);
+            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                t_sink_formation);
+            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
+                                t_sink_formation);
+            scheduler_addunlock(sched, t_sink_formation,
+                                cj->hydro.super->hydro.sink_formation);
           }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -2507,6 +2575,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               task_subtype_stars_feedback, flags, 0, ci, NULL);
       }
 
+      /* The sink tasks */
+      if (with_sink) {
+        t_sink_formation = scheduler_addtask(
+            sched, task_type_sub_self, task_subtype_sink_compute_formation,
+            flags, 0, ci, NULL);
+      }
+
       /* The black hole feedback tasks */
       if (with_black_holes && bcount_i > 0) {
         t_bh_density =
@@ -2543,6 +2618,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_feedback) {
         engine_addlink(e, &ci->stars.density, t_star_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+      }
+      if (with_sink) {
+        engine_addlink(e, &ci->sinks.compute_formation, t_sink_formation);
       }
       if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -2598,6 +2676,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_star_feedback);
         scheduler_addunlock(sched, t_star_feedback,
                             ci->hydro.super->stars.stars_out);
+      }
+
+      if (with_sink) {
+
+        scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                            t_sink_formation);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                            t_sink_formation);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                            t_sink_formation);
+        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
+                            t_sink_formation);
+        scheduler_addunlock(sched, t_sink_formation,
+                            ci->hydro.super->hydro.sink_formation);
       }
 
       if (with_black_holes && bcount_i > 0) {
@@ -2701,6 +2793,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               task_subtype_stars_feedback, flags, 0, ci, cj);
       }
 
+      /* The sink tasks */
+      if (with_sink) {
+        t_sink_formation = scheduler_addtask(
+            sched, task_type_sub_pair, task_subtype_sink_compute_formation,
+            flags, 0, ci, cj);
+      }
+
       /* The black hole feedback tasks */
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         t_bh_density =
@@ -2737,6 +2836,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->stars.density, t_star_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
         engine_addlink(e, &cj->stars.feedback, t_star_feedback);
+      }
+      if (with_sink) {
+        engine_addlink(e, &ci->sinks.compute_formation, t_sink_formation);
+        engine_addlink(e, &cj->sinks.compute_formation, t_sink_formation);
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -2802,6 +2905,15 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      if (with_sink) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                            t_sink_formation);
+        if (ci->hydro.super != cj->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_sink_formation);
+        }
+      }
+
       if (ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
@@ -2821,6 +2933,18 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_feedback);
           scheduler_addunlock(sched, t_star_feedback,
                               ci->hydro.super->stars.stars_out);
+        }
+
+        if (with_sink) {
+
+          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                              t_sink_formation);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_formation);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
+                              t_sink_formation);
+          scheduler_addunlock(sched, t_sink_formation,
+                              ci->hydro.super->hydro.sink_formation);
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -2920,6 +3044,17 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_star_feedback,
                                 cj->hydro.super->stars.stars_out);
           }
+          if (with_sink) {
+
+            scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+                                t_sink_formation);
+            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                t_sink_formation);
+            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
+                                t_sink_formation);
+            scheduler_addunlock(sched, t_sink_formation,
+                                cj->hydro.super->hydro.sink_formation);
+          }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
@@ -3005,6 +3140,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     }
   }
 }
+
 /**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  * neighbours
