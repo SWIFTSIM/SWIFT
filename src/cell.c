@@ -540,21 +540,30 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.h_max = c->hydro.h_max;
   pc->stars.h_max = c->stars.h_max;
   pc->black_holes.h_max = c->black_holes.h_max;
+  pc->sinks.r_cut_max = c->sinks.r_cut_max;
+
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->grav.ti_end_max = c->grav.ti_end_max;
   pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->stars.ti_end_max = c->stars.ti_end_max;
+  pc->sinks.ti_end_min = c->sinks.ti_end_min;
+  pc->sinks.ti_end_max = c->sinks.ti_end_max;
   pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
   pc->black_holes.ti_end_max = c->black_holes.ti_end_max;
+
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
   pc->stars.ti_old_part = c->stars.ti_old_part;
+  pc->black_holes.ti_old_part = c->black_holes.ti_old_part;
+  pc->sinks.ti_old_part = c->sinks.ti_old_part;
+
   pc->hydro.count = c->hydro.count;
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
+  pc->sinks.count = c->sinks.count;
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
 
@@ -693,6 +702,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
   c->black_holes.h_max = pc->black_holes.h_max;
+  c->sinks.r_cut_max = pc->sinks.r_cut_max;
+
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
@@ -701,14 +712,20 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_max = pc->stars.ti_end_max;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->black_holes.ti_end_max = pc->black_holes.ti_end_max;
+  c->sinks.ti_end_min = pc->sinks.ti_end_min;
+  c->sinks.ti_end_max = pc->sinks.ti_end_max;
+
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
   c->stars.ti_old_part = pc->stars.ti_old_part;
   c->black_holes.ti_old_part = pc->black_holes.ti_old_part;
+  c->sinks.ti_old_part = pc->sinks.ti_old_part;
+
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
+  c->sinks.count = pc->sinks.count;
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
 
