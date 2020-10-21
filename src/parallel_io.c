@@ -727,7 +727,8 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
                       struct sink** sinks, struct spart** sparts,
-                      struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
+                      struct bpart** bparts, struct dmpart** dmparts,
+                      size_t* Ngas, size_t* Ndarkmatter, size_t* Ngparts,
                       size_t* Ngparts_background, size_t* Nsinks,
                       size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_sink,
@@ -750,7 +751,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0, *Nsinks = 0;
+  *Nblackholes = 0, *Nsinks = 0, *Ndarkmatter = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -918,7 +919,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Allocate memory to store gravity particles */
   if (with_gravity) {
+    *Ndarkmatter = N[swift_type_dark_matter];
     Ndm = N[swift_type_dark_matter];
+    if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
+                       *Ndarkmatter * sizeof(struct dmpart)) != 0)
+       error("Error while allocating memory for dark matter particles");
+    bzero(*dmparts, *Ndarkmatter * sizeof(struct dmpart));
+
     Ndm_background = N[swift_type_dark_matter_background];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
@@ -970,8 +977,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
       case swift_type_dark_matter:
         if (with_gravity) {
-          Nparticles = Ndm;
-          darkmatter_read_particles(*gparts, list, &num_fields);
+          Nparticles = *Ndarkmatter;
+          /*darkmatter_read_particles(*gparts, list, &num_fields);*/
+          darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
         }
         break;
 
@@ -1027,10 +1035,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     threadpool_init(&tp, n_threads);
 
     /* Prepare the DM particles */
-    io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    /*io_prepare_dm_gparts(&tp, *gparts, Ndm);*/
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
+      
+    io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
 
     /* Duplicate the hydro particles into gparts */
     if (with_hydro)
