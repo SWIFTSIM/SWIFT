@@ -36,7 +36,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     const int with_cosmology = e->policy & engine_policy_cosmology;
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
-    
+
 #ifdef WITH_MPI
     struct space *s = e->s;
     struct dmpart *dmparts_foreign = s->dmparts_foreign;
@@ -149,7 +149,6 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             }
             
 #ifdef WITH_MPI
-
             /* If hit then calculate collisions/change of direction and update velocities */
             if (pi->sidm_data.sidm_flag == 1){
 
@@ -163,7 +162,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
                         
                         if (dmpf->sidm_data.sidm_flag == 1) {
                         
-                        message("Local dmpart has been hit by a foreign one)");
+                           message("Local dmpart has been hit by a foreign one");
                         
                         }
                     }
@@ -171,7 +170,6 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             }
 #endif
 
-            
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
         
