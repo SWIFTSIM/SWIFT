@@ -55,6 +55,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     chemistry_init_part(&parts[k], e->chemistry);
     pressure_floor_init_part(&parts[k], &xparts[k]);
     rt_init_part(&parts[k]);
+    rt_reset_part(&parts[k]);
     star_formation_init_part(&parts[k], e->star_formation);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,

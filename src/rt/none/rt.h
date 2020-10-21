@@ -25,6 +25,42 @@
  */
 
 /**
+ * @brief Initialisation of the RT density loop related particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief Reset of the RT extra hydro particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief First initialisation of the RT extra hydro particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief Initialisation of the RT density loop related particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_spart(
+    struct spart* restrict sp) {}
+
+/**
+ * @brief Reset of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_spart(
+    struct spart* restrict sp) {}
+
+/**
+ * @brief First initialisation of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_spart(
+    struct spart* restrict sp) {}
+
+/**
  * @brief Update the photon number of a particle, i.e. compute
  *        E^{n+1} = E^n + dt * dE_* / dt
  */
@@ -38,39 +74,12 @@ rt_injection_update_photon_density(struct part* restrict p) {}
  *        stellar property, i.e. doesn't depend on the environment.
  *
  * @param sp star particle to work on
- * @param star_age the star particle's age
- * @param dt current time step size
+ * @param time current system time
+ * @param star_age age of the star *at the end of the step*
+ * @param dt star time step
  */
 __attribute__((always_inline)) INLINE static void
-rt_compute_stellar_emission_rate(struct spart* restrict sp, double star_age,
-                                 double dt) {}
-
-/**
- * @brief First initialisation of the RT extra hydro particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p) {}
-
-/**
- * @brief Initialisation of the RT extra hydro particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
-
-/**
- * @brief First initialisation of the RT extra star particle data.
- */
-__attribute__((always_inline)) INLINE static void rt_first_init_spart(
-    struct spart* restrict sp) {}
-
-/**
- * @brief Initialisation of the RT extra star particle data.
- *
- * @param sp star particle
- * @param reset_emission_rate whether to reset the stellar emission
- *        rate.
- */
-__attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp, int reset_emission_rate) {}
+rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
+                                 double star_age, double dt) {}
 
 #endif /* SWIFT_RT_NONE_H */

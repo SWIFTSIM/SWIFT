@@ -316,9 +316,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             stars_init_spart(sp);
             feedback_init_spart(sp);
-            /* if you reset emission rate now, it won't be
-             * updated until the second step */
-            rt_init_spart(sp, /*reset_emission_rate =*/0);
+            rt_init_spart(sp);
 
             /* Off we go ! */
             continue;
@@ -1226,6 +1224,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
+            rt_init_part(p);
 
             /* Off we go ! */
             continue;

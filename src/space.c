@@ -50,6 +50,7 @@
 #include "minmax.h"
 #include "proxy.h"
 #include "restart.h"
+#include "rt.h"
 #include "sort_part.h"
 #include "space_unique_id.h"
 #include "star_formation.h"
@@ -667,7 +668,23 @@ void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
     gp->v_full[1] = bp->v[1];
     gp->v_full[2] = bp->v[2];
 
+<<<<<<< HEAD
     gp->mass = bp->mass;
+=======
+  size_t ind = parts - e->s->parts;
+  struct xpart *restrict xparts = e->s->xparts + ind;
+
+  for (int k = 0; k < count; k++) {
+    hydro_init_part(&parts[k], hs);
+    black_holes_init_potential(&parts[k].black_holes_data);
+    chemistry_init_part(&parts[k], e->chemistry);
+    pressure_floor_init_part(&parts[k], &xparts[k]);
+    rt_reset_part(&parts[k]);
+    star_formation_init_part(&parts[k], e->star_formation);
+    tracers_after_init(&parts[k], &xparts[k], e->internal_units,
+                       e->physical_constants, with_cosmology, e->cosmology,
+                       e->hydro_properties, e->cooling_func, e->time);
+>>>>>>> ccb64f38e... renamed rt_init_* -> rt_reset_*
   }
 }
 
@@ -743,33 +760,48 @@ void space_synchronize_particle_positions(struct space *s) {
             clocks_getunit());
 }
 
-void space_first_init_rt_extra_data_mapper(void *restrict map_data, int scount, void *restrict extra_data) {
+void space_first_init_rt_extra_data_mapper(void *restrict map_data, int scount,
+                                           void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   for (int k = 0; k < scount; k++) {
-    rt_compute_stellar_emission_rate(
-      &sparts[k], 
-      e->cosmology,
-      with_cosmology,
-      e->ti_current,
-      e->time, 
-      e->time_base
-    );
 
+    struct spart *restrict sp = &sparts[k];
 
+    /* get star's age and time step for stellar emission rates */
+    const integertime_t ti_begin =
+        get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+    const integertime_t ti_step = get_integer_timestep(sp->time_bin);
 
-    if (sparts[k].id == 137500){
-      printf("--- reset 137500 in space.c:first_init_rt_extra_data; time bin = %d; emission rate set? %d\n", sparts[k].time_bin, sparts[k].rt_data.emission_rate_set);
+    /* Get particle time-step */
+    double dt_star;
+    if (with_cosmology) {
+      dt_star =
+          cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
+    } else {
+      dt_star = get_timestep(sp->time_bin, e->time_base);
     }
+
+    /* Calculate age of the star at current time */
+    double star_age_end_of_step;
+    if (with_cosmology) {
+      star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+          e->cosmology, (double)sp->birth_scale_factor, e->cosmology->a);
+    } else {
+      star_age_end_of_step = e->time - (double)sp->birth_time;
+    }
+
+    rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
+                                     dt_star);
   }
 }
 
 /**
- * @brief Calls the first radiative transfer additional data 
- * initialisation function on all star particles in the space. 
+ * @brief Calls the first radiative transfer additional data
+ * initialisation function on all star particles in the space.
  * This function requires that the time bins for star particles
  * have been set already and is called after the 0-th time step.
  *
@@ -781,14 +813,13 @@ void space_first_init_rt_extra_data(struct space *s, int verbose) {
   const ticks tic = getticks();
 
   if (s->nr_sparts > 0)
-    threadpool_map(&s->e->threadpool, space_first_init_rt_extra_data_mapper, s->sparts,
-                   s->nr_sparts, sizeof(struct spart),
+    threadpool_map(&s->e->threadpool, space_first_init_rt_extra_data_mapper,
+                   s->sparts, s->nr_sparts, sizeof(struct spart),
                    threadpool_auto_chunk_size, /*extra_data=*/s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
-
 
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
