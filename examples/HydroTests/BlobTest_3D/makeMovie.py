@@ -50,7 +50,10 @@ def get_image(n):
         masked_x = x[mask] - np.float64(box)
         masked_y = y[mask]
 
-        hsml = data.gas.smoothing_length.value[mask]
+        try:
+            hsml = data.gas.smoothing_length.value[mask]
+        except:
+            hsml = data.gas.smoothing_lengths.value[mask]
 
         if plot == "density":
             mass = data.gas.masses.value[mask]
@@ -166,4 +169,4 @@ animation = FuncAnimation(
     fig, animate, range(start_frame - info_frames, end_frame), interval=40
 )
 
-animation.save("blob.mp4")
+animation.save(filename="blob.mp4")
