@@ -225,7 +225,7 @@ the Universe. That is :math:`\epsilon_{\rm background} =
 f\sqrt[3]{\frac{m}{\Omega_m\rho_{\rm crit}}}`, where :math:`f` is the
 user-defined value (typically of order 0.05).
 
-The accuracy of the gravity calculation is governed by the following two parameters:
+The accuracy of the gravity calculation is governed by the following four parameters:
 
 * The multipole acceptance criterion: ``MAC``
 * The fixed opening angle used in the geometric MAC :math:`\theta_{\rm cr}`: ``theta_cr``,
