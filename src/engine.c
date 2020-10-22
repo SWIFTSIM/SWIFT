@@ -71,6 +71,7 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "kick.h"
 #include "line_of_sight.h"
 #include "logger.h"
 #include "logger_io.h"
@@ -1787,20 +1788,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     message("updating particle counts took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Re-compute the mesh forces */
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
-
-    /* Re-allocate the PM grid if we freed it... */
-    if (repartitioned) pm_mesh_allocate(e->mesh);
-
-    /* ... and recompute */
-    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
-  }
-
-  /* Re-compute the maximal RMS displacement constraint */
-  if (e->policy & engine_policy_cosmology)
-    engine_recompute_displacement_constraint(e);
-
 #ifdef SWIFT_DEBUG_CHECKS
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
@@ -1881,8 +1868,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
+ *
+ * @return 1 if the function drifted all particles 0 if not.
  */
-void engine_prepare(struct engine *e) {
+int engine_prepare(struct engine *e) {
 
   TIMER_TIC2;
   const ticks tic = getticks();
@@ -1941,6 +1930,10 @@ void engine_prepare(struct engine *e) {
     /* And repartition */
     engine_repartition(e);
     repartitioned = 1;
+
+    /* Reallocate the mesh */
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      pm_mesh_allocate(e->mesh);
   }
 
   /* Do we need rebuilding ? */
@@ -1948,6 +1941,8 @@ void engine_prepare(struct engine *e) {
 
     /* Let's start by drifting everybody to the current time */
     if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+
+    drifted_all = 1;
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
@@ -1975,6 +1970,8 @@ void engine_prepare(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including unskip, rebuild and reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  return drifted_all;
 }
 
 /**
@@ -2258,6 +2255,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
+
+  /* Compute the mesh forces for the first time */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+
+    /* Compute mesh forces */
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+
+    /* Compute mesh time-step length */
+    engine_recompute_displacement_constraint(e);
+
+    e->step_props |= engine_step_prop_mesh;
+  }
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
@@ -2675,7 +2684,7 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
-  engine_prepare(e);
+  const int drifted_all = engine_prepare(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Print the number of active tasks */
@@ -2733,6 +2742,22 @@ void engine_step(struct engine *e) {
     }
   }
 #endif
+
+  /* Re-compute the mesh forces */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
+      e->mesh->ti_end_mesh_next == e->ti_current) {
+
+    /* We might need to drift things */
+    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+
+    /* ... and recompute */
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+
+    /* Check whether we need to update the mesh time-step length */
+    engine_recompute_displacement_constraint(e);
+
+    e->step_props |= engine_step_prop_mesh;
+  }
 
   /* Get current CPU times.*/
 #ifdef WITH_MPI
@@ -3692,6 +3717,19 @@ void engine_dump_snapshot(struct engine *e) {
   engine_collect_stars_counter(e);
 #endif
 
+  /* Get time-step since the last mesh kick */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+    const int with_cosmology = e->policy & engine_policy_cosmology;
+
+    e->dt_kick_grav_mesh_for_io =
+        kick_get_grav_kick_dt(e->mesh->ti_beg_mesh_next, e->ti_current,
+                              e->time_base, with_cosmology, e->cosmology) -
+        kick_get_grav_kick_dt(
+            e->mesh->ti_beg_mesh_next,
+            (e->mesh->ti_beg_mesh_next + e->mesh->ti_end_mesh_next) / 2,
+            e->time_base, with_cosmology, e->cosmology);
+  }
+
 /* Dump (depending on the chosen strategy) ... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -3993,6 +4031,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
       params, "TimeIntegration:max_dt_RMS_factor", 0.25);
+  e->dt_kick_grav_mesh_for_io = 0.f;
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
   e->time_first_statistics =
@@ -4381,11 +4420,12 @@ void engine_config(int restart, int fof, struct engine *e,
       fprintf(
           e->file_timesteps,
           "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, logger=%d\n",
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d, "
+          "logger=%d\n",
           engine_step_prop_rebuild, engine_step_prop_redistribute,
           engine_step_prop_repartition, engine_step_prop_statistics,
           engine_step_prop_snapshot, engine_step_prop_restarts,
-          engine_step_prop_stf, engine_step_prop_fof,
+          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh,
           engine_step_prop_logger_index);
 
       fprintf(e->file_timesteps,
@@ -5273,6 +5313,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const ticks tic = getticks();
 
   /* Get the cosmological information */
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float Om = cosmo->Omega_m;
   const float Ob = cosmo->Omega_b;
@@ -5281,113 +5322,160 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const float G_newton = e->physical_constants->const_newton_G;
   const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
-  /* Start by reducing the minimal mass of each particle type */
-  float min_mass[swift_type_count] = {
-      e->s->min_part_mass, e->s->min_gpart_mass, FLT_MAX,
-      e->s->min_sink_mass, e->s->min_spart_mass, e->s->min_bpart_mass};
+  if (with_cosmology) {
+
+    /* Start by reducing the minimal mass of each particle type */
+    float min_mass[swift_type_count] = {
+        e->s->min_part_mass, e->s->min_gpart_mass, FLT_MAX,
+        e->s->min_sink_mass, e->s->min_spart_mass, e->s->min_bpart_mass};
 
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
+                  MPI_COMM_WORLD);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the minimal mass collection worked */
-  float min_part_mass_check = FLT_MAX;
-  for (size_t i = 0; i < e->s->nr_parts; ++i) {
-    if (e->s->parts[i].time_bin >= num_time_bins) continue;
-    min_part_mass_check =
-        min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
-  }
-  if (min_part_mass_check < min_mass[swift_type_gas])
-    error("Error collecting minimal mass of gas particles.");
+    /* Check that the minimal mass collection worked */
+    float min_part_mass_check = FLT_MAX;
+    for (size_t i = 0; i < e->s->nr_parts; ++i) {
+      if (e->s->parts[i].time_bin >= num_time_bins) continue;
+      min_part_mass_check =
+          min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
+    }
+    if (min_part_mass_check < min_mass[swift_type_gas])
+      error("Error collecting minimal mass of gas particles.");
 #endif
 
-  /* Do the same for the velocity norm sum */
-  float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
-                                      e->s->sum_gpart_vel_norm,
-                                      0.f,
-                                      e->s->sum_sink_vel_norm,
-                                      e->s->sum_spart_vel_norm,
-                                      e->s->sum_spart_vel_norm};
+    /* Do the same for the velocity norm sum */
+    float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
+                                        e->s->sum_gpart_vel_norm,
+                                        0.f,
+                                        e->s->sum_sink_vel_norm,
+                                        e->s->sum_spart_vel_norm,
+                                        e->s->sum_spart_vel_norm};
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
+                  MPI_COMM_WORLD);
 #endif
 
-  /* Get the counts of each particle types */
-  const long long total_nr_baryons =
-      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dm_gparts =
-      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
-  float count_parts[swift_type_count] = {
-      (float)e->total_nr_parts,
-      (float)total_nr_dm_gparts,
-      (float)e->total_nr_DM_background_gparts,
-      (float)e->total_nr_sinks,
-      (float)e->total_nr_sparts,
-      (float)e->total_nr_bparts};
+    /* Get the counts of each particle types */
+    const long long total_nr_baryons =
+        e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
+    const long long total_nr_dm_gparts = e->total_nr_gparts -
+                                         e->total_nr_DM_background_gparts -
+                                         total_nr_baryons;
+    float count_parts[swift_type_count] = {
+        (float)e->total_nr_parts,
+        (float)total_nr_dm_gparts,
+        (float)e->total_nr_DM_background_gparts,
+        (float)e->total_nr_sinks,
+        (float)e->total_nr_sparts,
+        (float)e->total_nr_bparts};
 
-  /* Count of particles for the two species */
-  const float N_dm = count_parts[1];
-  const float N_b =
-      count_parts[0] + count_parts[3] + count_parts[4] + count_parts[5];
+    /* Count of particles for the two species */
+    const float N_dm = count_parts[1];
+    const float N_b =
+        count_parts[0] + count_parts[3] + count_parts[4] + count_parts[5];
 
-  /* Peculiar motion norm for the two species */
-  const float vel_norm_dm = vel_norm[1];
-  const float vel_norm_b =
-      vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
+    /* Peculiar motion norm for the two species */
+    const float vel_norm_dm = vel_norm[1];
+    const float vel_norm_b =
+        vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
 
-  /* Mesh forces smoothing scale */
-  float r_s;
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
-    r_s = e->mesh->r_s;
-  else
-    r_s = FLT_MAX;
+    /* Mesh forces smoothing scale */
+    float r_s;
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      r_s = e->mesh->r_s;
+    else
+      r_s = FLT_MAX;
 
-  float dt_dm = FLT_MAX, dt_b = FLT_MAX;
+    float dt_dm = FLT_MAX, dt_b = FLT_MAX;
 
-  /* DM case */
-  if (N_dm > 0.f) {
+    /* DM case */
+    if (N_dm > 0.f) {
 
-    /* Minimal mass for the DM */
-    const float min_mass_dm = min_mass[1];
+      /* Minimal mass for the DM */
+      const float min_mass_dm = min_mass[1];
 
-    /* Inter-particle sepration for the DM */
-    const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit0));
+      /* Inter-particle sepration for the DM */
+      const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit0));
 
-    /* RMS peculiar motion for the DM */
-    const float rms_vel_dm = vel_norm_dm / N_dm;
+      /* RMS peculiar motion for the DM */
+      const float rms_vel_dm = vel_norm_dm / N_dm;
 
-    /* Time-step based on maximum displacement */
-    dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
+      /* Time-step based on maximum displacement */
+      dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
+    }
+
+    /* Baryon case */
+    if (N_b > 0.f) {
+
+      /* Minimal mass for the baryons */
+      const float min_mass_b =
+          min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
+
+      /* Inter-particle sepration for the baryons */
+      const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
+
+      /* RMS peculiar motion for the baryons */
+      const float rms_vel_b = vel_norm_b / N_b;
+
+      /* Time-step based on maximum displacement */
+      dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
+    }
+
+    /* Use the minimum */
+    const float dt = min(dt_dm, dt_b);
+
+    /* Apply the dimensionless factor */
+    e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+
+    if (e->verbose)
+      message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
   }
 
-  /* Baryon case */
-  if (N_b > 0.f) {
+  /* Now, update the mesh time-step */
 
-    /* Minimal mass for the baryons */
-    const float min_mass_b =
-        min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
+  /* Store the previous time-step size */
+  e->mesh->ti_end_mesh_last = e->mesh->ti_end_mesh_next;
+  e->mesh->ti_beg_mesh_last = e->mesh->ti_beg_mesh_next;
+  const integertime_t old_dti =
+      e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
 
-    /* Inter-particle sepration for the baryons */
-    const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->step > 1 && e->mesh->ti_end_mesh_last != e->ti_current)
+    error("Weird time integration issue");
+#endif
 
-    /* RMS peculiar motion for the baryons */
-    const float rms_vel_b = vel_norm_b / N_b;
+  /* What is the allowed time-step size
+   * Note: The cosmology factor is 1 in non-cosmo runs */
+  double dt_mesh = e->dt_max_RMS_displacement * e->cosmology->time_step_factor;
+  dt_mesh = min(dt_mesh, e->dt_max);
 
-    /* Time-step based on maximum displacement */
-    dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
+  /* Convert to integer time */
+  integertime_t new_dti = (integertime_t)(dt_mesh * e->time_base_inv);
+
+  /* Find the max integer time-step on the timeline below new_dti */
+  integertime_t dti_timeline = max_nr_timesteps;
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
+  new_dti = dti_timeline;
+
+  /* Make sure we are allowed to increase the timestep size */
+  const integertime_t current_dti = e->step > 0 ? old_dti : max_nr_timesteps;
+  if (new_dti > current_dti) {
+    if ((max_nr_timesteps - e->ti_current) % new_dti > 0) {
+      new_dti = current_dti;
+    }
   }
 
-  /* Use the minimum */
-  const float dt = min(dt_dm, dt_b);
+  e->mesh->ti_beg_mesh_next = e->ti_current;
+  e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
 
-  /* Apply the dimensionless factor */
-  e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+  const timebin_t bin = get_time_bin(new_dti);
 
-  if (e->verbose)
-    message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
+  if (new_dti != old_dti)
+    message("Mesh time-step changed to %e (time-bin %d)",
+            get_timestep(bin, e->time_base), bin);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

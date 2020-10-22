@@ -1024,7 +1024,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Gravity stuff ? */
-    else if (t_type == task_type_grav_down || t_type == task_type_grav_mesh ||
+    else if (t_type == task_type_grav_down ||
              t_type == task_type_grav_long_range ||
              t_type == task_type_init_grav ||
              t_type == task_type_init_grav_out ||

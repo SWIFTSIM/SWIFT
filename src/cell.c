@@ -1756,11 +1756,14 @@ void cell_bunlocktree(struct cell *c) {
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff,
-                struct cell_buff *sinkbuff) {
+void cell_split(struct cell *c, const ptrdiff_t parts_offset,
+                const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
+                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
+                struct cell_buff *restrict sbuff,
+                struct cell_buff *restrict bbuff,
+                struct cell_buff *restrict gbuff,
+                struct cell_buff *restrict sinkbuff) {
+
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
             sink_count = c->sinks.count;
@@ -2119,7 +2122,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap(&gparts[j], &gpart, sizeof(struct gpart));
+          memswap_unaligned(&gparts[j], &gpart, sizeof(struct gpart));
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
@@ -4430,7 +4433,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
-    if (c->grav.mesh != NULL) scheduler_activate(s, c->grav.mesh);
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
     if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
 #ifdef WITH_LOGGER
@@ -7559,7 +7561,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 #endif
 
       /* Swap everything (including pointers) */
-      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct gpart));
+      memswap_unaligned(&gparts[i], &gparts[first_not_extra],
+                        sizeof(struct gpart));
       if (gparts[i].type == swift_type_gas) {
         parts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {

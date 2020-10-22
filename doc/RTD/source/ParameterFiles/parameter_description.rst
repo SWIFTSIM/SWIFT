@@ -217,7 +217,7 @@ to be supplied.
 In case of zoom simulations, the softening of the additional, more massive, background
 particles is specified via the parameter
 ``softening_ratio_background``. Since these particles will typically have
-different masses to degrade the resolution away from the zoom region, the
+different masses to degrade the resolution away from the zoom-in region, the
 particles won't have a single softening value. Instead, we specify the
 fraction of the mean inter-particle separation to use. The code will then
 derive the softening length of each particle assuming the mean density of
@@ -225,10 +225,21 @@ the Universe. That is :math:`\epsilon_{\rm background} =
 f\sqrt[3]{\frac{m}{\Omega_m\rho_{\rm crit}}}`, where :math:`f` is the
 user-defined value (typically of order 0.05).
 
-The accuracy of the gravity calculation is governed by the following two parameters:
+The accuracy of the gravity calculation is governed by the following four parameters:
 
-* The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
+* The multipole acceptance criterion: ``MAC``
+* The fixed opening angle used in the geometric MAC :math:`\theta_{\rm cr}`: ``theta_cr``,
+* The accuracy criterion used in the adaptive MAC:  :math:`\epsilon_{\rm fmm}`: ``epsilon_fmm``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
+
+The first three parameters govern the way the Fast-Multipole method
+tree-walk is done (see the theory documents for full details).  The ``MAC``
+parameter can take two values: ``adaptive`` or ``geometric``. In the first
+case, the tree recursion decision is based on the estimated accelerations
+that a given tree node will produce, trying to recurse to levels where the
+fractional contribution of the accelerations to the cell is less than
+:math:`\epsilon_{\rm fmm}`. In the second case, a fixed Barnes-Hut-like
+opening angle :math:`\theta_{\rm cr}` is used.
 
 The time-step of a given particle is given by :math:`\Delta t =
 \sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
@@ -237,13 +248,20 @@ The time-step of a given particle is given by :math:`\Delta t =
 <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using
 :math:`\eta=0.025`.
 
-The last tree-related parameter is
+The last tree-related parameters are:
 
 * The tree rebuild frequency: ``rebuild_frequency``.
+* Whether or not to use the approximate gravity from the FMM tree below the
+  softening scale: ``use_tree_below_softening`` (default: 0)
+* Whether or not the truncated force estimator in the adaptive tree-walk
+  considers the exponential mesh-related cut-off:
+  ``allow_truncation_in_MAC`` (default: 0)
 
 The tree rebuild frequency is an optional parameter defaulting to
-:math:`0.01`. It is used to trigger the re-construction of the tree every time a
-fraction of the particles have been integrated (kicked) forward in time.
+:math:`0.01`. It is used to trigger the re-construction of the tree every
+time a fraction of the particles have been integrated (kicked) forward in
+time.  The other two parameters default to good all-around choices. See the
+theory documentation about their exact effects.
 
 Simulations using periodic boundary conditions use additional parameters for the
 Particle-Mesh part of the calculation. The last five are optional:
@@ -257,17 +275,9 @@ Particle-Mesh part of the calculation. The last five are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
-* Whether or not to dither the particles randomly at each tree rebuild:
-  ``dithering`` (default: ``1``),
-* The magnitude of each component of the dithering vector to use in units of the
-  top-level cell sizes: ``dithering_ratio`` (default: ``1.0``).
 
 For most runs, the default values can be used. Only the number of cells along
-each axis needs to be specified. The mesh dithering is only used for simulations
-using periodic boundary conditions and in the absence of an external potential.
-At each tree rebuild time, all the particles are moved by a random vector (the
-same for all particles) and the periodic BCs are then applied. This reduces the
-correlation of erros across time. The remaining three values are best described
+each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
 
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
@@ -278,7 +288,9 @@ simulation:
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
      eta:                    0.025
-     theta:                  0.6
+     MAC:                    adaptive
+     theta_cr:               0.6
+     epsilon_fmm:            0.001
      mesh_side_length:       512
      comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_DM_softening:     0.0007     # 0.7 proper kpc
@@ -288,8 +300,8 @@ simulation:
      a_smooth:          1.25        # Default optional value
      r_cut_max:         4.5         # Default optional value
      r_cut_min:         0.1         # Default optional value
-     dithering:         1           # Default optional value
-     dithering_ratio:   1.0         # Default optional value 
+     use_tree_below_softening: 0    # Default optional value
+     allow_truncation_in_MAC:  0    # Default optional value
 
 .. _Parameters_SPH:
 
@@ -551,7 +563,8 @@ the start and end times or scale factors from the parameter file.
 * Dimensionless pre-factor of the maximal allowed displacement:
   ``max_dt_RMS_factor`` (default: ``0.25``)
 
-This value rarely needs altering.
+This value rarely needs altering. See the theory documents for its
+precise meaning.
 
 A full time-step section for a non-cosmological run would be:
 

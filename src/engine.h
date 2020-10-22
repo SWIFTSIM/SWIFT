@@ -100,8 +100,9 @@ enum engine_step_properties {
   engine_step_prop_restarts = (1 << 5),
   engine_step_prop_stf = (1 << 6),
   engine_step_prop_fof = (1 << 7),
-  engine_step_prop_logger_index = (1 << 8),
-  engine_step_prop_done = (1 << 9)
+  engine_step_prop_mesh = (1 << 8),
+  engine_step_prop_logger_index = (1 << 9),
+  engine_step_prop_done = (1 << 10),
 };
 
 /* Some constants */
@@ -508,6 +509,10 @@ struct engine {
   /* The globally agreed runtime, in hours. */
   float runtime;
 
+  /* Time-integration mesh kick to apply to the particle velocities for
+   * snapshots */
+  float dt_kick_grav_mesh_for_io;
+
   /* Label of the run */
   char run_name[PARSER_MAX_LINE_SIZE];
 
@@ -586,7 +591,7 @@ void engine_config(int restart, int fof, struct engine *e,
                    const char *restart_file);
 void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e, const char *call);
-void engine_prepare(struct engine *e);
+int engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 void engine_step(struct engine *e);

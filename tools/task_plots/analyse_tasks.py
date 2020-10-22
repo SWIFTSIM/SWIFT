@@ -101,7 +101,6 @@ TASKTYPES = [
     "grav_mm",
     "grav_down_in",
     "grav_down",
-    "grav_mesh",
     "grav_end_force",
     "cooling",
     "cooling_in",
