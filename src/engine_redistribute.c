@@ -406,6 +406,16 @@ static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 1);
 static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 0);
 #endif
 
+/**
+ * @brief Save position of dmpart-gpart links.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ */
+#ifdef SWIFT_DEBUG_CHECKS
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(dmpart, 1);
+#else
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(dmpart, 0);
+#endif
+
 #endif /* savelink_mapper_data */
 
 #ifdef WITH_MPI /* relink_mapper_data */
@@ -443,7 +453,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
   int *g_counts = mydata->g_counts;
   int *s_counts = mydata->s_counts;
   int *b_counts = mydata->b_counts;
-    int *dm_counts = mydata->dm_counts;
+  int *dm_counts = mydata->dm_counts;
   struct space *s = mydata->s;
 
   for (int i = 0; i < num_elements; i++) {
@@ -455,14 +465,14 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
     size_t offset_gparts = 0;
     size_t offset_sparts = 0;
     size_t offset_bparts = 0;
-      size_t offset_dmparts = 0;
+    size_t offset_dmparts = 0;
     for (int n = 0; n < node; n++) {
       int ind_recv = n * nr_nodes + nodeID;
       offset_parts += counts[ind_recv];
       offset_gparts += g_counts[ind_recv];
       offset_sparts += s_counts[ind_recv];
       offset_bparts += b_counts[ind_recv];
-        offset_dmparts += dm_counts[ind_recv];
+      offset_dmparts += dm_counts[ind_recv];
     }
 
     /* Number of gparts sent from this node. */
@@ -558,14 +568,14 @@ void engine_redistribute(struct engine *e) {
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
   struct bpart *bparts = s->bparts;
-    struct dmpart *dmparts = s->dmparts;
+  struct dmpart *dmparts = s->dmparts;
   ticks tic = getticks();
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
-    size_t nr_dmparts = s->nr_dmparts;
+  size_t nr_dmparts = s->nr_dmparts;
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {
@@ -967,7 +977,7 @@ void engine_redistribute(struct engine *e) {
         savelink_data.counts = dm_counts;
         savelink_data.parts = (void *)dmparts;
         savelink_data.nodeID = nodeID;
-        threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_bpart,
+        threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_dmpart,
                        nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
                        &savelink_data);
     }

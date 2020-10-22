@@ -1073,7 +1073,7 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
         if (c->nodeID == e->nodeID) {
             
             /* Add tasks */
-            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart,task_subtype_none, 0, 0, c, NULL);
+            c->dark_matter.drift = scheduler_addtask(s, task_type_drift_dmpart, task_subtype_none, 0, 0, c, NULL);
 
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
             
@@ -3368,6 +3368,50 @@ void engine_make_dark_matter_tasks_mapper(void *map_data, int num_elements,
                     const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
                     scheduler_addtask(sched, task_type_pair, task_subtype_sidm, sid, 0, ci, cj);
                     
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+                    
+                    /* Let's cross-check that we had a proxy for that cell */
+                    if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+                        
+                        /* Find the proxy for this node */
+                        const int proxy_id = e->proxy_ind[cj->nodeID];
+                        if (proxy_id < 0)
+                            error("No proxy exists for that foreign node %d!", cj->nodeID);
+                        
+                        const struct proxy *p = &e->proxies[proxy_id];
+                        
+                        /* Check whether the cell exists in the proxy */
+                        int n = 0;
+                        for (n = 0; n < p->nr_cells_in; n++)
+                            if (p->cells_in[n] == cj) break;
+                        if (n == p->nr_cells_in)
+                            error(
+                                  "Cell %d not found in the proxy but trying to construct "
+                                  "dark matter task!",
+                                  cjd);
+                    } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+                        
+                        /* Find the proxy for this node */
+                        const int proxy_id = e->proxy_ind[ci->nodeID];
+                        if (proxy_id < 0)
+                            error("No proxy exists for that foreign node %d!", ci->nodeID);
+                        
+                        const struct proxy *p = &e->proxies[proxy_id];
+                        
+                        /* Check whether the cell exists in the proxy */
+                        int n = 0;
+                        for (n = 0; n < p->nr_cells_in; n++)
+                            if (p->cells_in[n] == ci) break;
+                        if (n == p->nr_cells_in)
+                            error(
+                                  "Cell %d not found in the proxy but trying to construct "
+                                  "dark matter task!",
+                                  cid);
+                    }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+
                 }
             }
         }
@@ -3749,7 +3793,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Adding dependencies for dark matter stuff */
-  /*engine_link_dark_matter_tasks(e);*/
+  engine_link_dark_matter_tasks(e);
     
   if (e->verbose)
     message("Making links of dark matter tasks took %.3f %s.",

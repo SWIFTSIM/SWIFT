@@ -624,7 +624,7 @@ int cell_count_dmparts_for_tasks(const struct cell *c) {
     error("Counting foreign particles in a local cell!");
 #endif
     
-    /* Do we have a gravity task at this level? */
+    /* Do we have a dark matter task at this level? */
     if (cell_get_recv(c, task_subtype_dmpart) != NULL) {
         return c->dark_matter.count;
     }
@@ -3936,17 +3936,32 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
         if (ci->dark_matter.count == 0 || cj->dark_matter.count == 0) return;
         
         /* recurse? */
-        else if (!ci->split && !cj->split) {
-            /* Activate the drifts if the cells are local. */
-            if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
+        if (ci->split){
+            /* Loop over ci's children */
+            for (int k = 0; k < 8; k++) {
+                if (ci->progeny[k] != NULL)
+                    cell_activate_subcell_dark_matter_tasks(ci->progeny[k], cj, s);
+            }
             
-            /* Activate the drifts if the cells are local. */
-            if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
-            if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
-         }
-      }
-   }
+        } else if (cj->split) {
+            /* Loop over cj's children */
+            for (int k = 0; k < 8; k++) {
+                if (cj->progeny[k] != NULL)
+                    cell_activate_subcell_dark_matter_tasks(ci, cj->progeny[k], s);
+            }
+        }
+        
+        /* Otherwise, activate the drifts if we are at the bottom. */
+        else if (!ci->split && !cj->split) {
+        
+             if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
+                if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
+                if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
+             }
+        }
+    }
 }
+
 
 /**
  * @brief Traverse a sub-cell task and activate the gravity drift tasks that
@@ -5086,19 +5101,8 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             
             /* Set the drifting flags */
             if (t->type == task_type_self) {
-                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-            } else if (t->type == task_type_pair) {
-                /* Activate the drift tasks. */
-                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-            }
-            /* Store current values of dx_max and h_max. */
-            else if (t->type == task_type_sub_self) {
                 cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
-            }
-            
-            /* Store current values of dx_max and h_max. */
-            else if (t->type == task_type_sub_pair) {
+            } else if (t->type == task_type_pair) {
                 cell_activate_subcell_dark_matter_tasks(ci, cj, s);
             }
         }
@@ -5127,17 +5131,11 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                     /* Drift the cell which will be sent; note that not all sent
                      particles will be drifted, only those that are needed. */
                     cell_activate_drift_dmpart(cj, s);
-                    
-                    /* If the local cell is also active, more stuff will be needed. */
-                    if (cj_active) {
-                        scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart, ci_nodeID);
-                    }
                 }
-                
+                    
                 /* If the local cell is active, send its ti_end values. */
                 if (cj_active) {
-                    scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
-                                        ci_nodeID);
+                        scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart, ci_nodeID);
                 }
                 
             } else if (cj_nodeID != nodeID) {
