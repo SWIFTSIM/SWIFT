@@ -194,6 +194,26 @@ struct pcell {
 
   } black_holes;
 
+  /*! Sink variables */
+  struct {
+
+    /*! Number of #sink in this cell. */
+    int count;
+
+    /*! Maximal cut off radius. */
+    float r_cut_max;
+
+    /*! Minimal integer end-of-timestep in this cell for sinks tasks */
+    integertime_t ti_end_min;
+
+    /*! Maximal integer end-of-timestep in this cell for sinks tasks */
+    integertime_t ti_end_max;
+
+    /*! Integer time of the last drift of the #sink in this cell */
+    integertime_t ti_old_part;
+
+  } sinks;
+
   /*! Maximal depth in that part of the tree */
   int maxdepth;
 
