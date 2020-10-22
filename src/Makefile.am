@@ -313,7 +313,7 @@ nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floo
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h 
 nobase_noinst_HEADERS += sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h sink/Default/sink_properties.h 
 nobase_noinst_HEADERS += sink/Default/sink_iact.h
-nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
+nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h runner_doiact_functions_sinks.h
 
 
 # Sources and special flags for the gravity library
