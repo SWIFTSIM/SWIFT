@@ -24,6 +24,7 @@
 
 /* Local headers */
 #include "gravity_properties.h"
+#include "timeline.h"
 
 /* Forward declarations */
 struct engine;
@@ -44,6 +45,18 @@ struct pm_mesh {
 
   /*! Side-length of the mesh */
   int N;
+
+  /*! Integer time-step end of the mesh force for the last step */
+  integertime_t ti_end_mesh_last;
+
+  /*! Integer time-step beginning of the mesh force for the last step */
+  integertime_t ti_beg_mesh_last;
+
+  /*! Integer time-step end of the mesh force for the next step*/
+  integertime_t ti_end_mesh_next;
+
+  /*! Integer time-step beginning of the mesh force for the next step */
+  integertime_t ti_beg_mesh_next;
 
   /*! Conversion factor between box and mesh size */
   double cell_fac;
@@ -72,9 +85,6 @@ void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,
 void pm_mesh_init_no_mesh(struct pm_mesh *mesh, double dim[3]);
 void pm_mesh_compute_potential(struct pm_mesh *mesh, const struct space *s,
                                struct threadpool *tp, int verbose);
-void pm_mesh_interpolate_forces(const struct pm_mesh *mesh,
-                                const struct engine *e, struct gpart *gparts,
-                                int gcount);
 void pm_mesh_clean(struct pm_mesh *mesh);
 
 void pm_mesh_allocate(struct pm_mesh *mesh);

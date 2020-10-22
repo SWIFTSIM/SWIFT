@@ -1032,8 +1032,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
-    } else if (t->type == task_type_grav_mesh) {
-      /* For future use */
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
@@ -1597,9 +1595,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
-        cost = wscale * gcount_i;
-        break;
-      case task_type_grav_mesh:
         cost = wscale * gcount_i;
         break;
       case task_type_grav_mm:

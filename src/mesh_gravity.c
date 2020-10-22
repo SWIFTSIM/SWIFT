@@ -194,8 +194,10 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
   const struct gpart* gparts = c->grav.parts;
 
   /* Assign all the gpart of that cell to the mesh */
-  for (int i = 0; i < gcount; ++i)
+  for (int i = 0; i < gcount; ++i) {
+    if (gparts[i].time_bin == time_bin_inhibited) continue;
     gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
+  }
 }
 
 /**
@@ -205,10 +207,29 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
 struct cic_mapper_data {
   const struct cell* cells;
   double* rho;
+  double* potential;
   int N;
   double fac;
   double dim[3];
+  float const_G;
 };
+
+void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+
+  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
+  double* rho = data->rho;
+  const int N = data->N;
+  const double fac = data->fac;
+  const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+
+  /* Pointer to the chunk to be processed */
+  const struct gpart* gparts = (const struct gpart*)map_data;
+
+  for (int i = 0; i < num; ++i) {
+    if (gparts[i].time_bin == time_bin_inhibited) continue;
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
+  }
+}
 
 /**
  * @brief Threadpool mapper function for the mesh CIC assignment of a cell.
@@ -258,8 +279,8 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param fac width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
-                        const double fac, const double dim[3]) {
+void mesh_to_gpart_CIC(struct gpart* gp, const double* pot, const int N,
+                       const double fac, const double dim[3]) {
 
   /* Box wrap the gpart's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -288,8 +309,10 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (gp->a_grav_PM[0] != 0. || gp->potential_PM != 0.)
-    error("Particle with non-initalised stuff");
+  if (gp->a_grav_mesh[0] != 0.) error("Particle with non-initalised stuff");
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  if (gp->potential_mesh != 0.) error("Particle with non-initalised stuff");
+#endif
 #endif
 
   /* First, copy the necessary part of the mesh for stencil operations */
@@ -335,16 +358,111 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
   /* ---- */
 
   /* Store things back */
-  gp->a_grav[0] += fac * a[0];
-  gp->a_grav[1] += fac * a[1];
-  gp->a_grav[2] += fac * a[2];
-  gravity_add_comoving_potential(gp, p);
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->potential_PM = p;
-  gp->a_grav_PM[0] = fac * a[0];
-  gp->a_grav_PM[1] = fac * a[1];
-  gp->a_grav_PM[2] = fac * a[2];
+  gp->a_grav_mesh[0] = fac * a[0];
+  gp->a_grav_mesh[1] = fac * a[1];
+  gp->a_grav_mesh[2] = fac * a[2];
+  gravity_add_comoving_mesh_potential(gp, p);
+}
+
+void cell_mesh_to_gpart_CIC(const struct cell* c, const double* potential,
+                            const int N, const double fac, const float const_G,
+                            const double dim[3]) {
+
+  const int gcount = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+
+  /* Assign all the gpart of that cell to the mesh */
+  for (int i = 0; i < gcount; ++i) {
+
+    struct gpart* gp = &gparts[i];
+
+    if (gp->time_bin == time_bin_inhibited) continue;
+
+    gp->a_grav_mesh[0] = 0.f;
+    gp->a_grav_mesh[1] = 0.f;
+    gp->a_grav_mesh[2] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+    gp->potential_mesh = 0.f;
 #endif
+
+    mesh_to_gpart_CIC(gp, potential, N, fac, dim);
+
+    gp->a_grav_mesh[0] *= const_G;
+    gp->a_grav_mesh[1] *= const_G;
+    gp->a_grav_mesh[2] *= const_G;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+    gp->potential_mesh *= const_G;
+#endif
+  }
+}
+
+void mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+
+  /* Unpack the shared information */
+  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
+  const double* const potential = data->potential;
+  const int N = data->N;
+  const double fac = data->fac;
+  const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+  const float const_G = data->const_G;
+
+  /* Pointer to the chunk to be processed */
+  struct gpart* gparts = (struct gpart*)map_data;
+
+  /* Loop over the elements assigned to this thread */
+  for (int i = 0; i < num; ++i) {
+
+    struct gpart* gp = &gparts[i];
+    if (gp->time_bin == time_bin_inhibited) continue;
+
+    gp->a_grav_mesh[0] = 0.f;
+    gp->a_grav_mesh[1] = 0.f;
+    gp->a_grav_mesh[2] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+    gp->potential_mesh = 0.f;
+#endif
+
+    mesh_to_gpart_CIC(gp, potential, N, fac, dim);
+
+    gp->a_grav_mesh[0] *= const_G;
+    gp->a_grav_mesh[1] *= const_G;
+    gp->a_grav_mesh[2] *= const_G;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+    gp->potential_mesh *= const_G;
+#endif
+  }
+}
+
+/**
+ * @brief Threadpool mapper function for the mesh CIC assignment of a cell.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
+ */
+void cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+
+  /* Unpack the shared information */
+  const struct cic_mapper_data* data = (struct cic_mapper_data*)extra;
+  const struct cell* cells = data->cells;
+  const double* const potential = data->potential;
+  const int N = data->N;
+  const double fac = data->fac;
+  const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+  const float const_G = data->const_G;
+
+  /* Pointer to the chunk to be processed */
+  int* local_cells = (int*)map_data;
+
+  /* Loop over the elements assigned to this thread */
+  for (int i = 0; i < num; ++i) {
+
+    /* Pointer to local cell */
+    const struct cell* c = &cells[local_cells[i]];
+
+    /* Assign this cell's content to the mesh */
+    cell_mesh_to_gpart_CIC(c, potential, N, fac, const_G, dim);
+  }
 }
 
 /**
@@ -520,7 +638,6 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Use the memory allocated for the potential to temporarily store rho */
   double* restrict rho = mesh->potential;
   if (rho == NULL) error("Error allocating memory for density mesh");
-  bzero(rho, N * N * N * sizeof(double));
 
   /* Allocates some memory for the mesh in Fourier space */
   fftw_complex* restrict frho =
@@ -545,17 +662,30 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   struct cic_mapper_data data;
   data.cells = s->cells_top;
   data.rho = rho;
+  data.potential = NULL;
   data.N = N;
   data.fac = cell_fac;
   data.dim[0] = dim[0];
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
+  data.const_G = 0.f;
 
-  /* Do a parallel CIC mesh assignment of the gparts but only using
-     the local top-level cells */
-  threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-                 nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
-                 (void*)&data);
+  if (nr_local_cells == 0) {
+
+    /* We don't have a cell infrastructure in place so we need to
+     * directly loop over the particles */
+    threadpool_map(tp, gpart_to_mesh_CIC_mapper, s->gparts, s->nr_gparts,
+                   sizeof(struct gpart), threadpool_auto_chunk_size,
+                   (void*)&data);
+
+  } else { /* Normal case */
+
+    /* Do a parallel CIC mesh assignment of the gparts but only using
+     * the local top-level cells */
+    threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
+                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                   (void*)&data);
+  }
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
@@ -575,8 +705,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
-  /* message("\n\n\n DENSITY"); */
-  /* print_array(rho, N); */
+  // message("\n\n\n DENSITY");
+  // print_array(rho, N);
 
   tic = getticks();
 
@@ -617,58 +747,46 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* message("\n\n\n POTENTIAL"); */
   /* print_array(mesh->potential, N); */
 
+  tic = getticks();
+
+  /* Gather the mesh shared information to be used by the threads */
+  data.cells = s->cells_top;
+  data.rho = NULL;
+  data.potential = mesh->potential;
+  data.N = N;
+  data.fac = cell_fac;
+  data.dim[0] = dim[0];
+  data.dim[1] = dim[1];
+  data.dim[2] = dim[2];
+  data.const_G = s->e->physical_constants->const_newton_G;
+
+  if (nr_local_cells == 0) {
+
+    /* We don't have a cell infrastructure in place so we need to
+     * directly loop over the particles */
+    threadpool_map(tp, mesh_to_gpart_CIC_mapper, s->gparts, s->nr_gparts,
+                   sizeof(struct gpart), threadpool_auto_chunk_size,
+                   (void*)&data);
+
+  } else { /* Normal case */
+
+    /* Do a parallel CIC mesh interpolation onto the gparts but only using
+       the local top-level cells */
+    threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                   (void*)&data);
+  }
+
+  if (verbose)
+    message("Gpart mesh forces took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* Clean-up the mess */
   fftw_destroy_plan(forward_plan);
   fftw_destroy_plan(inverse_plan);
   memuse_log_allocation("fftw_frho", frho, 0, 0);
   fftw_free(frho);
 
-#else
-  error("No FFTW library found. Cannot compute periodic long-range forces.");
-#endif
-}
-
-/**
- * @brief Interpolate the forces and potential from the mesh to the #gpart.
- *
- * We use CIC interpolation. The resulting accelerations and potential must
- * be multiplied by G_newton.
- *
- * @param mesh The #pm_mesh (containing the potential) to interpolate from.
- * @param e The #engine (to check active status).
- * @param gparts The #gpart to interpolate to.
- * @param gcount The number of #gpart.
- */
-void pm_mesh_interpolate_forces(const struct pm_mesh* mesh,
-                                const struct engine* e, struct gpart* gparts,
-                                int gcount) {
-
-#ifdef HAVE_FFTW
-
-  const int N = mesh->N;
-  const double cell_fac = mesh->cell_fac;
-  const double* potential = mesh->potential;
-  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
-
-  /* Get the potential from the mesh to the active gparts using CIC */
-  for (int i = 0; i < gcount; ++i) {
-    struct gpart* gp = &gparts[i];
-
-    if (gpart_is_active(gp, e)) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (gp->ti_drift != e->ti_current)
-        error("gpart not drifted to current time");
-
-      /* Check that the particle was initialised */
-      if (gp->initialised == 0)
-        error("Adding forces to an un-initialised gpart.");
-#endif
-
-      mesh_to_gparts_CIC(gp, potential, N, cell_fac, dim);
-    }
-  }
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
@@ -747,6 +865,10 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
   mesh->potential = NULL;
+  mesh->ti_beg_mesh_last = -1;
+  mesh->ti_end_mesh_last = -1;
+  mesh->ti_beg_mesh_next = -1;
+  mesh->ti_end_mesh_next = -1;
 
   if (mesh->N > 1290)
     error(
@@ -793,6 +915,10 @@ void pm_mesh_init_no_mesh(struct pm_mesh* mesh, double dim[3]) {
   mesh->r_s = FLT_MAX;
   mesh->r_cut_min = FLT_MAX;
   mesh->r_cut_max = FLT_MAX;
+  mesh->ti_beg_mesh_last = -1;
+  mesh->ti_end_mesh_last = -1;
+  mesh->ti_beg_mesh_next = -1;
+  mesh->ti_end_mesh_next = -1;
 }
 
 /**

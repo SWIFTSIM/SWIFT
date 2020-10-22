@@ -726,15 +726,18 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
               "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
               "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
               "%16.8e %16.8e %16.8e %16lld %16lld %16lld %16lld\n",
-              id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0],
-              gpi->a_grav[1], gpi->a_grav[2],
-              gravity_get_comoving_potential(gpi), gpi->a_grav_PM[0],
-              gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM,
-              gpi->a_grav_p2p[0], gpi->a_grav_p2p[1], gpi->a_grav_p2p[2],
-              gpi->a_grav_m2p[0], gpi->a_grav_m2p[1], gpi->a_grav_m2p[2],
-              gpi->a_grav_m2l[0], gpi->a_grav_m2l[1], gpi->a_grav_m2l[2],
-              gpi->num_interacted_p2p, gpi->num_interacted_m2p,
-              gpi->num_interacted_m2l, gpi->num_interacted_pm);
+              id, gpi->x[0], gpi->x[1], gpi->x[2],
+              gpi->a_grav[0] + gpi->a_grav_mesh[0],
+              gpi->a_grav[1] + gpi->a_grav_mesh[1],
+              gpi->a_grav[2] + gpi->a_grav_mesh[2],
+              gravity_get_comoving_potential(gpi), gpi->a_grav_mesh[0],
+              gpi->a_grav_mesh[1], gpi->a_grav_mesh[2],
+              gravity_get_comoving_mesh_potential(gpi), gpi->a_grav_p2p[0],
+              gpi->a_grav_p2p[1], gpi->a_grav_p2p[2], gpi->a_grav_m2p[0],
+              gpi->a_grav_m2p[1], gpi->a_grav_m2p[2], gpi->a_grav_m2l[0],
+              gpi->a_grav_m2l[1], gpi->a_grav_m2l[2], gpi->num_interacted_p2p,
+              gpi->num_interacted_m2p, gpi->num_interacted_m2l,
+              gpi->num_interacted_pm);
     }
   }
 
