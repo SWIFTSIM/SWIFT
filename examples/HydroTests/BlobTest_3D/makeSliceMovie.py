@@ -51,7 +51,10 @@ def get_image(n):
         masked_y = y[mask]
         masked_z = z[mask]
 
-        hsml = data.gas.smoothing_length.value[mask]
+        try:
+            hsml = data.gas.smoothing_length.value[mask]
+        except:
+            hsml = data.gas.smoothing_lengths.value[mask]
 
         if plot == "density":
             mass = data.gas.masses.value[mask]
@@ -187,4 +190,4 @@ animation = FuncAnimation(
     fig, animate, range(start_frame - info_frames, end_frame), interval=40
 )
 
-animation.save("blob_slice.mp4")
+animation.save(filename="blob_slice.mp4")
