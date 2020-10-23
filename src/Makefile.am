@@ -42,6 +42,7 @@ endif
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
+    cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h \
     partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
