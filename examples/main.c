@@ -1416,7 +1416,15 @@ int main(int argc, char *argv[]) {
     }
 #endif
     /* Dump initial state snapshot, if not working with an output list */
-    if (!e.output_list_snapshots) engine_dump_snapshot(&e);
+    if (!e.output_list_snapshots) {
+
+      /* Run FoF first, if we're adding FoF info to the snapshot */
+      if(with_fof && e.snapshot_invoke_fof) {
+	engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+      }
+
+      engine_dump_snapshot(&e);
+    }
 
     /* Dump initial state statistics, if not working with an output list */
     if (!e.output_list_stats) engine_print_stats(&e);
