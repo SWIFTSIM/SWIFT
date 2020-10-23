@@ -62,6 +62,13 @@ struct sink {
 
 #endif
 
+#ifdef DEBUG_INTERACTIONS_SINKS
+  /*! Number of interactions in compute formation SELF and PAIR */
+  int num_ngb_formation;
+
+  /*! List of interacting particles in compute formation SELF and PAIR */
+  long long ids_ngbs_formation[MAX_NUM_OF_NEIGHBOURS_SINKS];
+#endif
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_SINK_PART_H */

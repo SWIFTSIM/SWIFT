@@ -43,7 +43,6 @@ Gravity:
   max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)
   comoving_baryon_softening:     0.001790 # Comoving softening for baryons (1.79 ckpc)
   max_physical_baryon_softening: 0.000700 # Physical softening for baryons (0.70 pkpc)
-  dithering:             0
   
 # Parameters for the hydrodynamics scheme
 SPH:

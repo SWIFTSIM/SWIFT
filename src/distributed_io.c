@@ -457,8 +457,8 @@ void write_output_distributed(struct engine* e,
   if (h_grp < 0) error("Error while creating cells group");
 
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp, e->s->cdim, e->s->dim, e->s->pos_dithering,
-                        e->s->cells_top, e->s->nr_cells, e->s->width, mpi_rank,
+  io_write_cell_offsets(h_grp, e->s->cdim, e->s->dim, e->s->cells_top,
+                        e->s->nr_cells, e->s->width, mpi_rank,
                         /*distributed=*/1, N_total, global_offsets, numFields,
                         internal_units, snapshot_units);
   H5Gclose(h_grp);

@@ -39,7 +39,7 @@
 #error TODO
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #error TODO
-#elif defined(DEFAULT_SPH)
+#elif defined(PHANTOM_SPH)
 #error TODO
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #error TODO

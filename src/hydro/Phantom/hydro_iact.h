@@ -17,14 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_HYDRO_IACT_H
-#define SWIFT_DEFAULT_HYDRO_IACT_H
+#ifndef SWIFT_PHANTOM_HYDRO_IACT_H
+#define SWIFT_PHANTOM_HYDRO_IACT_H
 
 /**
- * @file Default/hydro_iact.h
+ * @file Phantom/hydro_iact.h
  * @brief Density-Energy conservative implementation of SPH,
  *        with added diffusive physics (Cullen & Denhen 2011 AV,
  *        Price 2017 (PHANTOM) diffusion) (interaction routines)
+ *
+ *        This is a base reference implementation
+ *        similar to the one presented in Price 2018.
  */
 
 #include "adiabatic_index.h"
@@ -330,6 +333,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
                       const_viscosity_beta * mu_ij;
 
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
@@ -340,12 +347,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Convolve with the kernel */
   const float visc_acc_term =
-      0.5f * visc * (wi_dr * pi->force.f / rhoi + wj_dr * pj->force.f / rhoj) *
-      r_inv;
+      0.5f * visc * (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj) * r_inv;
 
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
   const float sph_acc_term =
@@ -378,9 +384,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
-  const float diff_du_term =
-      alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
-      (wi_dr * pi->force.f / pi->rho + wj_dr * pi->force.f / pi->rho);
+  const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
+                             (wi_dr * f_ij / pi->rho + wj_dr * f_ji / pi->rho);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -391,8 +396,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * pi->force.f * r_inv / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr * pj->force.f * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdr * f_ij * r_inv / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr * f_ji * r_inv / rhoi * wj_dr;
 }
 
 /**
@@ -419,7 +424,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r_inv = 1.0f / r;
 
   /* Recover some data */
-  // const float mi = pi->mass;
+  const float mi = pi->mass;
   const float mj = pj->mass;
 
   const float rhoi = pi->rho;
@@ -460,6 +465,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
                       const_viscosity_beta * mu_ij;
 
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
@@ -470,12 +479,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Convolve with the kernel */
   const float visc_acc_term =
-      0.5f * visc * (wi_dr * pi->force.f / rhoi + wj_dr * pj->force.f / rhoj) *
-      r_inv;
+      0.5f * visc * (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj) * r_inv;
 
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
   const float sph_acc_term =
@@ -502,9 +510,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
-  const float diff_du_term =
-      alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
-      (wi_dr * pi->force.f / pi->rho + wj_dr * pi->force.f / pi->rho);
+  const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
+                             (wi_dr * f_ij / pi->rho + wj_dr * f_ji / pi->rho);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -513,7 +520,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * pi->force.f * r_inv / rhoj * wi_dr;
+  pi->force.h_dt -= mj * dvdr * f_ij * r_inv / rhoj * wi_dr;
 }
 
-#endif /* SWIFT_DEFAULT_HYDRO_IACT_H */
+#endif /* SWIFT_PHANTOM_HYDRO_IACT_H */

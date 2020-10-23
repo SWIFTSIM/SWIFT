@@ -17,14 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_HYDRO_PART_H
-#define SWIFT_DEFAULT_HYDRO_PART_H
+#ifndef SWIFT_PHANTOM_HYDRO_PART_H
+#define SWIFT_PHANTOM_HYDRO_PART_H
 
 /**
- * @file Default/hydro_part.h
+ * @file Phantom/hydro_part.h
  * @brief Density-Energy conservative implementation of SPH,
  *        with added diffusive physics (Cullen & Denhen 2011 AV,
  *        Price 2017 (PHANTOM) diffusion) (particle definition)
+ *
+ *        This is a base reference implementation
+ *        similar to the one presented in Price 2018.
  */
 
 #include "black_holes_struct.h"
@@ -52,9 +55,6 @@ struct xpart {
 
   /*! Velocity at the last full step. */
   float v_full[3];
-
-  /*! Gravitational acceleration at the last full step. */
-  float a_grav[3];
 
   /*! Internal energy at the last full step. */
   float u_full;
@@ -220,4 +220,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_DEFAULT_HYDRO_PART_H */
+#endif /* SWIFT_PHANTOM_HYDRO_PART_H */

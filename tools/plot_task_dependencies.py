@@ -139,8 +139,7 @@ def append_single_data(data0, datai):
         # check number of ta->tb
         N = np.sum(ind)
         if N > 1:
-            raise Exception(
-                "Same dependency written multiple times %s->%s" % (ta, tb))
+            raise Exception("Same dependency written multiple times %s->%s" % (ta, tb))
         # if not present in data0
         if N == 0:
             data0.append(row)
@@ -282,6 +281,8 @@ def task_is_hydro(name):
         "ghost_out",
         "extra_ghost",
         "cooling",
+        "cooling_in",
+        "cooling_out",
         "star_formation",
     ]
     if name in task_name:
@@ -470,8 +471,9 @@ def write_header(f, data, git, opt):
     f.write('\t label="Task dependencies for SWIFT %s";\n' % git)
     f.write("\t compound=true;\n")
     f.write("\t ratio=0.66;\n")
-    f.write("\t node[nodesep=0.15, fontsize=30, penwidth=5.];\n")
-    f.write("\t ranksep=1.2;\n")
+    f.write("\t node[nodesep=0.15, fontsize=18, penwidth=3.];\n")
+    f.write("\t edge[fontsize=12, penwidth=0.5];\n")
+    f.write("\t ranksep=0.8;\n")
     f.write("\n")
 
     # write the special task
@@ -485,8 +487,7 @@ def write_header(f, data, git, opt):
             continue
 
         written.append(ta)
-        write_task(f, ta, data["implicit_in"][i],
-                   data["mpi_in"][i], opt.with_calls)
+        write_task(f, ta, data["implicit_in"][i], data["mpi_in"][i], opt.with_calls)
 
     # do task out
     for i in range(N):
@@ -495,8 +496,7 @@ def write_header(f, data, git, opt):
             continue
 
         written.append(tb)
-        write_task(f, tb, data["implicit_out"][i],
-                   data["mpi_out"][i], opt.with_calls)
+        write_task(f, tb, data["implicit_out"][i], data["mpi_out"][i], opt.with_calls)
 
     f.write("\n")
 

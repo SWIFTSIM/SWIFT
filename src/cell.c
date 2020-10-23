@@ -540,21 +540,30 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.h_max = c->hydro.h_max;
   pc->stars.h_max = c->stars.h_max;
   pc->black_holes.h_max = c->black_holes.h_max;
+  pc->sinks.r_cut_max = c->sinks.r_cut_max;
+
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->grav.ti_end_max = c->grav.ti_end_max;
   pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->stars.ti_end_max = c->stars.ti_end_max;
+  pc->sinks.ti_end_min = c->sinks.ti_end_min;
+  pc->sinks.ti_end_max = c->sinks.ti_end_max;
   pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
   pc->black_holes.ti_end_max = c->black_holes.ti_end_max;
+
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
   pc->stars.ti_old_part = c->stars.ti_old_part;
+  pc->black_holes.ti_old_part = c->black_holes.ti_old_part;
+  pc->sinks.ti_old_part = c->sinks.ti_old_part;
+
   pc->hydro.count = c->hydro.count;
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
+  pc->sinks.count = c->sinks.count;
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
 
@@ -693,6 +702,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
   c->black_holes.h_max = pc->black_holes.h_max;
+  c->sinks.r_cut_max = pc->sinks.r_cut_max;
+
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
@@ -701,14 +712,20 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_max = pc->stars.ti_end_max;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->black_holes.ti_end_max = pc->black_holes.ti_end_max;
+  c->sinks.ti_end_min = pc->sinks.ti_end_min;
+  c->sinks.ti_end_max = pc->sinks.ti_end_max;
+
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
   c->stars.ti_old_part = pc->stars.ti_old_part;
   c->black_holes.ti_old_part = pc->black_holes.ti_old_part;
+  c->sinks.ti_old_part = pc->sinks.ti_old_part;
+
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
+  c->sinks.count = pc->sinks.count;
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
 
@@ -1739,11 +1756,14 @@ void cell_bunlocktree(struct cell *c) {
  * @param sinkbuff A buffer with at least max(c->sinks.count, c->grav.count)
  * entries, used for sorting indices for the sinks.
  */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff,
-                struct cell_buff *sinkbuff) {
+void cell_split(struct cell *c, const ptrdiff_t parts_offset,
+                const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
+                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
+                struct cell_buff *restrict sbuff,
+                struct cell_buff *restrict bbuff,
+                struct cell_buff *restrict gbuff,
+                struct cell_buff *restrict sinkbuff) {
+
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
             sink_count = c->sinks.count;
@@ -2102,7 +2122,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
             j++;
             bucket_count[bid]++;
           }
-          memswap(&gparts[j], &gpart, sizeof(struct gpart));
+          memswap_unaligned(&gparts[j], &gpart, sizeof(struct gpart));
           memswap(&gbuff[j], &temp_buff, sizeof(struct cell_buff));
           if (gparts[j].type == swift_type_gas) {
             parts[-gparts[j].id_or_neg_offset - parts_offset].gpart =
@@ -3703,45 +3723,67 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 
   /* Otherwise, pair interation */
   else {
-    error("Not implemented yet.");
-    /* /\* Should we even bother? *\/ */
-    /* if (!cell_is_active_sinks(ci, e) && */
-    /*     !cell_is_active_sinks(cj, e)) */
-    /*   return; */
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
 
-    /* /\* Get the orientation of the pair. *\/ */
-    /* double shift[3]; */
-    /* const int sid = space_getsid(s->space, &ci, &cj, shift); */
+    const int ci_active =
+        cell_is_active_sinks(ci, e) || cell_is_active_hydro(ci, e);
+    const int cj_active =
+        cell_is_active_sinks(cj, e) || cell_is_active_hydro(cj, e);
 
-    /* /\* recurse? *\/ */
-    /* if (cell_can_recurse_in_pair_sinks_task(ci, cj) && */
-    /*     cell_can_recurse_in_pair_sinks_task(cj, ci)) { */
-    /*   const struct cell_split_pair *csp = &cell_split_pairs[sid]; */
-    /*   for (int k = 0; k < csp->count; k++) { */
-    /*     const int pid = csp->pairs[k].pid; */
-    /*     const int pjd = csp->pairs[k].pjd; */
-    /*     if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) */
-    /*       cell_activate_subcell_sinks_tasks( */
-    /*           ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync); */
-    /*   } */
-    /* } */
+    /* Should we even bother? */
+    if (!ci_active && !cj_active) return;
 
-    /* /\* Otherwise, activate the drifts. *\/ */
-    /* else if (cell_is_active_sinks(ci, e) || */
-    /*          cell_is_active_sinks(cj, e)) { */
+    /* recurse? */
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
+        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
 
-    /*   /\* Activate the drifts if the cells are local. *\/ */
-    /*   if (ci->nodeID == engine_rank) cell_activate_drift_sinks(ci, s); */
-    /*   if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s); */
-    /*   if (cj->nodeID == engine_rank && with_timestep_sync) */
-    /*     cell_activate_sync_part(cj, s); */
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
+      for (int k = 0; k < csp->count; k++) {
+        const int pid = csp->pairs[k].pid;
+        const int pjd = csp->pairs[k].pjd;
+        if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+          cell_activate_subcell_sinks_tasks(ci->progeny[pid], cj->progeny[pjd],
+                                            s, with_timestep_sync);
+      }
+    }
 
-    /*   /\* Activate the drifts if the cells are local. *\/ */
-    /*   if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s); */
-    /*   if (cj->nodeID == engine_rank) cell_activate_drift_sinks(cj, s); */
-    /*   if (ci->nodeID == engine_rank && with_timestep_sync) */
-    /*     cell_activate_sync_part(ci, s); */
-    /* } */
+    /* Otherwise, activate the sorts and drifts. */
+    else {
+
+      if (ci_active) {
+
+        /* We are going to interact this pair, so store some values. */
+        atomic_or(&cj->hydro.requires_sorts, 1 << sid);
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_sink(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+        if (cj->nodeID == engine_rank && with_timestep_sync)
+          cell_activate_sync_part(cj, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_hydro_sorts(cj, sid, s);
+      }
+
+      if (cj_active) {
+
+        /* We are going to interact this pair, so store some values. */
+        atomic_or(&ci->hydro.requires_sorts, 1 << sid);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+
+        /* Activate the drifts if the cells are local. */
+        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+        if (cj->nodeID == engine_rank) cell_activate_drift_sink(cj, s);
+        if (ci->nodeID == engine_rank && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
+
+        /* Do we need to sort the cells? */
+        cell_activate_hydro_sorts(ci, sid, s);
+      }
+    }
   } /* Otherwise, pair interation */
 }
 
@@ -4391,7 +4433,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
-    if (c->grav.mesh != NULL) scheduler_activate(s, c->grav.mesh);
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
     if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
 #ifdef WITH_LOGGER
@@ -4985,11 +5026,10 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
 
+  /* TODO: implement rebuild conditions */
   int rebuild = 0;
-  int counter = 0;
 
   for (struct link *l = c->hydro.rt_inject; l != NULL; l = l->next) {
-    counter++;
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -5016,6 +5056,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_rt_tasks(ci, cj, s);
       }
+    }
+  }
+
+  /* Unskip all the other task types */
+  if (c->nodeID == nodeID) {
+    if (cell_is_active_hydro(c, e)) {
+      if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
+      if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
+      if (c->hydro.rt_out != NULL) scheduler_activate(s, c->hydro.rt_out);
     }
   }
 
@@ -7512,7 +7561,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
 #endif
 
       /* Swap everything (including pointers) */
-      memswap(&gparts[i], &gparts[first_not_extra], sizeof(struct gpart));
+      memswap_unaligned(&gparts[i], &gparts[first_not_extra],
+                        sizeof(struct gpart));
       if (gparts[i].type == swift_type_gas) {
         parts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {

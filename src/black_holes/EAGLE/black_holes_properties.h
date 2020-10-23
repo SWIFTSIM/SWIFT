@@ -85,6 +85,9 @@ struct black_holes_props {
   /*! Switch for the Booth & Schaye 2009 model */
   int with_boost_factor;
 
+  /*! Use constant-alpha version of Booth & Schaye (2009) model? */
+  int boost_alpha_only;
+
   /*! Lowest value of the boost of the Booth & Schaye 2009 model */
   float boost_alpha;
 
@@ -135,8 +138,23 @@ struct black_holes_props {
   float AGN_delta_T_max;
   float AGN_delta_T_min;
 
+  /*! Vary the energy reservoir according to the BH accretion rate? */
+  int use_adaptive_energy_reservoir_threshold;
+
+  /*! Normalisation for energy reservoir threshold, at upper end */
+  float nheat_alpha;
+
+  /*! Reference max accretion rate for energy reservoir variation */
+  float nheat_maccr_normalisation;
+
+  /*! Hard limit to the energy reservoir threshold */
+  float nheat_limit;
+
   /*! Number of gas neighbours to heat in a feedback event */
   float num_ngbs_to_heat;
+
+  /*! Switch to make nheat use the constant dT as basis, not actual dT */
+  int AGN_use_nheat_with_fixed_dT;
 
   /* ---- Properties of the repositioning model --- */
 
@@ -163,8 +181,17 @@ struct black_holes_props {
   /*! Normalisation factor for repositioning velocity */
   float reposition_coefficient_upsilon;
 
+  /*! Reference black hole mass for repositioning scaling */
+  float reposition_reference_mass;
+
   /*! Repositioning velocity scaling with black hole mass */
-  float reposition_exponent_xi;
+  float reposition_exponent_mass;
+
+  /*! Reference gas density for repositioning scaling */
+  float reposition_reference_n_H;
+
+  /*! Repositioning velocity scaling with gas density */
+  float reposition_exponent_n_H;
 
   /* ---- Properties of the merger model ---------- */
 
@@ -295,14 +322,18 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
       parser_get_param_int(params, "EAGLEAGN:with_boost_factor");
 
   if (bp->with_boost_factor) {
+    bp->boost_alpha_only =
+        parser_get_param_int(params, "EAGLEAGN:boost_alpha_only");
     bp->boost_alpha = parser_get_param_float(params, "EAGLEAGN:boost_alpha");
 
-    bp->boost_beta = parser_get_param_float(params, "EAGLEAGN:boost_beta");
+    if (!bp->boost_alpha_only) {
+      bp->boost_beta = parser_get_param_float(params, "EAGLEAGN:boost_beta");
 
-    /* Load the density in cgs and convert to internal units */
-    bp->boost_n_h_star =
-        parser_get_param_float(params, "EAGLEAGN:boost_n_h_star_H_p_cm3") /
-        units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+      /* Load the density in cgs and convert to internal units */
+      bp->boost_n_h_star =
+          parser_get_param_float(params, "EAGLEAGN:boost_n_h_star_H_p_cm3") /
+          units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+    }
   }
 
   bp->use_nibbling = parser_get_param_int(params, "EAGLEAGN:use_nibbling");
@@ -345,20 +376,40 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_max") * T_K_to_int;
     bp->AGN_delta_T_min =
         parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_min") * T_K_to_int;
+    bp->AGN_use_nheat_with_fixed_dT =
+        parser_get_param_int(params, "EAGLEAGN:AGN_use_nheat_with_fixed_dT");
+    if (bp->AGN_use_nheat_with_fixed_dT) {
+      bp->AGN_delta_T_desired =
+          parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_K");
+    }
+
   } else {
     bp->AGN_delta_T_desired =
         parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_K");
   }
 
+  bp->use_adaptive_energy_reservoir_threshold = parser_get_param_int(
+      params, "EAGLEAGN:AGN_use_adaptive_energy_reservoir_threshold");
+  if (bp->use_adaptive_energy_reservoir_threshold) {
+    bp->nheat_alpha =
+        parser_get_param_float(params, "EAGLEAGN:AGN_nheat_alpha");
+    bp->nheat_maccr_normalisation =
+        parser_get_param_float(params,
+                               "EAGLEAGN:AGN_nheat_maccr_normalisation") *
+        phys_const->const_solar_mass / phys_const->const_year;
+    bp->nheat_limit =
+        parser_get_param_float(params, "EAGLEAGN:AGN_nheat_limit");
+  }
+
+  /* We must always read a default value to initialize BHs to */
   bp->num_ngbs_to_heat =
       parser_get_param_float(params, "EAGLEAGN:AGN_num_ngb_to_heat");
 
   /* Reposition parameters --------------------------------- */
 
   bp->max_reposition_mass =
-      parser_get_param_float(params, "EAGLEAGN:max_reposition_mass");
-  /* Convert to internal units */
-  bp->max_reposition_mass *= phys_const->const_solar_mass;
+      parser_get_param_float(params, "EAGLEAGN:max_reposition_mass") *
+      phys_const->const_solar_mass;
   bp->max_reposition_distance_ratio =
       parser_get_param_float(params, "EAGLEAGN:max_reposition_distance_ratio");
 
@@ -399,8 +450,16 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->reposition_coefficient_upsilon *=
         (1e5 / (us->UnitLength_in_cgs / us->UnitTime_in_cgs));
 
-    bp->reposition_exponent_xi = parser_get_opt_param_float(
-        params, "EAGLEAGN:reposition_exponent_xi", 1.0);
+    /* Scaling parameters with BH mass and gas density */
+    bp->reposition_reference_mass =
+        parser_get_param_float(params, "EAGLEAGN:reposition_reference_mass") *
+        phys_const->const_solar_mass;
+    bp->reposition_exponent_mass = parser_get_opt_param_float(
+        params, "EAGLEAGN:reposition_exponent_mass", 2.0);
+    bp->reposition_reference_n_H =
+        parser_get_param_float(params, "EAGLEAGN:reposition_reference_n_H");
+    bp->reposition_exponent_n_H = parser_get_opt_param_float(
+        params, "EAGLEAGN:reposition_exponent_n_H", 1.0);
   }
 
   /* Merger parameters ------------------------------------- */

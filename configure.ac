@@ -1612,16 +1612,13 @@ AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 # Gravity scheme.
 AC_ARG_WITH([gravity],
    [AS_HELP_STRING([--with-gravity=<scheme>],
-      [Gravity scheme to use @<:@basic, with-potential, with-multi-softening default: with-multi-softening@:>@]
+      [Gravity scheme to use @<:@basic, with-multi-softening default: with-multi-softening@:>@]
    )],
    [with_gravity="$withval"],
    [with_gravity="with-multi-softening"]
 )
 
 case "$with_gravity" in
-   with-potential)
-      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Basic gravity scheme with potential calculation])
-   ;;
    with-multi-softening)
       AC_DEFINE([MULTI_SOFTENING_GRAVITY], [1], [Gravity scheme with per-particle type softening value and background particles])
    ;;
@@ -1633,13 +1630,24 @@ case "$with_gravity" in
    ;;
 esac
 
+AC_ARG_ENABLE([gravitational-potential],
+   [AS_HELP_STRING([--disable-gravitational-potential],
+     [Disable calculation of the gravitational potential.]
+   )],
+   [enable_gravitational_potential="$enableval"],
+   [enable_gravitational_potential="yes"]
+)
+if test "$enable_gravitational_potential" = "no"; then
+   AC_DEFINE([SWIFT_GRAVITY_NO_POTENTIAL],1,[Disable calculation of the gravitational potential])
+fi
+
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, sphenix, anarchy-pu default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, sphenix, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
-   [with_hydro="gadget2"]
+   [with_hydro="sphenix"]
 )
 
 case "$with_hydro" in
@@ -1658,8 +1666,8 @@ case "$with_hydro" in
    pressure-energy-monaghan)
       AC_DEFINE([HOPKINS_PU_SPH_MONAGHAN], [1], [Pressure-Energy SPH with M&M Variable A.V.])
    ;;
-   default)
-      AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
+   phantom)
+      AC_DEFINE([PHANTOM_SPH], [1], [Phantom SPH])
    ;;
    gizmo-mfv)
       AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
@@ -1731,6 +1739,24 @@ if test "$enable_debug_interactions" != "no"; then
   fi
 fi
 
+# Check if debugging interactions sinks is switched on.
+AC_ARG_ENABLE([debug-interactions-sinks],
+   [AS_HELP_STRING([--enable-debug-interactions-sinks],
+     [Activate interaction debugging for sinks, logging a maximum of @<:@N@:>@ neighbours. Defaults to 256 if no value set.]
+   )],
+   [enable_debug_interactions_sinks="$enableval"],
+   [enable_debug_interactions_sinks="no"]
+)
+if test "$enable_debug_interactions_sinks" != "no"; then
+    AC_DEFINE([DEBUG_INTERACTIONS_SINKS],1,[Enable interaction debugging for sinks])
+    if test "$enable_debug_interactions_sinks" == "yes"; then
+      AC_DEFINE([MAX_NUM_OF_NEIGHBOURS_SINKS],256,[The maximum number of particle neighbours to be logged for sinks])
+      [enable_debug_interactions_sinks="yes (Logging up to 256 neighbours)"]
+    else
+      AC_DEFINE_UNQUOTED([MAX_NUM_OF_NEIGHBOURS_SINKS], [$enableval] ,[The maximum number of particle neighbours to be logged for sinks])
+      [enable_debug_interactions_sinks="yes (Logging up to $enableval neighbours)"]
+    fi
+fi
 
 # SPH Kernel function
 AC_ARG_WITH([kernel],
@@ -1864,7 +1890,7 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -1899,12 +1925,23 @@ case "$with_cooling" in
    ;;
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
+      with_cooling="QLA (Ploeckinger+20 tables) with constant primordial Z"
    ;;
    EAGLE)
-      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
+      with_cooling="EAGLE (Wiersma+09 tables)"
+   ;;
+   Wiersma)
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
+      with_cooling="EAGLE (Wiersma+09 tables)"
    ;;
    COLIBRE)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model])
+      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
+      with_cooling="COLIBRE (Ploeckinger+20 tables)"
+   ;;
+   Ploeckinger)
+      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
+      with_cooling="COLIBRE (Ploeckinger+20 tables)"
    ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
@@ -2306,22 +2343,22 @@ DX_INIT_DOXYGEN(SWIFT, doc/Doxyfile, doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Check if using QLA cooling
-AM_CONDITIONAL([HAVEQLACOOLING], [test $with_cooling = "QLA"])
+AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:3}" == "QLA"])
 
 # Check if using EAGLE cooling
-AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
+AM_CONDITIONAL([HAVEEAGLECOOLING], [test "${with_cooling:0:5}" == "EAGLE"])
 
 # Check if using COLIBRE cooling
-AM_CONDITIONAL([HAVECOLIBRECOOLING], [test $with_cooling = "COLIBRE"])
+AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "${with_cooling:0:7}" == "COLIBRE"])
 
 # Check if using EAGLE feedback
-AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test $with_feedback = "EAGLE"])
+AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test "$with_feedback" == "EAGLE"])
 
 # check if using grackle cooling
-AM_CONDITIONAL([HAVEGRACKLECOOLING], [test ${with_cooling:0:7} == "grackle"])
+AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "${with_cooling:0:7}" == "grackle"])
 
 # check if using gear feedback
-AM_CONDITIONAL([HAVEGEARFEEDBACK], [test $with_feedback == "GEAR"])
+AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" == "GEAR"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
@@ -2389,6 +2426,7 @@ AC_MSG_RESULT([
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
+   Compute potential   : $enable_gravitational_potential
    No gravity below ID : $no_gravity_below_id
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential

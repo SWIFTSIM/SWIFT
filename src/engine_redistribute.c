@@ -615,7 +615,8 @@ void engine_redistribute(struct engine *e) {
       nr_gparts -= 1;
 
       /* Swap the particle */
-      memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
+      memswap_unaligned(&s->gparts[k], &s->gparts[nr_gparts],
+                        sizeof(struct gpart));
 
       /* Swap the link with part/spart */
       if (s->gparts[k].type == swift_type_gas) {

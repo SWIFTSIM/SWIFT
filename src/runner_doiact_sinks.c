@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,22 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_POTENTIAL_GRAVITY_DEBUG_H
-#define SWIFT_POTENTIAL_GRAVITY_DEBUG_H
 
-__attribute__((always_inline)) INLINE static void gravity_debug_particle(
-    const struct gpart* p) {
-  printf(
-      "mass=%.3e time_bin=%d\n"
-      "x=[%.5e,%.5e,%.5e], v_full=[%.5e,%.5e,%.5e], a=[%.5e,%.5e,%.5e] "
-      "pot=%.5e\n",
-      p->mass, p->time_bin, p->x[0], p->x[1], p->x[2], p->v_full[0],
-      p->v_full[1], p->v_full[2], p->a_grav[0], p->a_grav[1], p->a_grav[2],
-      p->potential);
-#ifdef SWIFT_DEBUG_CHECKS
-  printf("num_interacted=%lld ti_drift=%lld ti_kick=%lld\n", p->num_interacted,
-         p->ti_drift, p->ti_kick);
-#endif
-}
+/* Config parameters. */
+#include "../config.h"
 
-#endif /* SWIFT_POTENTIAL_GRAVITY_DEBUG_H */
+/* Local headers. */
+#include "active.h"
+#include "cell.h"
+#include "engine.h"
+#include "feedback.h"
+#include "runner.h"
+#include "sink.h"
+#include "space_getsid.h"
+#include "timers.h"
+
+/* Import the sink compute formation loop functions. */
+#define FUNCTION compute_formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORMATION
+#include "runner_doiact_functions_sinks.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
