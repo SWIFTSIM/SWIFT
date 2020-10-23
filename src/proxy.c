@@ -289,7 +289,8 @@ void proxy_cells_count_mapper(void *map_data, int num_elements,
   struct cell *cells = (struct cell *)map_data;
 
   for (int k = 0; k < num_elements; k++) {
-    if (cells[k].mpi.sendto) cells[k].mpi.pcell_size = cell_getsize(&cells[k]);
+    if (cells[k].mpi.sendto)
+      cells[k].mpi.pcell_size = cell_get_tree_size(&cells[k]);
   }
 }
 
