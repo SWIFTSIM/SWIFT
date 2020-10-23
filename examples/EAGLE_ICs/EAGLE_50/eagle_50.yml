@@ -182,7 +182,8 @@ EAGLEFeedback:
   SNII_energy_fraction_n_0_H_p_cm3:     1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:             0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:             0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNII_energy_fraction_use_birth_props: 0               # Are we using the density and metallicity at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_density: 0             # Are we using the density at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_metallicity: 0         # Are we using the metallicity at birth to compuote f_E or at feedback time?
   SNIa_DTD:                             Exponential     # Functional form of the SNIa delay time distribution.
   SNIa_DTD_delay_Gyr:                   0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
   SNIa_DTD_exp_timescale_Gyr:           2.0             # Time-scale of the exponential decay of the SNIa rates in Gyr.
@@ -222,13 +223,15 @@ EAGLEAGN:
   AGN_with_locally_adaptive_delta_T:  1          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
   AGN_delta_T_mass_norm:              3e8        # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
   AGN_delta_T_mass_reference:         1e8        # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
-  AGN_delta_T_mass_exponent:          0.666667.  # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_exponent:          0.666667   # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
   AGN_delta_T_crit_factor:            1.0        # Multiple of critical dT for numerical efficiency (Dalla Vecchia & Schaye 2012) to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
   AGN_delta_T_background_factor:      0.0        # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
   AGN_delta_T_min:                    1e7        # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
   AGN_delta_T_max:                    3e9        # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
-  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (only used if use_variable_delta_T is 0).
-  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (only used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1).
+  AGN_use_nheat_with_fixed_dT:        0          # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
+  AGN_use_adaptive_energy_reservoir_threshold: 0 # Switch to calculate an adaptive AGN energy reservoir threshold.
+  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
   max_reposition_mass:                1e20       # Maximal BH mass considered for BH repositioning in solar masses (large number implies we always reposition).
   max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
   with_reposition_velocity_threshold: 0          # Should we only reposition to particles that move slowly w.r.t. the black hole?

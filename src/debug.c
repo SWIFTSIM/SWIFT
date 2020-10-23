@@ -50,8 +50,8 @@
 #include "./hydro/PressureEnergy/hydro_debug.h"
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_debug.h"
+#elif defined(PHANTOM_SPH)
+#include "./hydro/Phantom/hydro_debug.h"
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)

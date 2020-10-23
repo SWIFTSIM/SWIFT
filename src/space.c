@@ -272,7 +272,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.long_range = NULL;
     c->grav.down_in = NULL;
     c->grav.down = NULL;
-    c->grav.mesh = NULL;
     c->grav.end_force = NULL;
     c->top = c;
     c->super = c;
@@ -300,6 +299,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.rt_inject = NULL;
     c->hydro.rt_in = NULL;
     c->hydro.rt_out = NULL;
+    c->hydro.rt_ghost1 = NULL;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
@@ -1281,44 +1281,6 @@ void space_allocate_extras(struct space *s, int verbose) {
 }
 
 /**
- * @brief Compute a new dithering vector to apply to all the particles
- * in the simulation.
- *
- * @param s The #space.
- * @param verbose Are we talkative?
- */
-void space_dither(struct space *s, int verbose) {
-
-  /* Store the old dithering vector */
-  s->pos_dithering_old[0] = s->pos_dithering[0];
-  s->pos_dithering_old[1] = s->pos_dithering[1];
-  s->pos_dithering_old[2] = s->pos_dithering[2];
-
-  if (s->e->nodeID == 0) {
-
-    const double dithering_ratio = s->e->gravity_properties->dithering_ratio;
-
-    /* Compute the new dithering vector */
-    const double rand_x = rand() / ((double)RAND_MAX);
-    const double rand_y = rand() / ((double)RAND_MAX);
-    const double rand_z = rand() / ((double)RAND_MAX);
-
-    s->pos_dithering[0] = dithering_ratio * s->width[0] * rand_x;
-    s->pos_dithering[1] = dithering_ratio * s->width[1] * rand_y;
-    s->pos_dithering[2] = dithering_ratio * s->width[2] * rand_z;
-  }
-
-#ifdef WITH_MPI
-  /* Tell everyone what value to use */
-  MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-  if (verbose)
-    message("Dithering the particle positions by [%e %e %e]",
-            s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
-}
-
-/**
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
@@ -1341,10 +1303,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
-
-  /* Are we dithering the particles? */
-  const int with_dithering = s->e->gravity_properties->with_dithering;
-  if (s->with_self_gravity && with_dithering) space_dither(s, verbose);
 
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->e->policy & engine_policy_sinks)
@@ -1488,8 +1446,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   const ticks tic2 = getticks();
 
   /* Move non-local parts and inhibited parts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
 
     for (size_t k = 0; k < nr_parts; /* void */) {
 
@@ -1541,8 +1498,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
 
     for (size_t k = 0; k < nr_sparts; /* void */) {
 
@@ -1592,8 +1548,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local bparts and inhibited bparts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
 
     for (size_t k = 0; k < nr_bparts; /* void */) {
 
@@ -1643,8 +1598,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sinks and inhibited sinks to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_sinks > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sinks > 0)) {
 
     for (size_t k = 0; k < nr_sinks; /* void */) {
 
@@ -1697,8 +1651,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
-  if ((with_dithering || !repartitioned) &&
-      (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
+  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
 
     for (size_t k = 0; k < nr_gparts; /* void */) {
 
@@ -1709,7 +1662,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         nr_gparts -= 1;
 
         /* Swap the particle */
-        memswap(&s->gparts[k], &s->gparts[nr_gparts], sizeof(struct gpart));
+        memswap_unaligned(&s->gparts[k], &s->gparts[nr_gparts],
+                          sizeof(struct gpart));
 
         /* Swap the link with part/spart */
         if (s->gparts[k].type == swift_type_gas) {
@@ -1772,7 +1726,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. This can be skipped if we just repartitioned space
      as there should be no strays in that case */
-  if (with_dithering || !repartitioned) {
+  if (!repartitioned) {
 
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
@@ -2441,14 +2395,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2478,14 +2424,8 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     double old_pos_y = p->x[1];
     double old_pos_z = p->x[2];
 
-    if (periodic && dithering && p->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
-
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && p->time_bin != time_bin_inhibited) {
+    if (!s->periodic && p->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2582,14 +2522,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2618,14 +2550,8 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     double old_pos_y = gp->x[1];
     double old_pos_z = gp->x[2];
 
-    if (periodic && dithering && gp->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
-
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && gp->time_bin != time_bin_inhibited) {
+    if (!s->periodic && gp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2728,14 +2654,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   int *const ind = data->ind + (ptrdiff_t)(sparts - s->sparts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2764,14 +2682,8 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     double old_pos_y = sp->x[1];
     double old_pos_z = sp->x[2];
 
-    if (periodic && dithering && sp->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
-
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && sp->time_bin != time_bin_inhibited) {
+    if (!s->periodic && sp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2870,14 +2782,6 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   int *const ind = data->ind + (ptrdiff_t)(bparts - s->bparts);
 
   /* Get some constants */
-  const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2906,14 +2810,8 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     double old_pos_y = bp->x[1];
     double old_pos_z = bp->x[2];
 
-    if (periodic && dithering && bp->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
-
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && bp->time_bin != time_bin_inhibited) {
+    if (!s->periodic && bp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -3012,14 +2910,6 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   int *const ind = data->ind + (ptrdiff_t)(sinks - s->sinks);
 
   /* Get some constants */
-  const int periodic = s->periodic;
-  const int dithering = s->e->gravity_properties->with_dithering;
-  const double delta_dithering_x =
-      s->pos_dithering[0] - s->pos_dithering_old[0];
-  const double delta_dithering_y =
-      s->pos_dithering[1] - s->pos_dithering_old[1];
-  const double delta_dithering_z =
-      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -3046,14 +2936,8 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     double old_pos_y = sink->x[1];
     double old_pos_z = sink->x[2];
 
-    if (periodic && dithering && sink->time_bin != time_bin_not_created) {
-      old_pos_x += delta_dithering_x;
-      old_pos_y += delta_dithering_y;
-      old_pos_z += delta_dithering_z;
-    }
-
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!periodic && sink->time_bin != time_bin_inhibited) {
+    if (!s->periodic && sink->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -3665,7 +3549,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
         while (ind[j] == target_cid) {
           j = offsets[target_cid] + counts[target_cid]++;
         }
-        memswap(&gparts[j], &temp_gpart, sizeof(struct gpart));
+        memswap_unaligned(&gparts[j], &temp_gpart, sizeof(struct gpart));
         memswap(&ind[j], &target_cid, sizeof(int));
         if (gparts[j].type == swift_type_gas) {
           parts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
@@ -3866,9 +3750,11 @@ void space_map_cells_pre(struct space *s, int full,
  *        c->sinks.count or @c NULL.
  */
 void space_split_recursive(struct space *s, struct cell *c,
-                           struct cell_buff *buff, struct cell_buff *sbuff,
-                           struct cell_buff *bbuff, struct cell_buff *gbuff,
-                           struct cell_buff *sink_buff) {
+                           struct cell_buff *restrict buff,
+                           struct cell_buff *restrict sbuff,
+                           struct cell_buff *restrict bbuff,
+                           struct cell_buff *restrict gbuff,
+                           struct cell_buff *restrict sink_buff) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -3988,13 +3874,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     }
   }
 
-  /* Check the depth. */
-  while (depth > (maxdepth = s->maxdepth)) {
-    atomic_cas(&s->maxdepth, maxdepth, depth);
-  }
-
   /* If the depth is too large, we have a problem and should stop. */
-  if (maxdepth > space_cell_maxdepth) {
+  if (depth > space_cell_maxdepth) {
     error(
         "Exceeded maximum depth (%d) when splitting cells, aborting. This is "
         "most likely due to having too many particles at the exact same "
@@ -4131,7 +4012,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
-        if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
+        maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
 
@@ -4468,6 +4349,9 @@ void space_split_recursive(struct space *s, struct cell *c,
                s->nr_gparts;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank... */
+
+  /* Store the global max depth */
+  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 
   /* Clean up. */
   if (allocate_buffer) {
@@ -5102,6 +4986,7 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
     /* Initialise the time-integration check variables */
     gp[k].ti_drift = 0;
     gp[k].ti_kick = 0;
+    gp[k].ti_kick_mesh = 0;
 #endif
   }
 }
@@ -5792,7 +5677,7 @@ void space_init(struct space *s, struct swift_params *params,
   if (s->initial_spart_h != -1.f) {
     message("Imposing a star smoothing length of %e", s->initial_spart_h);
   }
-  /* Read in imposed star smoothing length */
+  /* Read in imposed black hole smoothing length */
   s->initial_bpart_h = parser_get_opt_param_float(
       params, "InitialConditions:black_holes_smoothing_length", -1.f);
   if (s->initial_bpart_h != -1.f) {
@@ -7019,7 +6904,8 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
           c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-  fprintf(f, "%g, %g\n", c->hydro.h_max, c->stars.h_max);
+  fprintf(f, "%g, %g %i %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
+          c->maxdepth);
 
   /* Write children */
   for (int i = 0; i < 8; i++) {
@@ -7051,7 +6937,7 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
     fprintf(f,
             "hydro_count,stars_count,gpart_count,super,hydro_super,"
             "loc1,loc2,loc3,width1,width2,width3,");
-    fprintf(f, "hydro_h_max,stars_h_max\n");
+    fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
 
     /* Write root data */
     fprintf(f, "%i, ,-1,", root_id);

@@ -61,8 +61,8 @@ struct threadpool;
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h"
 #define hydro_need_extra_init_loop 0
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_part.h"
+#elif defined(PHANTOM_SPH)
+#include "./hydro/Phantom/hydro_part.h"
 #define EXTRA_HYDRO_LOOP
 #define hydro_need_extra_init_loop 0
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
@@ -91,8 +91,6 @@ struct threadpool;
 /* Import the right gravity particle definition */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_part.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_part.h"
 #elif defined(MULTI_SOFTENING_GRAVITY)
 #include "./gravity/MultiSoftening/gravity_part.h"
 #else

@@ -87,8 +87,6 @@ Gravity:
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
-  dithering:                     0         # (Optional) Activate the dithering of the gravity mesh at every rebuild (this is the default value).
-  dithering_ratio:               1.0       # (Optional) Magnitude of each component of the dithering vector in units of the top-level cell sizes (this is the default value).
 
 # Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
 ForceChecks:
@@ -185,6 +183,8 @@ InitialConditions:
   cleanup_velocity_factors:    0    # (Optional) Clean up the scale-factors used in the definition of the velocity variable in the ICs (e.g. in Gadget files).
   cleanup_smoothing_lengths:   0    # (Optional) Clean the values of the smoothing lengths that are read in to remove stupid values. Set to 1 to activate.
   smoothing_length_scaling:    1.   # (Optional) A scaling factor to apply to all smoothing lengths in the ICs.
+  stars_smoothing_length:       -1. # (Optional) Set the smoothing length of all the stars to this value (disabled by default).
+  black_holes_smoothing_length: -1. # (Optional) Set the smoothing length of all the black hole to this value (disabled by default).
   shift:      [0.0,0.0,0.0]         # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
   remap_ids:  0                     # (Optional) Remap all the particle IDs to the range [1, NumPart].
@@ -512,7 +512,8 @@ EAGLEFeedback:
   SNII_energy_fraction_n_0_H_p_cm3:    0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:            0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:            0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNII_energy_faction_use_birth_props: 0               # Are we using the density and metallicity at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_density: 0            # Are we using the density at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_metallicity: 0        # Are we using the metallicity at birth to compute f_E or at feedback time?
   SNIa_DTD:                            PowerLaw        # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
   SNIa_DTD_delay_Gyr:                  0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
   SNIa_DTD_power_law_norm_p_Msun:      0.0012          # Normalization of the SNIa delay time distribution in the power-law DTD case (in Msun^-1).
@@ -564,6 +565,20 @@ EAGLEAGN:
   min_gas_mass_for_nibbling:          9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
+  use_variable_delta_T:               1             # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  AGN_with_locally_adaptive_delta_T:  1             # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_norm:              3e8           # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_reference:         1e8           # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_exponent:          0.666667      # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
+  AGN_delta_T_crit_factor:            1.0           # Multiple of critical dT for numerical efficiency (Dalla Vecchia & Schaye 2012) to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_background_factor:      0.0           # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_min:                    1e7           # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_max:                    3e9           # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_use_nheat_with_fixed_dT:        0          # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold (only used if use_variable_delta_T is 1).
+  AGN_use_adaptive_energy_reservoir_threshold: 0 # Switch to calculate an adaptive AGN energy reservoir threshold.
+  AGN_nheat_alpha:                   -1.0        # Number of particles to be heatable in a feedback event, at the reference accretion rate (only used if AGN_use_adaptive_energy_reservoir_threshold is 1).
+  AGN_nheat_maccr_normalisation:     -1.0        # Reference accretion rate for energy reservoir threshold [M_sun / yr] (only used if AGN_use_adaptive_energy_reservoir_threshold is 1).
+  AGN_nheat_limit:                   -1.0        # Hard limit for the energy reservoir threshold; above the reference accretion rate, it exponentially tapers off towards this (only used if AGN_use_adaptive_energy_reservoir_threshold is 1).
   AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
   max_reposition_mass:                2e8        # Maximal BH mass considered for BH repositioning in solar masses.
   max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
@@ -571,8 +586,11 @@ EAGLEAGN:
   max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_ratio is 1.
   min_reposition_velocity_threshold: -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_ratio is 1.
   set_reposition_speed:               0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
-  reposition_coefficient_upsilon:     0.0001     # Repositioning speed normalisation [km/s/M_sun]. Only meaningful if set_reposition_speed is 1.
-  reposition_exponent_xi:             1.0        # (Optional) Scaling of repositioning velocity with BH subgrid mass (default: 1.0, linear). Only meaningful if set_reposition_speed is 1.
+  reposition_coefficient_upsilon:     50.0       # Repositioning speed normalisation [km/s/M_sun]. Only meaningful if set_reposition_speed is 1.
+  reposition_reference_mass:          1e5        # Reference mass for scaling of reposition speed [M_sun]. Only meaningful if set_reposition_speed is 1.
+  reposition_exponent_mass:           2.0        # (Optional) Exponent for scaling of repositioning velocity with BH mass; default = 2.0. Only meaningful if set_reposition_speed is 1.
+  reposition_reference_n_H:           1.0        # Reference gas density around the black holes for scaling of repositioning speed [N_H cm^-3]. Only meaningful if set_reposition_speed is 1.
+  reposition_exponent_n_H:            1.0        # (Optional) Exponent for scaling of repositioning velocity with gas density; default = 1.0. Only meaningful if set_reposition_speed is 1.
   threshold_major_merger:             0.333      # Mass ratio threshold to consider a BH merger as 'major'
   threshold_minor_merger:             0.1        # Mass ratio threshold to consider a BH merger as 'minor'
   merger_threshold_type:              2          # Type of velocity threshold for BH mergers (0: v_circ at kernel edge, 1: v_esc at actual distance, with softening, 2: v_esc at actual distance, no softening).

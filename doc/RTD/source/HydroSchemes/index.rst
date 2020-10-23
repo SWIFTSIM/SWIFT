@@ -19,6 +19,7 @@ schemes available in SWIFT, as well as how to implement your own.
    hopkins_sph
    anarchy_sph
    sphenix_sph
+   phantom_sph
    gizmo
    adding_your_own
 

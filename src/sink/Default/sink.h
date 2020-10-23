@@ -60,7 +60,13 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
-    struct sink* sp) {}
+    struct sink* sp) {
+#ifdef DEBUG_INTERACTIONS_SINKS
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
+    sp->ids_ngbs_formation[i] = -1;
+  sp->num_ngb_formation = 0;
+#endif
+}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting

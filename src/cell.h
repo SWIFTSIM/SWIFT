@@ -194,6 +194,26 @@ struct pcell {
 
   } black_holes;
 
+  /*! Sink variables */
+  struct {
+
+    /*! Number of #sink in this cell. */
+    int count;
+
+    /*! Maximal cut off radius. */
+    float r_cut_max;
+
+    /*! Minimal integer end-of-timestep in this cell for sinks tasks */
+    integertime_t ti_end_min;
+
+    /*! Maximal integer end-of-timestep in this cell for sinks tasks */
+    integertime_t ti_end_max;
+
+    /*! Integer time of the last drift of the #sink in this cell */
+    integertime_t ti_old_part;
+
+  } sinks;
+
   /*! Maximal depth in that part of the tree */
   int maxdepth;
 
@@ -416,6 +436,9 @@ struct cell {
     /*! Radiative transfer ghost out task */
     struct task *rt_out;
 
+    /*! Radiative transfer ghost1 task (finishes up injection) */
+    struct task *rt_ghost1;
+
     /*! Task for self/pair injection step of radiative transfer */
     struct link *rt_inject;
 
@@ -525,9 +548,6 @@ struct cell {
 
     /*! Implicit task for the down propagation */
     struct task *down_in;
-
-    /*! Task propagating the mesh forces to the particles */
-    struct task *mesh;
 
     /*! Task propagating the multipole to the particles */
     struct task *down;
@@ -771,6 +791,9 @@ struct cell {
 
     /*! Pointer to the #sink data. */
     struct sink *parts;
+
+    /*! Linked list of the tasks computing this cell's sink formation checks. */
+    struct link *compute_formation;
 
     /*! Nr of #sink in this cell. */
     int count;
@@ -1016,6 +1039,9 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_star_formation,
                                        const int with_timestep_sync);
+void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
+                                       struct scheduler *s,
+                                       const int with_timestep_sync);
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
@@ -1204,6 +1230,28 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair sink task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with stars.
+ * @param cj The #cell with hydro parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
+                                    const struct cell *cj) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((ci->sinks.r_cut_max_old + ci->sinks.dx_max_part_old) <
+          0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
+          0.5f * cj->dmin);
+}
+
+/**
  * @brief Can a sub-pair black hole task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -1371,6 +1419,27 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
           ci->stars.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have sink particles in a pair of cells moved too much and require a
+ * rebuild?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_sinks_pair(const struct cell *ci, const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  if (max(ci->sinks.r_cut_max, kernel_gamma * cj->hydro.h_max) +
+          ci->sinks.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;
   }

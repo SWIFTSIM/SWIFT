@@ -129,6 +129,7 @@ enum {
   timer_dopair_rt_inject,
   timer_dosub_self_rt_inject,
   timer_dosub_pair_rt_inject,
+  timer_do_rt_ghost1,
   timer_count,
 };
 

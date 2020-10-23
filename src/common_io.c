@@ -724,6 +724,10 @@ void io_write_code_description(hid_t h_file) {
 #ifdef HAVE_LIBGSL
   io_write_attribute_s(h_grpcode, "GSL library version", libgsl_version());
 #endif
+#ifdef HAVE_SUNDIALS
+  io_write_attribute_s(h_grpcode, "SUNDIALS library version",
+                       sundials_version());
+#endif
 #ifdef WITH_MPI
   io_write_attribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
@@ -899,7 +903,6 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
 }
 
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
-                           const double pos_dithering[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const int distributed,
@@ -985,12 +988,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
       centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
       centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
-
-      /* Undo the dithering since the particles will have this vector applied to
-       * them */
-      centres[i * 3 + 0] = centres[i * 3 + 0] - pos_dithering[0];
-      centres[i * 3 + 1] = centres[i * 3 + 1] - pos_dithering[1];
-      centres[i * 3 + 2] = centres[i * 3 + 2] - pos_dithering[2];
 
       /* Finish by box wrapping to match what is done to the particles */
       centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);
