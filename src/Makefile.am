@@ -111,8 +111,9 @@ AM_SOURCES = space.c space_unique_id.c \
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
     engine_redistribute.c engine_fof.c \
     queue.c task.c timers.c debug.c scheduler.c proxy.c version.c \
-    parallel_io.c common_io.c single_io.c serial_io.c distributed_io.c xmf.c \
-    output_options.c line_of_sight.c restart.c parser.c \
+    common_io.c common_io_copy.c common_io_cells.c common_io_fields.c \
+    single_io.c serial_io.c distributed_io.c parallel_io.c \
+    output_options.c line_of_sight.c restart.c parser.c xmf.c \
     kernel_hydro.c tools.c map.c part.c partition.c clocks.c  \
     physical_constants.c units.c potential.c hydro_properties.c \
     threadpool.c cooling.c star_formation.c \
