@@ -31,6 +31,7 @@
 #include "feedback.h"
 #include "gravity.h"
 #include "multipole.h"
+#include "pressure_floor.h"
 #include "rt.h"
 #include "star_formation.h"
 #include "tracers.h"

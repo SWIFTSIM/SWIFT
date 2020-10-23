@@ -30,6 +30,7 @@
 #include "chemistry.h"
 #include "engine.h"
 #include "gravity.h"
+#include "pressure_floor.h"
 #include "rt.h"
 #include "sink.h"
 #include "star_formation.h"
