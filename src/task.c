@@ -469,6 +469,7 @@ void task_unlock(struct task *t) {
     case task_type_timestep:
       cell_unlocktree(ci);
       cell_gunlocktree(ci);
+      cell_dmunlocktree(ci);
       break;
 
     case task_type_drift_dmpart:
@@ -508,8 +509,9 @@ void task_unlock(struct task *t) {
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
           
-      /*} else if (subtype == task_subtype_sidm) {
-        cell_dmunlocktree(ci);*/
+      } else if (subtype == task_subtype_sidm) {
+        cell_dmunlocktree(ci);
+        cell_unlocktree(ci);
 
       } else if ((subtype == task_subtype_bh_density) ||
                  (subtype == task_subtype_bh_feedback) ||
@@ -539,9 +541,11 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
-      /*} else if ((subtype == task_subtype_sidm)) {
+      } else if ((subtype == task_subtype_sidm)) {
           cell_dmunlocktree(ci);
-          cell_dmunlocktree(cj);*/
+          cell_dmunlocktree(cj);
+          cell_unlocktree(ci);
+          cell_unlocktree(cj);
           
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
@@ -709,6 +713,14 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
+      } else if (subtype == task_subtype_sidm) {
+          if (ci->dark_matter.hold) return 0;
+          if (cell_dmlocktree(ci) != 0) return 0;
+          if (cell_locktree(ci) != 0) {
+              cell_dmunlocktree(ci);
+              return 0;
+          }
+          
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;

@@ -3793,7 +3793,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Adding dependencies for dark matter stuff */
-  engine_link_dark_matter_tasks(e);
+  /*engine_link_dark_matter_tasks(e);*/
     
   if (e->verbose)
     message("Making links of dark matter tasks took %.3f %s.",

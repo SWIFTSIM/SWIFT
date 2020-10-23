@@ -3904,10 +3904,8 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
     /* Self interaction? */
     if (cj == NULL) {
         /* Do anything? */
-        if (!cell_is_active_dark_matter(ci, e) || ci->dark_matter.count == 0 ||
-            ci->dark_matter.count == 0)
-            return;
-
+        if (ci->dark_matter.count == 0 || !cell_is_active_dark_matter(ci, e)) return;
+        
     /* Recurse? */
     if (ci->split) {
         /* Loop over all progenies and pairs of progenies */
