@@ -44,10 +44,6 @@
 #include "runner_doiact_dark_matter.h"
 #undef FUNCTION
 
-/* Import the dark matter sidm loop functions. */
-#define FUNCTION dark_matter_sidm
-#include "runner_doiact_sidm.h"
-#undef FUNCTION
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -274,7 +270,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_dark_matter_density)
             runner_dosub_self1_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
-              runner_dosub_self2_dark_matter_sidm(r, ci);
+            runner_dosub_self2_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -306,9 +302,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, 1);
           else if (t->subtype == task_subtype_dark_matter_density)
-              runner_dosub_pair1_dark_matter_density(r, ci, cj);
+            runner_dosub_pair1_dark_matter_density(r, ci, cj);
           else if (t->subtype == task_subtype_sidm)
-              runner_dosub_pair2_dark_matter_sidm(r, ci, cj);
+            runner_dosub_pair2_dark_matter_sidm(r, ci, cj);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)

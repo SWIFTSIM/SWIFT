@@ -91,4 +91,13 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct dmpart *dmparts,
                   int *ind, int count, struct cell *cj);
 
+/* SIDM loop functions */
+
+void runner_doself2_branch_dark_matter_sidm(struct runner *r, struct cell *c);
+void runner_dopair2_branch_dark_matter_sidm(struct runner *r, struct cell *ci, struct cell *cj);
+
+void runner_dosub_self2_dark_matter_sidm(struct runner *r, struct cell *ci);
+void runner_dosub_pair2_dark_matter_sidm(struct runner *r, struct cell *ci, struct cell *cj);
+
+
 #endif

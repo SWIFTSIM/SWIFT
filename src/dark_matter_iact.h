@@ -191,35 +191,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     /* DM particle mass */
     const double mass_i = pi->mass;
-    /*const double mass_j = pj->mass;*/
+    const double mass_j = pj->mass;
 
     /* DM-DM distance */
     float hi_3 = hi * hi * hi; /* * dm_kernel_gamma3;*/
-    /*float hj_3 = hj * hj * hj;*/ /* * dm_kernel_gamma3;*/
+    float hj_3 = hj * hj * hj; /* * dm_kernel_gamma3;*/
 
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
     float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);
-    /*float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / (4.0f * M_PI * hj_3 / 3.0f);*/
+    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / (4.0f * M_PI * hj_3 / 3.0f);
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
-    /*float Probability_SIDM_j = Rate_SIDM_j * dtj;*/
-
-    /*float Probability = (Probability_SIDM_i + Probability_SIDM_j)/2.;*/
+    float Probability_SIDM_j = Rate_SIDM_j * dtj;
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
-    /*const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);*/
+    const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
 
-    /*printf("Rateij %f & Probij %f & sigma %f",Rate_SIDM_i,Probability_SIDM_i, sigma);*/
-    
     /* Are we lucky? If so we have DM-DM interactions */
-    /*if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) sidm_do_kick(pi, pj, ti_current);*/
-    if (Probability_SIDM_i > randi) sidm_do_kick(pi, pj, ti_current);
-
+    if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
+        sidm_do_kick(pi, pj, ti_current);
+    }
 }
 
 /**
