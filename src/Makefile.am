@@ -111,7 +111,7 @@ AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c \
     cell_unskip.c \
     engine.c engine_maketasks.c engine_split_particles.c engine_strays.c \
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
-    engine_redistribute.c engine_fof.c engine_proxy.c engine_io.c \
+    engine_redistribute.c engine_fof.c engine_proxy.c engine_io.c engine_config.c \
     queue.c task.c timers.c debug.c scheduler.c proxy.c version.c \
     common_io.c common_io_copy.c common_io_cells.c common_io_fields.c \
     single_io.c serial_io.c distributed_io.c parallel_io.c \
