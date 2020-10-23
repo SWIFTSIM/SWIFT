@@ -99,24 +99,29 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedbac
 endif
 
 # Common source files
-AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
+AM_SOURCES = space.c space_unique_id.c \
+    runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
     runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
     runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
     runner_doiact_hydro_vec.c runner_others.c runner_doiact_sinks.c \
-    runner_doiact_rt.c\
-    queue.c task.c cell.c engine.c engine_maketasks.c engine_split_particles.c \
+    runner_doiact_rt.c \
+    cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c \
+    cell_unskip.c \
+    engine.c engine_maketasks.c engine_split_particles.c \
     engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
-    engine_redistribute.c engine_fof.c serial_io.c timers.c debug.c scheduler.c \
-    proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
-    kernel_hydro.c tools.c part.c partition.c clocks.c parser.c distributed_io.c \
-    physical_constants.c potential.c hydro_properties.c \
+    engine_redistribute.c engine_fof.c \
+    queue.c task.c timers.c debug.c scheduler.c proxy.c version.c \
+    parallel_io.c common_io.c single_io.c serial_io.c distributed_io.c xmf.c \
+    output_options.c line_of_sight.c restart.c parser.c \
+    kernel_hydro.c tools.c map.c part.c partition.c clocks.c  \
+    physical_constants.c units.c potential.c hydro_properties.c \
     threadpool.c cooling.c star_formation.c \
-    statistics.c profiler.c dump.c logger.c \
-    part_type.c xmf.c gravity_properties.c gravity.c \
+    statistics.c profiler.c dump.c logger.c part_type.c \
+    gravity_properties.c gravity.c multipole.c \
     collectgroup.c hydro_space.c equation_of_state.c io_compression.c \
-    chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
+    chemistry.c cosmology.c mesh_gravity.c velociraptor_interface.c \
     output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
-    hashmap.c pressure_floor.c space_unique_id.c output_options.c line_of_sight.c \
+    hashmap.c pressure_floor.c \
     $(QLA_COOLING_SOURCES) \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
     $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) \
