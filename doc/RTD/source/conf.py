@@ -23,9 +23,9 @@ copyright = '2014-2020, SWIFT Collaboration'
 author = 'SWIFT Team'
 
 # The short X.Y version
-version = '0.8'
+version = '0.9'
 # The full version, including alpha/beta/rc tags
-release = '0.8.5'
+release = '0.9.0'
 
 
 # -- General configuration ---------------------------------------------------
