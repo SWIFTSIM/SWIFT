@@ -1581,11 +1581,11 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                                 n_target, left[i], right[i]);
                     }
                     
-#ifdef SWIFT_DEBUG_CHECKS
+/*#ifdef SWIFT_DEBUG_CHECKS
                     if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
                         error(
                               "Smoothing length correction not going in the right direction");
-#endif
+#endif*/
                     
                     /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
                     h_new = min(h_new, 2.f * h_old);

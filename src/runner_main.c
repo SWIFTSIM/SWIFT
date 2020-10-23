@@ -272,7 +272,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, 1);
           else if (t->subtype == task_subtype_dark_matter_density)
-              runner_dosub_self1_dark_matter_density(r, ci);
+            runner_dosub_self1_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
               runner_dosub_self2_dark_matter_sidm(r, ci);
           else if (t->subtype == task_subtype_bh_density)

@@ -134,7 +134,6 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
     }
     
     DOPAIR_SUBSET_NAIVE(r, ci, dmparts_i, ind, count, cj, shift);
-
 /*#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
     DOPAIR_SUBSET_NAIVE(r, ci, dmparts_i, ind, count, cj, shift);
 #else
@@ -410,8 +409,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
                     dx[k] = pix[k] - pj->x[k];
                     r2 += dx[k] * dx[k];
                 }
-                const int doj =
-                (dmpart_is_active(pj, e)) && (r2 < hj * hj * dm_kernel_gamma2);
+                const int doj = (dmpart_is_active(pj, e)) && (r2 < hj * hj * dm_kernel_gamma2);
                 
                 const int doi = (r2 < hig2);
                 
@@ -570,6 +568,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
     /* Check that cells are drifted. */
     if (!cell_are_dmpart_drifted(c, e)) error("Interacting undrifted cell.");
     
+
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
     DOSELF1_NAIVE(r, c);
 #else
@@ -883,12 +882,12 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci) {
         
         /* Loop over all progeny. */
         for (int k = 0; k < 8; k++)
-        if (ci->progeny[k] != NULL) {
-            DOSUB_SELF1(r, ci->progeny[k]);
-            for (int j = k + 1; j < 8; j++)
-            if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1(r, ci->progeny[k], ci->progeny[j]);
-        }
+            if (ci->progeny[k] != NULL) {
+                DOSUB_SELF1(r, ci->progeny[k]);
+                for (int j = k + 1; j < 8; j++)
+                if (ci->progeny[j] != NULL)
+                DOSUB_PAIR1(r, ci->progeny[k], ci->progeny[j]);
+            }
     }
     
     /* Otherwise, compute self-interaction. */
