@@ -94,9 +94,6 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 
-/* Particle cache size. */
-#define CACHE_SIZE 512
-
 const char *engine_policy_names[] = {"none",
                                      "rand",
                                      "steal",

@@ -46,6 +46,9 @@ extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_max_parts_per_cooling;
 
+/* Particle cache size. */
+#define CACHE_SIZE 512
+
 /**
  * @brief configure an engine with the given number of threads, queues
  *        and core affinity. Also initialises the scheduler and opens various
