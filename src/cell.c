@@ -467,7 +467,7 @@ int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts) {
 #endif
     
     /* Do we have a DM task at this level? */
-    if (cell_get_recv(c, task_subtype_sidm) != NULL) {
+    if (cell_get_recv(c, task_subtype_dmpart) != NULL) {
         
         /* Recursively attach the gparts */
         const int counts = cell_link_dmparts(c, dmparts);
@@ -5097,13 +5097,31 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             (cj_active && cj_nodeID == nodeID)) {
             scheduler_activate(s, t);
             
-            /* Set the drifting flags */
+            /* Activate hydro drift */
             if (t->type == task_type_self) {
+                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+            }
+            
+            /* Set the correct sorting flags and activate hydro drifts */
+            else if (t->type == task_type_pair) {
+                
+                /* Activate the drift tasks. */
+                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+                
+            }
+            
+            /* Store current values of dx_max and h_max. */
+            else if (t->type == task_type_sub_self) {
                 cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
-            } else if (t->type == task_type_pair) {
+            }
+            
+            /* Store current values of dx_max and h_max. */
+            else if (t->type == task_type_sub_pair) {
                 cell_activate_subcell_dark_matter_tasks(ci, cj, s);
             }
         }
+
         
         /* Only interested in pair interactions as of here. */
         if (t->type == task_type_pair || t->type == task_type_sub_pair) {
@@ -5130,10 +5148,10 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                      particles will be drifted, only those that are needed. */
                     cell_activate_drift_dmpart(cj, s);
                 }
-                    
+                
                 /* If the local cell is active, send its ti_end values. */
                 if (cj_active) {
-                        scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart, ci_nodeID);
+                    scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart, ci_nodeID);
                 }
                 
             } else if (cj_nodeID != nodeID) {
@@ -5163,7 +5181,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 /* If the local cell is active, send its ti_end values. */
                 if (ci_active) {
                     scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
-                                        cj_nodeID);
+                                            cj_nodeID);
                 }
             }
 #endif

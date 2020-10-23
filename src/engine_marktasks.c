@@ -251,18 +251,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t_type == task_type_self && t_subtype == task_subtype_sidm) {
           if (ci_active_dark_matter) {
             scheduler_activate(s, t);
-            cell_activate_subcell_dark_matter_tasks(t->ci, NULL, s);
           }
       }
         
         /* Store current values of dx_max and h_max. */
-        /*else if (t_type == task_type_sub_self &&
-                 t_subtype == task_subtype_sidm) {
+        else if (t_type == task_type_sub_self && t_subtype == task_subtype_sidm) {
             if (ci_active_dark_matter) {
                 scheduler_activate(s, t);
                 cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
             }
-        }*/
+        }
         
         
       /* Activate the gravity drift */
@@ -476,17 +474,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
         
      /* Only activate tasks that involve a local active cell. */
-     else if ((t_subtype == task_subtype_sidm) &&
-              ((ci_active_dark_matter && ci_nodeID == nodeID) ||
-               (cj_active_dark_matter && cj_nodeID == nodeID))) {
-                  
-                scheduler_activate(s, t);
-                
-                  /* Set the correct drifting flags */
-                  if (t_type == task_type_pair && t_subtype == task_subtype_sidm) {
-                     cell_activate_subcell_dark_matter_tasks(t->ci, t->cj, s);
-                  }
-              }
+      else if ((t_subtype == task_subtype_sidm) &&
+               ((ci_active_dark_matter && ci_nodeID == nodeID) ||
+                (cj_active_dark_matter && cj_nodeID == nodeID))) {
+          
+          scheduler_activate(s, t);
+                   
+         /* Set the correct sorting flags */
+         if (t_type == task_type_pair && t_subtype == task_subtype_sidm) {
+             
+             /* Activate the dark matter drift tasks. */
+             if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+             if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+         }
+                   
+        /* Store current values of dx_max and h_max. */
+         else if (t_type == task_type_sub_pair && t_subtype == task_subtype_sidm) {
+             cell_activate_subcell_dark_matter_tasks(t->ci, t->cj, s);
+         }
+    }
+
 
       /* Gravity */
       else if ((t_subtype == task_subtype_grav) &&
@@ -854,69 +861,57 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_nodeID != nodeID) {
               
               /* If the local cell is active, receive data from the foreign cell. */
-              if (cj_active_dark_matter) {
+              if (cj_active_dark_matter)
                   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart);
-                  
-                  /* If the local cell is active, more stuff will be needed. */
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart,
-                                          ci_nodeID);
-                  cell_activate_drift_dmpart(cj, s);
-                  
-                  /* If the local cell is active, send its ti_end values. */
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
-                                          ci_nodeID);
-
-              }
-
+              
               /* If the foreign cell is active, we want its ti_end values. */
+              if (ci_active_dark_matter)
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
+              
+              /* Is the foreign cell active and will need stuff from us? */
               if (ci_active_dark_matter) {
                   
-                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart);
+                  struct link *l = scheduler_activate_send(
+                                                           s, cj->mpi.send, task_subtype_dmpart, ci_nodeID);
                   
-                  /* If the foreign cell is active, we want its ti_end values. */
-                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
-                  
-                  /* Is the foreign cell active and will need stuff from us? */
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart, ci_nodeID);
-                  
-                  /* Drift the cell which will be sent; note that not all sent
-                   particles will be drifted, only those that are needed. */
-                  cell_activate_drift_dmpart(ci, s);
+                  /* Drift the cell which will be sent at the level at which it is
+                   sent, i.e. drift the cell specified in the send task (l->t)
+                   itself. */
+                  cell_activate_drift_dmpart(l->t->ci, s);
               }
               
-            } else if (cj_nodeID != nodeID) {
+              /* If the local cell is active, send its ti_end values. */
+              if (cj_active_dark_matter)
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
+                                          ci_nodeID);
+              
+          } else if (cj_nodeID != nodeID) {
+              
+              /* If the local cell is active, receive data from the foreign cell. */
+              if (ci_active_dark_matter)
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart);
+              
+              /* If the foreign cell is active, we want its ti_end values. */
+              if (cj_active_dark_matter)
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
+              
+              /* Is the foreign cell active and will need stuff from us? */
+              if (cj_active_dark_matter) {
                   
-                  /* If the local cell is active, receive data from the foreign cell. */
-                if (ci_active_dark_matter) {
-                      scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart);
-                    
-                    /* If the local cell is active, more stuff will be needed. */
-                    scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart,
-                                            cj_nodeID);
-                    cell_activate_drift_dmpart(ci, s);
-
-                    /* If the local cell is active, send its ti_end values. */
-                    scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
-                                            cj_nodeID);
-
-                }
+                  struct link *l = scheduler_activate_send(
+                                                           s, ci->mpi.send, task_subtype_dmpart, cj_nodeID);
                   
-                  /* If the foreign cell is active, we want its ti_end values. */
-                if (cj_active_dark_matter) {
-                    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart);
-                    
-                    /* If the foreign cell is active, we want its ti_end values. */
-                    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
-
-                    /* Is the foreign cell active and will need stuff from us? */
-                    scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart,
-                                            cj_nodeID);
-
-                    /* Drift the cell which will be sent; note that not all sent
-                     particles will be drifted, only those that are needed. */
-                    cell_activate_drift_dmpart(ci, s);
-                }
-            }
+                  /* Drift the cell which will be sent at the level at which it is
+                   sent, i.e. drift the cell specified in the send task (l->t)
+                   itself. */
+                  cell_activate_drift_dmpart(l->t->ci, s);
+              }
+              
+              /* If the local cell is active, send its ti_end values. */
+              if (ci_active_dark_matter)
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
+                                          cj_nodeID);
+          }
 #endif
        }
 
