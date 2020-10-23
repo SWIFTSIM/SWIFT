@@ -523,7 +523,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               
 #ifdef SWIFT_DEBUG_CHECKS
               /* Check that kick and the drift are synchronized */
-              if (gp->ti_drift != gp->ti_kick)
+              if (dmp->ti_drift != dmp->ti_kick)
                   error("Error integrating g-part in time.");
 #endif
               

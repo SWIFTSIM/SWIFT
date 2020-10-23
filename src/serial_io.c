@@ -465,7 +465,9 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
  * @param sinks (output) Array of #sink particles.
  * @param sparts (output) Array of #spart particles.
  * @param bparts (output) Array of #bpart particles.
+ * @param dmparts (output) Array of #dmpart particles.
  * @param Ngas (output) The number of #part read from the file on that node.
+ * @param Ndarkmatter (output) The number of #dmpart read from the file on that node.
  * @param Ngparts (output) The number of #gpart read from the file on that node.
  * @param Ngparts_background (output) The number of background #gpart (type 2)
  * read from the file on that node.
@@ -504,7 +506,8 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
 void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct sink** sinks, struct spart** sparts,
-                    struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
+                    struct bpart** bparts, struct dmpart** dmparts,
+                    size_t* Ngas, size_t* Ndarkmatter, size_t* Ngparts,
                     size_t* Ngparts_background, size_t* Nsinks, size_t* Nstars,
                     size_t* Nblackholes, int* flag_entropy, int with_hydro,
                     int with_gravity, int with_sink, int with_stars,
@@ -530,7 +533,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0, *Nsinks = 0;
+  *Nblackholes = 0, *Ndarkmatter = 0, *Nsinks = 0;
 
   /* First read some information about the content */
   if (mpi_rank == 0) {
@@ -707,7 +710,13 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
   /* Allocate memory to store all gravity  particles */
   if (with_gravity) {
-    Ndm = N[swift_type_dark_matter];
+    *Ndarkmatter = N[swift_type_dark_matter];
+    Ndm = *Ndarkmatter;
+    if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
+                         *Ndarkmatter * sizeof(struct dmpart)) != 0)
+          error("Error while allocating memory for dark matter particles");
+    bzero(*dmparts, *Ndarkmatter * sizeof(struct dmpart));
+
     Ndm_background = N[swift_type_dark_matter_background];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
@@ -772,7 +781,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
           case swift_type_dark_matter:
             if (with_gravity) {
               Nparticles = Ndm;
-              darkmatter_read_particles(*gparts, list, &num_fields);
+              /*darkmatter_read_particles(*gparts, list, &num_fields);*/
+              darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
             }
             break;
 
@@ -837,7 +847,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     threadpool_init(&tp, n_threads);
 
     /* Prepare the DM particles */
-    io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    /*io_prepare_dm_gparts(&tp, *gparts, Ndm);*/
+    io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
@@ -903,7 +914,7 @@ void write_output_serial(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
-    const struct dmpart* dmparts = e->s->dmparts;
+  const struct dmpart* dmparts = e->s->dmparts;
   const struct sink* sinks = e->s->sinks;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;

@@ -55,6 +55,17 @@ struct dmpart {
 
   /*! Particle time bin */
   timebin_t time_bin;
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    
+  /* Time of the last drift */
+  integertime_t ti_drift;
+    
+  /* Time of the last kick */
+  integertime_t ti_kick;
+    
+#endif
+
 
   struct {
 

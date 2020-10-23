@@ -381,7 +381,9 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
  * @param sinks (output) Array of #sink particles.
  * @param sparts (output) Array of #spart particles.
  * @param bparts (output) Array of #bpart particles.
+ * @param dmparts (output) Array of #dmpart particles.
  * @param Ngas (output) number of Gas particles read.
+ * @param Ndarkmatter (output) number of dark matter particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param Nsinks (output) The number of #sink read.
  * @param Nstars (output) The number of #spart read.

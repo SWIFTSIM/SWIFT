@@ -1517,7 +1517,7 @@ void io_convert_spart_l_mapper(void* restrict temp, int N,
 }
 
 /**
- * @brief Mapper function to copy #bpart into a buffer of floats using a
+ * @brief Mapper function to copy #dmpart into a buffer of floats using a
  * conversion function.
  */
 void io_convert_dmpart_f_mapper(void* restrict temp, int N,
@@ -2208,7 +2208,7 @@ void io_duplicate_darkmatter_gparts_mapper(void* restrict data, int Ndarkmatter,
     /*const int Ndm = temp->Ndm;*/
     struct dmpart* dmparts = (struct dmpart*)data;
     const ptrdiff_t offset = dmparts - temp->dmparts;
-    struct gpart* gparts = temp->gparts;
+    struct gpart* gparts = temp->gparts + offset;
     
     for (int i = 0; i < Ndarkmatter; ++i) {
         
@@ -2252,7 +2252,7 @@ void io_duplicate_darkmatter_gparts(struct threadpool* tp,
     struct duplication_data data;
     data.gparts = gparts;
     data.dmparts = dmparts;
-    data.Ndm = Ndarkmatter;
+    /*data.Ndm = Ndarkmatter;*/
     threadpool_map(tp, io_duplicate_darkmatter_gparts_mapper, dmparts, Ndarkmatter,
                    sizeof(struct dmpart), threadpool_auto_chunk_size, &data);
 }
