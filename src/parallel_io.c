@@ -1046,7 +1046,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   }
 
   /* If we are remapping ParticleIDs later, start by setting them to 1. */
-  if (remap_ids) set_ids_to_one(*gparts, *Ngparts);
+  if (remap_ids) io_set_ids_to_one(*gparts, *Ngparts);
 
   if (!dry_run && with_gravity) {
 
