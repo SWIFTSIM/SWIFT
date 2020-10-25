@@ -310,6 +310,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->dark_matter.ti_end_min = -1;
     c->dark_matter.ti_end_max = -1;
     star_formation_logger_init(&c->stars.sfh);
+    dark_matter_logger_init(&c->dark_matter.sh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
@@ -4415,6 +4416,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->grav.super = NULL;
       cp->flags = 0;
       star_formation_logger_init(&cp->stars.sfh);
+      dark_matter_logger_init(&c->dark_matter.sh);
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI

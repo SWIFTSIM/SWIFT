@@ -33,6 +33,7 @@
 
 /* Local includes. */
 #include "align.h"
+#include "dark_matter_logger_struct.h"
 #include "kernel_hydro.h"
 #include "kernel_dark_matter.h"
 #include "lock.h"
@@ -793,6 +794,9 @@ struct cell {
         
         /*! Bit-mask indicating the sorted directions */
         uint16_t sorted;
+        
+        /*! SIDM history struct */
+        struct sidm_history sh;
         
         
     } dark_matter;

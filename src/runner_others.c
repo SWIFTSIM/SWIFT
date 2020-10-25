@@ -85,6 +85,8 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
         
         struct dmpart *restrict dmparts = c->dark_matter.parts;
         const int count = c->dark_matter.count;
+        struct sidm_history *sidm_history = &c->dark_matter.sh;
+
         
         /* Loop over the gparts in this cell. */
         for (int k = 0; k < count; k++) {
@@ -98,7 +100,7 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
 
             
             /* do the kick */
-            communicate_sidm_kick_to_dmpart(dmp);
+            communicate_sidm_kick_to_dmpart(dmp, sidm_history);
         }
     }
 }

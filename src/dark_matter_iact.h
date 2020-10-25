@@ -24,6 +24,7 @@
 #include "random.h"
 #include "dark_matter.h"
 #include "kernel_dark_matter.h"
+#include "dark_matter_logger.h"
 
 
 /**
@@ -179,7 +180,8 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
 __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
-    const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us) {
+    const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
+    struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
     const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
@@ -215,6 +217,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
         sidm_do_kick(pi, pj, ti_current);
+        dark_matter_log_num_events(sidm_history, 1);
+
     }
 }
 
@@ -234,7 +238,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
-    const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us) {
+    const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
+    struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
     const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
@@ -263,8 +268,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > rand) sidm_do_kick(pi, pj, ti_current);
-    
+    if (Probability_SIDM_i > rand) {
+        sidm_do_kick(pi, pj, ti_current);
+        dark_matter_log_num_events(sidm_history, 1);
+    }
 }
 
 

@@ -256,6 +256,9 @@ struct engine {
   /* Star formation logger information */
   struct star_formation_history_accumulator sfh;
 
+  /* SIDM history logger information */
+  struct sidm_history_accumulator dm;
+
   /* Properties of the previous step */
   int step_props;
 
@@ -365,6 +368,9 @@ struct engine {
 
   /* File handle for the SFH logger file */
   FILE *sfh_logger;
+
+  /* File handle for the SIDM history logger file */
+  FILE *dm_logger;
 
   /* The current step number. */
   int step;

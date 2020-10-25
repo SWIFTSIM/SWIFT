@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "active.h"
 #include "star_formation_logger.h"
+#include "dark_matter_logger.h"
 #include "timeline.h"
 
 /**
@@ -46,6 +47,7 @@ struct end_of_step_data {
     ti_dark_matter_beg_max;
   struct engine *e;
   struct star_formation_history sfh;
+  struct sidm_history dm;
   float runtime;
 };
 
@@ -358,6 +360,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
   struct star_formation_history *sfh_top = &data->sfh;
+  struct sidm_history *dm_top = &data->dm;
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0, b_updated = 0, dm_updated = 0;
@@ -377,6 +380,12 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
   /* Initialize the star formation structs for this engine to zero */
   star_formation_logger_init(&sfh_updated);
+
+  /* Local Star formation history properties */
+  struct sidm_history sh_updated;
+    
+  /* Initialize the star formation structs for this engine to zero */
+  dark_matter_logger_init(&sh_updated);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
@@ -447,6 +456,10 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
        * the star formation history struct */
       star_formation_logger_add(&sfh_updated, &c->stars.sfh);
 
+      /* Get the SIDM history from the current cell and store it in
+       * the SIDM history struct */
+      dark_matter_logger_add(&sh_updated, &c->dark_matter.sh);
+
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
       c->grav.updated = 0;
@@ -467,6 +480,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
     /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
+
+    /* Add the SIDM history information from this engine to the global data */
+    dark_matter_logger_add(dm_top, &sh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
@@ -548,6 +564,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init(&data.sfh);
 
+  /* Initialize the total SIDM history of the simulation to zero */
+  dark_matter_logger_init(&data.dm);
+
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
                  s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
@@ -573,7 +592,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_dark_matter_end_min, data.ti_dark_matter_end_max,
       data.ti_dark_matter_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
-      (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh,
+      (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh, data.dm,
       data.runtime);
 
 /* Aggregate collective data from the different nodes for this step. */

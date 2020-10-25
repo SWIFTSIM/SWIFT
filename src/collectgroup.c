@@ -32,6 +32,7 @@
 #include "engine.h"
 #include "error.h"
 #include "star_formation_logger.h"
+#include "dark_matter_logger.h"
 
 #ifdef WITH_MPI
 
@@ -59,6 +60,7 @@ struct mpicollectgroup1 {
   long long total_nr_tasks;
   float tasks_per_cell_max;
   struct star_formation_history sfh;
+  struct sidm_history dm;
   float runtime;
 };
 
@@ -125,18 +127,19 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
   e->g_updates = grp1->g_updated;
   e->s_updates = grp1->s_updated;
   e->b_updates = grp1->b_updated;
-    e->dm_updates = grp1->dm_updated;
+  e->dm_updates = grp1->dm_updated;
   e->nr_inhibited_parts = grp1->inhibited;
   e->nr_inhibited_gparts = grp1->g_inhibited;
   e->nr_inhibited_sparts = grp1->s_inhibited;
   e->nr_inhibited_bparts = grp1->b_inhibited;
-    e->nr_inhibited_dmparts = grp1->dm_inhibited;
+  e->nr_inhibited_dmparts = grp1->dm_inhibited;
   e->forcerebuild = grp1->forcerebuild;
   e->total_nr_cells = grp1->total_nr_cells;
   e->total_nr_tasks = grp1->total_nr_tasks;
   e->tasks_per_cell_max = grp1->tasks_per_cell_max;
 
   star_formation_logger_add_to_accumulator(&e->sfh, &grp1->sfh);
+  dark_matter_logger_add_to_accumulator(&e->dm, &grp1->dm);
 
   e->runtime = grp1->runtime;
 }
@@ -188,6 +191,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
  * @param total_nr_tasks total number of tasks on rank.
  * @param tasks_per_cell the used number of tasks per cell.
  * @param sfh The star formation history logger
+ * @param dm The SIDM history logger
  * @param runtime The runtime of rank in hours.
  */
 void collectgroup1_init(
@@ -203,7 +207,8 @@ void collectgroup1_init(
     integertime_t ti_dark_matter_end_max, integertime_t ti_dark_matter_beg_max,
     int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh, float runtime) {
+    const struct star_formation_history sfh,
+    struct sidm_history dm, float runtime) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
@@ -235,6 +240,7 @@ void collectgroup1_init(
   grp1->total_nr_tasks = total_nr_tasks;
   grp1->tasks_per_cell_max = tasks_per_cell;
   grp1->sfh = sfh;
+  grp1->dm = dm;
   grp1->runtime = runtime;
 }
 
@@ -282,6 +288,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.total_nr_tasks = grp1->total_nr_tasks;
   mpigrp11.tasks_per_cell_max = grp1->tasks_per_cell_max;
   mpigrp11.sfh = grp1->sfh;
+  mpigrp11.dm = grp1->dm;
   mpigrp11.runtime = grp1->runtime;
 
   struct mpicollectgroup1 mpigrp12;
@@ -320,6 +327,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->total_nr_tasks = mpigrp12.total_nr_tasks;
   grp1->tasks_per_cell_max = mpigrp12.tasks_per_cell_max;
   grp1->sfh = mpigrp12.sfh;
+  grp1->dm = mpigrp12.dm;
   grp1->runtime = mpigrp12.runtime;
 
 #endif
@@ -400,6 +408,9 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
 
   /* Star formation history */
   star_formation_logger_add(&mpigrp11->sfh, &mpigrp12->sfh);
+
+  /* SIDM history */
+  dark_matter_logger_add(&mpigrp11->dm, &mpigrp12->dm);
 
   /* Use the maximum runtime as the global runtime. */
   mpigrp11->runtime = max(mpigrp11->runtime, mpigrp12->runtime);

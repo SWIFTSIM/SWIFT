@@ -61,6 +61,7 @@
 #include "cosmology.h"
 #include "cycle.h"
 #include "dark_matter.h"
+#include "dark_matter_logger.h"
 #include "dark_matter_properties.h"
 #include "debug.h"
 #include "distributed_io.h"
@@ -2648,6 +2649,12 @@ void engine_step(struct engine *e) {
 #endif
     }
 
+    /* Write the self-interacting DM information to the file */
+    dark_matter_write_to_log_file(e->dm_logger, e->time,
+                                  e->cosmology->a, e->cosmology->z,
+                                  e->dm, e->step);
+    fflush(e->dm_logger);
+
     if (!e->restarting)
       fprintf(
           e->file_timesteps,
@@ -4232,6 +4239,9 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
     star_formation_logger_accumulator_init(&e->sfh);
   }
 
+  /* Initialize the self-interacting DM history structure */
+  dark_matter_logger_accumulator_init(&e->dm);
+    
   engine_init_output_lists(e, params);
 }
 
@@ -4279,6 +4289,7 @@ void engine_config(int restart, int fof, struct engine *e,
   e->file_stats = NULL;
   e->file_timesteps = NULL;
   e->sfh_logger = NULL;
+  e->dm_logger = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
@@ -4521,6 +4532,14 @@ void engine_config(int restart, int fof, struct engine *e,
         fflush(e->sfh_logger);
       }
     }
+      
+      /* Initialize the dark matter logger if running with SIDM */
+      e->dm_logger = fopen("SIDM.txt", mode);
+      if (!restart) {
+          dark_matter_logger_init_log_file(e->dm_logger, e->internal_units,
+                                              e->physical_constants);
+          fflush(e->dm_logger);
+      }
   }
 
   /* Print policy */
@@ -5571,6 +5590,8 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->policy & engine_policy_star_formation) {
       fclose(e->sfh_logger);
     }
+      
+    fclose(e->dm_logger);
   }
 
   /* If the run was restarted, we should also free the memory allocated

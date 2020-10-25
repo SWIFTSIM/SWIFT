@@ -1424,6 +1424,9 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     if (c->dark_matter.count == 0) return;
     if (!cell_is_active_dark_matter(c, e)) return;
     
+    /* Reset the SIDM history logger */
+    dark_matter_logger_init(&c->dark_matter.sh);
+    
     /* Recurse? */
     if (c->split) {
         for (int k = 0; k < 8; k++) {

@@ -934,6 +934,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
     struct dmpart *restrict dmparts_j = cj->dark_matter.parts;
+    struct sidm_history *sidm_history = &ci->dark_matter.sh;
     
     /* Cosmological terms */
     const float a = cosmo->a;
@@ -1012,11 +1013,11 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             /* Hit or miss? */
             if (doi && doj) {
                 
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
                 
             } else if (doi) {
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
                 
             } else if (doj) {
                 
@@ -1024,7 +1025,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
                 
             }
         } /* loop over the parts in cj. */
@@ -1058,6 +1059,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     
     const int count = c->dark_matter.count;
     struct dmpart *restrict dmparts = c->dark_matter.parts;
+    struct sidm_history *sidm_history = &c->dark_matter.sh;
     
     /* Loop over the dmparts in ci. */
     for (int pid = 0; pid < count; pid++) {
@@ -1124,7 +1126,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             
             /* Hit or miss? */
             if (r2 < hig2) {
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1151,6 +1153,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const int count = c->dark_matter.count;
+    struct sidm_history *sidm_history = &c->dark_matter.sh;
+    
     
     /* Set up indt. */
     int *indt = NULL;
@@ -1234,7 +1238,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 /* Hit or miss? */
                 if (r2 < hig2 || r2 < hj * hj) {
                     
-                    runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
+                    runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
                 }
             } /* loop over all other particles. */
         }
@@ -1289,11 +1293,11 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                     /* Does pj need to be updated too? */
                     if (dmpart_is_active(pj, e)) {
                         
-                        runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                        runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
                         
                     } else {
                         
-                        runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                        runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
                     }
                 }
             } /* loop over all other particles. */
@@ -1362,6 +1366,7 @@ void DO_NONSYM_PAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
     struct dmpart *restrict dmparts_j = cj->dark_matter.parts;
+    struct sidm_history *sidm_history = &ci->dark_matter.sh;
     
     /* Cosmological terms */
     const float a = cosmo->a;
@@ -1438,7 +1443,7 @@ void DO_NONSYM_PAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             /* Hit or miss? */
             if (r2 < hig2) {
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
                 
             }
         } /* loop over the parts in cj. */

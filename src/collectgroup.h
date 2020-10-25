@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "star_formation_logger_struct.h"
+#include "dark_matter_logger_struct.h"
 #include "timeline.h"
 
 /* Forward declaration of engine struct (to avoid cyclic include). */
@@ -43,6 +44,9 @@ struct collectgroup1 {
 
   /* SFH logger */
   struct star_formation_history sfh;
+
+  /* SIDM history logger */
+  struct sidm_history dm;
 
   /* Times for the time-step */
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
@@ -81,7 +85,8 @@ void collectgroup1_init(
     integertime_t ti_dark_matter_end_max, integertime_t ti_dark_matter_beg_max,
     int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh, float runtime);
+    const struct star_formation_history sfh,
+    struct sidm_history dm, float runtime);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);
