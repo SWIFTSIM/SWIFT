@@ -901,7 +901,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci) {
  *
  *
  *
- From here SIDM specific loop functions
+ ********  From here SIDM specific loop functions  **********
  *
  *
  *
@@ -1059,14 +1059,14 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     const int count = c->dark_matter.count;
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     
-    /* Loop over the parts in ci. */
+    /* Loop over the dmparts in ci. */
     for (int pid = 0; pid < count; pid++) {
         
         /* Get a hold of the ith part in ci. */
         struct dmpart *restrict pi = &dmparts[pid];
         
-        /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
+        /* Skip inactive particles */
+        if (!dmpart_is_active(pi, e)) continue;
         
         /* Get i particle time-step */
         const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
@@ -1079,25 +1079,22 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             dti = get_timestep(pi->time_bin, e->time_base);
         }
         
-        const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
             (float)(pi->x[2] - c->loc[2])};
         
-        /* Loop over the parts in cj. */
-        for (int pjd = pid + 1; pjd < count; pjd++) {
+        /* Loop over the dmparts in cj. */
+        for (int pjd = 0; pjd < count; pjd++) {
+            
+            /* No self interaction */
+            if (pid == pjd) continue;
             
             /* Get a pointer to the jth particle. */
             struct dmpart *restrict pj = &dmparts[pjd];
             
-            /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
-            
             const float hj = pj->h;
-            const float hjg2 = hj * hj;
-            const int pj_active = dmpart_is_active(pj, e);
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -1117,9 +1114,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
-            const int doi = pi_active && (r2 < hig2);
-            const int doj = pj_active && (r2 < hjg2);
-            
 #ifdef SWIFT_DEBUG_CHECKS
             /* Check that particles have been drifted to the current time */
             if (pi->ti_drift != e->ti_current)
@@ -1129,21 +1123,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
             
             /* Hit or miss? */
-            if (doi && doj) {
-                
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
-                
-            } else if (doi) {
-                
+            if (r2 < hig2) {
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
-                
-            } else if (doj) {
-                
-                dx[0] = -dx[0];
-                dx[1] = -dx[1];
-                dx[2] = -dx[2];
-                
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1354,7 +1335,7 @@ void runner_doself2_branch_dark_matter_sidm(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Compute the interactions between a cell pair (symmetric case).
+ * @brief Compute the interactions between a cell pair (nonsymmetric case).
  *
  * Inefficient version using a brute-force algorithm.
  *
@@ -1362,8 +1343,12 @@ void runner_doself2_branch_dark_matter_sidm(struct runner *r, struct cell *c) {
  * @param ci The first #cell.
  * @param cj The second #cell.
  */
-void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
-                   struct cell *restrict cj) {
+void DO_NONSYM_PAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
+                           struct cell *restrict cj) {
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cj->nodeID != engine_rank) error("Should be run on a different node");
+#endif
     
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
@@ -1397,9 +1382,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         /* Get a hold of the ith part in ci. */
         struct dmpart *restrict pi = &dmparts_i[pid];
         
-        /* Skip inhibited particles. */
-        if (dmpart_is_inhibited(pi, e)) continue;
-        
+        /* Skip inactive particles */
+        if (!dmpart_is_active(pi, e)) continue;
+
         /* Get i particle time-step */
         const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
         const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
@@ -1411,8 +1396,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             dti = get_timestep(pi->time_bin, e->time_base);
         }
         
-        
-        const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -1425,12 +1408,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             /* Get a pointer to the jth particle. */
             struct dmpart *restrict pj = &dmparts_j[pjd];
             
-            /* Skip inhibited particles. */
-            if (dmpart_is_inhibited(pj, e)) continue;
-            
-            const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
-            const float hjg2 = hj * hj;
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -1457,27 +1435,11 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             if (pj->ti_drift != e->ti_current)
                 error("Particle pj not drifted to current time");
 #endif
-            
-            const int doi = pi_active && (r2 < hig2);
-            const int doj = pj_active && (r2 < hjg2);
-
-            
             /* Hit or miss? */
-            if (doi && doj) {
-                
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
-                
-            } else if (doi) {
+            if (r2 < hig2) {
                 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
                 
-            } else if (doj) {
-                
-                dx[0] = -dx[0];
-                dx[1] = -dx[1];
-                dx[2] = -dx[2];
-                
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1485,6 +1447,23 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     TIMER_TOC(TIMER_DOPAIR);
 }
 
+
+
+void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
+                         struct cell *restrict cj) {
+    
+    TIMER_TIC;
+    /* here we are updating the dark matter -> switch ci, cj */
+    const int do_ci_dark_matter = cj->nodeID == r->e->nodeID;
+    const int do_cj_dark_matter = ci->nodeID == r->e->nodeID;
+
+    if (do_ci_dark_matter && ci->dark_matter.count != 0 && cj->dark_matter.count != 0)
+        DO_NONSYM_PAIR2_NAIVE(r, ci, cj);
+    if (do_cj_dark_matter && cj->dark_matter.count != 0 && ci->dark_matter.count != 0)
+        DO_NONSYM_PAIR2_NAIVE(r, cj, ci);
+    
+    TIMER_TOC(TIMER_DOPAIR2_DARK_MATTER);
+}
 
 /**
  * @brief Determine which version of DOPAIR2 needs to be called depending on the
@@ -1499,17 +1478,25 @@ void runner_dopair2_branch_dark_matter_sidm(struct runner *r, struct cell *ci, s
     
     const struct engine *restrict e = r->e;
     
-    /* Anything to do here? */
-    if (ci->dark_matter.count == 0 || cj->dark_matter.count == 0) return;
+    const int ci_active = cell_is_active_dark_matter(ci, e);
+    const int cj_active = cell_is_active_dark_matter(cj, e);
     
-    /* Anything to do here? */
-    if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
+    /* here we are updating the dark matter -> switch ci, cj */
+    const int do_ci_dark_matter = cj->nodeID == e->nodeID;
+    const int do_cj_dark_matter = ci->nodeID == e->nodeID;
     
+    const int do_ci = (ci->dark_matter.count != 0 && cj->dark_matter.count != 0 &&
+                       ci_active && do_ci_dark_matter);
+    const int do_cj = (cj->dark_matter.count != 0 && ci->dark_matter.count != 0 &&
+                       cj_active && do_cj_dark_matter);
+
+    /* Anything to do here? */
+    if (!do_ci && !do_cj) return;
+
     /* Check that cells are drifted. */
     if (!cell_are_dmpart_drifted(ci, e) || !cell_are_dmpart_drifted(cj, e))
         error("Interacting undrifted cells.");
-    
-    
+
     DOPAIR2_NAIVE(r, ci, cj);
 /*#ifdef SWIFT_USE_NAIVE_INTERACTIONS
     DOPAIR2_NAIVE(r, ci, cj);
@@ -1537,8 +1524,11 @@ void runner_dosub_pair2_dark_matter_sidm(struct runner *r, struct cell *ci, stru
     TIMER_TIC;
     
     /* Should we even bother? */
-    if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
-    if (ci->dark_matter.count == 0 || cj->dark_matter.count == 0) return;
+    const int should_do_ci = ci->dark_matter.count != 0 && cj->dark_matter.count != 0 &&
+    cell_is_active_dark_matter(ci, e);
+    const int should_do_cj = cj->dark_matter.count != 0 && ci->dark_matter.count != 0 &&
+    cell_is_active_dark_matter(cj, e);
+    if (!should_do_ci && !should_do_cj) return;
     
     /* Get the type of pair and flip ci/cj if needed. */
     double shift[3];
@@ -1558,14 +1548,23 @@ void runner_dosub_pair2_dark_matter_sidm(struct runner *r, struct cell *ci, stru
     
     
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
+    else {
         
+        /* here we are updating the hydro -> switch ci, cj */
+        const int do_ci_dark_matter = cj->nodeID == e->nodeID;
+        const int do_cj_dark_matter = ci->nodeID == e->nodeID;
+
+        const int do_ci = ci->dark_matter.count != 0 && cj->dark_matter.count != 0 &&
+        cell_is_active_dark_matter(ci, e) && do_ci_dark_matter;
+        const int do_cj = cj->dark_matter.count != 0 && ci->dark_matter.count != 0 &&
+        cell_is_active_dark_matter(cj, e) && do_cj_dark_matter;
+
         /* Make sure both cells are drifted to the current timestep. */
         if (!cell_are_dmpart_drifted(ci, e) || !cell_are_dmpart_drifted(cj, e))
             error("Interacting undrifted cells.");
         
         /* Compute the interactions. */
-        runner_dopair2_branch_dark_matter_sidm(r, ci, cj);
+        if (do_ci || do_cj) runner_dopair2_branch_dark_matter_sidm(r, ci, cj);
     }
     
     TIMER_TOC(TIMER_DOSUB_PAIR);
@@ -1587,7 +1586,6 @@ void runner_dosub_self2_dark_matter_sidm(struct runner *r, struct cell *ci) {
     /* Recurse? */
     if (cell_can_recurse_in_self_dark_matter_task(ci)) {
         
-        
         /* Loop over all progeny. */
         for (int k = 0; k < 8; k++)
             if (ci->progeny[k] != NULL) {
@@ -1596,7 +1594,6 @@ void runner_dosub_self2_dark_matter_sidm(struct runner *r, struct cell *ci) {
                     if (ci->progeny[j] != NULL)
                         runner_dosub_pair2_dark_matter_sidm(r, ci->progeny[k], ci->progeny[j]);
             }
-        
     }
     
     /* Otherwise, compute self-interaction. */
