@@ -868,9 +868,9 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s,
          * much work? */
         if ((!do_hydro || !do_stars_i || !do_stars_j)) {
 
-	  /* Does either of the cells violate the h constraint? */
-	  if (!cell_can_split_pair_hydro_task(ci) ||
-	      !cell_can_split_pair_hydro_task(cj)) {
+          /* Does either of the cells violate the h constraint? */
+          if (!cell_can_split_pair_hydro_task(ci) ||
+              !cell_can_split_pair_hydro_task(cj)) {
 
             // message("hello pair!");
 
@@ -1193,8 +1193,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
-    } else if (t->type == task_type_grav_mesh) {
-      /* For future use */
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
@@ -1522,6 +1520,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
     const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
     const float sink_count_i = (t->ci != NULL) ? t->ci->sinks.count : 0.f;
+    const float sink_count_j = (t->cj != NULL) ? t->cj->sinks.count : 0.f;
     const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
     const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
 
@@ -1549,6 +1548,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         else if (t->subtype == task_subtype_stars_density ||
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
+        else if (t->subtype == task_subtype_sink_compute_formation)
+          cost = 1.f * wscale * count_i * sink_count_i;
         else if (t->subtype == task_subtype_bh_density ||
                  t->subtype == task_subtype_bh_swallow ||
                  t->subtype == task_subtype_bh_feedback)
@@ -1584,6 +1585,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * wscale * scount_i * count_j * sid_scale[t->flags];
           else
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
+                   sid_scale[t->flags];
+
+        } else if (t->subtype == task_subtype_sink_compute_formation) {
+          if (t->ci->nodeID != nodeID)
+            cost = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
+          else if (t->cj->nodeID != nodeID)
+            cost = 3.f * wscale * sink_count_i * count_j * sid_scale[t->flags];
+          else
+            cost = 2.f * wscale *
+                   (sink_count_i * count_j + sink_count_j * count_i) *
                    sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_bh_density ||
@@ -1635,6 +1646,19 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
+        } else if (t->subtype == task_subtype_sink_compute_formation) {
+          if (t->ci->nodeID != nodeID) {
+            cost =
+                3.f * (wscale * count_i) * sink_count_j * sid_scale[t->flags];
+          } else if (t->cj->nodeID != nodeID) {
+            cost =
+                3.f * (wscale * sink_count_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * wscale *
+                   (sink_count_i * count_j + sink_count_j * count_i) *
+                   sid_scale[t->flags];
+          }
+
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
@@ -1674,6 +1698,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->subtype == task_subtype_stars_density ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
+        } else if (t->subtype == task_subtype_sink_compute_formation) {
+          cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
@@ -1733,9 +1759,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_grav_long_range:
         cost = wscale * gcount_i;
         break;
-      case task_type_grav_mesh:
-        cost = wscale * gcount_i;
-        break;
       case task_type_grav_mm:
         cost = wscale * (gcount_i + gcount_j);
         break;
@@ -1753,6 +1776,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_sink_formation:
         cost = wscale * (count_i + sink_count_i);
+        break;
+      case task_type_rt_ghost1:
+        cost = wscale * count_i;
         break;
       case task_type_kick1:
         cost =

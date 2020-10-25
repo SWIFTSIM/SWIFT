@@ -80,6 +80,9 @@ struct cell_stars {
   /*! Max smoothing length in this cell. */
   float h_max;
 
+  /*! Max smoothing length of active particles in this cell. */
+  float h_max_active;
+
   /*! Values of h_max before the drifts, used for sub-cell tasks. */
   float h_max_old;
 

@@ -822,6 +822,28 @@ cell_can_recurse_in_self_stars_task2(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair sink task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with stars.
+ * @param cj The #cell with hydro parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
+                                    const struct cell *cj) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((ci->sinks.r_cut_max_old + ci->sinks.dx_max_part_old) <
+          0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
+          0.5f * cj->dmin);
+}
+
+/**
  * @brief Can a sub-pair black hole task recurse to a lower level based
  * on the status of the particles in the cell.
  *

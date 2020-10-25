@@ -128,6 +128,9 @@ struct cell_hydro {
   /*! Max smoothing length in this cell. */
   float h_max;
 
+  /*! Max smoothing length of active particles in this cell. */
+  float h_max_active;
+
   /*! Maximum part movement in this cell since last construction. */
   float dx_max_part;
 
