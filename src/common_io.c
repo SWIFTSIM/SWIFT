@@ -565,6 +565,17 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
   cosmology_write_model(h_grp, e->cosmology);
   H5Gclose(h_grp);
 
+    
+  /* Print the SIDM parameters */
+  /*if (e->policy & engine_policy_hydro) {*/
+  h_grp = H5Gcreate(h_file, "/SIDMScheme", H5P_DEFAULT, H5P_DEFAULT,
+                    H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating SIDM group");
+  sidm_props_print_snapshot(h_grp, e->sidm_properties);
+  H5Gclose(h_grp);
+  /*}*/
+
+    
   /* Print the runtime parameters */
   h_grp =
       H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

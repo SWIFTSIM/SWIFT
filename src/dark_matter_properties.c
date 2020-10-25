@@ -30,6 +30,7 @@
 #include "parser.h"
 #include "units.h"
 #include "error.h"
+#include "restart.h"
 
 #define sidm_props_default_max_iterations 30
 #define sidm_props_default_h_max FLT_MAX
@@ -118,16 +119,27 @@ void sidm_props_init(struct sidm_props* sidm_props,
     
 }
 
+#if defined(HAVE_HDF5)
+void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p) {
+    
+    io_write_attribute_f(h_grpsph, "SIDM cross section [cgs units]", p->sigma_cgs);
+    io_write_attribute_f(h_grpsph, "SIDM cross section [internal units]", p->sigma);
+    io_write_attribute_f(h_grpsph, "SIDM search radius [internal units]", p->h_search_radius);
+    
+}
+#endif
+
+
 /**
  * @brief Write a sidm_props struct to the given FILE as a stream of bytes.
  *
  * @param p the struct
  * @param stream the file stream
  */
-/*void sidm_props_struct_dump(const struct sidm_props *p, FILE *stream) {
+void sidm_props_struct_dump(const struct sidm_props *p, FILE *stream) {
     restart_write_blocks((void *)p, sizeof(struct sidm_props), 1, stream,
-                         "sidm", "sidm props");
-}*/
+                         "sidmprops", "sidm props");
+}
 
 /**
  * @brief Restore a sidm_props struct from the given FILE as a stream of
@@ -136,7 +148,7 @@ void sidm_props_init(struct sidm_props* sidm_props,
  * @param p the struct
  * @param stream the file stream
  */
-/*void sidm_props_struct_restore(struct sidm_props *p, FILE *stream) {
+void sidm_props_struct_restore(const struct sidm_props *p, FILE *stream) {
     restart_read_blocks((void *)p, sizeof(struct sidm_props), 1, stream, NULL,
                         "sidm props");
-}*/
+}

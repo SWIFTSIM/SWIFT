@@ -264,7 +264,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > rand) {
-        
         sidm_do_kick(pi, pj, ti_current);
     }
     

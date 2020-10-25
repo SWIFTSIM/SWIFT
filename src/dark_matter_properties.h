@@ -123,9 +123,12 @@ void sidm_props_init(struct sidm_props* sidm_props,
                      struct swift_params* params,
                      const struct cosmology* cosmo);
 
+#if defined(HAVE_HDF5)
+void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p);
+#endif
+
 /* Dump/restore. */
-/*void sidm_props_struct_dump(const struct sidm_props *p, FILE *stream);
-void sidm_props_struct_restore(struct sidm_props *p, FILE *stream);
-*/
+void sidm_props_struct_dump(const struct sidm_props *p, FILE *stream);
+void sidm_props_struct_restore(const struct sidm_props *p, FILE *stream);
 
 #endif /* SWIFT_DARK_MATTER_PROPERTIES_H */

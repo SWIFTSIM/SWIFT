@@ -1052,9 +1052,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     
     TIMER_TIC;
     
-    /* Anything to do here? */
-    if (!cell_is_active_dark_matter(c, e)) return;
-    
     /* Cosmological terms */
     const float a = cosmo->a;
     const float H = cosmo->H;
@@ -1120,8 +1117,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
-            const int doi = pi_active && ((r2 < hig2) || (r2 < hjg2));
-            const int doj = pj_active && ((r2 < hig2) || (r2 < hjg2));
+            const int doi = pi_active && (r2 < hig2);
+            const int doj = pj_active && (r2 < hjg2);
             
 #ifdef SWIFT_DEBUG_CHECKS
             /* Check that particles have been drifted to the current time */
@@ -1376,9 +1373,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     
     TIMER_TIC;
     
-    /* Anything to do here? */
-    if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
-    
     const int count_i = ci->dark_matter.count;
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
@@ -1449,7 +1443,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
             
-            
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                 (float)(pj->x[1] - cj->loc[1]),
@@ -1465,25 +1458,26 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                 error("Particle pj not drifted to current time");
 #endif
             
+            const int doi = pi_active && (r2 < hig2);
+            const int doj = pj_active && (r2 < hjg2);
+
+            
             /* Hit or miss? */
-            if (r2 < hig2 || r2 < hjg2) {
+            if (doi && doj) {
                 
-                if (pi_active && pj_active) {
-                    
-                    runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
-                    
-                } else if (pi_active) {
-                    
-                    runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
-                    
-                } else if (pj_active) {
-                    
-                    dx[0] = -dx[0];
-                    dx[1] = -dx[1];
-                    dx[2] = -dx[2];
-                    
-                    runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
-                }
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                
+            } else if (doi) {
+                
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us);
+                
+            } else if (doj) {
+                
+                dx[0] = -dx[0];
+                dx[1] = -dx[1];
+                dx[2] = -dx[2];
+                
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us);
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1592,7 +1586,7 @@ void runner_dosub_self2_dark_matter_sidm(struct runner *r, struct cell *ci) {
     
     /* Recurse? */
     if (cell_can_recurse_in_self_dark_matter_task(ci)) {
-            
+        
         
         /* Loop over all progeny. */
         for (int k = 0; k < 8; k++)

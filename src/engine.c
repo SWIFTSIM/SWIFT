@@ -61,6 +61,7 @@
 #include "cosmology.h"
 #include "cycle.h"
 #include "dark_matter.h"
+#include "dark_matter_properties.h"
 #include "debug.h"
 #include "distributed_io.h"
 #include "entropy_floor.h"
@@ -5581,6 +5582,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->black_holes_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
+    free((void *)e->sidm_properties);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);
@@ -5591,7 +5593,6 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->cooling_func);
     free((void *)e->star_formation);
     free((void *)e->feedback_props);
-    free((void *)e->sidm_properties);
 #ifdef WITH_FOF
     free((void *)e->fof_properties);
 #endif
@@ -5640,6 +5641,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   hydro_props_struct_dump(e->hydro_properties, stream);
   entropy_floor_struct_dump(e->entropy_floor, stream);
   gravity_props_struct_dump(e->gravity_properties, stream);
+  sidm_props_struct_dump(e->sidm_properties, stream);
   stars_props_struct_dump(e->stars_properties, stream);
   pm_mesh_struct_dump(e->mesh, stream);
   potential_struct_dump(e->external_potential, stream);
@@ -5736,6 +5738,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct gravity_props *)malloc(sizeof(struct gravity_props));
   gravity_props_struct_restore(gravity_properties, stream);
   e->gravity_properties = gravity_properties;
+    
+  struct sidm_props *sidm_properties =
+      (struct sidm_props *)malloc(sizeof(struct sidm_props));
+  sidm_props_struct_restore(sidm_properties, stream);
+  e->sidm_properties = sidm_properties;
 
   struct stars_props *stars_properties =
       (struct stars_props *)malloc(sizeof(struct stars_props));
@@ -5767,11 +5774,6 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
     
-  struct sidm_props *sidm_properties =
-    (struct sidm_props *)malloc(sizeof(struct sidm_props));
-  /*sidm_struct_restore(sidm, stream);*/
-  e->sidm_properties = sidm_properties;
-   
   struct black_holes_props *black_holes_properties =
       (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
   black_holes_struct_restore(black_holes_properties, stream);
