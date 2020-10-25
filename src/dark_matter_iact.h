@@ -121,9 +121,9 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
                                                                struct dmpart *restrict pi, const integertime_t ti_current) {
     
     /* Center of Mass Velocity of interacting particles */
-    const double VCM[3] = {(pi->v_full[0] + pj->v_full[0])/2.0, (pi->v_full[1] + pj->v_full[1])/2.0, (pi->v_full[2] + pj->v_full[2])/2.0};
+    const double VCM[3] = {(pi->sidm_data.si_v_full[0] + pj->sidm_data.si_v_full[0])/2.0, (pi->sidm_data.si_v_full[1] + pj->sidm_data.si_v_full[1])/2.0, (pi->sidm_data.si_v_full[2] + pj->sidm_data.si_v_full[2])/2.0};
     
-    double dw[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    double dw[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
     double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
     double dv = sqrt(dv2) / 2.0;
     
@@ -182,7 +182,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us) {
     
     /* Velocities of interacting particles */
-    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
@@ -237,7 +237,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us) {
     
     /* Velocities of interacting particles */
-    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
@@ -263,9 +263,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > rand) {
-        sidm_do_kick(pi, pj, ti_current);
-    }
+    if (Probability_SIDM_i > rand) sidm_do_kick(pi, pj, ti_current);
     
 }
 

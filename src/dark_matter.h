@@ -37,6 +37,12 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
     gp->density.wcount_dh = 0.f;
     gp->rho = 0.f;
     gp->density.rho_dh = 0.f;
+    
+    /* Set copy of particle velocity */
+    gp->sidm_data.si_v_full[0] = gp->v_full[0];
+    gp->sidm_data.si_v_full[1] = gp->v_full[1];
+    gp->sidm_data.si_v_full[2] = gp->v_full[2];
+
 
 }
 

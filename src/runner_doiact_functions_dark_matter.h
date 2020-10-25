@@ -1453,14 +1453,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                          struct cell *restrict cj) {
     
     TIMER_TIC;
-    /* here we are updating the dark matter -> switch ci, cj */
-    const int do_ci_dark_matter = cj->nodeID == r->e->nodeID;
-    const int do_cj_dark_matter = ci->nodeID == r->e->nodeID;
 
-    if (do_ci_dark_matter && ci->dark_matter.count != 0 && cj->dark_matter.count != 0)
-        DO_NONSYM_PAIR2_NAIVE(r, ci, cj);
-    if (do_cj_dark_matter && cj->dark_matter.count != 0 && ci->dark_matter.count != 0)
-        DO_NONSYM_PAIR2_NAIVE(r, cj, ci);
+    if (ci->dark_matter.count != 0) DO_NONSYM_PAIR2_NAIVE(r, ci, cj);
+    if (cj->dark_matter.count != 0) DO_NONSYM_PAIR2_NAIVE(r, cj, ci);
     
     TIMER_TOC(TIMER_DOPAIR2_DARK_MATTER);
 }
@@ -1481,14 +1476,8 @@ void runner_dopair2_branch_dark_matter_sidm(struct runner *r, struct cell *ci, s
     const int ci_active = cell_is_active_dark_matter(ci, e);
     const int cj_active = cell_is_active_dark_matter(cj, e);
     
-    /* here we are updating the dark matter -> switch ci, cj */
-    const int do_ci_dark_matter = cj->nodeID == e->nodeID;
-    const int do_cj_dark_matter = ci->nodeID == e->nodeID;
-    
-    const int do_ci = (ci->dark_matter.count != 0 && cj->dark_matter.count != 0 &&
-                       ci_active && do_ci_dark_matter);
-    const int do_cj = (cj->dark_matter.count != 0 && ci->dark_matter.count != 0 &&
-                       cj_active && do_cj_dark_matter);
+    const int do_ci = (ci->dark_matter.count != 0 && ci_active);
+    const int do_cj = (cj->dark_matter.count != 0 && cj_active);
 
     /* Anything to do here? */
     if (!do_ci && !do_cj) return;
@@ -1524,10 +1513,8 @@ void runner_dosub_pair2_dark_matter_sidm(struct runner *r, struct cell *ci, stru
     TIMER_TIC;
     
     /* Should we even bother? */
-    const int should_do_ci = ci->dark_matter.count != 0 && cj->dark_matter.count != 0 &&
-    cell_is_active_dark_matter(ci, e);
-    const int should_do_cj = cj->dark_matter.count != 0 && ci->dark_matter.count != 0 &&
-    cell_is_active_dark_matter(cj, e);
+    const int should_do_ci = ci->dark_matter.count != 0 && cell_is_active_dark_matter(ci, e);
+    const int should_do_cj = cj->dark_matter.count != 0 && cell_is_active_dark_matter(cj, e);
     if (!should_do_ci && !should_do_cj) return;
     
     /* Get the type of pair and flip ci/cj if needed. */
@@ -1550,21 +1537,12 @@ void runner_dosub_pair2_dark_matter_sidm(struct runner *r, struct cell *ci, stru
     /* Otherwise, compute the pair directly. */
     else {
         
-        /* here we are updating the hydro -> switch ci, cj */
-        const int do_ci_dark_matter = cj->nodeID == e->nodeID;
-        const int do_cj_dark_matter = ci->nodeID == e->nodeID;
-
-        const int do_ci = ci->dark_matter.count != 0 && cj->dark_matter.count != 0 &&
-        cell_is_active_dark_matter(ci, e) && do_ci_dark_matter;
-        const int do_cj = cj->dark_matter.count != 0 && ci->dark_matter.count != 0 &&
-        cell_is_active_dark_matter(cj, e) && do_cj_dark_matter;
-
         /* Make sure both cells are drifted to the current timestep. */
         if (!cell_are_dmpart_drifted(ci, e) || !cell_are_dmpart_drifted(cj, e))
             error("Interacting undrifted cells.");
         
         /* Compute the interactions. */
-        if (do_ci || do_cj) runner_dopair2_branch_dark_matter_sidm(r, ci, cj);
+        runner_dopair2_branch_dark_matter_sidm(r, ci, cj);
     }
     
     TIMER_TOC(TIMER_DOSUB_PAIR);
