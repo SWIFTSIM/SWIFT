@@ -76,6 +76,7 @@ FOF:
   basename:                        fof_output  # Filename for the FOF outputs.
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
+  seed_black_holes_enabled:        1           # Enable seeding of black holes in FoF groups
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   scale_factor_first:              0.91        # Scale-factor of first FoF black hole seeding calls.
   delta_time:                      1.005       # Scale-factor ratio between consecutive FoF black hole seeding calls.
