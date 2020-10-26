@@ -193,10 +193,6 @@ void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
                               const int stf_count, const int snap_count,
                               const char* subdir, const char* basename);
 
-int get_ptype_fields(const int ptype, struct io_props* list,
-                     const int with_cosmology, const int with_fof,
-                     const int with_stf);
-int get_param_ptype(const char* name);
-void set_ids_to_one(struct gpart* gparts, const size_t Ngparts);
+void io_set_ids_to_one(struct gpart* gparts, const size_t Ngparts);
 
 #endif /* SWIFT_COMMON_IO_H */
