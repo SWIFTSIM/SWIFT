@@ -25,6 +25,7 @@
 
 #include "./dark_matter_part.h"
 #include "./dark_matter_iact.h"
+/*#include "dark_matter_logger.h"*/
 
 /**
  * @brief Prepares a s-particle for its interactions
@@ -194,14 +195,9 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *rest
  *
  */
 __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpart(
-          struct dmpart *restrict gp, struct sidm_history* sidm_history) {
+          struct dmpart *restrict gp) {
     
     if (gp->sidm_data.sidm_flag > 0) {
-        
-        double energy_before = gp->v_full[0] * gp->v_full[0] + gp->v_full[1] * gp->v_full[1] + gp->v_full[2] * gp->v_full[2];
-        double energy_after = gp->sidm_data.si_v_full[0] * gp->sidm_data.si_v_full[0] + gp->sidm_data.si_v_full[1] * gp->sidm_data.si_v_full[1] + gp->sidm_data.si_v_full[2] * gp->sidm_data.si_v_full[2];
-        
-        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after);
         
         /* Rewrite gparticle's velocity */
         /*gp->v_full[0] = gp->sidm_data.si_v_full[0];

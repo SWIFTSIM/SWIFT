@@ -554,8 +554,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_stars_beg_max = 0;
   data.ti_black_holes_end_min = max_nr_timesteps,
   data.ti_black_holes_end_max = 0, data.ti_black_holes_beg_max = 0;
-    data.ti_dark_matter_end_min = max_nr_timesteps,
-    data.ti_dark_matter_end_max = 0, data.ti_dark_matter_beg_max = 0;
+  data.ti_dark_matter_end_min = max_nr_timesteps,
+  data.ti_dark_matter_end_max = 0, data.ti_dark_matter_beg_max = 0;
   data.e = e;
 
   /* Need to use a consistent check of the hours since we started. */
@@ -578,7 +578,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.g_inhibited = s->nr_inhibited_gparts;
   data.s_inhibited = s->nr_inhibited_sparts;
   data.b_inhibited = s->nr_inhibited_bparts;
-    data.dm_inhibited = s->nr_inhibited_dmparts;
+  data.dm_inhibited = s->nr_inhibited_dmparts;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(

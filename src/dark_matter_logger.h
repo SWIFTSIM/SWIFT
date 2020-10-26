@@ -32,7 +32,7 @@
  * @param cosmo the cosmology struct
  * @param num_events number of events per time step
  */
-INLINE static void dark_matter_log_num_events(struct sidm_history *sidm_history,const int num_events) {
+INLINE static void dark_matter_log_num_events(struct sidm_history *sidm_history, const int num_events) {
         sidm_history->num_kicks += num_events;
 }
 
@@ -45,9 +45,10 @@ INLINE static void dark_matter_log_num_events(struct sidm_history *sidm_history,
  */
 INLINE static void dark_matter_log_total_kinetic_energy(
            struct sidm_history *sidm_history,
-           double energy_before, double energy_after) {
+           const double energy_before, const double energy_after) {
     sidm_history->K_before += energy_before;
     sidm_history->K_after += energy_after;
+    
 }
 
 /**
@@ -84,6 +85,7 @@ INLINE static void dark_matter_logger_add_to_accumulator(
     sh_update->num_kicks = sh_add->num_kicks;
     sh_update->K_before = sh_add->K_before;
     sh_update->K_after = sh_add->K_after;
+
 }
 
 
@@ -126,7 +128,7 @@ INLINE static void dark_matter_write_to_log_file(
            FILE *fp, const double time, const double a, const double z,
            struct sidm_history_accumulator sh, const int step) {
     
-    fprintf(fp, "%6d %16e %12.7f %12.7f %7d %14e %14e\n", step, time, a, z,
+    fprintf(fp, "%6d %16e %12.7f %12.7f %7d %17.7f %17.7f\n", step, time, a, z,
             sh.num_kicks, sh.K_before, sh.K_after);
 }
 
@@ -157,22 +159,14 @@ INLINE static void dark_matter_logger_init_log_file(
     fprintf(fp, "# (3) Redshift     (no unit)\n");
     fprintf(fp, "# (4) Total number of SIDM kicks in the current time-step.\n");
     fprintf(fp, "# (5) Total kinetic energy before kicks.\n");
-    fprintf(fp, "#     Unit = %e gram/s\n",
-            us->UnitMass_in_cgs / us->UnitTime_in_cgs);
-    fprintf(fp, "#     Unit = %e Msol/yr\n",
-            phys_const->const_year / phys_const->const_solar_mass);
-    fprintf(fp,
-            "# (6) Total kinetic energy after kicks.\n");
-    fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
-    fprintf(fp, "#     Unit = %e solar mass\n",
-            1.f / phys_const->const_solar_mass);
+    fprintf(fp, "# (6) Total kinetic energy after kicks.\n");
     fprintf(fp, "#\n");
     fprintf(fp,
-            "# (0)         (1)            (2)          (3)            (4)           "
-            " (5)            (6)\n");
+            "# (0)         (1)            (2)          (3)          (4)         "
+            "(5)         (6)\n");
     fprintf(fp,
-            "#            Time             a            z        Num. SIDM kicks  "
-            "K (before kicks) K (after kicks)\n");
+            "#            Time             a            z         N. kicks  "
+            "K (before) K (after)\n");
 }
 
 #ifdef WITH_MPI
