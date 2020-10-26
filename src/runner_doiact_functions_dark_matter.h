@@ -1086,7 +1086,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             (float)(pi->x[2] - c->loc[2])};
         
         /* Loop over the dmparts in cj. */
-        for (int pjd = 0; pid + 1 < count; pjd++) {
+        for (int pjd = pid + 1; pjd < count; pjd++) {
             
             /* Get a pointer to the jth particle. */
             struct dmpart *restrict pj = &dmparts[pjd];
