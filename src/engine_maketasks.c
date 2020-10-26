@@ -3685,12 +3685,12 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
         (type & proxy_cell_type_gravity))
       engine_addtasks_send_gravity(e, ci, cj, NULL, NULL);
 
-      /* Add the send tasks for the cells in the proxy that have a dark matter
-       * connection. */
-      if (type & proxy_cell_type_gravity)
-          engine_addtasks_send_dark_matter(e, ci, cj,
-                                            /*t_sidm=*/NULL,
-                                            /*t_ti=*/NULL);
+    /* Add the send tasks for the cells in the proxy that have a dark matter
+     * connection. */
+    if (type & proxy_cell_type_gravity)
+      engine_addtasks_send_dark_matter(e, ci, cj,
+                                       /*t_sidm=*/NULL,
+                                       /*t_ti=*/NULL);
   }
 }
 
@@ -3739,8 +3739,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
       
       /* Add the recv tasks for the cells in the proxy that have a hydro
        * connection. */
-      if (type & proxy_cell_type_gravity)
-          engine_addtasks_recv_dark_matter(e, ci, /*t_sidm=*/NULL, /*t_ti=*/NULL);
+    if (type & proxy_cell_type_gravity)
+      engine_addtasks_recv_dark_matter(e, ci, /*t_sidm=*/NULL, /*t_ti=*/NULL);
 
   }
 }

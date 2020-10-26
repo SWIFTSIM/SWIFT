@@ -3638,24 +3638,24 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
     
-    /* Re-allocate the local dmparts. */
-    if (e->verbose)
-        message("Re-allocating dmparts array from %zu to %zu.", s->size_dmparts,
+  /* Re-allocate the local dmparts. */
+  if (e->verbose)
+    message("Re-allocating dmparts array from %zu to %zu.", s->size_dmparts,
                 (size_t)(s->nr_dmparts * engine_redistribute_alloc_margin));
-    s->size_dmparts = s->nr_dmparts * engine_redistribute_alloc_margin;
-    struct dmpart *dmparts_new = NULL;
-    if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
-                       sizeof(struct dmpart) * s->size_dmparts) != 0)
-        error("Failed to allocate new dmpart data.");
+   s->size_dmparts = s->nr_dmparts * engine_redistribute_alloc_margin;
+   struct dmpart *dmparts_new = NULL;
+   if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
+                      sizeof(struct dmpart) * s->size_dmparts) != 0)
+     error("Failed to allocate new dmpart data.");
     
-    if (s->nr_dmparts > 0)
-        memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * s->nr_dmparts);
-    swift_free("dmparts", s->dmparts);
-    s->dmparts = dmparts_new;
+  if (s->nr_dmparts > 0)
+    memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * s->nr_dmparts);
+  swift_free("dmparts", s->dmparts);
+  s->dmparts = dmparts_new;
     
-    /* Re-link the gparts to their bparts. */
-    if (s->nr_dmparts > 0 && s->nr_gparts > 0)
-        part_relink_gparts_to_dmparts(s->dmparts, s->nr_dmparts, 0);
+  /* Re-link the gparts to their bparts. */
+  if (s->nr_dmparts > 0 && s->nr_gparts > 0)
+    part_relink_gparts_to_dmparts(s->dmparts, s->nr_dmparts, 0);
 
   /* Re-allocate the local gparts. */
   if (e->verbose)

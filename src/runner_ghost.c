@@ -1405,7 +1405,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = (e->policy & engine_policy_cosmology);
+    /*const int with_cosmology = (e->policy & engine_policy_cosmology);*/
     
     const float dark_matter_h_max = e->sidm_properties->h_max;
     const float dark_matter_h_min = e->sidm_properties->h_min;
@@ -1537,20 +1537,18 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                         /* Calculate the time-step for passing to hydro_prepare_force, used
                          * for the evolution of alpha factors (i.e. those involved in the
                          * artificial viscosity and thermal conduction terms) */
-                        const double time_base = e->time_base;
+                        /*const double time_base = e->time_base;
                         const integertime_t ti_current = e->ti_current;
-                        double dt_alpha;
                         
                         if (with_cosmology) {
                             const integertime_t ti_step = get_integer_timestep(p->time_bin);
                             const integertime_t ti_begin =
                             get_integer_time_begin(ti_current - 1, p->time_bin);
                             
-                            dt_alpha =
-                            cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+                            double dt_alpha = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
                         } else {
-                            dt_alpha = get_timestep(p->time_bin, time_base);
-                        }
+                            double dt_alpha = get_timestep(p->time_bin, time_base);
+                        }*/
                         
                         /* As of here, particle force variables will be set. */
                         

@@ -1598,6 +1598,7 @@ void write_output_parallel(struct engine* e,
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
     struct sink* sinks_written = NULL;
+    struct dmpart* dmparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {

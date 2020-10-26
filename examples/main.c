@@ -958,9 +958,9 @@ int main(int argc, char *argv[]) {
     } else
       bzero(&feedback_properties, sizeof(struct feedback_props));
 
-      /* Initialise sidm properties */
-      bzero(&sidm_properties, sizeof(struct sidm_props));
-      sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
+    /* Initialise sidm properties */
+    bzero(&sidm_properties, sizeof(struct sidm_props));
+    sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
 
       
     /* Initialise the black holes properties */
