@@ -112,6 +112,10 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, const int limit_min_h,
 #endif
 
       if (r2 < hig2) {
+
+        if (si->id == ICHECK)
+          message("Interact with id=%lld r2=%e", pj->id, r2);
+
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
@@ -135,7 +139,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, const int limit_min_h,
  * @param cj The second #cell
  */
 void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-                                 struct cell *restrict cj) {
+                                 struct cell *restrict cj,
+                                 const int limit_min_h, const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -175,6 +180,10 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
@@ -192,6 +201,15 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (hi > ci->stars.h_max_active)
+      error("Particle has h larger than h_max_active");
+#endif
+
+    /* Skip particles not in the range of h we care about */
+    if (hi >= h_max) continue;
+    if (hi < h_min) continue;
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -220,6 +238,10 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < hig2) {
+
+        if (si->id == ICHECK)
+          message("Interact with id=%lld r2=%e", pj->id, r2);
+
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -402,6 +424,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
+          if (spi->id == ICHECK)
+            message("Interact with id=%lld r2=%e", pj->id, r2);
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -535,6 +561,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hjg2) {
 
+          if (spj->id == ICHECK)
+            message("Interact with id=%lld r2=%e", pi->id, r2);
+
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -554,7 +583,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 }
 
 void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-                         struct cell *restrict cj, int timer) {
+                         struct cell *restrict cj, const int limit_min_h,
+                         const int limit_max_h) {
 
   TIMER_TIC;
 
@@ -567,9 +597,9 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const int do_cj_stars = ci->nodeID == r->e->nodeID;
 #endif
   if (do_ci_stars && ci->stars.count != 0 && cj->hydro.count != 0)
-    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
   if (do_cj_stars && cj->stars.count != 0 && ci->hydro.count != 0)
-    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
 
   TIMER_TOC(TIMER_DOPAIR_STARS);
 }
@@ -658,6 +688,10 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
+          if (spi->id == ICHECK)
+            message("Interact with id=%lld r2=%e", pj->id, r2);
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -719,6 +753,10 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
+          if (spi->id == ICHECK)
+            message("Interact with id=%lld r2=%e", pj->id, r2);
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -815,6 +853,10 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
+
+        if (spi->id == ICHECK)
+          message("Interact with id=%lld r2=%e", pj->id, r2);
+
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -902,6 +944,10 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
+
+        if (spi->id == ICHECK)
+          message("Interact with id=%lld r2=%e", pj->id, r2);
+
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, NULL,
@@ -971,8 +1017,6 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
                          ? 0
                          : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
 
-  /* Switch the cells around? */
-  const int flipped = runner_flip[sid];
   sid = sortlistID[sid];
 
   /* Has the cell cj been sorted? */
@@ -987,6 +1031,10 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
     DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
 #else
+
+    /* Switch the cells around? */
+    const int flipped = runner_flip[sid];
+
     DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
 #endif
   }

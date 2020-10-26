@@ -104,6 +104,9 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
             spi->inhibited_exact = 1;
           } else {
 
+            if (spi->id == ICHECK)
+              message("Interact with id=%lld r2=%e", pj->id, r2);
+
             /* Density */
             rho_exact += mj * wi;
 
@@ -240,7 +243,8 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
       if (!found_inhibited &&
           (fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
            fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld swift=%e exact=%e", id, spi->rho, spi->rho_exact);
+        message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d", id,
+                spi->rho, spi->rho_exact, spi->N_density_exact, spi->N_density);
         wrong_rho++;
       }
     }
