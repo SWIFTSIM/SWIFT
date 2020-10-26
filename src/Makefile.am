@@ -41,25 +41,26 @@ noinst_LTLIBRARIES += libgrav_mpi.la
 endif
 
 # List required headers
-include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
-    engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
-    common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h \
-    partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
-    hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h cooling_properties.h \
-    statistics.h memswap.h cache.h runner_doiact_hydro_vec.h profiler.h entropy_floor.h \
-    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h \
-    gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
-    chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
-    mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h \
-    logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h \
-    multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h sincos.h \
-    star_formation_struct.h star_formation.h star_formation_iact.h \
-    star_formation_logger.h star_formation_logger_struct.h \
-    pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h \
-    velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h \
-    black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h \
-    feedback.h feedback_struct.h feedback_properties.h \
-    space_unique_id.h line_of_sight.h io_compression.h
+include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h 
+include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h 
+include_HEADERS += engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h 
+include_HEADERS += common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h 
+include_HEADERS += partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h 
+include_HEADERS += hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h cooling_properties.h 
+include_HEADERS += statistics.h memswap.h cache.h runner_doiact_hydro_vec.h profiler.h entropy_floor.h 
+include_HEADERS += dump.h logger.h active.h timeline.h xmf.h gravity_properties.h gravity_derivatives.h 
+include_HEADERS += gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h 
+include_HEADERS += chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h 
+include_HEADERS += mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h 
+include_HEADERS += logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h 
+include_HEADERS += multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h sincos.h 
+include_HEADERS += star_formation_struct.h star_formation.h star_formation_iact.h 
+include_HEADERS += star_formation_logger.h star_formation_logger_struct.h 
+include_HEADERS += pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h 
+include_HEADERS += velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h 
+include_HEADERS += black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h 
+include_HEADERS += feedback.h feedback_struct.h feedback_properties.h 
+include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =
@@ -99,28 +100,36 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedbac
 endif
 
 # Common source files
-AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
-    runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
-    runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
-    runner_doiact_hydro_vec.c runner_others.c runner_doiact_sinks.c \
-    runner_doiact_rt.c\
-    queue.c task.c cell.c engine.c engine_maketasks.c engine_split_particles.c \
-    engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c \
-    engine_redistribute.c engine_fof.c serial_io.c timers.c debug.c scheduler.c \
-    proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
-    kernel_hydro.c tools.c part.c partition.c clocks.c parser.c distributed_io.c \
-    physical_constants.c potential.c hydro_properties.c \
-    threadpool.c cooling.c star_formation.c \
-    statistics.c profiler.c dump.c logger.c \
-    part_type.c xmf.c gravity_properties.c gravity.c \
-    collectgroup.c hydro_space.c equation_of_state.c io_compression.c \
-    chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
-    output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
-    hashmap.c pressure_floor.c space_unique_id.c output_options.c line_of_sight.c \
-    $(QLA_COOLING_SOURCES) \
-    $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
-    $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) \
-    $(COLIBRE_COOLING_SOURCES)
+AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
+AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
+AM_SOURCES += space_cell_index.c space_recycle.c 
+AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c 
+AM_SOURCES += runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c 
+AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c 
+AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c runner_doiact_sinks.c 
+AM_SOURCES += runner_doiact_rt.c 
+AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c 
+AM_SOURCES += cell_unskip.c 
+AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c 
+AM_SOURCES += engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c 
+AM_SOURCES += engine_redistribute.c engine_fof.c engine_proxy.c engine_io.c engine_config.c 
+AM_SOURCES += queue.c task.c timers.c debug.c scheduler.c proxy.c version.c 
+AM_SOURCES += common_io.c common_io_copy.c common_io_cells.c common_io_fields.c 
+AM_SOURCES += single_io.c serial_io.c distributed_io.c parallel_io.c 
+AM_SOURCES += output_options.c line_of_sight.c restart.c parser.c xmf.c 
+AM_SOURCES += kernel_hydro.c tools.c map.c part.c partition.c clocks.c  
+AM_SOURCES += physical_constants.c units.c potential.c hydro_properties.c 
+AM_SOURCES += threadpool.c cooling.c star_formation.c 
+AM_SOURCES += statistics.c profiler.c dump.c logger.c part_type.c 
+AM_SOURCES += gravity_properties.c gravity.c multipole.c 
+AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c 
+AM_SOURCES += chemistry.c cosmology.c mesh_gravity.c velociraptor_interface.c 
+AM_SOURCES += output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c 
+AM_SOURCES += hashmap.c pressure_floor.c 
+AM_SOURCES += $(QLA_COOLING_SOURCES) 
+AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
+AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
+AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
