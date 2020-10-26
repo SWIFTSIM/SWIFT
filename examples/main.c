@@ -1603,7 +1603,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Write final output. */
-  if (!force_stop && nsteps == 0) {
+  if (!force_stop && nsteps == -2) {
 
     /* Move forward in time */
     e.ti_old = e.ti_current;
@@ -1637,6 +1637,7 @@ int main(int argc, char *argv[]) {
     /* Write final snapshot? */
     if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
         !e.output_list_snapshots) {
+
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           !e.stf_this_timestep)
