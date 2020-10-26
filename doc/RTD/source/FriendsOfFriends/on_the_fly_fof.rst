@@ -44,3 +44,14 @@ minimal group length of order 500 is beneficial over the more traditional
 value of 32 as it will reduce the number of haloes to consider by about a
 factor 10 (assuming a normal cosmology) whilst still being far enough from
 the actual user-defined mass limit to be safe.
+
+On-the-fly Friends-Of-Friends for snapshot output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It may be desirable to include FOF group membership information for each
+particle in the output snapshots even when black hole seeding is not in use.
+This can be achieved by setting the ``invoke_fof`` parameter in the 
+``Snapshots`` section of the parameter file.
+
+FOF will be run just before each snapshot is written and the snapshot will
+include a dataset which specifies which FOF group each particle belongs to.
