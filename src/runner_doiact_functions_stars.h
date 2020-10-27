@@ -322,7 +322,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
-    const double hi_max = min(h_max, ci->stars.h_max) * kernel_gamma - rshift;
+    const double hi_max =
+        min(h_max, ci->stars.h_max_active) * kernel_gamma - rshift;
     const int count_i = ci->stars.count;
     const int count_j = cj->hydro.count;
     struct spart *restrict sparts_i = ci->stars.parts;
@@ -332,9 +333,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 #endif
     const double dj_min = sort_j[0].d;
     const float dx_max = (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
-    const float hydro_dx_max_rshift = cj->hydro.dx_max_sort - rshift;
 
-    /* Loop over the sparts in ci. */
+    /* Loop over the *active* sparts in ci that are within range (on the axis)
+       of any particle in cj. */
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
@@ -353,12 +354,15 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         error("Particle has h larger than h_max_active");
 #endif
 
+      if (spi->id == ICHECK && h_max != FLT_MAX && h_min != 0.)
+        message("h_max= %e h_min= %e", h_max, h_min);
+
       /* Skip particles not in the range of h we care about */
       if (hi >= h_max) continue;
       if (hi < h_min) continue;
 
       /* Is there anything we need to interact with ? */
-      const double di = sort_i[pid].i + hi * kernel_gamma + hydro_dx_max_rshift;
+      const double di = sort_i[pid].i + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
 
       /* Get some additional information about pi */
@@ -385,7 +389,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         const float pjz = pj->x[2] - cj->loc[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -425,6 +429,15 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi * kernel_gamma > ci->dmin)
+            error(
+                "h_i too large for this cell! depth=%d limit min/max=%d%d H=%e "
+                "dmin=%e",
+                ci->depth, limit_min_h, limit_max_h, hi * kernel_gamma,
+                ci->dmin);
+#endif
+
           if (spi->id == ICHECK)
             message("Interact with id=%lld r2=%e", pj->id, r2);
 
@@ -462,7 +475,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
-    const double hj_max = min(h_max, cj->hydro.h_max) * kernel_gamma;
+    const double hj_max = min(h_max, cj->stars.h_max_active) * kernel_gamma;
     const int count_i = ci->hydro.count;
     const int count_j = cj->stars.count;
     struct part *restrict parts_i = ci->hydro.parts;
@@ -470,9 +483,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
     struct spart *restrict sparts_j = cj->stars.parts;
     const double di_max = sort_i[count_i - 1].d - rshift;
     const float dx_max = (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
-    const float hydro_dx_max_rshift = ci->hydro.dx_max_sort - rshift;
 
-    /* Loop over the parts in cj. */
+    /* Loop over the *active* sparts in cj that are within range (on the axis)
+       of any particle in ci. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
 
@@ -495,8 +508,11 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
       if (hj >= h_max) continue;
       if (hj < h_min) continue;
 
+      if (spj->id == ICHECK && h_max != FLT_MAX && h_min != 0. && e->step == 62)
+        error("h_max= %e h_min= %e", h_max, h_min);
+
       /* Is there anything we need to interact with ? */
-      const double dj = sort_j[pjd].d - hj * kernel_gamma - hydro_dx_max_rshift;
+      const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
       if (dj - rshift > di_max) continue;
 
       /* Get some additional information about pj */
@@ -521,7 +537,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -560,6 +576,15 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj * kernel_gamma > cj->dmin)
+            error(
+                "h_j too large for this cell! depth=%d limit min/max=%d%d H=%e "
+                "dmin=%e",
+                cj->depth, limit_min_h, limit_max_h, hj * kernel_gamma,
+                cj->dmin);
+#endif
 
           if (spj->id == ICHECK)
             message("Interact with id=%lld r2=%e", pi->id, r2);
@@ -1198,6 +1223,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Should we even bother? */
   if (!do_ci && !do_cj) return;
 
+  /* We reached a leaf OR a cell small enough to be processed quickly */
   if (!ci->split || ci->stars.count < space_recurse_size_pair_stars ||
       !cj->split || cj->stars.count < space_recurse_size_pair_stars) {
 
