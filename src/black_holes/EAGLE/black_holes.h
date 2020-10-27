@@ -35,6 +35,63 @@
 #include <math.h>
 
 /**
+ * @brief Computes the temperature increase delta_T for black hole feedback.
+ *
+ * This is calculated as delta_T = min(max(dT_crit, T_gas), dT_num, dT_max):
+ * dT_crit = f_crit * critical temperature for suppressing numerical losses
+ * T_gas = f_gas * temperature of ambient gas
+ * dT_num = temperature increase affordable if N particles should be heated
+ * dT_max = maximum allowed energy increase.
+ *
+ * @param bp The #bpart.
+ * @param props The properties of the black hole model.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static double black_hole_feedback_delta_T(
+    const struct bpart* bp, const struct black_holes_props* props,
+    const struct cosmology* cosmo) {
+
+  /* If we do not want a variable delta T, we can stop right here. */
+  if (!props->use_variable_delta_T) return props->AGN_delta_T_desired;
+
+  if (bp->internal_energy_gas < 0)
+    error("Attempting to compute feedback energy for BH without neighbours.");
+
+  /* Black hole properties */
+  const double n_gas_phys = bp->rho_gas * cosmo->a3_inv * props->rho_to_n_cgs;
+  const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
+  const double T_gas = bp->internal_energy_gas *
+                       cosmo->a_factor_internal_energy /
+                       props->temp_to_u_factor;
+
+  /* Calculate base line delta T from BH subgrid mass. The assumption is that
+   * the BH mass scales (via halo mass) with the virial temperature, so that
+   * this aims for delta T > T_vir. */
+  double delta_T = props->AGN_delta_T_mass_norm *
+                   pow((bp->subgrid_mass / props->AGN_delta_T_mass_reference),
+                       props->AGN_delta_T_mass_exponent);
+
+  /* If desired, also make sure that delta T is not below the numerically
+   * critical temperature or that of the ambient gas */
+  if (props->AGN_with_locally_adaptive_delta_T) {
+
+    /* Critical temperature for numerical efficiency, based on equation 18
+     * of Dalla Vecchia & Schaye (2012) */
+    const double T_crit =
+        3.162e7 * pow(n_gas_phys * 0.1, 0.6666667) *
+        pow(mean_ngb_mass * props->mass_to_solar_mass * 1e-6, 0.33333333);
+    delta_T = max(delta_T, T_crit * props->AGN_delta_T_crit_factor);
+
+    /* Delta_T should be (at least) some multiple of the local gas T */
+    delta_T = max(delta_T, T_gas * props->AGN_delta_T_background_factor);
+  }
+
+  /* Respect the limits */
+  delta_T = max(delta_T, props->AGN_delta_T_min);
+  return min(delta_T, props->AGN_delta_T_max);
+}
+
+/**
  * @brief Computes the time-step of a given black hole particle.
  *
  * @param bp Pointer to the s-particle data.
@@ -488,63 +545,6 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
 
   /* We had another merger */
   bpi->number_of_mergers++;
-}
-
-/**
- * @brief Computes the temperature increase delta_T for black hole feedback.
- *
- * This is calculated as delta_T = min(max(dT_crit, T_gas), dT_num, dT_max):
- * dT_crit = f_crit * critical temperature for suppressing numerical losses
- * T_gas = f_gas * temperature of ambient gas
- * dT_num = temperature increase affordable if N particles should be heated
- * dT_max = maximum allowed energy increase.
- *
- * @param bp The #bpart.
- * @param props The properties of the black hole model.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static double black_hole_feedback_delta_T(
-    const struct bpart* bp, const struct black_holes_props* props,
-    const struct cosmology* cosmo) {
-
-  /* If we do not want a variable delta T, we can stop right here. */
-  if (!props->use_variable_delta_T) return props->AGN_delta_T_desired;
-
-  if (bp->internal_energy_gas < 0)
-    error("Attempting to compute feedback energy for BH without neighbours.");
-
-  /* Black hole properties */
-  const double n_gas_phys = bp->rho_gas * cosmo->a3_inv * props->rho_to_n_cgs;
-  const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
-  const double T_gas = bp->internal_energy_gas *
-                       cosmo->a_factor_internal_energy /
-                       props->temp_to_u_factor;
-
-  /* Calculate base line delta T from BH subgrid mass. The assumption is that
-   * the BH mass scales (via halo mass) with the virial temperature, so that
-   * this aims for delta T > T_vir. */
-  double delta_T = props->AGN_delta_T_mass_norm *
-                   pow((bp->subgrid_mass / props->AGN_delta_T_mass_reference),
-                       props->AGN_delta_T_mass_exponent);
-
-  /* If desired, also make sure that delta T is not below the numerically
-   * critical temperature or that of the ambient gas */
-  if (props->AGN_with_locally_adaptive_delta_T) {
-
-    /* Critical temperature for numerical efficiency, based on equation 18
-     * of Dalla Vecchia & Schaye (2012) */
-    const double T_crit =
-        3.162e7 * pow(n_gas_phys * 0.1, 0.6666667) *
-        pow(mean_ngb_mass * props->mass_to_solar_mass * 1e-6, 0.33333333);
-    delta_T = max(delta_T, T_crit * props->AGN_delta_T_crit_factor);
-
-    /* Delta_T should be (at least) some multiple of the local gas T */
-    delta_T = max(delta_T, T_gas * props->AGN_delta_T_background_factor);
-  }
-
-  /* Respect the limits */
-  delta_T = max(delta_T, props->AGN_delta_T_min);
-  return min(delta_T, props->AGN_delta_T_max);
 }
 
 /**
