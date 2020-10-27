@@ -38,7 +38,7 @@
  */
 __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
     const struct bpart* const bp, const struct black_holes_props* props,
-    const struct phys_const* constants) {
+    const struct phys_const* constants, const struct cosmology* cosmo) {
 
   return FLT_MAX;
 }
