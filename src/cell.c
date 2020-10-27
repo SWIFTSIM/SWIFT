@@ -448,6 +448,58 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 #endif
 }
 
+
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts) {
+#ifdef WITH_MPI
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank)
+        error("Linking foreign particles in a local cell!");
+#endif
+    
+    /* Do we have a gravity task at this level? */
+    if (cell_get_recv(c, task_subtype_dmpart) != NULL) {
+        
+        /* Recursively attach the gparts */
+        const int counts = cell_link_dmparts(c, dmparts);
+#ifdef SWIFT_DEBUG_CHECKS
+        if (counts != c->dark_matter.count)
+            error("Something is wrong with the foreign counts");
+#endif
+        return counts;
+    } else {
+        c->dark_matter.parts = dmparts;
+        c->dark_matter.parts_rebuild = dmparts;
+    }
+    
+    /* Go deeper to find the level where the tasks are */
+    if (c->split) {
+        int count = 0;
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                count += cell_link_foreign_dmparts(c->progeny[k], &dmparts[count]);
+            }
+        }
+        return count;
+    } else {
+        return 0;
+    }
+    
+#else
+    error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
 /**
  * @brief Recursively nullify all the particle pointers in a cell hierarchy.
  *
@@ -553,6 +605,45 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
 
 #else
   error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+
+/**
+ * @brief Recursively count the number of #dmpart in foreign cells that
+ * are in cells with SIDM-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_dmparts_for_tasks(const struct cell *c) {
+#ifdef WITH_MPI
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank)
+        error("Counting foreign particles in a local cell!");
+#endif
+    
+    /* Do we have a gravity task at this level? */
+    if (cell_get_recv(c, task_subtype_dmpart) != NULL) {
+        return c->dark_matter.count;
+    }
+    
+    if (c->split) {
+        int count = 0;
+        for (int k = 0; k < 8; ++k) {
+            if (c->progeny[k] != NULL) {
+                count += cell_count_dmparts_for_tasks(c->progeny[k]);
+            }
+        }
+        return count;
+    } else {
+        return 0;
+    }
+    
+#else
+    error("Calling linking of foregin particles in non-MPI mode.");
 #endif
 }
 

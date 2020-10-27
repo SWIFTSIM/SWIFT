@@ -1379,6 +1379,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
         count_gparts_in +=
             cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
+        count_dmparts_in +=
+          cell_count_dmparts_for_tasks(e->proxies[k].cells_in[j]);
       }
 
       /* For stars, we just use the numbers in the top-level cells */
@@ -1388,8 +1390,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
 
-        /* For dark matter, we just use the numbers in the top-level cells */
-        count_dmparts_in += e->proxies[k].cells_in[j]->dark_matter.count;
+      /* For dark matter, we just use the numbers in the top-level cells */
+      /*count_dmparts_in += e->proxies[k].cells_in[j]->dark_matter.count;*/
     }
   }
 
@@ -1472,6 +1474,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
+        s->size_dmparts_foreign * sizeof(struct dmpart) / (1024 * 1024),
         s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
 
   /* Unpack the cells and link to the particle data. */
@@ -1495,6 +1498,11 @@ void engine_allocate_foreign_particles(struct engine *e) {
         const size_t count_gparts =
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts);
         gparts = &gparts[count_gparts];
+
+        const size_t count_dmparts =
+            cell_link_foreign_dmparts(e->proxies[k].cells_in[j], dmparts);
+        dmparts = &dmparts[count_dmparts];
+
       }
 
       if (with_stars) {
@@ -1515,8 +1523,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
       /*if (with_sidm) {*/
             
         /* For dark matter, we just use the numbers in the top-level cells */
-        cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);
-        dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_matter.count];
+        /*cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);
+        dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_matter.count];*/
     }
   }
 
@@ -1525,7 +1533,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
   s->nr_bparts_foreign = bparts - s->bparts_foreign;
-    s->nr_dmparts_foreign = dmparts - s->dmparts_foreign;
+  s->nr_dmparts_foreign = dmparts - s->dmparts_foreign;
 
   if (e->verbose)
     message("Recursively linking foreign arrays took %.3f %s.",

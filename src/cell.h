@@ -1062,9 +1062,11 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts);
 int cell_link_dmparts(struct cell *c, struct dmpart *dmparts);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
+int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts);
 void cell_unlink_foreign_particles(struct cell *c);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
+int cell_count_dmparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current,
                           const struct gravity_props *const grav_props);
