@@ -29,6 +29,7 @@
 #include <strings.h>
 
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
+                               const struct phys_const* phys_const,
                                const struct cosmology* cosmo, struct spart* sp,
                                const struct unit_system* us, const double age,
                                const double dt);
@@ -72,6 +73,9 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
 
   sp->feedback_data.to_collect.enrichment_weight_inv = 0.f;
   sp->feedback_data.to_collect.ngb_mass = 0.f;
+  sp->feedback_data.to_collect.ngb_rho = 0.f;
+  sp->feedback_data.to_collect.ngb_Z = 0.f;
+  sp->feedback_data.to_collect.num_ngbs = 0;
 }
 
 /**
@@ -190,10 +194,19 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
 #endif
 
+  /* Start by finishing the loops over neighbours */
+  const float h = sp->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  sp->feedback_data.to_collect.ngb_rho *= h_inv_dim;
+  const float rho_inv = 1.f / sp->feedback_data.to_collect.ngb_rho;
+  sp->feedback_data.to_collect.ngb_Z *= h_inv_dim * rho_inv;
+
   /* Compute amount of enrichment and feedback that needs to be done in this
    * step */
-  compute_stellar_evolution(feedback_props, cosmo, sp, us, star_age_beg_step,
-                            dt);
+  compute_stellar_evolution(feedback_props, phys_const, cosmo, sp, us,
+                            star_age_beg_step, dt);
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;

@@ -95,6 +95,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
       const int ci_active_stars = cell_is_active_stars(ci, e) ||
                                   (with_star_formation && ci_active_hydro);
+      const int ci_active_sinks =
+          cell_is_active_sinks(ci, e) || ci_active_hydro;
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {
@@ -174,6 +176,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_stars_feedback) {
         if (ci_active_stars) scheduler_activate(s, t);
+      }
+
+      /* Activate the sink formation */
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_sink_compute_formation) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
+          cell_activate_drift_part(ci, s);
+          cell_activate_drift_sink(ci, s);
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
+        }
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_sink_compute_formation) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
+          cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
+        }
       }
 
       /* Activate the black hole density */
@@ -261,6 +283,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Activate RT injection */
+      else if (t_subtype == task_subtype_rt_inject) {
+        if (ci_active_hydro) {
+          scheduler_activate(s, t);
+        }
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");
@@ -294,6 +323,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                   (with_star_formation && ci_active_hydro);
       const int cj_active_stars = cell_is_active_stars(cj, e) ||
                                   (with_star_formation && cj_active_hydro);
+
+      const int ci_active_sinks =
+          cell_is_active_sinks(ci, e) || ci_active_hydro;
+      const int cj_active_sinks =
+          cell_is_active_sinks(cj, e) || cj_active_hydro;
 
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
@@ -469,6 +503,76 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           error("Invalid task sub-type encountered");
         }
 #endif
+      }
+
+      /* Sink formation */
+      else if ((t_subtype == task_subtype_sink_compute_formation) &&
+               (ci_active_sinks || cj_active_sinks) &&
+               (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+        scheduler_activate(s, t);
+
+        /* Set the correct sorting flags */
+        if (t_type == task_type_pair) {
+
+          /* Do ci */
+          if (ci_active_sinks) {
+
+            /* hydro for cj */
+            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+            cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+            /* Activate the drift tasks. */
+            if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+            if (cj_nodeID == nodeID && with_timestep_sync)
+              cell_activate_sync_part(cj, s);
+
+            /* Check the sorts and activate them if needed. */
+            cell_activate_hydro_sorts(cj, t->flags, s);
+          }
+
+          /* Do cj */
+          if (cj_active_sinks) {
+
+            /* hydro for ci */
+            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+            ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+
+            /* Activate the drift tasks. */
+            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
+            if (ci_nodeID == nodeID && with_timestep_sync)
+              cell_activate_sync_part(ci, s);
+
+            /* Check the sorts and activate them if needed. */
+            cell_activate_hydro_sorts(ci, t->flags, s);
+          }
+        }
+
+        /* Store current values of dx_max and h_max. */
+        else if (t_type == task_type_sub_pair &&
+                 t_subtype == task_subtype_sink_compute_formation) {
+          cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
+        }
+      }
+
+      /* RT injection tasks */
+      else if (t_subtype == task_subtype_rt_inject) {
+        /* We only want to activate the task if the cell is active and is
+           going to update some gas on the *local* node */
+        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+            (ci_active_hydro || cj_active_hydro)) {
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
+                   (cj_active_hydro)) {
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
+                   (ci_active_hydro)) {
+          scheduler_activate(s, t);
+        }
       }
 
       /* Only interested in density tasks as of here. */
@@ -702,6 +806,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
 
+      /* Only interested in sink_compute_formation tasks as of here. */
+      else if (t->subtype == task_subtype_sink_compute_formation) {
+
+        /* Too much particle movement? */
+        if (cell_need_rebuild_for_sinks_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_sinks_pair(cj, ci)) *rebuild_space = 1;
+
+#ifdef WITH_MPI
+        error("TODO");
+#endif
+      }
+
       /* Only interested in black hole density tasks as of here. */
       else if (t->subtype == task_subtype_bh_density) {
 
@@ -859,6 +975,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                     cj_nodeID);
         }
 #endif
+      } /* Only interested in RT tasks as of here. */
+      else if (t_subtype == task_subtype_rt_inject) {
+#ifdef WITH_MPI
+        error("RT doesn't work with MPI yet.");
+#endif
       }
     }
 
@@ -903,7 +1024,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Gravity stuff ? */
-    else if (t_type == task_type_grav_down || t_type == task_type_grav_mesh ||
+    else if (t_type == task_type_grav_down ||
              t_type == task_type_grav_long_range ||
              t_type == task_type_init_grav ||
              t_type == task_type_init_grav_out ||
@@ -947,6 +1068,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
+    /* Feedback implicit tasks? */
+    else if (t_type == task_type_sink_in || t_type == task_type_sink_out) {
+      if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e))
+        scheduler_activate(s, t);
+    }
+
     /* Black hole ghost tasks ? */
     else if (t_type == task_type_bh_density_ghost ||
              t_type == task_type_bh_swallow_ghost1 ||
@@ -984,6 +1111,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e)) {
         cell_activate_star_formation_tasks(t->ci, s, with_feedback);
         cell_activate_super_spart_drifts(t->ci, s);
+      }
+    }
+
+    /* Radiative transfer ghost in */
+    else if (t->type == task_type_rt_in && with_feedback) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_stars(t->ci, e))
+        scheduler_activate(s, t);
+    }
+
+    /* Radiative transfer ghost out and others*/
+    else if (t->type == task_type_rt_out || t->type == task_type_rt_ghost1) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_stars(t->ci, e))
+        scheduler_activate(s, t);
+    }
+
+    /* Subgrid tasks: sink formation */
+    else if (t_type == task_type_sink_formation) {
+      if (cell_is_active_hydro(t->ci, e)) {
+        cell_activate_sink_formation_tasks(t->ci, s);
+        cell_activate_super_sink_drifts(t->ci, s);
       }
     }
   }

@@ -25,6 +25,7 @@
 /* Select the correct sink model */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink.h"
+#include "./sink/Default/sink_iact.h"
 #else
 #error "Invalid choice of sink model"
 #endif

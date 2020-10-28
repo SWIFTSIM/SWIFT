@@ -32,8 +32,8 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:           1.02
-  scale_factor_first:   0.05
+  delta_time:           1.01
+  scale_factor_first:   0.01
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -68,7 +68,7 @@ FOF:
   basename:                        fof_output  # Filename for the FOF outputs.
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
-  black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
+  black_hole_seed_halo_mass_Msun:  1.0e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   scale_factor_first:              0.05        # Scale-factor of first FoF black hole seeding calls.
   delta_time:                      1.00751     # Scale-factor ratio between consecutive FoF black hole seeding calls.
 
@@ -137,6 +137,7 @@ COLIBRECooling:
 
 # EAGLE star formation parameters
 EAGLEStarFormation:
+  SF_model:                          PressureLaw
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
@@ -164,61 +165,80 @@ EAGLEEntropyFloor:
 
 # EAGLE feedback model
 EAGLEFeedback:
-  use_SNII_feedback:                1               # Global switch for SNII thermal (stochastic) feedback.
-  use_SNIa_feedback:                1               # Global switch for SNIa thermal (continuous) feedback.
-  use_AGB_enrichment:               1               # Global switch for enrichement from AGB stars.
-  use_SNII_enrichment:              1               # Global switch for enrichement from SNII stars.
-  use_SNIa_enrichment:              1               # Global switch for enrichement from SNIa stars.
-  filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
-  IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
-  IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-  SNII_min_mass_Msun:               8.0             # Minimal mass considered for SNII stars in solar masses.
-  SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII stars in solar masses.
-  SNII_sampled_delay:               1               # Sample the SNII lifetimes to do feedback.
-  SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
-  SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-  SNII_energy_fraction_min:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_max:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
-  SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
-  SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
-  SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNIa_DTD:                         Exponential     # Functional form of the SNIa delay time distribution.
-  SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
-  SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the exponential decay of the SNIa rates in Gyr.
-  SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalisation of the SNIa rates in inverse solar masses.
-  SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
-  AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
-  stellar_evolution_age_cut_Gyr:    0.1             # Stellar age in Gyr above which the enrichment is down-sampled.
-  stellar_evolution_sampling_rate:   10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
-  SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
-  SNII_yield_factor_Helium:         1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
-  SNII_yield_factor_Carbon:         0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.
-  SNII_yield_factor_Nitrogen:       1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
-  SNII_yield_factor_Oxygen:         1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
-  SNII_yield_factor_Neon:           1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
-  SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
-  SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
-  SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
+  use_SNII_feedback:                    1               # Global switch for SNII thermal (stochastic) feedback.
+  use_SNIa_feedback:                    1               # Global switch for SNIa thermal (continuous) feedback.
+  use_AGB_enrichment:                   1               # Global switch for enrichement from AGB stars.
+  use_SNII_enrichment:                  1               # Global switch for enrichement from SNII stars.
+  use_SNIa_enrichment:                  1               # Global switch for enrichement from SNIa stars.
+  filename:                             ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
+  IMF_min_mass_Msun:                    0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
+  IMF_max_mass_Msun:                  100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
+  SNII_min_mass_Msun:                   8.0             # Minimal mass considered for SNII stars in solar masses.
+  SNII_max_mass_Msun:                 100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_sampled_delay:                   1               # Sample the SNII lifetimes to do feedback.
+  SNII_delta_T_K:                       3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
+  SNII_energy_erg:                      1.0e51          # Energy of one SNII explosion in ergs.
+  SNII_energy_fraction_min:             0.5             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:             5.0             # Maximal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_Z_0:             0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
+  SNII_energy_fraction_n_0_H_p_cm3:     1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+  SNII_energy_fraction_n_Z:             0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
+  SNII_energy_fraction_n_n:             0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
+  SNII_energy_fraction_use_birth_density: 0             # Are we using the density at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_metallicity: 0         # Are we using the metallicity at birth to compuote f_E or at feedback time?
+  SNIa_DTD:                             Exponential     # Functional form of the SNIa delay time distribution.
+  SNIa_DTD_delay_Gyr:                   0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
+  SNIa_DTD_exp_timescale_Gyr:           2.0             # Time-scale of the exponential decay of the SNIa rates in Gyr.
+  SNIa_DTD_exp_norm_p_Msun:             0.002           # Normalisation of the SNIa rates in inverse solar masses.
+  SNIa_energy_erg:                     1.0e51           # Energy of one SNIa explosion in ergs.
+  AGB_ejecta_velocity_km_p_s:          10.0             # Velocity of the AGB ejectas in km/s.
+  stellar_evolution_age_cut_Gyr:        0.1             # Stellar age in Gyr above which the enrichment is down-sampled.
+  stellar_evolution_sampling_rate:       10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
+  SNII_yield_factor_Hydrogen:           1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
+  SNII_yield_factor_Helium:             1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
+  SNII_yield_factor_Carbon:             0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.
+  SNII_yield_factor_Nitrogen:           1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
+  SNII_yield_factor_Oxygen:             1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
+  SNII_yield_factor_Neon:               1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
+  SNII_yield_factor_Magnesium:          2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+  SNII_yield_factor_Silicon:            1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
+  SNII_yield_factor_Iron:               0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
 # EAGLE AGN model
 EAGLEAGN:
-  subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
+  subgrid_seed_mass_Msun:             1.0e4      # Black hole subgrid mass at creation time in solar masses.
   multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
   subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
-  with_angmom_limiter:                1          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
+  with_angmom_limiter:                0          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
+  with_boost_factor:                  0          # Are we using the model from Booth & Schaye (2009)?
+  boost_alpha:                        1.         # Lowest value for the accretion effeciency for the Booth & Schaye 2009 accretion model.
+  boost_beta:                         2.         # Slope of the power law for the Booth & Schaye 2009 model, set beta to zero for constant alpha models.
+  boost_n_h_star_H_p_cm3:             0.1        # Normalization of the power law for the Booth & Schaye 2009 model in cgs (cm^-3).
   radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.
+  use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
+  min_gas_mass_for_nibbling:          9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
   eddington_fraction_for_recording:   0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
-  coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
-  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
-  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event.
-  max_reposition_mass:                2e8        # Maximal BH mass considered for BH repositioning in solar masses.
+  coupling_efficiency:                0.1        # Fraction of the radiated energy that couples to the gas in feedback events.
+  use_variable_delta_T:               1          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  AGN_with_locally_adaptive_delta_T:  1          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_norm:              3e8        # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_reference:         1e8        # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_exponent:          0.666667   # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
+  AGN_delta_T_crit_factor:            1.0        # Multiple of critical dT for numerical efficiency (Dalla Vecchia & Schaye 2012) to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_background_factor:      0.0        # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_min:                    1e7        # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_max:                    3e9        # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (only used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1).
+  AGN_use_nheat_with_fixed_dT:        0          # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
+  AGN_use_adaptive_energy_reservoir_threshold: 0 # Switch to calculate an adaptive AGN energy reservoir threshold.
+  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
+  max_reposition_mass:                1e20       # Maximal BH mass considered for BH repositioning in solar masses (large number implies we always reposition).
   max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
-  with_reposition_velocity_threshold: 1          # Should we only reposition to particles that move slowly w.r.t. the black hole?
-  max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_ratio is 1.
-  min_reposition_velocity_threshold: -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_ratio is 1.
+  with_reposition_velocity_threshold: 0          # Should we only reposition to particles that move slowly w.r.t. the black hole?
+  max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_threshold is 1.
+  min_reposition_velocity_threshold: -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_threshold is 1.
   set_reposition_speed:               0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
   threshold_major_merger:             0.333      # Mass ratio threshold to consider a BH merger as 'major'
   threshold_minor_merger:             0.1        # Mass ratio threshold to consider a BH merger as 'minor'

@@ -53,6 +53,9 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
+  const struct black_holes_props *props = e->black_holes_properties;
+  const int use_nibbling = props->use_nibbling;
+
   struct bpart *bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
@@ -62,6 +65,11 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
+
+  /* Nothing to do here if the cell is foreign and we are nibbling */
+  if (c->nodeID != e->nodeID && use_nibbling) {
+    return;
+  }
 
   /* Early abort?
    * (We only want cells for which we drifted the gas as these are
@@ -93,6 +101,13 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (part_is_inhibited(p, e)) continue;
+
+      /* Update mass of associated gpart, to reflect potential changes from
+       * nibbling. In this case, we are already done. */
+      if (use_nibbling) {
+        p->gpart->mass = hydro_get_mass(p);
+        continue;
+      }
 
       /* Get the ID of the black holes that will swallow this part */
       const long long swallow_id =
@@ -275,6 +290,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
   struct space *s = e->s;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct black_holes_props *props = e->black_holes_properties;
+  const int use_nibbling = props->use_nibbling;
+
   struct bpart *bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
@@ -315,6 +332,15 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (bpart_is_inhibited(cell_bp, e)) continue;
+
+      /* Update mass of associated gpart, to reflect potential changes from
+       * nibbling. */
+      if (use_nibbling && c->nodeID == e->nodeID) {
+        cell_bp->gpart->mass = cell_bp->mass;
+        cell_bp->gpart->v_full[0] = cell_bp->v[0];
+        cell_bp->gpart->v_full[1] = cell_bp->v[1];
+        cell_bp->gpart->v_full[2] = cell_bp->v[2];
+      }
 
       /* Get the ID of the black holes that will swallow this bpart */
       const long long swallow_id =

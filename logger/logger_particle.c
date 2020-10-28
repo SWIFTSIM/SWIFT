@@ -61,12 +61,12 @@ __attribute__((always_inline)) INLINE size_t logger_particle_read_field(
 
   /* Check that the mask is within the limits. */
   if (*mask > (unsigned int)(1 << h->masks_count)) {
-    error("Found an unexpected mask %zi", *mask);
+    error_python("Found an unexpected mask %zi", *mask);
   }
 
   /* Check if it is not a time record. */
   if (*mask == h->timestamp_mask) {
-    error("Cannot particle from timestep record.");
+    error_python("Cannot particle from timestep record.");
   }
 
   /* Read the record and copy it to a particle. */

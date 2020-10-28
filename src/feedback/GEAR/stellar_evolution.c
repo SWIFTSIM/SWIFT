@@ -121,9 +121,14 @@ void stellar_evolution_compute_continuous_feedback_properties(
   sp->feedback_data.mass_ejected = mass_frac_snii * sp->sf_data.birth_mass +
                                    mass_snia * phys_const->const_solar_mass;
 
-  if (sp->mass <= sp->feedback_data.mass_ejected) {
-    error("Stars cannot have negative mass. (%g <= %g). Initial mass = %g",
-          sp->mass, sp->feedback_data.mass_ejected, sp->sf_data.birth_mass);
+  /* Check if we can ejected the required amount of elements. */
+  const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
+  if (negative_mass) {
+    message("Negative mass, skipping current star: %lli", sp->id);
+    /* Reset everything */
+    sp->feedback_data.number_sn = 0;
+    sp->feedback_data.mass_ejected = 0;
+    return;
   }
 
   /* Update the mass */
@@ -151,7 +156,8 @@ void stellar_evolution_compute_continuous_feedback_properties(
         /* Supernovae II yields */
         snii_yields[i] +
         /* Gas contained in stars initial metallicity */
-        chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            non_processed;
 
     /* Convert it to total mass */
     sp->feedback_data.metal_mass_ejected[i] *= sp->sf_data.birth_mass;
@@ -211,9 +217,14 @@ void stellar_evolution_compute_discrete_feedback_properties(
   /* Transform into internal units */
   sp->feedback_data.mass_ejected *= phys_const->const_solar_mass;
 
-  if (sp->mass <= sp->feedback_data.mass_ejected) {
-    error("Stars cannot have negative mass. (%g <= %g). Initial mass = %g",
-          sp->mass, sp->feedback_data.mass_ejected, sp->sf_data.birth_mass);
+  /* Check if we can ejected the required amount of elements. */
+  const int negative_mass = sp->mass <= sp->feedback_data.mass_ejected;
+  if (negative_mass) {
+    message("Negative mass, skipping current star: %lli", sp->id);
+    /* Reset everything */
+    sp->feedback_data.number_sn = 0;
+    sp->feedback_data.mass_ejected = 0;
+    return;
   }
 
   /* Update the mass */
@@ -238,7 +249,8 @@ void stellar_evolution_compute_discrete_feedback_properties(
         /* Supernovae II yields */
         snii_yields[i] +
         /* Gas contained in stars initial metallicity */
-        chemistry_get_metal_mass_fraction_for_feedback(sp)[i] * non_processed;
+        chemistry_get_star_metal_mass_fraction_for_feedback(sp)[i] *
+            non_processed;
 
     /* Convert it to total mass */
     sp->feedback_data.metal_mass_ejected[i] *= m_avg * number_snii;
@@ -283,7 +295,7 @@ void stellar_evolution_evolve_spart(
 
   /* Get the metallicity */
   const float metallicity =
-      chemistry_get_total_metal_mass_fraction_for_feedback(sp);
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
 
   /* Compute masses range */
   const float log_m_beg_step =
@@ -382,42 +394,37 @@ const char* stellar_evolution_get_element_name(const struct stellar_model* sm,
 void stellar_evolution_read_elements(struct stellar_model* sm,
                                      struct swift_params* params) {
 
-  hid_t file_id, group_id;
+  /* Read the elements from the parameter file. */
+  int nval = -1;
+  char** elements;
+  parser_get_param_string_array(params, "GEARFeedback:elements", &nval,
+                                &elements);
 
-  /* Open IMF group */
-  h5_open_group(sm->yields_table, "Data", &file_id, &group_id);
-
-  /* Read the elements */
-  io_read_string_array_attribute(group_id, "elts", sm->elements_name,
-                                 GEAR_CHEMISTRY_ELEMENT_COUNT,
-                                 GEAR_LABELS_SIZE);
-
-  /* Check that we received correctly the metals */
-  if (strcmp(stellar_evolution_get_element_name(
-                 sm, GEAR_CHEMISTRY_ELEMENT_COUNT - 1),
-             "Metals") != 0) {
+  /* Check that we have the correct number of elements. */
+  if (nval != GEAR_CHEMISTRY_ELEMENT_COUNT - 1) {
     error(
-        "The chemistry table should contain the metals in the last column "
-        "(found %s)",
-        stellar_evolution_get_element_name(sm,
-                                           GEAR_CHEMISTRY_ELEMENT_COUNT - 1));
+        "You need to provide %i elements but found %i. "
+        "If you wish to provide a different number of elements, "
+        "you need to compile with --with-chemistry=GEAR_N where N "
+        "is the number of elements + 1.",
+        GEAR_CHEMISTRY_ELEMENT_COUNT, nval);
   }
 
-  /* Print the name of the elements */
-  char txt[GEAR_CHEMISTRY_ELEMENT_COUNT * (GEAR_LABELS_SIZE + 2)] = "";
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    if (i != 0) {
-      strcat(txt, ", ");
+  /* Copy the elements into the stellar model. */
+  for (int i = 0; i < nval; i++) {
+    if (strlen(elements[i]) >= GEAR_LABELS_SIZE) {
+      error("Element name '%s' too long", elements[i]);
     }
-    strcat(txt, stellar_evolution_get_element_name(sm, i));
+    strcpy(sm->elements_name + i * GEAR_LABELS_SIZE, elements[i]);
   }
 
-  if (engine_rank == 0) {
-    message("Chemistry elements: %s", txt);
-  }
+  /* Cleanup. */
+  parser_free_param_string_array(nval, elements);
 
-  /* Cleanup everything */
-  h5_close_group(file_id, group_id);
+  /* Add the metals to the end. */
+  strcpy(
+      sm->elements_name + (GEAR_CHEMISTRY_ELEMENT_COUNT - 1) * GEAR_LABELS_SIZE,
+      "Metals");
 }
 
 /**
@@ -435,10 +442,6 @@ void stellar_evolution_props_init(struct stellar_model* sm,
                                   struct swift_params* params,
                                   const struct cosmology* cosmo) {
 
-  /* Get filename. */
-  parser_get_param_string(params, "GEARFeedback:yields_table",
-                          sm->yields_table);
-
   /* Read the list of elements */
   stellar_evolution_read_elements(sm, params);
 
@@ -447,10 +450,11 @@ void stellar_evolution_props_init(struct stellar_model* sm,
       parser_get_param_int(params, "GEARFeedback:discrete_yields");
 
   /* Initialize the initial mass function */
-  initial_mass_function_init(&sm->imf, phys_const, us, params);
+  initial_mass_function_init(&sm->imf, phys_const, us, params,
+                             sm->yields_table);
 
   /* Initialize the lifetime model */
-  lifetime_init(&sm->lifetime, phys_const, us, params);
+  lifetime_init(&sm->lifetime, phys_const, us, params, sm->yields_table);
 
   /* Initialize the supernovae Ia model */
   supernovae_ia_init(&sm->snia, phys_const, us, params, sm);

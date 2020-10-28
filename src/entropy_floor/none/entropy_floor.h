@@ -28,6 +28,7 @@
 struct cosmology;
 struct hydro_props;
 struct part;
+struct phys_const;
 
 /**
  * @brief Properties of the entropy floor.

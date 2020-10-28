@@ -217,7 +217,7 @@ to be supplied.
 In case of zoom simulations, the softening of the additional, more massive, background
 particles is specified via the parameter
 ``softening_ratio_background``. Since these particles will typically have
-different masses to degrade the resolution away from the zoom region, the
+different masses to degrade the resolution away from the zoom-in region, the
 particles won't have a single softening value. Instead, we specify the
 fraction of the mean inter-particle separation to use. The code will then
 derive the softening length of each particle assuming the mean density of
@@ -225,10 +225,21 @@ the Universe. That is :math:`\epsilon_{\rm background} =
 f\sqrt[3]{\frac{m}{\Omega_m\rho_{\rm crit}}}`, where :math:`f` is the
 user-defined value (typically of order 0.05).
 
-The accuracy of the gravity calculation is governed by the following two parameters:
+The accuracy of the gravity calculation is governed by the following four parameters:
 
-* The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
+* The multipole acceptance criterion: ``MAC``
+* The fixed opening angle used in the geometric MAC :math:`\theta_{\rm cr}`: ``theta_cr``,
+* The accuracy criterion used in the adaptive MAC:  :math:`\epsilon_{\rm fmm}`: ``epsilon_fmm``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
+
+The first three parameters govern the way the Fast-Multipole method
+tree-walk is done (see the theory documents for full details).  The ``MAC``
+parameter can take two values: ``adaptive`` or ``geometric``. In the first
+case, the tree recursion decision is based on the estimated accelerations
+that a given tree node will produce, trying to recurse to levels where the
+fractional contribution of the accelerations to the cell is less than
+:math:`\epsilon_{\rm fmm}`. In the second case, a fixed Barnes-Hut-like
+opening angle :math:`\theta_{\rm cr}` is used.
 
 The time-step of a given particle is given by :math:`\Delta t =
 \sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
@@ -237,13 +248,20 @@ The time-step of a given particle is given by :math:`\Delta t =
 <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using
 :math:`\eta=0.025`.
 
-The last tree-related parameter is
+The last tree-related parameters are:
 
 * The tree rebuild frequency: ``rebuild_frequency``.
+* Whether or not to use the approximate gravity from the FMM tree below the
+  softening scale: ``use_tree_below_softening`` (default: 0)
+* Whether or not the truncated force estimator in the adaptive tree-walk
+  considers the exponential mesh-related cut-off:
+  ``allow_truncation_in_MAC`` (default: 0)
 
 The tree rebuild frequency is an optional parameter defaulting to
-:math:`0.01`. It is used to trigger the re-construction of the tree every time a
-fraction of the particles have been integrated (kicked) forward in time.
+:math:`0.01`. It is used to trigger the re-construction of the tree every
+time a fraction of the particles have been integrated (kicked) forward in
+time.  The other two parameters default to good all-around choices. See the
+theory documentation about their exact effects.
 
 Simulations using periodic boundary conditions use additional parameters for the
 Particle-Mesh part of the calculation. The last five are optional:
@@ -257,17 +275,9 @@ Particle-Mesh part of the calculation. The last five are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
-* Whether or not to dither the particles randomly at each tree rebuild:
-  ``dithering`` (default: ``1``),
-* The magnitude of each component of the dithering vector to use in units of the
-  top-level cell sizes: ``dithering_ratio`` (default: ``1.0``).
 
 For most runs, the default values can be used. Only the number of cells along
-each axis needs to be specified. The mesh dithering is only used for simulations
-using periodic boundary conditions and in the absence of an external potential.
-At each tree rebuild time, all the particles are moved by a random vector (the
-same for all particles) and the periodic BCs are then applied. This reduces the
-correlation of erros across time. The remaining three values are best described
+each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
 
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
@@ -278,7 +288,9 @@ simulation:
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
      eta:                    0.025
-     theta:                  0.6
+     MAC:                    adaptive
+     theta_cr:               0.6
+     epsilon_fmm:            0.001
      mesh_side_length:       512
      comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_DM_softening:     0.0007     # 0.7 proper kpc
@@ -288,8 +300,8 @@ simulation:
      a_smooth:          1.25        # Default optional value
      r_cut_max:         4.5         # Default optional value
      r_cut_min:         0.1         # Default optional value
-     dithering:         1           # Default optional value
-     dithering_ratio:   1.0         # Default optional value 
+     use_tree_below_softening: 0    # Default optional value
+     allow_truncation_in_MAC:  0    # Default optional value
 
 .. _Parameters_SPH:
 
@@ -460,20 +472,50 @@ These four parameters are optional and will default to their SPH equivalent
 if left unspecified. That is the value specified by the user in that
 section or the default SPH value if left unspecified there as well.
 
-The two remaining parameters can be used to overwrite the birth time (or
-scale-factor) of the stars that were read from the ICs. This can be useful
-to start a simulation with stars already of a given age. The parameters
+The next four parameters govern the time-step size choices for star
+particles. By default star particles get their time-step sizes set
+solely by the condition based on gravity. Additional criteria can be
+applied by setting some of the following parameters (the actual
+time-step size is then the minimum of this criterion and of the gravity
+criterion):
+
+* Time-step size for young stars in Mega-years:
+  ``max_timestep_young_Myr`` (Default: FLT_MAX)
+* Time-step size for old stars in Mega-years: ``max_timestep_old_Myr``
+  (Default: FLT_MAX)
+* Age transition from young to old in Mega-years:
+  ``timestep_age_threshold_Myr`` (Default: FLT_MAX)
+* Age above which no time-step limit is applied in Mega-years:
+  ``timestep_age_threshold_unlimited_Myr`` (Default: 0)
+
+Star particles with ages above the unlimited threshold only use the
+gravity condition. Star particles with ages below that limit use
+either the young or old time-step sizes based on their ages. These
+parameters effectively allow for three different age brackets with the
+last age bracket imposing no time-step length.
+
+The remaining parameters can be used to overwrite the birth time (or
+scale-factor), birth density and birth temperatures (if these
+quantities exist) of the stars that were read from the ICs. This can
+be useful to start a simulation with stars already of a given age or
+with specific (uniform and non-0) properties at birth. The parameters
 are:
 
-* Whether or not to overwrite anything: ``overwrite_birth_time``
+* Whether or not to overwrite *all* the birth times: ``overwrite_birth_time``
   (Default: 0)
 * The value to use: ``birth_time``
+* Whether or not to overwrite *all* the birth densities: ``overwrite_birth_density``
+  (Default: 0)
+* The value to use: ``birth_density``
+* Whether or not to overwrite *all* the birth temperatures: ``overwrite_birth_temperature``
+  (Default: 0)
+* The value to use: ``birth_temperature``
 
-If the birth time is set to ``-1`` then the stars will never enter any
-feedback or enrichment loop. When these values are not specified, SWIFT
-will start and use the birth times specified in the ICs. If no values are
-given in the ICs, the stars' birth times will be zeroed, which can cause
-issues depending on the type of run performed.
+Note that if the birth time is set to ``-1`` then the stars will never
+enter any feedback or enrichment loop. When these values are not
+specified, SWIFT will start and use the birth times specified in the
+ICs. If no values are given in the ICs, the stars' birth times will be
+zeroed, which can cause issues depending on the type of run performed.
 
 .. _Parameters_time_integration:
 
@@ -521,7 +563,8 @@ the start and end times or scale factors from the parameter file.
 * Dimensionless pre-factor of the maximal allowed displacement:
   ``max_dt_RMS_factor`` (default: ``0.25``)
 
-This value rarely needs altering.
+This value rarely needs altering. See the theory documents for its
+precise meaning.
 
 A full time-step section for a non-cosmological run would be:
 
@@ -811,6 +854,49 @@ be processed by the ``SpecWizard`` tool
      range_when_shooting_down_x: 100. # Range along the x-axis of LoS along x
      range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
      range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
+
+.. _Parameters_eos:
+
+Equation of State (EoS)
+-----------------------
+
+The ``EoS`` section contains options for the equations of state.
+Multiple EoS can be used for :ref:`planetary`,
+see :ref:`planetary_eos` for more information. 
+
+To enable one or multiple of these EoS, the corresponding ``planetary_use_*:``
+flag(s) must be set to ``1`` in the parameter file for a simulation,
+along with the path to any table files, which are provided with the 
+``planetary_*_table_file:`` parameters.
+This currently means that all EoS within each base type are prepared at once, 
+which we intend to simplify in the future.
+
+The data files for the tabulated EoS can be downloaded using 
+the ``examples/EoSTables/get_eos_tables.sh`` script.
+
+For the (non-planetary) isothermal EoS, the ``isothermal_internal_energy:``
+parameter sets the thermal energy per unit mass.
+
+.. code:: YAML
+
+   EoS:
+     isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
+
+     planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EoS
+     planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EoS
+     planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EoS
+     planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EoS
+                               # (Optional) Table file paths
+     planetary_HM80_HHe_table_file:            ./EoSTables/HM80_HHe.txt
+     planetary_HM80_ice_table_file:            ./EoSTables/HM80_ice.txt
+     planetary_HM80_rock_table_file:           ./EoSTables/HM80_rock.txt
+     planetary_SESAME_iron_table_file:         ./EoSTables/SESAME_iron_2140.txt
+     planetary_SESAME_basalt_table_file:       ./EoSTables/SESAME_basalt_7530.txt
+     planetary_SESAME_water_table_file:        ./EoSTables/SESAME_water_7154.txt
+     planetary_SS08_water_table_file:          ./EoSTables/SS08_water.txt
+     planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
+     planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
+     planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
 
 .. _Parameters_fof:
 

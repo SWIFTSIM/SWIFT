@@ -24,17 +24,21 @@
 /* Local includes */
 #include "black_holes_properties.h"
 #include "black_holes_struct.h"
+#include "cooling_properties.h"
 #include "dimension.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 
 /**
- * @brief Computes the gravity time-step of a given black hole particle.
+ * @brief Computes the time-step of a given black hole particle.
  *
  * @param bp Pointer to the s-particle data.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
  */
 __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
-    const struct bpart* const bp) {
+    const struct bpart* const bp, const struct black_holes_props* props,
+    const struct phys_const* constants) {
 
   return FLT_MAX;
 }
@@ -138,6 +142,30 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
   /* Re-set problematic values */
   bp->density.wcount = kernel_root * h_inv_dim;
   bp->density.wcount_dh = 0.f;
+}
+
+/**
+ * @brief Return the current instantaneous accretion rate of the BH.
+ *
+ * Empty BH model --> return 0.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double
+black_holes_get_accretion_rate(const struct bpart* bp) {
+  return 0.;
+}
+
+/**
+ * @brief Return the total accreted gas mass of this BH.
+ *
+ * Empty BH model --> return 0.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double
+black_holes_get_accreted_mass(const struct bpart* bp) {
+  return 0.;
 }
 
 /**

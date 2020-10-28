@@ -56,9 +56,9 @@ INLINE static void convert_spart_pos(const struct engine *e,
 
   const struct space *s = e->s;
   if (s->periodic) {
-    ret[0] = box_wrap(sp->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
-    ret[1] = box_wrap(sp->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
-    ret[2] = box_wrap(sp->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
+    ret[0] = box_wrap(sp->x[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(sp->x[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(sp->x[2], 0.0, s->dim[2]);
   } else {
     ret[0] = sp->x[0];
     ret[1] = sp->x[1];
@@ -132,7 +132,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            sparts, id, "Unique IDs of the particles");
 
   list[4] = io_make_output_field(
-      "SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   if (with_cosmology) {

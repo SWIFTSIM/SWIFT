@@ -35,6 +35,7 @@
 #include <math.h>
 
 /* Local includes. */
+#include "cooling_properties.h"
 #include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"

@@ -33,6 +33,7 @@
 #include "feedback.h"
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
+#include "rt.h"
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "stars.h"
@@ -315,6 +316,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             stars_init_spart(sp);
             feedback_init_spart(sp);
+            rt_init_spart(sp);
 
             /* Off we go ! */
             continue;
@@ -1384,4 +1386,38 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_do_ghost);
+}
+
+/**
+ * @brief Intermediate task after the injection to compute the total
+ * photon emission rates experienced by the hydro particles.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
+  /* const struct engine *e = r->e; */
+  int count = c->hydro.count;
+
+  /* Anything to do here? */
+  if (count == 0) return;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_rt_ghost1(r, c->progeny[k], 0);
+      }
+    }
+  }
+
+  for (int pid = 0; pid < count; pid++) {
+    struct part *restrict p = &(c->hydro.parts[pid]);
+    rt_injection_update_photon_density(p);
+  }
+
+  if (timer) TIMER_TOC(timer_do_rt_ghost1);
 }

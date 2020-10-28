@@ -47,10 +47,13 @@ SPH:
   h_max:                 10.
   minimal_temperature:   10.      # Kelvin
 
-# Parameters for the stars neighbour search
+# Parameters for the stars
 Stars:
-  overwrite_birth_time:    1     # Make sure the stars in the ICs do not do any feedback
-  birth_time:             -1.    # by setting all of their birth times to -1  
+  overwrite_birth_time:        1     # Make sure the stars in the ICs do not do any feedback
+  birth_time:                 -1.    # by setting all of their birth times to -1
+  timestep_age_threshold_Myr: 10.    # Age at which stars switch from young to old (in Mega-years).
+  max_timestep_young_Myr:      0.1   # Maximal time-step length of young stars (in Mega-years).
+  max_timestep_old_Myr:        1.0   # Maximal time-step length of old stars (in Mega-years).
   
 # Standard EAGLE cooling options
 EAGLECooling:
@@ -100,6 +103,7 @@ HernquistPotential:
  
 # EAGLE star formation parameters
 EAGLEStarFormation:
+  SF_model:                          PressureLaw
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.

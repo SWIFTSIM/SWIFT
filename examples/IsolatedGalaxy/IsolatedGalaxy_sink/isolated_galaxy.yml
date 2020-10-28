@@ -30,8 +30,8 @@ Snapshots:
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
-  max_top_level_cells:  96
-  
+  cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-1     # Time between statistics output
@@ -39,7 +39,7 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  isolated_galaxy.hdf5  # The file to read
+  file_name:          lowres8.hdf5  # The file to read
   periodic:                    0    # Are we running with periodic ICs?
 
 # Parameters for the hydrodynamics scheme
@@ -80,3 +80,6 @@ HernquistPotential:
   bulgefraction:              0.014   # Bulge mass fraction
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:         0.2      # Softening size (internal units)
+
+DefaultSink:
+  cut_off_radius: 0.1      # Cut off radius of all the sinks in internal units.

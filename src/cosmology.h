@@ -141,11 +141,14 @@ struct cosmology {
   /*! Baryon density parameter */
   double Omega_b;
 
-  /*! Radiation constant density parameter */
+  /*! Cosmological constant density parameter */
   double Omega_lambda;
 
-  /*! Cosmological constant density parameter */
+  /*! Radiation constant density parameter */
   double Omega_r;
+
+  /*! Neutrino density parameter */
+  double Omega_nu;
 
   /*! Curvature density parameter */
   double Omega_k;
@@ -155,6 +158,12 @@ struct cosmology {
 
   /*! Dark-energy evolution parameter */
   double w_a;
+
+  /*! CMB temperature at z = 0 derived from Omega_r (internal units) */
+  double T_CMB_0;
+
+  /*! CMB temperature at z = 0 derived from Omega_r (Kelvins) */
+  double T_CMB_0_K;
 
   /*! Log of starting expansion factor */
   double log_a_begin;
@@ -212,6 +221,9 @@ double cosmology_get_delta_time(const struct cosmology *c,
 double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
                                                    const double a_start,
                                                    const double a_end);
+
+double cosmology_get_timebase(struct cosmology *c,
+                              const integertime_t ti_current);
 
 double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
 

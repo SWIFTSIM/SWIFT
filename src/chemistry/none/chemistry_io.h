@@ -44,6 +44,7 @@ INLINE static int chemistry_read_particles(struct part* parts,
  * @param parts The particle array.
  * @param xparts The extra particle array.
  * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology?
  *
  * @return Returns the number of fields to write.
  */

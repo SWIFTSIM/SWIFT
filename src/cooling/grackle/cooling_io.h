@@ -20,6 +20,7 @@
 #define SWIFT_COOLING_GRACKLE_IO_H
 
 /* Local includes */
+#include "cooling_properties.h"
 #include "cooling_struct.h"
 #include "io_properties.h"
 

@@ -55,6 +55,7 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "rt_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -1045,7 +1046,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   }
 
   /* If we are remapping ParticleIDs later, start by setting them to 1. */
-  if (remap_ids) set_ids_to_one(*gparts, *Ngparts);
+  if (remap_ids) io_set_ids_to_one(*gparts, *Ngparts);
 
   if (!dry_run && with_gravity) {
 
@@ -1129,6 +1130,7 @@ void prepare_file(struct engine* e, const char* fileName,
 #else
   const int with_stf = 0;
 #endif
+  const int with_rt = e->policy & engine_policy_rt;
 
   FILE* xmfFile = 0;
   int numFiles = 1;
@@ -1172,6 +1174,16 @@ void prepare_file(struct engine* e, const char* fileName,
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+
+  /* Write out the time-base */
+  if (with_cosmology) {
+    io_write_attribute_d(h_grp, "TimeBase_dloga", e->time_base);
+    const double delta_t = cosmology_get_timebase(e->cosmology, e->ti_current);
+    io_write_attribute_d(h_grp, "TimeBase_dt", delta_t);
+  } else {
+    io_write_attribute_d(h_grp, "TimeBase_dloga", 0);
+    io_write_attribute_d(h_grp, "TimeBase_dt", e->time_base);
+  }
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
@@ -1268,6 +1280,9 @@ void prepare_file(struct engine* e, const char* fileName,
           num_fields +=
               velociraptor_write_parts(parts, xparts, list + num_fields);
         }
+        if (with_rt) {
+          num_fields += rt_write_particles(parts, list + num_fields);
+        }
         break;
 
       case swift_type_dark_matter:
@@ -1308,6 +1323,9 @@ void prepare_file(struct engine* e, const char* fileName,
         }
         if (with_stf) {
           num_fields += velociraptor_write_sparts(sparts, list + num_fields);
+        }
+        if (with_rt) {
+          num_fields += rt_write_stars(sparts, list + num_fields);
         }
         break;
 
@@ -1370,7 +1388,7 @@ void prepare_file(struct engine* e, const char* fileName,
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with
- *its XMF descriptor
+ * its XMF descriptor
  *
  * @param e The engine containing all the system.
  * @param internal_units The #unit_system used internally
@@ -1413,6 +1431,7 @@ void write_output_parallel(struct engine* e,
 #else
   const int with_stf = 0;
 #endif
+  const int with_rt = e->policy & engine_policy_rt;
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
@@ -1519,8 +1538,8 @@ void write_output_parallel(struct engine* e,
   }
 
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->pos_dithering,
-                        e->s->cells_top, e->s->nr_cells, e->s->width, mpi_rank,
+  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->cells_top,
+                        e->s->nr_cells, e->s->width, mpi_rank,
                         /*distributed=*/0, N_total, offset, numFields,
                         internal_units, snapshot_units);
 
@@ -1641,6 +1660,9 @@ void write_output_parallel(struct engine* e,
               parts, xparts, list + num_fields, with_cosmology);
           num_fields +=
               star_formation_write_particles(parts, xparts, list + num_fields);
+          if (with_rt) {
+            num_fields += rt_write_particles(parts, list + num_fields);
+          }
 
         } else {
 
@@ -1683,6 +1705,9 @@ void write_output_parallel(struct engine* e,
               parts_written, xparts_written, list + num_fields, with_cosmology);
           num_fields += star_formation_write_particles(
               parts_written, xparts_written, list + num_fields);
+          if (with_rt) {
+            num_fields += rt_write_particles(parts_written, list + num_fields);
+          }
         }
       } break;
 
@@ -1818,6 +1843,10 @@ void write_output_parallel(struct engine* e,
           if (with_stf) {
             num_fields += velociraptor_write_sparts(sparts, list + num_fields);
           }
+          if (with_rt) {
+            num_fields += rt_write_stars(sparts, list + num_fields);
+          }
+
         } else {
 
           /* Ok, we need to fish out the particles we want */
@@ -1848,6 +1877,9 @@ void write_output_parallel(struct engine* e,
           if (with_stf) {
             num_fields +=
                 velociraptor_write_sparts(sparts_written, list + num_fields);
+          }
+          if (with_rt) {
+            num_fields += rt_write_stars(sparts_written, list + num_fields);
           }
         }
       } break;

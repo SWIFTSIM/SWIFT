@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Includes. */
+#include <inttypes.h>
 #include <stdlib.h>
 
 /* A radix node, this has a single byte key and a pointer to some related
@@ -32,8 +33,8 @@ struct memuse_rnode {
   /* Byte key of this node. */
   uint8_t keypart;
 
-  /* Value of this node, if set. */
-  void *ptr;
+  /* Value of this node, if set. Note we keep -1 for NULL. */
+  int64_t value;
 
   /* Sorted pointers to children of this node. */
   struct memuse_rnode **children;
@@ -42,7 +43,7 @@ struct memuse_rnode {
 
 void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full);
 void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
-                               uint8_t *key, uint8_t keylen, void *value);
+                               uint8_t *key, uint8_t keylen, int64_t value);
 struct memuse_rnode *memuse_rnode_find_child(struct memuse_rnode *node,
                                              uint8_t depth, uint8_t *key,
                                              uint8_t keylen);

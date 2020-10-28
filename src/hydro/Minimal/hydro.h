@@ -259,27 +259,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_mass(
 }
 
 /**
- * @brief Returns the velocities drifted to the current time of a particle.
- *
- * @param p The particle of interest
- * @param xp The extended data of the particle.
- * @param dt_kick_hydro The time (for hydro accelerations) since the last kick.
- * @param dt_kick_grav The time (for gravity accelerations) since the last kick.
- * @param v (return) The velocities at the current time.
- */
-__attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
-    const struct part *restrict p, const struct xpart *xp, float dt_kick_hydro,
-    float dt_kick_grav, float v[3]) {
-
-  v[0] = xp->v_full[0] + p->a_hydro[0] * dt_kick_hydro +
-         xp->a_grav[0] * dt_kick_grav;
-  v[1] = xp->v_full[1] + p->a_hydro[1] * dt_kick_hydro +
-         xp->a_grav[1] * dt_kick_grav;
-  v[2] = xp->v_full[2] + p->a_hydro[2] * dt_kick_hydro +
-         xp->a_grav[2] * dt_kick_grav;
-}
-
-/**
  * @brief Returns the time derivative of co-moving internal energy of a particle
  *
  * We assume a constant density.
@@ -598,16 +577,20 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
-  /* Compute the "grad h" term */
-  const float rho_inv = 1.f / p->rho;
-  float rho_dh = p->density.rho_dh;
+  /* Compute the "grad h" term  - Note here that we have \tilde{x}
+   * as 1 as we use the local number density to find neighbours. This
+   * introduces a j-component that is considered in the force loop,
+   * meaning that this cached grad_h_term gives:
+   *
+   * f_ij = 1.f - grad_h_term_i / m_j */
+  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
+  float grad_h_term = common_factor * p->density.rho_dh /
+                      (1.f + common_factor * p->density.wcount_dh);
+
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
-    rho_dh = 0.f;
+    grad_h_term = 0.f;
   }
-
-  const float grad_h_term =
-      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
 
   /* Compute the Balsara switch */
   /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
@@ -867,9 +850,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
-  xp->a_grav[0] = 0.f;
-  xp->a_grav[1] = 0.f;
-  xp->a_grav[2] = 0.f;
   xp->u_full = p->u;
 
   hydro_reset_acceleration(p);

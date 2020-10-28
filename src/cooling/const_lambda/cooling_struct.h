@@ -21,36 +21,6 @@
 #define SWIFT_COOLING_STRUCT_CONST_LAMBDA_H
 
 /**
- * @file src/cooling/const_lambda/cooling_struct.h
- * @brief Structures related to the "constant lambda" cooling function.
- *
- * This model assumes a constant cooling rate Lambda irrespective of redshift
- * or density.
- */
-
-/**
- * @brief Properties of the cooling function.
- */
-struct cooling_function_data {
-
-  /*! Cooling rate / nH^2 in physical cgs units [erg * s^-1 * cm^3] */
-  double lambda_nH2_cgs;
-
-  /*! Conversion factor from internal units to cgs for density */
-  double conv_factor_density_to_cgs;
-
-  /*! Conversion factor from internal units from cgs for internal energy
-   * derivative */
-  double conv_factor_energy_rate_from_cgs;
-
-  /*! Inverse of the proton mass in cgs units [g^-1] */
-  double proton_mass_cgs_inv;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-};
-
-/**
  * @brief Properties of the cooling stored in the #part data.
  */
 struct cooling_part_data {};

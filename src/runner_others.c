@@ -103,47 +103,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Calculate gravity accelerations from the periodic mesh
- *
- * @param r runner task
- * @param c cell
- * @param timer 1 if the time is to be recorded.
- */
-void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
-
-  struct gpart *restrict gparts = c->grav.parts;
-  const int gcount = c->grav.count;
-  const struct engine *e = r->e;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!e->s->periodic) error("Calling mesh forces in non-periodic mode.");
-#endif
-
-  TIMER_TIC;
-
-  /* Anything to do here? */
-  if (!cell_is_active_gravity(c, e)) return;
-
-  /* Recurse? */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_grav_mesh(r, c->progeny[k], 0);
-  } else {
-
-    /* Get the forces from the gravity mesh */
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    lock_lock(&c->grav.plock);
-#endif
-    pm_mesh_interpolate_forces(e->mesh, e, gparts, gcount);
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
-#endif
-  }
-
-  if (timer) TIMER_TOC(timer_dograv_mesh);
-}
-
-/**
  * @brief Calculate change in thermal state of particles induced
  * by radiative cooling and heating.
  *
@@ -211,11 +170,6 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
         cooling_cool_part(constants, us, cosmo, hydro_props,
                           entropy_floor_props, cooling_func, p, xp, dt_cool,
                           dt_therm, time);
-
-        /* Apply the effects of feedback on this particle
-         * (Note: Only used in schemes that have a delayed feedback mechanism
-         * otherwise just an empty function) */
-        feedback_update_part(p, xp, e);
       }
     }
   }
@@ -434,6 +388,103 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
+}
+
+/**
+ * @brief Creates sink particles.
+ *
+ * @param r runner task
+ * @param c cell
+ */
+void runner_do_sink_formation(struct runner *r, struct cell *c) {
+
+  struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct sink_props *sink_props = e->sink_properties;
+  const struct phys_const *phys_const = e->physical_constants;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
+  const struct unit_system *restrict us = e->internal_units;
+  struct cooling_function_data *restrict cooling = e->cooling_func;
+  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
+  const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running star formation task on a foreign node!");
+#endif
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0 || !cell_is_active_hydro(c, e)) {
+    return;
+  }
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_sink_formation(r, cp);
+      }
+  } else {
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+
+      /* Only work on active particles */
+      if (part_is_active(p, e)) {
+
+        /* Is this particle star forming? */
+        if (sink_is_forming(p, xp, sink_props, phys_const, cosmo, hydro_props,
+                            us, cooling, entropy_floor)) {
+
+          /* Time-step size for this particle */
+          double dt_sink;
+          if (with_cosmology) {
+            const integertime_t ti_step = get_integer_timestep(p->time_bin);
+            const integertime_t ti_begin =
+                get_integer_time_begin(ti_current - 1, p->time_bin);
+
+            dt_sink =
+                cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+
+          } else {
+            dt_sink = get_timestep(p->time_bin, time_base);
+          }
+
+          /* Are we forming a sink particle? */
+          if (sink_should_convert_to_sink(p, xp, sink_props, e, dt_sink)) {
+
+            /* Convert the gas particle to a sink particle */
+            struct sink *sink = NULL;
+
+            /* Convert the gas particle to a sink particle */
+            sink = cell_convert_part_to_sink(e, c, p, xp);
+
+            /* Did we get a sink? (Or did we run out of spare ones?) */
+            if (sink != NULL) {
+
+              /* Copy the properties of the gas particle to the star particle */
+              sink_copy_properties(p, xp, sink, e, sink_props, cosmo,
+                                   with_cosmology, phys_const, hydro_props, us,
+                                   cooling);
+            }
+          }
+        }
+      }
+    } /* Loop over particles */
+  }
 }
 
 /**

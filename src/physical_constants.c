@@ -170,6 +170,7 @@ void phys_const_print(const struct phys_const *internal_const) {
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
   message("%25s = %e", "H_0 / h = 100 km/s/Mpc",
           internal_const->const_reduced_hubble);
+  message("%25s = %e", "T_CMB0", internal_const->const_T_CMB_0);
 }
 
 #if defined(HAVE_HDF5)

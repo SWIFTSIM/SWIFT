@@ -42,8 +42,8 @@
 #include "./hydro/PressureEnergy/hydro_parameters.h"
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_parameters.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_parameters.h"
+#elif defined(PHANTOM_SPH)
+#include "./hydro/Phantom/hydro_parameters.h"
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro_parameters.h"
 #elif defined(SHADOWFAX_SPH)

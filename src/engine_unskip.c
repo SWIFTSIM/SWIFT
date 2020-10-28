@@ -46,6 +46,7 @@ enum task_broad_types {
   task_broad_types_stars,
   task_broad_types_sinks,
   task_broad_types_black_holes,
+  task_broad_types_rt,
   task_broad_types_count,
 };
 
@@ -187,10 +188,10 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Ignore empty cells. */
-  if (c->sinks.count == 0) return;
+  if (c->sinks.count == 0 && c->hydro.count == 0) return;
 
   /* Skip inactive cells. */
-  if (!cell_is_active_sinks(c, e)) return;
+  if (!cell_is_active_sinks(c, e) && !cell_is_active_hydro(c, e)) return;
 
   /* Recurse */
   if (c->split) {
@@ -236,6 +237,38 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
 
   /* Unskip any active tasks. */
   cell_unskip_gravity_tasks(c, &e->sched);
+}
+
+/**
+ * @brief Unskip any radiative transfer tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Ignore empty cells. */
+  if (c->hydro.count == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        engine_do_unskip_rt(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_rt_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
 
 /**
@@ -316,6 +349,13 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 #endif
         engine_do_unskip_black_holes(c, e);
         break;
+      case task_broad_types_rt:
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_rt))
+          error("Trying to unskip radiative transfer tasks in a non-rt run!");
+#endif
+        engine_do_unskip_rt(c, e);
+        break;
       default:
 #ifdef SWIFT_DEBUG_CHECKS
         error("Invalid broad task type!");
@@ -343,6 +383,7 @@ void engine_unskip(struct engine *e) {
   const int with_sinks = e->policy & engine_policy_sinks;
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_black_holes = e->policy & engine_policy_black_holes;
+  const int with_rt = e->policy & engine_policy_rt;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -394,6 +435,10 @@ void engine_unskip(struct engine *e) {
   }
   if (with_black_holes) {
     data.task_types[multiplier] = task_broad_types_black_holes;
+    multiplier++;
+  }
+  if (with_rt) {
+    data.task_types[multiplier] = task_broad_types_rt;
     multiplier++;
   }
 

@@ -48,6 +48,9 @@ struct bpart {
   /*! Black hole mass */
   float mass;
 
+  /*! Black hole mass at the start of each step, prior to any nibbling */
+  float mass_at_start_of_step;
+
   /* Particle cutoff radius. */
   float h;
 
@@ -148,11 +151,29 @@ struct bpart {
    * lower potential than all eligible neighbours) */
   int number_of_reposition_attempts;
 
+  /* Velocity of most recent reposition jump */
+  float last_repos_vel;
+
   /*! Total number of time steps in which the black hole was active. */
   int number_of_time_steps;
 
   /*! Total (physical) angular momentum accumulated by swallowing particles */
   float swallowed_angular_momentum[3];
+
+  /*! Accretion boost factor */
+  float accretion_boost_factor;
+
+  /*! Total (physical) angular momentum accumulated from subgrid accretion */
+  float accreted_angular_momentum[3];
+
+  /*! Instantaneous temperature increase for feedback */
+  float AGN_delta_T;
+
+  /*! Instantaneous energy reservoir threshold (num-to-heat) */
+  float num_ngbs_to_heat;
+
+  /*! Eddington fractions */
+  float eddington_fraction;
 
   /*! Union for the last high Eddington ratio point in time */
   union {

@@ -41,6 +41,7 @@
 #include <math.h>
 
 /* Local includes. */
+#include "cooling_properties.h"
 #include "cosmology.h"
 #include "entropy_floor.h"
 #include "hydro.h"

@@ -20,31 +20,6 @@
 #define SWIFT_COOLING_STRUCT_COMPTON_H
 
 /**
- * @brief Properties of the cooling function.
- */
-struct cooling_function_data {
-
-  /*! Compton rate in cgs [g cm^2 s^-3 K^-1] */
-  double const_Compton_rate_cgs;
-
-  /*! Temperature of the CMB at redshift 0 in cgs [K] */
-  double const_T_CMB_0;
-
-  /*! Conversion factor from internal units to cgs for density */
-  double conv_factor_density_to_cgs;
-
-  /*! Conversion factor from internal units to cgs for internal energy */
-  double conv_factor_energy_to_cgs;
-
-  /*! Conversion factor from internal units from cgs for internal energy
-   * derivative */
-  double conv_factor_energy_rate_from_cgs;
-
-  /*! Inverse of the proton mass in cgs units [g^-1] */
-  double proton_mass_cgs_inv;
-};
-
-/**
  * @brief Properties of the cooling stored in the #part data.
  */
 struct cooling_part_data {};

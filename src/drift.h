@@ -149,9 +149,12 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[1] += p->a_hydro[1] * dt_kick_hydro;
   p->v[2] += p->a_hydro[2] * dt_kick_hydro;
 
-  p->v[0] += xp->a_grav[0] * dt_kick_grav;
-  p->v[1] += xp->a_grav[1] * dt_kick_grav;
-  p->v[2] += xp->a_grav[2] * dt_kick_grav;
+  /* Predict velocities (for gravity terms) */
+  if (p->gpart != NULL) {
+    p->v[0] += (p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0]) * dt_kick_grav;
+    p->v[1] += (p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1]) * dt_kick_grav;
+    p->v[2] += (p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2]) * dt_kick_grav;
+  }
 
   /* Predict the values of the extra fields */
   hydro_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props, floor);
@@ -294,12 +297,13 @@ __attribute__((always_inline)) INLINE static void drift_sink(
     integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sink->ti_drift != ti_old)
+  if (sink->ti_drift != ti_old) {
     error(
         "s-particle has not been drifted to the current time "
         "sink->ti_drift=%lld, "
         "c->ti_old=%lld, ti_current=%lld",
         sink->ti_drift, ti_old, ti_current);
+  }
 
   sink->ti_drift = ti_current;
 #endif

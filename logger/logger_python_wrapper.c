@@ -31,38 +31,101 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct {
+  PyObject_HEAD;
+
+  /* Add logger stuff here */
+  struct logger_reader reader;
+
+  /* Is the logger ready? */
+  int ready;
+
+  /* basename of the logfile */
+  char *basename;
+
+  /* Verbose level */
+  int verbose;
+
+} PyObjectReader;
+
+/**
+ * @brief Deallocate the memory.
+ */
+static void Reader_dealloc(PyObjectReader *self) {
+  if (self->basename != NULL) {
+    free(self->basename);
+    self->basename = NULL;
+  }
+  Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+/**
+ * @brief Allocate the memory.
+ */
+static PyObject *Reader_new(PyTypeObject *type, PyObject *args,
+                            PyObject *kwds) {
+  PyObjectReader *self;
+
+  self = (PyObjectReader *)type->tp_alloc(type, 0);
+  self->ready = 0;
+  self->basename = NULL;
+  return (PyObject *)self;
+}
+/**
+ * @brief Initializer of the Reader.
+ *
+ * @param basename The basename of the logger file.
+ * @param verbose The verbosity level.
+ *
+ * @return The Reader object.
+ */
+static int Reader_init(PyObjectReader *self, PyObject *args, PyObject *kwds) {
+
+  /* input variables. */
+  char *basename = NULL;
+  int verbose = 0;
+
+  /* List of keyword arguments. */
+  static char *kwlist[] = {"basename", "verbose", NULL};
+
+  /* parse the arguments. */
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|i", kwlist, &basename,
+                                   &verbose))
+    return -1;
+
+  /* Copy the arguments */
+  self->verbose = verbose;
+
+  size_t n_plus_null = strlen(basename) + 1;
+  self->basename = (char *)malloc(n_plus_null * sizeof(char));
+  if (self->basename == NULL) {
+    error_python("Failed to allocate memory");
+  }
+  strcpy(self->basename, basename);
+
+  return 0;
+}
+
 /**
  * @brief Read the minimal and maximal time.
  *
- * <b>basename</b> Base name of the logger files.
- *
- * <b>verbose</b> Verbose level.
- *
  * <b>returns</b> tuple containing min and max time.
  */
-static PyObject *getTimeLimits(__attribute__((unused)) PyObject *self,
-                               PyObject *args) {
-
-  /* declare variables. */
-  char *basename = NULL;
-
-  int verbose = 0;
-
-  /* parse arguments. */
-  if (!PyArg_ParseTuple(args, "s|i", &basename, &verbose)) return NULL;
+static PyObject *getTimeLimits(PyObject *self, PyObject *Py_UNUSED(ignored)) {
+  if (!((PyObjectReader *)self)->ready) {
+    error_python(
+        "The logger is not ready yet."
+        "Did you forget to open it with \"with\"?");
+  }
 
   /* initialize the reader. */
-  struct logger_reader reader;
-  logger_reader_init(&reader, basename, verbose);
+  struct logger_reader *reader = &((PyObjectReader *)self)->reader;
 
-  if (verbose > 1) message("Reading time limits.");
+  if (reader->verbose > 1) message("Reading time limits.");
 
   /* Get the time limits */
-  double time_min = logger_reader_get_time_begin(&reader);
-  double time_max = logger_reader_get_time_end(&reader);
-
-  /* Free the memory. */
-  logger_reader_free(&reader);
+  double time_min = logger_reader_get_time_begin(reader);
+  double time_max = logger_reader_get_time_end(reader);
 
   /* Create the output */
   PyObject *out = PyTuple_New(2);
@@ -70,32 +133,6 @@ static PyObject *getTimeLimits(__attribute__((unused)) PyObject *self,
   PyTuple_SetItem(out, 1, PyFloat_FromDouble(time_max));
 
   return (PyObject *)out;
-}
-
-/**
- * @brief Reverse offset in log file
- *
- * <b>filename</b> string filename of the log file
- * <b>verbose</b> Verbose level
- */
-static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
-                                 PyObject *args) {
-  /* input variables. */
-  char *filename = NULL;
-
-  int verbose = 0;
-
-  /* parse the arguments. */
-  if (!PyArg_ParseTuple(args, "s|i", &filename, &verbose)) return NULL;
-
-  /* initialize the reader which reverse the offset if necessary. */
-  struct logger_reader reader;
-  logger_reader_init(&reader, filename, verbose);
-
-  /* Free the reader. */
-  logger_reader_free(&reader);
-
-  return Py_BuildValue("");
 }
 
 /**
@@ -155,7 +192,7 @@ logger_loader_create_output(void **output, const int *field_indices,
           if (current_field->dimension !=
                   python_fields[local_shifted].dimension ||
               current_field->typenum != python_fields[local_shifted].typenum) {
-            error(
+            error_python(
                 "The python definition of the field %s does not correspond "
                 "between"
                 " the modules.",
@@ -178,7 +215,7 @@ logger_loader_create_output(void **output, const int *field_indices,
           if (current_field->dimension !=
                   python_fields[local_shifted].dimension ||
               current_field->typenum != python_fields[local_shifted].typenum) {
-            error(
+            error_python(
                 "The python definition of the field %s does not correspond "
                 "between"
                 " the modules.",
@@ -193,7 +230,7 @@ logger_loader_create_output(void **output, const int *field_indices,
 
     /* Check if we got a field */
     if (current_field == NULL) {
-      error("Failed to find the required field");
+      error_python("Failed to find the required field");
     }
     PyObject *array = NULL;
     if (current_field->dimension > 1) {
@@ -212,6 +249,29 @@ logger_loader_create_output(void **output, const int *field_indices,
   return list;
 }
 
+static PyObject *pyEnter(__attribute__((unused)) PyObject *self,
+                         PyObject *args) {
+
+  PyObjectReader *self_reader = (PyObjectReader *)self;
+  logger_reader_init(&self_reader->reader, self_reader->basename,
+                     self_reader->verbose);
+  self_reader->ready = 1;
+
+  Py_INCREF(self);
+  return self;
+}
+
+static PyObject *pyExit(__attribute__((unused)) PyObject *self,
+                        PyObject *args) {
+  PyObjectReader *self_reader = (PyObjectReader *)self;
+  if (!self_reader->ready) {
+    error_python("It seems that the reader was not initialized");
+  }
+  logger_reader_free(&self_reader->reader);
+  self_reader->ready = 0;
+
+  Py_RETURN_NONE;
+}
 /**
  * @brief Read some fields at a given time.
  *
@@ -226,25 +286,27 @@ logger_loader_create_output(void **output, const int *field_indices,
  */
 static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
                                    PyObject *args) {
-  /* input variables. */
-  char *basename = NULL;
+  PyObjectReader *self_reader = (PyObjectReader *)self;
+  if (!self_reader->ready) {
+    error_python(
+        "The logger is not ready yet."
+        "Did you forget to open it with \"with\"?");
+  }
 
-  int verbose = 0;
+  /* input variables. */
   PyObject *fields = NULL;
   double time = 0;
   /* parse the arguments. */
-  if (!PyArg_ParseTuple(args, "sOd|i", &basename, &fields, &time, &verbose))
-    return NULL;
+  if (!PyArg_ParseTuple(args, "Od", &fields, &time)) return NULL;
 
   /* Check the inputs. */
   if (!PyList_Check(fields)) {
-    error("Expecting a list of fields");
+    error_python("Expecting a list of fields");
   }
 
   /* initialize the reader. */
-  struct logger_reader reader;
-  logger_reader_init(&reader, basename, verbose);
-  const struct header *h = &reader.log.header;
+  struct logger_reader *reader = &self_reader->reader;
+  const struct header *h = &reader->log.header;
 
   /* Get the fields indexes from the header. */
   const int n_fields = PyList_Size(fields);
@@ -255,7 +317,7 @@ static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
     /* Get the an item in the list. */
     PyObject *field = PyList_GetItem(fields, i);
     if (!PyUnicode_Check(field)) {
-      error("Expecting list of string for the fields");
+      error_python("Expecting list of string for the fields");
     }
 
     /* Convert into C string. */
@@ -272,16 +334,16 @@ static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
 
     /* Check if we found a field. */
     if (field_indices[i] == -1) {
-      error("Failed to find the field %s", field_name);
+      error_python("Failed to find the field %s", field_name);
     }
   }
 
   /* Set the time. */
-  logger_reader_set_time(&reader, time);
+  logger_reader_set_time(reader, time);
 
   /* Get the number of particles. */
   int n_type = 0;
-  const uint64_t *n_part = logger_reader_get_number_particles(&reader, &n_type);
+  const uint64_t *n_part = logger_reader_get_number_particles(reader, &n_type);
   uint64_t n_tot = 0;
   for (int i = 0; i < n_type; i++) {
     n_tot += n_part[i];
@@ -294,7 +356,7 @@ static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
   }
 
   /* Read the particles. */
-  logger_reader_read_all_particles(&reader, time, logger_reader_lin,
+  logger_reader_read_all_particles(reader, time, logger_reader_lin,
                                    field_indices, n_fields, output, n_part);
 
   /* Create the python output. */
@@ -302,7 +364,6 @@ static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
                                                 n_part, n_tot);
 
   /* Free the reader. */
-  logger_reader_free(&reader);
   free(field_indices);
 
   return array;
@@ -311,22 +372,13 @@ static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
 /* definition of the method table. */
 
 static PyMethodDef libloggerMethods[] = {
-    {"reverseOffset", pyReverseOffset, METH_VARARGS,
-     "Reverse the offset (from pointing backward to forward).\n\n"
-     "Parameters\n"
-     "----------\n\n"
-     "filename: str\n"
-     "  The filename of the log file.\n\n"
-     "verbose: int, optional\n"
-     "  The verbose level of the loader.\n"},
-    {"getTimeLimits", getTimeLimits, METH_VARARGS,
+    {NULL, NULL, 0, NULL} /* Sentinel */
+};
+
+/* Definition of the Reader methods */
+static PyMethodDef libloggerReaderMethods[] = {
+    {"get_time_limits", getTimeLimits, METH_NOARGS,
      "Read the time limits of the simulation.\n\n"
-     "Parameters\n"
-     "----------\n\n"
-     "basename: str\n"
-     "  The basename of the index files.\n\n"
-     "verbose: int, optional\n"
-     "  The verbose level of the loader.\n\n"
      "Returns\n"
      "-------\n\n"
      "times: tuple\n"
@@ -335,18 +387,15 @@ static PyMethodDef libloggerMethods[] = {
      "Read some fields from the logfile at a given time.\n\n"
      "Parameters\n"
      "----------\n\n"
-     "basename: str\n"
-     "  The basename of the log file.\n\n"
      "fields: list\n"
      "  The list of fields (e.g. 'Coordinates', 'Entropies', ...)\n\n"
      "time: float\n"
      "  The time at which the fields must be read.\n\n"
-     "verbose: int, optional\n"
-     "  The verbose level of the loader.\n\n"
      "-------\n\n"
      "list_of_fields: list\n"
      "  Each element is a numpy array containing the corresponding field.\n"},
-
+    {"__enter__", pyEnter, METH_VARARGS, ""},
+    {"__exit__", pyExit, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
@@ -362,6 +411,42 @@ static struct PyModuleDef libloggermodule = {
     NULL  /* m_free */
 };
 
+static PyTypeObject PyObjectReader_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "liblogger.Reader",
+    .tp_basicsize = sizeof(PyObjectReader),
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc =
+        "Deals with a logger file and provides the data through"
+        " its different methods. The reader is really open with the method "
+        "__enter__"
+        "(called by `with ...``). Outside the area delimited by with, "
+        "the logger is not accessible.\n\n"
+        "Parameters\n"
+        "----------\n\n"
+        "basename: str\n"
+        "    Basename of the logfile.\n"
+        "verbose: int (optional)\n"
+        "    Verbose level\n\n"
+        "Methods\n"
+        "-------\n\n"
+        "get_time_limits\n"
+        "    Provides the initial and final time of the simulation\n"
+        "get_particle_data\n"
+        "    Reads some particle's data from the logfile\n\n"
+        "Examples\n"
+        "--------\n\n"
+        ">>> import liblogger as logger\n"
+        ">>> with logger.Reader(\"index_0000\") as reader:\n"
+        ">>>    t0, t1 = reader.get_time_limits()\n"
+        ">>>    pos, ent = reader.get_particle_data([\"Coordinates\", "
+        "\"Entropies\"]"
+        ", 0.5 * (t0 + t1))\n",
+    .tp_init = (initproc)Reader_init,
+    .tp_dealloc = (destructor)Reader_dealloc,
+    .tp_new = Reader_new,
+    .tp_methods = libloggerReaderMethods,
+};
+
 PyMODINIT_FUNC PyInit_liblogger(void) {
 
   /* Create the module. */
@@ -371,6 +456,14 @@ PyMODINIT_FUNC PyInit_liblogger(void) {
 
   /* Deal with SWIFT clock */
   clocks_set_cpufreq(0);
+
+  /* Prepare the classes */
+  if (PyType_Ready(&PyObjectReader_Type) < 0) {
+    return NULL;
+  }
+
+  Py_INCREF(&PyObjectReader_Type);
+  PyModule_AddObject(m, "Reader", (PyObject *)&PyObjectReader_Type);
 
   /* Import numpy. */
   import_array();

@@ -83,6 +83,7 @@ extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
+extern int space_extra_sinks;
 
 /**
  * @brief The space in which the cells and particles reside.
@@ -115,14 +116,6 @@ struct space {
 
   /*! Inverse of the top-level cell width */
   double iwidth[3];
-
-  /*! Position vector added to all the particles at rebuild
-    time */
-  double pos_dithering[3];
-
-  /*! Position vector added to all the particles at rebuild
-    time (value at the previous rebuild) */
-  double pos_dithering_old[3];
 
   /*! The minimum top-level cell width allowed. */
   double cell_min;
@@ -366,9 +359,10 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
+void space_regrid(struct space *s, int verbose);
+void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);
-void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 size_t *count_inhibited_parts,

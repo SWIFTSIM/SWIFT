@@ -25,8 +25,34 @@
  */
 
 /**
- * @brief Dummy function to test whether inclusions work properly.
+ * @brief Update the photon number of a particle, i.e. compute
+ *        E^{n+1} = E^n + dt * dE_* / dt
  */
-void rt_dummy_function(void) { message("Called M1 closure RT scheme."); }
+__attribute__((always_inline)) INLINE static void
+rt_injection_update_photon_density(struct part* restrict p) {}
+
+/**
+ * @brief First initialisation of the RT extra hydro particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief Initialisation of the RT extra hydro particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief First initialisation of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_first_init_spart(
+    struct spart* restrict sp) {}
+
+/**
+ * @brief First initialisation of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_init_spart(
+    struct spart* restrict sp) {}
 
 #endif /* SWIFT_RT_M1_H */

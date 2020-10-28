@@ -58,11 +58,10 @@
 #include "chemistry.h"
 #include "clocks.h"
 #include "cooling.h"
+#include "cooling_properties.h"
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
-#include "distributed_io.h"
-#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "error.h"
 #include "feedback.h"
@@ -72,7 +71,6 @@
 #include "hydro.h"
 #include "line_of_sight.h"
 #include "logger.h"
-#include "logger_io.h"
 #include "map.h"
 #include "memuse.h"
 #include "minmax.h"
@@ -80,15 +78,12 @@
 #include "multipole_struct.h"
 #include "output_list.h"
 #include "output_options.h"
-#include "parallel_io.h"
-#include "part.h"
 #include "partition.h"
 #include "profiler.h"
 #include "proxy.h"
 #include "restart.h"
 #include "runner.h"
-#include "serial_io.h"
-#include "single_io.h"
+#include "sink_properties.h"
 #include "sort_part.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -98,10 +93,6 @@
 #include "tools.h"
 #include "units.h"
 #include "velociraptor_interface.h"
-#include "version.h"
-
-/* Particle cache size. */
-#define CACHE_SIZE 512
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -137,9 +128,6 @@ int engine_rank;
 
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
-
-extern int engine_max_parts_per_ghost;
-extern int engine_max_sparts_per_ghost;
 
 /**
  * @brief Link a density/force task to a cell.
@@ -478,537 +466,6 @@ void engine_exchange_cells(struct engine *e) {
 }
 
 /**
- * @brief Exchange straying particles with other nodes.
- *
- * @param e The #engine.
- * @param offset_parts The index in the parts array as of which the foreign
- *        parts reside (i.e. the current number of local #part).
- * @param ind_part The foreign #cell ID of each part.
- * @param Npart The number of stray parts, contains the number of parts received
- *        on return.
- * @param offset_gparts The index in the gparts array as of which the foreign
- *        parts reside (i.e. the current number of local #gpart).
- * @param ind_gpart The foreign #cell ID of each gpart.
- * @param Ngpart The number of stray gparts, contains the number of gparts
- *        received on return.
- * @param offset_sparts The index in the sparts array as of which the foreign
- *        parts reside (i.e. the current number of local #spart).
- * @param ind_spart The foreign #cell ID of each spart.
- * @param Nspart The number of stray sparts, contains the number of sparts
- *        received on return.
- * @param offset_bparts The index in the bparts array as of which the foreign
- *        parts reside (i.e. the current number of local #bpart).
- * @param ind_bpart The foreign #cell ID of each bpart.
- * @param Nbpart The number of stray bparts, contains the number of bparts
- *        received on return.
- *
- * Note that this function does not mess-up the linkage between parts and
- * gparts, i.e. the received particles have correct linkeage.
- */
-void engine_exchange_strays(struct engine *e, const size_t offset_parts,
-                            const int *restrict ind_part, size_t *Npart,
-                            const size_t offset_gparts,
-                            const int *restrict ind_gpart, size_t *Ngpart,
-                            const size_t offset_sparts,
-                            const int *restrict ind_spart, size_t *Nspart,
-                            const size_t offset_bparts,
-                            const int *restrict ind_bpart, size_t *Nbpart) {
-
-#ifdef WITH_MPI
-  struct space *s = e->s;
-  ticks tic = getticks();
-
-  /* Re-set the proxies. */
-  for (int k = 0; k < e->nr_proxies; k++) {
-    e->proxies[k].nr_parts_out = 0;
-    e->proxies[k].nr_gparts_out = 0;
-    e->proxies[k].nr_sparts_out = 0;
-    e->proxies[k].nr_bparts_out = 0;
-  }
-
-  /* Put the parts into the corresponding proxies. */
-  for (size_t k = 0; k < *Npart; k++) {
-
-    /* Ignore the particles we want to get rid of (inhibited, ...). */
-    if (ind_part[k] == -1) continue;
-
-    /* Get the target node and proxy ID. */
-    const int node_id = e->s->cells_top[ind_part[k]].nodeID;
-    if (node_id < 0 || node_id >= e->nr_nodes)
-      error("Bad node ID %i.", node_id);
-    const int pid = e->proxy_ind[node_id];
-    if (pid < 0) {
-      error(
-          "Do not have a proxy for the requested nodeID %i for part with "
-          "id=%lld, x=[%e,%e,%e].",
-          node_id, s->parts[offset_parts + k].id,
-          s->parts[offset_parts + k].x[0], s->parts[offset_parts + k].x[1],
-          s->parts[offset_parts + k].x[2]);
-    }
-
-    /* Re-link the associated gpart with the buffer offset of the part. */
-    if (s->parts[offset_parts + k].gpart != NULL) {
-      s->parts[offset_parts + k].gpart->id_or_neg_offset =
-          -e->proxies[pid].nr_parts_out;
-    }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (s->parts[offset_parts + k].time_bin == time_bin_inhibited)
-      error("Attempting to exchange an inhibited particle");
-#endif
-
-    /* Load the part and xpart into the proxy. */
-    proxy_parts_load(&e->proxies[pid], &s->parts[offset_parts + k],
-                     &s->xparts[offset_parts + k], 1);
-
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) {
-      /* Log the particle when leaving a rank. */
-      logger_log_part(
-          e->logger, &s->parts[offset_parts + k], &s->xparts[offset_parts + k],
-          e, /* log_all_fields */ 1,
-          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id));
-    }
-#endif
-  }
-
-  /* Put the sparts into the corresponding proxies. */
-  for (size_t k = 0; k < *Nspart; k++) {
-
-    /* Ignore the particles we want to get rid of (inhibited, ...). */
-    if (ind_spart[k] == -1) continue;
-
-    /* Get the target node and proxy ID. */
-    const int node_id = e->s->cells_top[ind_spart[k]].nodeID;
-    if (node_id < 0 || node_id >= e->nr_nodes)
-      error("Bad node ID %i.", node_id);
-    const int pid = e->proxy_ind[node_id];
-    if (pid < 0) {
-      error(
-          "Do not have a proxy for the requested nodeID %i for part with "
-          "id=%lld, x=[%e,%e,%e].",
-          node_id, s->sparts[offset_sparts + k].id,
-          s->sparts[offset_sparts + k].x[0], s->sparts[offset_sparts + k].x[1],
-          s->sparts[offset_sparts + k].x[2]);
-    }
-
-    /* Re-link the associated gpart with the buffer offset of the spart. */
-    if (s->sparts[offset_sparts + k].gpart != NULL) {
-      s->sparts[offset_sparts + k].gpart->id_or_neg_offset =
-          -e->proxies[pid].nr_sparts_out;
-    }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (s->sparts[offset_sparts + k].time_bin == time_bin_inhibited)
-      error("Attempting to exchange an inhibited particle");
-#endif
-
-    /* Load the spart into the proxy */
-    proxy_sparts_load(&e->proxies[pid], &s->sparts[offset_sparts + k], 1);
-
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) {
-      /* Log the particle when leaving a rank. */
-      logger_log_spart(
-          e->logger, &s->sparts[offset_sparts + k], e,
-          /* log_all_fields */ 1,
-          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id));
-    }
-#endif
-  }
-
-  /* Put the bparts into the corresponding proxies. */
-  for (size_t k = 0; k < *Nbpart; k++) {
-
-    /* Ignore the particles we want to get rid of (inhibited, ...). */
-    if (ind_bpart[k] == -1) continue;
-
-    /* Get the target node and proxy ID. */
-    const int node_id = e->s->cells_top[ind_bpart[k]].nodeID;
-    if (node_id < 0 || node_id >= e->nr_nodes)
-      error("Bad node ID %i.", node_id);
-    const int pid = e->proxy_ind[node_id];
-    if (pid < 0) {
-      error(
-          "Do not have a proxy for the requested nodeID %i for part with "
-          "id=%lld, x=[%e,%e,%e].",
-          node_id, s->bparts[offset_bparts + k].id,
-          s->bparts[offset_bparts + k].x[0], s->bparts[offset_bparts + k].x[1],
-          s->bparts[offset_bparts + k].x[2]);
-    }
-
-    /* Re-link the associated gpart with the buffer offset of the bpart. */
-    if (s->bparts[offset_bparts + k].gpart != NULL) {
-      s->bparts[offset_bparts + k].gpart->id_or_neg_offset =
-          -e->proxies[pid].nr_bparts_out;
-    }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (s->bparts[offset_bparts + k].time_bin == time_bin_inhibited)
-      error("Attempting to exchange an inhibited particle");
-#endif
-
-    /* Load the bpart into the proxy */
-    proxy_bparts_load(&e->proxies[pid], &s->bparts[offset_bparts + k], 1);
-
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) {
-      error("Not yet implemented.");
-    }
-#endif
-  }
-
-  /* Put the gparts into the corresponding proxies. */
-  for (size_t k = 0; k < *Ngpart; k++) {
-
-    /* Ignore the particles we want to get rid of (inhibited, ...). */
-    if (ind_gpart[k] == -1) continue;
-
-    /* Get the target node and proxy ID. */
-    const int node_id = e->s->cells_top[ind_gpart[k]].nodeID;
-    if (node_id < 0 || node_id >= e->nr_nodes)
-      error("Bad node ID %i.", node_id);
-    const int pid = e->proxy_ind[node_id];
-    if (pid < 0) {
-      error(
-          "Do not have a proxy for the requested nodeID %i for part with "
-          "id=%lli, x=[%e,%e,%e].",
-          node_id, s->gparts[offset_gparts + k].id_or_neg_offset,
-          s->gparts[offset_gparts + k].x[0], s->gparts[offset_gparts + k].x[1],
-          s->gparts[offset_gparts + k].x[2]);
-    }
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (s->gparts[offset_gparts + k].time_bin == time_bin_inhibited)
-      error("Attempting to exchange an inhibited particle");
-#endif
-
-    /* Load the gpart into the proxy */
-    proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
-
-#ifdef WITH_LOGGER
-    /* Write only the dark matter particles */
-    if ((e->policy & engine_policy_logger) &&
-        s->gparts[offset_gparts + k].type == swift_type_dark_matter) {
-
-      /* Log the particle when leaving a rank. */
-      logger_log_gpart(
-          e->logger, &s->gparts[offset_gparts + k], e,
-          /* log_all_fields */ 1,
-          logger_pack_flags_and_data(logger_flag_mpi_exit, node_id));
-    }
-#endif
-  }
-
-  /* Launch the proxies. */
-  MPI_Request reqs_in[5 * engine_maxproxies];
-  MPI_Request reqs_out[5 * engine_maxproxies];
-  for (int k = 0; k < e->nr_proxies; k++) {
-    proxy_parts_exchange_first(&e->proxies[k]);
-    reqs_in[k] = e->proxies[k].req_parts_count_in;
-    reqs_out[k] = e->proxies[k].req_parts_count_out;
-  }
-
-  /* Wait for each count to come in and start the recv. */
-  for (int k = 0; k < e->nr_proxies; k++) {
-    int pid = MPI_UNDEFINED;
-    if (MPI_Waitany(e->nr_proxies, reqs_in, &pid, MPI_STATUS_IGNORE) !=
-            MPI_SUCCESS ||
-        pid == MPI_UNDEFINED)
-      error("MPI_Waitany failed.");
-    // message( "request from proxy %i has arrived." , pid );
-    proxy_parts_exchange_second(&e->proxies[pid]);
-  }
-
-  /* Wait for all the sends to have finished too. */
-  if (MPI_Waitall(e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
-    error("MPI_Waitall on sends failed.");
-
-  /* Count the total number of incoming particles and make sure we have
-     enough space to accommodate them. */
-  int count_parts_in = 0;
-  int count_gparts_in = 0;
-  int count_sparts_in = 0;
-  int count_bparts_in = 0;
-  for (int k = 0; k < e->nr_proxies; k++) {
-    count_parts_in += e->proxies[k].nr_parts_in;
-    count_gparts_in += e->proxies[k].nr_gparts_in;
-    count_sparts_in += e->proxies[k].nr_sparts_in;
-    count_bparts_in += e->proxies[k].nr_bparts_in;
-  }
-  if (e->verbose) {
-    message(
-        "sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts, got %i/%i/%i/%i "
-        "back.",
-        *Npart, *Ngpart, *Nspart, *Nbpart, count_parts_in, count_gparts_in,
-        count_sparts_in, count_bparts_in);
-  }
-
-  /* Reallocate the particle arrays if necessary */
-  if (offset_parts + count_parts_in > s->size_parts) {
-    s->size_parts = (offset_parts + count_parts_in) * engine_parts_size_grow;
-    struct part *parts_new = NULL;
-    struct xpart *xparts_new = NULL;
-    if (swift_memalign("parts", (void **)&parts_new, part_align,
-                       sizeof(struct part) * s->size_parts) != 0 ||
-        swift_memalign("xparts", (void **)&xparts_new, xpart_align,
-                       sizeof(struct xpart) * s->size_parts) != 0)
-      error("Failed to allocate new part data.");
-    memcpy(parts_new, s->parts, sizeof(struct part) * offset_parts);
-    memcpy(xparts_new, s->xparts, sizeof(struct xpart) * offset_parts);
-    swift_free("parts", s->parts);
-    swift_free("xparts", s->xparts);
-    s->parts = parts_new;
-    s->xparts = xparts_new;
-
-    /* Reset the links */
-    for (size_t k = 0; k < offset_parts; k++) {
-      if (s->parts[k].gpart != NULL) {
-        s->parts[k].gpart->id_or_neg_offset = -k;
-      }
-    }
-  }
-
-  if (offset_sparts + count_sparts_in > s->size_sparts) {
-    s->size_sparts = (offset_sparts + count_sparts_in) * engine_parts_size_grow;
-    struct spart *sparts_new = NULL;
-    if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
-                       sizeof(struct spart) * s->size_sparts) != 0)
-      error("Failed to allocate new spart data.");
-    memcpy(sparts_new, s->sparts, sizeof(struct spart) * offset_sparts);
-    swift_free("sparts", s->sparts);
-    s->sparts = sparts_new;
-
-    /* Reset the links */
-    for (size_t k = 0; k < offset_sparts; k++) {
-      if (s->sparts[k].gpart != NULL) {
-        s->sparts[k].gpart->id_or_neg_offset = -k;
-      }
-    }
-  }
-
-  if (offset_bparts + count_bparts_in > s->size_bparts) {
-    s->size_bparts = (offset_bparts + count_bparts_in) * engine_parts_size_grow;
-    struct bpart *bparts_new = NULL;
-    if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
-                       sizeof(struct bpart) * s->size_bparts) != 0)
-      error("Failed to allocate new bpart data.");
-    memcpy(bparts_new, s->bparts, sizeof(struct bpart) * offset_bparts);
-    swift_free("bparts", s->bparts);
-    s->bparts = bparts_new;
-
-    /* Reset the links */
-    for (size_t k = 0; k < offset_bparts; k++) {
-      if (s->bparts[k].gpart != NULL) {
-        s->bparts[k].gpart->id_or_neg_offset = -k;
-      }
-    }
-  }
-
-  if (offset_gparts + count_gparts_in > s->size_gparts) {
-    s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
-    struct gpart *gparts_new = NULL;
-    if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
-                       sizeof(struct gpart) * s->size_gparts) != 0)
-      error("Failed to allocate new gpart data.");
-    memcpy(gparts_new, s->gparts, sizeof(struct gpart) * offset_gparts);
-    swift_free("gparts", s->gparts);
-    s->gparts = gparts_new;
-
-    /* Reset the links */
-    for (size_t k = 0; k < offset_gparts; k++) {
-      if (s->gparts[k].type == swift_type_gas) {
-        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_stars) {
-        s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_black_hole) {
-        s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      }
-    }
-  }
-
-  /* Collect the requests for the particle data from the proxies. */
-  int nr_in = 0, nr_out = 0;
-  for (int k = 0; k < e->nr_proxies; k++) {
-    if (e->proxies[k].nr_parts_in > 0) {
-      reqs_in[5 * k] = e->proxies[k].req_parts_in;
-      reqs_in[5 * k + 1] = e->proxies[k].req_xparts_in;
-      nr_in += 2;
-    } else {
-      reqs_in[5 * k] = reqs_in[5 * k + 1] = MPI_REQUEST_NULL;
-    }
-    if (e->proxies[k].nr_gparts_in > 0) {
-      reqs_in[5 * k + 2] = e->proxies[k].req_gparts_in;
-      nr_in += 1;
-    } else {
-      reqs_in[5 * k + 2] = MPI_REQUEST_NULL;
-    }
-    if (e->proxies[k].nr_sparts_in > 0) {
-      reqs_in[5 * k + 3] = e->proxies[k].req_sparts_in;
-      nr_in += 1;
-    } else {
-      reqs_in[5 * k + 3] = MPI_REQUEST_NULL;
-    }
-    if (e->proxies[k].nr_bparts_in > 0) {
-      reqs_in[5 * k + 4] = e->proxies[k].req_bparts_in;
-      nr_in += 1;
-    } else {
-      reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
-    }
-
-    if (e->proxies[k].nr_parts_out > 0) {
-      reqs_out[5 * k] = e->proxies[k].req_parts_out;
-      reqs_out[5 * k + 1] = e->proxies[k].req_xparts_out;
-      nr_out += 2;
-    } else {
-      reqs_out[5 * k] = reqs_out[5 * k + 1] = MPI_REQUEST_NULL;
-    }
-    if (e->proxies[k].nr_gparts_out > 0) {
-      reqs_out[5 * k + 2] = e->proxies[k].req_gparts_out;
-      nr_out += 1;
-    } else {
-      reqs_out[5 * k + 2] = MPI_REQUEST_NULL;
-    }
-    if (e->proxies[k].nr_sparts_out > 0) {
-      reqs_out[5 * k + 3] = e->proxies[k].req_sparts_out;
-      nr_out += 1;
-    } else {
-      reqs_out[5 * k + 3] = MPI_REQUEST_NULL;
-    }
-    if (e->proxies[k].nr_bparts_out > 0) {
-      reqs_out[5 * k + 4] = e->proxies[k].req_bparts_out;
-      nr_out += 1;
-    } else {
-      reqs_out[5 * k + 4] = MPI_REQUEST_NULL;
-    }
-  }
-
-  /* Wait for each part array to come in and collect the new
-     parts from the proxies. */
-  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0;
-  for (int k = 0; k < nr_in; k++) {
-    int err, pid;
-    if ((err = MPI_Waitany(5 * e->nr_proxies, reqs_in, &pid,
-                           MPI_STATUS_IGNORE)) != MPI_SUCCESS) {
-      char buff[MPI_MAX_ERROR_STRING];
-      int res;
-      MPI_Error_string(err, buff, &res);
-      error("MPI_Waitany failed (%s).", buff);
-    }
-    if (pid == MPI_UNDEFINED) break;
-    // message( "request from proxy %i has arrived." , pid / 5 );
-    pid = 5 * (pid / 5);
-
-    /* If all the requests for a given proxy have arrived... */
-    if (reqs_in[pid + 0] == MPI_REQUEST_NULL &&
-        reqs_in[pid + 1] == MPI_REQUEST_NULL &&
-        reqs_in[pid + 2] == MPI_REQUEST_NULL &&
-        reqs_in[pid + 3] == MPI_REQUEST_NULL &&
-        reqs_in[pid + 4] == MPI_REQUEST_NULL) {
-      /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *prox = &e->proxies[pid / 5];
-      memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
-             sizeof(struct part) * prox->nr_parts_in);
-      memcpy(&s->xparts[offset_parts + count_parts], prox->xparts_in,
-             sizeof(struct xpart) * prox->nr_parts_in);
-      memcpy(&s->gparts[offset_gparts + count_gparts], prox->gparts_in,
-             sizeof(struct gpart) * prox->nr_gparts_in);
-      memcpy(&s->sparts[offset_sparts + count_sparts], prox->sparts_in,
-             sizeof(struct spart) * prox->nr_sparts_in);
-      memcpy(&s->bparts[offset_bparts + count_bparts], prox->bparts_in,
-             sizeof(struct bpart) * prox->nr_bparts_in);
-
-#ifdef WITH_LOGGER
-      if (e->policy & engine_policy_logger) {
-        const uint32_t flag =
-            logger_pack_flags_and_data(logger_flag_mpi_enter, prox->nodeID);
-
-        struct part *parts = &s->parts[offset_parts + count_parts];
-        struct xpart *xparts = &s->xparts[offset_parts + count_parts];
-        struct spart *sparts = &s->sparts[offset_sparts + count_sparts];
-        struct gpart *gparts = &s->gparts[offset_gparts + count_gparts];
-
-        /* Log the gas particles */
-        logger_log_parts(e->logger, parts, xparts, prox->nr_parts_in, e,
-                         /* log_all_fields */ 1, flag);
-
-        /* Log the stellar particles */
-        logger_log_sparts(e->logger, sparts, prox->nr_sparts_in, e,
-                          /* log_all_fields */ 1, flag);
-
-        /* Log the gparts */
-        logger_log_gparts(e->logger, gparts, prox->nr_gparts_in, e,
-                          /* log_all_fields */ 1, flag);
-
-        /* Log the bparts */
-        if (prox->nr_bparts_in > 0) {
-          error("TODO");
-        }
-      }
-#endif
-      /* for (int k = offset; k < offset + count; k++)
-         message(
-            "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
-            s->parts[k].id, s->parts[k].x[0], s->parts[k].x[1],
-            s->parts[k].x[2], s->parts[k].h, p->nodeID); */
-
-      /* Re-link the gparts. */
-      for (int kk = 0; kk < prox->nr_gparts_in; kk++) {
-        struct gpart *gp = &s->gparts[offset_gparts + count_gparts + kk];
-
-        if (gp->type == swift_type_gas) {
-          struct part *p =
-              &s->parts[offset_parts + count_parts - gp->id_or_neg_offset];
-          gp->id_or_neg_offset = s->parts - p;
-          p->gpart = gp;
-        } else if (gp->type == swift_type_stars) {
-          struct spart *sp =
-              &s->sparts[offset_sparts + count_sparts - gp->id_or_neg_offset];
-          gp->id_or_neg_offset = s->sparts - sp;
-          sp->gpart = gp;
-        } else if (gp->type == swift_type_black_hole) {
-          struct bpart *bp =
-              &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
-          gp->id_or_neg_offset = s->bparts - bp;
-          bp->gpart = gp;
-        }
-      }
-
-      /* Advance the counters. */
-      count_parts += prox->nr_parts_in;
-      count_gparts += prox->nr_gparts_in;
-      count_sparts += prox->nr_sparts_in;
-      count_bparts += prox->nr_bparts_in;
-    }
-  }
-
-  /* Wait for all the sends to have finished too. */
-  if (nr_out > 0)
-    if (MPI_Waitall(5 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
-        MPI_SUCCESS)
-      error("MPI_Waitall on sends failed.");
-
-  /* Free the proxy memory */
-  for (int k = 0; k < e->nr_proxies; k++) {
-    proxy_free_particle_buffers(&e->proxies[k]);
-  }
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-
-  /* Return the number of harvested parts. */
-  *Npart = count_parts;
-  *Ngpart = count_gparts;
-  *Nspart = count_sparts;
-  *Nbpart = count_bparts;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
-
-/**
  * @brief Exchanges the top-level multipoles between all the nodes
  * such that every node has a multipole for each top-level cell.
  *
@@ -1309,6 +766,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   tic = getticks();
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_parts_foreign = s->size_parts_foreign;
   if (count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
@@ -1318,6 +776,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_gparts_foreign = s->size_gparts_foreign;
   if (count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
       swift_free("gparts_foreign", s->gparts_foreign);
@@ -1329,6 +788,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_sparts_foreign = s->size_sparts_foreign;
   if (count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL)
       swift_free("sparts_foreign", s->sparts_foreign);
@@ -1340,6 +800,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   }
 
   /* Allocate space for the foreign particles we will receive */
+  size_t old_size_bparts_foreign = s->size_bparts_foreign;
   if (count_bparts_in > s->size_bparts_foreign) {
     if (s->bparts_foreign != NULL)
       swift_free("bparts_foreign", s->bparts_foreign);
@@ -1350,7 +811,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
       error("Failed to allocate foreign bpart data.");
   }
 
-  if (e->verbose)
+  if (e->verbose) {
     message(
         "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
         "(%zd/%zd/%zd/%zd MB)",
@@ -1360,6 +821,28 @@ void engine_allocate_foreign_particles(struct engine *e) {
         s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
         s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+
+    if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
+        (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
+        (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
+        (s->size_bparts_foreign - old_size_bparts_foreign) > 0) {
+      message(
+          "Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
+          "(%zd/%zd/%zd/%zd MB)",
+          (s->size_parts_foreign - old_size_parts_foreign),
+          (s->size_gparts_foreign - old_size_gparts_foreign),
+          (s->size_sparts_foreign - old_size_sparts_foreign),
+          (s->size_bparts_foreign - old_size_bparts_foreign),
+          (s->size_parts_foreign - old_size_parts_foreign) *
+              sizeof(struct part) / (1024 * 1024),
+          (s->size_gparts_foreign - old_size_gparts_foreign) *
+              sizeof(struct gpart) / (1024 * 1024),
+          (s->size_sparts_foreign - old_size_sparts_foreign) *
+              sizeof(struct spart) / (1024 * 1024),
+          (s->size_bparts_foreign - old_size_bparts_foreign) *
+              sizeof(struct bpart) / (1024 * 1024));
+    }
+  }
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
@@ -1592,8 +1075,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_sinks) {
-    /* 1 drift, 2 kicks, 1 time-step */
-    n1 += 4;
+    /* 1 drift, 2 kicks, 1 time-step, 1 sink formation */
+    n1 += 5;
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
@@ -1604,6 +1087,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 1;
   }
 #endif
+  if (e->policy & engine_policy_rt) {
+    /* inject: 1 self + (3^3-1)/2 = 26/2 = 13 pairs  |  14
+     * ghosts: in + out, ghost1,                     | + 3 */
+    n1 += 17;
+  }
 
 #ifdef WITH_MPI
 
@@ -1753,20 +1241,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     message("updating particle counts took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Re-compute the mesh forces */
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
-
-    /* Re-allocate the PM grid if we freed it... */
-    if (repartitioned) pm_mesh_allocate(e->mesh);
-
-    /* ... and recompute */
-    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
-  }
-
-  /* Re-compute the maximal RMS displacement constraint */
-  if (e->policy & engine_policy_cosmology)
-    engine_recompute_displacement_constraint(e);
-
 #ifdef SWIFT_DEBUG_CHECKS
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
@@ -1847,8 +1321,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
+ *
+ * @return 1 if the function drifted all particles 0 if not.
  */
-void engine_prepare(struct engine *e) {
+int engine_prepare(struct engine *e) {
 
   TIMER_TIC2;
   const ticks tic = getticks();
@@ -1907,6 +1383,10 @@ void engine_prepare(struct engine *e) {
     /* And repartition */
     engine_repartition(e);
     repartitioned = 1;
+
+    /* Reallocate the mesh */
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      pm_mesh_allocate(e->mesh);
   }
 
   /* Do we need rebuilding ? */
@@ -1914,6 +1394,8 @@ void engine_prepare(struct engine *e) {
 
     /* Let's start by drifting everybody to the current time */
     if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+
+    drifted_all = 1;
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
@@ -1941,6 +1423,8 @@ void engine_prepare(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including unskip, rebuild and reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  return drifted_all;
 }
 
 /**
@@ -2011,11 +1495,12 @@ void engine_print_stats(struct engine *e) {
 #endif
 
   /* Finalize operations */
-  stats_finalize(&stats);
+  stats_finalize(&global_stats);
 
   /* Print info */
   if (e->nodeID == 0)
-    stats_print_to_file(e->file_stats, &global_stats, e->time);
+    stats_write_to_file(e->file_stats, &global_stats, e->time, e->cosmology->a,
+                        e->cosmology->z, e->step);
 
   /* Flag that we dumped some statistics */
   e->step_props |= engine_step_prop_statistics;
@@ -2052,11 +1537,13 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
-        t->type == task_type_stars_ghost_out ||
+        t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
+        t->type == task_type_sink_out || t->type == task_type_sink_formation ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
-        t->type == task_type_bh_out || t->subtype == task_subtype_force ||
+        t->type == task_type_bh_out || t->type == task_type_rt_ghost1 ||
+        t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
@@ -2074,7 +1561,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_spart ||
         t->subtype == task_subtype_tend_sink ||
         t->subtype == task_subtype_tend_bpart ||
-        t->subtype == task_subtype_rho || t->subtype == task_subtype_sf_counts)
+        t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_sf_counts ||
+        t->subtype == task_subtype_rt_inject)
       t->skip = 1;
   }
 
@@ -2219,6 +1708,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
+
+  /* Compute the mesh forces for the first time */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
+
+    /* Compute mesh forces */
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+
+    /* Compute mesh time-step length */
+    engine_recompute_displacement_constraint(e);
+
+    e->step_props |= engine_step_prop_mesh;
+  }
 
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
@@ -2435,6 +1936,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
   }
 
+  if (s->cells_top != NULL && s->nr_sinks > 0) {
+    for (int i = 0; i < s->nr_cells; i++) {
+      struct cell *c = &s->cells_top[i];
+      if (c->nodeID == engine_rank && c->sinks.count > 0) {
+        float sink_h_max = c->sinks.parts[0].r_cut;
+        for (int k = 1; k < c->sinks.count; k++) {
+          if (c->sinks.parts[k].r_cut > sink_h_max)
+            sink_h_max = c->sinks.parts[k].r_cut;
+        }
+        c->sinks.r_cut_max = max(sink_h_max, c->sinks.r_cut_max);
+      }
+    }
+  }
+
   clocks_gettime(&time2);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2623,7 +2138,7 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
-  engine_prepare(e);
+  const int drifted_all = engine_prepare(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Print the number of active tasks */
@@ -2681,6 +2196,22 @@ void engine_step(struct engine *e) {
     }
   }
 #endif
+
+  /* Re-compute the mesh forces */
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
+      e->mesh->ti_end_mesh_next == e->ti_current) {
+
+    /* We might need to drift things */
+    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+
+    /* ... and recompute */
+    pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
+
+    /* Check whether we need to update the mesh time-step length */
+    engine_recompute_displacement_constraint(e);
+
+    e->step_props |= engine_step_prop_mesh;
+  }
 
   /* Get current CPU times.*/
 #ifdef WITH_MPI
@@ -2782,308 +2313,6 @@ void engine_step(struct engine *e) {
 }
 
 /**
- * @brief Check whether any kind of i/o has to be performed during this
- * step.
- *
- * This includes snapshots, stats and halo finder. We also handle the case
- * of multiple outputs between two steps.
- *
- * @param e The #engine.
- */
-void engine_check_for_dumps(struct engine *e) {
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const int with_stf = (e->policy & engine_policy_structure_finding);
-  const int with_los = (e->policy & engine_policy_line_of_sight);
-
-  /* What kind of output are we getting? */
-  enum output_type {
-    output_none,
-    output_snapshot,
-    output_statistics,
-    output_stf,
-    output_los,
-  };
-
-  /* What kind of output do we want? And at which time ?
-   * Find the earliest output (amongst all kinds) that takes place
-   * before the next time-step */
-  enum output_type type = output_none;
-  integertime_t ti_output = max_nr_timesteps;
-  e->stf_this_timestep = 0;
-
-  /* Save some statistics ? */
-  if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
-    if (e->ti_next_stats < ti_output) {
-      ti_output = e->ti_next_stats;
-      type = output_statistics;
-    }
-  }
-
-  /* Do we want a snapshot? */
-  if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0) {
-    if (e->ti_next_snapshot < ti_output) {
-      ti_output = e->ti_next_snapshot;
-      type = output_snapshot;
-    }
-  }
-
-  /* Do we want to perform structure finding? */
-  if (with_stf) {
-    if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) {
-      if (e->ti_next_stf < ti_output) {
-        ti_output = e->ti_next_stf;
-        type = output_stf;
-      }
-    }
-  }
-
-  /* Do we want to write a line of sight file? */
-  if (with_los) {
-    if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
-      if (e->ti_next_los < ti_output) {
-        ti_output = e->ti_next_los;
-        type = output_los;
-      }
-    }
-  }
-
-  /* Store information before attempting extra dump-related drifts */
-  const integertime_t ti_current = e->ti_current;
-  const timebin_t max_active_bin = e->max_active_bin;
-  const double time = e->time;
-
-  while (type != output_none) {
-
-    /* Let's fake that we are at the dump time */
-    e->ti_current = ti_output;
-    e->max_active_bin = 0;
-    if (with_cosmology) {
-      cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-      e->time = e->cosmology->time;
-    } else {
-      e->time = ti_output * e->time_base + e->time_begin;
-    }
-
-    /* Drift everyone */
-    engine_drift_all(e, /*drift_mpole=*/0);
-
-    /* Write some form of output */
-    switch (type) {
-
-      case output_snapshot:
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-        /* Indicate we are allowed to do a brute force calculation now */
-        e->force_checks_snapshot_flag = 1;
-#endif
-
-        /* Do we want a corresponding VELOCIraptor output? */
-        if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
-
-#ifdef HAVE_VELOCIRAPTOR
-          velociraptor_invoke(e, /*linked_with_snap=*/1);
-          e->step_props |= engine_step_prop_stf;
-#else
-          error(
-              "Asking for a VELOCIraptor output but SWIFT was compiled without "
-              "the interface!");
-#endif
-        }
-
-        /* Dump... */
-        engine_dump_snapshot(e);
-
-        /* Free the memory allocated for VELOCIraptor i/o. */
-        if (with_stf && e->snapshot_invoke_stf && e->s->gpart_group_data) {
-#ifdef HAVE_VELOCIRAPTOR
-          swift_free("gpart_group_data", e->s->gpart_group_data);
-          e->s->gpart_group_data = NULL;
-#endif
-        }
-
-        /* ... and find the next output time */
-        engine_compute_next_snapshot_time(e);
-        break;
-
-      case output_statistics:
-
-        /* Dump */
-        engine_print_stats(e);
-
-        /* and move on */
-        engine_compute_next_statistics_time(e);
-
-        break;
-
-      case output_stf:
-
-#ifdef HAVE_VELOCIRAPTOR
-        /* Unleash the raptor! */
-        if (!e->stf_this_timestep) {
-          velociraptor_invoke(e, /*linked_with_snap=*/0);
-          e->step_props |= engine_step_prop_stf;
-        }
-
-        /* ... and find the next output time */
-        engine_compute_next_stf_time(e);
-#else
-        error(
-            "Asking for a VELOCIraptor output but SWIFT was compiled without "
-            "the interface!");
-#endif
-        break;
-
-      case output_los:
-
-        /* Compute the LoS */
-        do_line_of_sight(e);
-
-        /* Move on */
-        engine_compute_next_los_time(e);
-
-        break;
-
-      default:
-        error("Invalid dump type");
-    }
-
-    /* We need to see whether whether we are in the pathological case
-     * where there can be another dump before the next step. */
-
-    type = output_none;
-    ti_output = max_nr_timesteps;
-
-    /* Save some statistics ? */
-    if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
-      if (e->ti_next_stats < ti_output) {
-        ti_output = e->ti_next_stats;
-        type = output_statistics;
-      }
-    }
-
-    /* Do we want a snapshot? */
-    if (e->ti_end_min > e->ti_next_snapshot && e->ti_next_snapshot > 0) {
-      if (e->ti_next_snapshot < ti_output) {
-        ti_output = e->ti_next_snapshot;
-        type = output_snapshot;
-      }
-    }
-
-    /* Do we want to perform structure finding? */
-    if (with_stf) {
-      if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) {
-        if (e->ti_next_stf < ti_output) {
-          ti_output = e->ti_next_stf;
-          type = output_stf;
-        }
-      }
-    }
-
-    /* Do line of sight ? */
-    if (with_los) {
-      if (e->ti_end_min > e->ti_next_los && e->ti_next_los > 0) {
-        if (e->ti_next_los < ti_output) {
-          ti_output = e->ti_next_los;
-          type = output_los;
-        }
-      }
-    }
-
-  } /* While loop over output types */
-
-  /* Restore the information we stored */
-  e->ti_current = ti_current;
-  if (e->policy & engine_policy_cosmology)
-    cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
-  e->max_active_bin = max_active_bin;
-  e->time = time;
-}
-
-/**
- * @brief Check whether an index file has to be written during this
- * step.
- *
- * @param e The #engine.
- */
-void engine_check_for_index_dump(struct engine *e) {
-#ifdef WITH_LOGGER
-  /* Get a few variables */
-  struct logger_writer *log = e->logger;
-  const size_t dump_size = log->dump.count;
-  const size_t old_dump_size = log->index.dump_size_last_output;
-  const float mem_frac = log->index.mem_frac;
-  const size_t total_nr_parts =
-      (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
-       e->total_nr_bparts + e->total_nr_DM_background_gparts);
-  const size_t index_file_size =
-      total_nr_parts * sizeof(struct logger_part_data);
-
-  /* Check if we should write a file */
-  if (mem_frac * (dump_size - old_dump_size) > index_file_size) {
-    /* Write an index file */
-    engine_dump_index(e);
-
-    /* Update the dump size for last output */
-    log->index.dump_size_last_output = dump_size;
-  }
-#else
-  error("This function should not be called without the logger.");
-#endif
-}
-
-/**
- * @brief dump restart files if it is time to do so and dumps are enabled.
- *
- * @param e the engine.
- * @param drifted_all true if a drift_all has just been performed.
- * @param force force a dump, if dumping is enabled.
- */
-void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
-
-  if (e->restart_dump) {
-    ticks tic = getticks();
-
-    /* Dump when the time has arrived, or we are told to. */
-    int dump = ((tic > e->restart_next) || force);
-
-#ifdef WITH_MPI
-    /* Synchronize this action from rank 0 (ticks may differ between
-     * machines). */
-    MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
-#endif
-    if (dump) {
-
-      if (e->nodeID == 0) message("Writing restart files");
-
-      /* Clean out the previous saved files, if found. Do this now as we are
-       * MPI synchronized. */
-      restart_remove_previous(e->restart_file);
-
-      /* Drift all particles first (may have just been done). */
-      if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
-      restart_write(e, e->restart_file);
-
-#ifdef WITH_MPI
-      /* Make sure all ranks finished writing to avoid having incomplete
-       * sets of restart files should the code crash before all the ranks
-       * are done */
-      MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-      if (e->verbose)
-        message("Dumping restart files took %.3f %s",
-                clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-      /* Time after which next dump will occur. */
-      e->restart_next += e->restart_dt;
-
-      /* Flag that we dumped the restarts */
-      e->step_props |= engine_step_prop_restarts;
-    }
-  }
-}
-
-/**
  * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
  */
 int engine_is_done(struct engine *e) {
@@ -3133,278 +2362,6 @@ void engine_reconstruct_multipoles(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-}
-
-/**
- * @brief Create and fill the proxies.
- *
- * @param e The #engine.
- */
-void engine_makeproxies(struct engine *e) {
-
-#ifdef WITH_MPI
-  /* Let's time this */
-  const ticks tic = getticks();
-
-  /* Useful local information */
-  const int nodeID = e->nodeID;
-  const struct space *s = e->s;
-
-  /* Handle on the cells and proxies */
-  struct cell *cells = s->cells_top;
-  struct proxy *proxies = e->proxies;
-
-  /* Some info about the domain */
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int periodic = s->periodic;
-  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-                                cells[0].width[2]};
-
-  /* Get some info about the physics */
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_gravity = (e->policy & engine_policy_self_gravity);
-  const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
-  const double max_mesh_dist = e->mesh->r_cut_max;
-  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-
-  /* Distance between centre of the cell and corners */
-  const double r_diag2 = cell_width[0] * cell_width[0] +
-                         cell_width[1] * cell_width[1] +
-                         cell_width[2] * cell_width[2];
-  const double r_diag = 0.5 * sqrt(r_diag2);
-
-  /* Maximal distance from shifted CoM to any corner */
-  const double r_max = 2 * r_diag;
-
-  /* Prepare the proxies and the proxy index. */
-  if (e->proxy_ind == NULL)
-    if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
-      error("Failed to allocate proxy index.");
-  for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
-  e->nr_proxies = 0;
-
-  /* Compute how many cells away we need to walk */
-  int delta_cells = 1; /*hydro case */
-
-  /* Gravity needs to take the opening angle into account */
-  if (with_gravity) {
-    const double distance = 2. * r_max * theta_crit_inv;
-    delta_cells = (int)(distance / cells[0].dmin) + 1;
-  }
-
-  /* Turn this into upper and lower bounds for loops */
-  int delta_m = delta_cells;
-  int delta_p = delta_cells;
-
-  /* Special case where every cell is in range of every other one */
-  if (delta_cells >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
-    }
-  }
-
-  /* Let's be verbose about this choice */
-  if (e->verbose)
-    message(
-        "Looking for proxies up to %d top-level cells away (delta_m=%d "
-        "delta_p=%d)",
-        delta_cells, delta_m, delta_p);
-
-  /* Loop over each cell in the space. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
-
-        /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k);
-
-        /* Loop over all its neighbours neighbours in range. */
-        for (int ii = -delta_m; ii <= delta_p; ii++) {
-          int iii = i + ii;
-          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + cdim[0]) % cdim[0];
-          for (int jj = -delta_m; jj <= delta_p; jj++) {
-            int jjj = j + jj;
-            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + cdim[1]) % cdim[1];
-            for (int kk = -delta_m; kk <= delta_p; kk++) {
-              int kkk = k + kk;
-              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + cdim[2]) % cdim[2];
-
-              /* Get the cell ID. */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk);
-
-              /* Early abort  */
-              if (cid >= cjd) continue;
-
-              /* Early abort (both same node) */
-              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
-                continue;
-
-              /* Early abort (both foreign node) */
-              if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
-                continue;
-
-              int proxy_type = 0;
-
-              /* In the hydro case, only care about direct neighbours */
-              if (with_hydro) {
-
-                // MATTHIEU: to do: Write a better expression for the
-                // non-periodic case.
-
-                /* This is super-ugly but checks for direct neighbours */
-                /* with periodic BC */
-                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
-                      abs(i - iii + cdim[0]) <= 1) &&
-                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
-                      abs(j - jjj + cdim[1]) <= 1) &&
-                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
-                      abs(k - kkk + cdim[2]) <= 1)))
-                  proxy_type |= (int)proxy_cell_type_hydro;
-              }
-
-              /* In the gravity case, check distances using the MAC. */
-              if (with_gravity) {
-
-                /* First just add the direct neighbours. Then look for
-                   some further out if the opening angle demands it */
-
-                /* This is super-ugly but checks for direct neighbours */
-                /* with periodic BC */
-                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
-                      abs(i - iii + cdim[0]) <= 1) &&
-                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
-                      abs(j - jjj + cdim[1]) <= 1) &&
-                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
-                      abs(k - kkk + cdim[2]) <= 1))) {
-
-                  proxy_type |= (int)proxy_cell_type_gravity;
-                } else {
-
-                  /* We don't have multipoles yet (or their CoMs) so we will
-                     have to cook up something based on cell locations only. We
-                     hence need a lower limit on the distance that the CoMs in
-                     those cells could have and an upper limit on the distance
-                     of the furthest particle in the multipole from its CoM.
-                     We then can decide whether we are too close for an M2L
-                     interaction and hence require a proxy as this pair of cells
-                     cannot rely on just an M2L calculation. */
-
-                  /* Minimal distance between any two points in the cells */
-                  const double min_dist_CoM2 = cell_min_dist2_same_size(
-                      &cells[cid], &cells[cjd], periodic, dim);
-
-                  /* Are we beyond the distance where the truncated forces are 0
-                   * but not too far such that M2L can be used? */
-                  if (periodic) {
-
-                    if ((min_dist_CoM2 < max_mesh_dist2) &&
-                        !(4. * r_max * r_max <
-                          theta_crit * theta_crit * min_dist_CoM2))
-                      proxy_type |= (int)proxy_cell_type_gravity;
-
-                  } else {
-
-                    if (!(4. * r_max * r_max <
-                          theta_crit * theta_crit * min_dist_CoM2)) {
-                      proxy_type |= (int)proxy_cell_type_gravity;
-                    }
-                  }
-                }
-              }
-
-              /* Abort if not in range at all */
-              if (proxy_type == proxy_cell_type_none) continue;
-
-              /* Add to proxies? */
-              if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
-
-                /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cjd].nodeID];
-                if (proxy_id < 0) {
-                  if (e->nr_proxies == engine_maxproxies)
-                    error("Maximum number of proxies exceeded.");
-
-                  /* Ok, start a new proxy for this pair of nodes */
-                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cjd].nodeID);
-
-                  /* Store the information */
-                  e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
-                  proxy_id = e->nr_proxies;
-                  e->nr_proxies += 1;
-
-                  /* Check the maximal proxy limit */
-                  if ((size_t)proxy_id > 8 * sizeof(long long))
-                    error(
-                        "Created more than %zd proxies. cell.mpi.sendto will "
-                        "overflow.",
-                        8 * sizeof(long long));
-                }
-
-                /* Add the cell to the proxy */
-                proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
-                proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
-
-                /* Store info about where to send the cell */
-                cells[cid].mpi.sendto |= (1ULL << proxy_id);
-              }
-
-              /* Same for the symmetric case? */
-              if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
-
-                /* Do we already have a relationship with this node? */
-                int proxy_id = e->proxy_ind[cells[cid].nodeID];
-                if (proxy_id < 0) {
-                  if (e->nr_proxies == engine_maxproxies)
-                    error("Maximum number of proxies exceeded.");
-
-                  /* Ok, start a new proxy for this pair of nodes */
-                  proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                             cells[cid].nodeID);
-
-                  /* Store the information */
-                  e->proxy_ind[cells[cid].nodeID] = e->nr_proxies;
-                  proxy_id = e->nr_proxies;
-                  e->nr_proxies += 1;
-
-                  /* Check the maximal proxy limit */
-                  if ((size_t)proxy_id > 8 * sizeof(long long))
-                    error(
-                        "Created more than %zd proxies. cell.mpi.sendto will "
-                        "overflow.",
-                        8 * sizeof(long long));
-                }
-
-                /* Add the cell to the proxy */
-                proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
-                proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
-
-                /* Store info about where to send the cell */
-                cells[cjd].mpi.sendto |= (1ULL << proxy_id);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /* Be clear about the time */
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
 }
 
 /**
@@ -3600,113 +2557,6 @@ void engine_collect_stars_counter(struct engine *e) {
 
 #endif
 
-/**
- * @brief Writes a snapshot with the current state of the engine
- *
- * @param e The #engine.
- */
-void engine_dump_snapshot(struct engine *e) {
-
-  struct clocks_time time1, time2;
-  clocks_gettime(&time1);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time.
-   * That can include cells that have not
-   * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current, /* check_mpole=*/0);
-
-  /* Be verbose about this */
-  if (e->nodeID == 0) {
-    if (e->policy & engine_policy_cosmology)
-      message("Dumping snapshot at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Dumping snapshot at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-#else
-  if (e->verbose) {
-    if (e->policy & engine_policy_cosmology)
-      message("Dumping snapshot at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Dumping snapshot at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-#endif
-
-#ifdef DEBUG_INTERACTIONS_STARS
-  engine_collect_stars_counter(e);
-#endif
-
-/* Dump (depending on the chosen strategy) ... */
-#if defined(HAVE_HDF5)
-#if defined(WITH_MPI)
-
-  if (e->snapshot_distributed) {
-
-    write_output_distributed(e, e->internal_units, e->snapshot_units, e->nodeID,
-                             e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
-  } else {
-
-#if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(e, e->internal_units, e->snapshot_units, e->nodeID,
-                          e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
-#else
-    write_output_serial(e, e->internal_units, e->snapshot_units, e->nodeID,
-                        e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
-#endif
-  }
-#else
-  write_output_single(e, e->internal_units, e->snapshot_units);
-#endif
-#endif
-
-  /* Flag that we dumped a snapshot */
-  e->step_props |= engine_step_prop_snapshot;
-
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("writing particle properties took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
-}
-
-/**
- * @brief Writes an index file with the current state of the engine
- *
- * @param e The #engine.
- */
-void engine_dump_index(struct engine *e) {
-
-#if defined(WITH_LOGGER)
-  struct clocks_time time1, time2;
-  clocks_gettime(&time1);
-
-  if (e->verbose) {
-    if (e->policy & engine_policy_cosmology)
-      message("Writing index at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Writing index at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-
-  /* Dump... */
-  logger_write_index_file(e->logger, e);
-
-  /* Flag that we dumped a snapshot */
-  e->step_props |= engine_step_prop_logger_index;
-
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("writing particle indices took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
-#else
-  error("SWIFT was not compiled with the logger");
-#endif
-}
-
 #ifdef HAVE_SETAFFINITY
 /**
  * @brief Returns the initial affinity the main thread is using.
@@ -3856,6 +2706,7 @@ static void engine_dumper_init(struct engine *e) {
  * @param gravity The #gravity_props used for this run.
  * @param stars The #stars_props used for this run.
  * @param black_holes The #black_holes_props used for this run.
+ * @param sinks The #sink_props used for this run.
  * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
@@ -3876,6 +2727,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  const struct black_holes_props *black_holes,
+                 const struct sink_props *sinks,
                  struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
@@ -3939,6 +2791,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
       params, "TimeIntegration:max_dt_RMS_factor", 0.25);
+  e->dt_kick_grav_mesh_for_io = 0.f;
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
   e->time_first_statistics =
@@ -3957,6 +2810,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->gravity_properties = gravity;
   e->stars_properties = stars;
   e->black_holes_properties = black_holes;
+  e->sink_properties = sinks;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
@@ -4071,719 +2925,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
   engine_init_output_lists(e, params);
 }
-
-/**
- * @brief configure an engine with the given number of threads, queues
- *        and core affinity. Also initialises the scheduler and opens various
- *        output files, computes the next timestep and initialises the
- *        threadpool.
- *
- * Assumes the engine is correctly initialised i.e. is restored from a restart
- * file or has been setup by engine_init(). When restarting any output log
- * files are positioned so that further output is appended. Note that
- * parameters are not read from the engine, just the parameter file, this
- * allows values derived in this function to be changed between runs.
- * When not restarting params should be the same as given to engine_init().
- *
- * @param restart true when restarting the application.
- * @param fof true when starting a stand-alone FOF call.
- * @param e The #engine.
- * @param params The parsed parameter file.
- * @param nr_nodes The number of MPI ranks.
- * @param nodeID The MPI rank of this node.
- * @param nr_threads The number of threads per MPI rank.
- * @param with_aff use processor affinity, if supported.
- * @param verbose Is this #engine talkative ?
- * @param restart_file The name of our restart file.
- */
-void engine_config(int restart, int fof, struct engine *e,
-                   struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
-                   const char *restart_file) {
-
-  /* Store the values and initialise global fields. */
-  e->nodeID = nodeID;
-  e->nr_threads = nr_threads;
-  e->nr_nodes = nr_nodes;
-  e->proxy_ind = NULL;
-  e->nr_proxies = 0;
-  e->forcerebuild = 1;
-  e->forcerepart = 0;
-  e->restarting = restart;
-  e->step_props = engine_step_prop_none;
-  e->links = NULL;
-  e->nr_links = 0;
-  e->file_stats = NULL;
-  e->file_timesteps = NULL;
-  e->sfh_logger = NULL;
-  e->verbose = verbose;
-  e->wallclock_time = 0.f;
-  e->restart_dump = 0;
-  e->restart_file = restart_file;
-  e->restart_next = 0;
-  e->restart_dt = 0;
-  e->run_fof = 0;
-  engine_rank = nodeID;
-
-  if (restart && fof) {
-    error(
-        "Can't configure the engine to be a stand-alone FOF and restarting "
-        "from a check-point at the same time!");
-  }
-
-  /* Welcome message */
-  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
-
-  /* Get the number of queues */
-  int nr_queues =
-      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
-  if (nr_queues <= 0) nr_queues = e->nr_threads;
-  if (nr_queues != nr_threads)
-    message("Number of task queues set to %d", nr_queues);
-  e->s->nr_queues = nr_queues;
-
-/* Deal with affinity. For now, just figure out the number of cores. */
-#if defined(HAVE_SETAFFINITY)
-  const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  cpu_set_t *entry_affinity = engine_entry_affinity();
-  const int nr_affinity_cores = CPU_COUNT(entry_affinity);
-
-  if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
-    error("must allocate dynamic cpu_set_t (too many cores per node)");
-
-  if (verbose && with_aff) {
-    char *buf = (char *)malloc((nr_cores + 1) * sizeof(char));
-    buf[nr_cores] = '\0';
-    for (int j = 0; j < nr_cores; ++j) {
-      /* Reversed bit order from convention, but same as e.g. Intel MPI's
-       * I_MPI_PIN_DOMAIN explicit mask: left-to-right, LSB-to-MSB. */
-      buf[j] = CPU_ISSET(j, entry_affinity) ? '1' : '0';
-    }
-    message("Affinity at entry: %s", buf);
-    free(buf);
-  }
-
-  int *cpuid = NULL;
-  cpu_set_t cpuset;
-
-  if (with_aff) {
-
-    cpuid = (int *)malloc(nr_affinity_cores * sizeof(int));
-
-    int skip = 0;
-    for (int k = 0; k < nr_affinity_cores; k++) {
-      int c;
-      for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
-        ;
-      cpuid[k] = c;
-      skip = c + 1;
-    }
-
-#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-    if ((e->policy & engine_policy_cputight) != engine_policy_cputight) {
-
-      if (numa_available() >= 0) {
-        if (nodeID == 0) message("prefer NUMA-distant CPUs");
-
-        /* Get list of numa nodes of all available cores. */
-        int *nodes = (int *)malloc(nr_affinity_cores * sizeof(int));
-        int nnodes = 0;
-        for (int i = 0; i < nr_affinity_cores; i++) {
-          nodes[i] = numa_node_of_cpu(cpuid[i]);
-          if (nodes[i] > nnodes) nnodes = nodes[i];
-        }
-        nnodes += 1;
-
-        /* Count cores per node. */
-        int *core_counts = (int *)malloc(nnodes * sizeof(int));
-        for (int i = 0; i < nr_affinity_cores; i++) {
-          core_counts[nodes[i]] = 0;
-        }
-        for (int i = 0; i < nr_affinity_cores; i++) {
-          core_counts[nodes[i]] += 1;
-        }
-
-        /* Index cores within each node. */
-        int *core_indices = (int *)malloc(nr_affinity_cores * sizeof(int));
-        for (int i = nr_affinity_cores - 1; i >= 0; i--) {
-          core_indices[i] = core_counts[nodes[i]];
-          core_counts[nodes[i]] -= 1;
-        }
-
-        /* Now sort so that we pick adjacent cpuids from different nodes
-         * by sorting internal node core indices. */
-        int done = 0;
-        while (!done) {
-          done = 1;
-          for (int i = 1; i < nr_affinity_cores; i++) {
-            if (core_indices[i] < core_indices[i - 1]) {
-              int t = cpuid[i - 1];
-              cpuid[i - 1] = cpuid[i];
-              cpuid[i] = t;
-
-              t = core_indices[i - 1];
-              core_indices[i - 1] = core_indices[i];
-              core_indices[i] = t;
-              done = 0;
-            }
-          }
-        }
-
-        free(nodes);
-        free(core_counts);
-        free(core_indices);
-      }
-    }
-#endif
-  } else {
-    if (nodeID == 0) message("no processor affinity used");
-
-  } /* with_aff */
-
-  /* Avoid (unexpected) interference between engine and runner threads. We can
-   * do this once we've made at least one call to engine_entry_affinity and
-   * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
-   * pinned. */
-  if (with_aff) engine_unpin();
-#endif
-
-  if (with_aff && nodeID == 0) {
-#ifdef HAVE_SETAFFINITY
-#ifdef WITH_MPI
-    printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
-           clocks_get_timesincestart());
-#else
-    printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
-#endif
-    for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
-    printf("].\n");
-#endif
-  }
-
-  /* Are we doing stuff in parallel? */
-  if (nr_nodes > 1) {
-#ifndef WITH_MPI
-    error("SWIFT was not compiled with MPI support.");
-#else
-    e->policy |= engine_policy_mpi;
-    if ((e->proxies = (struct proxy *)calloc(sizeof(struct proxy),
-                                             engine_maxproxies)) == NULL)
-      error("Failed to allocate memory for proxies.");
-    e->nr_proxies = 0;
-
-    /* Use synchronous MPI sends and receives when redistributing. */
-    e->syncredist =
-        parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
-
-#endif
-  }
-
-  /* Open some global files */
-  if (!fof && e->nodeID == 0) {
-
-    /* When restarting append to these files. */
-    const char *mode;
-    if (restart)
-      mode = "a";
-    else
-      mode = "w";
-
-    char energyfileName[200] = "";
-    parser_get_opt_param_string(params, "Statistics:energy_file_name",
-                                energyfileName,
-                                engine_default_energy_file_name);
-    sprintf(energyfileName + strlen(energyfileName), ".txt");
-    e->file_stats = fopen(energyfileName, mode);
-
-    if (!restart) {
-      fprintf(
-          e->file_stats,
-          "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-          "%14s %14s %14s %14s %14s %14s\n",
-          "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self",
-          "E_pot_ext", "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x",
-          "ang_y", "ang_z", "com_x", "com_y", "com_z");
-      fflush(e->file_stats);
-    }
-
-    char timestepsfileName[200] = "";
-    parser_get_opt_param_string(params, "Statistics:timestep_file_name",
-                                timestepsfileName,
-                                engine_default_timesteps_file_name);
-
-    sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
-            nr_nodes * nr_threads);
-    e->file_timesteps = fopen(timestepsfileName, mode);
-
-    if (!restart) {
-      fprintf(
-          e->file_timesteps,
-          "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
-          "Version: %s \n# "
-          "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
-          "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
-          "+/- %.4f\n# Eta: %f\n# Config: %s\n# CFLAGS: %s\n",
-          hostname(), git_branch(), git_revision(), compiler_name(),
-          compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
-          kernel_name, e->hydro_properties->target_neighbours,
-          e->hydro_properties->delta_neighbours,
-          e->hydro_properties->eta_neighbours, configuration_options(),
-          compilation_cflags());
-
-      fprintf(
-          e->file_timesteps,
-          "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, logger=%d\n",
-          engine_step_prop_rebuild, engine_step_prop_redistribute,
-          engine_step_prop_repartition, engine_step_prop_statistics,
-          engine_step_prop_snapshot, engine_step_prop_restarts,
-          engine_step_prop_stf, engine_step_prop_fof,
-          engine_step_prop_logger_index);
-
-      fprintf(e->file_timesteps,
-              "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s\n",
-              "Step", "Time", "Scale-factor", "Redshift", "Time-step",
-              "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
-              "b-Updates", "Wall-clock time", clocks_getunit(), "Props");
-      fflush(e->file_timesteps);
-    }
-
-    /* Initialize the SFH logger if running with star formation */
-    if (e->policy & engine_policy_star_formation) {
-      e->sfh_logger = fopen("SFR.txt", mode);
-      if (!restart) {
-        star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
-                                            e->physical_constants);
-        fflush(e->sfh_logger);
-      }
-    }
-  }
-
-  /* Print policy */
-  engine_print_policy(e);
-
-  if (!fof) {
-
-    /* Print information about the hydro scheme */
-    if (e->policy & engine_policy_hydro) {
-      if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
-      if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
-    }
-
-    /* Print information about the gravity scheme */
-    if (e->policy & engine_policy_self_gravity)
-      if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
-
-    if (e->policy & engine_policy_stars)
-      if (e->nodeID == 0) stars_props_print(e->stars_properties);
-
-    /* Check we have sensible time bounds */
-    if (e->time_begin >= e->time_end)
-      error(
-          "Final simulation time (t_end = %e) must be larger than the start "
-          "time (t_beg = %e)",
-          e->time_end, e->time_begin);
-
-    /* Check we don't have inappropriate time labels */
-    if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
-      error("Snapshot integer time labels enabled but end time <= 1");
-
-    /* Check we have sensible time-step values */
-    if (e->dt_min > e->dt_max)
-      error(
-          "Minimal time-step size (%e) must be smaller than maximal time-step "
-          "size (%e)",
-          e->dt_min, e->dt_max);
-
-    /* Info about time-steps */
-    if (e->nodeID == 0) {
-      message("Absolute minimal timestep size: %e", e->time_base);
-
-      float dt_min = e->time_end - e->time_begin;
-      while (dt_min > e->dt_min) dt_min /= 2.f;
-
-      message("Minimal timestep size (on time-line): %e", dt_min);
-
-      float dt_max = e->time_end - e->time_begin;
-      while (dt_max > e->dt_max) dt_max /= 2.f;
-
-      message("Maximal timestep size (on time-line): %e", dt_max);
-    }
-
-    if (e->dt_min < e->time_base && e->nodeID == 0)
-      error(
-          "Minimal time-step size smaller than the absolute possible minimum "
-          "dt=%e",
-          e->time_base);
-
-    if (!(e->policy & engine_policy_cosmology))
-      if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
-        error("Maximal time-step size larger than the simulation run time t=%e",
-              e->time_end - e->time_begin);
-
-    /* Deal with outputs */
-    if (e->policy & engine_policy_cosmology) {
-
-      if (e->delta_time_snapshot <= 1.)
-        error("Time between snapshots (%e) must be > 1.",
-              e->delta_time_snapshot);
-
-      if (e->delta_time_statistics <= 1.)
-        error("Time between statistics (%e) must be > 1.",
-              e->delta_time_statistics);
-
-      if (e->a_first_snapshot < e->cosmology->a_begin)
-        error(
-            "Scale-factor of first snapshot (%e) must be after the simulation "
-            "start a=%e.",
-            e->a_first_snapshot, e->cosmology->a_begin);
-
-      if (e->a_first_statistics < e->cosmology->a_begin)
-        error(
-            "Scale-factor of first stats output (%e) must be after the "
-            "simulation start a=%e.",
-            e->a_first_statistics, e->cosmology->a_begin);
-
-      if (e->policy & engine_policy_structure_finding) {
-
-        if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
-          error("A value for `StructureFinding:delta_time` must be specified");
-
-        if (e->a_first_stf_output < e->cosmology->a_begin)
-          error(
-              "Scale-factor of first stf output (%e) must be after the "
-              "simulation start a=%e.",
-              e->a_first_stf_output, e->cosmology->a_begin);
-      }
-
-      if (e->policy & engine_policy_fof) {
-
-        if (e->delta_time_fof <= 1.)
-          error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
-
-        if (e->a_first_fof_call < e->cosmology->a_begin)
-          error(
-              "Scale-factor of first fof call (%e) must be after the "
-              "simulation start a=%e.",
-              e->a_first_fof_call, e->cosmology->a_begin);
-      }
-
-    } else {
-
-      if (e->delta_time_snapshot <= 0.)
-        error("Time between snapshots (%e) must be positive.",
-              e->delta_time_snapshot);
-
-      if (e->delta_time_statistics <= 0.)
-        error("Time between statistics (%e) must be positive.",
-              e->delta_time_statistics);
-
-      /* Find the time of the first output */
-      if (e->time_first_snapshot < e->time_begin)
-        error(
-            "Time of first snapshot (%e) must be after the simulation start "
-            "t=%e.",
-            e->time_first_snapshot, e->time_begin);
-
-      if (e->time_first_statistics < e->time_begin)
-        error(
-            "Time of first stats output (%e) must be after the simulation "
-            "start t=%e.",
-            e->time_first_statistics, e->time_begin);
-
-      if (e->policy & engine_policy_structure_finding) {
-
-        if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
-          error("A value for `StructureFinding:delta_time` must be specified");
-
-        if (e->delta_time_stf <= 0. && e->delta_time_stf != -1.)
-          error("Time between STF (%e) must be positive.", e->delta_time_stf);
-
-        if (e->time_first_stf_output < e->time_begin)
-          error(
-              "Time of first STF (%e) must be after the simulation start t=%e.",
-              e->time_first_stf_output, e->time_begin);
-      }
-    }
-
-    /* Try to ensure the snapshot directory exists */
-    if (e->nodeID == 0) io_make_snapshot_subdir(e->snapshot_subdir);
-
-    /* Get the total mass */
-    e->total_mass = 0.;
-    for (size_t i = 0; i < e->s->nr_gparts; ++i)
-      e->total_mass += e->s->gparts[i].mass;
-
-/* Reduce the total mass */
-#ifdef WITH_MPI
-    MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                  MPI_COMM_WORLD);
-#endif
-
-#if defined(WITH_LOGGER)
-    if ((e->policy & engine_policy_logger) && e->nodeID == 0)
-      message(
-          "WARNING: There is currently no way of predicting the output "
-          "size, please use it carefully");
-#endif
-
-    /* Find the time of the first snapshot output */
-    engine_compute_next_snapshot_time(e);
-
-    /* Find the time of the first statistics output */
-    engine_compute_next_statistics_time(e);
-
-    /* Find the time of the first line of sight output */
-    if (e->policy & engine_policy_line_of_sight) {
-      engine_compute_next_los_time(e);
-    }
-
-    /* Find the time of the first stf output */
-    if (e->policy & engine_policy_structure_finding) {
-      engine_compute_next_stf_time(e);
-    }
-
-    /* Find the time of the first stf output */
-    if (e->policy & engine_policy_fof) {
-      engine_compute_next_fof_time(e);
-    }
-
-    /* Check that the snapshot naming policy is valid */
-    if (e->snapshot_invoke_stf && e->snapshot_int_time_label_on)
-      error(
-          "Cannot use snapshot time labels and VELOCIraptor invocations "
-          "together!");
-
-    /* Check that we are invoking VELOCIraptor only if we have it */
-    if (e->snapshot_invoke_stf &&
-        !(e->policy & engine_policy_structure_finding)) {
-      error(
-          "Invoking VELOCIraptor after snapshots but structure finding wasn't "
-          "activated at runtime (Use --velociraptor).");
-    }
-
-    /* Whether restarts are enabled. Yes by default. Can be changed on restart.
-     */
-    e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
-
-    /* Whether to save backup copies of the previous restart files. */
-    e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
-
-    /* Whether restarts should be dumped on exit. Not by default. Can be changed
-     * on restart. */
-    e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
-
-    /* Hours between restart dumps. Can be changed on restart. */
-    float dhours =
-        parser_get_opt_param_float(params, "Restarts:delta_hours", 5.0f);
-    if (e->nodeID == 0) {
-      if (e->restart_dump)
-        message("Restarts will be dumped every %f hours", dhours);
-      else
-        message("WARNING: restarts will not be dumped");
-
-      if (e->verbose && e->restart_onexit)
-        message("Restarts will be dumped after the final step");
-    }
-
-    /* Internally we use ticks, so convert into a delta ticks. Assumes we can
-     * convert from ticks into milliseconds. */
-    e->restart_dt = clocks_to_ticks(dhours * 60.0 * 60.0 * 1000.0);
-
-    /* The first dump will happen no sooner than restart_dt ticks in the
-     * future. */
-    e->restart_next = getticks() + e->restart_dt;
-  }
-
-/* Construct types for MPI communications */
-#ifdef WITH_MPI
-  part_create_mpi_types();
-  multipole_create_mpi_types();
-  stats_create_mpi_type();
-  proxy_create_mpi_type();
-  task_create_mpi_comms();
-#ifdef WITH_FOF
-  fof_create_mpi_types();
-#endif /* WITH_FOF */
-#endif /* WITH_MPI */
-
-  if (!fof) {
-
-    /* Initialise the collection group. */
-    collectgroup_init();
-  }
-
-  /* Initialize the threadpool. */
-  threadpool_init(&e->threadpool, e->nr_threads);
-
-  /* First of all, init the barrier and lock it. */
-  if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
-      swift_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)
-    error("Failed to initialize barrier.");
-
-  /* Expected average for tasks per cell. If set to zero we use a heuristic
-   * guess based on the numbers of cells and how many tasks per cell we expect.
-   * On restart this number cannot be estimated (no cells yet), so we recover
-   * from the end of the dumped run. Can be changed on restart. */
-  e->tasks_per_cell =
-      parser_get_opt_param_float(params, "Scheduler:tasks_per_cell", 0.0);
-  e->tasks_per_cell_max = 0.0f;
-
-  float maxtasks = 0;
-  if (restart)
-    maxtasks = e->restart_max_tasks;
-  else
-    maxtasks = engine_estimate_nr_tasks(e);
-
-  /* Estimated number of links per tasks */
-  e->links_per_tasks =
-      parser_get_opt_param_float(params, "Scheduler:links_per_tasks", 25.);
-
-  /* Init the scheduler. */
-  scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
-                 (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
-
-  /* Maximum size of MPI task messages, in KB, that should not be buffered,
-   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
-   * changed on restart.
-   */
-  e->sched.mpi_message_limit =
-      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
-
-  if (restart) {
-
-    /* Overwrite the constants for the scheduler */
-    space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
-                                             space_maxsize);
-    space_subsize_pair_hydro = parser_get_opt_param_int(
-        params, "Scheduler:cell_sub_size_pair_hydro", space_subsize_pair_hydro);
-    space_subsize_self_hydro = parser_get_opt_param_int(
-        params, "Scheduler:cell_sub_size_self_hydro", space_subsize_self_hydro);
-    space_subsize_pair_stars = parser_get_opt_param_int(
-        params, "Scheduler:cell_sub_size_pair_stars", space_subsize_pair_stars);
-    space_subsize_self_stars = parser_get_opt_param_int(
-        params, "Scheduler:cell_sub_size_self_stars", space_subsize_self_stars);
-    space_subsize_pair_grav = parser_get_opt_param_int(
-        params, "Scheduler:cell_sub_size_pair_grav", space_subsize_pair_grav);
-    space_subsize_self_grav = parser_get_opt_param_int(
-        params, "Scheduler:cell_sub_size_self_grav", space_subsize_self_grav);
-    space_splitsize = parser_get_opt_param_int(
-        params, "Scheduler:cell_split_size", space_splitsize);
-    space_subdepth_diff_grav =
-        parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
-                                 space_subdepth_diff_grav_default);
-    space_extra_parts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_parts", space_extra_parts);
-    space_extra_sparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_sparts", space_extra_sparts);
-    space_extra_gparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_gparts", space_extra_gparts);
-    space_extra_bparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_bparts", space_extra_bparts);
-
-    engine_max_parts_per_ghost =
-        parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
-                                 engine_max_parts_per_ghost_default);
-    engine_max_sparts_per_ghost = parser_get_opt_param_int(
-        params, "Scheduler:engine_max_sparts_per_ghost",
-        engine_max_sparts_per_ghost_default);
-  }
-
-  /* Allocate and init the threads. */
-  if (swift_memalign("runners", (void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
-                     e->nr_threads * sizeof(struct runner)) != 0)
-    error("Failed to allocate threads array.");
-
-  for (int k = 0; k < e->nr_threads; k++) {
-    e->runners[k].id = k;
-    e->runners[k].e = e;
-    if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
-                       &e->runners[k]) != 0)
-      error("Failed to create runner thread.");
-
-    /* Try to pin the runner to a given core */
-    if (with_aff &&
-        (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
-#if defined(HAVE_SETAFFINITY)
-
-      /* Set a reasonable queue ID. */
-      int coreid = k % nr_affinity_cores;
-      e->runners[k].cpuid = cpuid[coreid];
-
-      if (nr_queues < e->nr_threads)
-        e->runners[k].qid = cpuid[coreid] * nr_queues / nr_affinity_cores;
-      else
-        e->runners[k].qid = k;
-
-      /* Set the cpu mask to zero | e->id. */
-      CPU_ZERO(&cpuset);
-      CPU_SET(cpuid[coreid], &cpuset);
-
-      /* Apply this mask to the runner's pthread. */
-      if (pthread_setaffinity_np(e->runners[k].thread, sizeof(cpu_set_t),
-                                 &cpuset) != 0)
-        error("Failed to set thread affinity.");
-
-#else
-      error("SWIFT was not compiled with affinity enabled.");
-#endif
-    } else {
-      e->runners[k].cpuid = k;
-      e->runners[k].qid = k * nr_queues / e->nr_threads;
-    }
-
-    /* Allocate particle caches. */
-    e->runners[k].ci_gravity_cache.count = 0;
-    e->runners[k].cj_gravity_cache.count = 0;
-    gravity_cache_init(&e->runners[k].ci_gravity_cache, space_splitsize);
-    gravity_cache_init(&e->runners[k].cj_gravity_cache, space_splitsize);
-#ifdef WITH_VECTORIZATION
-    e->runners[k].ci_cache.count = 0;
-    e->runners[k].cj_cache.count = 0;
-    cache_init(&e->runners[k].ci_cache, CACHE_SIZE);
-    cache_init(&e->runners[k].cj_cache, CACHE_SIZE);
-#endif
-
-    if (verbose) {
-      if (with_aff)
-        message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
-                e->runners[k].cpuid, e->runners[k].qid);
-      else
-        message("runner %i using qid=%i no cpuid.", e->runners[k].id,
-                e->runners[k].qid);
-    }
-  }
-
-#ifdef WITH_LOGGER
-  if ((e->policy & engine_policy_logger) && !restart) {
-    /* Write the particle logger header */
-    logger_write_file_header(e->logger);
-  }
-#endif
-
-  /* Initialise the structure finder */
-#ifdef HAVE_VELOCIRAPTOR
-  if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
-#endif
-
-    /* Free the affinity stuff */
-#if defined(HAVE_SETAFFINITY)
-  if (with_aff) {
-    free(cpuid);
-  }
-#endif
-
-#ifdef SWIFT_DUMPER_THREAD
-
-  /* Start the dumper thread.*/
-  engine_dumper_init(e);
-#endif
-
-  /* Wait for the runner threads to be in place. */
-  swift_barrier_wait(&e->wait_barrier);
-}
-
 /**
  * @brief Prints the current policy of an engine
  *
@@ -4811,406 +2952,6 @@ void engine_print_policy(struct engine *e) {
 }
 
 /**
- * @brief Computes the next time (on the time line) for a dump
- *
- * @param e The #engine.
- */
-void engine_compute_next_snapshot_time(struct engine *e) {
-
-  /* Do output_list file case */
-  if (e->output_list_snapshots) {
-    output_list_read_next_time(e->output_list_snapshots, e, "snapshots",
-                               &e->ti_next_snapshot);
-    return;
-  }
-
-  /* Find upper-bound on last output */
-  double time_end;
-  if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->delta_time_snapshot;
-  else
-    time_end = e->time_end + e->delta_time_snapshot;
-
-  /* Find next snasphot above current time */
-  double time;
-  if (e->policy & engine_policy_cosmology)
-    time = e->a_first_snapshot;
-  else
-    time = e->time_first_snapshot;
-
-  int found_snapshot_time = 0;
-  while (time < time_end) {
-
-    /* Output time on the integer timeline */
-    if (e->policy & engine_policy_cosmology)
-      e->ti_next_snapshot = log(time / e->cosmology->a_begin) / e->time_base;
-    else
-      e->ti_next_snapshot = (time - e->time_begin) / e->time_base;
-
-    /* Found it? */
-    if (e->ti_next_snapshot > e->ti_current) {
-      found_snapshot_time = 1;
-      break;
-    }
-
-    if (e->policy & engine_policy_cosmology)
-      time *= e->delta_time_snapshot;
-    else
-      time += e->delta_time_snapshot;
-  }
-
-  /* Deal with last snapshot */
-  if (!found_snapshot_time) {
-    e->ti_next_snapshot = -1;
-    if (e->verbose) message("No further output time.");
-  } else {
-
-    /* Be nice, talk... */
-    if (e->policy & engine_policy_cosmology) {
-      const double next_snapshot_time =
-          exp(e->ti_next_snapshot * e->time_base) * e->cosmology->a_begin;
-      if (e->verbose)
-        message("Next snapshot time set to a=%e.", next_snapshot_time);
-    } else {
-      const double next_snapshot_time =
-          e->ti_next_snapshot * e->time_base + e->time_begin;
-      if (e->verbose)
-        message("Next snapshot time set to t=%e.", next_snapshot_time);
-    }
-  }
-}
-
-/**
- * @brief Computes the next time (on the time line) for a statistics dump
- *
- * @param e The #engine.
- */
-void engine_compute_next_statistics_time(struct engine *e) {
-  /* Do output_list file case */
-  if (e->output_list_stats) {
-    output_list_read_next_time(e->output_list_stats, e, "stats",
-                               &e->ti_next_stats);
-    return;
-  }
-
-  /* Find upper-bound on last output */
-  double time_end;
-  if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->delta_time_statistics;
-  else
-    time_end = e->time_end + e->delta_time_statistics;
-
-  /* Find next snasphot above current time */
-  double time;
-  if (e->policy & engine_policy_cosmology)
-    time = e->a_first_statistics;
-  else
-    time = e->time_first_statistics;
-
-  int found_stats_time = 0;
-  while (time < time_end) {
-
-    /* Output time on the integer timeline */
-    if (e->policy & engine_policy_cosmology)
-      e->ti_next_stats = log(time / e->cosmology->a_begin) / e->time_base;
-    else
-      e->ti_next_stats = (time - e->time_begin) / e->time_base;
-
-    /* Found it? */
-    if (e->ti_next_stats > e->ti_current) {
-      found_stats_time = 1;
-      break;
-    }
-
-    if (e->policy & engine_policy_cosmology)
-      time *= e->delta_time_statistics;
-    else
-      time += e->delta_time_statistics;
-  }
-
-  /* Deal with last statistics */
-  if (!found_stats_time) {
-    e->ti_next_stats = -1;
-    if (e->verbose) message("No further output time.");
-  } else {
-
-    /* Be nice, talk... */
-    if (e->policy & engine_policy_cosmology) {
-      const double next_statistics_time =
-          exp(e->ti_next_stats * e->time_base) * e->cosmology->a_begin;
-      if (e->verbose)
-        message("Next output time for stats set to a=%e.",
-                next_statistics_time);
-    } else {
-      const double next_statistics_time =
-          e->ti_next_stats * e->time_base + e->time_begin;
-      if (e->verbose)
-        message("Next output time for stats set to t=%e.",
-                next_statistics_time);
-    }
-  }
-}
-
-/**
- * @brief Computes the next time (on the time line) for a line of sight dump
- *
- * @param e The #engine.
- */
-void engine_compute_next_los_time(struct engine *e) {
-  /* Do output_list file case */
-  if (e->output_list_los) {
-    output_list_read_next_time(e->output_list_los, e, "line of sights",
-                               &e->ti_next_los);
-    return;
-  }
-
-  /* Find upper-bound on last output */
-  double time_end;
-  if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->delta_time_los;
-  else
-    time_end = e->time_end + e->delta_time_los;
-
-  /* Find next los above current time */
-  double time;
-  if (e->policy & engine_policy_cosmology)
-    time = e->a_first_los;
-  else
-    time = e->time_first_los;
-
-  int found_los_time = 0;
-  while (time < time_end) {
-
-    /* Output time on the integer timeline */
-    if (e->policy & engine_policy_cosmology)
-      e->ti_next_los = log(time / e->cosmology->a_begin) / e->time_base;
-    else
-      e->ti_next_los = (time - e->time_begin) / e->time_base;
-
-    /* Found it? */
-    if (e->ti_next_los > e->ti_current) {
-      found_los_time = 1;
-      break;
-    }
-
-    if (e->policy & engine_policy_cosmology)
-      time *= e->delta_time_los;
-    else
-      time += e->delta_time_los;
-  }
-
-  /* Deal with last line of sight */
-  if (!found_los_time) {
-    e->ti_next_los = -1;
-    if (e->verbose) message("No further LOS output time.");
-  } else {
-
-    /* Be nice, talk... */
-    if (e->policy & engine_policy_cosmology) {
-      const double next_los_time =
-          exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
-      if (e->verbose)
-        message("Next output time for line of sight set to a=%e.",
-                next_los_time);
-    } else {
-      const double next_los_time =
-          e->ti_next_los * e->time_base + e->time_begin;
-      if (e->verbose)
-        message("Next output time for line of sight set to t=%e.",
-                next_los_time);
-    }
-  }
-}
-
-/**
- * @brief Computes the next time (on the time line) for structure finding
- *
- * @param e The #engine.
- */
-void engine_compute_next_stf_time(struct engine *e) {
-  /* Do output_list file case */
-  if (e->output_list_stf) {
-    output_list_read_next_time(e->output_list_stf, e, "stf", &e->ti_next_stf);
-    return;
-  }
-
-  /* Find upper-bound on last output */
-  double time_end;
-  if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->delta_time_stf;
-  else
-    time_end = e->time_end + e->delta_time_stf;
-
-  /* Find next snasphot above current time */
-  double time;
-  if (e->policy & engine_policy_cosmology)
-    time = e->a_first_stf_output;
-  else
-    time = e->time_first_stf_output;
-
-  int found_stf_time = 0;
-  while (time < time_end) {
-
-    /* Output time on the integer timeline */
-    if (e->policy & engine_policy_cosmology)
-      e->ti_next_stf = log(time / e->cosmology->a_begin) / e->time_base;
-    else
-      e->ti_next_stf = (time - e->time_begin) / e->time_base;
-
-    /* Found it? */
-    if (e->ti_next_stf > e->ti_current) {
-      found_stf_time = 1;
-      break;
-    }
-
-    if (e->policy & engine_policy_cosmology)
-      time *= e->delta_time_stf;
-    else
-      time += e->delta_time_stf;
-  }
-
-  /* Deal with last snapshot */
-  if (!found_stf_time) {
-    e->ti_next_stf = -1;
-    if (e->verbose) message("No further output time.");
-  } else {
-
-    /* Be nice, talk... */
-    if (e->policy & engine_policy_cosmology) {
-      const float next_stf_time =
-          exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
-      if (e->verbose)
-        message("Next VELOCIraptor time set to a=%e.", next_stf_time);
-    } else {
-      const float next_stf_time = e->ti_next_stf * e->time_base + e->time_begin;
-      if (e->verbose)
-        message("Next VELOCIraptor time set to t=%e.", next_stf_time);
-    }
-  }
-}
-
-/**
- * @brief Computes the next time (on the time line) for FoF black holes seeding
- *
- * @param e The #engine.
- */
-void engine_compute_next_fof_time(struct engine *e) {
-
-  /* Find upper-bound on last output */
-  double time_end;
-  if (e->policy & engine_policy_cosmology)
-    time_end = e->cosmology->a_end * e->delta_time_fof;
-  else
-    time_end = e->time_end + e->delta_time_fof;
-
-  /* Find next snasphot above current time */
-  double time;
-  if (e->policy & engine_policy_cosmology)
-    time = e->a_first_fof_call;
-  else
-    time = e->time_first_fof_call;
-
-  int found_fof_time = 0;
-  while (time < time_end) {
-
-    /* Output time on the integer timeline */
-    if (e->policy & engine_policy_cosmology)
-      e->ti_next_fof = log(time / e->cosmology->a_begin) / e->time_base;
-    else
-      e->ti_next_fof = (time - e->time_begin) / e->time_base;
-
-    /* Found it? */
-    if (e->ti_next_fof > e->ti_current) {
-      found_fof_time = 1;
-      break;
-    }
-
-    if (e->policy & engine_policy_cosmology)
-      time *= e->delta_time_fof;
-    else
-      time += e->delta_time_fof;
-  }
-
-  /* Deal with last snapshot */
-  if (!found_fof_time) {
-    e->ti_next_fof = -1;
-    if (e->verbose) message("No further FoF time.");
-  } else {
-
-    /* Be nice, talk... */
-    if (e->policy & engine_policy_cosmology) {
-      const float next_fof_time =
-          exp(e->ti_next_fof * e->time_base) * e->cosmology->a_begin;
-      // if (e->verbose)
-      message("Next FoF time set to a=%e.", next_fof_time);
-    } else {
-      const float next_fof_time = e->ti_next_fof * e->time_base + e->time_begin;
-      if (e->verbose) message("Next FoF time set to t=%e.", next_fof_time);
-    }
-  }
-}
-
-/**
- * @brief Initialize all the output_list required by the engine
- *
- * @param e The #engine.
- * @param params The #swift_params.
- */
-void engine_init_output_lists(struct engine *e, struct swift_params *params) {
-  /* Deal with snapshots */
-  double snaps_time_first;
-  e->output_list_snapshots = NULL;
-  output_list_init(&e->output_list_snapshots, e, "Snapshots",
-                   &e->delta_time_snapshot, &snaps_time_first);
-
-  if (e->output_list_snapshots) {
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_snapshot = snaps_time_first;
-    else
-      e->time_first_snapshot = snaps_time_first;
-  }
-
-  /* Deal with stats */
-  double stats_time_first;
-  e->output_list_stats = NULL;
-  output_list_init(&e->output_list_stats, e, "Statistics",
-                   &e->delta_time_statistics, &stats_time_first);
-
-  if (e->output_list_stats) {
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_statistics = stats_time_first;
-    else
-      e->time_first_statistics = stats_time_first;
-  }
-
-  /* Deal with stf */
-  double stf_time_first;
-  e->output_list_stf = NULL;
-  output_list_init(&e->output_list_stf, e, "StructureFinding",
-                   &e->delta_time_stf, &stf_time_first);
-
-  if (e->output_list_stf) {
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_stf_output = stf_time_first;
-    else
-      e->time_first_stf_output = stf_time_first;
-  }
-
-  /* Deal with line of sight */
-  double los_time_first;
-  e->output_list_los = NULL;
-  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los,
-                   &los_time_first);
-
-  if (e->output_list_los) {
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_los = los_time_first;
-    else
-      e->time_first_los = los_time_first;
-  }
-}
-
-/**
  * @brief Computes the maximal time-step allowed by the max RMS displacement
  * condition.
  *
@@ -5221,6 +2962,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const ticks tic = getticks();
 
   /* Get the cosmological information */
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float Om = cosmo->Omega_m;
   const float Ob = cosmo->Omega_b;
@@ -5229,113 +2971,160 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const float G_newton = e->physical_constants->const_newton_G;
   const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
-  /* Start by reducing the minimal mass of each particle type */
-  float min_mass[swift_type_count] = {
-      e->s->min_part_mass, e->s->min_gpart_mass, FLT_MAX,
-      e->s->min_sink_mass, e->s->min_spart_mass, e->s->min_bpart_mass};
+  if (with_cosmology) {
+
+    /* Start by reducing the minimal mass of each particle type */
+    float min_mass[swift_type_count] = {
+        e->s->min_part_mass, e->s->min_gpart_mass, FLT_MAX,
+        e->s->min_sink_mass, e->s->min_spart_mass, e->s->min_bpart_mass};
 
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, min_mass, swift_type_count, MPI_FLOAT, MPI_MIN,
+                  MPI_COMM_WORLD);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the minimal mass collection worked */
-  float min_part_mass_check = FLT_MAX;
-  for (size_t i = 0; i < e->s->nr_parts; ++i) {
-    if (e->s->parts[i].time_bin >= num_time_bins) continue;
-    min_part_mass_check =
-        min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
-  }
-  if (min_part_mass_check < min_mass[swift_type_gas])
-    error("Error collecting minimal mass of gas particles.");
+    /* Check that the minimal mass collection worked */
+    float min_part_mass_check = FLT_MAX;
+    for (size_t i = 0; i < e->s->nr_parts; ++i) {
+      if (e->s->parts[i].time_bin >= num_time_bins) continue;
+      min_part_mass_check =
+          min(min_part_mass_check, hydro_get_mass(&e->s->parts[i]));
+    }
+    if (min_part_mass_check < min_mass[swift_type_gas])
+      error("Error collecting minimal mass of gas particles.");
 #endif
 
-  /* Do the same for the velocity norm sum */
-  float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
-                                      e->s->sum_gpart_vel_norm,
-                                      0.f,
-                                      e->s->sum_sink_vel_norm,
-                                      e->s->sum_spart_vel_norm,
-                                      e->s->sum_spart_vel_norm};
+    /* Do the same for the velocity norm sum */
+    float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
+                                        e->s->sum_gpart_vel_norm,
+                                        0.f,
+                                        e->s->sum_sink_vel_norm,
+                                        e->s->sum_spart_vel_norm,
+                                        e->s->sum_spart_vel_norm};
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
+                  MPI_COMM_WORLD);
 #endif
 
-  /* Get the counts of each particle types */
-  const long long total_nr_baryons =
-      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dm_gparts =
-      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
-  float count_parts[swift_type_count] = {
-      (float)e->total_nr_parts,
-      (float)total_nr_dm_gparts,
-      (float)e->total_nr_DM_background_gparts,
-      (float)e->total_nr_sinks,
-      (float)e->total_nr_sparts,
-      (float)e->total_nr_bparts};
+    /* Get the counts of each particle types */
+    const long long total_nr_baryons =
+        e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
+    const long long total_nr_dm_gparts = e->total_nr_gparts -
+                                         e->total_nr_DM_background_gparts -
+                                         total_nr_baryons;
+    float count_parts[swift_type_count] = {
+        (float)e->total_nr_parts,
+        (float)total_nr_dm_gparts,
+        (float)e->total_nr_DM_background_gparts,
+        (float)e->total_nr_sinks,
+        (float)e->total_nr_sparts,
+        (float)e->total_nr_bparts};
 
-  /* Count of particles for the two species */
-  const float N_dm = count_parts[1];
-  const float N_b =
-      count_parts[0] + count_parts[3] + count_parts[4] + count_parts[5];
+    /* Count of particles for the two species */
+    const float N_dm = count_parts[1];
+    const float N_b =
+        count_parts[0] + count_parts[3] + count_parts[4] + count_parts[5];
 
-  /* Peculiar motion norm for the two species */
-  const float vel_norm_dm = vel_norm[1];
-  const float vel_norm_b =
-      vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
+    /* Peculiar motion norm for the two species */
+    const float vel_norm_dm = vel_norm[1];
+    const float vel_norm_b =
+        vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
 
-  /* Mesh forces smoothing scale */
-  float r_s;
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
-    r_s = e->mesh->r_s;
-  else
-    r_s = FLT_MAX;
+    /* Mesh forces smoothing scale */
+    float r_s;
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+      r_s = e->mesh->r_s;
+    else
+      r_s = FLT_MAX;
 
-  float dt_dm = FLT_MAX, dt_b = FLT_MAX;
+    float dt_dm = FLT_MAX, dt_b = FLT_MAX;
 
-  /* DM case */
-  if (N_dm > 0.f) {
+    /* DM case */
+    if (N_dm > 0.f) {
 
-    /* Minimal mass for the DM */
-    const float min_mass_dm = min_mass[1];
+      /* Minimal mass for the DM */
+      const float min_mass_dm = min_mass[1];
 
-    /* Inter-particle sepration for the DM */
-    const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit0));
+      /* Inter-particle sepration for the DM */
+      const float d_dm = cbrtf(min_mass_dm / ((Om - Ob) * rho_crit0));
 
-    /* RMS peculiar motion for the DM */
-    const float rms_vel_dm = vel_norm_dm / N_dm;
+      /* RMS peculiar motion for the DM */
+      const float rms_vel_dm = vel_norm_dm / N_dm;
 
-    /* Time-step based on maximum displacement */
-    dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
+      /* Time-step based on maximum displacement */
+      dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
+    }
+
+    /* Baryon case */
+    if (N_b > 0.f) {
+
+      /* Minimal mass for the baryons */
+      const float min_mass_b =
+          min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
+
+      /* Inter-particle sepration for the baryons */
+      const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
+
+      /* RMS peculiar motion for the baryons */
+      const float rms_vel_b = vel_norm_b / N_b;
+
+      /* Time-step based on maximum displacement */
+      dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
+    }
+
+    /* Use the minimum */
+    const float dt = min(dt_dm, dt_b);
+
+    /* Apply the dimensionless factor */
+    e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+
+    if (e->verbose)
+      message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
   }
 
-  /* Baryon case */
-  if (N_b > 0.f) {
+  /* Now, update the mesh time-step */
 
-    /* Minimal mass for the baryons */
-    const float min_mass_b =
-        min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
+  /* Store the previous time-step size */
+  e->mesh->ti_end_mesh_last = e->mesh->ti_end_mesh_next;
+  e->mesh->ti_beg_mesh_last = e->mesh->ti_beg_mesh_next;
+  const integertime_t old_dti =
+      e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
 
-    /* Inter-particle sepration for the baryons */
-    const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->step > 1 && e->mesh->ti_end_mesh_last != e->ti_current)
+    error("Weird time integration issue");
+#endif
 
-    /* RMS peculiar motion for the baryons */
-    const float rms_vel_b = vel_norm_b / N_b;
+  /* What is the allowed time-step size
+   * Note: The cosmology factor is 1 in non-cosmo runs */
+  double dt_mesh = e->dt_max_RMS_displacement * e->cosmology->time_step_factor;
+  dt_mesh = min(dt_mesh, e->dt_max);
 
-    /* Time-step based on maximum displacement */
-    dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
+  /* Convert to integer time */
+  integertime_t new_dti = (integertime_t)(dt_mesh * e->time_base_inv);
+
+  /* Find the max integer time-step on the timeline below new_dti */
+  integertime_t dti_timeline = max_nr_timesteps;
+  while (new_dti < dti_timeline) dti_timeline /= ((integertime_t)2);
+  new_dti = dti_timeline;
+
+  /* Make sure we are allowed to increase the timestep size */
+  const integertime_t current_dti = e->step > 0 ? old_dti : max_nr_timesteps;
+  if (new_dti > current_dti) {
+    if ((max_nr_timesteps - e->ti_current) % new_dti > 0) {
+      new_dti = current_dti;
+    }
   }
 
-  /* Use the minimum */
-  const float dt = min(dt_dm, dt_b);
+  e->mesh->ti_beg_mesh_next = e->ti_current;
+  e->mesh->ti_end_mesh_next = e->ti_current + new_dti;
 
-  /* Apply the dimensionless factor */
-  e->dt_max_RMS_displacement = dt * e->max_RMS_displacement_factor;
+  const timebin_t bin = get_time_bin(new_dti);
 
-  if (e->verbose)
-    message("max_dt_RMS_displacement = %e", e->dt_max_RMS_displacement);
+  if (new_dti != old_dti)
+    message("Mesh time-step changed to %e (time-bin %d)",
+            get_timestep(bin, e->time_base), bin);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -5417,6 +3206,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
+    free((void *)e->sink_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
     free((void *)e->hydro_properties);
@@ -5484,6 +3274,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
+  sink_struct_dump(e->sink_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
@@ -5608,6 +3399,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
   black_holes_struct_restore(black_holes_properties, stream);
   e->black_holes_properties = black_holes_properties;
+
+  struct sink_props *sink_properties =
+      (struct sink_props *)malloc(sizeof(struct sink_props));
+  sink_struct_restore(sink_properties, stream);
+  e->sink_properties = sink_properties;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(

@@ -25,7 +25,7 @@
  */
 
 /* Local includes. */
-#include "cooling_struct.h"
+#include "cooling_properties.h"
 #include "cooling_tables.h"
 
 struct part;

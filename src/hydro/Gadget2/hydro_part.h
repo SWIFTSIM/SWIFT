@@ -37,6 +37,7 @@
 #include "feedback_struct.h"
 #include "logger.h"
 #include "pressure_floor_struct.h"
+#include "rt_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -52,9 +53,6 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
-
-  /* Gravitational acceleration at the last full step. */
-  float a_grav[3];
 
   /* Entropy at the last full step. */
   float entropy_full;
@@ -166,6 +164,9 @@ struct part {
 
   /*! Additional data used by the pressure floor */
   struct pressure_floor_part_data pressure_floor_data;
+
+  /* Additional Radiative Transfer Data */
+  struct rt_part_data rt_data;
 
   /*! Time-step length */
   timebin_t time_bin;

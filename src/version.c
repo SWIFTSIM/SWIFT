@@ -44,6 +44,10 @@
 #include <gsl/gsl_version.h>
 #endif
 
+#ifdef HAVE_SUNDIALS
+#include <sundials/sundials_version.h>
+#endif
+
 /* Some standard headers. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -373,6 +377,22 @@ const char *libgsl_version(void) {
 }
 
 /**
+ * @brief return the SUNDIALS version used when SWIFT was built.
+ *
+ * @result description of the SUNDIALS version.
+ */
+const char *sundials_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_SUNDIALS)
+  SUNDIALSGetVersion(version, 256);
+#else
+  sprintf(version, "Unknown version");
+#endif
+  return version;
+}
+
+/**
  * @brief return the thread barrier used in SWIFT.
  *
  * @result description of the thread barriers
@@ -448,21 +468,24 @@ void greetings(int fof) {
   printf(" CFLAGS  : %s\n", compilation_cflags());
   printf("\n");
 #ifdef HAVE_HDF5
-  printf(" HDF5 library version: %s\n", hdf5_version());
+  printf(" HDF5 library version     : %s\n", hdf5_version());
 #endif
 #ifdef HAVE_FFTW
-  printf(" FFTW library version: %s\n", fftw3_version());
+  printf(" FFTW library version     : %s\n", fftw3_version());
 #endif
 #ifdef HAVE_LIBGSL
-  printf(" GSL  library version: %s\n", libgsl_version());
+  printf(" GSL library version      : %s\n", libgsl_version());
+#endif
+#ifdef HAVE_SUNDIALS
+  printf(" SUNDIALS library version : %s\n", sundials_version());
 #endif
 #ifdef WITH_MPI
-  printf(" MPI library: %s\n", mpi_version());
+  printf(" MPI library version      : %s\n", mpi_version());
 #ifdef HAVE_METIS
-  printf(" METIS library version: %s\n", metis_version());
+  printf(" METIS library version    : %s\n", metis_version());
 #endif
 #ifdef HAVE_PARMETIS
-  printf(" ParMETIS library version: %s\n", parmetis_version());
+  printf(" ParMETIS library version : %s\n", parmetis_version());
 #endif
 #endif
   printf("\n");

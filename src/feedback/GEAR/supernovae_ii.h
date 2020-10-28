@@ -60,7 +60,8 @@ void supernovae_ii_read_from_params(struct supernovae_ii *snii,
                                     struct swift_params *params);
 
 void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
-                                    struct swift_params *params);
+                                    struct swift_params *params,
+                                    const char *filename);
 void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
                         const struct stellar_model *sm);
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,

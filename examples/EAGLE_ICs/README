@@ -40,22 +40,45 @@ the following changes have been made (at standard resolution):
    subgrid properties (rho, T as well as the HI and H_2 frac) computed.
  - Particles can be star-forming if they are in an over-density of
    at least 100 (was 57.7).
+ - Particles with a density above 10^5 cm^-3 are not turned into
+   stars instantaneously any more.
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
  - The SNII feedback delay is done by sampling the stellar age
    distribution and not using a fixed delay of 30 Myr any more.
+ - The energy range for the SNII variable f_th is now 0.5 - 5.0
+   (from 0.3 - 3.0).
+ - The density and metallicity used for the f_th scaling of the
+   SNII feedback are now computed at the time of feedback from the
+   gas neighbours and are not the birth quantities any more.
  - The halo mass for BH seeding has been lowered to 10^10 M_sun
    (from 10^10/h Msun).
+ - The BH seed mass (subgrid mass at birth) has been lowered to
+   10^4 Msun (from 10^5/h Msun).
  - The black hole accretion rate is now limited to 100% of the
    Eddington rate (from 100/h = 150 %).
  - The circular velocity threshold for BH mergers is measured
    at the actual distance linking the BHs not at the kernel support
    length any more.
- - The BHs can reposition only onto gas particles and not onto any
-   type as before.
- - The maximal relative velocity between a BH and gas particle
-   eligible to be a reposition target has been increased to 0.5 times
-   the local sound-speed around the BH (was 0.25 * c_sound).
-
+ - When two BHs merge, the one with the largest subgrid mass swallows
+   the other one (not the one with the largest ID anymore).
+ - The BHs can reposition only onto gas particles and BH particles
+   (not onto any type as before).
+ - No limit is imposed any more on the velocity (w.r.t. the BH)
+   of the gas particles onto which the BHs can reposition.
+ - BHs of all masses can be repositioned (was limited to
+   M_BH < 1.8*10^8 Msun).
+ - BHs do not swallow gas particles any more. They nibble small
+   amounts of mass from the eligible neighbours within their kernel.
+ - Gas particles can be nibbled down to 50% of their initial mass.
+ - The angular momentum term in the BH accretion model of
+   Rosas-Guevara et al. (2015) is now switched off.
+ - The coupling efficency of the BH feedback is now 0.1 (was 0.15).
+ - The AGN feedback temperature jump is now a function of the BH
+   subgrid mass (was a constant at 10^8.5K). The temperature varies
+   between 10^7 and 3*10^9 K with a power-law of the subgrid mass
+   exponent of 2/3 and a reference point of 10^8 Msun. The temperature
+   jump also has to be larger than the T_crit for efficiency given
+   by the Dalla Vecchia & Schaye 2012 criterion.
 
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided

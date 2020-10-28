@@ -60,6 +60,17 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
   /* Add mass of pj to neighbour mass of si  */
   si->feedback_data.to_collect.ngb_mass += mj;
 
+  /* Update counter of total (integer) neighbours */
+  si->feedback_data.to_collect.num_ngbs++;
+
+  /* Contribution to the star's surrounding gas density */
+  si->feedback_data.to_collect.ngb_rho += mj * wi;
+
+  const float Zj = chemistry_get_total_metal_mass_fraction_for_feedback(pj);
+
+  /* Contribution to the star's surrounding metallicity (metal mass fraction */
+  si->feedback_data.to_collect.ngb_Z += mj * Zj * wi;
+
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
    * gas particles */

@@ -73,7 +73,6 @@ enum task_types {
   task_type_grav_mm,
   task_type_grav_down_in, /* Implicit */
   task_type_grav_down,
-  task_type_grav_mesh,
   task_type_end_grav_force,
   task_type_cooling,
   task_type_cooling_in,  /* Implicit */
@@ -97,6 +96,12 @@ enum task_types {
   task_type_bh_swallow_ghost3, /* Implicit */
   task_type_fof_self,
   task_type_fof_pair,
+  task_type_sink_in,  /* Implicit */
+  task_type_sink_out, /* Implicit */
+  task_type_rt_in,
+  task_type_rt_out,
+  task_type_sink_formation,
+  task_type_rt_ghost1,
   task_type_count
 } __attribute__((packed));
 
@@ -135,6 +140,8 @@ enum task_subtypes {
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
   task_subtype_sink,
+  task_subtype_rt_inject,
+  task_subtype_sink_compute_formation,
   task_subtype_count
 } __attribute__((packed));
 
@@ -170,6 +177,7 @@ enum task_categories {
   task_category_mpi,
   task_category_fof,
   task_category_others,
+  task_category_sink,
   task_category_count
 };
 
