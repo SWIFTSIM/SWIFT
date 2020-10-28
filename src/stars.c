@@ -104,9 +104,6 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
             spi->inhibited_exact = 1;
           } else {
 
-            if (spi->id == ICHECK)
-              message("Interact with id=%lld r2=%e", pj->id, r2);
-
             /* Density */
             rho_exact += mj * wi;
 

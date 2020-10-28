@@ -113,9 +113,6 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, const int limit_min_h,
 
       if (r2 < hig2) {
 
-        if (si->id == ICHECK)
-          message("Interact with id=%lld r2=%e", pj->id, r2);
-
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
@@ -239,9 +236,6 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       if (r2 < hig2) {
 
-        if (si->id == ICHECK)
-          message("Interact with id=%lld r2=%e", pj->id, r2);
-
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -354,9 +348,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         error("Particle has h larger than h_max_active");
 #endif
 
-      if (spi->id == ICHECK && h_max != FLT_MAX && h_min != 0.)
-        message("h_max= %e h_min= %e", h_max, h_min);
-
       /* Skip particles not in the range of h we care about */
       if (hi >= h_max) continue;
       if (hi < h_min) continue;
@@ -438,9 +429,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
                 ci->dmin);
 #endif
 
-          if (spi->id == ICHECK)
-            message("Interact with id=%lld r2=%e", pj->id, r2);
-
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -507,9 +495,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
       /* Skip particles not in the range of h we care about */
       if (hj >= h_max) continue;
       if (hj < h_min) continue;
-
-      if (spj->id == ICHECK && h_max != FLT_MAX && h_min != 0. && e->step == 62)
-        error("h_max= %e h_min= %e", h_max, h_min);
 
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
@@ -585,9 +570,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
                 cj->depth, limit_min_h, limit_max_h, hj * kernel_gamma,
                 cj->dmin);
 #endif
-
-          if (spj->id == ICHECK)
-            message("Interact with id=%lld r2=%e", pi->id, r2);
 
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
@@ -714,9 +696,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          if (spi->id == ICHECK)
-            message("Interact with id=%lld r2=%e", pj->id, r2);
-
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -778,9 +757,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
-
-          if (spi->id == ICHECK)
-            message("Interact with id=%lld r2=%e", pj->id, r2);
 
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
@@ -879,9 +855,6 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        if (spi->id == ICHECK)
-          message("Interact with id=%lld r2=%e", pj->id, r2);
-
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -969,9 +942,6 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
-
-        if (spi->id == ICHECK)
-          message("Interact with id=%lld r2=%e", pj->id, r2);
 
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
