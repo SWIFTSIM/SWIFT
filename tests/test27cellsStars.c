@@ -31,7 +31,7 @@
 #include "swift.h"
 
 #define DOSELF1 runner_doself_branch_stars_density
-#define DOSELF1_SUBSET runner_doself_subset_branch_stars_density
+#define DOSELF1_SUBSET runner_dosub_self_subset_stars_density
 #ifdef TEST_DOSELF_SUBSET
 #define DOSELF1_NAME "runner_doself_subset_branch_stars_density"
 #else
@@ -39,7 +39,7 @@
 #endif
 
 #define DOPAIR1 runner_dopair_branch_stars_density
-#define DOPAIR1_SUBSET runner_dopair_subset_branch_stars_density
+#define DOPAIR1_SUBSET runner_dosub_pair_subset_stars_density
 #ifdef TEST_DOPAIR_SUBSET
 #define DOPAIR1_NAME "runner_dopair_subset_branch_stars_density"
 #else
@@ -163,6 +163,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->hydro.h_max = h_max;
   cell->hydro.count = count;
   cell->stars.h_max = stars_h_max;
+  cell->stars.h_max_active = stars_h_max;
   cell->stars.count = scount;
   cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
@@ -170,6 +171,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
+  cell->dmin = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
@@ -184,6 +186,9 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->grav.ti_end_min = 8;
   cell->grav.ti_end_max = 8;
   cell->nodeID = NODE_ID;
+
+  cell->super = cell;
+  cell->hydro.super = cell;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
   shuffle_sparticles(cell->stars.parts, cell->stars.count);
@@ -275,17 +280,20 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci,
-                                        struct cell *cj);
-void runner_doself_branch_stars_density(struct runner *r, struct cell *c);
-void runner_dopair_subset_branch_stars_density(struct runner *r,
-                                               struct cell *restrict ci,
-                                               struct spart *restrict sparts_i,
-                                               int *restrict ind, int scount,
-                                               struct cell *restrict cj);
-void runner_doself_subset_branch_stars_density(struct runner *r,
-                                               struct cell *restrict ci,
-                                               struct spart *restrict sparts,
-                                               int *restrict ind, int scount);
+                                        struct cell *cj, const int limit_min_h,
+                                        const int limit_max_h);
+void runner_doself_branch_stars_density(struct runner *r, struct cell *c,
+                                        const int limit_min_h,
+                                        const int limit_max_h);
+void runner_dosub_pair_subset_stars_density(struct runner *r,
+					    struct cell *restrict ci,
+					    struct spart *restrict sparts_i,
+					    int *restrict ind, int scount,
+					    struct cell *restrict cj);
+void runner_dosub_self_subset_stars_density(struct runner *r,
+					    struct cell *restrict ci,
+					    struct spart *restrict sparts,
+					    int *restrict ind, int scount);
 
 /* And go... */
 int main(int argc, char *argv[]) {
@@ -457,6 +465,7 @@ int main(int argc, char *argv[]) {
 
     /* Run all the pairs */
     for (int j = 0; j < 27; ++j) {
+
       if (cells[j] != main_cell) {
         const ticks sub_tic = getticks();
 
@@ -464,7 +473,8 @@ int main(int argc, char *argv[]) {
         DOPAIR1_SUBSET(&runner, main_cell, main_cell->stars.parts, pid, scount,
                        cells[j]);
 #else
-        DOPAIR1(&runner, main_cell, cells[j]);
+        DOPAIR1(&runner, main_cell, cells[j], /*limit_min_h=*/0,
+                /*limit_max_h=*/0);
 #endif
 
         timings[j] += getticks() - sub_tic;
@@ -477,7 +487,7 @@ int main(int argc, char *argv[]) {
 #ifdef TEST_DOSELF_SUBSET
     DOSELF1_SUBSET(&runner, main_cell, main_cell->stars.parts, pid, scount);
 #else
-    DOSELF1(&runner, main_cell);
+    DOSELF1(&runner, main_cell, /*limit_min_h=*/0, /*limit_max_h=*/0);
 #endif
 
     timings[13] += getticks() - self_tic;
@@ -521,9 +531,10 @@ int main(int argc, char *argv[]) {
   const ticks tic = getticks();
 
   /* Run all the brute-force pairs */
-  for (int j = 0; j < 27; ++j)
+  for (int j = 0; j < 27; ++j) {
     if (cells[j] != main_cell)
       pairs_all_stars_density(&runner, main_cell, cells[j]);
+  }
 
   /* And now the self-interaction */
   self_all_stars_density(&runner, main_cell);
