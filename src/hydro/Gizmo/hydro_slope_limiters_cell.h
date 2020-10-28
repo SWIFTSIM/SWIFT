@@ -42,6 +42,10 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_init(
   p->limiter.v[2][1] = -FLT_MAX;
   p->limiter.P[0] = FLT_MAX;
   p->limiter.P[1] = -FLT_MAX;
+#ifdef WITH_IVANOVA
+  p->limiter.psi[0] = FLT_MAX;
+  p->limiter.psi[1] = -FLT_MAX;
+#endif
 
   p->limiter.maxr = -FLT_MAX;
 }

@@ -61,6 +61,11 @@ struct part {
     /* Pressure gradients. */
     float P[3];
 
+#ifdef WITH_IVANOVA
+    /* kernel gradients: \sum_k \del W(x_i - x_k, h_i)/ \del r * (x_i - x_k)/ r */
+    /* TODO: move to geometry later? */
+    float psi[3];
+#endif
   } gradients;
 
   /* Quantities needed by the slope limiter. */
@@ -74,6 +79,10 @@ struct part {
 
     /* Extreme values of the pressure among the neighbours. */
     float P[2];
+
+#ifdef WITH_IVANOVA
+    float psi[2];
+#endif
 
     /* Maximal distance to all neighbouring faces. */
     float maxr;
@@ -146,11 +155,6 @@ struct part {
     /* Particle number density. */
     float wcount;
 
-#ifdef WITH_IVANOVA
-    /* kernel gradients: \sum_k \del W(x_i - x_k, h_i)/ \del r * (x_i - x_k)/ r */
-    /* TODO: move to geometry later? */
-    float wgrads[3];
-#endif
 
   } density;
 

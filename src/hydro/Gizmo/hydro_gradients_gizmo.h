@@ -113,8 +113,17 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   dP_i[2] = dW[4] * wiBidx[2];
 
   hydro_part_update_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
+#ifdef WITH_IVANOVA
+  pi->gradients.psi[0] += wi_dx * dx[0] * r_inv;
+  pi->gradients.psi[1] += wi_dx * dx[1] * r_inv;
+  pi->gradients.psi[2] += wi_dx * dx[2] * r_inv;
+#endif
 
   hydro_slope_limit_cell_collect(pi, pj, r);
+#ifdef WITH_IVANOVA
+  pi->limiter.psi[0] = min(wi, pi->limiter.psi[0]);
+  pi->limiter.psi[1] = max(wi, pi->limiter.psi[1]);
+#endif
 
   /* Compute kernel of pj. */
   const float hj_inv = 1.0f / hj;
@@ -159,8 +168,18 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   dP_j[2] = dW[4] * wjBjdx[2];
 
   hydro_part_update_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
+#ifdef WITH_IVANOVA
+  pj->gradients.psi[0] -= wj_dx * dx[0] * r_inv;
+  pj->gradients.psi[1] -= wj_dx * dx[1] * r_inv;
+  pj->gradients.psi[2] -= wj_dx * dx[2] * r_inv;
+#endif
 
   hydro_slope_limit_cell_collect(pj, pi, r);
+#ifdef WITH_IVANOVA
+  pj->limiter.psi[0] = min(wj, pj->limiter.psi[0]);
+  pj->limiter.psi[1] = max(wj, pj->limiter.psi[1]);
+#endif
+
 }
 
 /**
@@ -238,8 +257,17 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   dP_i[2] = dW[4] * wiBidx[2];
 
   hydro_part_update_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
+#ifdef WITH_IVANOVA
+  pi->gradients.psi[0] += wi_dx * dx[0] * r_inv;
+  pi->gradients.psi[1] += wi_dx * dx[1] * r_inv;
+  pi->gradients.psi[2] += wi_dx * dx[2] * r_inv;
+#endif
 
   hydro_slope_limit_cell_collect(pi, pj, r);
+#ifdef WITH_IVANOVA
+  pi->limiter.psi[0] = min(wi, pi->limiter.psi[0]);
+  pi->limiter.psi[1] = max(wi, pi->limiter.psi[1]);
+#endif
 }
 
 /**
@@ -265,8 +293,17 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
   }
 
   hydro_part_normalise_gradients(p, norm);
+#ifdef WITH_IVANOVA
+  p->gradients.psi[0] *= norm;
+  p->gradients.psi[1] *= norm;
+  p->gradients.psi[2] *= norm;
+  // p->limiter.psi[0] *= ihdim / p->density.wcount;
+  // p->limiter.psi[1] *= ihdim / p->density.wcount;
+#endif
 
   hydro_slope_limit_cell(p);
+  /* do the ivanova slope limiting directly in flux computation */
+
 }
 
 #endif /* SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H */

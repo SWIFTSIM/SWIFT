@@ -23,12 +23,8 @@
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
+#include "hydro_slope_limiters_cell.h"
 
-/* TODO: temp */
-#include "todo_temporary_globals.h"
-#include "atomic.h"
-// #include "active.h"
-// #define GIZMO_VOLUME_CORRECTION
 
 
 /**
@@ -56,10 +52,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     struct part *restrict pj, float a, float H) {
 
   float wi, wj, wi_dx, wj_dx;
-  //
-  // TODO: temporary
-  mladen_track_particle_stdout(pi, /*condition=*/1);
-  mladen_track_particle_stdout(pj, /*condition=*/1);
 
   /* Get r and h inverse. */
   const float r = sqrtf(r2);
@@ -71,26 +63,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
-#ifdef WITH_IVANOVA
-  /* TODO: don't forget about the nonsym part! */
-  const float hidp1 = pow_dimension_plus_one(hi_inv);
-  pi->density.wgrads[0] += hidp1 * wi_dx * dx[0] / r;
-  pi->density.wgrads[1] += hidp1 * wi_dx * dx[1] / r;
-  pi->density.wgrads[2] += hidp1 * wi_dx * dx[2] / r;
-
-  // TODO: temporary
-  mladen_store_neighbour_data(
-        /* pi    */ pi,
-        /* pj ID */ pj->id,
-        /* Wj(xi)*/ wi*hi_inv*hi_inv,
-        /* GSCX= */ hidp1 * wi_dx * dx[0]/r,
-        /* GSCY= */ hidp1 * wi_dx * dx[1]/r,
-        /* GSDX= */ dx[0],
-        /* GSDY= */ dx[1],
-        /* dwdr= */ hidp1 * wi_dx,
-        /* r=    */ r,
-        /* hi =  */ hi );
-#endif
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -107,25 +79,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + xj * wj_dx);
-#ifdef WITH_IVANOVA
-  const float hjdp1 = pow_dimension_plus_one(hj_inv);
-  pj->density.wgrads[0] -= hjdp1 * wj_dx * dx[0] / r;
-  pj->density.wgrads[1] -= hjdp1 * wj_dx * dx[1] / r;
-  pj->density.wgrads[2] -= hjdp1 * wj_dx * dx[2] / r;
-
-  // TODO: temporary
-  mladen_store_neighbour_data(
-        /* pi =  */ pj,
-        /* pj ID */ pi->id,
-        /* Wj(xi)*/ wj * hj_inv * hj_inv,
-        /* GSCX= */ -hjdp1 * wj_dx * dx[0]/r,
-        /* GSCY= */ -hjdp1 * wj_dx * dx[1]/r,
-        /* GSDX= */ -dx[0],
-        /* GSDY= */ -dx[1],
-        /* dwdr= */ hjdp1 * wj_dx,
-        /* r=    */ r,
-        /* h_j=  */ hj );
-#endif
 
   /* these are eqns. (1) and (2) in the summary */
   pj->geometry.volume += wj;
@@ -161,9 +114,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     const struct part *restrict pj, float a, float H) {
 
-  // TODO: temporary
-  mladen_track_particle_stdout(pi, /*condition=*/1);
-
   float wi, wi_dx;
 
   /* Get r and h inverse. */
@@ -175,26 +125,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + xi * wi_dx);
-#ifdef WITH_IVANOVA
-  /* TODO: don't forget about the sym part! */
-  const float hidp1 = pow_dimension_plus_one(hi_inv);
-  pi->density.wgrads[0] += hidp1 * wi_dx * dx[0] / r;
-  pi->density.wgrads[1] += hidp1 * wi_dx * dx[1] / r;
-  pi->density.wgrads[2] += hidp1 * wi_dx * dx[2] / r;
-
-  // TODO: temporary
-  mladen_store_neighbour_data(
-        /* pi    */ pi,
-        /* pj ID */ pj->id,
-        /* Wj(xi)*/ wi*hi_inv*hi_inv,
-        /* GSCX= */ hidp1 * wi_dx * dx[0]/r,
-        /* GSCY= */ hidp1 * wi_dx * dx[1]/r,
-        /* GSDX= */ dx[0],
-        /* GSDY= */ dx[1],
-        /* dwdr= */ hidp1 * wi_dx,
-        /* r=    */ r,
-        /* hi =  */ hi );
-#endif
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -313,20 +243,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   hydro_part_get_primitive_variables(pi, Wi);
   hydro_part_get_primitive_variables(pj, Wj);
 
-#ifdef WITH_IVANOVA
-  float dwidx_sum[3], dwjdx_sum[3];
-  dwidx_sum[0] = pi->density.wgrads[0];
-  dwidx_sum[1] = pi->density.wgrads[1];
-  dwidx_sum[2] = pi->density.wgrads[2];
-  dwjdx_sum[0] = pj->density.wgrads[0];
-  dwjdx_sum[1] = pj->density.wgrads[1];
-  dwjdx_sum[2] = pj->density.wgrads[2];
-
-  // TODO: TEMPORARY
-  mladen_store_density_data(pi, hi, Vi);
-  mladen_store_density_data(pj, hj, Vj);
-#endif
-
   /* calculate the maximal signal velocity */
   float vmax;
   if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
@@ -406,22 +322,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     }
 #endif
 #ifdef WITH_IVANOVA
+
+  /* first slope limit the gradients here */
+  float grad_psi_j_xi[3];
+  for (int k = 0; k < 3; k++){
+    grad_psi_j_xi[k] = Vi * (wi_dr * dx[k] * r_inv - 
+                       Vi * wi * hi_inv_dim * pi->gradients.psi[k]);
+  }
+  float grad_psi_i_xj[3];
+  for (int k = 0; k < 3; k++){
+    /* we add a minus sign since dx is pi->x - pj->x */
+    grad_psi_i_xj[k] = Vj * (-wj_dr * dx[k] * r_inv - 
+                       Vj * wj * hj_inv_dim * pj->gradients.psi[k]);
+  }
+  // printf("Before limiting %f %f | %f\n", grad_psi_j_xi[0], grad_psi_j_xi[1], grad_psi_j_xi[0]*grad_psi_j_xi[0] + grad_psi_j_xi[1]*grad_psi_j_xi[1]);
+  // hydro_slope_limit_quantity([>grad<] grad_psi_i_xj,
+  //                            [>maxr<] pj->limiter.maxr,
+  //                            [>value<] wj * hj_inv_dim * Vj,
+  //                            [>valmin<] pj->limiter.psi[0] * hj_inv_dim * Vj ,
+  //                            [>valmax<] pj->limiter.psi[1] * hj_inv_dim * Vj);
+  // printf("After limiting %f %f | %f\n", grad_psi_j_xi[0], grad_psi_j_xi[1], grad_psi_j_xi[0]*grad_psi_j_xi[0] + grad_psi_j_xi[1]*grad_psi_j_xi[1]);
+  // hydro_slope_limit_quantity([>grad<] grad_psi_j_xi,
+  //                            [>maxr<] pi->limiter.maxr,
+  //                            [>value<] wi * hi_inv_dim * Vi,
+  //                            [>valmin<] pi->limiter.psi[0] * hi_inv_dim * Vi,
+  //                            [>valmax<] pi->limiter.psi[1] * hi_inv_dim * Vi);
+
     for (int k = 0; k < 3; k++) {
-      /* we add a minus sign since dx is pi->x - pj->x */
-      A[k] = Xi * Xi * (wi_dr * dx[k] / r - Xi * wi * hi_inv_dim * dwidx_sum[k]) +
-             Xj * Xj * (wj_dr * dx[k] / r + Xj * wj * hj_inv_dim * dwjdx_sum[k]);
+      A[k] = Xi * grad_psi_j_xi[k] - Xj * grad_psi_i_xj[k];
       Anorm2 += A[k] * A[k];
     }
-
-    // TODO: temporary
-    mladen_store_Aij(pi, pj, r, hi, A,
-      /* grad_final_x=*/ Xi * wi_dr * dx[0] / r - Xi * Xi * wi * hi_inv_dim * dwidx_sum[0],
-      /* grad_final_y=*/ Xi * wi_dr * dx[1] / r - Xi * Xi * wi * hi_inv_dim * dwidx_sum[1],
-      /*negative=*/0);
-    mladen_store_Aij(pj, pi, r, hj, A,
-      /* grad_final_x=*/ -Xj * wj_dr * dx[0] / r - Xj * Xj * wj * hj_inv_dim * dwjdx_sum[0],
-      /* grad_final_y=*/ -Xj * wj_dr * dx[1] / r - Xj * Xj * wj * hj_inv_dim * dwjdx_sum[1],
-      /*negative=*/1);
 
 #else
 
@@ -508,13 +438,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   //    for ( k = 0 ; k < 3 ; k++ )
   //      xij[k] += pi->x[k];
 
-
-  // if (fabsf(vij[0] - MLADEN_SETVX) > 1e-6) {
-  //   printf("Got different vij_x for particles %lld %lld %14.7e\n", pi->id, pj->id, vij[0]);
-  // }
-  // if (fabsf(vij[1]) > 1e-6) {
-  //   printf("Got different vij_y for particles %lld %lld %14.7e\n", pi->id, pj->id, vij[1]);
-  // }
 
   hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 

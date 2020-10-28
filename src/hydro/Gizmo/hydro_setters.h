@@ -78,6 +78,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_gradients(
   p->gradients.P[0] = 0.0f;
   p->gradients.P[1] = 0.0f;
   p->gradients.P[2] = 0.0f;
+#ifdef WITH_IVANOVA
+  p->gradients.psi[0] = 0.0f;
+  p->gradients.psi[1] = 0.0f;
+  p->gradients.psi[2] = 0.0f;
+#endif
 }
 
 /**
