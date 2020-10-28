@@ -659,7 +659,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
 
 void self_all_stars_density(struct runner *r, struct cell *ci) {
 
-  float r2, hi, hj, hig2, dxi[3];
+  float r2, hi, hj, hig2, dxi[3], six[3], pjx[3];
   struct spart *spi;
   struct part *pj;
   const struct engine *e = r->e;
@@ -678,6 +678,10 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
     if (!spart_is_active(spi, e)) continue;
     if (!feedback_is_active(spi, e->time, cosmo, with_cosmology)) continue;
 
+    for (int k = 0; k < 3; k++) {
+      six[k] = (float)(spi->x[k] - ci->loc[k]);
+    }
+
     for (int j = 0; j < ci->hydro.count; ++j) {
 
       pj = &ci->hydro.parts[j];
@@ -686,10 +690,15 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
 
+      for (int k = 0; k < 3; k++) {
+        pjx[k] = (float)(pj->x[k] - ci->loc[k]);
+      }
+
       /* Pairwise distance */
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
-        dxi[k] = spi->x[k] - pj->x[k];
+
+        dxi[k] = six[k] - pjx[k];
         r2 += dxi[k] * dxi[k];
       }
 
