@@ -381,6 +381,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     if (bp->AGN_use_nheat_with_fixed_dT) {
       bp->AGN_delta_T_desired =
           parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_K");
+    } else {
+      bp->AGN_delta_T_desired =
+          parser_get_opt_param_float(params, "EAGLEAGN:AGN_delta_T_K", 1e9);
     }
 
   } else {
