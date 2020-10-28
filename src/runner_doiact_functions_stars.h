@@ -362,7 +362,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
       if (hi < h_min) continue;
 
       /* Is there anything we need to interact with ? */
-      const double di = sort_i[pid].i + hi * kernel_gamma + dx_max - rshift;
+      const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
 
       /* Get some additional information about pi */
