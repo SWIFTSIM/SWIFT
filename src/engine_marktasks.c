@@ -113,6 +113,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
+
+          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
           if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
@@ -163,6 +165,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
                                             with_timestep_sync);
+
+          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+          if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
         }
       }
 
@@ -374,6 +379,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                  t_subtype == task_subtype_density) {
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
                                             with_timestep_limiter);
+
+          /* Activate the drifts if the cells are local. */
+          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+          if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
         }
       }
 
@@ -437,6 +446,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                  t_subtype == task_subtype_stars_density) {
           cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
                                             with_timestep_sync);
+
+          /* Activate the drifts if the cells are local. */
+          if (ci_active_stars) {
+            if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
+            if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+          }
+          if (cj_active_stars) {
+            if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
+            if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+          }
         }
       }
 
