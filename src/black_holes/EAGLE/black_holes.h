@@ -132,6 +132,10 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->last_repos_vel = 0.f;
   bp->num_ngbs_to_heat = props->num_ngbs_to_heat; /* Filler value */
 
+  /* Set the initial targetted heating temperature, used for the 
+   * BH time step determination */
+  bp->AGN_delta_T = props->AGN_delta_T_desired;
+
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 

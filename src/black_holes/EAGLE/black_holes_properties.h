@@ -353,6 +353,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   const double T_K_to_int =
       1. / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
+  /* Read the constant AGN heating temperature or the the initial value
+   * for the IC or new BH that formed from gas */
+  bp->AGN_delta_T_desired =
+      parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_K");
+
+  /* Read the properties of the variable heating temperature model */
   bp->use_variable_delta_T =
       parser_get_param_int(params, "EAGLEAGN:use_variable_delta_T");
   if (bp->use_variable_delta_T) {
@@ -380,19 +386,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_min") * T_K_to_int;
     bp->AGN_use_nheat_with_fixed_dT =
         parser_get_param_int(params, "EAGLEAGN:AGN_use_nheat_with_fixed_dT");
-    if (bp->AGN_use_nheat_with_fixed_dT) {
-      bp->AGN_delta_T_desired =
-          parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_K");
-    } else {
-      bp->AGN_delta_T_desired =
-          parser_get_opt_param_float(params, "EAGLEAGN:AGN_delta_T_K", 1e9);
-    }
-
-  } else {
-    bp->AGN_delta_T_desired =
-        parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_K");
-  }
-
+  } 
   bp->use_adaptive_energy_reservoir_threshold = parser_get_param_int(
       params, "EAGLEAGN:AGN_use_adaptive_energy_reservoir_threshold");
   if (bp->use_adaptive_energy_reservoir_threshold) {
