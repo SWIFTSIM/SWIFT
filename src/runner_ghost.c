@@ -77,6 +77,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   const struct unit_system *us = e->internal_units;
   const struct phys_const *phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_rt = (e->policy & engine_policy_rt);
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
   const float stars_h_max = e->hydro_properties->h_max;
@@ -397,6 +398,35 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Reset the feedback fields of the star particle */
           feedback_reset_feedback(sp, feedback_props);
+        }
+
+        if (with_rt) {
+
+          /* get star's age and time step for stellar emission rates */
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+
+          /* Get particle time-step */
+          double dt_star;
+          if (with_cosmology) {
+            dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                               ti_begin + ti_step);
+          } else {
+            dt_star = get_timestep(sp->time_bin, e->time_base);
+          }
+
+          /* Calculate age of the star at current time */
+          double star_age_end_of_step;
+          if (with_cosmology) {
+            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+                e->cosmology, (double)sp->birth_scale_factor, e->cosmology->a);
+          } else {
+            star_age_end_of_step = e->time - (double)sp->birth_time;
+          }
+
+          rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
+                                           dt_star);
         }
       }
 

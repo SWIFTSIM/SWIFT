@@ -18,6 +18,12 @@
  ******************************************************************************/
 #ifndef SWIFT_RT_DEBUG_H
 #define SWIFT_RT_DEBUG_H
+
+/**
+ * @file src/rt/debug/rt.h
+ * @brief Main header file for the debug radiative transfer scheme.
+ */
+
 /**
  * @brief Initialisation of the RT density loop related particle data.
  */
@@ -78,11 +84,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
   rt_init_spart(sp);
   rt_reset_spart(sp);
 }
-
-/**
- * @file src/rt/debug/rt.h
- * @brief Main header file for the debug radiative transfer scheme.
- */
 
 /**
  * @brief Update the photon number of a particle, i.e. compute
