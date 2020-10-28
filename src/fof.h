@@ -185,8 +185,11 @@ void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
                                         void *extra_data);
+void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
+                                       void *extra_data);
 size_t fof_find(const size_t i, size_t *group_index);
 void fof_union(size_t *root_i, const size_t root_j, size_t *group_index);
+int cmp_func_group_size(const void *a, const void *b);
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype fof_mpi_type;
