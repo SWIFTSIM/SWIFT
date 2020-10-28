@@ -109,7 +109,9 @@ struct black_holes_props {
   /*! Feedback coupling efficiency of the black holes. */
   float epsilon_f;
 
-  /*! (Constant) temperature increase induced by AGN feedback [Kelvin] */
+  /*! (Constant) temperature increase induced by AGN feedback [Kelvin], if we
+   * use a model with a variable temperature increase than we use this value 
+   * to initialize a BH that just has formed */
   float AGN_delta_T_desired;
 
   /*! Switch on adaptive heating temperature scheme? */
