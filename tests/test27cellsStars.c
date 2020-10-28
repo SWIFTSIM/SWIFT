@@ -286,14 +286,14 @@ void runner_doself_branch_stars_density(struct runner *r, struct cell *c,
                                         const int limit_min_h,
                                         const int limit_max_h);
 void runner_dosub_pair_subset_stars_density(struct runner *r,
-					    struct cell *restrict ci,
-					    struct spart *restrict sparts_i,
-					    int *restrict ind, int scount,
-					    struct cell *restrict cj);
+                                            struct cell *restrict ci,
+                                            struct spart *restrict sparts_i,
+                                            int *restrict ind, int scount,
+                                            struct cell *restrict cj);
 void runner_dosub_self_subset_stars_density(struct runner *r,
-					    struct cell *restrict ci,
-					    struct spart *restrict sparts,
-					    int *restrict ind, int scount);
+                                            struct cell *restrict ci,
+                                            struct spart *restrict sparts,
+                                            int *restrict ind, int scount);
 
 /* And go... */
 int main(int argc, char *argv[]) {

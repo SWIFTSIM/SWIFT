@@ -363,14 +363,14 @@ void runner_doself1_branch_density(struct runner *r, struct cell *c,
                                    const int limit_min_h,
                                    const int limit_max_h);
 void runner_dosub_pair_subset_density(struct runner *r,
-				      struct cell *restrict ci,
-				      struct part *restrict parts_i,
-				      int *restrict ind, int count,
-				      struct cell *restrict cj);
+                                      struct cell *restrict ci,
+                                      struct part *restrict parts_i,
+                                      int *restrict ind, int count,
+                                      struct cell *restrict cj);
 void runner_dosub_self_subset_density(struct runner *r,
-				      struct cell *restrict ci,
-				      struct part *restrict parts,
-				      int *restrict ind, int count);
+                                      struct cell *restrict ci,
+                                      struct part *restrict parts,
+                                      int *restrict ind, int count);
 
 /* And go... */
 int main(int argc, char *argv[]) {
