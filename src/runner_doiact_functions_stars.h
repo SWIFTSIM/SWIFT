@@ -420,7 +420,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
-    const double hj_max = cj->hydro.h_max * kernel_gamma;
+    const double hj_max = cj->stars.h_max * kernel_gamma;
     const int count_i = ci->hydro.count;
     const int count_j = cj->stars.count;
     struct part *restrict parts_i = ci->hydro.parts;
