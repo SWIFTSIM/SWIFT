@@ -54,6 +54,12 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+  si->rho += pj->mass * wi;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  si->N_density++;
+#endif
+
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)

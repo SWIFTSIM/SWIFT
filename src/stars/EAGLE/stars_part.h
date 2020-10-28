@@ -61,6 +61,8 @@ struct spart {
   /*! Particle smoothing length. */
   float h;
 
+  float rho;
+
   struct {
 
     /* Number of neighbours. */
@@ -136,6 +138,21 @@ struct spart {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+#endif
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_exact;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
 #endif
 
 #ifdef DEBUG_INTERACTIONS_STARS
