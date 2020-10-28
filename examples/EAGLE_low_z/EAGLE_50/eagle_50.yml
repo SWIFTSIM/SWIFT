@@ -206,7 +206,7 @@ EAGLEAGN:
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   use_variable_delta_T:               0          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
   AGN_with_locally_adaptive_delta_T:  0          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
-  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (only used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1).
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1 AND to initialise the BHs).
   AGN_use_nheat_with_fixed_dT:        0          # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
   AGN_use_adaptive_energy_reservoir_threshold: 0 # Switch to calculate an adaptive AGN energy reservoir threshold.
   AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
