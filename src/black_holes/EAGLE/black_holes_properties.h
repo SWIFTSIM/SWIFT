@@ -110,7 +110,7 @@ struct black_holes_props {
   float epsilon_f;
 
   /*! (Constant) temperature increase induced by AGN feedback [Kelvin], if we
-   * use a model with a variable temperature increase than we use this value 
+   * use a model with a variable temperature increase than we use this value
    * to initialize a BH that just has formed */
   float AGN_delta_T_desired;
 
@@ -386,7 +386,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_min") * T_K_to_int;
     bp->AGN_use_nheat_with_fixed_dT =
         parser_get_param_int(params, "EAGLEAGN:AGN_use_nheat_with_fixed_dT");
-  } 
+  }
   bp->use_adaptive_energy_reservoir_threshold = parser_get_param_int(
       params, "EAGLEAGN:AGN_use_adaptive_energy_reservoir_threshold");
   if (bp->use_adaptive_energy_reservoir_threshold) {
