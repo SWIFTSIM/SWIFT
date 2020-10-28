@@ -668,23 +668,7 @@ void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
     gp->v_full[1] = bp->v[1];
     gp->v_full[2] = bp->v[2];
 
-<<<<<<< HEAD
     gp->mass = bp->mass;
-=======
-  size_t ind = parts - e->s->parts;
-  struct xpart *restrict xparts = e->s->xparts + ind;
-
-  for (int k = 0; k < count; k++) {
-    hydro_init_part(&parts[k], hs);
-    black_holes_init_potential(&parts[k].black_holes_data);
-    chemistry_init_part(&parts[k], e->chemistry);
-    pressure_floor_init_part(&parts[k], &xparts[k]);
-    rt_reset_part(&parts[k]);
-    star_formation_init_part(&parts[k], e->star_formation);
-    tracers_after_init(&parts[k], &xparts[k], e->internal_units,
-                       e->physical_constants, with_cosmology, e->cosmology,
-                       e->hydro_properties, e->cooling_func, e->time);
->>>>>>> ccb64f38e... renamed rt_init_* -> rt_reset_*
   }
 }
 
@@ -760,8 +744,8 @@ void space_synchronize_particle_positions(struct space *s) {
             clocks_getunit());
 }
 
-void space_first_init_rt_extra_data_mapper(void *restrict map_data, int scount,
-                                           void *restrict extra_data) {
+void space_convert_rt_quantities_mapper(void *restrict map_data, int scount,
+                                        void *restrict extra_data) {
 
   struct spart *restrict sparts = (struct spart *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
@@ -808,12 +792,12 @@ void space_first_init_rt_extra_data_mapper(void *restrict map_data, int scount,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_first_init_rt_extra_data(struct space *s, int verbose) {
+void space_convert_rt_quantities(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
   if (s->nr_sparts > 0)
-    threadpool_map(&s->e->threadpool, space_first_init_rt_extra_data_mapper,
+    threadpool_map(&s->e->threadpool, space_convert_rt_quantities_mapper,
                    s->sparts, s->nr_sparts, sizeof(struct spart),
                    threadpool_auto_chunk_size, /*extra_data=*/s->e);
   if (verbose)

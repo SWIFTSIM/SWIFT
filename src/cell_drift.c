@@ -233,7 +233,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
         rt_init_part(p);
-        rt_reset_part(p); /* also reset density unrelated RT part quantities */
+        rt_reset_part(p);
       }
     }
 
@@ -407,7 +407,6 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const int with_rt = (e->policy & engine_policy_rt);
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_spart = c->stars.ti_old_part;
@@ -556,36 +555,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       if (spart_is_active(sp, e)) {
         stars_init_spart(sp);
         feedback_init_spart(sp);
-
-        if (with_rt) {
-          rt_init_spart(sp);
-
-          /* get star's age and time step for stellar emission rates */
-          const integertime_t ti_begin =
-              get_integer_time_begin(ti_current - 1, sp->time_bin);
-          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-
-          /* Get particle time-step */
-          double dt_star;
-          if (with_cosmology) {
-            dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                               ti_begin + ti_step);
-          } else {
-            dt_star = get_timestep(sp->time_bin, e->time_base);
-          }
-
-          /* Calculate age of the star at current time */
-          double star_age_end_of_step;
-          if (with_cosmology) {
-            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-                e->cosmology, (double)sp->birth_scale_factor, e->cosmology->a);
-          } else {
-            star_age_end_of_step = e->time - (double)sp->birth_time;
-          }
-
-          rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
-                                           dt_star);
-        }
+        rt_init_spart(sp);
       }
     }
 

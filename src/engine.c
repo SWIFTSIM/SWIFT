@@ -1825,7 +1825,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Initialise additional RT data now that time bins are set */
   if (e->policy & engine_policy_rt) {
-    space_first_init_rt_extra_data(e->s, e->verbose);
+    space_convert_rt_quantities(e->s, e->verbose);
   }
 
   /* Since the time-steps may have changed because of the limiter's
