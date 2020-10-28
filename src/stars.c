@@ -228,7 +228,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
 
     if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e)) {
 
-      fprintf(file_swift,
+      fprintf(file_exact,
               "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
               spi->x[0], spi->x[1], spi->x[2], spi->h, spi->N_density_exact, 0,
               spi->rho_exact, 0.f);

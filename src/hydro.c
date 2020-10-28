@@ -266,7 +266,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
-      fprintf(file_swift,
+      fprintf(file_exact,
               "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
               pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density_exact,
               pi->N_force_exact, pi->rho_exact, pi->n_force_exact);
@@ -304,7 +304,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
         wrong_rho);
 
   if (wrong_n_force)
-    error(
+    message(
         "N_force difference larger than the allowed tolerance for %d "
         "particles!",
         wrong_n_force);
