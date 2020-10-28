@@ -43,7 +43,7 @@
  */
 __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
     const struct bpart* const bp, const struct black_holes_props* props,
-    const struct phys_const* constants) {
+    const struct phys_const* constants, const struct cosmology* cosmo) {
 
   /* Gather some physical constants (in internal units) */
   const double c = constants->const_speed_light_c;
@@ -61,9 +61,12 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
 
   /* Average particle mass in BH's kernel */
   const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
+
+  /* Get the AGN heating temperature that is tored in this BH */
+  const double AGN_delta_T = bp->AGN_delta_T;
+
   /* Without multiplying by mean_ngb_mass we'd get energy per unit mass */
-  const double E_heat =
-      props->AGN_delta_T_desired * props->temp_to_u_factor * mean_ngb_mass;
+  const double E_heat = AGN_delta_T * props->temp_to_u_factor * mean_ngb_mass;
 
   /* Compute average time between heating events for the given accretion
    * rate. The time is multiplied by the number of Ngbs to heat because
@@ -127,6 +130,10 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->accreted_angular_momentum[2] = 0.f;
   bp->last_repos_vel = 0.f;
   bp->num_ngbs_to_heat = props->num_ngbs_to_heat; /* Filler value */
+
+  /* Set the initial targetted heating temperature, used for the
+   * BH time step determination */
+  bp->AGN_delta_T = props->AGN_delta_T_desired;
 
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
@@ -1110,6 +1117,10 @@ INLINE static void black_holes_create_from_gas(
   /* Last time of mergers */
   bp->last_minor_merger_time = -1.;
   bp->last_major_merger_time = -1.;
+
+  /* Set the initial targetted heating temperature, used for the
+   * BH time step determination */
+  bp->AGN_delta_T = props->AGN_delta_T_desired;
 
   /* First initialisation */
   black_holes_init_bpart(bp);
