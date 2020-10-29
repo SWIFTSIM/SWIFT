@@ -36,16 +36,6 @@ INLINE static void dark_matter_log_num_events(struct sidm_history *sidm_history,
         sidm_history->num_kicks += num_events;
 }
 
-/**
- * @brief log a SIDM event
- *
- * @param dmi the dmpart of the SIDM event
- * @param cosmo the cosmology struct
- * @param num_events number of events per time step
- */
-INLINE static void dark_matter_log_num_active_parts(struct sidm_history *sidm_history, const int num_parts) {
-    sidm_history->n_parts_active += num_parts;
-}
 
 /**
  * @brief log a SIDM event
@@ -85,7 +75,6 @@ INLINE static void dark_matter_logger_add(
     sh_update->num_kicks += sh_add->num_kicks;
     sh_update->K_before += sh_add->K_before;
     sh_update->K_after += sh_add->K_after;
-    sh_update->n_parts_active += sh_add->n_parts_active;
     sh_update->p_before[0] += sh_add->p_before[0];
     sh_update->p_before[1] += sh_add->p_before[1];
     sh_update->p_before[2] += sh_add->p_before[2];
@@ -104,7 +93,7 @@ INLINE static void dark_matter_logger_add(
  */
 INLINE static void dark_matter_logger_add_to_accumulator(
         struct sidm_history_accumulator *sh_update,
-        const struct sidm_history *sh_add) {
+        const struct sidm_history *sh_add, long long n_parts_active) {
     
     /* Update the SIDM history structure */
     sh_update->num_kicks = sh_add->num_kicks;
@@ -116,7 +105,7 @@ INLINE static void dark_matter_logger_add_to_accumulator(
     sh_update->p_after[0] = sh_add->p_after[0];
     sh_update->p_after[1] = sh_add->p_after[1];
     sh_update->p_after[2] = sh_add->p_after[2];
-    sh_update->n_parts_active = sh_add->n_parts_active;
+    sh_update->n_parts_active = n_parts_active;
 
 }
 
@@ -151,7 +140,6 @@ INLINE static void dark_matter_logger_init(struct sidm_history *sh) {
     sh->num_kicks = 0.f;
     sh->K_before = 0.f;
     sh->K_after = 0.f;
-    sh->n_parts_active = 0.f;
     sh->p_before[0] = 0.f;
     sh->p_before[1] = 0.f;
     sh->p_before[2] = 0.f;
@@ -215,10 +203,10 @@ INLINE static void dark_matter_logger_init_log_file(
     fprintf(fp, "#\n");
     fprintf(fp,
             "# (0)         (1)            (2)          (3)          (4)         "
-            "(5)         (6)         (7)         (8)         (9)         (10)"
+            "  (5)         (6)         (7)         (8)         (9)         (10)"
             "         (11)         (12)         (13)\n");
     fprintf(fp,
-            "#            Time             a            z         N. kicks     N. active p."
+            "#            Time             a            z         N. kicks      N. active p."
             "K (before)   K (after)  p[x] (before)  p[y] (before)  p[z] (before)"
             "p[x] (after)  p[y] (after)  p[z] (after)\n");
 }

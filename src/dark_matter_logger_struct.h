@@ -35,9 +35,6 @@ struct sidm_history {
     double p_before[3];
     double p_after[3];
 
-    /* Number of activate particles per timestep */
-    int n_parts_active;
-
 };
 
 /* SIDM history struct for the engine

@@ -24,7 +24,6 @@
 #include "active.h"
 #include "dark_matter.h"
 #include "dark_matter_iact.h"
-#include "dark_matter_logger.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"

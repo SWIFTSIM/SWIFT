@@ -139,7 +139,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
   e->tasks_per_cell_max = grp1->tasks_per_cell_max;
 
   star_formation_logger_add_to_accumulator(&e->sfh, &grp1->sfh);
-  dark_matter_logger_add_to_accumulator(&e->dm, &grp1->dm);
+  dark_matter_logger_add_to_accumulator(&e->dm, &grp1->dm, e->dm_updates);
 
   e->runtime = grp1->runtime;
 }
