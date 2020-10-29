@@ -223,7 +223,7 @@ EAGLEAGN:
   eddington_fraction_for_recording:   0.1             # Record the last time BHs reached an Eddington ratio above this threshold.
   coupling_efficiency:                0.1             # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_feedback_model:                 MinimumDistance # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
-  AGN_use_deterministic_feedback:     0               # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
+  AGN_use_deterministic_feedback:     1               # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
   use_variable_delta_T:               1               # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
   AGN_with_locally_adaptive_delta_T:  1               # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
   AGN_delta_T_mass_norm:              3e8             # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
