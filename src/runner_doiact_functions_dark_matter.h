@@ -971,7 +971,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
             (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
@@ -998,7 +998,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
-            const float hjg2 = hj * hj * dm_kernel_gamma2;
+            const float hjg2 = hj * hj;
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -1081,7 +1081,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         const int pi_active = dmpart_is_active(pi, e);
         if (pi_active) dark_matter_log_num_active_parts(sidm_history,1);
         const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
             (float)(pi->x[2] - c->loc[2])};
@@ -1093,7 +1093,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             struct dmpart *restrict pj = &dmparts[pjd];
             
             const float hj = pj->h;
-            const float hjg2 = hj * hj * dm_kernel_gamma2;
+            const float hjg2 = hj * hj;
             const int pj_active = dmpart_is_active(pj, e);
             if (pj_active && (pid == 0)) dark_matter_log_num_active_parts(sidm_history,1);
 
@@ -1210,7 +1210,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         double pix[3];
         for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
         const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hig2 = hi * hi;
         
         /* Is the ith particle not active? */
         if (!dmpart_is_active(pi, e)) {
@@ -1250,7 +1250,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
                 
                 /* Hit or miss? */
-                if (r2 < hig2 || r2 < hj * hj * dm_kernel_gamma2) {
+                if (r2 < hig2 || r2 < hj * hj) {
                     
                     runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
                 }
@@ -1302,7 +1302,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
                 
                 /* Hit or miss? */
-                if (r2 < hig2 || r2 < hj * hj * dm_kernel_gamma2) {
+                if (r2 < hig2 || r2 < hj * hj) {
                     
                     /* Does pj need to be updated too? */
                     if (dmpart_is_active(pj, e)) {
@@ -1413,7 +1413,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         }
         
         const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hig2 = hi * hi;
         const int pi_active = dmpart_is_active(pi, e);
         if (pi_active) dark_matter_log_num_active_parts(sidm_history,1);
             
@@ -1431,7 +1431,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             if (pj_active && (pid == 0)) dark_matter_log_num_active_parts(sidm_history,1);
 
             const float hj = pj->h;
-            const float hjg2 = hj * hj * dm_kernel_gamma2;
+            const float hjg2 = hj * hj;
 
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
