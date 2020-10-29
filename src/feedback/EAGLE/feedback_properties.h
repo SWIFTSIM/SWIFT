@@ -19,9 +19,16 @@
 #ifndef SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
 #define SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes. */
 #include "chemistry.h"
 #include "hydro_properties.h"
 
+/**
+ * @brief Modes of energy injection for SNII feedback
+ */
 enum SNII_feedback_models {
   SNII_random_ngb_model,       /*< Random neighbour model for SNII feedback */
   SNII_isotropic_model,        /*< Isotropic model of SNII feedback */

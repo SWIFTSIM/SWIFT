@@ -19,11 +19,19 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLES_PROPERTIES_H
 #define SWIFT_EAGLE_BLACK_HOLES_PROPERTIES_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes. */
 #include "chemistry.h"
 #include "hydro_properties.h"
 
+/* Includes. */
 #include <string.h>
 
+/**
+ * @brief Modes of energy injection for AGN feedback
+ */
 enum AGN_feedback_models {
   AGN_random_ngb_model,       /*< Random neighbour model for AGN feedback */
   AGN_isotropic_model,        /*< Isotropic model of AGN feedback */
