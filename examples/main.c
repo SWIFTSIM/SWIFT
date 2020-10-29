@@ -993,7 +993,8 @@ int main(int argc, char *argv[]) {
     /* Initialise the feedback properties */
     if (with_feedback) {
 #ifdef FEEDBACK_NONE
-      error("ERROR: Running with feedback but compiled without it.");
+      if (!with_rt)
+        error("ERROR: Running with feedback but compiled without it.");
 #endif
       feedback_props_init(&feedback_properties, &prog_const, &us, params,
                           &hydro_properties, &cosmo);
