@@ -91,7 +91,7 @@ void write_index_array(const struct engine* e, FILE* f, struct io_props* props,
   }
 
   /* Get a few variables for the mapping */
-  char *data;
+  char* data;
   const size_t offset = ftell(f);
   const size_t count = N * type_size + offset;
 
@@ -100,18 +100,16 @@ void write_index_array(const struct engine* e, FILE* f, struct io_props* props,
     error("Failed to truncate dump file (%s).", strerror(errno));
   }
 
-
   /* Map the file */
-  if ((data = mmap(NULL, count, PROT_WRITE, MAP_SHARED, fd, 0)) ==
-      MAP_FAILED) {
+  if ((data = mmap(NULL, count, PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
     error("Failed to allocate map of size %zi bytes (%s).", count,
           strerror(errno));
   }
 
   /* Copy the data into the file */
-  char *first = data + offset;
-  char *second = data + type_size0 + offset;
-  for(size_t i = 0; i < N; i++) {
+  char* first = data + offset;
+  char* second = data + type_size0 + offset;
+  for (size_t i = 0; i < N; i++) {
     memcpy(first + i * type_size, props[0].field + i * props[0].partSize,
            type_size0);
     memcpy(second + i * type_size, props[1].field + i * props[1].partSize,
