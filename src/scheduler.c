@@ -167,6 +167,19 @@ int scheduler_get_number_relation(const struct scheduler *s,
 #define MAX_NUMBER_DEP 128
 
 /**
+ * @brief Describe the level at which the task are done.
+ * WARNING: the order is supposed to be sorted from the root
+ * to the leaf.
+ */
+enum task_dependency_level {
+  task_dependency_level_top = 0,
+  task_dependency_level_super,
+  task_dependency_level_super_hydro,
+  task_dependency_level_super_grav,
+  task_dependency_level_none,
+};
+
+/**
  * @brief Informations about all the task dependencies of
  *   a single task.
  */
@@ -181,6 +194,15 @@ struct task_dependency {
   /* Is the task implicit */
   int implicit_in;
 
+  /* Is the taks_in at the top level? */
+  int task_in_is_top;
+
+  /* Is the taks_in at the grav.super level? */
+  int task_in_is_grav_super;
+
+  /* Is the taks_in at the hydro.super level? */
+  int task_in_is_hydro_super;
+
   /* Dependent task */
   /* ID of the dependent task */
   int type_out[MAX_NUMBER_DEP];
@@ -190,6 +212,15 @@ struct task_dependency {
 
   /* Is the dependent task implicit */
   int implicit_out[MAX_NUMBER_DEP];
+
+  /* Is the taks_out at the top level? */
+  int task_out_is_top[MAX_NUMBER_DEP];
+
+  /* Is the taks_out at the grav.super level? */
+  int task_out_is_grav_super[MAX_NUMBER_DEP];
+
+  /* Is the taks_out at the hydro.super level? */
+  int task_out_is_hydro_super[MAX_NUMBER_DEP];
 
   /* Statistics */
   /* number of link between the two task type */
@@ -208,7 +239,7 @@ struct task_dependency {
  */
 void task_dependency_define(MPI_Datatype *tstype) {
   /* Define the variables */
-  const int count = 8;
+  const int count = 14;
   int blocklens[count];
   MPI_Datatype types[count];
   MPI_Aint disps[count];
@@ -225,20 +256,32 @@ void task_dependency_define(MPI_Datatype *tstype) {
   blocklens[1] = 1;
   disps[2] = offsetof(struct task_dependency, implicit_in);
   blocklens[2] = 1;
+  disps[3] = offsetof(struct task_dependency, task_in_is_top);
+  blocklens[3] = 1;
+  disps[4] = offsetof(struct task_dependency, task_in_is_hydro_super);
+  blocklens[4] = 1;
+  disps[5] = offsetof(struct task_dependency, task_in_is_grav_super);
+  blocklens[5] = 1;
 
   /* Task out */
-  disps[3] = offsetof(struct task_dependency, type_out);
-  blocklens[3] = MAX_NUMBER_DEP;
-  disps[4] = offsetof(struct task_dependency, subtype_out);
-  blocklens[4] = MAX_NUMBER_DEP;
-  disps[5] = offsetof(struct task_dependency, implicit_out);
-  blocklens[5] = MAX_NUMBER_DEP;
+  disps[6] = offsetof(struct task_dependency, type_out);
+  blocklens[6] = MAX_NUMBER_DEP;
+  disps[7] = offsetof(struct task_dependency, subtype_out);
+  blocklens[7] = MAX_NUMBER_DEP;
+  disps[8] = offsetof(struct task_dependency, implicit_out);
+  blocklens[8] = MAX_NUMBER_DEP;
+  disps[9] = offsetof(struct task_dependency, task_out_is_top);
+  blocklens[9] = MAX_NUMBER_DEP;
+  disps[10] = offsetof(struct task_dependency, task_out_is_hydro_super);
+  blocklens[10] = MAX_NUMBER_DEP;
+  disps[11] = offsetof(struct task_dependency, task_out_is_grav_super);
+  blocklens[11] = MAX_NUMBER_DEP;
 
   /* statistics */
-  disps[6] = offsetof(struct task_dependency, number_link);
-  blocklens[6] = MAX_NUMBER_DEP;
-  disps[7] = offsetof(struct task_dependency, number_rank);
-  blocklens[7] = MAX_NUMBER_DEP;
+  disps[12] = offsetof(struct task_dependency, number_link);
+  blocklens[12] = MAX_NUMBER_DEP;
+  disps[13] = offsetof(struct task_dependency, number_rank);
+  blocklens[13] = MAX_NUMBER_DEP;
 
   /* define it for MPI */
   MPI_Type_create_struct(count, blocklens, disps, types, tstype);
@@ -328,10 +371,24 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
         error("Tasks do not correspond");
       }
 #endif
-
       /* sum the contributions */
       out[i].number_link[k] += in[i].number_link[j];
       out[i].number_rank[k] += in[i].number_rank[j];
+
+      /* Get the task in level */
+      out[i].task_in_is_top = min(out[i].task_in_is_top, in[i].task_in_is_top);
+      out[i].task_in_is_hydro_super =
+          min(out[i].task_in_is_hydro_super, in[i].task_in_is_hydro_super);
+      out[i].task_in_is_grav_super =
+          min(out[i].task_in_is_grav_super, in[i].task_in_is_grav_super);
+
+      /* Get the task out level */
+      out[i].task_out_is_top[j] =
+          min(out[i].task_out_is_top[j], in[i].task_out_is_top[j]);
+      out[i].task_out_is_hydro_super[j] = min(out[i].task_out_is_hydro_super[j],
+                                              in[i].task_out_is_hydro_super[j]);
+      out[i].task_out_is_grav_super[j] = min(out[i].task_out_is_grav_super[j],
+                                             in[i].task_out_is_grav_super[j]);
     }
   }
 
@@ -341,7 +398,7 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
 #endif  // WITH_MPI
 
 /**
- * @brief Write a dot file with the task dependencies.
+ * @brief Write a csv file with the task dependencies.
  *
  * Run plot_task_dependencies.sh for an example of how to use it
  * to generate the figure.
@@ -367,9 +424,19 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Reset counter */
   for (int i = 0; i < nber_tasks; i++) {
+    /* Assume that the tasks are at all levels and correct later. */
+    task_dep[i].task_in_is_top = 1;
+    task_dep[i].task_in_is_grav_super = 1;
+    task_dep[i].task_in_is_hydro_super = 1;
+
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
       /* Use number_link as indicator of the existance of a relation */
       task_dep[i].number_link[j] = -1;
+
+      /* Assume that the tasks are at all levels and correct later. */
+      task_dep[i].task_out_is_top[j] = 1;
+      task_dep[i].task_out_is_grav_super[j] = 1;
+      task_dep[i].task_out_is_hydro_super[j] = 1;
     }
   }
 
@@ -387,9 +454,47 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     cur->subtype_in = ta->subtype;
     cur->implicit_in = ta->implicit;
 
+    /* Set the task level. */
+    const struct cell *ci = ta->ci;
+    const struct cell *cj = ta->cj;
+    const int is_ci_top = ci == NULL || (ci != NULL && ci == ci->top);
+    const int is_cj_top = cj == NULL || (cj != NULL && cj == cj->top);
+    const int is_hydro_super =
+        (cj == NULL || (cj != NULL && cj == cj->hydro.super)) &&
+        (ci == NULL || (ci != NULL && ci == ci->hydro.super));
+    const int is_grav_super =
+        (cj == NULL || (cj != NULL && cj == cj->grav.super)) &&
+        (ci == NULL || (ci != NULL && ci == ci->grav.super));
+
+    /* Are we dealing with a task at the top level? */
+    if (!(is_ci_top && is_cj_top)) {
+      cur->task_in_is_top = 0;
+    }
+    /* At the hydro level? */
+    if (!is_hydro_super) {
+      cur->task_in_is_hydro_super = 0;
+    }
+    /* At the gravity level? */
+    if (!is_grav_super) {
+      cur->task_in_is_grav_super = 0;
+    }
+
     /* and their dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb = ta->unlock_tasks[j];
+
+      const struct cell *ci_b = tb->ci;
+      const struct cell *cj_b = tb->cj;
+      const int is_ci_b_top =
+          ci_b == NULL || (ci_b != NULL && ci_b == ci_b->top);
+      const int is_cj_b_top =
+          cj_b == NULL || (cj_b != NULL && cj_b == cj_b->top);
+      const int is_b_hydro_super =
+          (cj_b == NULL || (cj_b != NULL && cj_b == cj_b->hydro.super)) &&
+          (ci_b == NULL || (ci_b != NULL && ci_b == ci_b->hydro.super));
+      const int is_b_grav_super =
+          (cj_b == NULL || (cj_b != NULL && cj_b == cj_b->grav.super)) &&
+          (ci_b == NULL || (ci_b != NULL && ci_b == ci_b->grav.super));
 
       int k = 0;
       while (k < MAX_NUMBER_DEP) {
@@ -405,12 +510,38 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
           cur->number_link[k] = count;
           cur->number_rank[k] = 1;
 
+          /* Are we dealing with a task at the top level? */
+          if (!(is_ci_b_top && is_cj_b_top)) {
+            cur->task_out_is_top[k] = 0;
+          }
+          /* At the hydro level? */
+          if (!is_b_hydro_super) {
+            cur->task_out_is_hydro_super[k] = 0;
+          }
+          /* At the gravity level? */
+          if (!is_b_grav_super) {
+            cur->task_out_is_grav_super[k] = 0;
+          }
+
           break;
         }
 
         /* already written */
         if (cur->type_out[k] == tb->type &&
             cur->subtype_out[k] == tb->subtype) {
+
+          /* Are we dealing with a task at the top level? */
+          if (!(is_ci_b_top && is_cj_b_top)) {
+            cur->task_out_is_top[k] = 0;
+          }
+          /* At the hydro level? */
+          if (!is_b_hydro_super) {
+            cur->task_out_is_hydro_super[k] = 0;
+          }
+          /* At the gravity level? */
+          if (!is_b_grav_super) {
+            cur->task_out_is_grav_super[k] = 0;
+          }
           break;
         }
 
@@ -470,7 +601,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     fprintf(
         f,
         "task_in,task_out,implicit_in,implicit_out,mpi_in,mpi_out,cluster_in,"
-        "cluster_out,number_link,number_rank\n");
+        "cluster_out,number_link,number_rank,task_in_is_top,task_in_is_hydro_"
+        "super,task_in_is_grav_super,task_out_is_top,task_out_is_hydro_super,"
+        "task_out_is_grav_super\n");
 
     for (int i = 0; i < nber_tasks; i++) {
       for (int j = 0; j < MAX_NUMBER_DEP; j++) {
@@ -490,6 +623,16 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
         const int count = task_dep[i].number_link[j];
         const int number_rank = task_dep[i].number_rank[j];
+
+        const int task_in_is_top = task_dep[i].task_in_is_top;
+        const int task_in_is_grav_super = task_dep[i].task_in_is_grav_super;
+        const int task_in_is_hydro_super = task_dep[i].task_in_is_hydro_super;
+
+        const int task_out_is_top = task_dep[i].task_out_is_top[j];
+        const int task_out_is_grav_super =
+            task_dep[i].task_out_is_grav_super[j];
+        const int task_out_is_hydro_super =
+            task_dep[i].task_out_is_hydro_super[j];
 
         /* text to write */
         char ta_name[200];
@@ -512,9 +655,11 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
         task_get_group_name(ta_type, ta_subtype, ta_cluster);
         task_get_group_name(tb_type, tb_subtype, tb_cluster);
 
-        fprintf(f, "%s,%s,%d,%d,%d,%d,%s,%s,%d,%d\n", ta_name, tb_name,
-                ta_implicit, tb_implicit, ta_mpi, tb_mpi, ta_cluster,
-                tb_cluster, count, number_rank);
+        fprintf(f, "%s,%s,%d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d\n", ta_name,
+                tb_name, ta_implicit, tb_implicit, ta_mpi, tb_mpi, ta_cluster,
+                tb_cluster, count, number_rank, task_in_is_top,
+                task_in_is_hydro_super, task_in_is_grav_super, task_out_is_top,
+                task_out_is_hydro_super, task_out_is_grav_super);
       }
     }
     /* Close the file */
