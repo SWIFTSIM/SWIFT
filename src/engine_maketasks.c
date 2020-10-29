@@ -3612,10 +3612,17 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  if (e->policy & engine_policy_hydro)
-    threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-                   sched->tasks, sched->nr_tasks, sizeof(struct task),
-                   threadpool_auto_chunk_size, e);
+  if (e->policy & engine_policy_hydro) {
+
+    /* Note that this does not scale well at all so we do not use the
+     * threadpool version here until the reason for this is found.
+     * We call the mapper function directly as if there was only 1 thread
+     * in the pool. */
+    engine_make_extra_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
+    /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
+     *                sched->tasks, sched->nr_tasks, sizeof(struct task),
+     *                threadpool_auto_chunk_size, e); */
+  }
 
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
