@@ -77,8 +77,9 @@ the following changes have been made (at standard resolution):
  - The coupling efficency of the BH feedback is now 0.1 (was 0.15).
  - The AGN feedback heats the particles closest to the BH particle
    (was a random set of particles in the kernel).
- - The AGN does not use a reservoir any more. The energy is injected
-   with a probability every step.
+ - The AGN does not use a combination of probability and reservoir
+   any more. Energy is accumulated and then used in a deterministic
+   way once the threshold for feedback is reached.
  - The AGN feedback temperature jump is now a function of the BH
    subgrid mass (was a constant at 10^8.5K). The temperature varies
    between 10^7 and 3*10^9 K with a power-law of the subgrid mass
