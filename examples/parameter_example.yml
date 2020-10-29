@@ -502,6 +502,7 @@ EAGLEFeedback:
   IMF_max_mass_Msun:                 100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
   SNII_min_mass_Msun:                  6.0             # Minimal mass considered for SNII stars in solar masses.
   SNII_max_mass_Msun:                100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_feedback_model:                 Random          # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   SNII_sampled_delay:                  1               # Sample the SNII lifetimes to do feedback.
   SNII_wind_delay_Gyr:                 0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
   SNII_delta_T_K:                      3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
@@ -564,6 +565,8 @@ EAGLEAGN:
   use_nibbling:                       0          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]? 
   min_gas_mass_for_nibbling:          9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
+  AGN_feedback_model:                 Random     # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
+  AGN_use_deterministic_feedback:     0          # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
   AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin, this is used for the constant AGN model, for the mass dependend heating model we use this as an initialization value for the IC and birth properties of the BHs
   use_variable_delta_T:               1             # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
   AGN_with_locally_adaptive_delta_T:  1             # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
