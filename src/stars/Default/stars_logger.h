@@ -21,6 +21,8 @@
 
 #ifdef WITH_LOGGER
 
+#include "logger_io.h"
+
 /*
  * List of all possible mask.
  * Outside the module, only stars_logger_field_count is used.
