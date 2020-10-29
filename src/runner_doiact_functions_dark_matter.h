@@ -1079,6 +1079,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         }
         
         const int pi_active = dmpart_is_active(pi, e);
+        if (pi_active) dark_matter_log_num_active_parts(sidm_history,1);
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -1094,6 +1095,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
             const int pj_active = dmpart_is_active(pj, e);
+            if (pj_active && (pid == 0)) dark_matter_log_num_active_parts(sidm_history,1);
 
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -1413,6 +1415,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
         const int pi_active = dmpart_is_active(pi, e);
+        if (pi_active) dark_matter_log_num_active_parts(sidm_history,1);
+            
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
             (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
@@ -1424,6 +1428,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             struct dmpart *restrict pj = &dmparts_j[pjd];
             
             const int pj_active = dmpart_is_active(pj, e);
+            if (pj_active && (pid == 0)) dark_matter_log_num_active_parts(sidm_history,1);
+
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
 
