@@ -32,6 +32,7 @@
  * @param pj Second particle (not updated).
  * @param xp Extra particle data (not updated).
  * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
@@ -40,6 +41,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
                                     struct spart *si, const struct part *pj,
                                     const struct xpart *xp,
                                     const struct cosmology *cosmo,
+                                    const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {}
 
 /**
@@ -56,6 +58,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * @param pj Second (gas) particle.
  * @param xp Extra particle data
  * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */
@@ -65,6 +68,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const struct spart *si, struct part *pj,
                                   struct xpart *xp,
                                   const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
                                   const integertime_t ti_current) {}
 
 #endif /* SWIFT_NONE_FEEDBACK_IACT_H */
