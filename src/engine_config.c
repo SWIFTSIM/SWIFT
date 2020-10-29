@@ -496,7 +496,7 @@ void engine_config(int restart, int fof, struct engine *e,
     if ((e->policy & engine_policy_logger) && e->nodeID == 0)
       message(
           "WARNING: There is currently no way of predicting the output "
-          "size, please use it carefully");
+          "size, please use the logger carefully");
 #endif
 
     /* Find the time of the first snapshot output */

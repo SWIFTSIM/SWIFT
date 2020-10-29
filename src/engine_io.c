@@ -58,8 +58,16 @@ void engine_check_for_index_dump(struct engine *e) {
   const size_t index_file_size =
       total_nr_parts * sizeof(struct logger_part_data);
 
+  size_t number_part_history = 0;
+  for (int i = 0; i < swift_type_count; i++) {
+    number_part_history +=
+        log->history_new[i].size + log->history_removed[i].size;
+  }
+  const int history_too_large = number_part_history > log->maximal_size_history;
+
   /* Check if we should write a file */
-  if (mem_frac * (dump_size - old_dump_size) > index_file_size) {
+  if (mem_frac * (dump_size - old_dump_size) > index_file_size ||
+      history_too_large) {
     /* Write an index file */
     engine_dump_index(e);
 

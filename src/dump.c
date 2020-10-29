@@ -173,8 +173,17 @@ void dump_restart(struct dump *d, const char *filename) {
     error("Failed to open dump file '%s' (%s).", filename, strerror(errno));
   }
 
+  /* Adjust the size to be at least the page size. */
+  const size_t page_mask = ~(sysconf(_SC_PAGE_SIZE) - 1);
+  size_t size = (d->size + ~page_mask) & page_mask;
+
+  /* Pre-allocate the file size. */
+  if (posix_fallocate(d->fd, 0, size) != 0) {
+    error("Failed to pre-allocate the dump file.");
+  }
+
   /* Map memory to the created file. */
-  if ((d->data = mmap(NULL, d->size, PROT_WRITE, MAP_SHARED, d->fd,
+  if ((d->data = mmap(NULL, size, PROT_WRITE, MAP_SHARED, d->fd,
                       d->file_offset)) == MAP_FAILED) {
     error("Failed to allocate map of size %zi bytes (%s).", d->size,
           strerror(errno));

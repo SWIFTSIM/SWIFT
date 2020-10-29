@@ -26,12 +26,15 @@
 /* Some standard headers. */
 #include "common_io.h"
 
+#include <errno.h>
 #include <hdf5.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 /* This object's header. */
 #include "logger_io.h"
@@ -61,37 +64,6 @@
 #include "xmf.h"
 
 /**
- * @brief Mapper function to copy #part or #gpart fields into a buffer.
- * WARNING Assumes two io_props in extra_data.
- */
-void logger_io_copy_mapper(void* restrict temp, int N,
-                           void* restrict extra_data) {
-
-  /* Get the io_props */
-  const struct io_props* props = (const struct io_props*)(extra_data);
-  const struct io_props props1 = props[0];
-  const struct io_props props2 = props[1];
-
-  /* Get the sizes */
-  const size_t typeSize1 = io_sizeof_type(props1.type);
-  const size_t copySize1 = typeSize1 * props1.dimension;
-  const size_t typeSize2 = io_sizeof_type(props2.type);
-  const size_t copySize2 = typeSize2 * props2.dimension;
-  const size_t copySize = copySize1 + copySize2;
-
-  /* How far are we with this chunk? */
-  char* restrict temp_c = (char*)temp;
-  const ptrdiff_t delta = (temp_c - props1.start_temp_c) / copySize;
-
-  /* Copy the memory to the buffer */
-  for (int k = 0; k < N; k++) {
-    memcpy(&temp_c[k * copySize], props1.field + (delta + k) * props1.partSize,
-           copySize1);
-    memcpy(&temp_c[k * copySize + copySize1],
-           props2.field + (delta + k) * props2.partSize, copySize2);
-  }
-}
-/**
  * @brief Writes the data array in the index file.
  *
  * @param e The #engine we are writing from.
@@ -100,42 +72,82 @@ void logger_io_copy_mapper(void* restrict temp, int N,
  * @param n_props The number of element in @props.
  * @param N The number of particles to write.
  */
-void writeIndexArray(const struct engine* e, FILE* f, struct io_props* props,
-                     size_t n_props, size_t N) {
+void write_index_array(const struct engine* e, FILE* f, struct io_props* props,
+                       size_t n_props, size_t N) {
 
   /* Check that the assumptions are corrects */
   if (n_props != 2)
     error("Not implemented: The index file can only write two props.");
 
-  if (props[0].dimension != 1 || props[1].dimension != 1)
-    error("Not implemented: cannot use multidimensional data");
-
   /* Get a few variables */
-  const size_t typeSize =
-      io_sizeof_type(props[0].type) + io_sizeof_type(props[1].type);
+  const size_t type_size0 = io_sizeof_type(props[0].type) * props[0].dimension;
+  const size_t type_size1 = io_sizeof_type(props[1].type) * props[1].dimension;
+  const size_t type_size = type_size0 + type_size1;
 
-  const size_t num_elements = N;
+  /* Convert FILE to int */
+  int fd = fileno(f);
+  if (fd == -1) {
+    error("Failed to get the integer descriptor");
+  }
 
-  /* Allocate temporary buffer */
-  void* temp = NULL;
-  if (posix_memalign((void**)&temp, IO_BUFFER_ALIGNMENT,
-                     num_elements * typeSize) != 0)
-    error("Unable to allocate temporary i/o buffer");
+  /* Get a few variables for the mapping */
+  char *data;
+  const size_t offset = ftell(f);
+  const size_t count = N * type_size + offset;
 
-  /* Copy the particle data to the temporary buffer */
-  /* Set initial buffer position */
-  props[0].start_temp_c = temp;
-  props[1].start_temp_c = temp;
+  /* Truncate the file to the correct length. */
+  if (ftruncate(fd, count) != 0) {
+    error("Failed to truncate dump file (%s).", strerror(errno));
+  }
 
-  /* Copy the whole thing into a buffer */
-  threadpool_map((struct threadpool*)&e->threadpool, logger_io_copy_mapper,
-                 temp, N, typeSize, threadpool_auto_chunk_size, props);
 
-  /* Write data to file */
-  fwrite(temp, typeSize, num_elements, f);
+  /* Map the file */
+  if ((data = mmap(NULL, count, PROT_WRITE, MAP_SHARED, fd, 0)) ==
+      MAP_FAILED) {
+    error("Failed to allocate map of size %zi bytes (%s).", count,
+          strerror(errno));
+  }
 
-  /* Free everything */
-  free(temp);
+  /* Copy the data into the file */
+  char *first = data + offset;
+  char *second = data + type_size0 + offset;
+  for(size_t i = 0; i < N; i++) {
+    memcpy(first + i * type_size, props[0].field + i * props[0].partSize,
+           type_size0);
+    memcpy(second + i * type_size, props[1].field + i * props[1].partSize,
+           type_size1);
+  }
+
+  /* Unmap the data in memory. */
+  if (munmap(data, count) != 0) {
+    error("Failed to unmap dump data (%s).", strerror(errno));
+  }
+
+  /* Move the file position */
+  fseek(f, count, SEEK_SET);
+}
+
+/**
+ * @brief Write the history (created or deleted) for all the particles type.
+ *
+ * @param history The list of history to write.
+ * @param e The #engine.
+ * @param f The opened file to use.
+ */
+void logger_write_history(struct logger_history* history, struct engine* e,
+                          FILE* f) {
+
+  /* Write the number of particles. */
+  uint64_t size[swift_type_count];
+  for (int i = 0; i < swift_type_count; i++) {
+    size[i] = history[i].size;
+  }
+  fwrite(size, sizeof(uint64_t), swift_type_count, f);
+
+  /* Write the data */
+  for (int i = 0; i < swift_type_count; i++) {
+    logger_history_write(&history[i], e, f);
+  }
 }
 
 /**
@@ -161,7 +173,6 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
   struct xpart* xparts = e->s->xparts;
   struct gpart* gparts = e->s->gparts;
   struct spart* sparts = e->s->sparts;
-  static int outputCount = 0;
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
@@ -191,11 +202,12 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%.100s_%04i_%04i.index",
-           e->logger->base_name, engine_rank, outputCount);
+           e->logger->base_name, engine_rank, log->index_file_number);
+  log->index_file_number++;
 
-  /* Open file */
+  /* Open file (include reading for mmap) */
   FILE* f = NULL;
-  f = fopen(fileName, "wb");
+  f = fopen(fileName, "w+b");
 
   if (f == NULL) {
     error("Failed to open file %s", fileName);
@@ -341,7 +353,7 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
     }
 
     /* Write ids */
-    writeIndexArray(e, f, list, num_fields, N);
+    write_index_array(e, f, list, num_fields, N);
 
     /* Free temporary arrays */
     if (parts_written) swift_free("parts_written", parts_written);
@@ -353,10 +365,14 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
     if (bparts_written) swift_free("bparts_written", bparts_written);
   }
 
+  /* Write the particles created */
+  logger_write_history(log->history_new, e, f);
+
+  /* Write the particles removed */
+  logger_write_history(log->history_removed, e, f);
+
   /* Close file */
   fclose(f);
-
-  ++outputCount;
 }
 
 /**

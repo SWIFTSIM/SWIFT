@@ -28,7 +28,7 @@
 #include "part_type.h"
 #include "timeline.h"
 
-/* Import the right functloggerns */
+/* Import the right function */
 #if defined(MINIMAL_SPH)
 #error TODO
 #elif defined(GADGET2_SPH)
