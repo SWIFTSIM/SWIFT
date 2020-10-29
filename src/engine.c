@@ -2924,6 +2924,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
   engine_init_output_lists(e, params);
 }
+
 /**
  * @brief Prints the current policy of an engine
  *

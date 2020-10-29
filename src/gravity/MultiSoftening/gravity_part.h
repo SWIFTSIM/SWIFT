@@ -20,6 +20,7 @@
 #define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
 #include "fof_struct.h"
+#include "logger.h"
 
 /* Gravity particle. */
 struct gpart {
