@@ -92,10 +92,11 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             /* Get a handle on the part. */
             struct dmpart *restrict dmp = &dmparts[k];
             
-            /* Is this part within the timestep? */
-            /* What to do if not? Should we woken it up? */
-            /*if (!dmpart_is_active(dmp, e)) error("Ghost applied to inactive particle");*/
-
+            /* Is this part within the timestep? If not let's wake it up */
+            if (!dmpart_is_active(dmp, e)) {
+                /* Synchronize the particle on the timeline */
+                timestep_sync_part(dmp);
+            }
             
             /* do the kick */
             communicate_sidm_kick_to_dmpart(dmp);
