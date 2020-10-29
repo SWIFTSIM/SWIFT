@@ -316,7 +316,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             stars_init_spart(sp);
             feedback_init_spart(sp);
-            rt_init_spart(sp);
+            /* if you reset emission rate now, it won't be
+             * updated until the second step */
+            rt_init_spart(sp, /*reset_emission_rate =*/0);
 
             /* Off we go ! */
             continue;
