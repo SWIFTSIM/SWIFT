@@ -227,9 +227,9 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
     if (gp->sidm_data.sidm_flag > 0) {
         
         /* Rewrite gparticle's velocity */
-        /*gp->v_full[0] = gp->sidm_data.si_v_full[0];
+         gp->v_full[0] = gp->sidm_data.si_v_full[0];
          gp->v_full[1] = gp->sidm_data.si_v_full[1];
-         gp->v_full[2] = gp->sidm_data.si_v_full[2];*/
+         gp->v_full[2] = gp->sidm_data.si_v_full[2];
         
         /* Reset particle SIDM variables */
         sidm_reset(gp);
