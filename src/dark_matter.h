@@ -25,7 +25,6 @@
 
 #include "./dark_matter_part.h"
 #include "./dark_matter_iact.h"
-/*#include "dark_matter_logger.h"*/
 
 /**
  * @brief Prepares a s-particle for its interactions
@@ -43,7 +42,11 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
     gp->sidm_data.si_v_full[0] = gp->v_full[0];
     gp->sidm_data.si_v_full[1] = gp->v_full[1];
     gp->sidm_data.si_v_full[2] = gp->v_full[2];
-
+    
+    gp->avg_pair_v = 0.f;
+    gp->sidm_probability = 0.f;
+    gp->time_step_size = 0.f;
+    gp->num_neighbours = 0.f;
 
 }
 
@@ -126,7 +129,8 @@ __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_va
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_end_density(
-    struct dmpart* gp, const struct cosmology* cosmo) {
+    struct dmpart* gp, const struct cosmology* cosmo, const struct sidm_props* sidm_props,
+    const double dt) {
         
     /* Some smoothing length multiples. */
     const float h = gp->h;
@@ -141,10 +145,31 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     gp->density.wcount_dh -= hydro_dimension * dm_kernel_root;
 
     /* Finish the calculation by inserting the missing h-factors */
-      gp->rho *= h_inv_dim;
-      gp->density.rho_dh *= h_inv_dim_plus_one;
-      gp->density.wcount *= h_inv_dim;
-      gp->density.wcount_dh *= h_inv_dim_plus_one;
+    gp->rho *= h_inv_dim;
+    gp->density.rho_dh *= h_inv_dim_plus_one;
+    gp->density.wcount *= h_inv_dim;
+    gp->density.wcount_dh *= h_inv_dim_plus_one;
+    
+    /* Finish the average calculation by diving by num. of neighbours */
+    gp->avg_pair_v /= gp->num_neighbours;
+    
+    /* Calculate avg. probability of scattering */
+    
+    /* Scattering cross section per unit mass (in internal units) */
+    const double sigma = sidm_props->sigma;
+    
+    /* DM-DM distance */
+    const float h3 = h * h * h; /* * dm_kernel_gamma3;*/
+    const float a = cosmo->a;
+    const float a_inv = 1.0f / a;
+    const float a_inv4 = a_inv * a_inv * a_inv * a_inv;
+    
+    /* Calculate scattering rate */
+    float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 / (4.0f * M_PI * h3 / 3.0f);
+    
+    /* Calculate SIDM probability (internal units) */
+    gp->sidm_probability = Rate_SIDM * dt;
+    gp->time_step_size = dt;
 
 }
 
@@ -168,6 +193,8 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     gp->density.wcount = dm_kernel_root * h_inv_dim;
     gp->density.rho_dh = 0.f;
     gp->density.wcount_dh = 0.f;
+    gp->avg_pair_v = 0.f;
+    gp->num_neighbours = 0.f;
 }
 
 

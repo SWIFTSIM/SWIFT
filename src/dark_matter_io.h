@@ -120,9 +120,18 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
 
     list[3] = io_make_output_field("DMParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
                                    id_or_neg_offset, "Unique ID of the particles");
+    
+    list[4] = io_make_output_field("SIDM_probability", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+                                   sidm_probability, "Average probability of particle scattering with another (internal units)");
+    
+    list[5] = io_make_output_field("Number_of_neighbours", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+                                   num_neighbours, "Number of neighbours");
+    
+    list[6] = io_make_output_field("Time_step_size", FLOAT, 1, UNIT_CONV_TIME, 1.f, dmparts,
+                                   time_step_size, "Average probability of particle scattering with another (internal units)");
 
     
-    return 4;
+    return 7;
     
 }
 

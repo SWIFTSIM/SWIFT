@@ -72,6 +72,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
     pj->density.wcount += wj;
     pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+    
+    /* Velocities of interacting particles */
+    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+    double vij = sqrt(v2);
+    
+    pj->avg_pair_v += vij;
+    pi->avg_pair_v += vij;
+    
+    pi->num_neighbours += 1;
+    pj->num_neighbours += 1;
+
 }
 
 /**
@@ -107,7 +119,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     pi->density.wcount += wi;
     pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
-
+    
+    /* Velocities of interacting particles */
+    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+    double vij = sqrt(v2);    
+    pi->avg_pair_v += vij;
+    pi->num_neighbours += 1;
 }
 
 /**
@@ -124,7 +142,6 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     
     /* Center of Mass Velocity of interacting particles */
     const double VCM[3] = {(pi->sidm_data.si_v_full[0] + pj->sidm_data.si_v_full[0])/2.0, (pi->sidm_data.si_v_full[1] + pj->sidm_data.si_v_full[1])/2.0, (pi->sidm_data.si_v_full[2] + pj->sidm_data.si_v_full[2])/2.0};
-    
     double dw[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
     double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
     double dv = sqrt(dv2) / 2.0;
@@ -158,7 +175,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     pi->sidm_data.si_v_full[0] = VCM[0] - dv * e[0];
     pi->sidm_data.si_v_full[1] = VCM[1] - dv * e[1];
     pi->sidm_data.si_v_full[2] = VCM[2] - dv * e[2];
-    
+
     /* Communicating this kick to logger */
     if (pi->sidm_data.sidm_flag > 0) {
         energy_before = 0.;
@@ -231,8 +248,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double mass_j = pj->mass;
 
     /* DM-DM distance */
-    float hi_3 = hi * hi * hi; /* * dm_kernel_gamma3;*/
-    float hj_3 = hj * hj * hj; /* * dm_kernel_gamma3;*/
+    float hi_3 = hi * hi * hi * dm_kernel_gamma3;
+    float hj_3 = hj * hj * hj * dm_kernel_gamma3;
 
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
@@ -288,7 +305,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double mass_i = pi->mass;
     
     /* DM-DM distance */
-    float hi_3 = hi * hi * hi; /* * dm_kernel_gamma3;*/
+    float hi_3 = hi * hi * hi * dm_kernel_gamma3;
     
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;

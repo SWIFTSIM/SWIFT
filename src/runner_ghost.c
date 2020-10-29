@@ -1405,8 +1405,8 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
-    /*const int with_cosmology = (e->policy & engine_policy_cosmology);*/
-    
+    const struct sidm_props *sidm_props = e->sidm_properties;
+    const int with_cosmology = e->policy & engine_policy_cosmology;
     const float dark_matter_h_max = e->sidm_properties->h_max;
     const float dark_matter_h_min = e->sidm_properties->h_min;
     const float eps = e->sidm_properties->h_tolerance;
@@ -1481,6 +1481,16 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 const float h_old_dim = pow_dimension(h_old);
                 const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
                 
+                /* Time step-size */
+                const integertime_t ti_step = get_integer_timestep(p->time_bin);
+                const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, p->time_bin);
+                double dt;
+                if (with_cosmology) {
+                    dt = cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
+                } else {
+                    dt = get_timestep(p->time_bin, e->time_base);
+                }
+                
                 float h_new;
                 int has_no_neighbours = 0;
                 
@@ -1495,7 +1505,7 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 } else {
                     
                     /* Finish the density calculation */
-                    dark_matter_end_density(p, cosmo);
+                    dark_matter_end_density(p, cosmo, sidm_props, dt);
                     
                     /* Are we using the alternative definition of the
                      number of neighbours? */
@@ -1527,40 +1537,6 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                     /* Same if we are below h_min */
                     if (((p->h >= dark_matter_h_max) && (f < 0.f)) ||
                         ((p->h <= dark_matter_h_min) && (f > 0.f))) {
-                        
-                        /* We have a particle whose smoothing length is already set (wants
-                         * to be larger but has already hit the maximum OR wants to be
-                         * smaller but has already reached the minimum). So, just tidy up
-                         * as if the smoothing length had converged correctly  */
-                        
-
-                        /* Calculate the time-step for passing to hydro_prepare_force, used
-                         * for the evolution of alpha factors (i.e. those involved in the
-                         * artificial viscosity and thermal conduction terms) */
-                        /*const double time_base = e->time_base;
-                        const integertime_t ti_current = e->ti_current;
-                        
-                        if (with_cosmology) {
-                            const integertime_t ti_step = get_integer_timestep(p->time_bin);
-                            const integertime_t ti_begin =
-                            get_integer_time_begin(ti_current - 1, p->time_bin);
-                            
-                            double dt_alpha = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-                        } else {
-                            double dt_alpha = get_timestep(p->time_bin, time_base);
-                        }*/
-                        
-                        /* As of here, particle force variables will be set. */
-                        
-                        /* Compute variables required for the force loop */
-                        /*hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
-                        timestep_limiter_prepare_force(p, xp);*/
-                        
-                        /* The particle force values are now set.  Do _NOT_
-                         try to read any particle density variables! */
-                        
-                        /* Prepare the particle for the force loop over neighbours */
-                        /*hydro_reset_acceleration(p);*/
                         
                         /* Ok, we are done with this particle */
                         continue;
@@ -1659,36 +1635,6 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 
                 /* Check if h_max is increased */
                 h_max = max(h_max, p->h);
-                                
-                /* Calculate the time-step for passing to hydro_prepare_force, used
-                 * for the evolution of alpha factors (i.e. those involved in the
-                 * artificial viscosity and thermal conduction terms) */
-                /*const double time_base = e->time_base;
-                const integertime_t ti_current = e->ti_current;
-                double dt_alpha;
-                
-                if (with_cosmology) {
-                    const integertime_t ti_step = get_integer_timestep(p->time_bin);
-                    const integertime_t ti_begin =
-                    get_integer_time_begin(ti_current - 1, p->time_bin);
-                    
-                    dt_alpha =
-                    cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-                } else {
-                    dt_alpha = get_timestep(p->time_bin, time_base);
-                }*/
-                
-                /* As of here, particle force variables will be set. */
-                
-                /* Compute variables required for the force loop */
-                /*hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
-                timestep_limiter_prepare_force(p, xp);*/
-                
-                /* The particle force values are now set.  Do _NOT_
-                 try to read any particle density variables! */
-                
-                /* Prepare the particle for the force loop over neighbours */
-                /*hydro_reset_acceleration(p);*/
                 
             }
             

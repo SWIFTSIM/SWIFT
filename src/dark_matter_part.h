@@ -65,6 +65,16 @@ struct dmpart {
   integertime_t ti_kick;
     
 #endif
+    
+    /*! Average probability of scattering with another DM part */
+    float sidm_probability;
+    
+    /*! Average relative velocity wrt to neighbours */
+    float avg_pair_v;
+    
+    float time_step_size;
+    
+    float num_neighbours;
 
 
   struct {
