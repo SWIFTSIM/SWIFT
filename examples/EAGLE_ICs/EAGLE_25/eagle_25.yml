@@ -175,6 +175,7 @@ EAGLEFeedback:
   IMF_max_mass_Msun:                  100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
   SNII_min_mass_Msun:                   8.0             # Minimal mass considered for SNII stars in solar masses.
   SNII_max_mass_Msun:                 100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_feedback_model:                  MinimumDistance # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   SNII_sampled_delay:                   1               # Sample the SNII lifetimes to do feedback.
   SNII_delta_T_K:                       3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                      1.0e51          # Energy of one SNII explosion in ergs.
