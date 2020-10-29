@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_DEBUG_H
 #define SWIFT_RT_DEBUG_H
 
+// #include "cosmology.h"
+
 /**
  * @file src/rt/debug/rt.h
  * @brief Main header file for the debug radiative transfer scheme.
@@ -41,11 +43,62 @@ rt_injection_update_photon_density(struct part* restrict p) {
  *        This function is called every time the spart is initialized
  *        and assumes that the photon emission rate is an intrinsic
  *        stellar property, i.e. doesn't depend on the environment.
+ *
+ * @param sp star particle to work on
+ * @param star_age the star particle's age
+ * @param dt current time step size
  */
 __attribute__((always_inline)) INLINE static void
-rt_compute_stellar_emission_rate(struct spart* restrict sp) {
+rt_compute_stellar_emission_rate(
+    struct spart* restrict sp, 
+    const struct cosmology *cosmo,
+    int with_cosmology,
+    const integertime_t ti_current,
+    double time,
+    double time_base
+    ) {
 
-  sp->rt_data.emission_rate_set += 1;
+  /* get star's age and time step for stellar emission rates */
+  const integertime_t ti_begin = get_integer_time_begin(ti_current - 1, sp->time_bin);
+  const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+
+  /* Get particle time-step */
+  double dt_star;
+  if (with_cosmology) { 
+    dt_star = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+  } else {
+    dt_star = get_timestep(sp->time_bin, time_base);
+  }
+
+  /* Calculate age of the star at current time */
+  double star_age_end_of_step;
+  if (with_cosmology) {
+    star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+  } else {
+    star_age_end_of_step = time - (double)sp->birth_time;
+  }
+
+
+  if (ti_current == 0){
+    /* if this is the zeroth step, time is still at zero.
+     * Do some bogus stuff for now. */
+    star_age_end_of_step += 2*dt_star;
+  } 
+  if (star_age_end_of_step - dt_star >= 0.){
+    sp->rt_data.emission_rate_set += 1;
+  } else {
+    printf("%lld %lld %lld\n", ti_begin, ti_step, ti_current);
+    error("Got negative time when setting emission rates? %10.3g %10.3g %10.3g", star_age_end_of_step, dt_star, star_age_end_of_step - dt_star);
+  }
+
+
+
+
+  if (sp->id == 137500){
+    printf("--- Set Emission Rate 137500 in cell.c\n");
+  }
+
 }
 
 /**
@@ -73,19 +126,20 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
 /**
  * @brief Initialisation of the RT extra star particle data.
+ *
+ * @param sp star particle
+ * @param reset_emission_rate whether to reset the stellar emission
+ *        rate.
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {
+    struct spart* restrict sp, int reset_emission_rate) {
 
   /* reset everything */
   sp->rt_data.calls_per_step = 0;
   sp->rt_data.iact_hydro_inject = 0;
   sp->rt_data.calls_self_inject = 0;
   sp->rt_data.calls_pair_inject = 0;
-  sp->rt_data.emission_rate_set = 0;
-
-  /* get current emission rate */
-  rt_compute_stellar_emission_rate(sp);
+  if (reset_emission_rate) sp->rt_data.emission_rate_set = 0;
 }
 
 /**
@@ -95,7 +149,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {
 
   sp->rt_data.calls_tot = 0;
-  rt_init_spart(sp);
+  rt_init_spart(sp, /*reset_emission_rate =*/1);
 }
 
 #endif /* SWIFT_RT_DEBUG_H */

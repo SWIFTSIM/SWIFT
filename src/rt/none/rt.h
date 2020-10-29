@@ -34,9 +34,16 @@ rt_injection_update_photon_density(struct part* restrict p) {}
 /**
  * @brief Compute the photon emission rates for this stellar particle
  *        This function is called every time the spart is initialized
+ *        and assumes that the photon emission rate is an intrinsic
+ *        stellar property, i.e. doesn't depend on the environment.
+ *
+ * @param sp star particle to work on
+ * @param star_age the star particle's age
+ * @param dt current time step size
  */
 __attribute__((always_inline)) INLINE static void
-rt_compute_stellar_emission_rate(struct spart* restrict sp) {}
+rt_compute_stellar_emission_rate(struct spart* restrict sp, double star_age,
+                                 double dt) {}
 
 /**
  * @brief First initialisation of the RT extra hydro particle data.
@@ -57,11 +64,13 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {}
 
 /**
- * @brief First initialisation of the RT extra star particle data.
+ * @brief Initialisation of the RT extra star particle data.
+ *
+ * @param sp star particle
+ * @param reset_emission_rate whether to reset the stellar emission
+ *        rate.
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {
-  rt_compute_stellar_emission_rate(sp);
-}
+    struct spart* restrict sp, int reset_emission_rate) {}
 
 #endif /* SWIFT_RT_NONE_H */

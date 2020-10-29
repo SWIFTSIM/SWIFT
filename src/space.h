@@ -390,6 +390,7 @@ void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
+void space_first_init_rt_extra_data(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
