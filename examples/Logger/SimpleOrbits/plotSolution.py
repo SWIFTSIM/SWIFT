@@ -143,74 +143,39 @@ def doLogger():
     """
     Read the logfile and plot the corresponding variables.
     """
-    basename = "index"
+    basename = "index_0000"
     N = 1000
-    verbose = 0
 
     # Get time limits
-    t_min, t_max = logger.getTimeLimits(basename, verbose)
-    times = np.linspace(t_min, t_max, N)
+    with logger.Reader(basename, verbose=0) as reader:
+        t_min, t_max = reader.get_time_limits()
+        times = np.linspace(t_min, t_max, N)
 
-    # Create output arrays
-    E = np.zeros((N, makeIC.num_part))
-    E_parts = np.zeros((N, makeIC.num_part))
-    p = np.zeros((N, 3))
-    v = np.zeros((N, 3))
-    t_parts = np.zeros((N, makeIC.num_part))
-    p_parts = np.zeros((N, 3))
-    v_parts = np.zeros((N, 3))
+        # Create output arrays
+        E = np.zeros((N, makeIC.num_part))
+        p = np.zeros((N, 3))
+        v = np.zeros((N, 3))
 
-    # Read the particles
-    parts = logger.loadSnapshotAtTime(
-        basename, times[0], verbose)
+        for i, t in enumerate(times):
+            # Get the next particles
+            pos, vel, ids = reader.get_particle_data(
+                ["Coordinates", "Velocities", "ParticleIDs"], t)
+            sort = np.argsort(ids)
+            ids = ids[sort]
+            rel_pos = pos[sort, :] - center
+            vel = vel[sort, :]
 
-    for i, t in enumerate(times):
-        # Get the next particles
-        interp = logger.moveForwardInTime(
-            basename, parts, t, verbose)
-        ids = interp["ids"]
-        sort = np.argsort(ids)
-        ids = ids[sort]
-        rel_pos = interp["positions"][sort, :] - center
-        vel = interp["velocities"][sort, :]
-
-        rel_pos_parts = parts["positions"][sort, :] - center
-        vel_parts = parts["velocities"][sort, :]
-
-        # Compute the interpolated variables
-        r = np.sum(rel_pos**2, axis=1)**0.5
-        v2 = np.sum(vel**2, axis=1)
-        E[i, :] = 0.5 * v2 - G * M / r
-        ind = ids == id_focus
-        p[i, :] = rel_pos[ind, :]
-        v[i, :] = vel[ind, :]
-
-        # Compute the variables of the last record
-        r = np.sum(rel_pos_parts**2, axis=1)**0.5
-        v2 = np.sum(vel_parts**2, axis=1)
-        E_parts[i, :] = 0.5 * v2 - G * M / r
-        t_parts[i, :] = parts["times"][sort]
-        ind = ids == id_focus
-        p_parts[i, :] = rel_pos_parts[ind, :]
-        v_parts[i, :] = vel_parts[ind, :]
+            # Compute the derived values
+            r = np.sum(rel_pos**2, axis=1)**0.5
+            v2 = np.sum(vel**2, axis=1)
+            E[i, :] = 0.5 * v2 - G * M / r
+            ind = ids == id_focus
+            p[i, :] = rel_pos[ind, :]
+            v[i, :] = vel[ind, :]
 
     # compute the plotting variables
     plt.figure(fig_1.number)
-    plotRelative(t_parts, E_parts, "x", label="Logger")
     plotRelative(times, E, "--", label="Logger (Interpolation)")
-
-    # Compute the solution
-    y0 = np.zeros(4)
-    y0[:2] = p[0, :2]
-    y0[2:] = v[0, :2]
-    t_parts, ind = np.unique(t_parts[:, 0], return_index=True)
-
-    # plot the solution
-    plt.figure(fig_2.number)
-    plt.plot(p_parts[:, 0], p_parts[:, 1], "x", label="Logger")
-
-    plt.figure(fig_3.number)
-    plt.plot(v_parts[:, 0], v_parts[:, 1], "x", label="Logger")
 
     # Compute the solution
     y0 = np.zeros(4)

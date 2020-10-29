@@ -79,7 +79,7 @@ float logger_tools_cubic_hermite_spline(double t0, float v0, float a0,
                                         double t);
 
 #ifndef HAVE_PYTHON
-#define error_python(...) error(##__VA_ARGS__);
+#define error_python(s, ...) error(s, ##__VA_ARGS__);
 #else
 /**
  * @brief Print the python trace back
