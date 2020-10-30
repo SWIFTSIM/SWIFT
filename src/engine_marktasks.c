@@ -74,6 +74,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   const int with_star_formation = e->policy & engine_policy_star_formation;
   const int with_feedback = e->policy & engine_policy_feedback;
 
+#ifdef WITH_MPI
+  /* Initialise for one-sided MPI. */
+  scheduler_osmpi_init(s);
+#endif
+
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get basic task information */
@@ -1134,6 +1139,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
   }
+
+  /* Now all tasks have been sized, we can allocate the one-sided buffers. */
+#ifdef WITH_MPI
+  /* Initialise for one-sided MPI. */
+  scheduler_osmpi_init_buffers(e->nr_nodes, s);
+#endif
+
 }
 
 /**

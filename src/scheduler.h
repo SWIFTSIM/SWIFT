@@ -26,7 +26,7 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-#endif
+#endif /* WITH_MPI */
 
 /* Some standard headers. */
 #include <pthread.h>
@@ -53,6 +53,25 @@
 /* Flags . */
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
+
+/* Constants for one-sided, os, MPI work. Flags for controlling access. */
+#define scheduler_osmpi_locked  -2
+#define scheduler_osmpi_unlocked -3
+
+/* Size of a block of memory. Need to send MPI messages aligned to this size. */
+#define scheduler_osmpi_blocktype size_t
+#define scheduler_osmpi_mpi_blocktype MPI_AINT
+#define scheduler_osmpi_bytesinblock sizeof(size_t)
+
+/* Size of message header control block. The flag, size and tag. */
+#define scheduler_osmpi_header_size 3
+
+/* Forward declarations for one-sided MPI. */
+void scheduler_osmpi_activate(struct scheduler *s, struct task *t);
+void scheduler_osmpi_init(struct scheduler *s);
+void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s);
+scheduler_osmpi_blocktype scheduler_osmpi_toblocks(size_t nr_bytes);
+size_t scheduler_osmpi_tobytes(scheduler_osmpi_blocktype nr_blocks);
 
 /* Data of a scheduler. */
 struct scheduler {
@@ -111,6 +130,14 @@ struct scheduler {
 
   /* Total ticks spent running the tasks */
   ticks total_ticks;
+
+#ifdef WITH_MPI
+  /* MPI windows for one-sided messages. We have one per task subtype. */
+  MPI_Win osmpi_window[task_subtype_count];
+  scheduler_osmpi_blocktype *osmpi_ptr[task_subtype_count];
+  size_t osmpi_max_size[task_subtype_count];
+#endif
+
 };
 
 /* Inlined functions (for speed). */
@@ -151,6 +178,9 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
   if (l == NULL) {
     error("Missing link to send task.");
   }
+#ifdef WITH_MPI
+  scheduler_osmpi_activate(s, l->t);
+#endif
   scheduler_activate(s, l->t);
   return l;
 }
@@ -209,4 +239,5 @@ void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
 
+size_t scheduler_mpi_size(struct task *t);
 #endif /* SWIFT_SCHEDULER_H */

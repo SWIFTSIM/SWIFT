@@ -1961,43 +1961,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
       {
-        size_t size = 0;              /* Size in bytes. */
         size_t count = 0;             /* Number of elements to receive */
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to accept elements */
 
-        if (t->subtype == task_subtype_tend_part) {
+        /* Size of message in bytes. */
+        size_t size = scheduler_mpi_size(t);
 
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
-          buff = t->buff = malloc(count);
+        if (t->subtype == task_subtype_tend_part ||
+            t->subtype == task_subtype_tend_gpart ||
+            t->subtype == task_subtype_tend_spart ||
+            t->subtype == task_subtype_tend_bpart ||
+            t->subtype == task_subtype_part_swallow ||
+            t->subtype == task_subtype_bpart_merger ||
+            t->subtype == task_subtype_sf_counts) {
 
-        } else if (t->subtype == task_subtype_tend_gpart) {
-
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_spart) {
-
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_bpart) {
-
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_part_swallow) {
-
-          count = size =
-              t->ci->hydro.count * sizeof(struct black_holes_part_data);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_bpart_merger) {
-          count = size =
-              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
+          count = size;
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_xv ||
@@ -2006,21 +1985,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
-          size = count * sizeof(struct part);
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
 
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
-          size = count * sizeof(struct gpart);
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
         } else if (t->subtype == task_subtype_spart) {
 
           count = t->ci->stars.count;
-          size = count * sizeof(struct spart);
           type = spart_mpi_type;
           buff = t->ci->stars.parts;
 
@@ -2029,21 +2005,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
-          size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
         } else if (t->subtype == task_subtype_multipole) {
 
           count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
           type = multipole_mpi_type;
           buff = t->buff = malloc(size);
-
-        } else if (t->subtype == task_subtype_sf_counts) {
-
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
-          buff = t->buff = malloc(count);
 
         } else {
           error("Unknown communication sub-type");
@@ -2069,50 +2038,47 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
       {
-        size_t size = 0;              /* Size in bytes. */
         size_t count = 0;             /* Number of elements to send */
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
+        /* Size of message in bytes. */
+        size_t size = scheduler_mpi_size(t);
+
         if (t->subtype == task_subtype_tend_part) {
 
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+          count = size;
           buff = t->buff = malloc(size);
           cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)buff);
 
         } else if (t->subtype == task_subtype_tend_gpart) {
 
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
+          count = size;
           buff = t->buff = malloc(size);
           cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)buff);
 
         } else if (t->subtype == task_subtype_tend_spart) {
 
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
+          count = size;
           buff = t->buff = malloc(size);
           cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)buff);
 
         } else if (t->subtype == task_subtype_tend_bpart) {
 
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+          count = size;
           buff = t->buff = malloc(size);
           cell_pack_end_step_black_holes(t->ci,
                                          (struct pcell_step_black_holes *)buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
-          size = count =
-              t->ci->hydro.count * sizeof(struct black_holes_part_data);
+          count = size;
           buff = t->buff = malloc(size);
           cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)buff);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
 
-          size = count =
-              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
+          count = size;
           buff = t->buff = malloc(size);
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
@@ -2123,21 +2089,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
-          size = count * sizeof(struct part);
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
 
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
-          size = count * sizeof(struct gpart);
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
         } else if (t->subtype == task_subtype_spart) {
 
           count = t->ci->stars.count;
-          size = count * sizeof(struct spart);
           type = spart_mpi_type;
           buff = t->ci->stars.parts;
 
@@ -2146,21 +2109,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_bpart_feedback) {
 
           count = t->ci->black_holes.count;
-          size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
 
         } else if (t->subtype == task_subtype_multipole) {
 
           count = t->ci->mpi.pcell_size;
-          size = count * sizeof(struct gravity_tensors);
           type = multipole_mpi_type;
           buff = t->buff = malloc(size);
           cell_pack_multipoles(t->ci, (struct gravity_tensors *)buff);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+          count = size;
           buff = t->buff = malloc(size);
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
 
@@ -2631,3 +2592,140 @@ void scheduler_report_task_times(const struct scheduler *s,
   message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
 }
+
+/**
+ * @brief Initialise the buffers for handling one-sided MPI messages. 
+ *
+ * @param s the #scheduler
+ */
+void scheduler_osmpi_init(struct scheduler *s) {
+#ifdef WITH_MPI
+
+  for (int k = 0; k < task_subtype_count; k++) {
+    s->osmpi_ptr[k] = NULL; // XXX Needs to be freed
+    s->osmpi_max_size[k] = 0;
+  }
+
+#endif
+}
+
+/**
+ * @brief Handle the activation of a task will use using one-sided MPI.
+ *
+ * @param s the #scheduler
+ * @param t the #task
+ */
+void scheduler_osmpi_activate(struct scheduler *s, struct task *t) {
+#ifdef WITH_MPI
+  
+  /* We need the maximum size of a message, so work that out. */
+  size_t size = scheduler_mpi_size(t);
+  atomic_max_st(&s->osmpi_max_size[t->subtype], size);
+#endif
+}
+
+/**
+ * @brief Determine the size of an MPI message based subty
+ *
+ * @param t the MPI #task
+ */
+size_t scheduler_mpi_size(struct task *t) {
+
+  size_t size = 0;
+#ifdef WITH_MPI
+  if (t->subtype == task_subtype_tend_part) {
+    size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+
+  } else if (t->subtype == task_subtype_tend_gpart) {
+    size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
+
+  } else if (t->subtype == task_subtype_tend_spart) {
+    size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
+
+  } else if (t->subtype == task_subtype_tend_bpart) {
+    size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+
+  } else if (t->subtype == task_subtype_part_swallow) {
+    size = t->ci->hydro.count * sizeof(struct black_holes_part_data);
+
+  } else if (t->subtype == task_subtype_bpart_merger) {
+    size = sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
+
+  } else if (t->subtype == task_subtype_xv ||
+             t->subtype == task_subtype_rho ||
+             t->subtype == task_subtype_gradient ||
+             t->subtype == task_subtype_limiter) {
+    size = t->ci->hydro.count * sizeof(struct part);
+
+  } else if (t->subtype == task_subtype_gpart) {
+    size = t->ci->grav.count * sizeof(struct gpart);
+
+  } else if (t->subtype == task_subtype_spart) {
+    size = t->ci->stars.count * sizeof(struct spart);
+
+  } else if (t->subtype == task_subtype_bpart_rho ||
+             t->subtype == task_subtype_bpart_swallow ||
+             t->subtype == task_subtype_bpart_feedback) {
+    size = t->ci->black_holes.count * sizeof(struct bpart);
+
+  } else if (t->subtype == task_subtype_multipole) {
+    size = t->ci->mpi.pcell_size * sizeof(struct gravity_tensors);
+
+  } else if (t->subtype == task_subtype_sf_counts) {
+    size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+  } else {
+    error("Unknown communication sub-type");
+  }
+#endif
+  return size;
+}
+
+/**
+ * @brief Initialise the buffers for one-sided MPI exchanges.
+ *
+ * @param nr_nodes the number of MPI ranks exchanging messages.
+ * @param s the #scheduler
+ */
+void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s) {
+#ifdef WITH_MPI
+
+  for (int k = 0; k < task_subtype_count; k++) {
+    size_t size = s->osmpi_max_size[k];
+    if (size > 0) {
+      /* Size needs to be in blocks */
+      size = scheduler_osmpi_toblocks(size);
+      MPI_Win_allocate(scheduler_osmpi_tobytes(size) * nr_nodes,
+                       scheduler_osmpi_bytesinblock,
+                       MPI_INFO_NULL, subtaskMPI_comms[k], &s->osmpi_ptr[k],
+                       &s->osmpi_window[k]);
+
+      /* Assert a shared lock with all the other processes on this window. */
+      MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_window[k]);
+    }
+  }
+#endif
+}
+
+/**
+ * @brief Convert a byte count into a number of blocks, rounds up.
+ *
+ * @param nr_bytes the number of bytes.
+ *
+ * @result the number of blocks needed.
+ */
+scheduler_osmpi_blocktype scheduler_osmpi_toblocks(size_t nr_bytes) {
+  return (nr_bytes + (scheduler_osmpi_bytesinblock - 1)) / 
+         scheduler_osmpi_bytesinblock;
+}
+
+/**
+ * @brief Convert a block count into a number of bytes.
+ *
+ * @param nr_block the number of blocks.
+ *
+ * @result the number of bytes.
+ */
+size_t scheduler_osmpi_tobytes(scheduler_osmpi_blocktype nr_blocks) {
+  return (nr_blocks * scheduler_osmpi_bytesinblock);
+}
+

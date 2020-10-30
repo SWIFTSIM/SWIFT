@@ -28,6 +28,7 @@
 
 /* Standard includes */
 #include <stdint.h>
+#include <unistd.h>
 
 #define atomic_add(v, i) __sync_fetch_and_add(v, i)
 #define atomic_sub(v, i) __sync_fetch_and_sub(v, i)
@@ -180,6 +181,27 @@ __attribute__((always_inline)) INLINE static void atomic_max_ll(
     volatile long long *const address, const long long y) {
 
   long long test_val, old_val, new_val;
+  old_val = *address;
+
+  do {
+    test_val = old_val;
+    new_val = max(old_val, y);
+    old_val = atomic_cas(address, test_val, new_val);
+  } while (test_val != old_val);
+}
+
+/**
+ * @brief Atomic max operation on size_t.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_max_st(
+    volatile size_t *const address, const size_t y) {
+
+  size_t test_val, old_val, new_val;
   old_val = *address;
 
   do {
