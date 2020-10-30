@@ -604,8 +604,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_hydro_pair(ci, cj) && !t->flags) {
-	  *rebuild_space = 1;
-	}
+          *rebuild_space = 1;
+        }
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
@@ -758,9 +758,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_stars_pair(ci, cj) && !t->flags)
-	  *rebuild_space = 1;
+          *rebuild_space = 1;
         if (cell_need_rebuild_for_stars_pair(cj, ci) && !t->flags)
-	  *rebuild_space = 1;
+          *rebuild_space = 1;
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
