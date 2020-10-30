@@ -189,12 +189,12 @@ void *runner_main(void *data) {
             runner_doself1_branch_density(r, ci, t->flags, t->flags);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dosub_self1_gradient(r, ci, /*recurse_below_h_max=*/0, 1);
+            runner_doself1_branch_gradient(r, ci, t->flags, t->flags);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci, t->flags, t->flags);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_self1_limiter(r, ci, 1);
+            runner_doself1_branch_limiter(r, ci, t->flags, t->flags);
           else if (t->subtype == task_subtype_grav)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
@@ -227,13 +227,12 @@ void *runner_main(void *data) {
             runner_dopair1_branch_density(r, ci, cj, t->flags, t->flags);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dopair1_branch_gradient(r, ci, cj, /*limit_min_h=*/0,
-                                           /*limit_max_h=*/0);
+            runner_dopair1_branch_gradient(r, ci, cj, t->flags, t->flags);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj, t->flags, t->flags);
           else if (t->subtype == task_subtype_limiter)
-            runner_dopair1_branch_limiter(r, ci, cj);
+            runner_dopair1_branch_limiter(r, ci, cj, t->flags, t->flags);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -265,13 +264,15 @@ void *runner_main(void *data) {
                                        1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dosub_self1_gradient(r, ci, /*recurse_below_h_max=*/0, 1);
+            runner_dosub_self1_gradient(r, ci, /*recurse_below_h_max=*/t->flags,
+                                        1);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*recurse_below_h_max=*/t->flags,
                                      1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_self1_limiter(r, ci, 1);
+            runner_dosub_self1_limiter(r, ci, /*recurse_below_h_max=*/t->flags,
+                                       1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(
                 r, ci, /*recurse_below_h_max=*/t->flags, 1);
@@ -303,14 +304,15 @@ void *runner_main(void *data) {
                                        /*recurse_below_h_max=*/t->flags, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dosub_pair1_gradient(r, ci, cj, /*recurse_below_h_max=*/0,
-                                        1);
+            runner_dosub_pair1_gradient(r, ci, cj,
+                                        /*recurse_below_h_max=*/t->flags, 1);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj,
                                      /*recurse_below_h_max=*/t->flags, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_pair1_limiter(r, ci, cj, 1);
+            runner_dosub_pair1_limiter(r, ci, cj,
+                                       /*recurse_below_h_max=*/t->flags, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj,
                                             /*recurse_below_h_max=*/t->flags,
