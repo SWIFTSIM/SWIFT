@@ -1235,6 +1235,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
   if (timer) TIMER_TOC(timer_do_limiter);
 }
 
+
+
 /**
  * @brief Apply the time-step synchronization proceduere to all flagged
  * particles in a cell hierarchy.
@@ -1388,4 +1390,128 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
   if (timer) TIMER_TOC(timer_do_sync);
+}
+
+
+/**
+ * @brief Apply the time-step synchronization proceduere to all flagged
+ * particles in a cell hierarchy.
+ *
+ * @param r The task #runner.
+ * @param c The #cell.
+ * @param force Limit the particles irrespective of the #cell flags.
+ * @param timer Are we timing this ?
+ */
+void runner_sync_dmparts(struct runner *r, struct cell *c) {
+    
+    const struct engine *e = r->e;
+    const integertime_t ti_current = e->ti_current;
+    const struct cosmology *cosmo = e->cosmology;
+    const int with_cosmology = (e->policy & engine_policy_cosmology);
+    const int count = c->dark_matter.count;
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
+    
+    TIMER_TIC;
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we only sync local cells. */
+    if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
+#endif
+    
+    integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+    ti_gravity_beg_max = 0;
+    
+    /* Early abort? */
+    if (c->dark_matter.count == 0) {
+        return;
+    }
+    
+    /* Loop over the progeny ? */
+    if (c->split) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                struct cell *restrict cp = c->progeny[k];
+                
+                /* Recurse */
+                runner_sync_dmparts(r, cp);
+                
+                /* And aggregate */
+                ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+                ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
+                ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+            }
+        }
+        
+        /* Store the updated values */
+        c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+        c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
+        c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+        
+    } else if (!c->split) {
+        
+        ti_gravity_end_min = c->grav.ti_end_min;
+        ti_gravity_end_max = c->grav.ti_end_max;
+        ti_gravity_beg_max = c->grav.ti_beg_max;
+        
+        /* Loop over the gas particles in this cell. */
+        for (int k = 0; k < count; k++) {
+            
+            /* Get a handle on the part. */
+            struct dmpart *restrict p = &dmparts[k];
+            
+            /* Avoid inhibited particles */
+            if (dmpart_is_inhibited(p, e)) continue;
+            
+            /* If the particle is active no need to sync it */
+            if (dmpart_is_active(p, e) && p->to_be_synchronized) {
+                p->to_be_synchronized = 0;
+            }
+            
+            if (p->to_be_synchronized) {
+                
+                /* CC. We have already called the timestep process sync in sidm_iact so we skip this step */
+                /* timestep_process_sync_part(p, xp, e, cosmo);*/
+                
+                /* Get new time-step */
+                integertime_t ti_new_step = get_dmpart_timestep(p, e);
+                timebin_t new_time_bin = get_time_bin(ti_new_step);
+                
+                /* Limit the time-bin to what is allowed in this step */
+                new_time_bin = min(new_time_bin, e->max_active_bin);
+                ti_new_step = get_integer_timestep(new_time_bin);
+                
+                /* Update particle */
+                p->time_bin = new_time_bin;
+                if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
+                
+                /* What is the next sync-point ? */
+                ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+                ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+                
+                /* What is the next starting point for this cell ? */
+                ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+                /* Also limit the gpart counter-part */
+                if (p->gpart != NULL) {
+                    
+                    /* Register the time-bin */
+                    p->gpart->time_bin = p->time_bin;
+                    
+                    /* What is the next sync-point ? */
+                    ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+                    ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+                    
+                    /* What is the next starting point for this cell ? */
+                    ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+                }
+            }
+        }
+        
+        /* Store the updated values */
+        c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+        c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
+        c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+    }
+    
+    if (timer) TIMER_TOC(timer_do_sync);
 }

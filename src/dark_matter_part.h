@@ -56,6 +56,9 @@ struct dmpart {
   /*! Particle time bin */
   timebin_t time_bin;
     
+  /* Syncronization flag */
+  char to_be_synchronized;
+    
 #ifdef SWIFT_DEBUG_CHECKS
     
   /* Time of the last drift */

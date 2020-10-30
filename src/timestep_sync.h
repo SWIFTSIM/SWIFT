@@ -49,7 +49,7 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   const timebin_t min_active_bin = e->min_active_bin;
   const double time_base = e->time_base;
 
-  /*p->limiter_data.to_be_synchronized = 0;*/
+  p->to_be_synchronized = 0;
 
   /* This particle is already active. Nothing to do here... */
   if (p->time_bin <= max_active_bin) {
@@ -118,18 +118,7 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
   p->time_bin = -min_active_bin;
-    
-  /* Get new time-step */
-  integertime_t ti_new_step = get_dmpart_timestep(p, e);
-  timebin_t new_time_bin = get_time_bin(ti_new_step);
-    
-  /* Limit the time-bin to what is allowed in this step */
-  new_time_bin = min(new_time_bin, e->max_active_bin);
-  ti_new_step = get_integer_timestep(new_time_bin);
-    
-  /* Update particle */
-  p->time_bin = new_time_bin;
-  if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
+  p->to_be_synchronized = 1;
 }`
 
 
