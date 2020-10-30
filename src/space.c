@@ -5782,6 +5782,8 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
         /* Initialise the time-integration check variables */
         dmp[k].ti_drift = 0;
         dmp[k].ti_kick = 0;
+        dmp[k].to_be_synchronized = 0;
+
 #endif
     }
 }

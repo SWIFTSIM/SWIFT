@@ -47,8 +47,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h riemann.h threadpool.h cooling_io.h cooling.h cooling_struct.h \
     statistics.h memswap.h cache.h runner_doiact_hydro_vec.h profiler.h entropy_floor.h \
-    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h dark_matter.h dark_matter_iact.h \
-    dark_matter_properties.h dark_matter_io.h dark_matter_part.h \
+    dump.h logger.h active.h timeline.h xmf.h gravity_properties.h \
     gravity_derivatives.h gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h \
@@ -144,6 +143,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
      gravity/MultiSoftening/gravity_logger.h \
 		 equation_of_state.h \
 		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
+                 dark_matter.h dark_matter_iact.h dark_matter_properties.h dark_matter_io.h dark_matter_part.h \
 	 	 hydro.h hydro_io.h hydro_parameters.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \

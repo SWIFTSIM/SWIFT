@@ -118,8 +118,7 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
   p->time_bin = -min_active_bin;
-  p->to_be_synchronized = 1;
-}`
+}
 
 
 /**

@@ -22,7 +22,6 @@
 /* Config parameters. */
 #include "../config.h"
 #include "approx_math.h"
-
 #include "./dark_matter_part.h"
 #include "./dark_matter_iact.h"
 
@@ -247,9 +246,10 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
  * @param sidm_properties The SIDM parameters
  * @param cosmo The cosmological model.
  */
-__attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
+/*__attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     const struct dmpart *restrict dmp, const struct sidm_props *restrict sidm_properties,
-    const struct cosmology *restrict cosmo) {}
+    const struct cosmology *restrict cosmo) {
+}*/
 
 /**
  * @brief Kick the additional variables
@@ -257,7 +257,8 @@ __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
  * @param dmp The particle to act upon
  * @param dt The time-step for this kick
  */
-__attribute__((always_inline)) INLINE static void dark_matter_kick_extra(struct dmpart* dmp, float dt) {}
+__attribute__((always_inline)) INLINE static void dark_matter_kick_extra(struct dmpart* dmp, float dt) {
+}
 
 
 #endif

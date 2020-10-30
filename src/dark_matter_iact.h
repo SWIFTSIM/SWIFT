@@ -21,12 +21,13 @@
 
 /* Config parameters. */
 #include "../config.h"
+
+/* Local headers. */
 #include "random.h"
 #include "dark_matter.h"
 #include "kernel_dark_matter.h"
 #include "dark_matter_logger.h"
 #include "timestep_sync_part.h"
-
 
 
 /**
@@ -83,8 +84,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     pj->avg_pair_v += vij;
     pi->avg_pair_v += vij;
     
-    pi->num_neighbours += 1;
-    pj->num_neighbours += 1;
+    /* Increasing counters */
+    ++pi->num_neighbours;
+    ++pj->num_neighbours;
 
 }
 
@@ -127,7 +129,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);    
     pi->avg_pair_v += vij;
-    pi->num_neighbours += 1;
+    
+    /* Increasing counter */
+    ++pi->num_neighbours;
 }
 
 /**
@@ -280,7 +284,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
-    struct sidm_history* sidm_history, const struct engine *e, const struct cosmology *cosmo) {
+    struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
     const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
@@ -317,10 +321,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
         
         /* Is this part within the timestep? If not let's wake it up for the SIDM kick */
-        timestep_sync_dmpart(pj,e,cosmo);
-        
-        timestep_sync_dmpart(pi,e,cosmo);
-        
+        /*timestep_process_sync_dmpart(pj,e,cosmo);*/
+        timestep_sync_dmpart(pj);
+
+        /*timestep_process_sync_dmpart(pi,e,cosmo);*/
+        timestep_sync_dmpart(pi);
+
         sidm_do_kick(pi, pj, ti_current, sidm_history);
         
         dark_matter_log_num_events(sidm_history, 1);
@@ -345,7 +351,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
-    struct sidm_history* sidm_history, const struct engine *e, const struct cosmology *cosmo) {
+    struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
     const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
@@ -377,7 +383,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     if (Probability_SIDM_i > rand) {
         
         /* Is this part within the timestep? If not let's wake it up for the SIDM kick */
-        timestep_sync_dmpart(pj,e,cosmo);
+        /*timestep_process_sync_dmpart(pi,e,cosmo);*/
+        timestep_sync_dmpart(pi);
 
         sidm_do_kick(pi, pj, ti_current, sidm_history);
 

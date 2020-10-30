@@ -1394,7 +1394,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
 
 
 /**
- * @brief Apply the time-step synchronization proceduere to all flagged
+ * @brief Apply the time-step synchronization procedure to all flagged
  * particles in a cell hierarchy.
  *
  * @param r The task #runner.
@@ -1405,9 +1405,9 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
 void runner_sync_dmparts(struct runner *r, struct cell *c) {
     
     const struct engine *e = r->e;
-    const integertime_t ti_current = e->ti_current;
     const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = (e->policy & engine_policy_cosmology);
+
+    const integertime_t ti_current = e->ti_current;
     const int count = c->dark_matter.count;
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     
@@ -1469,8 +1469,8 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
             
             if (p->to_be_synchronized) {
                 
-                /* CC. We have already called the timestep process sync in sidm_iact so we skip this step */
-                /* timestep_process_sync_part(p, xp, e, cosmo);*/
+                /* Finish this particle's time-step */
+                timestep_process_sync_dmpart(p, e, cosmo);
                 
                 /* Get new time-step */
                 integertime_t ti_new_step = get_dmpart_timestep(p, e);
@@ -1512,6 +1512,4 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
         c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
         c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
     }
-    
-    if (timer) TIMER_TOC(timer_do_sync);
 }

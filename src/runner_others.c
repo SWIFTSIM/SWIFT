@@ -69,7 +69,6 @@
  * @param c The cell.
  */
 void runner_do_sidm_kick(struct runner *r, struct cell *c) {
-    const struct engine *e = r->e;
 
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
