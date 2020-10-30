@@ -854,7 +854,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                   /* Number of updated g-particles */
                   dm_updated++;
                   g_updated++;
-                  
+
                   /* What is the next sync-point ? */
                   ti_dark_matter_end_min = min(ti_current + ti_new_step, ti_dark_matter_end_min);
                   ti_dark_matter_end_max = max(ti_current + ti_new_step, ti_dark_matter_end_max);

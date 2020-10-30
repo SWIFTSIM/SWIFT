@@ -61,6 +61,7 @@
 #include "timestep_limiter.h"
 #include "tracers.h"
 
+
 /**
  * @brief Performs the kicks in momentum space from DM-DM interactions on all the active particles in a cell.
  *
@@ -68,7 +69,8 @@
  * @param c The cell.
  */
 void runner_do_sidm_kick(struct runner *r, struct cell *c) {
-    
+    const struct engine *e = r->e;
+
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
     
@@ -91,13 +93,7 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             
             /* Get a handle on the part. */
             struct dmpart *restrict dmp = &dmparts[k];
-            
-            /* Is this part within the timestep? If not let's wake it up */
-            if (!dmpart_is_active(dmp, e)) {
-                /* Synchronize the particle on the timeline */
-                timestep_sync_part(dmp);
-            }
-            
+                        
             /* do the kick */
             communicate_sidm_kick_to_dmpart(dmp);
         }

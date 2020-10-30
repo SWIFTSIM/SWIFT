@@ -249,15 +249,7 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
  */
 __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     const struct dmpart *restrict dmp, const struct sidm_props *restrict sidm_properties,
-    const struct cosmology *restrict cosmo) {
-    
-    const float CFL_condition = sidm_properties->CFL_condition;
-    
-    /* CFL condition */
-    const float dt_cfl = 2.f * dm_kernel_gamma * CFL_condition * cosmo->a * dmp->h / (cosmo->a_factor_sound_speed);
-    
-    return dt_cfl;
-}
+    const struct cosmology *restrict cosmo) {}
 
 /**
  * @brief Kick the additional variables

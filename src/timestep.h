@@ -208,11 +208,11 @@ __attribute__((always_inline)) INLINE static integertime_t get_dmpart_timestep(
     const struct dmpart *restrict dmp, const struct engine *restrict e) {
     
     /* Compute the next timestep (dark matter condition) */
+    /* CC. Not doing this at the moment */
     /*const float new_dt_dm = dark_matter_compute_timestep(dmp, e->sidm_properties, e->cosmology);*/
     
     /* Compute the next timestep (gravity condition) */
-    float new_dt_grav = FLT_MAX, new_dt_self_grav = FLT_MAX,
-    new_dt_ext_grav = FLT_MAX;
+    float new_dt_grav = FLT_MAX, new_dt_self_grav = FLT_MAX, new_dt_ext_grav = FLT_MAX;
     
     if (dmp->gpart != NULL) {
         
@@ -230,13 +230,6 @@ __attribute__((always_inline)) INLINE static integertime_t get_dmpart_timestep(
     /*float new_dt = min(new_dt_dm, new_dt_grav);*/
     float new_dt = new_dt_grav;
 
-    /*float force_h_dt = 1.f;*/
-    
-    /* Limit change in smoothing length ? */
-    /*const float dt_h_change = (force_h_dt != 0.0f) ? fabsf(e->sidm_properties->log_max_h_change * dmp->h / force_h_dt) : FLT_MAX;
-    
-    new_dt = min(new_dt, dt_h_change);*/
-    
     /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
     new_dt = min(new_dt, e->dt_max_RMS_displacement);
     
