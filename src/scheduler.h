@@ -63,7 +63,7 @@
 #define scheduler_osmpi_mpi_blocktype MPI_AINT
 #define scheduler_osmpi_bytesinblock sizeof(size_t)
 
-/* Size of message header control block. The flag, size and tag. */
+/* Size of message header control block in blocks. The flag, size and tag. */
 #define scheduler_osmpi_header_size 3
 
 /* Forward declarations for one-sided MPI. */

@@ -2129,17 +2129,89 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        if (size > s->mpi_message_limit) {
-          err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
+        /* Send the buffer. XXX we assume one thread does this at a time, and
+         * this is a synchronous send, so we must have more than 1 thread or
+         * we will deadlock. */
+
+        err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
                           subtaskMPI_comms[t->subtype], &t->req);
-        } else {
-          err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
-                           subtaskMPI_comms[t->subtype], &t->req);
-        }
+
+
+        /* Data has the actual data and room for the header.
+         * XXX horrible extra data copy, do this above... */
+        scheduler_osmpi_blocktype datasize = scheduler_osmpi_toblocks(size) +
+          scheduler_osmpi_header_size;
+        scheduler_osmpi_blocktype *dataptr =
+          calloc(datasize, scheduler_osmpi_bytesinblock);
+
+        /* First element is marked as LOCKED, so only we can update. */
+        dataptr[0] = scheduler_osmpi_locked;
+        dataptr[1] = size;
+        dataptr[2] = t->flags;
+        memcpy(&dataptr[3], buff, size);
+
+        /* And send to the destination rank. XXX will not work subtype offsets
+         * need to be shared around system, are just local and not fixed size
+         * so cannot * myrank (t->ci->nodeID) XXX */
+        err = MPI_Accumulate(dataptr, datasize, scheduler_osmpi_mpi_blocktype,
+                             t->cj->nodeID,
+                             s->osmpi_max_size[t->subtype] * t->ci->nodeID,
+                             datasize, scheduler_osmpi_mpi_blocktype,
+                             MPI_REPLACE, s->osmpi_window[t->subtype]);
 
         if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit isend for particle data.");
+          mpi_error(err, "Failed to send particle data.");
         }
+
+
+        /* Now we change the first element to unlocked xso that the remote end
+         * can find out that the data has arrived. */
+        scheduler_osmpi_blocktype newval[1];
+        scheduler_osmpi_blocktype oldval[1];
+        newval[0] = scheduler_osmpi_unlocked;
+        oldval[0] = 0;
+        err = MPI_Compare_and_swap(&newval[0], dataptr, &oldval[0],
+                                   scheduler_osmpi_mpi_blocktype,
+                                   t->cj->nodeID,
+                                   s->osmpi_max_size[t->subtype] * t->ci->nodeID,
+                                   s->osmpi_window[t->subtype]);
+
+        if (err != MPI_SUCCESS) {
+          mpi_error(err, "Compare and swap send error for particle data.");
+        }
+
+        /* Attempt to hurry it along... */
+        err = MPI_Win_flush(t->cj->nodeID, s->osmpi_window[t->subtype]);
+
+        /* Wait for completion, this is when remote flips back to LOCKED. We
+         * poll on a get, as the local window is only used for receiving. Use
+         * an Rget so we can use MPI_Test to get some local progression. */
+        newval[0] = scheduler_osmpi_unlocked;
+        while (newval[0] != (scheduler_osmpi_blocktype) scheduler_osmpi_locked) {
+
+          MPI_Request request;
+          err = MPI_Rget(&newval[0], 1, scheduler_osmpi_mpi_blocktype,
+                         t->cj->nodeID,
+                         s->osmpi_max_size[t->subtype] * t->ci->nodeID,
+                         1, scheduler_osmpi_mpi_blocktype,
+                         s->osmpi_window[t->subtype], &request);
+
+          if (err != MPI_SUCCESS) mpi_error(err, "MPI_Rget failed");
+
+          /* After the rget to make sure we get a chance at completion. */
+          err = MPI_Win_flush(t->cj->nodeID, s->osmpi_window[t->subtype]);
+          if (err != MPI_SUCCESS) mpi_error(err, "MPI_Win_flush failed");
+
+          int flag = 0;
+          while (flag == 0) {
+            err = MPI_Test(&request, &flag, MPI_STATUS_IGNORE);
+            if (err != MPI_SUCCESS) mpi_error(err, "MPI_Test failed");
+          }
+        }
+
+        if (s->space->e->verbose) // XXX no no no
+          message("sent and acknowledged message to %d/%d)",
+                  t->cj->nodeID, t->subtype);
 
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
@@ -2594,7 +2666,7 @@ void scheduler_report_task_times(const struct scheduler *s,
 }
 
 /**
- * @brief Initialise the buffers for handling one-sided MPI messages. 
+ * @brief Initialise the buffers for handling one-sided MPI messages.
  *
  * @param s the #scheduler
  */
@@ -2617,7 +2689,7 @@ void scheduler_osmpi_init(struct scheduler *s) {
  */
 void scheduler_osmpi_activate(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
-  
+
   /* We need the maximum size of a message, so work that out. */
   size_t size = scheduler_mpi_size(t);
   atomic_max_st(&s->osmpi_max_size[t->subtype], size);
@@ -2681,7 +2753,7 @@ size_t scheduler_mpi_size(struct task *t) {
 }
 
 /**
- * @brief Initialise the buffers for one-sided MPI exchanges.
+ * @brief Allocate the buffers for one-sided MPI exchanges.
  *
  * @param nr_nodes the number of MPI ranks exchanging messages.
  * @param s the #scheduler
@@ -2692,8 +2764,8 @@ void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s) {
   for (int k = 0; k < task_subtype_count; k++) {
     size_t size = s->osmpi_max_size[k];
     if (size > 0) {
-      /* Size needs to be in blocks */
-      size = scheduler_osmpi_toblocks(size);
+      /* Size needs to be in blocks and have room for the header. */
+      size = scheduler_osmpi_toblocks(size) + scheduler_osmpi_header_size;
       MPI_Win_allocate(scheduler_osmpi_tobytes(size) * nr_nodes,
                        scheduler_osmpi_bytesinblock,
                        MPI_INFO_NULL, subtaskMPI_comms[k], &s->osmpi_ptr[k],
@@ -2702,7 +2774,7 @@ void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s) {
       /* Assert a shared lock with all the other processes on this window. */
       MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_window[k]);
     }
-  }
+  } /* XXX leaking... */
 #endif
 }
 
@@ -2714,7 +2786,7 @@ void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s) {
  * @result the number of blocks needed.
  */
 scheduler_osmpi_blocktype scheduler_osmpi_toblocks(size_t nr_bytes) {
-  return (nr_bytes + (scheduler_osmpi_bytesinblock - 1)) / 
+  return (nr_bytes + (scheduler_osmpi_bytesinblock - 1)) /
          scheduler_osmpi_bytesinblock;
 }
 
