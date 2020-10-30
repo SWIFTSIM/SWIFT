@@ -67,39 +67,37 @@ Adding it to the Cells
 
 Each cell contains a list to its tasks and therefore you need to provide a link for it.
 
-In ``cell.h``, add a pointer to a task in the ``struct cell``.  In order to stay clean, 
-please put the new task in the same group (e.g. ``struct hydro{...}`` inside ``struct cell``)
-than the other tasks.
+In ``cell_<particle_type>.h``, add a pointer to a task in the structure. For 
+example, cooling couples to the hydro particles, so we'll be adding our task
+to ``cell_hydro.h``.
+
 We won't be adding just one task though, but an entire (linked) list of them, since we're
 going to need a ``self`` type task and multiple ``pair`` type tasks to have a complete
 neighbour loop. So instead of pointing to a single task, we store a struct ``link`` in
 the cell struct.  For example::
 
-  struct cell {
-    /* Lot of stuff before. */
-    
-    /*! Hydro variables */
-    struct {
-        /*! Pointer to the #part data. */
-        struct part *parts;
+  /**
+   * @brief Hydro-related cell variables.
+   */
+  struct cell_hydro {
 
-        /*! Pointer to the #xpart data. */
-        struct xpart *xparts;
+    /*! Pointer to the #part data. */
+    struct part *parts;
 
-        /* Lot of stuff */
+    /*! Pointer to the #xpart data. */
+    struct xpart *xparts;
 
-        /*! Task for sorting the stars again after a SF event */
-        struct task *stars_resort;
+    /* Lot of stuff */
 
-        /*! My new interaction task */
-        struct link *new_iact;
+    /*! Task for sorting the stars again after a SF event */
+    struct task *stars_resort;
 
-        /* Lot of stuff after */
-
-    } hydro;
+    /*! My new interaction task */
+    struct link *new_iact;
 
     /* Lot of stuff after */
-  }
+
+  };
 
 
 Adding a new Timer
@@ -333,7 +331,7 @@ the number of tasks that you will be adding, e.g. 1 self + (3^3-1)/2 = 13 pair
 tasks + 1 ghost, etc... All these numbers can be overwritten at run time by 
 the user anyway in the parameter file (``Scheduler: tasks_per_cell``).
 
-and give the task an estimate of the computational cost that it will have in 
+Then give the task an estimate of the computational cost that it will have in 
 ``scheduler_reweight`` in  ``scheduler.c``::
 
       case task_type_self:
@@ -354,7 +352,8 @@ This activates your tasks once they've been created.
 
 
 Initially, the engine will need to skip the task that updates the particles.
-If this is the case for your task, you will need to add it in ``engine_skip_force_and_kick``.
+If this is the case for your task, you will need to add it in 
+``engine_skip_force_and_kick``.
 Additionally, the tasks will be marked as 'to be skipped' once they've been
 executed during a time step, and then reactivated during the next time step if
 they need to be executed again. This way, all the created tasks can be kept and
@@ -364,8 +363,8 @@ you need to add the unskipping manually to ``engine_do_unskip_mapper()`` in
 
 
 Finally, you also need to initialize your new variables and pointers in 
-``space_rebuild_recycle_mapper`` in ``space.c``. Additionally, you need to 
-initialize the ``link`` structs in ``cell_clean_links`` in ``cell.c``.
+``space_rebuild_recycle_mapper`` in ``space_recycle.c``. Additionally, you need 
+to initialize the ``link`` structs in ``cell_clean_links`` in ``cell.c``.
 
 
 
