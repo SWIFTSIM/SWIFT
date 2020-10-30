@@ -104,6 +104,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->N_density++;
+  pj->N_density++;
+#endif
 }
 
 /**
@@ -160,6 +165,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += faci * curlvr[0];
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->N_density++;
+#endif
 }
 
 /**
@@ -443,6 +452,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
   pj->viscosity.v_sig = max(pj->viscosity.v_sig, v_sig);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pj->n_force += wi + wj;
+  pi->N_force++;
+  pj->N_force++;
+#endif
 }
 
 /**
@@ -578,6 +594,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * due to some possible synchronisation problems this is here as a _quick
    * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pi->N_force++;
+#endif
 }
 
 #endif /* SWIFT_SPHENIX_HYDRO_IACT_H */
