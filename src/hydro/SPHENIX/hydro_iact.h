@@ -241,6 +241,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float alpha_j = pj->viscosity.alpha;
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
   pj->force.alpha_visc_max_ngb = max(pj->force.alpha_visc_max_ngb, alpha_i);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_gradient += wi;
+  pj->n_gradient += wj;
+  pi->N_gradient++;
+  pj->N_gradient++;
+#endif
 }
 
 /**
@@ -308,6 +315,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
    * (this is used to limit the diffusion in hydro_prepare_force) */
   const float alpha_j = pj->viscosity.alpha;
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_gradient += wi;
+  pi->N_gradient++;
+#endif
 }
 
 /**

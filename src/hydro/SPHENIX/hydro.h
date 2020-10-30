@@ -498,9 +498,12 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
   p->N_force = 0;
+  p->N_gradient = 1;
   p->N_density_exact = 0;
   p->N_force_exact = 0;
   p->rho_exact = 0.f;
+  p->n_gradient = 0.f;
+  p->n_gradient_exact = 0.f;
   p->n_force = 0.f;
   p->n_force_exact = 0.f;
   p->inhibited_exact = 0;
@@ -655,6 +658,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Include the extra factors in the del^2 u */
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->n_gradient += kernel_root;
+#endif
 }
 
 /**

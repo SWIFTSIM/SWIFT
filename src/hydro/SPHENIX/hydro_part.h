@@ -245,6 +245,12 @@ struct part {
   /* Exact integer number of neighbours in the density loop */
   int N_density_exact;
 
+  /* Integer number of neighbours in the gradient loop */
+  int N_gradient;
+
+  /* Exact integer number of neighbours in the gradient loop */
+  int N_gradient_exact;
+
   /* Integer number of neighbours in the force loop */
   int N_force;
 
@@ -253,6 +259,12 @@ struct part {
 
   /*! Exact value of the density field obtained via brute-force loop */
   float rho_exact;
+
+  /*! Weighted numer of neighbours in the gradient loop */
+  float n_gradient;
+
+  /*! Exact value of the weighted numer of neighbours in the gradient loop */
+  float n_gradient_exact;
 
   /*! Weighted numer of neighbours in the force loop */
   float n_force;
