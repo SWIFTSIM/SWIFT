@@ -290,10 +290,11 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
-      if (!found_inhibited &&
+      if (!found_inhibited && pi->N_density != pi->N_density_exact &&
           (fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol ||
            fabsf(pi->rho_exact / pi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld swift=%e exact=%e", id, pi->rho, pi->rho_exact);
+        message("RHO: id=%lld swift=%e exact=%e N=%d N_exact=%d", id, pi->rho,
+                pi->rho_exact, pi->N_density, pi->N_density_exact);
         wrong_rho++;
       }
       if (check_force && !found_inhibited &&

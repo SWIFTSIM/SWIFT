@@ -29,6 +29,7 @@
 /* Local headers. */
 #include "active.h"
 #include "error.h"
+#include "feedback.h"
 #include "version.h"
 
 struct exact_density_data {
@@ -56,7 +57,8 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
     const long long id = spi->id;
 
     /* Is the particle active and part of the subset to be tested ? */
-    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e)) {
+    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
+        spi->count_since_last_enrichment == 1) {
 
       /* Get some information about the particle */
       const double pix[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -184,9 +186,10 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
 
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
                          kernel_gamma * spi->h * spi->h * spi->h *
-                         (spi->rho / spi->mass);
+                         spi->density.wcount;
 
-    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e)) {
+    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
+        spi->count_since_last_enrichment == 1) {
 
       fprintf(
           file_swift,
@@ -226,7 +229,8 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
     const long long id = spi->id;
     const int found_inhibited = spi->inhibited_exact;
 
-    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e)) {
+    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
+        spi->count_since_last_enrichment == 1) {
 
       fprintf(file_exact,
               "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
@@ -237,11 +241,12 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
-      if (!found_inhibited &&
+      if (!found_inhibited && spi->N_density_exact != spi->N_density &&
           (fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
            fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d", id,
-                spi->rho, spi->rho_exact, spi->N_density_exact, spi->N_density);
+        message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d %d %e", id,
+                spi->rho, spi->rho_exact, spi->N_density_exact, spi->N_density,
+                spi->count_since_last_enrichment, spi->birth_time);
         wrong_rho++;
       }
     }
