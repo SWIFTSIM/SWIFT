@@ -1537,10 +1537,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
-        t->type == task_type_stars_ghost ||
-        t->type == task_type_stars_ghost_in ||
-        t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
-        t->type == task_type_sink_out || t->type == task_type_sink_formation ||
+        t->type == task_type_sink_in || t->type == task_type_sink_out ||
+        t->type == task_type_sink_formation ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
@@ -1872,7 +1870,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
-    stars_exact_density_check(e->s, e, 1e-3, 1);
+    stars_exact_density_check(e->s, e, 1e-2, 1);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2338,7 +2336,7 @@ void engine_step(struct engine *e) {
 
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
-    stars_exact_density_check(e->s, e, 1e-3, 1);
+    stars_exact_density_check(e->s, e, 1e-2, 1);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
