@@ -168,6 +168,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
           if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
+          if (ci->nodeID == engine_rank && with_timestep_sync)
+            cell_activate_sync_part(ci, s);
         }
       }
 
@@ -451,10 +453,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_active_stars) {
             if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
             if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+            if (cj->nodeID == engine_rank && with_timestep_sync)
+              cell_activate_sync_part(cj, s);
           }
           if (cj_active_stars) {
             if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
             if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+            if (ci->nodeID == engine_rank && with_timestep_sync)
+              cell_activate_sync_part(ci, s);
           }
         }
       }

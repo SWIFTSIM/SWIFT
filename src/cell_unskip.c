@@ -868,7 +868,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       /* We have reached the bottom of the tree: activate drift */
       // cell_activate_drift_spart(ci, s);
       // cell_activate_drift_part(ci, s);
-      if (with_timestep_sync) cell_activate_sync_part(ci, s);
+      // if (with_timestep_sync) cell_activate_sync_part(ci, s);
     }
   }
 
@@ -917,8 +917,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Activate the drifts if the cells are local. */
         // if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
         // if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-        if (cj->nodeID == engine_rank && with_timestep_sync)
-          cell_activate_sync_part(cj, s);
+        // if (cj->nodeID == engine_rank && with_timestep_sync)
+        //  cell_activate_sync_part(cj, s);
 
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(cj, sid, s);
@@ -937,8 +937,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Activate the drifts if the cells are local. */
         // if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
         // if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
-        if (ci->nodeID == engine_rank && with_timestep_sync)
-          cell_activate_sync_part(ci, s);
+        // if (ci->nodeID == engine_rank && with_timestep_sync)
+        //  cell_activate_sync_part(ci, s);
 
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(ci, sid, s);
@@ -1949,6 +1949,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
         if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
         if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
+        if (ci->nodeID == engine_rank && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
       }
 
       else if (t->type == task_type_sub_pair) {
@@ -1959,10 +1961,14 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         if (ci_active) {
           if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
           if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+          if (cj->nodeID == engine_rank && with_timestep_sync)
+            cell_activate_sync_part(cj, s);
         }
         if (cj_active) {
           if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
           if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+          if (ci->nodeID == engine_rank && with_timestep_sync)
+            cell_activate_sync_part(ci, s);
         }
       }
     }
