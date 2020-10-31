@@ -130,6 +130,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.star_formation = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.ghost = NULL;
+    c->stars.ghost_in = NULL;
+    c->stars.ghost_out = NULL;
     c->stars.density = NULL;
     c->stars.feedback = NULL;
     c->black_holes.density_ghost = NULL;

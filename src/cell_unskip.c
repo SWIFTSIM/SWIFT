@@ -174,6 +174,61 @@ void cell_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
 }
 
 /**
+ * @brief Recursively activate the stars ghosts (and implicit links) in a cell
+ * hierarchy.
+ *
+ * @param c The #cell.
+ * @param s The #scheduler.
+ * @param e The #engine.
+ * @param with_star_formation Are we running with star formation?
+ */
+void cell_recursively_activate_stars_ghosts(struct cell *c, struct scheduler *s,
+                                            const struct engine *e,
+                                            const int with_star_formation) {
+  /* Early abort? */
+  const int count =
+      (c->stars.count > 0) || (with_star_formation && c->hydro.count > 0);
+  if (!count) return;
+
+  const int active = cell_is_active_stars(c, e) ||
+                     (with_star_formation && cell_is_active_hydro(c, e));
+  if (!active) return;
+
+  /* Is the ghost at this level? */
+  if (c->stars.ghost != NULL) {
+    scheduler_activate(s, c->stars.ghost);
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!c->split)
+      error("Reached the leaf level without finding a stars ghost!");
+#endif
+
+    /* Keep recursing */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_recursively_activate_stars_ghosts(c->progeny[k], s, e,
+                                               with_star_formation);
+  }
+}
+
+/**
+ * @brief Activate the stars ghosts (and implicit links) in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param s The #scheduler.
+ * @param e The #engine.
+ * @param with_star_formation Are we running with star formation?
+ */
+void cell_activate_stars_ghosts(struct cell *c, struct scheduler *s,
+                                const struct engine *e,
+                                const int with_star_formation) {
+  scheduler_activate(s, c->stars.ghost_in);
+  scheduler_activate(s, c->stars.ghost_out);
+  cell_recursively_activate_stars_ghosts(c, s, e, with_star_formation);
+}
+
+/**
  * @brief Recursively activate the cooling (and implicit links) in a cell
  * hierarchy.
  *
@@ -2037,7 +2092,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (cell_is_active_stars(c, e) ||
         (with_star_formation && cell_is_active_hydro(c, e))) {
 
-      if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
+      if (c->stars.ghost_in != NULL)
+        cell_activate_stars_ghosts(c, s, e, with_star_formation);
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
       if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
