@@ -228,6 +228,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         /* Update current cell using child cells */
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
+        /* Update the h_max */
+        c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
+        c->stars.h_max_active =
+            max(c->stars.h_max_active, cp->stars.h_max_active);
+
         /* Update the dx_max */
         if (star_formation_need_update_dx_max) {
           c->hydro.dx_max_part =
@@ -322,6 +327,10 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Update the Star formation history */
               star_formation_logger_log_new_spart(sp, &c->stars.sfh);
+
+              /* Update the h_max */
+              c->stars.h_max = max(c->stars.h_max, sp->h);
+              c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
               /* Update the displacement information */
               if (star_formation_need_update_dx_max) {

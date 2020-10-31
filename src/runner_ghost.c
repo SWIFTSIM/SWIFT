@@ -495,9 +495,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     const float h = c->stars.parts[i].h;
     if (spart_is_inhibited(sp, e)) continue;
 
-    if (h > c->stars.h_max) error("Particle has h larger than h_max");
+    if (h > c->stars.h_max)
+      error("Particle has h larger than h_max (id=%lld)", sp->id);
     if (spart_is_active(sp, e) && h > c->stars.h_max_active)
-      error("Active particle has h larger than h_max_active");
+      error("Active particle has h larger than h_max_active (id=%lld)", sp->id);
   }
 #endif
 
@@ -1405,9 +1406,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     const float h = c->hydro.parts[i].h;
     if (part_is_inhibited(p, e)) continue;
 
-    if (h > c->hydro.h_max) error("Particle has h larger than h_max");
+    if (h > c->hydro.h_max)
+      error("Particle has h larger than h_max (id=%lld)", p->id);
     if (part_is_active(p, e) && h > c->hydro.h_max_active)
-      error("Active particle has h larger than h_max_active");
+      error("Active particle has h larger than h_max_active (id=%lld)", p->id);
   }
 #endif
 
