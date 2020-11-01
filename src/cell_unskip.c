@@ -1507,7 +1507,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj) && !t->flags) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -1977,8 +1977,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(ci, cj) && !t->flags) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair(cj, ci) && !t->flags) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
