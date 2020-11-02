@@ -8,6 +8,6 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=4 blob.yml
+../../swift --hydro --threads=2 blob.yml
 
-python makeMovie.py
+python3 makeMovie.py
