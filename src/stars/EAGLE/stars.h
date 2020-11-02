@@ -85,7 +85,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+#ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->N_density = 0;
   sp->N_density_exact = 0;
   sp->rho_exact = 0.f;
