@@ -623,39 +623,43 @@ void task_unlock(struct task *t) {
  *
  * @param t the #task.
  */
-int task_lock(struct task *t) {
+int task_lock(struct scheduler *s, struct task *t) {
 
   const enum task_types type = t->type;
   const enum task_subtypes subtype = t->subtype;
   struct cell *ci = t->ci, *cj = t->cj;
-#ifdef WITH_MPI
-  int res = 0, err = 0;
-  MPI_Status stat;
-#endif
 
   switch (type) {
 
     /* Communication task? */
-    case task_type_recv:
     case task_type_send:
+
+      /* Sends are essentially implicit and complete when enqueued. */
+      break;
+
+    case task_type_recv:
 #ifdef WITH_MPI
-      /* Check the status of the MPI request. */
-      if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
-        char buff[MPI_MAX_ERROR_STRING];
-        int len;
-        MPI_Error_string(err, buff, &len);
-        error(
-            "Failed to test request on send/recv task (type=%s/%s tag=%lld, "
-            "%s).",
-            taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
+      {
+        /* Check for a message waiting for this subtype, tag and size from our
+         * expected node. If so accept. XXX need the scheduler and these
+         * max_sizes need synchronizing... */
+        scheduler_osmpi_blocktype *dataptr =
+          &s->osmpi_ptr[t->subtype][t->ci->nodeID * s->osmpi_max_size[t->subtype]];
+        if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
+          
+          /* Message from our remote and subtype waiting, does it match our tag
+           * and size? */
+          if (t->flags == (int) dataptr[2] && t->size == dataptr[1]) {
+            /* And log deactivation, if logging enabled. */
+            mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+            
+            /* Ready to process. */
+            t->header_ptr = dataptr;
+            return 1;
+          }
+        }
       }
-
-      /* And log deactivation, if logging enabled. */
-      if (res) {
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
-      }
-
-      return res;
+      return 0;
 #else
       error("SWIFT was not compiled with MPI support.");
 #endif

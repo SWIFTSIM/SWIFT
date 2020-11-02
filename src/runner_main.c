@@ -469,6 +469,10 @@ void *runner_main(void *data) {
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
+
+          /* This rank/subtype can receive the next message now.
+           * XXX sort out includes so we don't need this mess. */
+          ((scheduler_osmpi_blocktype *)t->header_ptr)[0] = scheduler_osmpi_locked;
           break;
 #endif
         case task_type_grav_down:

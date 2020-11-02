@@ -74,11 +74,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   const int with_star_formation = e->policy & engine_policy_star_formation;
   const int with_feedback = e->policy & engine_policy_feedback;
 
-#ifdef WITH_MPI
-  /* Initialise for one-sided MPI. */
-  scheduler_osmpi_init(s);
-#endif
-
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Get basic task information */
@@ -1139,13 +1134,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
   }
-
-  /* Now all tasks have been sized, we can allocate the one-sided buffers. */
-#ifdef WITH_MPI
-  /* Initialise for one-sided MPI. */
-  scheduler_osmpi_init_buffers(e->nr_nodes, s);
-#endif
-
 }
 
 /**
@@ -1159,11 +1147,23 @@ int engine_marktasks(struct engine *e) {
   const ticks tic = getticks();
   int rebuild_space = 0;
 
+#ifdef WITH_MPI
+  /* Initialise for one-sided MPI. */
+  scheduler_osmpi_init(s);
+#endif
+
+
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, (size_t)rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), threadpool_auto_chunk_size, extra_data);
   rebuild_space = extra_data[1];
+
+  /* Now all tasks have been sized, we can allocate the one-sided buffers. */
+#ifdef WITH_MPI
+  /* Initialise for one-sided MPI. */
+  scheduler_osmpi_init_buffers(e->nr_nodes, s);
+#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

@@ -1961,68 +1961,20 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
       {
-        size_t count = 0;             /* Number of elements to receive */
-        MPI_Datatype type = MPI_BYTE; /* Type of the elements */
-        void *buff = NULL;            /* Buffer to accept elements */
-
         /* Size of message in bytes. */
-        size_t size = scheduler_mpi_size(t);
+        t->size = scheduler_mpi_size(t);
 
+        /* Allocate memory for tasks that receive temporary data for
+         * unpacking. */
         if (t->subtype == task_subtype_tend_part ||
             t->subtype == task_subtype_tend_gpart ||
             t->subtype == task_subtype_tend_spart ||
             t->subtype == task_subtype_tend_bpart ||
             t->subtype == task_subtype_part_swallow ||
             t->subtype == task_subtype_bpart_merger ||
-            t->subtype == task_subtype_sf_counts) {
-
-          count = size;
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_limiter) {
-
-          count = t->ci->hydro.count;
-          type = part_mpi_type;
-          buff = t->ci->hydro.parts;
-
-        } else if (t->subtype == task_subtype_gpart) {
-
-          count = t->ci->grav.count;
-          type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
-
-        } else if (t->subtype == task_subtype_spart) {
-
-          count = t->ci->stars.count;
-          type = spart_mpi_type;
-          buff = t->ci->stars.parts;
-
-        } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
-                   t->subtype == task_subtype_bpart_feedback) {
-
-          count = t->ci->black_holes.count;
-          type = bpart_mpi_type;
-          buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          count = t->ci->mpi.pcell_size;
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
-
-        } else {
-          error("Unknown communication sub-type");
-        }
-
-        err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
-                        subtaskMPI_comms[t->subtype], &t->req);
-
-        if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit irecv for particle data.");
+            t->subtype == task_subtype_sf_counts ||
+            t->subtype == task_subtype_multipole) {
+          t->buff = malloc(t->size);
         }
 
         /* And log, if logging enabled. */
@@ -2038,48 +1990,46 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
       {
-        size_t count = 0;             /* Number of elements to send */
-        MPI_Datatype type = MPI_BYTE; /* Type of the elements */
-        void *buff = NULL;            /* Buffer to send */
-
         /* Size of message in bytes. */
-        size_t size = scheduler_mpi_size(t);
+        t->size = scheduler_mpi_size(t);
+
+        /* Whether memory is malloc'd. */
+        int mallocd = 0;
 
         if (t->subtype == task_subtype_tend_part) {
-
-          count = size;
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)buff);
+          t->buff = malloc(t->size);
+          mallocd = 1;
+          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_gpart) {
 
-          count = size;
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)buff);
+          t->buff = malloc(t->size);
+          mallocd = 1;
+          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_spart) {
 
-          count = size;
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)buff);
+          t->buff = malloc(t->size);
+          mallocd = 1;
+          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_bpart) {
 
-          count = size;
-          buff = t->buff = malloc(size);
+          t->buff = malloc(t->size);
+          mallocd = 1;
           cell_pack_end_step_black_holes(t->ci,
-                                         (struct pcell_step_black_holes *)buff);
+                                         (struct pcell_step_black_holes *)t->buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
-          count = size;
-          buff = t->buff = malloc(size);
-          cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)buff);
+          t->buff = malloc(t->size);
+          mallocd = 1;
+          cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)t->buff);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
 
-          count = size;
-          buff = t->buff = malloc(size);
+          t->buff = malloc(t->size);
+          mallocd = 1;
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
@@ -2088,67 +2038,60 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_gradient ||
                    t->subtype == task_subtype_limiter) {
 
-          count = t->ci->hydro.count;
-          type = part_mpi_type;
-          buff = t->ci->hydro.parts;
+          t->buff = t->ci->hydro.parts;
 
         } else if (t->subtype == task_subtype_gpart) {
 
-          count = t->ci->grav.count;
-          type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
+          t->buff = t->ci->grav.parts;
 
         } else if (t->subtype == task_subtype_spart) {
 
-          count = t->ci->stars.count;
-          type = spart_mpi_type;
-          buff = t->ci->stars.parts;
+          t->buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
                    t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
 
-          count = t->ci->black_holes.count;
-          type = bpart_mpi_type;
-          buff = t->ci->black_holes.parts;
+          t->buff = t->ci->black_holes.parts;
 
         } else if (t->subtype == task_subtype_multipole) {
 
-          count = t->ci->mpi.pcell_size;
-          type = multipole_mpi_type;
-          buff = t->buff = malloc(size);
-          cell_pack_multipoles(t->ci, (struct gravity_tensors *)buff);
+          t->buff = malloc(t->size);
+          mallocd = 1;
+          cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          count = size;
-          buff = t->buff = malloc(size);
+          t->buff = malloc(t->size);
+          mallocd = 1;
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
 
         } else {
           error("Unknown communication sub-type");
         }
 
+        // Need to do this in the task unlock, so we don't block queueing, we
+        // need to use the runner mechanisms to wait... But we have a single
+        // window per subtype per rank, so that will need to be locked, so we
+        // cannot accumulate as that requires a remote destination, so in
+        // reflection, that needs to move as well...?
+
         /* Send the buffer. XXX we assume one thread does this at a time, and
          * this is a synchronous send, so we must have more than 1 thread or
          * we will deadlock. */
 
-        err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-
-
         /* Data has the actual data and room for the header.
          * XXX horrible extra data copy, do this above... */
-        scheduler_osmpi_blocktype datasize = scheduler_osmpi_toblocks(size) +
+        scheduler_osmpi_blocktype datasize = scheduler_osmpi_toblocks(t->size) +
           scheduler_osmpi_header_size;
         scheduler_osmpi_blocktype *dataptr =
           calloc(datasize, scheduler_osmpi_bytesinblock);
 
         /* First element is marked as LOCKED, so only we can update. */
         dataptr[0] = scheduler_osmpi_locked;
-        dataptr[1] = size;
+        dataptr[1] = t->size;
         dataptr[2] = t->flags;
-        memcpy(&dataptr[3], buff, size);
+        memcpy(&dataptr[3], t->buff, t->size);
 
         /* And send to the destination rank. XXX will not work subtype offsets
          * need to be shared around system, are just local and not fixed size
@@ -2164,7 +2107,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
 
-        /* Now we change the first element to unlocked xso that the remote end
+        /* Now we change the first element to unlocked so that the remote end
          * can find out that the data has arrived. */
         scheduler_osmpi_blocktype newval[1];
         scheduler_osmpi_blocktype oldval[1];
@@ -2195,7 +2138,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                          s->osmpi_max_size[t->subtype] * t->ci->nodeID,
                          1, scheduler_osmpi_mpi_blocktype,
                          s->osmpi_window[t->subtype], &request);
-
           if (err != MPI_SUCCESS) mpi_error(err, "MPI_Rget failed");
 
           /* After the rget to make sure we get a chance at completion. */
@@ -2217,6 +2159,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
                               t->cj->nodeID, t->flags);
 
+        if (mallocd) {
+          free(t->buff);
+        }
+        t->buff = NULL;
         qid = 0;
       }
 #else
@@ -2351,7 +2297,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       /* Try to get a task from the suggested queue. */
       if (s->queues[qid].count > 0 || s->queues[qid].count_incoming > 0) {
         TIMER_TIC
-        res = queue_gettask(&s->queues[qid], prev, 0);
+          res = queue_gettask(s, &s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
         if (res != NULL) break;
       }
@@ -2366,7 +2312,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
-          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+            res = queue_gettask(s, &s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
@@ -2385,7 +2331,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 #endif
     {
       pthread_mutex_lock(&s->sleep_mutex);
-      res = queue_gettask(&s->queues[qid], prev, 1);
+      res = queue_gettask(s, &s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }

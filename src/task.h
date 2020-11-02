@@ -33,6 +33,7 @@
 /* Forward declarations to avoid circular inclusion dependencies. */
 struct cell;
 struct engine;
+struct scheduler;
 
 #define task_align 128
 
@@ -222,8 +223,11 @@ struct task {
   /*! Buffer for this task's communications */
   void *buff;
 
-  /*! MPI request corresponding to this task */
-  MPI_Request req;
+  /*! Size of the buffer. */
+  size_t size;
+
+  /*! Header section of one-sided messages. */
+  void *header_ptr;
 
 #endif
 
@@ -275,7 +279,7 @@ struct task {
 /* Function prototypes. */
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
-int task_lock(struct task *t);
+int task_lock(struct scheduler *s, struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
 void task_dump_all(struct engine *e, int step);
