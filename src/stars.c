@@ -58,7 +58,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
 
     /* Is the particle active and part of the subset to be tested ? */
     if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
-        spi->count_since_last_enrichment == 1) {
+        /*spi->count_since_last_enrichment == 1*/ spi->birth_time != -1.) {
 
       /* Get some information about the particle */
       const double pix[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -69,6 +69,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
       /* Be ready for the calculation */
       int N_density_exact = 0;
       double rho_exact = 0.;
+      double n_exact = 0.;
 
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_parts; ++j) {
@@ -109,6 +110,9 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
             /* Density */
             rho_exact += mj * wi;
 
+            /* Number density */
+            n_exact += wi;
+
             /* Number of neighbours */
             N_density_exact++;
           }
@@ -118,6 +122,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
       /* Store the exact answer */
       spi->N_density_exact = N_density_exact;
       spi->rho_exact = rho_exact * pow_dimension(hi_inv);
+      spi->n_exact = n_exact * pow_dimension(hi_inv);
 
       counter++;
     }
@@ -163,6 +168,14 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   const struct spart *sparts = s->sparts;
   const size_t nr_sparts = s->nr_sparts;
 
+  const double eta = e->stars_properties->eta_neighbours;
+  const double N_ngb_target =
+      (4. / 3.) * M_PI * pow_dimension(kernel_gamma * eta);
+  const double N_ngb_max =
+      N_ngb_target + 2. * e->stars_properties->delta_neighbours;
+  const double N_ngb_min =
+      N_ngb_target - 2. * e->stars_properties->delta_neighbours;
+
   /* File name */
   char file_name_swift[100];
   sprintf(file_name_swift, "stars_checks_swift_step%.4d.dat", e->step);
@@ -172,10 +185,12 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# Stars accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_STARS_DENSITY_CHECKS);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
+  fprintf(file_swift, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
+          e->stars_properties->delta_neighbours);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
   fprintf(file_swift, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s %16s\n",
-          "id", "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho", "n_force",
+          "id", "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho", "n_rho",
           "N_ngb");
 
   /* Output particle SWIFT densities */
@@ -185,17 +200,16 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
     const long long id = spi->id;
 
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                         kernel_gamma * spi->h * spi->h * spi->h *
-                         spi->density.wcount;
+                         kernel_gamma * spi->h * spi->h * spi->h * spi->n;
 
     if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
-        spi->count_since_last_enrichment == 1) {
+        /* spi->count_since_last_enrichment == 1 &&*/ spi->birth_time != -1.) {
 
       fprintf(
           file_swift,
           "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e %16.8e\n",
           id, spi->x[0], spi->x[1], spi->x[2], spi->h, spi->N_density, 0,
-          spi->rho, 0.f, N_ngb);
+          spi->rho, spi->n, N_ngb);
     }
   }
 
@@ -214,13 +228,17 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_exact, "# Stars accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_STARS_DENSITY_CHECKS);
   fprintf(file_exact, "# periodic= %d\n", s->periodic);
+  fprintf(file_swift, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
+          e->stars_properties->delta_neighbours);
   fprintf(file_exact, "# Git Branch: %s\n", git_branch());
   fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-  fprintf(file_exact, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s\n", "id",
-          "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho_exact",
-          "n_force_exact");
+  fprintf(file_exact, "# %16s %16s %16s %16s %16s %7s %7s %16s %16s %16s\n",
+          "id", "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho_exact",
+          "n_rho_exact", "N_ngb");
 
   int wrong_rho = 0;
+  int wrong_n_ngb = 0;
+  int counter = 0;
 
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_sparts; ++i) {
@@ -229,25 +247,40 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
     const long long id = spi->id;
     const int found_inhibited = spi->inhibited_exact;
 
-    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
-        spi->count_since_last_enrichment == 1) {
+    const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
+                         kernel_gamma * spi->h * spi->h * spi->h * spi->n_exact;
 
-      fprintf(file_exact,
-              "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e\n", id,
-              spi->x[0], spi->x[1], spi->x[2], spi->h, spi->N_density_exact, 0,
-              spi->rho_exact, 0.f);
+    if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
+        /*spi->count_since_last_enrichment == 1 && */ spi->birth_time != -1.) {
+
+      counter++;
+
+      fprintf(
+          file_exact,
+          "%18lld %16.8e %16.8e %16.8e %16.8e %7d %7d %16.8e %16.8e %16.8e\n",
+          id, spi->x[0], spi->x[1], spi->x[2], spi->h, spi->N_density_exact, 0,
+          spi->rho_exact, spi->n_exact, N_ngb);
 
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
-      if (!found_inhibited && spi->N_density_exact != spi->N_density &&
-          (fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
-           fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)) {
+      if (!found_inhibited && spi->N_density_exact != spi->N_density //&&
+          /*(fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
+	    fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)*/) {
         message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d %d %e", id,
                 spi->rho, spi->rho_exact, spi->N_density_exact, spi->N_density,
                 spi->count_since_last_enrichment, spi->birth_time);
         wrong_rho++;
+      }
+
+      if (!found_inhibited && (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
+
+        message("N_NGB: id=%lld exact=%f N_true=%d N_swift=%d %d %e", id, N_ngb,
+                spi->N_density_exact, spi->N_density,
+                spi->count_since_last_enrichment, spi->birth_time);
+
+        wrong_n_ngb++;
       }
     }
   }
@@ -261,8 +294,18 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   if (wrong_rho)
     error(
         "Density difference larger than the allowed tolerance for %d "
-        "particles!",
-        wrong_rho);
+        "star particles! (out of %d particles)",
+        wrong_rho, counter);
+  else
+    message("Verified %d star particles", counter);
+
+  if (wrong_n_ngb)
+    error(
+        "N_ngb difference larger than the allowed tolerance for %d "
+        "star particles! (out of %d particles)",
+        wrong_n_ngb, counter);
+  else
+    message("Verified %d star particles", counter);
 
   if (e->verbose)
     message("Writting brute-force density files took %.3f %s. ",

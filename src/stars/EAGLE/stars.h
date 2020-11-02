@@ -81,14 +81,16 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->num_ngb_density = 0;
 #endif
 
-  sp->rho = 0.f;
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
 
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->N_density = 0;
   sp->N_density_exact = 0;
+  sp->rho = 0.f;
   sp->rho_exact = 0.f;
+  sp->n = 0.f;
+  sp->n_exact = 0.f;
   sp->inhibited_exact = 0;
 #endif
 }
@@ -188,6 +190,10 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   sp->rho *= h_inv_dim;
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
+
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  sp->n *= h_inv_dim;
+#endif
 }
 
 /**
