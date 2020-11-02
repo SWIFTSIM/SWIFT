@@ -1040,6 +1040,17 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
                 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
                 
+                if (pj->sidm_data.kick_flag == 1){
+                    /* Part j is not within the timestep. Let's wake it up for the SIDM kick */
+                    timestep_process_sync_dmpart(pj, e, cosmo);
+                    /*timestep_sync_dmpart(pi);*/
+
+                    /* Doing SIDM kick */
+                    sidm_do_kick(pi, pj, ti_begin, sidm_history);
+                    /* Removing flag once it's done */
+                    pj->sidm_data.kick_flag = 0.;
+                }
+                
             } else if (doj) {
                 
                 dx[0] = -dx[0];
@@ -1047,6 +1058,18 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
                 dx[2] = -dx[2];
 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
+                
+                if (pi->sidm_data.kick_flag == 1){
+                    
+                    /* Part i is not within the timestep. Let's wake it up for the SIDM kick */
+                    timestep_process_sync_dmpart(pi, e, cosmo);
+                    /*timestep_sync_dmpart(pi);*/
+                    
+                    /* Doing SIDM kick */
+                    sidm_do_kick(pj, pi, ti_begin, sidm_history);
+                    /* Removing flag once it's done */
+                    pi->sidm_data.kick_flag = 0.;
+                }
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1346,6 +1369,19 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
                 
+                if (pj->sidm_data.kick_flag == 1){
+                    
+                    /* Part j is not within the timestep. Let's wake it up for the SIDM kick */
+                    timestep_process_sync_dmpart(pj, e, cosmo);
+                    /*timestep_sync_dmpart(pi);*/
+                    
+                    /* Doing SIDM kick */
+                    sidm_do_kick(pi, pj, ti_begin, sidm_history);
+                    /* Removing flag once it's done */
+                    pj->sidm_data.kick_flag = 0;
+                }
+
+                
             } else if (doj) {
                 
                 dx[0] = -dx[0];
@@ -1354,6 +1390,18 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
                 
+                if (pi->sidm_data.kick_flag == 1){
+
+                    /* Part i is not within the timestep. Let's wake it up for the SIDM kick */
+                    timestep_process_sync_dmpart(pi, e, cosmo);
+                    /*timestep_sync_dmpart(pi);*/
+                    
+                    /* Doing SIDM kick */
+                    sidm_do_kick(pj, pi, ti_begin, sidm_history);
+                    /* Removing flag once it's done */
+                    pi->sidm_data.kick_flag = 0;
+                }
+
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */

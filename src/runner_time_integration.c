@@ -1405,7 +1405,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
 void runner_sync_dmparts(struct runner *r, struct cell *c) {
     
     const struct engine *e = r->e;
-    const struct cosmology *cosmo = e->cosmology;
+    /*const struct cosmology *cosmo = e->cosmology;*/
 
     const integertime_t ti_current = e->ti_current;
     const int count = c->dark_matter.count;
@@ -1463,14 +1463,13 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
             if (dmpart_is_inhibited(p, e)) continue;
             
             /* If the particle is active no need to sync it */
-            if (dmpart_is_active(p, e) && p->to_be_synchronized) {
-                p->to_be_synchronized = 0;
-            }
+            if (dmpart_is_active(p, e)) p->to_be_synchronized = 0;
             
             if (p->to_be_synchronized) {
                 
-                /* Finish this particle's time-step */
-                timestep_process_sync_dmpart(p, e, cosmo);
+                /* Finish this particle's time-step? */
+                /* CC. Already done it in runner DM, so I comment this line
+                timestep_process_sync_dmpart(p, e, cosmo);*/
                 
                 /* Get new time-step */
                 integertime_t ti_new_step = get_dmpart_timestep(p, e);
@@ -1504,6 +1503,9 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
                     /* What is the next starting point for this cell ? */
                     ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
                 }
+                
+                /* Done */
+                p->to_be_synchronized = 0;
             }
         }
         

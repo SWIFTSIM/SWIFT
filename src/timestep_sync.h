@@ -45,16 +45,16 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_current = e->ti_current;
-  const timebin_t max_active_bin = e->max_active_bin;
+  /*const timebin_t max_active_bin = e->max_active_bin;*/
   const timebin_t min_active_bin = e->min_active_bin;
   const double time_base = e->time_base;
 
-  p->to_be_synchronized = 0;
+  p->to_be_synchronized = 1;
 
   /* This particle is already active. Nothing to do here... */
-  if (p->time_bin <= max_active_bin) {
+  /*if (p->time_bin <= max_active_bin) {
     return;
-  }
+  }*/
 
   message(" Synchronizing particle! %lld old bin=%d", p->id_or_neg_offset, p->time_bin);
 

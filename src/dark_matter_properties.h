@@ -109,6 +109,9 @@ struct sidm_dmpart_data {
     
     /*! flag indicating if particle in given time-step has been scattered*/
     float sidm_flag;
+    
+    /*! flag indicating if particle in given time-step has been scattered*/
+    float kick_flag;
         
     /*! Particle search radius */
     float h_sidm;

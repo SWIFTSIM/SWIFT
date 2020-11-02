@@ -27,7 +27,6 @@
 #include "dark_matter.h"
 #include "kernel_dark_matter.h"
 #include "dark_matter_logger.h"
-#include "timestep_sync_part.h"
 
 
 /**
@@ -320,13 +319,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
         
-        /* Is this part within the timestep? If not let's wake it up for the SIDM kick */
-        /*timestep_process_sync_dmpart(pj,e,cosmo);*/
-        timestep_sync_dmpart(pj);
-
-        /*timestep_process_sync_dmpart(pi,e,cosmo);*/
-        timestep_sync_dmpart(pi);
-
         sidm_do_kick(pi, pj, ti_current, sidm_history);
         
         dark_matter_log_num_events(sidm_history, 1);
@@ -382,11 +374,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > rand) {
         
-        /* Is this part within the timestep? If not let's wake it up for the SIDM kick */
-        /*timestep_process_sync_dmpart(pi,e,cosmo);*/
-        timestep_sync_dmpart(pi);
-
-        sidm_do_kick(pi, pj, ti_current, sidm_history);
+        /*! change flag to indicate the particle has been scattered */
+        pj->sidm_data.kick_flag = 1;
 
         dark_matter_log_num_events(sidm_history, 1);
     }

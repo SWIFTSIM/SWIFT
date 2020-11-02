@@ -63,7 +63,8 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     
     /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
     dmp->sidm_data.sidm_flag = 0.0f;
-    
+    dmp->sidm_data.kick_flag = 0.0f;
+
     /*! Particle search radius */
     dmp->sidm_data.h_sidm = sidm_props->h_search_radius;
     
