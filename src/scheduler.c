@@ -1206,10 +1206,11 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
-    } else if (t->subtype == task_subtype_dark_matter_density) {
+    } else if (t->subtype == task_subtype_dark_matter_density ||
+               t->subtype == task_subtype_sidm) {
       scheduler_splittask_dark_matter(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
-        scheduler_splittask_gravity(t, s);
+      scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_mesh) {
@@ -1570,7 +1571,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * gcount_i;
         else if (t->subtype == task_subtype_dark_matter_density ||
                  t->subtype == task_subtype_sidm)
-          cost = 1.f * wscale * dmcount_i * dmcount_i;
+          cost = 1.f * (wscale * dmcount_i) * dmcount_i;
         else if (t->subtype == task_subtype_stars_density ||
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
@@ -1901,6 +1902,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
+  message("Re wait tasks");
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
@@ -1909,6 +1911,7 @@ void scheduler_start(struct scheduler *s) {
     scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
 
+  message("Enqueue tasks");
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
@@ -1916,6 +1919,7 @@ void scheduler_start(struct scheduler *s) {
   } else {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
+  message("Done");
 
   /* Clear the list of active tasks. */
   s->active_count = 0;
@@ -1963,7 +1967,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_self:
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
-            t->subtype == task_subtype_external_grav)
+            t->subtype == task_subtype_external_grav ||
+            t->subtype == task_subtype_sidm ||
+            t->subtype == task_subtype_dark_matter_density)
           qid = t->ci->grav.super->owner;
         else
           qid = t->ci->hydro.super->owner;
@@ -2053,13 +2059,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
         
-        } else if (t->subtype == task_subtype_dark_matter_density) {
-            
-            count = t->ci->dark_matter.count;
-            size = count * sizeof(struct dmpart);
-            type = dmpart_mpi_type;
-            buff = t->ci->dark_matter.parts;
-
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
@@ -2219,13 +2218,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct bpart);
           type = bpart_mpi_type;
           buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_dark_matter_density) {
-            
-            count = t->ci->dark_matter.count;
-            size = count * sizeof(struct dmpart);
-            type = dmpart_mpi_type;
-            buff = t->ci->dark_matter.parts;
 
         } else if (t->subtype == task_subtype_multipole) {
 

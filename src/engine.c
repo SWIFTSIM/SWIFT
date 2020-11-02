@@ -927,12 +927,12 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     } else {
       reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
     }
-      if (e->proxies[k].nr_dmparts_in > 0) {
-          reqs_in[5 * k + 4] = e->proxies[k].req_dmparts_in;
-          nr_in += 1;
-      } else {
-          reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
-      }
+    if (e->proxies[k].nr_dmparts_in > 0) {
+      reqs_in[5 * k + 4] = e->proxies[k].req_dmparts_in;
+      nr_in += 1;
+    } else {
+      reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
+    }
 
     if (e->proxies[k].nr_parts_out > 0) {
       reqs_out[5 * k] = e->proxies[k].req_parts_out;
@@ -1689,10 +1689,14 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
     /* For dark matter 2 self (density, sidm), 26/2 density pairs,
-       26/2 sidm pairs, 1 drift, 1 ghosts, 1 kick, 1 time-step */
-    n1 += 32;
+       26/2 sidm pairs, 1 drift, 1 ghosts, 2 kick, 1 time-step,
+       1 end_sidm, 2 extra space */
+    n1 += 34;
     n2 += 2;
-    
+#ifdef WITH_MPI
+    n1 += 6;
+#endif
+
   if (e->policy & engine_policy_timestep_limiter) {
     n1 += 18;
     n2 += 1;

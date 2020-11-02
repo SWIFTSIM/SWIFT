@@ -492,13 +492,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 /* Set the correct sorting flags */
                 if (t_type == task_type_pair && t_subtype == task_subtype_dark_matter_density) {
                     
-                    /* Store some values. */
-                    /*atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-                    atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-                    ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-                    cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;*/
-                    
-                    /* Activate the hydro drift tasks. */
+                    /* Activate the DM drift tasks. */
                     if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
                     

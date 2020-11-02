@@ -2080,7 +2080,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
 #endif
             
             /* kick1 ---> density --> ghost --> sidm --> sidm_kick --> drift */
-            /*scheduler_addunlock(sched, ci->grav.super->kick1, t);*/
             scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
 
             /* task for the second loop */
@@ -2091,8 +2090,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             
             scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
             scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-            scheduler_addunlock(sched, ci->grav.super->dark_matter.sidm_kick, ci->grav.super->dark_matter.drift);
-
         }
         
         /* Otherwise, pair interaction? */
@@ -2113,8 +2110,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
 
                 scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
                 scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-                scheduler_addunlock(sched, ci->grav.super->dark_matter.sidm_kick, ci->grav.super->dark_matter.drift);
-
                 
             }
             if (cj_nodeID == nodeID) {
@@ -2126,7 +2121,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                     
                     scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
                     scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
-                    scheduler_addunlock(sched, cj->grav.super->dark_matter.sidm_kick, cj->grav.super->dark_matter.drift);
 
                 }
             }
@@ -2150,7 +2144,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             
             scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
             scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-            scheduler_addunlock(sched, ci->grav.super->dark_matter.sidm_kick, ci->grav.super->dark_matter.drift);
 
         }
         
@@ -2170,7 +2163,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                 scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
                 scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
                 scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-                scheduler_addunlock(sched, ci->grav.super->dark_matter.sidm_kick, ci->grav.super->dark_matter.drift);
 
             }
             if (cj_nodeID == nodeID) {
@@ -2181,7 +2173,6 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                     scheduler_addunlock(sched, t, cj->grav.super->dark_matter.ghost);
                     scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
                     scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
-                    scheduler_addunlock(sched, cj->grav.super->dark_matter.sidm_kick, cj->grav.super->dark_matter.drift);
 
                 }
             }
