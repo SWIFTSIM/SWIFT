@@ -5742,7 +5742,7 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
     struct dmpart *restrict dmp = (struct dmpart *)map_data;
     const struct space *restrict s = (struct space *)extra_data;
     const struct engine *e = s->e;
-    const struct gravity_props *grav_props = s->e->gravity_properties;
+    /*const struct gravity_props *grav_props = s->e->gravity_properties;*/
     const struct sidm_props *sidm_props = s->e->sidm_properties;
     /*const float initial_h = s->initial_dmpart_h;*/
     
