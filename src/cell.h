@@ -343,7 +343,9 @@ enum cell_flags {
   cell_flag_do_hydro_sync = (1UL << 15),
   cell_flag_do_hydro_sub_sync = (1UL << 16),
   cell_flag_do_dark_matter_drift = (1UL << 17),
-  cell_flag_do_dark_matter_sub_drift = (1UL << 18)
+  cell_flag_do_dark_matter_sub_drift = (1UL << 18),
+  cell_flag_do_dark_matter_sync = (1UL << 19),
+  cell_flag_do_dark_matter_sub_sync = (1UL << 20)
 };
 
 /**
@@ -1112,7 +1114,8 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
 void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s);
+                                             struct scheduler *s,
+                                             const int with_timestep_sync);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
@@ -1122,6 +1125,7 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_sync_part(struct cell *c, struct scheduler *s);
+void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_dark_matter_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);

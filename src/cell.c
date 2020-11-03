@@ -3273,6 +3273,42 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
   }
 }
 
+void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s) {
+    /* If this cell is already marked for drift, quit early. */
+    if (cell_get_flag(c, cell_flag_do_dark_matter_sync)) return;
+    
+    /* Mark this cell for synchronization. */
+    cell_set_flag(c, cell_flag_do_dark_matter_sync);
+    
+    /* Set the do_sub_sync all the way up and activate the super sync
+     if this has not yet been done. */
+    if (c == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (c->timestep_sync == NULL)
+            error("Trying to activate un-existing c->timestep_sync");
+#endif
+        scheduler_activate(s, c->timestep_sync);
+        scheduler_activate(s, c->kick1);
+    } else {
+        for (struct cell *parent = c->parent;
+             parent != NULL && !cell_get_flag(parent, cell_flag_do_dark_matter_sub_sync);
+             parent = parent->parent) {
+            /* Mark this cell for drifting */
+            cell_set_flag(parent, cell_flag_do_dark_matter_sub_sync);
+            
+            if (parent == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+                if (parent->timestep_sync == NULL)
+                    error("Trying to activate un-existing parent->timestep_sync");
+#endif
+                scheduler_activate(s, parent->timestep_sync);
+                scheduler_activate(s, parent->kick1);
+                break;
+            }
+        }
+    }
+}
+
 /**
  * @brief Activate the #gpart drifts on the given cell.
  */
@@ -3915,7 +3951,8 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
  * @param s The task #scheduler.
  */
 void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s) {
+                                             struct scheduler *s,
+                                             const int with_timestep_sync) {
     const struct engine *e = s->space->e;
     
     /* Store the current dx_max and h_max values. */
@@ -3939,11 +3976,11 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             /* Loop over all progenies and pairs of progenies */
             for (int j = 0; j < 8; j++) {
                 if (ci->progeny[j] != NULL) {
-                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s);
+                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s, with_timestep_sync);
                     for (int k = j + 1; k < 8; k++)
                         if (ci->progeny[k] != NULL)
                             cell_activate_subcell_dark_matter_tasks(
-                                                                    ci->progeny[j], ci->progeny[k], s);
+                                                                    ci->progeny[j], ci->progeny[k], s, with_timestep_sync);
                 }
             }
         } else {
@@ -3972,7 +4009,7 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
                 const int pjd = csp->pairs[k].pjd;
                 if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
                     cell_activate_subcell_dark_matter_tasks(
-                                                            ci->progeny[pid], cj->progeny[pjd], s);
+                                                            ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync);
             }
         }
         
@@ -3982,7 +4019,13 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             
             /* Activate the drifts if the cells are local. */
             if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
+            if (ci->nodeID == engine_rank && with_timestep_sync)
+                cell_activate_sync_dmpart(ci, s);
+
             if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
+            if (cj->nodeID == engine_rank && with_timestep_sync)
+                cell_activate_sync_dmpart(cj, s);
+
         }
     } /* Otherwise, pair interation */
 }
@@ -5101,6 +5144,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
     
     struct engine *e = s->space->e;
+    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
     const int nodeID = e->nodeID;
     int rebuild = 0;
     
@@ -5126,6 +5170,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         /* Activate the drifts */
         if (t->type == task_type_self && ci_active) {
             cell_activate_drift_dmpart(ci, s);
+            if (with_timestep_sync) cell_activate_sync_dmpart(ci, s);
         }
 
         
@@ -5140,17 +5185,19 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 
                 /* Activate the drift tasks. */
                 if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
                 if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+                if (cj_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(cj, s);
             }
             
             /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_self) {
-                cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
+                cell_activate_subcell_dark_matter_tasks(ci, NULL, s, with_timestep_sync);
             }
             
             /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_pair) {
-                cell_activate_subcell_dark_matter_tasks(ci, cj, s);
+                cell_activate_subcell_dark_matter_tasks(ci, cj, s, with_timestep_sync);
             }
         }
         

@@ -1402,7 +1402,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
  * @param force Limit the particles irrespective of the #cell flags.
  * @param timer Are we timing this ?
  */
-void runner_sync_dmparts(struct runner *r, struct cell *c) {
+void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
     
     const struct engine *e = r->e;
     /*const struct cosmology *cosmo = e->cosmology;*/
@@ -1423,6 +1423,8 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
     
     /* Early abort? */
     if (c->dark_matter.count == 0) {
+        /* Clear the sync flags. */
+        cell_clear_flag(c, cell_flag_do_dark_matter_sync | cell_flag_do_dark_matter_sub_sync);
         return;
     }
     
@@ -1433,7 +1435,7 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
                 struct cell *restrict cp = c->progeny[k];
                 
                 /* Recurse */
-                runner_sync_dmparts(r, cp);
+                runner_do_sync_dmparts(r, cp);
                 
                 /* And aggregate */
                 ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
@@ -1465,7 +1467,7 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
             /* If the particle is active no need to sync it */
             if (dmpart_is_active(p, e)) p->to_be_synchronized = 0;
             
-            if (p->to_be_synchronized) {
+            if (p->to_be_synchronized == 1) {
                 
                 /* Finish this particle's time-step? */
                 /* CC. Already done it in runner DM, so I comment this line
@@ -1504,7 +1506,7 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
                     ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
                 }
                 
-                /* Done */
+                /* Done. Remove flag */
                 p->to_be_synchronized = 0;
             }
         }
@@ -1514,4 +1516,8 @@ void runner_sync_dmparts(struct runner *r, struct cell *c) {
         c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
         c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
     }
+    
+    /* Clear the sync flags. */
+    cell_clear_flag(c, cell_flag_do_dark_matter_sync | cell_flag_do_dark_matter_sub_sync);
+
 }

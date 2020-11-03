@@ -1813,7 +1813,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i;
         break;
       case task_type_timestep_sync:
-        cost = wscale * count_i;
+        cost = wscale * (count_i + dmcount_i);
         break;
       case task_type_send:
         if (count_i < 1e5)

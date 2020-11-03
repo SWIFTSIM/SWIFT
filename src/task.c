@@ -480,13 +480,17 @@ void task_unlock(struct task *t) {
       cell_dmunlocktree(ci);
       break;
           
+    case task_type_timestep_sync:
+      cell_unlocktree(ci);
+      cell_dmunlocktree(ci);
+      break;
+          
     case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
-    case task_type_timestep_sync:
       cell_unlocktree(ci);
       break;
 
@@ -679,14 +683,18 @@ int task_lock(struct task *t) {
       if (cell_dmlocktree(ci) != 0) return 0;
       break;
 
-
+    case task_type_timestep_sync:
+      if (ci->hydro.hold || ci->dark_matter.hold) return 0;
+      if (cell_locktree(ci) != 0) return 0;
+      else if (cell_dmlocktree(ci) != 0) return 0;
+      break;
+          
     case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
-    case task_type_timestep_sync:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
