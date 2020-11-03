@@ -35,6 +35,7 @@
 
 /* Local headers. */
 #include "fof.h"
+#include "mpiuse.h"
 #include "part.h"
 #include "proxy.h"
 #include "star_formation_logger.h"
