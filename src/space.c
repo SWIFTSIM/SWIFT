@@ -5752,20 +5752,20 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
 
     const struct cosmology *cosmo = e->cosmology;
     const float a_factor_vel = cosmo->a;
-    const float sidm_h_min_ratio = e->sidm_properties->h_min_ratio;
+    /*const float sidm_h_min_ratio = e->sidm_properties->h_min_ratio;*/
     
     /* Check that the smoothing lengths are non-zero */
-    for (int k = 0; k < count; k++) {
+    /*for (int k = 0; k < count; k++) {*/
 
         /* Imposed smoothing length from parameter file */
         /*if (initial_h != -1.f) {
             dmp[k].h = initial_h;
         }*/
         
-        const struct gpart *gp = dmp[k].gpart;
+        /*const struct gpart *gp = dmp[k].gpart;
         const float softening = gravity_get_softening(gp, grav_props);
         dmp->h = max(dmp->h, softening * sidm_h_min_ratio);
-    }
+    }*/
 
     
     /* Convert velocities to internal units */

@@ -1406,7 +1406,6 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
     
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
-
     const integertime_t ti_current = e->ti_current;
     const int count = c->dark_matter.count;
     struct dmpart *restrict dmparts = c->dark_matter.parts;
