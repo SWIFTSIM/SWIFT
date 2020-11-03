@@ -732,10 +732,6 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  /* Pick-out the sorted lists. */
-  const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
-  const float dxj = cj->hydro.dx_max_sort;
-
   /* Parts are on the left? */
   if (!flipped) {
 
@@ -749,14 +745,21 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       const double piz = pi->x[2] - (shift[2]);
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
-                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+      // MATTHIEU: todo: early abort here
+
+      /* Is the particle overlapping with the other cell? */
+      /* const double di = hi * kernel_gamma + pix * runner_shift[sid][0] + */
+      /*                   piy * runner_shift[sid][1] + piz *
+       * runner_shift[sid][2]; */
+
+      /* if (di < 0.) continue; */
 
       /* Loop over the parts in cj. */
-      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+      for (int pjd = 0; pjd < count_j /*&& sort_j[pjd].d < di*/; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct part *restrict pj = &parts_j[pjd];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -814,14 +817,20 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       const double piz = pi->x[2] - (shift[2]);
       const float hi = pi->h;
       const float hig2 = hi * hi * kernel_gamma2;
-      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
-                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+      // MATTHIEU: todo: early abort here
+
+      /* Is the particle overlapping with the other cell? */
+      /* const double di = -hi * kernel_gamma + pix * runner_shift[sid][0] + */
+      /*                   piy * runner_shift[sid][1] + piz *
+       * runner_shift[sid][2]; */
+      /* if (di > 0.) continue; */
 
       /* Loop over the parts in cj. */
-      for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
+      for (int pjd = count_j - 1; pjd >= 0 /* && di < sort_j[pjd].d */; pjd--) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct part *restrict pj = &parts_j[pjd];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -896,6 +905,10 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
+#else
+
   /* Get the sorting index. */
   int sid = 0;
   for (int k = 0; k < 3; k++)
@@ -907,29 +920,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
   const int flipped = runner_flip[sid];
   sid = sortlistID[sid];
 
-  /* Has the cell cj not been sorted? */
-  if (!(cj->hydro.sorted & (1 << sid)) ||
-      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin) {
-
-    // message("Not sorted! depth=%d maxdepth=%d", cj->depth, cj->maxdepth);
-
-    /* --> Use the naive N^2 loop */
-    DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
-
-  } else {
-
-#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-    DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
-#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
-    if (sort_is_face(sid))
-      runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid,
-                                       flipped, shift);
-    else
-      DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
-#else
-    DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
+  DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
-  }
 }
 
 /**
