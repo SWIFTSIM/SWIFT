@@ -222,7 +222,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
     struct memuse_rnode *child = memuse_rnode_find_child(
         memuse_rnode_root, 0, mpiuse_log[k].vptr, sizeof(uintptr_t));
 
-    if (child != NULL && child->ptr != NULL) {
+    if (child != NULL && child->value != -1) {
 
       /* Should be the handoff. Check that. */
       if (mpiuse_log[k].activation) {
@@ -240,7 +240,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       }
 
       /* Free, update the missing fields, size of request is removed. */
-      struct mpiuse_log_entry *oldlog = (struct mpiuse_log_entry *)child->ptr;
+      struct mpiuse_log_entry *oldlog = (struct mpiuse_log_entry *)child->value;
       mpiuse_log[k].size = -oldlog->size;
       mpiuse_log[k].otherrank = oldlog->otherrank;
       mpiuse_log[k].tag = oldlog->tag;
@@ -249,7 +249,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       mpiuse_log[k].acttic = mpiuse_log[k].tic - oldlog->tic;
 
       /* And deactivate this key. */
-      child->ptr = NULL;
+      child->value = -1;
 
       /* And mark this as handed off. */
       mpiuse_log[k].active = 0;
@@ -260,7 +260,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       /* Not found, so new send/recv which we store the log against the
        * address. */
       memuse_rnode_insert_child(memuse_rnode_root, 0, mpiuse_log[k].vptr,
-                                sizeof(uintptr_t), &mpiuse_log[k]);
+                                sizeof(uintptr_t), (int64_t) &mpiuse_log[k]);
 
     } else if (child == NULL && !mpiuse_log[k].activation) {
 
@@ -279,7 +279,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       /* Must be previously released request with the same address, so we
        * store. */
       memuse_rnode_insert_child(memuse_rnode_root, 0, mpiuse_log[k].vptr,
-                                sizeof(uintptr_t), &mpiuse_log[k]);
+                                sizeof(uintptr_t), (int64_t) &mpiuse_log[k]);
 
     } else {
       message("Weird MPI log record found: (%s/%s: %d->%d: %zd/%d/%d/%p)",
