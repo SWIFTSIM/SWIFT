@@ -1405,7 +1405,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
 void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
     
     const struct engine *e = r->e;
-    /*const struct cosmology *cosmo = e->cosmology;*/
+    const struct cosmology *cosmo = e->cosmology;
 
     const integertime_t ti_current = e->ti_current;
     const int count = c->dark_matter.count;
@@ -1470,8 +1470,7 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
             if (p->to_be_synchronized == 1) {
                 
                 /* Finish this particle's time-step? */
-                /* CC. Already done it in runner DM, so I comment this line
-                timestep_process_sync_dmpart(p, e, cosmo);*/
+                timestep_process_sync_dmpart(p, e, cosmo);
                 
                 /* Get new time-step */
                 integertime_t ti_new_step = get_dmpart_timestep(p, e);

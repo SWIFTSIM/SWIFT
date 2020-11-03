@@ -949,134 +949,6 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     TIMER_TOC(TIMER_DOPAIR);
 }
 
-
-/**
- * @brief Compute the interactions within a cell (symmetric case).
- *
- * Inefficient version using a brute-force algorithm.
- *
- * @param r The #runner.
- * @param c The #cell.
- */
-void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
-    
-    const struct engine *e = r->e;
-    const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = e->policy & engine_policy_cosmology;
-    const struct unit_system *us = e->internal_units;
-    const struct sidm_props *sidm_props = e->sidm_properties;
-    
-    TIMER_TIC;
-    
-    /* Cosmological terms */
-    const float a = cosmo->a;
-    const float H = cosmo->H;
-    
-    const int count = c->dark_matter.count;
-    struct dmpart *restrict dmparts = c->dark_matter.parts;
-    struct sidm_history *sidm_history = &c->dark_matter.sh;
-    
-    /* Loop over the dmparts in ci. */
-    for (int pid = 0; pid < count; pid++) {
-        
-        /* Get a hold of the ith part in ci. */
-        struct dmpart *restrict pi = &dmparts[pid];
-        
-        /* Get i particle time-step */
-        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
-        double dti;
-        if (with_cosmology) {
-            dti = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                           ti_begin + ti_step);
-        } else {
-            dti = get_timestep(pi->time_bin, e->time_base);
-        }
-        
-        const int pi_active = dmpart_is_active(pi, e);
-        const float hi = pi->h;
-        const float hig2 = hi * hi;
-        const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
-            (float)(pi->x[1] - c->loc[1]),
-            (float)(pi->x[2] - c->loc[2])};
-        
-        /* Loop over the dmparts in cj. */
-        for (int pjd = pid + 1; pjd < count; pjd++) {
-            
-            /* Get a pointer to the jth particle. */
-            struct dmpart *restrict pj = &dmparts[pjd];
-            
-            const float hj = pj->h;
-            const float hjg2 = hj * hj;
-            const int pj_active = dmpart_is_active(pj, e);
-
-            /* Get j particle time-step */
-            const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
-            const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
-            double dtj;
-            if (with_cosmology) {
-                dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
-                                               ti_begin_j + ti_step_j);
-            } else {
-                dtj = get_timestep(pj->time_bin, e->time_base);
-            }
-            
-            /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-                (float)(pj->x[1] - c->loc[1]),
-                (float)(pj->x[2] - c->loc[2])};
-            float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
-            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-            
-            const int doi = pi_active && (r2 < hig2);
-            const int doj = pj_active && (r2 < hjg2);
-
-            /* Hit or miss? */
-            if (doi && doj) {
-                
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
-                
-            } else if (doi) {
-                
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
-                
-                if (pj->sidm_data.kick_flag == 1){
-                    /* Part j is not within the timestep. Let's wake it up for the SIDM kick */
-                    timestep_process_sync_dmpart(pj, e, cosmo);
-                    /*timestep_sync_dmpart(pi);*/
-
-                    /* Doing SIDM kick */
-                    sidm_do_kick(pi, pj, ti_begin, sidm_history);
-                    /* Removing flag once it's done */
-                    pj->sidm_data.kick_flag = 0.;
-                }
-                
-            } else if (doj) {
-                
-                dx[0] = -dx[0];
-                dx[1] = -dx[1];
-                dx[2] = -dx[2];
-
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
-                
-                if (pi->sidm_data.kick_flag == 1){
-                    
-                    /* Part i is not within the timestep. Let's wake it up for the SIDM kick */
-                    timestep_process_sync_dmpart(pi, e, cosmo);
-                    /*timestep_sync_dmpart(pi);*/
-                    
-                    /* Doing SIDM kick */
-                    sidm_do_kick(pj, pi, ti_begin, sidm_history);
-                    /* Removing flag once it's done */
-                    pi->sidm_data.kick_flag = 0.;
-                }
-            }
-        } /* loop over the parts in cj. */
-    }   /* loop over the parts in ci. */
-    
-    TIMER_TOC(TIMER_DOSELF);
-}
-
 /**
  * @brief Compute the cell self-interaction (symmetric).
  *
@@ -1213,7 +1085,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                     dx[k] = pix[k] - pj->x[k];
                     r2 += dx[k] * dx[k];
                 }
-            
+                
                 /* Hit or miss? */
                 if (r2 < hig2 || r2 < hj * hj) {
                     
@@ -1235,6 +1107,135 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     
     TIMER_TOC(TIMER_DOSELF);
 }
+
+
+/**
+ * @brief Compute the interactions within a cell (symmetric case).
+ *
+ * Inefficient version using a brute-force algorithm.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ */
+void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
+    
+    const struct engine *e = r->e;
+    const struct cosmology *cosmo = e->cosmology;
+    const int with_cosmology = e->policy & engine_policy_cosmology;
+    const struct unit_system *us = e->internal_units;
+    const struct sidm_props *sidm_props = e->sidm_properties;
+    
+    TIMER_TIC;
+    
+    /* Cosmological terms */
+    const float a = cosmo->a;
+    const float H = cosmo->H;
+    
+    const int count = c->dark_matter.count;
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
+    struct sidm_history *sidm_history = &c->dark_matter.sh;
+    
+    /* Loop over the dmparts in ci. */
+    for (int pid = 0; pid < count; pid++) {
+        
+        /* Get a hold of the ith part in ci. */
+        struct dmpart *restrict pi = &dmparts[pid];
+        
+        /* Get i particle time-step */
+        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
+        double dti;
+        if (with_cosmology) {
+            dti = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                           ti_begin + ti_step);
+        } else {
+            dti = get_timestep(pi->time_bin, e->time_base);
+        }
+        
+        const int pi_active = dmpart_is_active(pi, e);
+        const float hi = pi->h;
+        const float hig2 = hi * hi;
+        const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
+            (float)(pi->x[1] - c->loc[1]),
+            (float)(pi->x[2] - c->loc[2])};
+        
+        /* Loop over the dmparts in cj. */
+        for (int pjd = pid + 1; pjd < count; pjd++) {
+            
+            /* Get a pointer to the jth particle. */
+            struct dmpart *restrict pj = &dmparts[pjd];
+            
+            const float hj = pj->h;
+            const float hjg2 = hj * hj;
+            const int pj_active = dmpart_is_active(pj, e);
+
+            /* Get j particle time-step */
+            const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
+            const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
+            double dtj;
+            if (with_cosmology) {
+                dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
+                                               ti_begin_j + ti_step_j);
+            } else {
+                dtj = get_timestep(pj->time_bin, e->time_base);
+            }
+            
+            /* Compute the pairwise distance. */
+            const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+                (float)(pj->x[1] - c->loc[1]),
+                (float)(pj->x[2] - c->loc[2])};
+            float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
+            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+            
+            const int doi = pi_active && (r2 < hig2);
+            const int doj = pj_active && (r2 < hjg2);
+
+            /* Hit or miss? */
+            if (doi && doj) {
+                
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
+                
+            } else if (doi) {
+                
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history);
+                
+                if (pj->sidm_data.kick_flag == 1){
+                    /* Part j is not within the timestep. Let's wake it up for the SIDM kick */
+                    /*timestep_process_sync_dmpart(pj, e, cosmo);*/
+                    timestep_sync_dmpart(pi);
+
+                    /* Doing SIDM kick */
+                    sidm_do_kick(pi, pj, ti_begin, sidm_history);
+                    /* Removing flag once it's done */
+                    pj->sidm_data.kick_flag = 0.;
+                }
+                
+            } else if (doj) {
+                
+                dx[0] = -dx[0];
+                dx[1] = -dx[1];
+                dx[2] = -dx[2];
+
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
+                
+                if (pi->sidm_data.kick_flag == 1){
+                    
+                    /* Part i is not within the timestep. Let's wake it up for the SIDM kick */
+                    /*timestep_process_sync_dmpart(pi, e, cosmo);*/
+                    timestep_sync_dmpart(pi);
+                    
+                    /* Doing SIDM kick */
+                    sidm_do_kick(pj, pi, ti_begin, sidm_history);
+                    /* Removing flag once it's done */
+                    pi->sidm_data.kick_flag = 0.;
+                }
+            }
+        } /* loop over the parts in cj. */
+    }   /* loop over the parts in ci. */
+    
+    TIMER_TOC(TIMER_DOSELF);
+}
+
 
 /**
  * @brief Determine which version of DOSELF2 needs to be called depending on the
@@ -1372,8 +1373,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                 if (pj->sidm_data.kick_flag == 1){
                     
                     /* Part j is not within the timestep. Let's wake it up for the SIDM kick */
-                    timestep_process_sync_dmpart(pj, e, cosmo);
-                    /*timestep_sync_dmpart(pi);*/
+                    /*timestep_process_sync_dmpart(pj, e, cosmo);*/
+                    timestep_sync_dmpart(pi);
                     
                     /* Doing SIDM kick */
                     sidm_do_kick(pi, pj, ti_begin, sidm_history);
@@ -1393,8 +1394,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                 if (pi->sidm_data.kick_flag == 1){
 
                     /* Part i is not within the timestep. Let's wake it up for the SIDM kick */
-                    timestep_process_sync_dmpart(pi, e, cosmo);
-                    /*timestep_sync_dmpart(pi);*/
+                    /*timestep_process_sync_dmpart(pi, e, cosmo);*/
+                    timestep_sync_dmpart(pi);
                     
                     /* Doing SIDM kick */
                     sidm_do_kick(pj, pi, ti_begin, sidm_history);
