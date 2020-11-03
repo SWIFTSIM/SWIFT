@@ -402,16 +402,15 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
-  const size_t nr_dmparts = s->nr_dmparts;
+  /*const size_t nr_dmparts = s->nr_dmparts;*/
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
-  float dm_h_max = s->cell_min / dm_kernel_gamma / space_stretch;
+  /*float dm_h_max = s->cell_min / dm_kernel_gamma / space_stretch;
     
   if (nr_dmparts > 0) {
-      /* Can we use the list of local non-empty top-level cells? */
       if (s->local_cells_with_particles_top != NULL) {
           for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
               const struct cell *c = &s->cells_top[s->local_cells_with_particles_top[k]];
@@ -419,7 +418,6 @@ void space_regrid(struct space *s, int verbose) {
                   dm_h_max = c->dark_matter.h_max;
               }
           }
-        /* Can we instead use all the top-level cells? */
       } else if (s->cells_top != NULL) {
           for (int k = 0; k < s->nr_cells; k++) {
               const struct cell *c = &s->cells_top[k];
@@ -427,13 +425,12 @@ void space_regrid(struct space *s, int verbose) {
                   dm_h_max = c->dark_matter.h_max;
               }
           }
-          /* Last option: run through the particles */
       } else {
           for (size_t k = 0; k < nr_dmparts; k++) {
              if (s->dmparts[k].h > dm_h_max) dm_h_max = s->dmparts[k].h;
           }
       }
-  }
+  }*/
     
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
@@ -483,7 +480,7 @@ void space_regrid(struct space *s, int verbose) {
     }
   }
     
-  if (dm_h_max > h_max) h_max = dm_h_max;
+  /*if (dm_h_max > h_max) h_max = dm_h_max;*/
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */

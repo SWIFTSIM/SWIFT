@@ -1602,10 +1602,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
         } else if (t->subtype == task_subtype_dark_matter_density ||
                    t->subtype == task_subtype_sidm) {
-            if (t->ci->nodeID != nodeID)
-                cost = 3.f * wscale * dmcount_i * dmcount_j * sid_scale[t->flags];
-            else if (t->cj->nodeID != nodeID)
-                cost = 3.f * wscale * dmcount_i * dmcount_j * sid_scale[t->flags];
+            if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+                cost = 3.f * ( wscale * dmcount_i ) * dmcount_j * sid_scale[t->flags];
             else
                 cost = 2.f * wscale * (dmcount_i * dmcount_j + dmcount_j * dmcount_i) *
                 sid_scale[t->flags];
@@ -1658,9 +1656,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 #endif
         if (t->subtype == task_subtype_dark_matter_density ||
             t->subtype == task_subtype_sidm) {
-          if (t->ci->nodeID != nodeID) {
-            cost = 3.f * (wscale * dmcount_i) * dmcount_j * sid_scale[t->flags];
-          } else if (t->cj->nodeID != nodeID) {
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * dmcount_i) * dmcount_j * sid_scale[t->flags];
           } else {
             cost = 2.f * wscale * (dmcount_i * dmcount_j + dmcount_j * dmcount_i) *
@@ -1718,7 +1714,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_dark_matter_density ||
                    t->subtype == task_subtype_sidm) {
-            cost = 1.f * (wscale * dmcount_i) * dmcount_i;
+          cost = 1.f * (wscale * dmcount_i) * dmcount_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
@@ -1965,8 +1961,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_external_grav ||
-            t->subtype == task_subtype_sidm ||
-            t->subtype == task_subtype_dark_matter_density)
+            t->subtype == task_subtype_sidm)
           qid = t->ci->grav.super->owner;
         else
           qid = t->ci->hydro.super->owner;
