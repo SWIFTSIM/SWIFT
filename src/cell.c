@@ -4020,12 +4020,9 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             /* Activate the drifts if the cells are local. */
             if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
             if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
+            
             if (cj->nodeID == engine_rank && with_timestep_sync)
                 cell_activate_sync_dmpart(cj, s);
-
-            /* Activate the drifts if the cells are local. */
-            if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
-            if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
             if (ci->nodeID == engine_rank && with_timestep_sync)
                 cell_activate_sync_dmpart(ci, s);
 
@@ -5185,20 +5182,13 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
 
             if (t->type == task_type_pair) {
 
-                /* Do ci */
-                if (ci_active){
-                    /* Activate the drift tasks. */
-                    if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                    if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-                    if (cj_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(cj, s);
-                }
-                /* Do cj */
-                if (cj_active){
-                    /* Activate the drift tasks. */
-                    if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-                    if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                    if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
-                }
+                
+                /* Activate the drift tasks. */
+                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+
+                if (cj_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(cj, s);
+                if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
             }
             
             /* Store current values of dx_max and h_max. */

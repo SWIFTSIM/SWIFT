@@ -507,12 +507,11 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
     /* Anything to do here? */
     if (!cell_is_active_dark_matter(c, e)) return;
     
-    DOSELF1_NAIVE(r, c);
-/*#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
     DOSELF1_NAIVE(r, c);
 #else
     DOSELF1(r, c);
-#endif*/
+#endif
 }
 
 
@@ -725,12 +724,11 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
     /* Anything to do here? */
     if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
     
-    DOPAIR1_NAIVE(r, ci, cj);
-/*#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
     DOPAIR1_NAIVE(r, ci, cj);
 #else
     DOPAIR1(r, ci, cj);
-#endif*/
+#endif
 }
 
 /**
