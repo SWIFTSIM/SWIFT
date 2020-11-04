@@ -824,7 +824,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
   c->black_holes.h_max = pc->black_holes.h_max;
-    c->dark_matter.h_max = pc->dark_matter.h_max;
+  c->dark_matter.h_max = pc->dark_matter.h_max;
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
@@ -833,19 +833,19 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_max = pc->stars.ti_end_max;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->black_holes.ti_end_max = pc->black_holes.ti_end_max;
-    c->dark_matter.ti_end_min = pc->dark_matter.ti_end_min;
-    c->dark_matter.ti_end_max = pc->dark_matter.ti_end_max;
+  c->dark_matter.ti_end_min = pc->dark_matter.ti_end_min;
+  c->dark_matter.ti_end_max = pc->dark_matter.ti_end_max;
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
   c->stars.ti_old_part = pc->stars.ti_old_part;
   c->black_holes.ti_old_part = pc->black_holes.ti_old_part;
-    c->dark_matter.ti_old_part = pc->dark_matter.ti_old_part;
+  c->dark_matter.ti_old_part = pc->dark_matter.ti_old_part;
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
   c->black_holes.count = pc->black_holes.count;
-    c->dark_matter.count = pc->dark_matter.count;
+  c->dark_matter.count = pc->dark_matter.count;
   c->maxdepth = pc->maxdepth;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -879,7 +879,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.count = 0;
       temp->grav.count = 0;
       temp->stars.count = 0;
-        temp->dark_matter.count = 0;
+      temp->dark_matter.count = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -897,7 +897,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->stars.dx_max_part = 0.f;
       temp->stars.dx_max_sort = 0.f;
       temp->black_holes.dx_max_part = 0.f;
-        temp->dark_matter.dx_max_part = 0.f;
+      temp->dark_matter.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -3282,7 +3282,7 @@ void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s) {
     
     /* Set the do_sub_sync all the way up and activate the super sync
      if this has not yet been done. */
-    if (c == c->super) {
+    if (c == c->grav.super) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (c->timestep_sync == NULL)
             error("Trying to activate un-existing c->timestep_sync");
@@ -3296,7 +3296,7 @@ void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s) {
             /* Mark this cell for drifting */
             cell_set_flag(parent, cell_flag_do_dark_matter_sub_sync);
             
-            if (parent == c->super) {
+            if (parent == c->grav.super) {
 #ifdef SWIFT_DEBUG_CHECKS
                 if (parent->timestep_sync == NULL)
                     error("Trying to activate un-existing parent->timestep_sync");

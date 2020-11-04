@@ -2033,6 +2033,7 @@ void engine_link_dark_matter_tasks(struct engine *e) {
     const int nodeID = e->nodeID;
     const int nr_tasks = sched->nr_tasks;
     struct task *t_sidm = NULL;
+    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
     
     for (int k = 0; k < nr_tasks; k++) {
         
@@ -2089,6 +2090,10 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             
             scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
             scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
+            
+            if (with_timestep_sync) {
+                scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+            }
         }
         
         /* Otherwise, pair interaction? */
@@ -2110,6 +2115,10 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                 scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
                 scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
                 
+                if (with_timestep_sync) {
+                    scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+                }
+                
             }
             if (cj_nodeID == nodeID) {
                 
@@ -2120,6 +2129,10 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                     
                     scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
                     scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
+                    
+                    if (with_timestep_sync) {
+                        scheduler_addunlock(sched, t_sidm, cj->grav.super->timestep_sync);
+                    }
 
                 }
             }
@@ -2143,6 +2156,10 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             
             scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
             scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
+            
+            if (with_timestep_sync) {
+                scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+            }
 
         }
         
@@ -2162,6 +2179,10 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                 scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
                 scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
                 scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
+                
+                if (with_timestep_sync) {
+                    scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+                }
 
             }
             if (cj_nodeID == nodeID) {
@@ -2172,6 +2193,10 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                     scheduler_addunlock(sched, t, cj->grav.super->dark_matter.ghost);
                     scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
                     scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
+                    
+                    if (with_timestep_sync) {
+                        scheduler_addunlock(sched, t_sidm, cj->grav.super->timestep_sync);
+                    }
 
                 }
             }
