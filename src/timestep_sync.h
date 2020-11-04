@@ -47,11 +47,6 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   const integertime_t ti_current = e->ti_current;
   const timebin_t min_active_bin = e->min_active_bin;
   const double time_base = e->time_base;
-
-  /* This particle is already scheduled for synchronize. Nothing to do here... */
-  if (p->to_be_synchronized == 1) {
-        return;
-  }
     
   //message(" Synchronizing particle! %lld old bin=%d", p->id_or_neg_offset, p->time_bin);
 
@@ -115,7 +110,6 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
   p->time_bin = -min_active_bin;
-  p->to_be_synchronized = 1;
 }
 
 
