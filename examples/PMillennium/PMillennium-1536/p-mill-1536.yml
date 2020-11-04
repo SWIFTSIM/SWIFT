@@ -26,13 +26,13 @@ TimeIntegration:
 
 Scheduler:
   max_top_level_cells: 32
-  cell_split_size:     100
+  cell_split_size:     200
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            PMill
-  delta_time:          1.02
-  scale_factor_first:  0.02
+  output_list_on:      1
+  output_list:         ./output_list.txt
   
 # Parameters governing the conserved quantities statistics
 Statistics:
