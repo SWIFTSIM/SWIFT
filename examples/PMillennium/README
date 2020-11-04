@@ -7,3 +7,17 @@ volume with the cosmology given by Planck-13:
 The ICs exist at different resolution. The Millennium simulation
 (Springel 2005) has a resolution in between the 1536^3 and 3072^3
 examples given here.
+
+The ICs sizes are:
+
+PMill-384   - 1.1 GB
+PMill-768   - 8.3 GB
+PMill-1536  - 163 GB
+PMill-3072  - 1.3 TB
+
+The ICs' md5 checksums are:
+
+c6134185aaa536d695d290e7b7a75f6f  PMill-384.hdf5
+f20a8c446e24444df55daaea2163f233  PMill-768.hdf5
+bfaad140062f475c120002a76dd83f01  PMill-1536.hdf5
+59bd72f821e5f5a117a5c2ed23056f9e  PMill-3072.hdf5
