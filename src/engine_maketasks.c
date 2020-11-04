@@ -2092,7 +2092,7 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
             
             if (with_timestep_sync) {
-                scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+                scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
             }
         }
         
@@ -2116,7 +2116,7 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                 scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
                 
                 if (with_timestep_sync) {
-                    scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+                    scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
                 }
                 
             }
@@ -2131,7 +2131,7 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                     scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
                     
                     if (with_timestep_sync) {
-                        scheduler_addunlock(sched, t_sidm, cj->grav.super->timestep_sync);
+                        scheduler_addunlock(sched, t, cj->grav.super->timestep_sync);
                     }
 
                 }
@@ -2158,7 +2158,7 @@ void engine_link_dark_matter_tasks(struct engine *e) {
             scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
             
             if (with_timestep_sync) {
-                scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+                scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
             }
 
         }
@@ -2181,7 +2181,7 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                 scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
                 
                 if (with_timestep_sync) {
-                    scheduler_addunlock(sched, t_sidm, ci->grav.super->timestep_sync);
+                    scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
                 }
 
             }
@@ -2195,7 +2195,7 @@ void engine_link_dark_matter_tasks(struct engine *e) {
                     scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
                     
                     if (with_timestep_sync) {
-                        scheduler_addunlock(sched, t_sidm, cj->grav.super->timestep_sync);
+                        scheduler_addunlock(sched, t, cj->grav.super->timestep_sync);
                     }
 
                 }
