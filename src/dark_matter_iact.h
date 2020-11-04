@@ -27,7 +27,7 @@
 #include "dark_matter.h"
 #include "kernel_dark_matter.h"
 #include "dark_matter_logger.h"
-
+#include "timestep_sync_part.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -319,8 +319,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
         
+        /* Doing SIDM kick */
         sidm_do_kick(pi, pj, ti_current, sidm_history);
         
+        /* Log the kick */
         dark_matter_log_num_events(sidm_history, 1);
 
     }
@@ -332,10 +334,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle (not updated).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not active).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
@@ -374,9 +376,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > rand) {
         
-        /*! change flag to indicate the particle has been scattered */
-        pj->sidm_data.kick_flag = 1;
-
+        /* Part j is not within the timestep. Let's wake it up for the SIDM kick */
+        timestep_sync_dmpart(pj);
+        
+        /* Doing SIDM kick */
+        sidm_do_kick(pi, pj, ti_current, sidm_history);
+        
+        /* Log the kick */
         dark_matter_log_num_events(sidm_history, 1);
     }
 }
