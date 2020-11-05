@@ -136,6 +136,10 @@ struct scheduler {
   MPI_Win osmpi_window[task_subtype_count];
   scheduler_osmpi_blocktype *osmpi_ptr[task_subtype_count];
   size_t osmpi_max_size[task_subtype_count];
+
+  /* Lock for one at a time sends and recvs (should be one per subtype per node). */
+  swift_lock_type send_lock;
+  swift_lock_type recv_lock;
 #endif
 
 };

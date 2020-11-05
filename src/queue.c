@@ -330,9 +330,14 @@ void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
   /* Loop over the queue entries. */
   for (int k = 0; k < q->count; k++) {
     struct task *t = &q->tasks[q->entries[k].tid];
-
+#ifdef WITH_MPI
+    fprintf(file, "%d %d %d %s %s %.2f %lld %zd\n", nodeID, index, k,
+            taskID_names[t->type], subtaskID_names[t->subtype], t->weight,
+            t->flags, t->size);
+#else
     fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
             taskID_names[t->type], subtaskID_names[t->subtype], t->weight);
+#endif
   }
 
   /* Release the task lock. */

@@ -163,7 +163,6 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
-
       /* And recover the pair direction */
       if (t->type == task_type_pair || t->type == task_type_sub_pair) {
         struct cell *ci_temp = ci;
@@ -469,10 +468,6 @@ void *runner_main(void *data) {
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
-
-          /* This rank/subtype can receive the next message now.
-           * XXX sort out includes so we don't need this mess. */
-          ((scheduler_osmpi_blocktype *)t->header_ptr)[0] = scheduler_osmpi_locked;
           break;
 #endif
         case task_type_grav_down:

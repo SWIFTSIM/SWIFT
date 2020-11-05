@@ -1884,6 +1884,8 @@ void scheduler_start(struct scheduler *s) {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
+  scheduler_dump_queues(s->space->e);
+
   /* Clear the list of active tasks. */
   s->active_count = 0;
 
@@ -1920,9 +1922,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Otherwise, look for a suitable queue. */
   else {
-#ifdef WITH_MPI
-    int err = MPI_SUCCESS;
-#endif
 
     /* Find the previous owner for each task type, and do
        any pre-processing needed. */
@@ -1975,10 +1974,33 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_sf_counts ||
             t->subtype == task_subtype_multipole) {
           t->buff = malloc(t->size);
+        } else if (t->subtype == task_subtype_xv ||
+                   t->subtype == task_subtype_rho ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_limiter) {
+
+          t->buff = t->ci->hydro.parts;
+        } else if (t->subtype == task_subtype_gpart) {
+
+          t->buff = t->ci->grav.parts;
+
+        } else if (t->subtype == task_subtype_spart) {
+
+          t->buff = t->ci->stars.parts;
+
+        } else if (t->subtype == task_subtype_bpart_rho ||
+                   t->subtype == task_subtype_bpart_swallow ||
+                   t->subtype == task_subtype_bpart_feedback) {
+
+          t->buff = t->ci->black_holes.parts;
+
+        } else {
+          error("Unknown communication sub-type");
         }
 
+
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
+        mpiuse_log_allocation(t->type, t->subtype, t->buff, 1, t->size,
                               t->ci->nodeID, t->flags);
 
         qid = 1 % s->nr_queues;
@@ -1990,46 +2012,37 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
       {
-        /* Size of message in bytes. */
+        /* Set the size of message in bytes and point buff at message. . */
         t->size = scheduler_mpi_size(t);
-
-        /* Whether memory is malloc'd. */
-        int mallocd = 0;
 
         if (t->subtype == task_subtype_tend_part) {
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_gpart) {
 
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_spart) {
 
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_bpart) {
 
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_end_step_black_holes(t->ci,
                                          (struct pcell_step_black_holes *)t->buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)t->buff);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
 
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
@@ -2057,112 +2070,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_multipole) {
 
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
           t->buff = malloc(t->size);
-          mallocd = 1;
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
 
         } else {
           error("Unknown communication sub-type");
         }
 
-        // Need to do this in the task unlock, so we don't block queueing, we
-        // need to use the runner mechanisms to wait... But we have a single
-        // window per subtype per rank, so that will need to be locked, so we
-        // cannot accumulate as that requires a remote destination, so in
-        // reflection, that needs to move as well...?
-
-        /* Send the buffer. XXX we assume one thread does this at a time, and
-         * this is a synchronous send, so we must have more than 1 thread or
-         * we will deadlock. */
-
-        /* Data has the actual data and room for the header.
-         * XXX horrible extra data copy, do this above... */
-        scheduler_osmpi_blocktype datasize = scheduler_osmpi_toblocks(t->size) +
-          scheduler_osmpi_header_size;
-        scheduler_osmpi_blocktype *dataptr =
-          calloc(datasize, scheduler_osmpi_bytesinblock);
-
-        /* First element is marked as LOCKED, so only we can update. */
-        dataptr[0] = scheduler_osmpi_locked;
-        dataptr[1] = t->size;
-        dataptr[2] = t->flags;
-        memcpy(&dataptr[3], t->buff, t->size);
-
-        /* And send to the destination rank. XXX will not work subtype offsets
-         * need to be shared around system, are just local and not fixed size
-         * so cannot * myrank (t->ci->nodeID) XXX */
-        err = MPI_Accumulate(dataptr, datasize, scheduler_osmpi_mpi_blocktype,
-                             t->cj->nodeID,
-                             s->osmpi_max_size[t->subtype] * t->ci->nodeID,
-                             datasize, scheduler_osmpi_mpi_blocktype,
-                             MPI_REPLACE, s->osmpi_window[t->subtype]);
-
-        if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to send particle data.");
-        }
-
-
-        /* Now we change the first element to unlocked so that the remote end
-         * can find out that the data has arrived. */
-        scheduler_osmpi_blocktype newval[1];
-        scheduler_osmpi_blocktype oldval[1];
-        newval[0] = scheduler_osmpi_unlocked;
-        oldval[0] = 0;
-        err = MPI_Compare_and_swap(&newval[0], dataptr, &oldval[0],
-                                   scheduler_osmpi_mpi_blocktype,
-                                   t->cj->nodeID,
-                                   s->osmpi_max_size[t->subtype] * t->ci->nodeID,
-                                   s->osmpi_window[t->subtype]);
-
-        if (err != MPI_SUCCESS) {
-          mpi_error(err, "Compare and swap send error for particle data.");
-        }
-
-        /* Attempt to hurry it along... */
-        err = MPI_Win_flush(t->cj->nodeID, s->osmpi_window[t->subtype]);
-
-        /* Wait for completion, this is when remote flips back to LOCKED. We
-         * poll on a get, as the local window is only used for receiving. Use
-         * an Rget so we can use MPI_Test to get some local progression. */
-        newval[0] = scheduler_osmpi_unlocked;
-        while (newval[0] != (scheduler_osmpi_blocktype) scheduler_osmpi_locked) {
-
-          MPI_Request request;
-          err = MPI_Rget(&newval[0], 1, scheduler_osmpi_mpi_blocktype,
-                         t->cj->nodeID,
-                         s->osmpi_max_size[t->subtype] * t->ci->nodeID,
-                         1, scheduler_osmpi_mpi_blocktype,
-                         s->osmpi_window[t->subtype], &request);
-          if (err != MPI_SUCCESS) mpi_error(err, "MPI_Rget failed");
-
-          /* After the rget to make sure we get a chance at completion. */
-          err = MPI_Win_flush(t->cj->nodeID, s->osmpi_window[t->subtype]);
-          if (err != MPI_SUCCESS) mpi_error(err, "MPI_Win_flush failed");
-
-          int flag = 0;
-          while (flag == 0) {
-            err = MPI_Test(&request, &flag, MPI_STATUS_IGNORE);
-            if (err != MPI_SUCCESS) mpi_error(err, "MPI_Test failed");
-          }
-        }
-
-        if (s->space->e->verbose) // XXX no no no
-          message("sent and acknowledged message to %d/%d)",
-                  t->cj->nodeID, t->subtype);
-
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
+        mpiuse_log_allocation(t->type, t->subtype, t->buff, 1, t->size,
                               t->cj->nodeID, t->flags);
 
-        if (mallocd) {
-          free(t->buff);
-        }
-        t->buff = NULL;
         qid = 0;
       }
 #else
@@ -2404,6 +2326,12 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks_ind = NULL;
   pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
+
+  /* Init the MPI send and recv locks */
+#ifdef WITH_MPI
+  lock_init(&s->send_lock);
+  lock_init(&s->recv_lock);
+#endif
 }
 
 /**
@@ -2526,15 +2454,17 @@ void scheduler_dump_queues(struct engine *e) {
 
   struct scheduler *s = &e->sched;
   char dumpfile[35];
+  static int index = 0;
 
 #ifdef WITH_MPI
   /* Open a file per rank and write the header. Use per rank to avoid MPI
    * calls that can interact with other blocking ones.  */
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat_%d", e->step,
-           e->nodeID);
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat_%d_%d", e->step,
+           e->nodeID, index);
 #else
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat_%d", e->step, index);
 #endif
+  index++;
 
   FILE *file_thread = fopen(dumpfile, "w");
   fprintf(file_thread, "# rank queue index type subtype weight\n");
@@ -2621,7 +2551,7 @@ void scheduler_osmpi_init(struct scheduler *s) {
 
   for (int k = 0; k < task_subtype_count; k++) {
     s->osmpi_ptr[k] = NULL; // XXX Needs to be freed
-    s->osmpi_max_size[k] = 0;
+    s->osmpi_max_size[k] = 1024*1024*10; // XXX should be 0;
   }
 
 #endif
@@ -2637,8 +2567,11 @@ void scheduler_osmpi_activate(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
 
   /* We need the maximum size of a message, so work that out. */
-  size_t size = scheduler_mpi_size(t);
-  atomic_max_st(&s->osmpi_max_size[t->subtype], size);
+  // XXX use fixed size, need to sync this across the ranks.
+  // completion), so in fact we need to do something else... XXX
+
+  //size_t size = scheduler_mpi_size(t);
+  //atomic_max_st(&s->osmpi_max_size[t->subtype],size);
 #endif
 }
 

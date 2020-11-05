@@ -226,9 +226,6 @@ struct task {
   /*! Size of the buffer. */
   size_t size;
 
-  /*! Header section of one-sided messages. */
-  void *header_ptr;
-
 #endif
 
   /*! Rank of a task in the order */
