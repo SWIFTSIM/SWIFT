@@ -109,6 +109,9 @@ struct fof_props {
   /*! Maximal density of all parts of each group. */
   float *max_part_density;
 
+  /*! 6DFOF flag*/
+  int run_6d_fof;
+
   /* ------------ MPI-related arrays --------------- */
 
   /*! The number of links between pairs of particles on this node and

@@ -139,6 +139,9 @@ void fof_init(struct fof_props *props, struct swift_params *params,
     props->seed_halo_mass *= phys_const->const_solar_mass;
   }
 
+  props->run_6d_fof =
+      parser_get_opt_param_int(params, "FOF:run_6d_fof", 0);
+
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
     message(
@@ -2968,8 +2971,13 @@ void fof_search_tree(struct fof_props *props,
                          high_group_sizes);
   }
 
-  /* Find 6DFOF groups. */
-  fof6d_calc_vel_disp(props, s, num_parts_in_groups);
+  if(props->run_6d_fof) {
+    
+    message("Running 6D FoF on 3D groups.");
+
+    /* Find 6DFOF groups. */
+    fof6d_calc_vel_disp(props, s, num_parts_in_groups);
+  }
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
