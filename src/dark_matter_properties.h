@@ -105,7 +105,7 @@ struct sidm_props {
 struct sidm_dmpart_data {
 
     /*! Velocity changed due to DM-DM self-interactions. */
-    float si_v_full[3];
+    float v_full[3];
     
     /*! flag indicating if particle in given time-step has been scattered*/
     float sidm_flag;

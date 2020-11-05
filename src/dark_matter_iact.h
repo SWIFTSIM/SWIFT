@@ -146,8 +146,8 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
                                                                struct sidm_history* sidm_history) {
     
     /* Center of Mass Velocity of interacting particles */
-    const double VCM[3] = {(pi->sidm_data.si_v_full[0] + pj->sidm_data.si_v_full[0])/2.0, (pi->sidm_data.si_v_full[1] + pj->sidm_data.si_v_full[1])/2.0, (pi->sidm_data.si_v_full[2] + pj->sidm_data.si_v_full[2])/2.0};
-    double dw[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
+    const double VCM[3] = {(pi->sidm_data.v_full[0] + pj->sidm_data.v_full[0])/2.0, (pi->sidm_data.v_full[1] + pj->sidm_data.v_full[1])/2.0, (pi->sidm_data.v_full[2] + pj->sidm_data.v_full[2])/2.0};
+    double dw[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
     double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
     double dv = sqrt(dv2) / 2.0;
     
@@ -168,23 +168,23 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     /* Randomly oriented unit vector */
     float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
     
-    double p_prev_i[3] = {pi->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2]};
-    double p_prev_j[3] = {pj->sidm_data.si_v_full[0], pj->sidm_data.si_v_full[1], pj->sidm_data.si_v_full[2]};
+    double p_prev_i[3] = {pi->sidm_data.v_full[0], pi->sidm_data.v_full[1], pi->sidm_data.v_full[2]};
+    double p_prev_j[3] = {pj->sidm_data.v_full[0], pj->sidm_data.v_full[1], pj->sidm_data.v_full[2]};
     
     double p_before[3], p_after[3];
 
     double energy_before, energy_after;
-    double energy_prev_i = pi->sidm_data.si_v_full[0] * pi->sidm_data.si_v_full[0] + pi->sidm_data.si_v_full[1] * pi->sidm_data.si_v_full[1] + pi->sidm_data.si_v_full[2] * pi->sidm_data.si_v_full[2];
+    double energy_prev_i = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
 
-    double energy_prev_j = pj->sidm_data.si_v_full[0] * pj->sidm_data.si_v_full[0] + pj->sidm_data.si_v_full[1] * pj->sidm_data.si_v_full[1] + pj->sidm_data.si_v_full[2] * pj->sidm_data.si_v_full[2];
+    double energy_prev_j = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
 
-    pj->sidm_data.si_v_full[0] = VCM[0] + dv * e[0];
-    pj->sidm_data.si_v_full[1] = VCM[1] + dv * e[1];
-    pj->sidm_data.si_v_full[2] = VCM[2] + dv * e[2];
+    pj->sidm_data.v_full[0] = VCM[0] + dv * e[0];
+    pj->sidm_data.v_full[1] = VCM[1] + dv * e[1];
+    pj->sidm_data.v_full[2] = VCM[2] + dv * e[2];
     
-    pi->sidm_data.si_v_full[0] = VCM[0] - dv * e[0];
-    pi->sidm_data.si_v_full[1] = VCM[1] - dv * e[1];
-    pi->sidm_data.si_v_full[2] = VCM[2] - dv * e[2];
+    pi->sidm_data.v_full[0] = VCM[0] - dv * e[0];
+    pi->sidm_data.v_full[1] = VCM[1] - dv * e[1];
+    pi->sidm_data.v_full[2] = VCM[2] - dv * e[2];
 
     /* Communicating this kick to logger */
     if (pi->sidm_data.sidm_flag > 0) {
@@ -193,11 +193,11 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         p_before[1] = 0.;
         p_before[2] = 0.;
         
-        energy_after = pi->sidm_data.si_v_full[0] * pi->sidm_data.si_v_full[0] + pi->sidm_data.si_v_full[1] * pi->sidm_data.si_v_full[1] + pi->sidm_data.si_v_full[2] * pi->sidm_data.si_v_full[2];
+        energy_after = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
         
-        p_after[0] = pi->sidm_data.si_v_full[0];
-        p_after[1] = pi->sidm_data.si_v_full[1];
-        p_after[2] = pi->sidm_data.si_v_full[2];
+        p_after[0] = pi->sidm_data.v_full[0];
+        p_after[1] = pi->sidm_data.v_full[1];
+        p_after[2] = pi->sidm_data.v_full[2];
         
         energy_after -= energy_prev_i;
         p_after[0] -= p_prev_i[0];
@@ -211,11 +211,11 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         p_before[1] = p_prev_i[1];
         p_before[2] = p_prev_i[2];
         
-        energy_after = pi->sidm_data.si_v_full[0] * pi->sidm_data.si_v_full[0] + pi->sidm_data.si_v_full[1] * pi->sidm_data.si_v_full[1] + pi->sidm_data.si_v_full[2] * pi->sidm_data.si_v_full[2];
+        energy_after = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
         
-        p_after[0] = pi->sidm_data.si_v_full[0];
-        p_after[1] = pi->sidm_data.si_v_full[1];
-        p_after[2] = pi->sidm_data.si_v_full[2];
+        p_after[0] = pi->sidm_data.v_full[0];
+        p_after[1] = pi->sidm_data.v_full[1];
+        p_after[2] = pi->sidm_data.v_full[2];
 
         dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after, p_before, p_after);
     }
@@ -226,11 +226,11 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         p_before[1] = 0.;
         p_before[2] = 0.;
 
-        energy_after = pj->sidm_data.si_v_full[0] * pj->sidm_data.si_v_full[0] + pj->sidm_data.si_v_full[1] * pj->sidm_data.si_v_full[1] + pj->sidm_data.si_v_full[2] * pj->sidm_data.si_v_full[2];
+        energy_after = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
         
-        p_after[0] = pj->sidm_data.si_v_full[0];
-        p_after[1] = pj->sidm_data.si_v_full[1];
-        p_after[2] = pj->sidm_data.si_v_full[2];
+        p_after[0] = pj->sidm_data.v_full[0];
+        p_after[1] = pj->sidm_data.v_full[1];
+        p_after[2] = pj->sidm_data.v_full[2];
         
         energy_after -= energy_prev_j;
         p_after[0] -= p_prev_j[0];
@@ -245,11 +245,11 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         p_before[1] = p_prev_j[1];
         p_before[2] = p_prev_j[2];
         
-        energy_after = pj->sidm_data.si_v_full[0] * pj->sidm_data.si_v_full[0] + pj->sidm_data.si_v_full[1] * pj->sidm_data.si_v_full[1] + pj->sidm_data.si_v_full[2] * pj->sidm_data.si_v_full[2];
+        energy_after = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
         
-        p_after[0] = pj->sidm_data.si_v_full[0];
-        p_after[1] = pj->sidm_data.si_v_full[1];
-        p_after[2] = pj->sidm_data.si_v_full[2];
+        p_after[0] = pj->sidm_data.v_full[0];
+        p_after[1] = pj->sidm_data.v_full[1];
+        p_after[2] = pj->sidm_data.v_full[2];
 
         dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after, p_before, p_after);
     }
@@ -286,7 +286,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
-    const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
+    const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
@@ -348,7 +348,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
-    const double dv[3] = {pi->sidm_data.si_v_full[0] - pj->sidm_data.si_v_full[0], pi->sidm_data.si_v_full[1] - pj->sidm_data.si_v_full[1], pi->sidm_data.si_v_full[2] - pj->sidm_data.si_v_full[2]};
+    const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     

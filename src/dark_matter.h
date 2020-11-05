@@ -26,9 +26,9 @@
 #include "./dark_matter_iact.h"
 
 /**
- * @brief Prepares a s-particle for its interactions
+ * @brief Prepares a dm-particle for its interactions
  *
- * @param sp The particle to act upon
+ * @param gp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct dmpart* gp) {
     
@@ -37,17 +37,30 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
     gp->rho = 0.f;
     gp->density.rho_dh = 0.f;
     
-    /* Set copy of particle velocity */
-    gp->sidm_data.si_v_full[0] = gp->v_full[0];
-    gp->sidm_data.si_v_full[1] = gp->v_full[1];
-    gp->sidm_data.si_v_full[2] = gp->v_full[2];
-    
     gp->avg_pair_v = 0.f;
     gp->sidm_probability = 0.f;
     gp->time_step_size = 0.f;
     gp->num_neighbours = 0.f;
 
 }
+
+/**
+ * @brief Prepares a dm-particle for its SIDM interactions
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart* gp) {
+    
+    /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
+    dmp->sidm_data.sidm_flag = 0.0f;
+    
+    /* Set copy of particle velocity */
+    gp->sidm_data.v_full[0] = gp->v_full[0];
+    gp->sidm_data.v_full[1] = gp->v_full[1];
+    gp->sidm_data.v_full[2] = gp->v_full[2];
+}
+
+
 
 /**
  * @brief Initialises the dark matter particles for the first time
@@ -71,9 +84,9 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->sidm_data.num_sidm = 0.0f;
     
     /* Particle velocity */
-    dmp->sidm_data.si_v_full[0] = 0.0f;
-    dmp->sidm_data.si_v_full[1] = 0.0f;
-    dmp->sidm_data.si_v_full[2] = 0.0f;
+    dmp->sidm_data.v_full[0] = 0.0f;
+    dmp->sidm_data.v_full[1] = 0.0f;
+    dmp->sidm_data.v_full[2] = 0.0f;
     
     dmp->time_bin = 0;
 
@@ -208,32 +221,31 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *rest
     gp->sidm_data.sidm_flag = 0.0f;
     
     /* Particle velocity */
-    gp->sidm_data.si_v_full[0] = 0.0f;
-    gp->sidm_data.si_v_full[1] = 0.0f;
-    gp->sidm_data.si_v_full[2] = 0.0f;
+    gp->sidm_data.v_full[0] = 0.0f;
+    gp->sidm_data.v_full[1] = 0.0f;
+    gp->sidm_data.v_full[2] = 0.0f;
 }
 
 
 /**
- * @brief Updates #gparts velocities
+ * @brief Updates #dmparts velocities
  *
- * @param gp #gpart
+ * @param dmp #dmpart
  *
  */
 __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpart(
-          struct dmpart *restrict gp) {
+          struct dmpart *restrict dmp) {
     
-    if (gp->sidm_data.sidm_flag > 0) {
+    if (dmp->sidm_data.sidm_flag > 0) {
         
         /* Rewrite gparticle's velocity */
-         gp->v_full[0] = gp->sidm_data.si_v_full[0];
-         gp->v_full[1] = gp->sidm_data.si_v_full[1];
-         gp->v_full[2] = gp->sidm_data.si_v_full[2];
-        
-        /* Reset particle SIDM variables */
-        sidm_reset(gp);
-        
+         dmp->v_full[0] = dmp->sidm_data.v_full[0];
+         dmp->v_full[1] = dmp->sidm_data.v_full[1];
+         dmp->v_full[2] = dmp->sidm_data.v_full[2];
     }
+    
+    /* Reset particle SIDM variables */
+    sidm_reset(gp);
 }
 
 /**
