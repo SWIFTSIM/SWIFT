@@ -256,13 +256,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           /* do the kick */
           kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
               
-          /* Get ready for a density calculation */
-          dark_matter_init_dmpart(dmp);
-        }
-          
-        /* All dmparts get ready for a SIDM calculation */
-        sidm_init_dmpart(dmp);
-          
+        }          
       }
 
     /* Loop over the stars particles in this cell. */
