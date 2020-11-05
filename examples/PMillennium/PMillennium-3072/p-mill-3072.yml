@@ -1,6 +1,6 @@
 # Define some meta-data about the simulation
 MetaData:
-  run_name:   Planck-Millennium simulation - 384^3
+  run_name:   Planck-Millennium simulation - 3072^3
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
@@ -25,7 +25,7 @@ TimeIntegration:
   dt_max:     1e-2 
 
 Scheduler:
-  max_top_level_cells: 16
+  max_top_level_cells: 64
   cell_split_size:     200
 
 # Parameters governing the snapshots
@@ -41,17 +41,17 @@ Statistics:
   
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025
+  eta:                    0.025         
   MAC:                    adaptive
   theta_cr:               0.7
   epsilon_fmm:            0.001
-  comoving_DM_softening:     0.08333  # 83.333 kpc = 1/25 mean inter-particle separation
-  max_physical_DM_softening: 0.08333  # 83.333 kpc = 1/25 mean inter-particle separation
-  mesh_side_length:       128
+  comoving_DM_softening:     0.01041667  # 10.41667 kpc = 1/25 mean inter-particle separation
+  max_physical_DM_softening: 0.01041667  # 10.41667 kpc = 1/25 mean inter-particle separation
+  mesh_side_length:       1024
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:                   PMill-384.hdf5
+  file_name:                   PMill-3072.hdf5
   periodic:                    1
   cleanup_h_factors:           1    
   cleanup_velocity_factors:    1  

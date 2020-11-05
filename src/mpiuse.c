@@ -260,7 +260,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       /* Not found, so new send/recv which we store the log against the
        * address. */
       memuse_rnode_insert_child(memuse_rnode_root, 0, mpiuse_log[k].vptr,
-                                sizeof(uintptr_t), (int64_t) &mpiuse_log[k]);
+                                sizeof(uintptr_t), (int64_t)&mpiuse_log[k]);
 
     } else if (child == NULL && !mpiuse_log[k].activation) {
 
@@ -279,7 +279,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
       /* Must be previously released request with the same address, so we
        * store. */
       memuse_rnode_insert_child(memuse_rnode_root, 0, mpiuse_log[k].vptr,
-                                sizeof(uintptr_t), (int64_t) &mpiuse_log[k]);
+                                sizeof(uintptr_t), (int64_t)&mpiuse_log[k]);
 
     } else {
       message("Weird MPI log record found: (%s/%s: %d->%d: %zd/%d/%d/%p)",
