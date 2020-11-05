@@ -5935,10 +5935,10 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             cell_h_max = max(cell_h_max, dmp->h);
             
             /* Get ready for a density calculation */
-            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
+            /*if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);*/
 
             /* All dmparts get ready for a SIDM calculation */
-            sidm_init_dmpart(dmp);
+            /*sidm_init_dmpart(dmp);*/
         }
         
         /* Now, get the maximal particle motion from its square */

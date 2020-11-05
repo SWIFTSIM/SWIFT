@@ -106,6 +106,9 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   }
 
   kick_dmpart(p, dt_kick_grav, old_ti_beg + old_dti / 2, old_ti_beg);
+    
+  /* Did this particle had a SIDM kick? if so, resolve */
+  communicate_sidm_kick_to_dmpart(p);
 
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */

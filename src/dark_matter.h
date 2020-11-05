@@ -52,7 +52,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
 __attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart* gp) {
     
     /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
-    dmp->sidm_data.sidm_flag = 0.0f;
+    gp->sidm_data.sidm_flag = 0.0f;
     
     /* Set copy of particle velocity */
     gp->sidm_data.v_full[0] = gp->v_full[0];
@@ -242,10 +242,10 @@ __attribute__((always_inline)) INLINE static void communicate_sidm_kick_to_dmpar
          dmp->v_full[0] = dmp->sidm_data.v_full[0];
          dmp->v_full[1] = dmp->sidm_data.v_full[1];
          dmp->v_full[2] = dmp->sidm_data.v_full[2];
+        
+        /* Reset particle SIDM variables */
+        sidm_reset(dmp);
     }
-    
-    /* Reset particle SIDM variables */
-    sidm_reset(gp);
 }
 
 /**

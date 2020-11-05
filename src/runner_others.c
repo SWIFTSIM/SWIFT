@@ -70,6 +70,8 @@
  */
 void runner_do_sidm_kick(struct runner *r, struct cell *c) {
 
+    const struct engine *e = r->e;
+    
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
     
@@ -83,7 +85,6 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
         }
     } else {
 
-        
         struct dmpart *restrict dmparts = c->dark_matter.parts;
         const int count = c->dark_matter.count;
         
@@ -92,9 +93,12 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             
             /* Get a handle on the part. */
             struct dmpart *restrict dmp = &dmparts[k];
-                        
-            /* do the kick */
-            communicate_sidm_kick_to_dmpart(dmp);
+            
+            /* Anything to do here? (i.e. does this particle need updating?) */
+            if (dmpart_is_active(dmp, e)) {
+                /* do the sidm kick */
+                communicate_sidm_kick_to_dmpart(dmp);
+            }
         }
     }
 }
