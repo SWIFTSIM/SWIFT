@@ -1689,9 +1689,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
     /* For dark matter 2 self (density, sidm), 26/2 density pairs,
-       26/2 sidm pairs, 1 drift, 1 ghosts, 2 kick, 1 time-step,
+       26/2 sidm pairs, 1 drift, 1 ghosts, 2 kicks, 1 time-step,
        1 end_sidm, 2 extra space */
-    n1 += 34;
+    n1 += 37;
     n2 += 2;
 #ifdef WITH_MPI
     n1 += 6;

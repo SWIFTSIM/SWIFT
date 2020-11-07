@@ -2041,13 +2041,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = size =
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
-            
-        } else if (t->subtype == task_subtype_dark_matter_density) {
-            
-            count = t->ci->dark_matter.count;
-            size = count * sizeof(struct dmpart);
-            type = dmpart_mpi_type;
-            buff = t->ci->dark_matter.parts;
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
@@ -2178,14 +2171,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff = malloc(size);
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
-            
-        } else if (t->subtype == task_subtype_dark_matter_density) {
-            
-            count = t->ci->dark_matter.count;
-            size = count * sizeof(struct dmpart);
-            type = dmpart_mpi_type;
-            buff = t->ci->dark_matter.parts;
-
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
