@@ -106,6 +106,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[2] += facj * curlvr[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pj->n_density += wj;
   pi->N_density++;
   pj->N_density++;
 #endif
@@ -167,6 +169,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[2] += faci * curlvr[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
   pi->N_density++;
 #endif
 }

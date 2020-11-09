@@ -43,6 +43,21 @@ struct timestep_limiter_data {
 
   /* Do we want this particle to be synched back on the time-line? */
   char to_be_synchronized;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the limiter loop */
+  int N_limiter;
+
+  /* Exact integer number of neighbours in the limiter loop */
+  int N_limiter_exact;
+
+  /*! Weighted numer of neighbours in the density loop */
+  float n_limiter;
+
+  /*! Exact value of the weighted numer of neighbours in the density loop */
+  float n_limiter_exact;
+#endif
 };
 
 #endif /* SWIFT_TIMESTEP_LIMITER_STRUCT_H */

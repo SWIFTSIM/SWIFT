@@ -77,6 +77,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  const float r = sqrtf(r2);
+
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  float wi;
+  kernel_eval(ui, &wi);
+  pi->limiter_data.n_limiter += wi;
+  pi->limiter_data.N_limiter++;
+
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+  float wj;
+  kernel_eval(uj, &wj);
+  pj->limiter_data.n_limiter += wj;
+  pj->limiter_data.N_limiter++;
+#endif
+
   /* Nothing to do here if both particles are active */
 }
 
@@ -85,8 +103,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
     const float r2, const float *dx, const float hi, const float hj,
-    const struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  const float r = sqrtf(r2);
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  float wi;
+  kernel_eval(ui, &wi);
+  pi->limiter_data.n_limiter += wi;
+  pi->limiter_data.N_limiter++;
+#endif
 
   /* Wake up the neighbour? */
   if (pj->time_bin > pi->time_bin + time_bin_neighbour_max_delta_bin) {

@@ -36,6 +36,13 @@ timestep_limiter_prepare_force(struct part *restrict p,
                                struct xpart *restrict xp) {
 
   p->limiter_data.min_ngb_time_bin = num_time_bins + 1;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->limiter_data.N_limiter = 1;
+  p->limiter_data.N_limiter_exact = 0;
+  p->limiter_data.n_limiter = kernel_root;
+  p->limiter_data.n_limiter_exact = 0.f;
+#endif
 }
 
 /**

@@ -265,9 +265,9 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
-      if (!found_inhibited && spi->N_density_exact != spi->N_density //&&
-          /*(fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
-	    fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)*/) {
+      if (!found_inhibited && spi->N_density_exact != spi->N_density &&
+          (fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
+           fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)) {
         message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d %d %e", id,
                 spi->rho, spi->rho_exact, spi->N_density_exact, spi->N_density,
                 spi->count_since_last_enrichment, spi->birth_time);
@@ -299,13 +299,13 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   else
     message("Verified %d star particles", counter);
 
-  if (wrong_n_ngb)
-    error(
-        "N_ngb difference larger than the allowed tolerance for %d "
-        "star particles! (out of %d particles)",
-        wrong_n_ngb, counter);
-  else
-    message("Verified %d star particles", counter);
+  /* if (wrong_n_ngb) */
+  /*   error( */
+  /*       "N_ngb difference larger than the allowed tolerance for %d " */
+  /*       "star particles! (out of %d particles)", */
+  /*       wrong_n_ngb, counter); */
+  /* else */
+  /*   message("Verified %d star particles", counter); */
 
   if (e->verbose)
     message("Writting brute-force density files took %.3f %s. ",

@@ -504,6 +504,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho_exact = 0.f;
   p->n_gradient = 0.f;
   p->n_gradient_exact = 0.f;
+  p->n_density = 0.f;
+  p->n_density_exact = 0.f;
   p->n_force = 0.f;
   p->n_force_exact = 0.f;
   p->inhibited_exact = 0;
@@ -556,6 +558,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish calculation of the velocity divergence */
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->n_density += kernel_root;
+  p->n_density *= h_inv_dim;
+#endif
 }
 
 /**
