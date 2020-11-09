@@ -562,7 +562,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
-#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if  1 //defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
   DOPAIR1(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
@@ -804,7 +804,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
-#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if 1 //defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF1_NAIVE(r, c, limit_min_h, limit_max_h);
 #else
   DOSELF1(r, c, limit_min_h, limit_max_h);
@@ -830,12 +830,12 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TIC;
 
   /* Should we even bother? */
-  const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter);
-  const int do_j = cell_get_flag(cj, cell_flag_do_hydro_limiter);
-  const int do_sub_i = cell_get_flag(ci, cell_flag_do_hydro_sub_limiter);
-  const int do_sub_j = cell_get_flag(cj, cell_flag_do_hydro_sub_limiter);
+  /* const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter); */
+  /* const int do_j = cell_get_flag(cj, cell_flag_do_hydro_limiter); */
+  /* const int do_sub_i = cell_get_flag(ci, cell_flag_do_hydro_sub_limiter); */
+  /* const int do_sub_j = cell_get_flag(cj, cell_flag_do_hydro_sub_limiter); */
 
-  if (!do_i && !do_j && !do_sub_i && !do_sub_j) return;
+  /* if (!do_i && !do_j && !do_sub_i && !do_sub_j) return; */
   if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
@@ -929,10 +929,10 @@ void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
   TIMER_TIC;
 
   /* Should we even bother? */
-  const int do_i = cell_get_flag(c, cell_flag_do_hydro_limiter);
-  const int do_sub_i = cell_get_flag(c, cell_flag_do_hydro_sub_limiter);
+  /* const int do_i = cell_get_flag(c, cell_flag_do_hydro_limiter); */
+  /* const int do_sub_i = cell_get_flag(c, cell_flag_do_hydro_sub_limiter); */
 
-  if (!do_i && !do_sub_i) return;
+  /* if (!do_i && !do_sub_i) return; */
   if (!cell_is_starting_hydro(c, r->e)) return;
   if (c->hydro.count == 0) return;
 

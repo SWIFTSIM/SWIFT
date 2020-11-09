@@ -410,8 +410,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   if (wrong_limiter)
     error(
         "Limiter difference larger than the allowed tolerance for %d "
-        "particles!",
-        wrong_limiter);
+        "particles! (out of %d particles)",
+        wrong_limiter, counter);
 
   if (e->verbose)
     message("Writting brute-force density files took %.3f %s. ",
