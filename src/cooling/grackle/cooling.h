@@ -68,6 +68,11 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct part* restrict p,
                              struct xpart* restrict xp);
 
+float cooling_get_subgrid_temperature(const struct part* p,
+                                      const struct xpart* xp);
+
+float cooling_get_subgrid_density(const struct part* p, const struct xpart* xp);
+
 float cooling_get_radiated_energy(const struct xpart* restrict xp);
 void cooling_print_backend(const struct cooling_function_data* cooling);
 

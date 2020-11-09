@@ -134,6 +134,11 @@ double compute_subgrid_property(
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const double log_u_cgs, const enum cooling_subgrid_properties isub);
 
+float cooling_get_subgrid_temperature(const struct part *p,
+                                      const struct xpart *xp);
+
+float cooling_get_subgrid_density(const struct part *p, const struct xpart *xp);
+
 float cooling_get_radiated_energy(const struct xpart *xp);
 
 void cooling_split_part(struct part *p, struct xpart *xp, double n);

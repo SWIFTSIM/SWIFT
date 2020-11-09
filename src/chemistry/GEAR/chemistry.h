@@ -415,7 +415,7 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
  *
  * This is unused in GEAR. --> return 0
  *
- * @param sp Pointer to the particle data.
+ * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction_for_feedback(
@@ -519,7 +519,7 @@ chemistry_get_total_metal_mass_for_stats(const struct part* restrict p) {
  * @brief Returns the total metallicity (metal mass fraction) of the
  * star particle to be used in the stats related routines.
  *
- * @param p Pointer to the particle data.
+ * @param sp Pointer to the star particle data.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
@@ -533,7 +533,7 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
  * @brief Returns the total metallicity (metal mass fraction) of the
  * black hole particle to be used in the stats related routines.
  *
- * @param p Pointer to the particle data.
+ * @param bp Pointer to the BH particle data.
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {

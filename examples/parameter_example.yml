@@ -458,7 +458,8 @@ GEARChemistry:
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
-  SF_model:                     SchmidtLaw     # "SchmidtLaw" or "PressureLaw".
+  SF_threshold:                   Subgrid      # Zdep (Schaye 2004) or Subgrid
+  SF_model:                       PressureLaw  # PressureLaw (Schaye et al. 2008) or SchmidtLaw
   star_formation_efficiency:         0.01      # In the SchmidtLaw model this regulates the star formation efficiency per free-fall time.
   KS_normalisation:                  1.515e-4  # In the PressureLaw model, normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # In the PressureLaw model, exponent of the Kennicutt-Schmidt law.
@@ -466,15 +467,14 @@ EAGLEStarFormation:
   KS_high_density_exponent:          2.0       # In the PressureLaw model, Slope of the Kennicut-Schmidt law above the high-density threshold.
   gas_fraction:                      0.25      # (Optional) In the PressureLaw model, The gas fraction used internally by the model (Defaults to 1).
   density_direct_H_p_cm3:            1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
-  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EoS assumed for the star-forming gas in Hydrogen atoms per cm^3.
-  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EoS assumed for star-forming gas at the density normalisation in Kelvin.
-  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EoS assumed for the star-forming gas.
-  EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EoS at which stars can form.
-  min_over_density:                  57.7      # Over-density above which star-formation is allowed.
-  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
-  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
-  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
-  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
+  EOS_entropy_margin_dex:            0.3       # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
+  threshold_norm_H_p_cm3:            0.1       # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # When using Z-based SF threshold, reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # When using Z-based SF threshold, slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # When using Z-based SF threshold, maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_temperature1_K:          1000      # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming.
+  threshold_temperature2_K:          31622     # When using subgrid-based SF threshold, subgrid temperature below which gas is star-forming if also above the density limit.
+  threshold_number_density_H_p_cm3:  10        # When using subgrid-based SF threshold, subgrid number density above which gas is star-forming if also below the second temperature limit.
 
 # Quick Lyman-alpha star formation parameters
 QLAStarFormation:
