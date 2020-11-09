@@ -35,9 +35,12 @@ the following changes have been made (at standard resolution):
    been removed as the new cooling tables handle this correctly. The
    gamma=4/3 floor has been extended to lower densities
    (i.e. 800K at n_H = 10^-4 cm^-3) as a fail-safe.
- - Particles can be star-forming if they are within 0.3 dex of the
-   entropy floor (was 0.5 dex). These particles also get their
-   subgrid properties (rho, T as well as the HI and H_2 frac) computed.
+ - Particles within 0.3 dex of the entropy floor get their
+   subgrid properties (rho, T as well as the HI and H_2 frac) computed
+   assuming pressure equilibrium.
+ - Particles are star-forming if their subgrid temperature is below
+   10^3 K OR if they are both colder than 10^4.5 K and have a subgrid
+   number density above 10 cm^-3.
  - Particles can be star-forming if they are in an over-density of
    at least 100 (was 57.7).
  - Particles with a density above 10^5 cm^-3 are not turned into

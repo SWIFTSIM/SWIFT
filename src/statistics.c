@@ -209,7 +209,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
  * @brief The #threadpool mapper function used to collect statistics for #spart.
  *
  * @param map_data Pointer to the particles.
- * @param nr_parts The number of particles in this chunk
+ * @param nr_sparts The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
 void stats_collect_spart_mapper(void *map_data, int nr_sparts,
@@ -298,7 +298,7 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
  * @brief The #threadpool mapper function used to collect statistics for #sink.
  *
  * @param map_data Pointer to the particles.
- * @param nr_parts The number of particles in this chunk
+ * @param nr_sinks The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
 void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
@@ -383,7 +383,7 @@ void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
  * @brief The #threadpool mapper function used to collect statistics for #bpart.
  *
  * @param map_data Pointer to the particles.
- * @param nr_parts The number of particles in this chunk
+ * @param nr_bparts The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
 void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
