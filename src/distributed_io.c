@@ -74,6 +74,7 @@
  * the HDF5 file.
  * @param props The #io_props of the field to read
  * @param N The number of particles to write.
+ * @param lossy_compression Level of lossy compression to use for this field.
  * @param internal_units The #unit_system used internally
  * @param snapshot_units The #unit_system used in the snapshots
  *

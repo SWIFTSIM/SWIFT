@@ -134,7 +134,7 @@ void output_options_struct_restore(struct output_options* output_options,
  *        output (i.e. top level section in the yaml).
  * @param field_name pointer to a char array containing the name of the
  *        relevant field.
- * @param part_type integer particle type
+ * @param ptype integer particle type
  * @param compression_level_current_default The default output strategy
  *.       based on the snapshot_type and part_type.
  *
@@ -143,13 +143,13 @@ void output_options_struct_restore(struct output_options* output_options,
  **/
 enum lossy_compression_schemes output_options_get_field_compression(
     const struct output_options* output_options, const char* snapshot_type,
-    const char* field_name, const enum part_type part_type,
+    const char* field_name, const enum part_type ptype,
     const enum lossy_compression_schemes compression_level_current_default) {
 
   /* Full name for the field path */
   char field[PARSER_MAX_LINE_SIZE];
   sprintf(field, "%.*s:%.*s_%s", FIELD_BUFFER_SIZE, snapshot_type,
-          FIELD_BUFFER_SIZE, field_name, part_type_names[part_type]);
+          FIELD_BUFFER_SIZE, field_name, part_type_names[ptype]);
 
   char compression_level[FIELD_BUFFER_SIZE];
   parser_get_opt_param_string(
@@ -178,16 +178,16 @@ enum lossy_compression_schemes output_options_get_field_compression(
  *
  * @param output_params The parsed select output file.
  * @param snapshot_type The type of snapshot we are writing
- * @param part_type The #part_type we are considering.
+ * @param ptype The #part_type we are considering.
  */
 enum lossy_compression_schemes output_options_get_ptype_default_compression(
     struct swift_params* output_params, const char* snapshot_type,
-    const enum part_type part_type) {
+    const enum part_type ptype) {
 
   /* Full name for the default path */
   char field[PARSER_MAX_LINE_SIZE];
   sprintf(field, "%.*s:Standard_%s", FIELD_BUFFER_SIZE, snapshot_type,
-          part_type_names[part_type]);
+          part_type_names[ptype]);
 
   char compression_level[FIELD_BUFFER_SIZE];
   parser_get_opt_param_string(
@@ -210,7 +210,7 @@ enum lossy_compression_schemes output_options_get_ptype_default_compression(
         "A lossy default compression strategy was specified for snapshot "
         "type %s and particle type %d. This is not allowed, lossy "
         "compression must be set on a field-by-field basis.",
-        snapshot_type, part_type);
+        snapshot_type, ptype);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check whether we could translate the level string to a known entry. */
@@ -218,13 +218,12 @@ enum lossy_compression_schemes output_options_get_ptype_default_compression(
     error(
         "Could not resolve compression level \"%s\" as default compression "
         "level of particle type %s in snapshot type %s.",
-        compression_level, part_type_names[part_type], snapshot_type);
+        compression_level, part_type_names[ptype], snapshot_type);
 
   message(
       "Determined default compression level of %s in snapshot type %s "
       "as \"%s\", corresponding to level code %d",
-      part_type_names[part_type], snapshot_type, compression_level,
-      level_index);
+      part_type_names[ptype], snapshot_type, compression_level, level_index);
 #endif
 
   return (enum lossy_compression_schemes)level_index;

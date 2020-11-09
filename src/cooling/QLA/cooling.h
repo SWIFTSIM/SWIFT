@@ -76,6 +76,11 @@ float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct cooling_function_data *cooling,
                               const struct part *p, const struct xpart *xp);
 
+float cooling_get_subgrid_temperature(const struct part *p,
+                                      const struct xpart *xp);
+
+float cooling_get_subgrid_density(const struct part *p, const struct xpart *xp);
+
 float cooling_get_radiated_energy(const struct xpart *xp);
 
 void cooling_split_part(struct part *p, struct xpart *xp, double n);
