@@ -420,7 +420,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   bp->ngb_mass -= gas_mass;
 
   /* The ray(s) should not point to the no-longer existing particle */
-  ray_reset_part_id(bp->rays, colibre_blackhole_number_of_rays, p->id);
+  ray_reset_part_id(bp->rays, eagle_blackhole_number_of_rays, p->id);
 }
 
 /**
