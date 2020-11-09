@@ -141,6 +141,7 @@ int engine_rank;
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
 
+extern int engine_max_dmparts_per_ghost;
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 
@@ -2264,6 +2265,7 @@ void engine_launch(struct engine *e, const char *call) {
   swift_barrier_wait(&e->run_barrier);
 
   /* Load the tasks. */
+    message("Load the tasks");
   scheduler_start(&e->sched);
 
   /* Remove the safeguard. */
@@ -2273,6 +2275,7 @@ void engine_launch(struct engine *e, const char *call) {
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
   /* Sit back and wait for the runners to come home. */
+    message("Wait for runners to come home");
   swift_barrier_wait(&e->wait_barrier);
 
   /* Store the wallclock time */
@@ -4881,6 +4884,10 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_bparts", space_extra_bparts);
     space_extra_dmparts = parser_get_opt_param_int(
          params, "Scheduler:cell_extra_dmparts", space_extra_dmparts);
+      
+    engine_max_dmparts_per_ghost =
+      parser_get_opt_param_int(params, "Scheduler:engine_max_dmparts_per_ghost",
+                               engine_max_dmparts_per_ghost_default);
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",

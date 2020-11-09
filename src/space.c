@@ -103,6 +103,7 @@ int space_extra_gparts = space_extra_gparts_default;
 int space_extra_sinks = space_extra_sinks_default;
 
 /*! Maximum number of particles per ghost */
+int engine_max_dmparts_per_ghost = engine_max_dmparts_per_ghost_default;
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 int engine_max_parts_per_cooling = engine_max_parts_per_cooling_default;
@@ -407,6 +408,33 @@ void space_regrid(struct space *s, int verbose) {
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
+    float dm_h_max = s->cell_min / dm_kernel_gamma / space_stretch;
+    
+    if (nr_dmparts > 0) {
+        /* Can we use the list of local non-empty top-level cells? */
+        if (s->local_cells_with_particles_top != NULL) {
+            for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
+                const struct cell *c = &s->cells_top[s->local_cells_with_particles_top[k]];
+                if (c->dark_matter.h_max > dm_h_max) {
+                    dm_h_max = c->dark_matter.h_max;
+                }
+            }
+            /* Can we instead use all the top-level cells? */
+        } else if (s->cells_top != NULL) {
+            for (int k = 0; k < s->nr_cells; k++) {
+                const struct cell *c = &s->cells_top[k];
+                if (c->nodeID == engine_rank && c->dark_matter.h_max > dm_h_max) {
+                    dm_h_max = c->dark_matter.h_max;
+                }
+            }
+            /* Last option: run through the particles */
+        } else {
+            for (size_t k = 0; k < nr_dmparts; k++) {
+                if (s->dmparts[k].h > dm_h_max) dm_h_max = s->dmparts[k].h;
+            }
+        }
+    }
+
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
@@ -453,11 +481,10 @@ void space_regrid(struct space *s, int verbose) {
       for (size_t k = 0; k < nr_bparts; k++) {
         if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
-      for (size_t k = 0; k < nr_dmparts; k++) {
-        if (s->dmparts[k].h > h_max) h_max = s->dmparts[k].h;
-      }
     }
   }
+    
+    if (dm_h_max > h_max) h_max = dm_h_max;
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */
@@ -794,7 +821,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
   size_t size_bparts = s->size_bparts;
-  /*size_t size_dmparts = s->size_dmparts;*/
+  size_t size_dmparts = s->size_dmparts;
 
   int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
   if (local_cells == NULL)
@@ -1048,7 +1075,83 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Do we have enough space for the extra dark matter particles (i.e. we haven't used up any)
      * ? */
     if (nr_actual_dmparts + expected_num_extra_dmparts > nr_dmparts) {
-        error("Not implemented yet");
+        
+        /* Ok... need to put some more in the game */
+        
+        /* Do we need to reallocate? */
+        if (nr_actual_dmparts + expected_num_extra_dmparts > size_dmparts) {
+            
+            size_dmparts = (nr_actual_dmparts + expected_num_extra_dmparts) *
+            engine_redistribute_alloc_margin;
+            
+            if (verbose)
+                message("Re-allocating dmparts array from %zd to %zd", s->size_dmparts,
+                        size_dmparts);
+            
+            /* Create more space for parts */
+            struct dmpart *dmparts_new = NULL;
+            if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
+                               sizeof(struct dmpart) * size_dmparts) != 0)
+                error("Failed to allocate new dmpart data");
+            memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * s->size_dmparts);
+            swift_free("dmparts", s->dmparts);
+            s->dmparts = dmparts_new;
+            
+            /* Update the counter */
+            s->size_dmparts = size_dmparts;
+        }
+        
+        /* Turn some of the allocated spares into particles we can use */
+        for (size_t i = nr_dmparts; i < nr_actual_dmparts + expected_num_extra_dmparts;
+             ++i) {
+            bzero(&s->dmparts[i], sizeof(struct dmpart));
+            s->dmparts[i].time_bin = time_bin_not_created;
+            s->dmparts[i].id_or_neg_offset = -42;
+        }
+        
+        /* Put the spare particles in their correct cell */
+        size_t local_cell_id = 0;
+        int current_cell = local_cells[local_cell_id];
+        int count_in_cell = 0;
+        size_t count_extra_dmparts = 0;
+        for (size_t i = 0; i < nr_actual_dmparts + expected_num_extra_dmparts; ++i) {
+            
+#ifdef SWIFT_DEBUG_CHECKS
+            if (current_cell == s->nr_cells)
+                error("Cell counter beyond the maximal nr. cells.");
+#endif
+            
+            if (s->dmparts[i].time_bin == time_bin_not_created) {
+                
+                /* We want the extra particles to be at the centre of their cell */
+                s->dmparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
+                s->dmparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
+                s->dmparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+                ++count_in_cell;
+                count_extra_dmparts++;
+            }
+            
+            /* Once we have reached the number of extra spart per cell, we move to the
+             * next */
+            if (count_in_cell == space_extra_dmparts) {
+                ++local_cell_id;
+                
+                if (local_cell_id == nr_local_cells) break;
+                
+                current_cell = local_cells[local_cell_id];
+                count_in_cell = 0;
+            }
+        }
+        
+#ifdef SWIFT_DEBUG_CHECKS
+        if (count_extra_dmparts != expected_num_extra_dmparts)
+            error("Constructed the wrong number of extra dmparts (%zd vs. %zd)",
+                  count_extra_dmparts, expected_num_extra_dmparts);
+#endif
+        
+        /* Update the counters */
+        s->nr_dmparts = nr_actual_dmparts + expected_num_extra_dmparts;
+        s->nr_extra_dmparts = expected_num_extra_dmparts;
     }
 
   /* Do we have enough space for the extra sparts (i.e. we haven't used up any)
@@ -6292,6 +6395,10 @@ void space_init(struct space *s, struct swift_params *params,
   if (space_extra_sinks != 0) {
     error("Extra sink particles not implemented yet.");
   }
+    
+  engine_max_dmparts_per_ghost =
+    parser_get_opt_param_int(params, "Scheduler:engine_max_dmparts_per_ghost",
+                             engine_max_dmparts_per_ghost_default);
 
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -7393,6 +7500,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                        "space_expected_max_nr_strays",
                        "space_expected_max_nr_strays");
+  restart_write_blocks(&engine_max_dmparts_per_ghost, sizeof(int), 1, stream,
+                       "engine_max_dmparts_per_ghost",
+                       "engine_max_dmparts_per_ghost");
   restart_write_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream,
                        "engine_max_parts_per_ghost",
                        "engine_max_parts_per_ghost");
@@ -7480,6 +7590,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_dmparts");
   restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                       NULL, "space_expected_max_nr_strays");
+  restart_read_blocks(&engine_max_dmparts_per_ghost, sizeof(int), 1, stream, NULL,
+                      "engine_max_dmparts_per_ghost");
   restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
                       "engine_max_parts_per_ghost");
   restart_read_blocks(&engine_max_sparts_per_ghost, sizeof(int), 1, stream,
