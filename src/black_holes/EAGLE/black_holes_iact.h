@@ -371,6 +371,11 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
                     excess_fraction;
     }
 
+    /* Correct for nibbling the particle mass that is stored in rays */
+    for (int i = 0; i < eagle_blackhole_number_of_rays; i++) {
+      if (bi->rays[i].id_min_length == pj->id) bi->rays[i].mass = new_gas_mass;
+    }
+
     /* Transfer (dynamical) mass from the gas particle to the BH */
     bi->mass += nibble_mass;
     hydro_set_mass(pj, new_gas_mass);
