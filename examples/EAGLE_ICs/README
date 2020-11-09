@@ -43,6 +43,8 @@ the following changes have been made (at standard resolution):
  - Particles with a density above 10^5 cm^-3 are not turned into
    stars instantaneously any more.
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
+ - The SNII feedback heats the particle closest to the star particle
+   (was a random set of particles in the kernel).
  - The SNII feedback delay is done by sampling the stellar age
    distribution and not using a fixed delay of 30 Myr any more.
  - The energy range for the SNII variable f_th is now 0.5 - 5.0
@@ -73,6 +75,11 @@ the following changes have been made (at standard resolution):
  - The angular momentum term in the BH accretion model of
    Rosas-Guevara et al. (2015) is now switched off.
  - The coupling efficency of the BH feedback is now 0.1 (was 0.15).
+ - The AGN feedback heats the particles closest to the BH particle
+   (was a random set of particles in the kernel).
+ - The AGN does not use a combination of probability and reservoir
+   any more. Energy is accumulated and then used in a deterministic
+   way once the threshold for feedback is reached.
  - The AGN feedback temperature jump is now a function of the BH
    subgrid mass (was a constant at 10^8.5K). The temperature varies
    between 10^7 and 3*10^9 K with a power-law of the subgrid mass

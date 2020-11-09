@@ -175,6 +175,7 @@ EAGLEFeedback:
   IMF_max_mass_Msun:                  100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
   SNII_min_mass_Msun:                   8.0             # Minimal mass considered for SNII stars in solar masses.
   SNII_max_mass_Msun:                 100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_feedback_model:                  MinimumDistance # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   SNII_sampled_delay:                   1               # Sample the SNII lifetimes to do feedback.
   SNII_delta_T_K:                       3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                      1.0e51          # Energy of one SNII explosion in ergs.
@@ -206,41 +207,43 @@ EAGLEFeedback:
 
 # EAGLE AGN model
 EAGLEAGN:
-  subgrid_seed_mass_Msun:             1.0e4      # Black hole subgrid mass at creation time in solar masses.
-  multi_phase_bondi:                  0          # Compute Bondi rates per neighbour particle?
-  subgrid_bondi:                      0          # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
-  with_angmom_limiter:                0          # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
-  viscous_alpha:                      1e6        # Normalisation constant of the viscous time-scale in the accretion reduction term
-  with_boost_factor:                  0          # Are we using the model from Booth & Schaye (2009)?
-  boost_alpha:                        1.         # Lowest value for the accretion effeciency for the Booth & Schaye 2009 accretion model.
-  boost_beta:                         2.         # Slope of the power law for the Booth & Schaye 2009 model, set beta to zero for constant alpha models.
-  boost_n_h_star_H_p_cm3:             0.1        # Normalization of the power law for the Booth & Schaye 2009 model in cgs (cm^-3).
-  use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
-  min_gas_mass_for_nibbling:          9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
-  radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.
-  max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
-  eddington_fraction_for_recording:   0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
-  coupling_efficiency:                0.1        # Fraction of the radiated energy that couples to the gas in feedback events.
-  use_variable_delta_T:               1          # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
-  AGN_with_locally_adaptive_delta_T:  1          # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
-  AGN_delta_T_mass_norm:              3e8        # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
-  AGN_delta_T_mass_reference:         1e8        # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
-  AGN_delta_T_mass_exponent:          0.666667   # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
-  AGN_delta_T_crit_factor:            1.0        # Multiple of critical dT for numerical efficiency (Dalla Vecchia & Schaye 2012) to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
-  AGN_delta_T_background_factor:      0.0        # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
-  AGN_delta_T_min:                    1e7        # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
-  AGN_delta_T_max:                    3e9        # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
-  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event [K] (used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1 AND to initialise the BHs).
-  AGN_use_nheat_with_fixed_dT:        0          # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
-  AGN_use_adaptive_energy_reservoir_threshold: 0 # Switch to calculate an adaptive AGN energy reservoir threshold.
-  AGN_num_ngb_to_heat:                1.         # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
-  max_reposition_mass:                1e20       # Maximal BH mass considered for BH repositioning in solar masses (large number implies we always reposition).
-  max_reposition_distance_ratio:      3.0        # Maximal distance a BH can be repositioned, in units of the softening length.
-  with_reposition_velocity_threshold: 0          # Should we only reposition to particles that move slowly w.r.t. the black hole?
-  max_reposition_velocity_ratio:      0.5        # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_threshold is 1.
-  min_reposition_velocity_threshold: -1.0        # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_threshold is 1.
-  set_reposition_speed:               0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
-  threshold_major_merger:             0.333      # Mass ratio threshold to consider a BH merger as 'major'
-  threshold_minor_merger:             0.1        # Mass ratio threshold to consider a BH merger as 'minor'
-  merger_threshold_type:              2          # Type of velocity threshold for BH mergers (0: v_circ at kernel edge, 1: v_esc at actual distance, with softening, 2: v_esc at actual distance, no softening).
-  merger_max_distance_ratio:          3.0        # Maximal distance over which two BHs can merge, in units of the softening length.
+  subgrid_seed_mass_Msun:             1.0e4           # Black hole subgrid mass at creation time in solar masses.
+  use_multi_phase_bondi:              0               # Compute Bondi rates per neighbour particle?
+  use_subgrid_bondi:                  0               # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
+  with_angmom_limiter:                0               # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
+  viscous_alpha:                      1e6             # Normalisation constant of the viscous time-scale in the accretion reduction term
+  with_boost_factor:                  0               # Are we using the model from Booth & Schaye (2009)?
+  boost_alpha:                        1.              # Lowest value for the accretion effeciency for the Booth & Schaye 2009 accretion model.
+  boost_beta:                         2.              # Slope of the power law for the Booth & Schaye 2009 model, set beta to zero for constant alpha models.
+  boost_n_h_star_H_p_cm3:             0.1             # Normalization of the power law for the Booth & Schaye 2009 model in cgs (cm^-3).
+  radiative_efficiency:               0.1             # Fraction of the accreted mass that gets radiated.
+  use_nibbling:                       1               # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
+  min_gas_mass_for_nibbling:          9e5             # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
+  max_eddington_fraction:             1.              # Maximal allowed accretion rate in units of the Eddington rate.
+  eddington_fraction_for_recording:   0.1             # Record the last time BHs reached an Eddington ratio above this threshold.
+  coupling_efficiency:                0.1             # Fraction of the radiated energy that couples to the gas in feedback events.
+  AGN_feedback_model:                 MinimumDistance # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
+  AGN_use_deterministic_feedback:     1               # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
+  use_variable_delta_T:               1               # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
+  AGN_with_locally_adaptive_delta_T:  1               # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_norm:              3e8             # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_reference:         1e8             # BH subgrid mass at which the normalisation temperature set above applies [M_Sun] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_mass_exponent:          0.666667        # Power-law index of AGN dT scaling with BH subgrid mass (only used if use_variable_delta_T is 1).
+  AGN_delta_T_crit_factor:            1.0             # Multiple of critical dT for numerical efficiency (Dalla Vecchia & Schaye 2012) to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_background_factor:      0.0             # Multiple of local gas temperature to use as dT floor (only used if use_variable_delta_T and AGN_with_locally_adaptive_delta_T are both 1).
+  AGN_delta_T_min:                    1e7             # Minimum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_max:                    3e9             # Maximum allowed value of AGN dT [K] (only used if use_variable_delta_T is 1).
+  AGN_delta_T_K:                      3.16228e8       # Change in temperature to apply to the gas particle in an AGN feedback event [K] (used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1 AND to initialise the BHs).
+  AGN_use_nheat_with_fixed_dT:        0               # Switch to use the constant AGN dT, rather than the adaptive one, for calculating the energy reservoir threshold.
+  AGN_use_adaptive_energy_reservoir_threshold: 0      # Switch to calculate an adaptive AGN energy reservoir threshold.
+  AGN_num_ngb_to_heat:                1.              # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
+  max_reposition_mass:                1e20            # Maximal BH mass considered for BH repositioning in solar masses (large number implies we always reposition).
+  max_reposition_distance_ratio:      3.0             # Maximal distance a BH can be repositioned, in units of the softening length.
+  with_reposition_velocity_threshold: 0               # Should we only reposition to particles that move slowly w.r.t. the black hole?
+  max_reposition_velocity_ratio:      0.5             # Maximal velocity offset of a particle to reposition a BH to, in units of the ambient sound speed of the BH. Only meaningful if with_reposition_velocity_threshold is 1.
+  min_reposition_velocity_threshold: -1.0             # Minimal value of the velocity threshold for repositioning [km/s], set to < 0 for no effect. Only meaningful if with_reposition_velocity_threshold is 1.
+  set_reposition_speed:               0               # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
+  threshold_major_merger:             0.333           # Mass ratio threshold to consider a BH merger as 'major'
+  threshold_minor_merger:             0.1             # Mass ratio threshold to consider a BH merger as 'minor'
+  merger_threshold_type:              2               # Type of velocity threshold for BH mergers (0: v_circ at kernel edge, 1: v_esc at actual distance, with softening, 2: v_esc at actual distance, no softening).
+  merger_max_distance_ratio:          3.0             # Maximal distance over which two BHs can merge, in units of the softening length.
