@@ -372,7 +372,7 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
         const float pjz = pj->x[2] - cj->loc[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -475,7 +475,7 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
         const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -514,6 +514,15 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj * kernel_gamma > cj->dmin)
+            error(
+                "h_j too large for this cell! depth=%d limit min/max=%d%d H=%e "
+                "dmin=%e",
+                cj->depth, limit_min_h, limit_max_h, hj * kernel_gamma,
+                cj->dmin);
+#endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
         }
@@ -562,7 +571,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
-#if  1 //defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if 1  // defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
   DOPAIR1(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
@@ -804,7 +813,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
-#if 1 //defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if 1  // defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF1_NAIVE(r, c, limit_min_h, limit_max_h);
 #else
   DOSELF1(r, c, limit_min_h, limit_max_h);
