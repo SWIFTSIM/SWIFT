@@ -43,8 +43,8 @@
 /**
  * @brief Store a log entry of the given chunk.
  */
-void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
-                    ticks tic, ticks toc) {
+static void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
+                           ticks tic, ticks toc) {
   struct mapper_log *log = &tp->logs[tid > 0 ? tid : 0];
 
   /* Check if we need to re-allocate the log buffer. */
@@ -132,21 +132,24 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
 /**
  * @brief Runner main loop, get a chunk and call the mapper function.
  */
-void threadpool_chomp(struct threadpool *tp, int tid) {
+static void threadpool_chomp(struct threadpool *tp, int tid) {
 
   /* Loop until we can't get a chunk. */
   while (1) {
     /* Compute the desired chunk size. */
     ptrdiff_t chunk_size;
     if (tp->map_data_chunk == threadpool_uniform_chunk_size) {
-      chunk_size = (int)((tid + 1) * tp->map_data_size / tp->num_threads) -
-                   (int)(tid * tp->map_data_size / tp->num_threads);
+      chunk_size = ((tid + 1) * tp->map_data_size / tp->num_threads) -
+                   (tid * tp->map_data_size / tp->num_threads);
     } else {
       chunk_size =
           (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
       if (chunk_size > tp->map_data_chunk) chunk_size = tp->map_data_chunk;
     }
     if (chunk_size < 1) chunk_size = 1;
+
+    /* A chunk cannot exceed INT_MAX, as we use int elements in map_function. */
+    if (chunk_size > INT_MAX) chunk_size = INT_MAX;
 
     /* Get a chunk and check its size. */
     size_t task_ind = atomic_add(&tp->map_data_count, chunk_size);
@@ -166,7 +169,7 @@ void threadpool_chomp(struct threadpool *tp, int tid) {
   }
 }
 
-void *threadpool_runner(void *data) {
+static void *threadpool_runner(void *data) {
 
   /* Our threadpool. */
   struct threadpool *tp = (struct threadpool *)data;
@@ -275,11 +278,40 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 
   /* If we just have a single thread, call the map function directly. */
   if (tp->num_threads == 1) {
-    map_function(map_data, N, extra_data);
+
+    if (N <= INT_MAX) {
+      map_function(map_data, N, extra_data);
+
 #ifdef SWIFT_DEBUG_THREADPOOL
-    tp->map_function = map_function;
-    threadpool_log(tp, 0, N, tic, getticks());
+      tp->map_function = map_function;
+      threadpool_log(tp, 0, N, tic, getticks());
 #endif
+    } else {
+
+      /* N > INT_MAX, we need to do this in chunks as map_function only takes
+       * an int. */
+      size_t chunk_size = INT_MAX;
+      size_t data_size = N;
+      size_t data_count = 0;
+      while (1) {
+
+/* Call the mapper function. */
+#ifdef SWIFT_DEBUG_THREADPOOL
+        ticks tic = getticks();
+#endif
+        map_function((char *)map_data + (stride * data_count), chunk_size,
+                     extra_data);
+#ifdef SWIFT_DEBUG_THREADPOOL
+        threadpool_log(tp, 0, chunk_size, tic, getticks());
+#endif
+        /* Get the next chunk and check its size. */
+        data_count += chunk_size;
+        if (data_count >= data_size) break;
+        if (data_count + chunk_size > data_size)
+          chunk_size = data_size - data_count;
+      }
+    }
+
     return;
   }
 
