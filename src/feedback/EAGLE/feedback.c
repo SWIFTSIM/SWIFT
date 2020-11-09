@@ -878,6 +878,7 @@ INLINE static void evolve_AGB(const double log10_min_mass,
  * functions to calculate feedback due to SNIa, SNII and AGB
  *
  * @param feedback_props feedback_props data structure
+ * @param phys_const The physical constants in internal units.
  * @param cosmo The cosmological model.
  * @param sp spart that we're evolving
  * @param us unit_system data structure

@@ -35,16 +35,21 @@
  * @param phys_const Physical constants in internal units
  * @param us the current internal system of units
  * @param hydro_props The propoerties of the hydro scheme.
+ * @param cosmo The cosmology model.
+ * @param entropy_floor The properties of the entropy floor used in this
+ * simulation.
  * @param starform the properties of the star formation law
  */
 void starformation_init(struct swift_params* parameter_file,
                         const struct phys_const* phys_const,
                         const struct unit_system* us,
                         const struct hydro_props* hydro_props,
+                        const struct cosmology* cosmo,
+                        const struct entropy_floor_properties* entropy_floor,
                         struct star_formation* starform) {
 
-  starformation_init_backend(parameter_file, phys_const, us, hydro_props,
-                             starform);
+  starformation_init_backend(parameter_file, phys_const, us, hydro_props, cosmo,
+                             entropy_floor, starform);
 }
 
 /**

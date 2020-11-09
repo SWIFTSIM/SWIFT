@@ -168,6 +168,32 @@ INLINE static float cooling_get_temperature(
 }
 
 /**
+ * @param Returns the subgrid temperature of a particle.
+ *
+ * This model has no subgrid quantity. We return -1.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+INLINE static float cooling_get_subgrid_temperature(const struct part* p,
+                                                    const struct xpart* xp) {
+  return -1.f;
+}
+
+/**
+ * @param Returns the subgrid density of a particle.
+ *
+ * This model has no subgrid quantity. We return -1.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+INLINE static float cooling_get_subgrid_density(const struct part* p,
+                                                const struct xpart* xp) {
+  return -1.f;
+}
+
+/**
  * @brief Returns the total radiated energy by this particle.
  *
  * No cooling, so return 0.

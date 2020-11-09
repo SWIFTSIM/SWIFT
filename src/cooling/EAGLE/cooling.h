@@ -26,6 +26,7 @@
 
 /* Local includes. */
 #include "cooling_properties.h"
+#include "error.h"
 
 struct part;
 struct xpart;
@@ -86,6 +87,11 @@ double compute_subgrid_property(
     const float log10_T_EOS_max, const int HII_region,
     const float *abundance_ratio, const double log_u_cgs,
     const enum cooling_subgrid_properties isub);
+
+float cooling_get_subgrid_temperature(const struct part *p,
+                                      const struct xpart *xp);
+
+float cooling_get_subgrid_density(const struct part *p, const struct xpart *xp);
 
 float cooling_get_radiated_energy(const struct xpart *restrict xp);
 
