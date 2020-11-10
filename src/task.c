@@ -46,6 +46,7 @@
 #include "error.h"
 #include "inline.h"
 #include "lock.h"
+#include "mpicache.h"
 #include "mpiuse.h"
 
 /* Task type names. */
@@ -739,10 +740,11 @@ int task_lock(struct scheduler *s, struct task *t) {
     case task_type_recv:
 #ifdef WITH_MPI
       {
-        //static int ii = 0;
-
         /* Need to get the recv lock. */
         if (lock_trylock(&s->recv_lock) == 0) {
+
+          // XXX still an issue with messages arriving from subtypes with no
+          // current recvs. How do we deal with that?
 
           /* Check for a message waiting for this subtype, tag and size from our
            * expected node. If so accept. XXX need the scheduler and these
@@ -757,7 +759,6 @@ int task_lock(struct scheduler *s, struct task *t) {
 
               message("Accepted from %d, subtype: %d, tag: %lld, size %zd",
                       t->ci->nodeID, t->subtype, t->flags, t->size);
-
 
               /* And log deactivation, if logging enabled. */
               mpiuse_log_allocation(t->type, t->subtype, t->buff, 0, 0, 0, 0);
@@ -774,6 +775,49 @@ int task_lock(struct scheduler *s, struct task *t) {
                 error("Unlocking the MPI recv lock failed.\n");
               }
               return 1;
+
+            } else {
+              message("Caching from %d, subtype: %d, tag: %zd, size %zd",
+                      t->ci->nodeID, t->subtype, dataptr[2], dataptr[1]);
+
+              /* Cache this message. */
+              int result = 0;
+              void *buff = calloc(1, dataptr[1]);
+              memcpy(buff, &dataptr[2], dataptr[1]);
+              mpicache_add(s->mpicache, t->ci->nodeID, t->subtype, dataptr[2],
+                           dataptr[1], buff);
+
+              /* And log deactivation, if logging enabled. */
+              mpiuse_log_allocation(t->type, t->subtype, t->buff, 0, 0, 0, 0);
+
+              /* And check for a cached message for us. */
+              buff = NULL;
+              size_t size;
+              mpicache_fetch(s->mpicache, t->ci->nodeID, t->subtype, t->flags,
+                             &size, &buff);
+              if (size != 0 && buff != NULL) {
+                message("Cache hit from %d, subtype: %d, tag: %lld, size %zd",
+                        t->ci->nodeID, t->subtype, t->flags, t->size);
+
+                /* Here we go. */
+                memcpy(t->buff, buff, t->size);
+                result = 1;
+                free(buff);
+              } else {
+                message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
+                        t->ci->nodeID, t->subtype, t->flags, t->size);
+              }
+
+              /* Ready for next recv. */
+              dataptr[0] = scheduler_osmpi_locked;
+
+              //if (s->space->e->verbose) // XXX no no no
+              message("recv message from %d/%d)", t->ci->nodeID, t->subtype);
+              if (lock_unlock(&s->recv_lock) != 0) {
+                error("Unlocking the MPI recv lock failed.\n");
+              }
+
+              return result;
             }
           }
 

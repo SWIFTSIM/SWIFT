@@ -2331,6 +2331,9 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 #ifdef WITH_MPI
   lock_init(&s->send_lock);
   lock_init(&s->recv_lock);
+
+  /* And the message cache (not thread safe). */
+  s->mpicache = mpicache_init(space->e->nr_nodes);
 #endif
 }
 

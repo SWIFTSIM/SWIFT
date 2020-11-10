@@ -35,6 +35,7 @@
 #include "cell.h"
 #include "inline.h"
 #include "lock.h"
+#include "mpicache.h"
 #include "queue.h"
 #include "task.h"
 #include "threadpool.h"
@@ -140,6 +141,10 @@ struct scheduler {
   /* Lock for one at a time sends and recvs (should be one per subtype per node). */
   swift_lock_type send_lock;
   swift_lock_type recv_lock;
+
+  /* Cache for receives with no recv yet. */
+  struct mpicache *mpicache;
+  
 #endif
 
 };
