@@ -241,6 +241,18 @@ __attribute__((always_inline)) INLINE static void drift_spart(
 __attribute__((always_inline)) INLINE static void drift_dmpart(
     struct dmpart *restrict dmp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (dmp->ti_drift != ti_old)
+        error(
+              "DM-particle has not been drifted to the current time "
+              "dmp->ti_drift=%lld, "
+              "c->ti_old=%lld, ti_current=%lld",
+              dmp->ti_drift, ti_old, ti_current);
+    
+    dmp->ti_drift = ti_current;
+#endif
+    
     
 #ifdef SWIFT_FIXED_BOUNDARY_PARTICLES
     

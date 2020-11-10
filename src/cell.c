@@ -2628,6 +2628,42 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data The current time on the integer time-line
  */
+void cell_check_dmpart_drift_point(struct cell *c, void *data) {
+#ifdef SWIFT_DEBUG_CHECKS
+    
+    const integertime_t ti_drift = *(integertime_t *)data;
+    
+    /* Only check local cells */
+    if (c->nodeID != engine_rank) return;
+    
+    /* Only check cells with content */
+    if (c->dark_matter.count == 0) return;
+    
+    if (c->dark_matter.ti_old_part != ti_drift)
+        error(
+              "Cell in an incorrect time-zone! c->dark_matter.ti_old_part=%lld "
+              "ti_drift=%lld",
+              c->dark_matter.ti_old_part, ti_drift);
+    
+    for (int i = 0; i < c->dark_matter.count; ++i)
+        if (c->dark_matter.parts[i].ti_drift != ti_drift &&
+            c->dark_matter.parts[i].time_bin != time_bin_inhibited)
+            error("DM-part in an incorrect time-zone! dmp->ti_drift=%lld ti_drift=%lld",
+                  c->dark_matter.parts[i].ti_drift, ti_drift);
+#else
+    error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that the #gpart in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
 void cell_check_gpart_drift_point(struct cell *c, void *data) {
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -5170,7 +5206,7 @@ void cell_recursively_activate_dark_matter_ghost(struct cell *c, struct schedule
 void cell_activate_dark_matter_ghost(struct cell *c, struct scheduler *s,
                                 const struct engine *e) {
     scheduler_activate(s, c->dark_matter.ghost);
-    cell_recursively_activate_dark_matter_ghost(c, s, e);
+    /*cell_recursively_activate_dark_matter_ghost(c, s, e);*/
 }
 
 

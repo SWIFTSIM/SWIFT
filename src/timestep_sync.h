@@ -46,8 +46,13 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_current = e->ti_current;
   const timebin_t min_active_bin = e->min_active_bin;
+  const timebin_t max_active_bin = e->max_active_bin;
   const double time_base = e->time_base;
     
+  /* This particle is already active. Nothing to do here... */
+  if (p->time_bin <= max_active_bin) {
+      return;
+  }
   //message(" Synchronizing particle! %lld old bin=%d", p->id_or_neg_offset, p->time_bin);
 
   /* We want to make the particle finish it's time-step now. */
@@ -101,11 +106,12 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   if (with_cosmology) {
     dt_kick_grav =
         cosmology_get_grav_kick_factor(cosmo, old_ti_beg, new_ti_beg + new_dti);
+      
   } else {
     dt_kick_grav = (new_dti)*time_base;
   }
 
-  kick_dmpart(p, dt_kick_grav, old_ti_beg + old_dti / 2, old_ti_beg);
+  kick_dmpart(p, dt_kick_grav, new_ti_beg, new_ti_beg + new_dti);
     
   /* Did this particle had a SIDM kick? if so, resolve */
   communicate_sidm_kick_to_dmpart(p);
