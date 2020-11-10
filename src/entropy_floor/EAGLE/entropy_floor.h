@@ -87,23 +87,20 @@ struct entropy_floor_properties {
 };
 
 /**
- * @brief Compute the entropy floor of a given #part.
+ * @brief Compute the pressure from the entropy floor at a given density
  *
- * Note that the particle is not updated!!
+ * This is the pressure exactly corresponding to the imposed EoS shape.
+ * It only matches the entropy returned by the entropy_floor() function
+ * for a neutral gas with primoridal abundance.
  *
- * @param p The #part.
+ * @param rho_phys The physical density (internal units).
+ * @param rho_com The comoving density (internal units).
  * @param cosmo The cosmological model.
  * @param props The properties of the entropy floor.
  */
-static INLINE float entropy_floor(
-    const struct part *p, const struct cosmology *cosmo,
+static INLINE float entropy_floor_gas_pressure(
+    const float rho_phys, const float rho_com, const struct cosmology *cosmo,
     const struct entropy_floor_properties *props) {
-
-  /* Comoving density in internal units */
-  const float rho_com = hydro_get_comoving_density(p);
-
-  /* Physical density in internal units */
-  const float rho_phys = hydro_get_physical_density(p, cosmo);
 
   /* Mean baryon density in co-moving internal units for over-density condition
    * (Recall cosmo->critical_density_0 is 0 in a non-cosmological run,
@@ -138,8 +135,33 @@ static INLINE float entropy_floor(
     pressure = max(pressure, pressure_Cool);
   }
 
+  return pressure;
+}
+
+/**
+ * @brief Compute the entropy floor of a given #part.
+ *
+ * Note that the particle is not updated!!
+ *
+ * @param p The #part.
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+
+  /* Comoving density in internal units */
+  const float rho_com = hydro_get_comoving_density(p);
+
+  /* Physical density in internal units */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  const float pressure =
+      entropy_floor_gas_pressure(rho_phys, rho_com, cosmo, props);
+
   /* Convert to an entropy.
-   * (Recall that the entropy is the same in co-moving and phycial frames) */
+   * (Recall that the entropy is the same in co-moving and physical frames) */
   return gas_entropy_from_pressure(rho_phys, pressure);
 }
 

@@ -35,15 +35,16 @@
  * @param pj Second particle (not updated).
  * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_density(const float r2, const float *dx,
                                     const float hi, const float hj,
-                                    struct spart *restrict si,
-                                    const struct part *restrict pj,
-                                    const struct xpart *restrict xpj,
-                                    const struct cosmology *restrict cosmo,
+                                    struct spart *si, const struct part *pj,
+                                    const struct xpart *xpj,
+                                    const struct cosmology *cosmo,
+                                    const struct feedback_props *fb_props,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
@@ -79,6 +80,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
  * @param cosmo The cosmological model.
+ * @param fb_props Properties of the feedback scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */
@@ -88,6 +90,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   struct spart *si, struct part *pj,
                                   struct xpart *xpj,
                                   const struct cosmology *cosmo,
+                                  const struct feedback_props *fb_props,
                                   const integertime_t ti_current) {
 
   const double e_sn = si->feedback_data.energy_ejected;

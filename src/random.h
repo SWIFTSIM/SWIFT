@@ -56,9 +56,14 @@ enum random_number_type {
   random_number_sink_formation = 5947309451LL,
   random_number_stellar_feedback_1 = 3947008991LL,
   random_number_stellar_feedback_2 = 6977309513LL,
+  random_number_stellar_feedback_3 = 9762399103LL,
+  random_number_isotropic_SNII_feedback_ray_theta = 3298327511LL,
+  random_number_isotropic_SNII_feedback_ray_phi = 6311114273LL,
+  random_number_isotropic_AGN_feedback_ray_theta = 8899891613LL,
+  random_number_isotropic_AGN_feedback_ray_phi = 10594523341LL,
   random_number_stellar_enrichment = 2936881973LL,
   random_number_BH_feedback = 1640531371LL,
-  random_number_BH_swallow = 4947009007LL
+  random_number_BH_swallow = 4947009007LL,
 };
 
 #ifndef __APPLE__
@@ -182,6 +187,29 @@ INLINE static double random_unit_interval(int64_t id,
 
   /* Generate one final value, this is our output. */
   return inl_erand48(seed48);
+}
+
+INLINE static double random_unit_interval_two_IDs(
+    int64_t id_star, int64_t id_gas, const integertime_t ti_current,
+    const enum random_number_type type) {
+
+  /* We need to combine the gas and star IDs such that we do not get correlation
+   * for same id_star + id_gas pairs, because of this we combine everything
+   * nonlinearly */
+  int64_t input_id = (id_star * id_gas + id_star * ti_current +
+                      id_gas * ti_current * ti_current) %
+                     INT64_MAX;
+
+  return random_unit_interval(input_id, ti_current, type);
+}
+
+INLINE static double random_unit_interval_part_ID_and_ray_idx(
+    int64_t id_star, const int ray_idx, const integertime_t ti_current,
+    const enum random_number_type type) {
+
+  /* For better mixing, we apply a non-linear transformation y=x^3 */
+  const long long ray_idx_3 = ray_idx * ray_idx * ray_idx;
+  return random_unit_interval_two_IDs(id_star, ray_idx_3, ti_current, type);
 }
 
 #endif /* SWIFT_RANDOM_H */

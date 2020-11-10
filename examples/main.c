@@ -985,7 +985,8 @@ int main(int argc, char *argv[]) {
     /* Initialise the feedback properties */
     if (with_feedback) {
 #ifdef FEEDBACK_NONE
-      error("ERROR: Running with feedback but compiled without it.");
+      if (!with_rt)
+        error("ERROR: Running with feedback but compiled without it.");
 #endif
       feedback_props_init(&feedback_properties, &prog_const, &us, params,
                           &hydro_properties, &cosmo);
@@ -1034,8 +1035,8 @@ int main(int argc, char *argv[]) {
 #ifdef STAR_FORMATION_NONE
       error("ERROR: Running with star formation but compiled without it!");
 #endif
-      starformation_init(params, &prog_const, &us, &hydro_properties,
-                         &starform);
+      starformation_init(params, &prog_const, &us, &hydro_properties, &cosmo,
+                         &entropy_floor, &starform);
     }
     if (with_star_formation && myrank == 0) starformation_print(&starform);
 

@@ -94,7 +94,7 @@ INLINE static int star_formation_is_star_forming(
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
-    const struct part* restrict p, struct xpart* restrict xp,
+    const struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo,
     const double dt_star) {
@@ -159,10 +159,8 @@ INLINE static void star_formation_copy_properties(
     const struct part* p, const struct xpart* xp, struct spart* sp,
     const struct engine* e, const struct star_formation* starform,
     const struct cosmology* cosmo, const int with_cosmology,
-    const struct phys_const* phys_const,
-    const struct hydro_props* restrict hydro_props,
-    const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling,
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cooling_function_data* cooling,
     const int convert_part) {
 
   /* Store the current mass */
@@ -183,11 +181,16 @@ INLINE static void star_formation_copy_properties(
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units.
  * @param hydro_props The propertis of the hydro model.
+ * @param cosmo The current cosmological model.
+ * @param entropy_floor The properties of the entropy floor used in this
+ * simulation.
  * @param starform the star formation law properties to initialize
  */
 INLINE static void starformation_init_backend(
     struct swift_params* parameter_file, const struct phys_const* phys_const,
     const struct unit_system* us, const struct hydro_props* hydro_props,
+    const struct cosmology* cosmo,
+    const struct entropy_floor_properties* entropy_floor,
     struct star_formation* starform) {
 
   /* Read the critical density contrast from the parameter file*/
@@ -219,8 +222,8 @@ INLINE static void starformation_print_backend(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct star_formation* cd, const struct cosmology* cosmo) {}
+    struct part* p, struct xpart* xp, const struct star_formation* cd,
+    const struct cosmology* cosmo) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -234,8 +237,7 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
-star_formation_part_has_no_neighbours(struct part* restrict p,
-                                      struct xpart* restrict xp,
+star_formation_part_has_no_neighbours(struct part* p, struct xpart* xp,
                                       const struct star_formation* cd,
                                       const struct cosmology* cosmo) {}
 
@@ -250,7 +252,7 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, const struct star_formation* data) {}
+    struct part* p, const struct star_formation* data) {}
 
 /**
  * @brief Sets the star_formation properties of the (x-)particles to a valid
@@ -266,12 +268,11 @@ __attribute__((always_inline)) INLINE static void star_formation_init_part(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void
-star_formation_first_init_part(const struct phys_const* restrict phys_const,
-                               const struct unit_system* restrict us,
-                               const struct cosmology* restrict cosmo,
+star_formation_first_init_part(const struct phys_const* phys_const,
+                               const struct unit_system* us,
+                               const struct cosmology* cosmo,
                                const struct star_formation* data,
-                               const struct part* restrict p,
-                               struct xpart* restrict xp) {
+                               const struct part* p, struct xpart* xp) {
 
   xp->sf_data.convert_to_star = 0;
 }

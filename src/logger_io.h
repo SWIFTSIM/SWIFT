@@ -65,6 +65,8 @@ struct mask_data {
   } reader;
 };
 
+void write_index_array(const struct engine* e, FILE* f, struct io_props* props,
+                       size_t n_props, size_t N);
 /**
  * @brief Initialize the mask_data with a given field.
  *
