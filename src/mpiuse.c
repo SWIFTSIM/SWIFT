@@ -327,7 +327,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
 
   /* Now check any still active logs, these are errors all should match. */
   if (mpiuse_current != 0) {
-    message("Some MPI requests have not been completed");
+    message("Some MPI requests have not been completed, %zd bytes in flight", mpiuse_current);
     for (size_t k = 0; k < log_count; k++) {
       if (mpiuse_log[k].active)
         message("%s/%s: %d->%d: %zd/%d)", taskID_names[mpiuse_log[k].type],

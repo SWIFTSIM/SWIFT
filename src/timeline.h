@@ -23,9 +23,11 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "error.h"
 #include "inline.h"
 #include "intrinsics.h"
 
+#include <limits.h>
 #include <math.h>
 #include <stdint.h>
 
@@ -59,6 +61,10 @@ __attribute__((const)) static INLINE integertime_t
 get_integer_timestep(timebin_t bin) {
 
   if (bin <= 0) return 0;
+#ifdef SWIFT_DEBUG_CHECKS
+  if ((size_t)bin > (sizeof(integertime_t) * CHAR_BIT))
+    error("Time bin exceeds limit of %zd", sizeof(integertime_t) * CHAR_BIT);
+#endif 
   return 1LL << (bin + 1);
 }
 

@@ -79,7 +79,7 @@ static int subtype_shift = 0;
  * 
  * XXX do we also need size, if so need a word twice as large.
  */
-static size_t mpicache_makekey(int rank, int subtype, int tag) {
+size_t mpicache_makekey(int rank, int subtype, int tag) {
 
   /* Compact all these values into a single size_t word. */
   size_t result = subtype | engine_rank << subtype_shift |

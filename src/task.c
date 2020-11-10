@@ -649,7 +649,7 @@ int task_lock(struct scheduler *s, struct task *t) {
           dataptr[0] = scheduler_osmpi_locked;
           dataptr[1] = t->size;
           dataptr[2] = t->flags;
-          memcpy(&dataptr[3], t->buff, t->size);
+          memcpy(&dataptr[scheduler_osmpi_header_size], t->buff, t->size);
 
           /* And send to the destination rank. XXX will not work subtype offsets
            * need to be shared around system, are just local and not fixed size
@@ -724,7 +724,7 @@ int task_lock(struct scheduler *s, struct task *t) {
                   t->cj->nodeID, t->subtype);
 
           /* And log deactivation, if logging enabled. */
-          mpiuse_log_allocation(t->type, t->subtype, t->buff, 0, 0, 0, 0);
+          mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0);
 
           free(dataptr); // XXX reuse this surely...
           return 1;
@@ -750,7 +750,7 @@ int task_lock(struct scheduler *s, struct task *t) {
            * expected node. If so accept. XXX need the scheduler and these
            * max_sizes need synchronizing... */
           scheduler_osmpi_blocktype *dataptr =
-            &s->osmpi_ptr[t->subtype][t->ci->nodeID * s->osmpi_max_size[t->subtype]];
+            &s->osmpi_ptr[t->subtype][s->osmpi_max_size[t->subtype] * t->ci->nodeID];
           if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
 
             /* Message from our remote and subtype waiting, does it match our tag
@@ -761,10 +761,10 @@ int task_lock(struct scheduler *s, struct task *t) {
                       t->ci->nodeID, t->subtype, t->flags, t->size);
 
               /* And log deactivation, if logging enabled. */
-              mpiuse_log_allocation(t->type, t->subtype, t->buff, 0, 0, 0, 0);
+              mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0);
 
               /* Ready to process. So copy to local buffers. */
-              memcpy(t->buff, &dataptr[2], t->size);
+              memcpy(t->buff, &dataptr[scheduler_osmpi_header_size], t->size);
 
               /* Ready for next recv. */
               dataptr[0] = scheduler_osmpi_locked;
@@ -783,12 +783,9 @@ int task_lock(struct scheduler *s, struct task *t) {
               /* Cache this message. */
               int result = 0;
               void *buff = calloc(1, dataptr[1]);
-              memcpy(buff, &dataptr[2], dataptr[1]);
+              memcpy(buff, &dataptr[scheduler_osmpi_header_size], dataptr[1]);
               mpicache_add(s->mpicache, t->ci->nodeID, t->subtype, dataptr[2],
                            dataptr[1], buff);
-
-              /* And log deactivation, if logging enabled. */
-              mpiuse_log_allocation(t->type, t->subtype, t->buff, 0, 0, 0, 0);
 
               /* And check for a cached message for us. */
               buff = NULL;
@@ -803,10 +800,15 @@ int task_lock(struct scheduler *s, struct task *t) {
                 memcpy(t->buff, buff, t->size);
                 result = 1;
                 free(buff);
-              } else {
-                message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
-                        t->ci->nodeID, t->subtype, t->flags, t->size);
+
+                /* And log deactivation, if logging enabled. */
+                mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0);
+
               }
+              //else {
+              //  message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
+              //          t->ci->nodeID, t->subtype, t->flags, t->size);
+              //}
 
               /* Ready for next recv. */
               dataptr[0] = scheduler_osmpi_locked;
@@ -818,6 +820,57 @@ int task_lock(struct scheduler *s, struct task *t) {
               }
 
               return result;
+            }
+          } else {
+
+            /* Check the cache. */
+            int result = 0;
+            void *buff = NULL;
+            size_t size;
+            mpicache_fetch(s->mpicache, t->ci->nodeID, t->subtype, t->flags,
+                           &size, &buff);
+            if (size != 0 && buff != NULL) {
+              message("Cache hit from %d, subtype: %d, tag: %lld, size %zd",
+                      t->ci->nodeID, t->subtype, t->flags, t->size);
+
+              /* Here we go. */
+              memcpy(t->buff, buff, t->size);
+              result = 1;
+              free(buff);
+
+              /* And log deactivation, if logging enabled. */
+              mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0);
+
+            }
+            //else {
+            //  message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
+            //          t->ci->nodeID, t->subtype, t->flags, t->size);
+            //}
+
+            /* XXX code re-use XXX Release the lock so another task can have a go. */
+            if (lock_unlock(&s->recv_lock) != 0) {
+              error("Unlocking the MPI recv lock failed.\n");
+            }
+            return result;
+          }
+
+          /* While we have the lock, look for any cachable messages from all
+           * subtypes whih we could miss if no tasks with this subtype are
+           * currently queued. (XXX active subtypes) */
+          /* Still missing messages from nodes which could have the same issue. */
+          for (int k = 0; k < task_subtype_count; k++) {
+            for (int j = 0; j < s->space->e->nr_nodes; j++) {
+              dataptr = &s->osmpi_ptr[k][s->osmpi_max_size[k] * j];
+              if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
+
+                message("Caching from %d, subtype: %d, tag: %zd, size %zd",
+                        j, k, dataptr[2], dataptr[1]);
+
+                /* Cache this message. */
+                void *buff = calloc(1, dataptr[1]);
+                memcpy(buff, &dataptr[scheduler_osmpi_header_size], dataptr[1]);
+                mpicache_add(s->mpicache, j, k, dataptr[2], dataptr[1], buff);
+              }
             }
           }
 

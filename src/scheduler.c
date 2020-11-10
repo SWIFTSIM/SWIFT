@@ -1868,6 +1868,11 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
+#ifdef WITH_MPI
+  /* Init an MPI message cache. */
+  s->mpicache = mpicache_init(s->space->e->nr_nodes);
+#endif
+
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
@@ -2000,7 +2005,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, t->buff, 1, t->size,
+        mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
                               t->ci->nodeID, t->flags);
 
         qid = 1 % s->nr_queues;
@@ -2082,7 +2087,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, t->buff, 1, t->size,
+        mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
                               t->cj->nodeID, t->flags);
 
         qid = 0;
@@ -2331,9 +2336,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 #ifdef WITH_MPI
   lock_init(&s->send_lock);
   lock_init(&s->recv_lock);
-
-  /* And the message cache (not thread safe). */
-  s->mpicache = mpicache_init(space->e->nr_nodes);
 #endif
 }
 
@@ -2554,7 +2556,7 @@ void scheduler_osmpi_init(struct scheduler *s) {
 
   for (int k = 0; k < task_subtype_count; k++) {
     s->osmpi_ptr[k] = NULL; // XXX Needs to be freed
-    s->osmpi_max_size[k] = 1024*1024*10; // XXX should be 0;
+    s->osmpi_max_size[k] = 1024*1024*100; // 100MB, surely big enough... XXX should be 0;
   }
 
 #endif

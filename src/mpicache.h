@@ -35,11 +35,11 @@ struct mpicache {
 };
 
 /* API. */
+size_t mpicache_makekey(int rank, int subtype, int tag);
 struct mpicache *mpicache_init(int nr_ranks);
 void mpicache_add(struct mpicache *cache, int rank, int subtype, int tag,
                   size_t size, void *data);
 void mpicache_fetch(struct mpicache *cache, int rank, int subtype, int tag,
                     size_t *size, void **data);
 void mpicache_destroy(struct mpicache *cache);
-
 #endif /* SWIFT_MPICACHE_H */
