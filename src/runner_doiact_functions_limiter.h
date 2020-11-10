@@ -571,7 +571,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
-#if 1  // defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
   DOPAIR1(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
@@ -813,7 +813,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
-#if 1  // defined(SWIFT_USE_NAIVE_INTERACTIONS)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF1_NAIVE(r, c, limit_min_h, limit_max_h);
 #else
   DOSELF1(r, c, limit_min_h, limit_max_h);
