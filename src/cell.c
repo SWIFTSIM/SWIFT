@@ -3967,9 +3967,7 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
     /* Self interaction? */
     if (cj == NULL) {
         /* Do anything? */
-        if (!cell_is_active_dark_matter(ci, e) || ci->dark_matter.count == 0 ||
-            ci->dark_matter.count == 0)
-            return;
+        if (!cell_is_active_dark_matter(ci, e) || ci->dark_matter.count == 0) return;
         
         /* Recurse? */
         if (cell_can_recurse_in_self_dark_matter_task(ci)) {
@@ -3986,15 +3984,15 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
         } else {
             /* We have reached the bottom of the tree: activate drift */
             cell_activate_drift_dmpart(ci, s);
+            if (with_timestep_sync) cell_activate_sync_dmpart(ci, s);
         }
     }
     
     /* Otherwise, pair interation */
     else {
         /* Should we even bother? */
-        if (!cell_is_active_dark_matter(ci, e) &&
-            !cell_is_active_dark_matter(cj, e))
-            return;
+        if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
+        if (ci->dark_matter.count == 0 || cj->dark_matter.count == 0) return;
         
         /* Get the orientation of the pair. */
         double shift[3];
@@ -4014,8 +4012,7 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
         }
         
         /* Otherwise, activate the drifts. */
-        else if (cell_is_active_dark_matter(ci, e) ||
-                 cell_is_active_dark_matter(cj, e)) {
+        else if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
             
             /* Activate the drifts if the cells are local. */
             if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
