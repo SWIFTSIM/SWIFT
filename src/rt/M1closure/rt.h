@@ -25,11 +25,16 @@
  */
 
 /**
- * @brief Update the photon number of a particle, i.e. compute
- *        E^{n+1} = E^n + dt * dE_* / dt
+ * @brief Initialisation of the RT density loop related particle data.
  */
-__attribute__((always_inline)) INLINE static void
-rt_injection_update_photon_density(struct part* restrict p) {}
+__attribute__((always_inline)) INLINE static void rt_init_part(
+    struct part* restrict p) {}
+
+/**
+ * @brief Reset of the RT extra hydro particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_part(
+    struct part* restrict p) {}
 
 /**
  * @brief First initialisation of the RT extra hydro particle data.
@@ -38,10 +43,16 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p) {}
 
 /**
- * @brief Initialisation of the RT extra hydro particle data.
+ * @brief Initialisation of the RT density loop related particle data.
  */
-__attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
+__attribute__((always_inline)) INLINE static void rt_init_spart(
+    struct spart* restrict sp) {}
+
+/**
+ * @brief Reset of the RT extra star particle data.
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_spart(
+    struct spart* restrict sp) {}
 
 /**
  * @brief First initialisation of the RT extra star particle data.
@@ -50,9 +61,25 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {}
 
 /**
- * @brief First initialisation of the RT extra star particle data.
+ * @brief Update the photon number of a particle, i.e. compute
+ *        E^{n+1} = E^n + dt * dE_* / dt
  */
-__attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
+__attribute__((always_inline)) INLINE static void
+rt_injection_update_photon_density(struct part* restrict p) {}
+
+/**
+ * @brief Compute the photon emission rates for this stellar particle
+ *        This function is called every time the spart is initialized
+ *        and assumes that the photon emission rate is an intrinsic
+ *        stellar property, i.e. doesn't depend on the environment.
+ *
+ * @param sp star particle to work on
+ * @param time current system time
+ * @param star_age age of the star *at the end of the step*
+ * @param dt star time step
+ */
+__attribute__((always_inline)) INLINE static void
+rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
+                                 double star_age, double dt) {}
 
 #endif /* SWIFT_RT_M1_H */

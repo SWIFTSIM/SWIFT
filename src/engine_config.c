@@ -35,6 +35,7 @@
 
 /* Local headers. */
 #include "fof.h"
+#include "mpiuse.h"
 #include "part.h"
 #include "proxy.h"
 #include "star_formation_logger.h"
@@ -48,6 +49,72 @@ extern int engine_max_parts_per_cooling;
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
+
+#ifdef SWIFT_DUMPER_THREAD
+/**
+ * @brief dumper thread action, checks got the existence of the .dump file
+ * every 5 seconds and does the dump if found.
+ *
+ * @param p the #engine
+ */
+static void *engine_dumper_poll(void *p) {
+  struct engine *e = (struct engine *)p;
+  while (1) {
+    if (access(".dump", F_OK) == 0) {
+
+      /* OK, do our work. */
+      message("Dumping engine tasks in step: %d", e->step);
+      task_dump_active(e);
+
+#ifdef SWIFT_MEMUSE_REPORTS
+      /* Dump the currently logged memory. */
+      message("Dumping memory use report");
+      memuse_log_dump_error(e->nodeID);
+#endif
+
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+      /* Dump the MPI interactions in the step. */
+      mpiuse_log_dump_error(e->nodeID);
+#endif
+
+      /* Add more interesting diagnostics. */
+      scheduler_dump_queues(e);
+
+      /* Delete the file. */
+      unlink(".dump");
+      message("Dumping completed");
+      fflush(stdout);
+    }
+
+    /* Take a breath. */
+    sleep(5);
+  }
+  return NULL;
+}
+#endif /* SWIFT_DUMPER_THREAD */
+
+#ifdef SWIFT_DUMPER_THREAD
+/**
+ * @brief creates the dumper thread.
+ *
+ * This watches for the creation of a ".dump" file in the current directory
+ * and if found dumps the current state of the tasks and memory use (if also
+ * configured).
+ *
+ * @param e the #engine
+ *
+ */
+static void engine_dumper_init(struct engine *e) {
+  pthread_t dumper;
+
+  /* Make sure the .dump file is not present, that is bad when starting up. */
+  struct stat buf;
+  if (stat(".dump", &buf) == 0) unlink(".dump");
+
+  /* Thread does not exit, so nothing to do but create it. */
+  pthread_create(&dumper, NULL, &engine_dumper_poll, e);
+}
+#endif /* SWIFT_DUMPER_THREAD */
 
 /**
  * @brief configure an engine with the given number of threads, queues
@@ -496,7 +563,7 @@ void engine_config(int restart, int fof, struct engine *e,
     if ((e->policy & engine_policy_logger) && e->nodeID == 0)
       message(
           "WARNING: There is currently no way of predicting the output "
-          "size, please use it carefully");
+          "size, please use the logger carefully");
 #endif
 
     /* Find the time of the first snapshot output */

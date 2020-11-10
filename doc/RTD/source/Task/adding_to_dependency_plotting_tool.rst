@@ -21,14 +21,19 @@ need to modify the ``tools/plot_task_dependencies.py`` script.
 Colouring in the Task Nodes
 ---------------------------
 
-First, the script needs to identify the task types with which it is working.
+First, decide on a colour. If you want to use the same colour as already existing
+task types, find its key in the ``task_colours`` dict, which is defined at the 
+top of the file. If you want to add a new colour, add it to the ``task_colours``
+dict with a new key.
+
+Then the script needs to identify the task types with which it is working.
 To do so, it will check the task names, which are generated following the scheme
 ``taskname_subtaskname``, where ``taskname`` is defined in ``taskID_names`` and
 ``subtasknbame`` is defined in ``subtaskID_names`` in ``task.c``. In 
 ``tools/plot_task_dependencies.py``, you'll have to write a function that recognizes your 
 task by its name, like is done for example for gravity::
 
-    def taskIsGravity(name):
+    def task_is_gravity(name):
         """
         Does the task concern the gravity?
 
@@ -44,10 +49,10 @@ task by its name, like is done for example for gravity::
             return True
     return False
 
-and add the check to the function ``writeTask()``::
+You'll need to add the check to the function ``get_task_colour()``::
 
     if taskIsGravity(name):
-        txt += "color=red3,"
+        colour = task_colours["gravity"]
 
 Feel free to pick out a `nice color <http://graphviz.org/doc/info/colors.html>`_ for it :)
 

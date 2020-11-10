@@ -152,7 +152,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 38;
+  *num_fields = 42;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -374,25 +374,59 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "simulation has been run without prescribed repositioning speed.");
 
   list[34] = io_make_output_field(
+      "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      AGN_number_of_energy_injections,
+      "Integer number of (thermal) energy injections the black hole has had "
+      "so far");
+
+  list[35] = io_make_output_field(
+      "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      AGN_number_of_AGN_events,
+      "Integer number of AGN events the black hole has had so far"
+      " (the number of times the BH did AGN feedback)");
+
+  if (with_cosmology) {
+    list[36] = io_make_output_field(
+        "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+        bparts, last_AGN_event_scale_factor,
+        "Scale-factors at which the black holes last had an AGN event.");
+  } else {
+    list[36] = io_make_output_field(
+        "LastAGNFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        last_AGN_event_time,
+        "Times at which the black holes last had an AGN event.");
+  }
+
+  list[37] = io_make_output_field(
+      "AccretionLimitedTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+      dt_heat, "Accretion-limited time-steps of black holes.");
+
+  list[38] = io_make_output_field(
+      "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
+      AGN_cumulative_energy,
+      "Total (cumulative) physical energies injected into gas particles "
+      "in AGN feedback.");
+
+  list[39] = io_make_output_field(
       "AccretionBoostFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       accretion_boost_factor,
       "Multiplicative factors by which the Bondi-Hoyle-Lyttleton accretion "
       "rates have been increased by the density-dependent Booth & Schaye "
       "(2009) accretion model.");
 
-  list[35] = io_make_output_field_convert_bpart(
+  list[40] = io_make_output_field_convert_bpart(
       "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
       convert_bpart_gas_temperatures,
       "Temperature of the gas surrounding the black holes.");
 
-  list[36] = io_make_output_field(
+  list[41] = io_make_output_field(
       "EnergyReservoirThresholds", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       num_ngbs_to_heat,
       "Minimum energy reservoir required for the black holes to do feedback, "
       "expressed in units of the (constant) target heating temperature "
       "increase.");
 
-  list[37] = io_make_output_field(
+  list[42] = io_make_output_field(
       "EddingtonFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       eddington_fraction,
       "Accretion rates of black holes in units of their Eddington rates. "

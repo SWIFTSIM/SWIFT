@@ -38,7 +38,7 @@
  */
 __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
     const struct bpart* const bp, const struct black_holes_props* props,
-    const struct phys_const* constants) {
+    const struct phys_const* constants, const struct cosmology* cosmo) {
 
   return FLT_MAX;
 }
@@ -224,7 +224,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     const struct phys_const* constants, const struct cosmology* cosmo,
     const struct cooling_function_data* cooling,
     const struct entropy_floor_properties* floor_props, const double time,
-    const int with_cosmology, const double dt) {}
+    const int with_cosmology, const double dt, const integertime_t ti_begin) {}
 
 /**
  * @brief Finish the calculation of the new BH position.

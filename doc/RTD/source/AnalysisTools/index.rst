@@ -12,7 +12,7 @@ Task dependencies
 
 At the beginning of each simulation the file ``dependency_graph.csv`` is generated and can be transformed into a ``dot`` and a ``png`` file with the script ``tools/plot_task_dependencies.py``.
 It requires the ``dot`` package that is available in the library graphviz.
-This script has also the possibility to generate a list of function calls for each task with the option ``--with-calls`` (this list may be incomplete).
+This script has also the possibility to generate a list of function calls for each task with the option ``--with-calls`` (this list may be incomplete) and to describe at which level each task are run ``--with-levels`` (a larger simulation will provide more accurate levels).
 You can convert the ``dot`` file into a ``png`` with the following command
 ``dot -Tpng dependency_graph.dot -o dependency_graph.png`` or directly read it with the python module ``xdot`` with ``python -m xdot dependency_graph.dot``.
 

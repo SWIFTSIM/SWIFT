@@ -984,7 +984,8 @@ void engine_redistribute(struct engine *e) {
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
 #ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
+  const int initial_redistribute = e->ti_current == 0;
+  if (!initial_redistribute && e->policy & engine_policy_logger) {
     /* Log the particles before sending them out */
     size_t part_offset = 0;
     size_t spart_offset = 0;
@@ -1002,19 +1003,19 @@ void engine_redistribute(struct engine *e) {
         bpart_offset += b_counts[c_ind];
         continue;
       }
-      const uint32_t flag = logger_pack_flags_and_data(logger_flag_mpi_exit, i);
 
       /* Log the hydro parts. */
       logger_log_parts(e->logger, &parts[part_offset], &xparts[part_offset],
-                       counts[c_ind], e, /* log_all_fields */ 1, flag);
+                       counts[c_ind], e, /* log_all_fields */ 1,
+                       logger_flag_mpi_exit, i);
 
       /* Log the stellar parts. */
       logger_log_sparts(e->logger, &sparts[spart_offset], s_counts[c_ind], e,
-                        /* log_all_fields */ 1, flag);
+                        /* log_all_fields */ 1, logger_flag_mpi_exit, i);
 
       /* Log the gparts */
       logger_log_gparts(e->logger, &gparts[gpart_offset], g_counts[c_ind], e,
-                        /* log_all_fields */ 1, flag);
+                        /* log_all_fields */ 1, logger_flag_mpi_exit, i);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
@@ -1083,7 +1084,7 @@ void engine_redistribute(struct engine *e) {
      stuff we just received */
 
 #ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
+  if (!initial_redistribute && e->policy & engine_policy_logger) {
     size_t part_offset = 0;
     size_t spart_offset = 0;
     size_t gpart_offset = 0;
@@ -1101,21 +1102,18 @@ void engine_redistribute(struct engine *e) {
         continue;
       }
 
-      const uint32_t flag =
-          logger_pack_flags_and_data(logger_flag_mpi_enter, i);
-
       /* Log the hydro parts. */
       logger_log_parts(e->logger, &s->parts[part_offset],
                        &s->xparts[part_offset], counts[c_ind], e,
-                       /* log_all_fields */ 1, flag);
+                       /* log_all_fields */ 1, logger_flag_mpi_enter, i);
 
       /* Log the stellar parts. */
       logger_log_sparts(e->logger, &s->sparts[spart_offset], s_counts[c_ind], e,
-                        /* log_all_fields */ 1, flag);
+                        /* log_all_fields */ 1, logger_flag_mpi_enter, i);
 
       /* Log the gparts */
       logger_log_gparts(e->logger, &s->gparts[gpart_offset], g_counts[c_ind], e,
-                        /* log_all_fields */ 1, flag);
+                        /* log_all_fields */ 1, logger_flag_mpi_enter, i);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
