@@ -2711,6 +2711,12 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   parser_get_opt_param_string(params, "Snapshots:subdir", e->snapshot_subdir,
                               engine_default_snapshot_subdir);
+  e->snapshot_run_on_dump =
+      parser_get_opt_param_int(params, "Snapshots:run_on_dump", 0);
+  if (e->snapshot_run_on_dump) {
+    parser_get_param_string(params, "Snapshots:dump_command",
+                            e->snapshot_dump_command);
+  }
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_distributed =
