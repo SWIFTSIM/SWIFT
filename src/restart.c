@@ -358,5 +358,7 @@ void restart_resubmit(const char *command) {
 
   /* Let's trust the user's command... */
   const int result = system(command);
-  if (result != 0) message("Command returned error code %d", result);
+  if (result != 0) {
+    message("Restart resubmit command returned error code %d", result);
+  }
 }
