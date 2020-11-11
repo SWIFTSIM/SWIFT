@@ -149,10 +149,7 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
     if (chunk_size < 1) chunk_size = 1;
 
     /* A chunk cannot exceed INT_MAX, as we use int elements in map_function. */
-    if (chunk_size > INT_MAX) {
-       chunk_size = INT_MAX;
-.       message("chunking down to INT_MAX");
-    }
+    if (chunk_size > INT_MAX) chunk_size = INT_MAX;
 
     /* Get a chunk and check its size. */
     size_t task_ind = atomic_add(&tp->map_data_count, chunk_size);
