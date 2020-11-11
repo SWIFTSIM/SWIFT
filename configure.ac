@@ -1306,6 +1306,38 @@ if test "$enable_velociraptor_orphans" = "yes"; then
    AC_DEFINE([HAVE_VELOCIRAPTOR_ORPHANS], 1, [Orphan particles should be written out])
 fi
 
+# Check for HBT
+have_hbt="no"
+AC_ARG_WITH([hbt],
+    [AS_HELP_STRING([--with-hbt=PATH],
+       [Directory where HBT library and header exist @<:@yes/no@:>@]
+    )],
+    [with_hbt="$withval"],
+    [with_hbt="no"]
+)
+if test "x$with_hbt" != "xno"; then
+   if test "x$with_hbt" != "xyes" -a "x$with_hbt" != "x"; then
+      HBT_LIBS="-L$with_hbt -lHBT -lmpi -lstdc++ -lhdf5"
+      HBT_CPPFLAGS="-I$with_hbt"
+      CFLAGS="$CFLAGS ${OPENMP_CFLAGS}"
+   else
+      HBT_LIBS=""
+      HBT_CPPFLAGS=""
+   fi
+
+   have_hbt="yes"
+   AC_CHECK_LIB(
+      [HBT],
+      [hbt_init],
+      [AC_DEFINE([HAVE_HBT],1,[The HBT library appears to be present.])],
+      [AC_MSG_ERROR(Cannot find HBT library at $with_hbt or incompatible HDF5 library loaded.)],
+      [$HBT_LIBS $HDF5_LDFLAGS $HDF5_LIBS]
+   )
+fi
+AC_SUBST([HBT_LIBS])
+AC_SUBST([HBT_CPPFLAGS])
+AM_CONDITIONAL([HAVEHBT],[test -n "$HBT_LIBS"])
+
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],
     [Defined if the floating-point exception can be enabled using non-standard GNU functions.]))
@@ -2418,6 +2450,7 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
+   HBT enabled          : $have_hbt
    FoF activated:       : $enable_fof
 
    Hydro scheme       : $with_hydro
