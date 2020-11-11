@@ -156,6 +156,9 @@ Snapshots:
   output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   select_output_on:    0  # (Optional) Enable the output selection behaviour
   select_output:       selectoutput.yml # (Optional) File containing information to select outputs with (see documentation in the "Output Selection" section)
+  run_on_dump:         0 # (Optional) Run the dump_command each time that a snapshot is dumped?
+  dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
+  
 
 # Parameters governing the logger snapshot system
 Logger:
