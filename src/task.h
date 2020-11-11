@@ -173,6 +173,7 @@ enum task_categories {
   task_category_cooling,
   task_category_star_formation,
   task_category_limiter,
+  task_category_sync,
   task_category_time_integration,
   task_category_mpi,
   task_category_fof,

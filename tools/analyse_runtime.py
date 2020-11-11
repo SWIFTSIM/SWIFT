@@ -152,6 +152,7 @@ tasks = [
     "cooling",
     "star formation",
     "limiter",
+    "sync",
     "time integration",
     "mpi",
     "fof",
