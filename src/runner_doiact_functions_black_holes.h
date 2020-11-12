@@ -654,7 +654,8 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c,
+		       const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -665,10 +666,18 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
   if (!cell_is_active_black_holes(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->black_holes.h_max_old * kernel_gamma > c->dmin)
+  if (!limit_max_h && c->black_holes.h_max_active * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
-  DOSELF1_BH(r, c, 1);
+  /* Did we mess up the recursion? */
+  if (limit_min_h && !limit_max_h)
+    error("Fundamental error in the recursion logic");
+
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(c, e) || !cell_are_bpart_drifted(c, e))
+    error("Interacting undrifted cell.");
+
+  DOSELF1_BH(r, c, limit_min_h, limit_max_h);
 }
 
 /**
@@ -681,7 +690,8 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj,
+		       const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -718,7 +728,7 @@ void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
     error("Interacting undrifted cells.");
 
   /* No sorted intreactions here -> use the naive ones */
-  DOPAIR1_BH_NAIVE(r, ci, cj, 1);
+  DOPAIR1_BH_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 }
 
 /**
