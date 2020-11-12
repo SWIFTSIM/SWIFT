@@ -88,6 +88,8 @@ extern int space_recurse_size_self_hydro;
 extern int space_recurse_size_pair_hydro;
 extern int space_recurse_size_self_stars;
 extern int space_recurse_size_pair_stars;
+extern int space_recurse_size_self_black_holes;
+extern int space_recurse_size_pair_black_holes;
 
 /**
  * @brief The space in which the cells and particles reside.

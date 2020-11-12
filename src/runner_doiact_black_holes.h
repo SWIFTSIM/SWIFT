@@ -86,12 +86,12 @@
 #define IACT_BH_BH _IACT_BH_BH(FUNCTION)
 
 void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c, const int limit_min,
-		       const int limit_max);
+                       const int limit_max);
 void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj,
-		       const int limit_min, const int limit_max);
+                       const int limit_min, const int limit_max);
 
 void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int recurse_below_h_max,
-		    const int gettimer);
+                    const int gettimer);
 void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
                     int recurse_below_h_max, const int gettimer);
 
@@ -99,9 +99,8 @@ void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, const struct cell *restrict ci,
                               struct bpart *restrict bparts, int *restrict ind,
                               const int bcount);
 void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts_i,
-                              const int *ind, int const bcount,
-                              struct cell *restrict cj);
+                              struct bpart *restrict bparts_i, const int *ind,
+                              int const bcount, struct cell *restrict cj);
 
 void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
                      int *ind, const int bcount, struct cell *cj, int gettimer);

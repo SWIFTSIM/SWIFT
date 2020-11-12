@@ -33,7 +33,8 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_BH(struct runner *r, struct cell *c, const int limit_min_h,
+                const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -46,15 +47,15 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
-  /* Anything to do here? */
-  if (c->black_holes.count == 0) return;
-  if (!cell_is_active_black_holes(c, e)) return;
-
   const int bcount = c->black_holes.count;
   const int count = c->hydro.count;
   struct bpart *restrict bparts = c->black_holes.parts;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Do we actually have any gas neighbours? */
   if (c->hydro.count != 0) {
@@ -64,12 +65,16 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
       /* Get a hold of the ith bpart in ci. */
       struct bpart *restrict bi = &bparts[bid];
+      const float hi = bi->h;
+      const float hig2 = hi * hi * kernel_gamma2;
 
       /* Skip inactive particles */
       if (!bpart_is_active(bi, e)) continue;
 
-      const float hi = bi->h;
-      const float hig2 = hi * hi * kernel_gamma2;
+      /* Skip particles not in the range of h we care about */
+      if (hi >= h_max) continue;
+      if (hi < h_min) continue;
+
       const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
                             (float)(bi->x[1] - c->loc[1]),
                             (float)(bi->x[2] - c->loc[2])};
@@ -89,7 +94,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
         const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                               (float)(pj->x[1] - c->loc[1]),
                               (float)(pj->x[2] - c->loc[2])};
-        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -118,12 +123,16 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
     /* Get a hold of the ith bpart in ci. */
     struct bpart *restrict bi = &bparts[bid];
+    const float hi = bi->h;
+    const float hig2 = hi * hi * kernel_gamma2;
 
     /* Skip inactive particles */
     if (!bpart_is_active(bi, e)) continue;
 
-    const float hi = bi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    /* Skip particles not in the range of h we care about */
+    if (hi >= h_max) continue;
+    if (hi < h_min) continue;
+
     const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
                           (float)(bi->x[1] - c->loc[1]),
                           (float)(bi->x[2] - c->loc[2])};
@@ -176,7 +185,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
  * @param cj The second #cell
  */
 void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
-                              struct cell *restrict cj) {
+                              struct cell *restrict cj, const int limit_min_h,
+                              const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -210,6 +220,10 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Do we actually have any gas neighbours? */
   if (cj->hydro.count != 0) {
 
@@ -228,6 +242,15 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
                             (float)(bi->x[1] - (cj->loc[1] + shift[1])),
                             (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (hi > ci->black_holes.h_max_active)
+        error("Particle has h larger than h_max_active");
+#endif
+
+      /* Skip particles not in the range of h we care about */
+      if (hi >= h_max) continue;
+      if (hi < h_min) continue;
+
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j; pjd++) {
 
@@ -243,7 +266,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
         const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                               (float)(pj->x[1] - cj->loc[1]),
                               (float)(pj->x[2] - cj->loc[2])};
-        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -285,6 +308,10 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
                           (float)(bi->x[1] - (cj->loc[1] + shift[1])),
                           (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
 
+    /* Skip particles not in the range of h we care about */
+    if (hi >= h_max) continue;
+    if (hi < h_min) continue;
+
     /* Loop over the bparts in cj. */
     for (int bjd = 0; bjd < bcount_j; bjd++) {
 
@@ -299,7 +326,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float bjx[3] = {(float)(bj->x[0] - cj->loc[0]),
                             (float)(bj->x[1] - cj->loc[1]),
                             (float)(bj->x[2] - cj->loc[2])};
-      float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
+      const float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -321,7 +348,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 }
 
 void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
-                      struct cell *restrict cj, int timer) {
+                      struct cell *restrict cj, const int limit_min_h,
+                      const int limit_max_h) {
 
   TIMER_TIC;
 
@@ -338,11 +366,13 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const int do_cj_bh = 1;
 #endif
 
-  if (do_ci_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj);
-  if (do_cj_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci);
+  if (do_ci_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
+  if (do_cj_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
 
   TIMER_TOC(TIMER_DOPAIR_BH);
 }
+
+#if 0
 
 /**
  * @brief Compute the interactions between a cell pair, but only for the
@@ -646,6 +676,8 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
   } /* otherwise, pair interaction. */
 }
 
+#endif
+
 /**
  * @brief Determine which version of DOSELF1_BH needs to be called depending
  * on the optimisation level.
@@ -654,8 +686,8 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c,
-		       const int limit_min_h, const int limit_max_h) {
+void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c, const int limit_min_h,
+                       const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -691,7 +723,7 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c,
  *
  */
 void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj,
-		       const int limit_min_h, const int limit_max_h) {
+                       const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -743,12 +775,16 @@ void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj,
  * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
-                    int gettimer) {
+                    int recurse_below_h_max, const int gettimer) {
 
   TIMER_TIC;
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
+
+  /* Get the type of pair and flip ci/cj if needed. */
+  double shift[3];
+  const int sid = space_getsid(s, &ci, &cj, shift);
 
   /* Should we even bother?
    * In the swallow case we care about BH-BH and BH-gas
@@ -756,78 +792,65 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
    * In all other cases only BH-gas so we can abort if there is
    * is no gas in the cell */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-  const int should_do_ci =
+  const int do_ci =
       ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
-  const int should_do_cj =
+  const int do_cj =
       cj->black_holes.count != 0 && cell_is_active_black_holes(cj, e);
 #else
-  const int should_do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
-                           cell_is_active_black_holes(ci, e);
-  const int should_do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_black_holes(cj, e);
+  const int do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
+                    cell_is_active_black_holes(ci, e);
+  const int do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
+                    cell_is_active_black_holes(cj, e);
 
 #endif
 
-  if (!should_do_ci && !should_do_cj) return;
+  if (!do_ci && !do_cj) return;
 
-  /* Get the type of pair and flip ci/cj if needed. */
-  double shift[3];
-  const int sid = space_getsid(s, &ci, &cj, shift);
+  /* We reached a leaf OR a cell small enough to be processed quickly */
+  if (!ci->split ||
+      ci->black_holes.count < space_recurse_size_pair_black_holes ||
+      !cj->split ||
+      cj->black_holes.count < space_recurse_size_pair_black_holes) {
 
-  /* Recurse? */
-  if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
-      cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOPAIR1_BRANCH_BH(r, ci, cj, /*limit_h_min=*/0,
+                      /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Both ci and cj are split */
+
+    /* Should we change the recursion regime because we encountered a large
+       particle? */
+    if (!recurse_below_h_max &&
+        (!cell_can_recurse_in_pair_black_holes_task1(ci) ||
+         !cell_can_recurse_in_pair_black_holes_task1(cj))) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOPAIR1_BRANCH_BH(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    const struct cell_split_pair *const csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
-      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_BH(r, ci->progeny[pid], cj->progeny[pjd], 0);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
+        DOSUB_PAIR1_BH(r, ci->progeny[pid], cj->progeny[pjd],
+                       recurse_below_h_max,
+                       /*gettimer=*/0);
+      }
     }
-  }
-
-  /* Otherwise, compute the pair directly. */
-  else {
-
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-    const int do_ci_bh = ci->nodeID == e->nodeID;
-    const int do_cj_bh = cj->nodeID == e->nodeID;
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-    /* Here we are updating the hydro -> switch ci, cj */
-    const int do_ci_bh = cj->nodeID == e->nodeID;
-    const int do_cj_bh = ci->nodeID == e->nodeID;
-#else
-    /* Here we perform the task on both sides */
-    const int do_ci_bh = 1;
-    const int do_cj_bh = 1;
-#endif
-
-    const int do_ci = ci->black_holes.count != 0 &&
-                      cell_is_active_black_holes(ci, e) && do_ci_bh;
-    const int do_cj = cj->black_holes.count != 0 &&
-                      cell_is_active_black_holes(cj, e) && do_cj_bh;
-
-    if (do_ci) {
-
-      /* Make sure both cells are drifted to the current timestep. */
-      if (!cell_are_bpart_drifted(ci, e))
-        error("Interacting undrifted cells (bparts).");
-
-      if (cj->hydro.count != 0 && !cell_are_part_drifted(cj, e))
-        error("Interacting undrifted cells (parts).");
-    }
-
-    if (do_cj) {
-
-      /* Make sure both cells are drifted to the current timestep. */
-      if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
-        error("Interacting undrifted cells (parts).");
-
-      if (!cell_are_bpart_drifted(cj, e))
-        error("Interacting undrifted cells (bparts).");
-    }
-
-    if (do_ci || do_cj) DOPAIR1_BRANCH_BH(r, ci, cj);
   }
 
   TIMER_TOC(TIMER_DOSUB_PAIR_BH);
@@ -840,14 +863,15 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF1_BH(struct runner *r, struct cell *c, int recurse_below_h_max,
+                    const int gettimer) {
 
   TIMER_TIC;
 
   const struct engine *e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->nodeID != engine_rank)
+  if (c->nodeID != engine_rank)
     error("This function should not be called on foreign cells");
 #endif
 
@@ -857,38 +881,58 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
      * In all other cases only BH-gas so we can abort if there is
      * is no gas in the cell */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-  const int should_do_ci =
-      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
+  const int do_ci =
+      c->black_holes.count != 0 && cell_is_active_black_holes(c, e);
 #else
-  const int should_do_ci = ci->black_holes.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_black_holes(ci, e);
+  const int do_ci = c->black_holes.count != 0 && c->hydro.count != 0 &&
+                    cell_is_active_black_holes(c, e);
 #endif
 
-  if (!should_do_ci) return;
+  if (!do_ci) return;
 
-  /* Recurse? */
-  if (cell_can_recurse_in_self_black_holes_task(ci)) {
+  /* We reached a leaf OR a cell small enough to process quickly */
+  if (!c->split || c->black_holes.count < space_recurse_size_self_black_holes) {
 
-    /* Loop over all progeny. */
-    for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL) {
-        DOSUB_SELF1_BH(r, ci->progeny[k], 0);
-        for (int j = k + 1; j < 8; j++)
-          if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1_BH(r, ci->progeny[k], ci->progeny[j], 0);
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOSELF1_BRANCH_BH(r, c, /*limit_h_min=*/0,
+                      /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Should we change the recursion regime because we encountered a large
+       particle at this level? */
+    if (!recurse_below_h_max &&
+        !cell_can_recurse_in_self_black_holes_task1(c)) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOSELF1_BRANCH_BH(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        DOSUB_SELF1_BH(r, c->progeny[k], recurse_below_h_max,
+                       /*gettimer=*/0);
+        for (int j = k + 1; j < 8; j++) {
+          if (c->progeny[j] != NULL) {
+            DOSUB_PAIR1_BH(r, c->progeny[k], c->progeny[j], recurse_below_h_max,
+                           /*gettimer=*/0);
+          }
+        }
       }
-  }
-
-  /* Otherwise, compute self-interaction. */
-  else {
-
-    /* Check we did drift to the current time */
-    if (!cell_are_bpart_drifted(ci, e)) error("Interacting undrifted cell.");
-
-    if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
-      error("Interacting undrifted cells (bparts).");
-
-    DOSELF1_BRANCH_BH(r, ci);
+    }
   }
 
   TIMER_TOC(TIMER_DOSUB_SELF_BH);
