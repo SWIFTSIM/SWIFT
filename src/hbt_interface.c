@@ -41,6 +41,9 @@
 #ifdef HAVE_HBT
 #include "libHBT.h"
 
+#ifndef WITH_FOF
+#error Compiling with HBT requires FoF to be enabled
+#endif
 
 /* Data needed by the hbt_get_particle function */
 struct hbt_particle_data
@@ -151,6 +154,11 @@ void hbt_get_particle(const void *data, const size_t index, HBTInt *fofid,
  * @brief Initialise HBT library
  */
 void hbt_init(struct engine *e) {
+
+  /* Currently we need MPI to use HBT */
+#ifndef WITH_MPI
+  error("HBT can only be used with MPI");
+#endif
 
   /* Internal SWIFT units */
   const struct unit_system *swift_us = e->internal_units;

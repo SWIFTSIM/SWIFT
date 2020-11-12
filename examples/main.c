@@ -415,6 +415,11 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  if(with_hbt && !with_fof) {
+    printf("Error: running with --hbt requires --fof");
+    return 1;
+  }
+
 #ifndef SWIFT_DEBUG_TASKS
   if (dump_tasks) {
     if (myrank == 0) {

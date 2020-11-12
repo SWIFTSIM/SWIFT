@@ -35,6 +35,7 @@
 
 /* Local headers. */
 #include "fof.h"
+#include "hbt_interface.h"
 #include "mpiuse.h"
 #include "part.h"
 #include "proxy.h"
@@ -807,6 +808,11 @@ void engine_config(int restart, int fof, struct engine *e,
   /* Initialise the structure finder */
 #ifdef HAVE_VELOCIRAPTOR
   if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
+#endif
+
+  /* Initialise HBT */
+#ifdef HAVE_HBT
+  if (e->policy & engine_policy_hbt) hbt_init(e);
 #endif
 
     /* Free the affinity stuff */

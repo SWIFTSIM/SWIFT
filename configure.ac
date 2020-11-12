@@ -1626,6 +1626,13 @@ if test "$enable_fof" = "yes"; then
    AC_DEFINE([WITH_FOF], 1, [Enable FoF])
 fi
 
+# Check we don't have HBT without FOF
+if test "$have_hbt" = "yes"; then
+   if test "$enable_fof" != "yes"; then
+      AC_MSG_ERROR([HBT requires FoF to be enabled])
+   fi
+fi
+
 # Check if stand-alone FoF is on.
 AC_ARG_ENABLE([stand-alone-fof],
    [AS_HELP_STRING([--enable-stand-alone-fof],

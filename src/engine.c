@@ -68,6 +68,7 @@
 #include "fof.h"
 #include "gravity.h"
 #include "gravity_cache.h"
+#include "hbt_interface.h"
 #include "hydro.h"
 #include "line_of_sight.h"
 #include "logger.h"
@@ -3145,6 +3146,11 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
       fclose(e->sfh_logger);
     }
   }
+
+  /* Free HBT resources */
+#ifdef HAVE_HBT
+  if(e->policy & engine_policy_hbt)hbt_free();
+#endif
 
   /* If the run was restarted, we should also free the memory allocated
      in engine_struct_restore() */
