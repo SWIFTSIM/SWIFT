@@ -186,7 +186,7 @@ void hbt_init(struct engine *e) {
  * @param output_nr Index of the current output
  *
  */
-void hbt_invoke(struct engine *e, int output_nr) {
+void hbt_invoke(struct engine *e, const int output_nr) {
 
   /* Find the particle data */
   const struct space *s = e->s;
