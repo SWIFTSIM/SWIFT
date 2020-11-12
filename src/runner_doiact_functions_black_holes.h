@@ -539,6 +539,8 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
   }   /* loop over the parts in ci. */
 }
 
+#endif
+
 /**
  * @brief Determine which version of DOSELF1_SUBSET_BH needs to be called
  * depending on the optimisation level.
@@ -550,10 +552,10 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
  * @param bcount The number of particles in @c ind.
  */
 void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts, int *restrict ind,
+                              struct bpart *restrict bparts, const int *ind,
                               const int bcount) {
 
-  DOSELF1_SUBSET_BH(r, ci, bparts, ind, bcount);
+  //DOSELF1_SUBSET_BH(r, ci, bparts, ind, bcount);
 }
 
 /**
@@ -569,114 +571,26 @@ void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  */
 void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts_i,
-                              int *restrict ind, int const bcount,
+                              struct bpart *bparts_i,
+                              const int *ind, int const bcount,
                               struct cell *restrict cj) {
 
-  const struct engine *e = r->e;
+  /* const struct engine *e = r->e; */
 
-  /* Anything to do here? */
-  if (cj->hydro.count == 0) return;
+  /* /\* Anything to do here? *\/ */
+  /* if (cj->hydro.count == 0) return; */
 
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  for (int k = 0; k < 3; k++) {
-    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-      shift[k] = e->s->dim[k];
-    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-      shift[k] = -e->s->dim[k];
-  }
+  /* /\* Get the relative distance between the pairs, wrapping. *\/ */
+  /* double shift[3] = {0.0, 0.0, 0.0}; */
+  /* for (int k = 0; k < 3; k++) { */
+  /*   if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2) */
+  /*     shift[k] = e->s->dim[k]; */
+  /*   else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2) */
+  /*     shift[k] = -e->s->dim[k]; */
+  /* } */
 
-  DOPAIR1_SUBSET_BH_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift);
+  /* DOPAIR1_SUBSET_BH_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift); */
 }
-
-void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
-                     int *ind, const int bcount, struct cell *cj,
-                     int gettimer) {
-
-  const struct engine *e = r->e;
-  struct space *s = e->s;
-
-  /* Should we even bother? */
-  if (!cell_is_active_black_holes(ci, e) &&
-      (cj == NULL || !cell_is_active_black_holes(cj, e)))
-    return;
-
-  /* Find out in which sub-cell of ci the parts are. */
-  struct cell *sub = NULL;
-  if (ci->split) {
-    for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] != NULL) {
-        if (&bparts[ind[0]] >= &ci->progeny[k]->black_holes.parts[0] &&
-            &bparts[ind[0]] <
-                &ci->progeny[k]
-                     ->black_holes.parts[ci->progeny[k]->black_holes.count]) {
-          sub = ci->progeny[k];
-          break;
-        }
-      }
-    }
-  }
-
-  /* Is this a single cell? */
-  if (cj == NULL) {
-
-    /* Recurse? */
-    if (cell_can_recurse_in_self_black_holes_task(ci)) {
-
-      /* Loop over all progeny. */
-      DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, NULL, 0);
-      for (int j = 0; j < 8; j++)
-        if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, ci->progeny[j], 0);
-
-    }
-
-    /* Otherwise, compute self-interaction. */
-    else
-      DOSELF1_SUBSET_BRANCH_BH(r, ci, bparts, ind, bcount);
-  } /* self-interaction. */
-
-  /* Otherwise, it's a pair interaction. */
-  else {
-
-    /* Recurse? */
-    if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
-        cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
-
-      /* Get the type of pair and flip ci/cj if needed. */
-      double shift[3] = {0.0, 0.0, 0.0};
-      const int sid = space_getsid(s, &ci, &cj, shift);
-
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
-      for (int k = 0; k < csp->count; k++) {
-        const int pid = csp->pairs[k].pid;
-        const int pjd = csp->pairs[k].pjd;
-        if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET_BH(r, ci->progeny[pid], bparts, ind, bcount,
-                          cj->progeny[pjd], 0);
-        if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET_BH(r, cj->progeny[pjd], bparts, ind, bcount,
-                          ci->progeny[pid], 0);
-      }
-    }
-
-    /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_black_holes(ci, e) && cj->hydro.count > 0) {
-
-      /* Do any of the cells need to be drifted first? */
-      if (cell_is_active_black_holes(ci, e)) {
-        if (!cell_are_bpart_drifted(ci, e)) error("Cell should be drifted!");
-        if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
-      }
-
-      DOPAIR1_SUBSET_BRANCH_BH(r, ci, bparts, ind, bcount, cj);
-    }
-
-  } /* otherwise, pair interaction. */
-}
-
-#endif
 
 /**
  * @brief Determine which version of DOSELF1_BH needs to be called depending
@@ -936,4 +850,106 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *c, int recurse_below_h_max,
   }
 
   TIMER_TOC(TIMER_DOSUB_SELF_BH);
+}
+
+
+struct cell *FIND_SUB_BH(const struct cell *const ci,
+			 const struct bpart *const bparts, const int *ind) {
+
+  /* Find out in which sub-cell of ci the parts are. */
+  struct cell *sub = NULL;
+  if (ci->split) {
+    for (int k = 0; k < 8; k++) {
+      if (ci->progeny[k] != NULL) {
+        if (&bparts[ind[0]] >= &ci->progeny[k]->black_holes.parts[0] &&
+            &bparts[ind[0]] <
+                &ci->progeny[k]->black_holes.parts[ci->progeny[k]->black_holes.count]) {
+          sub = ci->progeny[k];
+          break;
+        }
+      }
+    }
+  }
+
+  return sub;
+}
+
+
+void DOSUB_PAIR_SUBSET_BH(struct runner *r, struct cell *ci,
+                             struct bpart *bparts, const int *ind,
+                             const int bcount, struct cell *cj,
+                             const int gettimer) {
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+
+  TIMER_TIC;
+
+  /* Should we even bother? */
+  if (ci->black_holes.count == 0 || cj->hydro.count == 0) return;
+  if (!cell_is_active_black_holes(ci, e)) return;
+
+  /* Recurse? */
+  if (ci->split && cell_can_recurse_in_pair_black_holes_task1(ci) && cj->split &&
+      cell_can_recurse_in_pair_black_holes_task1(cj)) {
+
+    /* Find in which sub-cell of ci the particles are */
+    struct cell *const sub = FIND_SUB_BH(ci, bparts, ind);
+
+    /* Get the type of pair and flip ci/cj if needed. */
+    double shift[3];
+    const int sid = space_getsid(s, &ci, &cj, shift);
+
+    struct cell_split_pair *cbp = &cell_split_pairs[sid];
+    for (int k = 0; k < cbp->count; k++) {
+      const int pid = cbp->pairs[k].pid;
+      const int pjd = cbp->pairs[k].pjd;
+      if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
+        DOSUB_PAIR_SUBSET_BH(r, ci->progeny[pid], bparts, ind, bcount,
+                                cj->progeny[pjd], /*gettimer=*/0);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
+        DOSUB_PAIR_SUBSET_BH(r, cj->progeny[pjd], bparts, ind, bcount,
+                                ci->progeny[pid], /*gettimer=*/0);
+    }
+  }
+
+  /* Otherwise, compute the pair directly. */
+  else if (cell_is_active_black_holes(ci, e) && cj->hydro.count > 0) {
+
+    /* Do any of the cells need to be drifted first? */
+    if (cell_is_active_black_holes(ci, e)) {
+      if (!cell_are_bpart_drifted(ci, e)) error("Cell should be drifted!");
+      if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+    }
+
+    DOPAIR1_SUBSET_BRANCH_BH(r, ci, bparts, ind, bcount, cj);
+  }
+}
+
+void DOSUB_SELF_SUBSET_BH(struct runner *r, struct cell *ci,
+			  struct bpart *bparts, const int *ind,
+			  const int bcount, const int gettimer) {
+
+  const struct engine *e = r->e;
+
+  /* Should we even bother? */
+  if (ci->hydro.count == 0 || ci->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(ci, e)) return;
+
+  /* Recurse? */
+  if (ci->split && cell_can_recurse_in_self_black_holes_task1(ci)) {
+
+    /* Find in which sub-cell of ci the particles are */
+    struct cell *const sub = FIND_SUB_BH(ci, bparts, ind);
+
+    /* Loop over all progeny. */
+    DOSUB_SELF_SUBSET_BH(r, sub, bparts, ind, bcount, /*gettimer=*/0);
+    for (int j = 0; j < 8; j++)
+      if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
+        DOSUB_PAIR_SUBSET_BH(r, sub, bparts, ind, bcount, ci->progeny[j],
+                                /*gettimer=*/0);
+  }
+
+  /* Otherwise, compute self-interaction. */
+  else
+    DOSELF1_SUBSET_BRANCH_BH(r, ci, bparts, ind, bcount);
 }

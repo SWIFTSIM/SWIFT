@@ -766,38 +766,22 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               error("Density task should have been run.");
 #endif
 
-            /* Self-interaction? */
-            if (l->t->type == task_type_self)
-              runner_doself_subset_branch_bh_density(r, finger, bparts, sid,
-                                                     bcount);
-
-            /* Otherwise, pair interaction? */
-            else if (l->t->type == task_type_pair) {
-
-              /* Left or right? */
-              if (l->t->ci == finger)
-                runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
-                                                       bcount, l->t->cj);
-              else
-                runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
-                                                       bcount, l->t->ci);
-            }
-
-            /* Otherwise, sub-self interaction? */
-            else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
-                                             NULL, 1);
+            /* Sub-self interaction? */
+            if (l->t->type == task_type_sub_self)
+              runner_dosub_self_subset_bh_density(r, finger, bparts,
+                                                           sid, bcount,
+                                                           /*gettimer=*/1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
-                                               l->t->cj, 1);
+                runner_dosub_pair_subset_bh_density(
+                    r, finger, bparts, sid, bcount, l->t->cj, /*gettimer=*/1);
               else
-                runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
-                                               l->t->ci, 1);
+                runner_dosub_pair_subset_bh_density(
+                    r, finger, bparts, sid, bcount, l->t->ci, /*gettimer=*/1);
             }
           }
         }

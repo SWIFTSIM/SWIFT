@@ -52,9 +52,15 @@
 #define _DOPAIR1_SUBSET_BRANCH_BH(f) PASTE(runner_dopair_subset_branch_bh, f)
 #define DOPAIR1_SUBSET_BRANCH_BH _DOPAIR1_SUBSET_BRANCH_BH(FUNCTION)
 
-#define _DOSUB_SUBSET_BH(f) PASTE(runner_dosub_subset_bh, f)
-#define DOSUB_SUBSET_BH _DOSUB_SUBSET_BH(FUNCTION)
+#define _DOSUB_SELF_SUBSET_BH(f) PASTE(runner_dosub_self_subset_bh, f)
+#define DOSUB_SELF_SUBSET_BH _DOSUB_SELF_SUBSET_BH(FUNCTION)
 
+#define _DOSUB_PAIR_SUBSET_BH(f) PASTE(runner_dosub_pair_subset_bh, f)
+#define DOSUB_PAIR_SUBSET_BH _DOSUB_PAIR_SUBSET_BH(FUNCTION)
+
+#define _FIND_SUB_BH(f) PASTE(runner_find_sub_bh, f)
+#define FIND_SUB_BH _FIND_SUB_BH(FUNCTION)
+  
 #define _DOSELF1_BRANCH_BH(f) PASTE(runner_doself_branch_bh, f)
 #define DOSELF1_BRANCH_BH _DOSELF1_BRANCH_BH(FUNCTION)
 
@@ -95,12 +101,14 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int recurse_below_h_max,
 void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
                     int recurse_below_h_max, const int gettimer);
 
-void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, const struct cell *restrict ci,
-                              struct bpart *restrict bparts, int *restrict ind,
-                              const int bcount);
-void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
-                              struct bpart *restrict bparts_i, const int *ind,
-                              int const bcount, struct cell *restrict cj);
-
 void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
                      int *ind, const int bcount, struct cell *cj, int gettimer);
+
+void DOSUB_SELF_SUBSET_BH(struct runner *r, struct cell *ci,
+			  struct bpart *bparts, const int *ind,
+			  const int bcount, const int gettimer);
+void DOSUB_PAIR_SUBSET_BH(struct runner *r, struct cell *ci,
+			  struct bpart *bparts, const int *ind,
+			  const int bcount, struct cell *cj,
+			  const int gettimer);
+
