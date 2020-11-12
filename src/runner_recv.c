@@ -312,6 +312,7 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
   struct bpart *restrict bparts = c->black_holes.parts;
   const size_t nr_bparts = c->black_holes.count;
   const integertime_t ti_current = r->e->ti_current;
+  const timebin_t max_active_bin = r->e->max_active_bin;
 
   TIMER_TIC;
 
@@ -320,6 +321,7 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
   float h_max = 0.f;
+  float h_max_active = 0.f;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == engine_rank) error("Updating a local cell!");
@@ -341,6 +343,8 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, bparts[k].time_bin);
       time_bin_max = max(time_bin_max, bparts[k].time_bin);
       h_max = max(h_max, bparts[k].h);
+      if (bparts[k].time_bin <= max_active_bin)
+        h_max_active = max(h_max_active, bparts[k].h);
     }
 
     /* Convert into a time */
@@ -358,6 +362,8 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
         ti_black_holes_end_max =
             max(ti_black_holes_end_max, c->progeny[k]->black_holes.ti_end_max);
         h_max = max(h_max, c->progeny[k]->black_holes.h_max);
+        h_max_active =
+            max(h_max_active, c->progeny[k]->black_holes.h_max_active);
       }
     }
   }
@@ -375,6 +381,7 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
   // c->grav.ti_end_max = ti_gravity_end_max;
   c->black_holes.ti_old_part = ti_current;
   c->black_holes.h_max = h_max;
+  c->black_holes.h_max_active = h_max_active;
 
   if (timer) TIMER_TOC(timer_dorecv_bpart);
 

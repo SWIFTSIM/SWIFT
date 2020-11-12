@@ -538,6 +538,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
   /* Running value of the maximal smoothing length */
   double h_max = c->black_holes.h_max;
+  float h_max_active = c->black_holes.h_max_active;
 
   TIMER_TIC;
 
@@ -553,6 +554,8 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->black_holes.h_max);
+        h_max_active =
+            max(h_max_active, c->progeny[k]->black_holes.h_max_active);
       }
     }
   } else {
@@ -741,6 +744,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
         /* Check if h_max has increased */
         h_max = max(h_max, bp->h);
+        h_max_active = max(h_max_active, bp->h);
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -813,12 +817,27 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
   /* Update h_max */
   c->black_holes.h_max = h_max;
+  c->black_holes.h_max_active = h_max_active;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->black_holes.count; ++i) {
+    const struct bpart *bp = &c->black_holes.parts[i];
+    const float h = c->black_holes.parts[i].h;
+    if (bpart_is_inhibited(bp, e)) continue;
+
+    if (h > c->black_holes.h_max)
+      error("Particle has h larger than h_max (id=%lld)", bp->id);
+    if (bpart_is_active(bp, e) && h > c->black_holes.h_max_active)
+      error("Active particle has h larger than h_max_active (id=%lld)", bp->id);
+  }
+#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->black_holes.density_ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->black_holes.h_max, h_max);
+      atomic_max_f(&tmp->black_holes.h_max_active, h_max_active);
     }
   }
 

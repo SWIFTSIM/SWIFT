@@ -71,6 +71,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   float stars_h_max = 0.f;
   float stars_h_max_active = 0.f;
   float black_holes_h_max = 0.f;
+  float black_holes_h_max_active = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -237,6 +238,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->sinks.r_cut_max = 0.f;
       cp->sinks.dx_max_part = 0.f;
       cp->black_holes.h_max = 0.f;
+      cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -295,6 +297,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         stars_h_max = max(stars_h_max, cp->stars.h_max);
         stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+        black_holes_h_max_active =
+            max(black_holes_h_max_active, cp->black_holes.h_max_active);
         sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
@@ -584,6 +588,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       black_holes_h_max = max(black_holes_h_max, bparts[k].h);
 
+      if (bpart_is_active(&bparts[k], e))
+        black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
+
       /* Reset x_diff */
       bparts[k].x_diff[0] = 0.f;
       bparts[k].x_diff[1] = 0.f;
@@ -644,6 +651,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
+  c->black_holes.h_max_active = black_holes_h_max_active;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */

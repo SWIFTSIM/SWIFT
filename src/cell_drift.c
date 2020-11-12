@@ -607,6 +607,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_bh_drift));
@@ -647,11 +648,14 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
         /* Update */
         dx_max = max(dx_max, cp->black_holes.dx_max_part);
         cell_h_max = max(cell_h_max, cp->black_holes.h_max);
+        cell_h_max_active =
+            max(cell_h_max_active, cp->black_holes.h_max_active);
       }
     }
 
     /* Store the values */
     c->black_holes.h_max = cell_h_max;
+    c->black_holes.h_max_active = cell_h_max_active;
     c->black_holes.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -740,6 +744,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (bpart_is_active(bp, e)) {
         black_holes_init_bpart(bp);
+
+        /* Update the maximal active smoothing length in the cell */
+        cell_h_max_active = max(cell_h_max_active, bp->h);
       }
     }
 
@@ -748,6 +755,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->black_holes.h_max = cell_h_max;
+    c->black_holes.h_max_active = cell_h_max_active;
     c->black_holes.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
