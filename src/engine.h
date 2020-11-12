@@ -83,8 +83,9 @@ enum engine_policy {
   engine_policy_line_of_sight = (1 << 24),
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
+  engine_policy_hbt = (1 << 27),
 };
-#define engine_maxpolicy 27
+#define engine_maxpolicy 28
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -334,6 +335,9 @@ struct engine {
   char stf_base_name[PARSER_MAX_LINE_SIZE];
   char stf_subdir_per_output[PARSER_MAX_LINE_SIZE];
   int stf_output_count;
+
+  /* HBT information */
+  char hbt_config_file_name[PARSER_MAX_LINE_SIZE];
 
   /* FoF black holes seeding information */
   double a_first_fof_call;

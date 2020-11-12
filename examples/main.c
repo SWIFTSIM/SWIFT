@@ -172,6 +172,7 @@ int main(int argc, char *argv[]) {
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
+  int with_hbt = 0;
   int with_logger = 0;
   int with_sink = 0;
   int with_qla = 0;
@@ -233,6 +234,8 @@ int main(int argc, char *argv[]) {
           NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
+      OPT_BOOLEAN('x', "hbt", &with_hbt,
+                  "Run with HBT halo finder.", NULL, 0, 0),
       OPT_BOOLEAN(0, "line-of-sight", &with_line_of_sight,
                   "Run with line-of-sight outputs.", NULL, 0, 0),
       OPT_BOOLEAN(0, "limiter", &with_timestep_limiter,
@@ -401,6 +404,13 @@ int main(int argc, char *argv[]) {
 #ifndef HAVE_VELOCIRAPTOR
   if (with_structure_finding) {
     printf("Error: VELOCIraptor is not available\n");
+    return 1;
+  }
+#endif
+
+#ifndef HAVE_HBT
+  if (with_hbt) {
+    printf("Error: HBT is not available\n");
     return 1;
   }
 #endif
@@ -1322,6 +1332,8 @@ int main(int argc, char *argv[]) {
     if (with_black_holes) engine_policies |= engine_policy_black_holes;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
+    if (with_hbt)
+      engine_policies |= engine_policy_hbt;
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_logger) engine_policies |= engine_policy_logger;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;

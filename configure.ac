@@ -1328,7 +1328,7 @@ if test "x$with_hbt" != "xno"; then
    have_hbt="yes"
    AC_CHECK_LIB(
       [HBT],
-      [hbt_init],
+      [libhbt_init],
       [AC_DEFINE([HAVE_HBT],1,[The HBT library appears to be present.])],
       [AC_MSG_ERROR(Cannot find HBT library at $with_hbt or incompatible HDF5 library loaded.)],
       [$HBT_LIBS $HDF5_LDFLAGS $HDF5_LIBS]

@@ -2837,6 +2837,12 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "StructureFinding:delta_time", -1.);
   }
 
+  /* Initialise HBT output. */
+  if (e->policy & engine_policy_structure_finding) {
+    parser_get_param_string(params, "HBT:config_file_name",
+                            e->hbt_config_file_name);
+  }
+
   /* Initialise line of sight output. */
   if (e->policy & engine_policy_line_of_sight) {
     e->time_first_los =

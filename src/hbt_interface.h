@@ -22,12 +22,15 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Forward declaration */
+struct engine;
+
 #ifdef HAVE_HBT
 
 /**
  * @brief Initialise HBT library
  */
-void hbt_init(void);
+void hbt_init(struct engine *e);
 
 /**
  * @brief Invoke the HBT halo finder
@@ -35,7 +38,7 @@ void hbt_init(void);
  * @param output_nr Index of the current output
  *
  */
-void hbt_invoke(int output_nr);
+void hbt_invoke(struct engine *e, int output_nr);
 
 /**
  * @brief Free resources used by HBT library
