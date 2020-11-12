@@ -321,7 +321,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->map_data_count = 0;
   if (chunk == threadpool_auto_chunk_size) {
     tp->map_data_chunk =
-        max((N / (tp->num_threads * threadpool_default_chunk_ratio)), 1);
+        max((N / (tp->num_threads * threadpool_default_chunk_ratio)), 1U);
   } else if (chunk == threadpool_uniform_chunk_size) {
     tp->map_data_chunk = threadpool_uniform_chunk_size;
   } else {
