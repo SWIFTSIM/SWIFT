@@ -330,7 +330,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
     message("Some MPI requests have not been completed, %zd bytes in flight", mpiuse_current);
     for (size_t k = 0; k < log_count; k++) {
       if (mpiuse_log[k].active)
-        message("%s/%s: %d->%d: %zd/%d)", taskID_names[mpiuse_log[k].type],
+        message("%s/%s: %d->%d: size: %zd tag: %d", taskID_names[mpiuse_log[k].type],
                 subtaskID_names[mpiuse_log[k].subtype], engine_rank,
                 mpiuse_log[k].otherrank, mpiuse_log[k].size, mpiuse_log[k].tag);
     }

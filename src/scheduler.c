@@ -2556,7 +2556,7 @@ void scheduler_osmpi_init(struct scheduler *s) {
 
   for (int k = 0; k < task_subtype_count; k++) {
     s->osmpi_ptr[k] = NULL; // XXX Needs to be freed
-    s->osmpi_max_size[k] = 1024*1024*100; // 100MB, surely big enough... XXX should be 0;
+    s->osmpi_max_size[k] = scheduler_osmpi_toblocks(100*1024*1024); // 100M bytes, surely big enough... XXX should be 0;
   }
 
 #endif
@@ -2575,7 +2575,7 @@ void scheduler_osmpi_activate(struct scheduler *s, struct task *t) {
   // XXX use fixed size, need to sync this across the ranks.
   // completion), so in fact we need to do something else... XXX
 
-  //size_t size = scheduler_mpi_size(t);
+  //size_t size = scheduler_osmpi_toblocks(scheduler_mpi_size(t));
   //atomic_max_st(&s->osmpi_max_size[t->subtype],size);
 #endif
 }
@@ -2644,12 +2644,11 @@ size_t scheduler_mpi_size(struct task *t) {
  */
 void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s) {
 #ifdef WITH_MPI
-
   for (int k = 0; k < task_subtype_count; k++) {
     size_t size = s->osmpi_max_size[k];
     if (size > 0) {
-      /* Size needs to be in blocks and have room for the header. */
-      size = scheduler_osmpi_toblocks(size) + scheduler_osmpi_header_size;
+      /* Size needs to have room for the header (size is in blocks). */
+      size += scheduler_osmpi_header_size;
       MPI_Win_allocate(scheduler_osmpi_tobytes(size) * nr_nodes,
                        scheduler_osmpi_bytesinblock,
                        MPI_INFO_NULL, subtaskMPI_comms[k], &s->osmpi_ptr[k],
