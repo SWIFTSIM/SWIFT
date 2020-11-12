@@ -2839,7 +2839,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   }
 
   /* Initialise HBT output. */
-  if (e->policy & engine_policy_structure_finding) {
+  if (e->policy & engine_policy_hbt) {
     parser_get_param_string(params, "HBT:config_file_name",
                             e->hbt_config_file_name);
   }
