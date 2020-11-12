@@ -1232,8 +1232,9 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     /* Should we change the recursion regime because we encountered a large
        particle? */
     if (!recurse_below_h_max && (!cell_can_recurse_in_pair_stars_task1(ci) ||
-                                 !cell_can_recurse_in_pair_stars_task1(cj)))
+                                 !cell_can_recurse_in_pair_stars_task1(cj))) {
       recurse_below_h_max = 1;
+    }
 
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
@@ -1323,8 +1324,9 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c,
 
     /* Should we change the recursion regime because we encountered a large
        particle at this level? */
-    if (!recurse_below_h_max && !cell_can_recurse_in_self_stars_task1(c))
+    if (!recurse_below_h_max && !cell_can_recurse_in_self_stars_task1(c)) {
       recurse_below_h_max = 1;
+    }
 
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
