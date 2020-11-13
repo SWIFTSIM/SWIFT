@@ -102,6 +102,12 @@ for f in infiles:
                     recvs[key].append(line[:-1])
 
 #  Now output. Note we could have unmatched recv keys, we don't check for that.
+print "# send_stic send_etic send_dtic send_step send_rank send_otherrank " + \
+        "send_type send_itype send_subtype send_isubtype send_activation " + \
+        "send_tag send_size send_sum " + \
+        "recv_stic recv_etic recv_dtic recv_step recv_rank recv_otherrank " + \
+        "recv_type recv_itype recv_subtype recv_isubtype recv_activation " + \
+        "recv_tag recv_size recv_sum "
 for key in sends:
     if key in recvs:
         if len(sends[key]) == 1 and len(recvs[key]) == 1:

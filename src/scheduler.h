@@ -135,7 +135,7 @@ struct scheduler {
 #ifdef WITH_MPI
   /* MPI windows for one-sided messages. We have one per task subtype. */
   MPI_Win osmpi_window[task_subtype_count];
-  scheduler_osmpi_blocktype *osmpi_ptr[task_subtype_count];
+  volatile scheduler_osmpi_blocktype *osmpi_ptr[task_subtype_count];
   size_t osmpi_max_size[task_subtype_count];
 
   /* Lock for one at a time sends and recvs (should be one per subtype per node). */
