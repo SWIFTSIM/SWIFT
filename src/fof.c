@@ -136,7 +136,7 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   if (props->l_x_ratio <= 0. && props->l_x_absolute == -1.)
     error("The FOF linking length ratio can't be negative!");
 
-  if (!stand_alone_fof) {
+  if (!stand_alone_fof && props->seed_black_holes_enabled) {
 
     /* Read the minimal halo mass for black hole seeding */
     props->seed_halo_mass =
