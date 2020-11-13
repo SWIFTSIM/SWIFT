@@ -187,11 +187,11 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Finish the calculation by inserting the missing h-factors */
-  sp->rho *= h_inv_dim;
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
 
 #ifdef SWIFT_STARS_DENSITY_CHECKS
+  sp->rho *= h_inv_dim;
   sp->n *= h_inv_dim;
 #endif
 }
