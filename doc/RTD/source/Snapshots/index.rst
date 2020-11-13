@@ -24,10 +24,18 @@ that is always set to the string ``SWIFT``, which can be used to identify
 SWIFT-generated snapshots and hence make use of all the extensions to the file
 format described below.
 
-The most important quantity of the header is the array ``NumPart_ThisFile``
-which contains the number of particles of each type in this snapshot. This is an
-array of 6 numbers; one for each of the 5 supported types and a dummy "type 3"
-field only used for compatibility reasons but always containing a zero.
+The most important quantity of the header is the array ``NumPart_Total`` which
+contains the number of particles of each type in this snapshot. This is an array
+of 6 numbers; one for each of the supported types. The field
+``NumPart_ThisFile`` contains the number of particles in this sub-snapshot file
+when the user asked for distributed snapshots (see :ref:`Parameters_snapshots`);
+otherwise it contains the same information as ``NumPart_Total``. The field
+``NumFilesPerSnapshot`` specifies the number of sub-snapshot files (always 1
+unless a distributed snapshot was asked).
+
+The field ``InitialMassTable`` contains the *mean* initial mass of each of the
+particle types present in the initial conditions. This can be used as estimator
+of the mass resolution of the run. The masses are expressed in internal units.
 
 The ``RunName`` field contains the name of the simulation that was specified as
 the ``run_name`` in the :ref:`Parameters_meta_data` section of the YAML

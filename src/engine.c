@@ -1771,6 +1771,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
   }
 
+  /* Collect initial mean mass of each particle type */
+  space_collect_mean_masses(e->s, e->verbose);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;

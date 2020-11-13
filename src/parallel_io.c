@@ -1208,6 +1208,8 @@ void prepare_file(struct engine* e, const char* fileName,
                      numParticlesHighWord, swift_type_count);
   double MassTable[6] = {0., 0., 0., 0., 0., 0.};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
+  io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
+                     e->s->initial_mean_mass_particles, swift_type_count);
   unsigned int flagEntropy[swift_type_count] = {0};
   flagEntropy[0] = writeEntropyFlag();
   io_write_attribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
