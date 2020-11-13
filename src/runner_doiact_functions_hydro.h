@@ -2031,8 +2031,6 @@ void DOSELF1(struct runner *r, struct cell *c, const int limit_min_h,
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 #endif
 
-  error("Not implemented yet!");
-
   TIMER_TIC;
 
   struct part *parts = c->hydro.parts;
