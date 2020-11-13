@@ -768,9 +768,9 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
             /* Sub-self interaction? */
             if (l->t->type == task_type_sub_self)
-              runner_dosub_self_subset_bh_density(r, finger, bparts,
-                                                           sid, bcount,
-                                                           /*gettimer=*/1);
+              runner_dosub_self_subset_bh_density(r, finger, bparts, sid,
+                                                  bcount,
+                                                  /*gettimer=*/1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {

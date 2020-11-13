@@ -905,11 +905,11 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count_i = ci->hydro.count;
+  const int count_j = ci->hydro.count;
   struct part *parts_j = ci->hydro.parts;
 
   /* Early abort? */
-  if (count_i == 0) return;
+  if (count_j == 0) return;
 
   /* Loop over the parts in ci. */
   for (int spid = 0; spid < scount; spid++) {
@@ -928,7 +928,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *ci,
 #endif
 
     /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_i; pjd++) {
+    for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
       struct part *pj = &parts_j[pjd];
@@ -940,7 +940,8 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *ci,
       const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
                             (float)(pj->x[1] - ci->loc[1]),
                             (float)(pj->x[2] - ci->loc[2])};
-      float dx[3] = {spix[0] - pjx[0], spix[1] - pjx[1], spix[2] - pjx[2]};
+      const float dx[3] = {spix[0] - pjx[0], spix[1] - pjx[1],
+                           spix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS

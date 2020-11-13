@@ -60,7 +60,7 @@
 
 #define _FIND_SUB_BH(f) PASTE(runner_find_sub_bh, f)
 #define FIND_SUB_BH _FIND_SUB_BH(FUNCTION)
-  
+
 #define _DOSELF1_BRANCH_BH(f) PASTE(runner_doself_branch_bh, f)
 #define DOSELF1_BRANCH_BH _DOSELF1_BRANCH_BH(FUNCTION)
 
@@ -105,10 +105,9 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
                      int *ind, const int bcount, struct cell *cj, int gettimer);
 
 void DOSUB_SELF_SUBSET_BH(struct runner *r, struct cell *ci,
-			  struct bpart *bparts, const int *ind,
-			  const int bcount, const int gettimer);
+                          struct bpart *bparts, const int *ind,
+                          const int bcount, const int gettimer);
 void DOSUB_PAIR_SUBSET_BH(struct runner *r, struct cell *ci,
-			  struct bpart *bparts, const int *ind,
-			  const int bcount, struct cell *cj,
-			  const int gettimer);
-
+                          struct bpart *bparts, const int *ind,
+                          const int bcount, struct cell *cj,
+                          const int gettimer);
