@@ -372,8 +372,6 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TOC(TIMER_DOPAIR_BH);
 }
 
-#if 0
-
 /**
  * @brief Compute the interactions between a cell pair, but only for the
  *      given indices in ci.
@@ -389,9 +387,9 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
-                             struct bpart *restrict bparts_i, int *restrict ind,
+                             struct bpart *bparts_i, const int *ind,
                              const int bcount, struct cell *restrict cj,
-                             const double *shift) {
+                             const double shift[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -403,8 +401,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct part *parts_j = cj->hydro.parts;
+  struct xpart *xparts_j = cj->hydro.xparts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -413,7 +411,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   for (int bid = 0; bid < bcount; bid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct bpart *restrict bi = &bparts_i[ind[bid]];
+    struct bpart *bi = &bparts_i[ind[bid]];
 
     const double bix = bi->x[0] - (shift[0]);
     const double biy = bi->x[1] - (shift[1]);
@@ -430,8 +428,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct part *pj = &parts_j[pjd];
+      struct xpart *xpj = &xparts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
@@ -442,8 +440,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
-      float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
-                     (float)(biz - pjz)};
+      const float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
+                           (float)(biz - pjz)};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -460,8 +458,6 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
 }
-
-#endif
 
 /**
  * @brief Compute the interactions between a cell pair, but only for the
@@ -571,23 +567,23 @@ void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
  */
 void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
                               struct bpart *bparts_i, const int *ind,
-                              int const bcount, struct cell *restrict cj) {
+                              const int bcount, struct cell *restrict cj) {
 
-  /* const struct engine *e = r->e; */
+  const struct engine *e = r->e;
 
-  /* /\* Anything to do here? *\/ */
-  /* if (cj->hydro.count == 0) return; */
+  /* Anything to do here? */
+  if (cj->hydro.count == 0) return;
 
-  /* /\* Get the relative distance between the pairs, wrapping. *\/ */
-  /* double shift[3] = {0.0, 0.0, 0.0}; */
-  /* for (int k = 0; k < 3; k++) { */
-  /*   if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2) */
-  /*     shift[k] = e->s->dim[k]; */
-  /*   else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2) */
-  /*     shift[k] = -e->s->dim[k]; */
-  /* } */
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
 
-  /* DOPAIR1_SUBSET_BH_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift); */
+  DOPAIR1_SUBSET_BH_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift);
 }
 
 /**

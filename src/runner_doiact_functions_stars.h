@@ -815,7 +815,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const float H = cosmo->H;
 
   const int count_j = cj->hydro.count;
-  struct part *restrict parts_j = cj->hydro.parts;
+  struct part *parts_j = cj->hydro.parts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -824,7 +824,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   for (int pid = 0; pid < scount; pid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct spart *restrict spi = &sparts_i[ind[pid]];
+    struct spart *spi = &sparts_i[ind[pid]];
 
     const double pix = spi->x[0] - (shift[0]);
     const double piy = spi->x[1] - (shift[1]);
@@ -841,7 +841,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
     for (int pjd = 0; pjd < count_j; pjd++) {
 
       /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
+      struct part *pj = &parts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
