@@ -138,7 +138,7 @@ struct spart {
 
 #endif
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+#ifdef SWIFT_STARS_DENSITY_CHECKS
 
   /* Integer number of neighbours in the density loop */
   int N_density;
