@@ -1899,7 +1899,6 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s) {
 
   /* Re-wait the tasks. */
-    message("Re wait");
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
                    s->active_count, sizeof(int), threadpool_auto_chunk_size, s);
@@ -1907,7 +1906,6 @@ void scheduler_start(struct scheduler *s) {
     scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
 
-    message("Enqueue");
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
@@ -1916,7 +1914,6 @@ void scheduler_start(struct scheduler *s) {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
-    message("Done");
   /* Clear the list of active tasks. */
   s->active_count = 0;
 

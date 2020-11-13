@@ -2265,7 +2265,6 @@ void engine_launch(struct engine *e, const char *call) {
   swift_barrier_wait(&e->run_barrier);
 
   /* Load the tasks. */
-    message("Load the tasks");
   scheduler_start(&e->sched);
 
   /* Remove the safeguard. */
@@ -2275,7 +2274,6 @@ void engine_launch(struct engine *e, const char *call) {
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
   /* Sit back and wait for the runners to come home. */
-    message("Wait for runners to come home");
   swift_barrier_wait(&e->wait_barrier);
 
   /* Store the wallclock time */
