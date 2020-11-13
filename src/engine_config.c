@@ -583,7 +583,7 @@ void engine_config(int restart, int fof, struct engine *e,
     }
 
     /* Find the time of the first stf output */
-    if (e->policy & engine_policy_fof) {
+    if (e->policy & engine_policy_fof && e->fof_properties->seed_black_holes_enabled) {
       engine_compute_next_fof_time(e);
     }
 
