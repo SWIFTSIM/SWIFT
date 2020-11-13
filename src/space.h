@@ -276,6 +276,12 @@ struct space {
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;
 
+  /* Initial mean mass of each particle type in the system. */
+  double initial_mean_mass_particles[swift_type_count];
+
+  /* Initial count of each particle type in the system. */
+  long long initial_count_particles[swift_type_count];
+
   /*! Initial value of the smoothing length read from the parameter file */
   float initial_spart_h;
 
@@ -385,6 +391,7 @@ void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);
 void space_first_init_bparts(struct space *s, int verbose);
 void space_first_init_sinks(struct space *s, int verbose);
+void space_collect_mean_masses(struct space *s, int verbose);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
