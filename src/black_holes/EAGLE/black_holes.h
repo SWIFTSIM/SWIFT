@@ -184,6 +184,16 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
 
   /* Reset the rays carried by this BH */
   ray_init(bp->rays, eagle_blackhole_number_of_rays);
+
+#ifdef SWIFT_BH_DENSITY_CHECKS
+  bp->N_density = 0;
+  bp->N_density_exact = 0;
+  bp->rho = 0.f;
+  bp->rho_exact = 0.f;
+  bp->n = 0.f;
+  bp->n_exact = 0.f;
+  bp->inhibited_exact = 0;
+#endif
 }
 
 /**
@@ -297,6 +307,11 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   bp->circular_velocity_gas[0] *= h_inv;
   bp->circular_velocity_gas[1] *= h_inv;
   bp->circular_velocity_gas[2] *= h_inv;
+
+#ifdef SWIFT_BH_DENSITY_CHECKS
+  bp->rho *= h_inv_dim;
+  bp->n *= h_inv_dim;
+#endif
 }
 
 /**

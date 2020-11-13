@@ -247,6 +247,12 @@ runner_iact_nonsym_bh_gas_density(
       break;
     }
   }
+
+#ifdef SWIFT_BH_DENSITY_CHECKS
+  bi->rho += pj->mass * wi;
+  bi->n += wi;
+  bi->N_density++;
+#endif
 }
 
 /**

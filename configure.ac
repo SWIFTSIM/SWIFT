@@ -396,6 +396,20 @@ elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
 fi
 
+# Check if black-holes density checks are on for some particles.
+AC_ARG_ENABLE([black-holes-density-checks],
+   [AS_HELP_STRING([--enable-black-holes-density-checks],
+     [Activate expensive brute-force black-holes density checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [black_holes_density_checks="$enableval"],
+   [black_holes_density_checks="no"]
+)
+if test "$black_holes_density_checks" == "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-black-holes-density-checks!)
+elif test "$black_holes_density_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_BH_DENSITY_CHECKS], [$enableval] ,[Enable black-holes density brute-force checks])
+fi
+
 # Check whether we want to switch on glass making
 AC_ARG_ENABLE([glass-making],
    [AS_HELP_STRING([--enable-glass-making],
@@ -2532,6 +2546,7 @@ AC_MSG_RESULT([
    Gravity checks              : $gravity_force_checks
    Hydro density checks        : $hydro_density_checks
    Stars density checks        : $stars_density_checks
+   BHs density checks          : $black_holes_density_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
