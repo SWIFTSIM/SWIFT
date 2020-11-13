@@ -496,6 +496,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
 
   TIMER_TIC;
 
@@ -518,12 +519,24 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
 
+      double dt = 0;
       if (part_is_active(p, e)) {
+
+        if (with_cosmology) {
+          /* Compute the time step. */
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, p->time_bin);
+
+          dt = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+        } else {
+          dt = get_timestep(p->time_bin, e->time_base);
+        }
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
         timestep_limiter_end_force(p);
-        chemistry_end_force(p, cosmo);
+        chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_H
-#define SWIFT_CHEMISTRY_STRUCT_GEAR_H
+#ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_DIFFUSION_H
+#define SWIFT_CHEMISTRY_STRUCT_GEAR_DIFFUSION_H
 
 /**
  * @brief Global chemical abundance information.
@@ -26,6 +26,9 @@ struct chemistry_global_data {
 
   /* Initial mass fraction */
   double initial_metallicities[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Diffusion coefficent (no unit) */
+  float C;
 };
 
 /**
@@ -33,11 +36,21 @@ struct chemistry_global_data {
  */
 struct chemistry_part_data {
 
-  /*! Total mass of element in a particle. */
+  /*! Total mass of element in a particle.
+    This field is available only outside the density hydro loop. */
   double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Smoothed fraction of the particle mass in a given element */
   double smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Diffusion coefficient */
+  float diff_coef;
+
+  /*! Variation of the metal mass */
+  double metal_mass_dt[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! shear tensor in internal and physical units. */
+  float S[3][3];
 };
 
 /**
@@ -54,4 +67,4 @@ struct chemistry_spart_data {
  */
 struct chemistry_bpart_data {};
 
-#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */
+#endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_DIFFUSION_H */

@@ -101,11 +101,17 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
+ * Nothing to do here.
+ *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
+ * @param with_cosmology Are we running with the cosmology?
+ * @param time Current time of the simulation.
+ * @param dt Time step (in physical units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
-    struct part* restrict p, const struct cosmology* cosmo) {}
+    struct part* restrict p, const struct cosmology* cosmo,
+    const int with_cosmology, const double time, const double dt) {}
 
 /**
  * @brief Computes the chemistry-related time-step constraint.
