@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_IO_GEAR_H
-#define SWIFT_CHEMISTRY_IO_GEAR_H
+#ifndef SWIFT_CHEMISTRY_IO_GEAR_DIFFUSION_H
+#define SWIFT_CHEMISTRY_IO_GEAR_DIFFUSION_H
 
 #include "chemistry_struct.h"
 #include "engine.h"
@@ -63,7 +63,6 @@ INLINE static void convert_gas_metals(const struct engine* e,
  * @param parts The particle array.
  * @param xparts The extra particle array.
  * @param list The list of i/o properties to write.
- * @param with_cosmology Are we running with cosmology?
  *
  * @return Returns the number of fields to write.
  */
@@ -133,7 +132,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
                                            const struct engine* e) {
 
-  io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
+  io_write_attribute_s(h_grp, "Chemistry Model", "GEAR with diffusion");
   io_write_attribute_d(h_grp, "Chemistry element count",
                        GEAR_CHEMISTRY_ELEMENT_COUNT);
 #ifdef FEEDBACK_GEAR
@@ -158,4 +157,4 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 }
 #endif
 
-#endif /* SWIFT_CHEMISTRY_IO_GEAR_H */
+#endif /* SWIFT_CHEMISTRY_IO_GEAR_DIFFUSION_H */
