@@ -842,6 +842,134 @@ void space_convert_quantities(struct space *s, int verbose) {
             clocks_getunit());
 }
 
+void space_collect_sum_part_mass(void *restrict map_data, int count,
+                                 void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct part *parts = (const struct part *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += hydro_get_mass(&parts[i]);
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[0], sum);
+  atomic_add(&s->initial_count_particles[0], count);
+}
+
+void space_collect_sum_gpart_mass(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct gpart *gparts = (const struct gpart *)map_data;
+
+  /* Local collection */
+  double sum_DM = 0., sum_DM_background = 0.;
+  long long count_DM = 0, count_DM_background = 0;
+  for (int i = 0; i < count; ++i) {
+    if (gparts[i].type == swift_type_dark_matter) {
+      sum_DM += gparts[i].mass;
+      count_DM++;
+    }
+    if (gparts[i].type == swift_type_dark_matter_background) {
+      sum_DM_background += gparts[i].mass;
+      count_DM_background++;
+    }
+  }
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[1], sum_DM);
+  atomic_add(&s->initial_count_particles[1], count_DM);
+  atomic_add_d(&s->initial_mean_mass_particles[2], sum_DM_background);
+  atomic_add(&s->initial_count_particles[2], count_DM_background);
+}
+
+void space_collect_sum_sink_mass(void *restrict map_data, int count,
+                                 void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct sink *sinks = (const struct sink *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += sinks[i].mass;
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[3], sum);
+  atomic_add(&s->initial_count_particles[3], count);
+}
+
+void space_collect_sum_spart_mass(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct spart *sparts = (const struct spart *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += sparts[i].mass;
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[4], sum);
+  atomic_add(&s->initial_count_particles[4], count);
+}
+
+void space_collect_sum_bpart_mass(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct bpart *bparts = (const struct bpart *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += bparts[i].mass;
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[5], sum);
+  atomic_add(&s->initial_count_particles[5], count);
+}
+
+/**
+ * @breif Collect the mean mass of each particle type in the #space.
+ */
+void space_collect_mean_masses(struct space *s, int verbose) {
+
+  /* Init counters */
+  for (int i = 0; i < swift_type_count; ++i)
+    s->initial_mean_mass_particles[i] = 0.;
+  for (int i = 0; i < swift_type_count; ++i) s->initial_count_particles[i] = 0;
+
+  /* Collect each particle type */
+  threadpool_map(&s->e->threadpool, space_collect_sum_part_mass, s->parts,
+                 s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_gpart_mass, s->gparts,
+                 s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_spart_mass, s->sparts,
+                 s->nr_sparts, sizeof(struct spart), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_sink_mass, s->sinks,
+                 s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_bpart_mass, s->bparts,
+                 s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 s);
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, s->initial_mean_mass_particles, swift_type_count,
+                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, s->initial_count_particles, swift_type_count,
+                MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  /* Get means */
+  for (int i = 0; i < swift_type_count; ++i)
+    if (s->initial_count_particles[i] > 0)
+      s->initial_mean_mass_particles[i] /=
+          (double)s->initial_count_particles[i];
+}
+
 /**
  * @brief Split the space into cells given the array of particles.
  *
