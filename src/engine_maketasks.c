@@ -308,7 +308,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_feedback, ci->hydro.super->stars.stars_out);
 
       /* Ghost before you send */
-      scheduler_addunlock(s, ci->hydro.super->stars.ghost, t_feedback);
+      scheduler_addunlock(s, ci->hydro.super->stars.ghost_out, t_feedback);
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_feedback);
