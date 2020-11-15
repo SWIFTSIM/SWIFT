@@ -856,10 +856,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t->subtype == task_subtype_bh_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_black_holes_pair(ci, cj) && !t->flags) 
-	  *rebuild_space = 1;
-        if (cell_need_rebuild_for_black_holes_pair(cj, ci) && !t->flags) 
-	  *rebuild_space = 1;
+        if (cell_need_rebuild_for_black_holes_pair(ci, cj) && !t->flags)
+          *rebuild_space = 1;
+        if (cell_need_rebuild_for_black_holes_pair(cj, ci) && !t->flags)
+          *rebuild_space = 1;
 
         scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost[0]);
         scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost[0]);
