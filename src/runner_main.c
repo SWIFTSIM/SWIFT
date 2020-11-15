@@ -336,6 +336,9 @@ void *runner_main(void *data) {
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
+        case task_type_init_dark_matter:
+          runner_do_init_dark_matter(r, ci, 0, 1);
+          break;
         case task_type_init_grav:
           runner_do_init_grav(r, ci, 1);
           break;
@@ -379,7 +382,7 @@ void *runner_main(void *data) {
           break;
         case task_type_sidm_kick:
           runner_do_sidm_kick(r, ci);
-        break;
+          break;
         case task_type_kick2:
           runner_do_kick2(r, ci, 1);
           break;
@@ -434,6 +437,7 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_dmpart) {
               cell_unpack_end_step_dark_matter(ci, (struct pcell_step_dark_matter *)t->buff);
+              /*cell_clear_init_dark_matter_flags(ci, 0);*/
               free(t->buff);
           } else if (t->subtype == task_subtype_tend_bpart) {
             cell_unpack_end_step_black_holes(

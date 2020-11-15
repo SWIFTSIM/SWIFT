@@ -558,14 +558,14 @@ void engine_redistribute(struct engine *e) {
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
   struct bpart *bparts = s->bparts;
-    struct dmpart *dmparts = s->dmparts;
+  struct dmpart *dmparts = s->dmparts;
   ticks tic = getticks();
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
-    size_t nr_dmparts = s->nr_dmparts;
+  size_t nr_dmparts = s->nr_dmparts;
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {

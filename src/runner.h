@@ -89,6 +89,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c);
 void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
+void runner_do_init_dark_matter(struct runner *r, struct cell *c, int force, int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);

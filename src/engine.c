@@ -2010,7 +2010,10 @@ void engine_prepare(struct engine *e) {
    * and no repartitioing. */
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
       e->run_fof) {
-
+      
+    /* Initialize dark matter */
+    engine_init_dmparts(e);
+      
     /* Let's start by drifting everybody to the current time */
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
@@ -2022,6 +2025,9 @@ void engine_prepare(struct engine *e) {
      repartitioning. */
   if (!e->restarting && e->forcerebuild && !e->forcerepart && e->step > 1) {
 
+    /* Initialize dark matter */
+    engine_init_dmparts(e);
+      
     /* Let's start by drifting everybody to the current time */
     if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
@@ -2031,7 +2037,10 @@ void engine_prepare(struct engine *e) {
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
-
+      
+    /* Initialize dark matter */
+    engine_init_dmparts(e);
+      
     /* Let's start by drifting everybody to the current time */
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
@@ -2047,6 +2056,9 @@ void engine_prepare(struct engine *e) {
 
   /* Do we need rebuilding ? */
   if (e->forcerebuild) {
+      
+      /* Initialize dark matter */
+      engine_init_dmparts(e);
 
     /* Let's start by drifting everybody to the current time */
     if (!e->restarting && !drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
@@ -2177,7 +2189,8 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_drift_bpart || t->type == task_type_drift_dmpart ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
+        t->type == task_type_drift_dmpart || t->type == task_type_init_dark_matter ||
         t->type == task_type_kick1 || t->type == task_type_sidm_kick || t->type == task_type_kick2 ||
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
@@ -2236,7 +2249,7 @@ void engine_skip_drift(struct engine *e) {
 
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_drift_bpart || t->type == task_type_drift_dmpart)
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart || t->type == task_type_drift_dmpart || t->type == task_type_init_dark_matter)
       t->skip = 1;
   }
 
@@ -2698,8 +2711,13 @@ void engine_step(struct engine *e) {
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
-  if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
-
+  if (e->restarting) {
+        /* Initialize dark matter */
+        engine_init_dmparts(e);
+      
+        engine_drift_all(e, /*drift_mpole=*/1);
+    }
+    
   /* Get the physical value of the time and time-step size */
   if (e->policy & engine_policy_cosmology) {
     e->time_old = e->time;
@@ -2760,7 +2778,10 @@ void engine_step(struct engine *e) {
                        e->s->nr_sparts);
   }
 #endif
-
+    
+  /* Initialize dark matter */
+  engine_init_dmparts(e);
+    
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
     engine_drift_all(e, /*drift_mpole=*/1);

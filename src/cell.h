@@ -345,7 +345,9 @@ enum cell_flags {
   cell_flag_do_dark_matter_drift = (1UL << 17),
   cell_flag_do_dark_matter_sub_drift = (1UL << 18),
   cell_flag_do_dark_matter_sync = (1UL << 19),
-  cell_flag_do_dark_matter_sub_sync = (1UL << 20)
+  cell_flag_do_dark_matter_sub_sync = (1UL << 20),
+  cell_flag_do_init_dark_matter = (1UL << 21),
+  cell_flag_do_init_sub_dark_matter = (1UL << 22)
 };
 
 /**
@@ -724,6 +726,9 @@ struct cell {
         /*! The task computing this cell's sorts. */
         struct task *sorts;
         
+        /*! Just an initialistation task */
+        struct task *init;
+
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
         struct link *sidm;
         
@@ -1095,6 +1100,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_dmpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
+void cell_init_dmpart(struct cell *c, const struct engine *e, int force);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
@@ -1126,12 +1132,14 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_sync_part(struct cell *c, struct scheduler *s);
 void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s);
+void cell_activate_init_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_dark_matter_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
+void cell_clear_init_dark_matter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);

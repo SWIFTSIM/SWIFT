@@ -258,6 +258,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+    c->dark_matter.init = NULL;
     c->dark_matter.density = NULL;
     c->dark_matter.ghost = NULL;
     c->dark_matter.sidm = NULL;

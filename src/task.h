@@ -54,6 +54,7 @@ enum task_types {
   task_type_ghost_in,      /* Implicit */
   task_type_ghost,
   task_type_ghost_out, /* Implicit */
+  task_type_init_dark_matter,
   task_type_dark_matter_ghost,
   task_type_extra_ghost,
   task_type_drift_part,

@@ -214,6 +214,7 @@ void engine_do_drift_all_dmpart_mapper(void *map_data, int num_elements,
         
         if (c->nodeID == e->nodeID) {
             
+            
             /* Drift all the particles */
             cell_drift_dmpart(c, e, /* force the drift=*/1);
         }

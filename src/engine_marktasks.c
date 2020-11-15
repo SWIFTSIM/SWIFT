@@ -247,10 +247,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
         
         
-        /* Activate the DM drift */
+        /* Activate the DM init and drifts */
         if (t_type == task_type_self && t_subtype == task_subtype_dark_matter_density) {
             if (ci_active_dark_matter) {
                 scheduler_activate(s, t);
+                cell_activate_init_dmpart(ci, s);
                 cell_activate_drift_dmpart(ci, s);
                 if (with_timestep_sync) cell_activate_sync_dmpart(ci, s);
             }
@@ -482,7 +483,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
         
-        /* Only activate tasks that involve a local active cell. */
+    /* Dark matter density */
      else if ((t_subtype == task_subtype_dark_matter_density ||
                t_subtype == task_subtype_sidm) &&
              ((ci_active_dark_matter && ci_nodeID == nodeID) ||
@@ -493,15 +494,17 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 /* Set the correct sorting flags */
                 if (t_type == task_type_pair && t_subtype == task_subtype_dark_matter_density) {
                     
-                    /* Activate the DM drift tasks. */
+                    /* Activate the DM init and drift tasks. */
+                    if (ci_nodeID == nodeID) cell_activate_init_dmpart(ci, s);
                     if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                     if (ci_nodeID == nodeID && with_timestep_sync)
                         cell_activate_sync_dmpart(ci, s);
                     
+                    if (cj_nodeID == nodeID) cell_activate_init_dmpart(cj, s);
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
                     if (cj_nodeID == nodeID && with_timestep_sync)
                         cell_activate_sync_dmpart(cj, s);
-
+                    
                 }
                 
                 /* Store current values of dx_max and h_max. */
@@ -1029,11 +1032,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
-    /* SIDM Kick ? */
-    else if (t_type == task_type_sidm_kick) {
-        if (cell_is_active_dark_matter(t->ci, e)) scheduler_activate(s, t);
-    }
-
     /* Hydro ghost tasks ? */
     else if (t_type == task_type_ghost || t_type == task_type_extra_ghost ||
              t_type == task_type_ghost_in || t_type == task_type_ghost_out) {
@@ -1058,7 +1056,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
       
       /* Dark matter stuff ? */
-    else if (t_type == task_type_dark_matter_ghost) {
+    else if (t_type == task_type_dark_matter_ghost ||
+             t_type == task_type_sidm_kick) {
         if (cell_is_active_dark_matter(t->ci, e)) scheduler_activate(s, t);
     }
 

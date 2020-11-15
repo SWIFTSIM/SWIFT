@@ -29,6 +29,7 @@
 #include "active.h"
 #include "black_holes.h"
 #include "cell.h"
+#include "dark_matter.h"
 #include "engine.h"
 #include "feedback.h"
 #include "kick.h"
@@ -38,6 +39,24 @@
 #include "timestep_limiter.h"
 #include "timestep_sync.h"
 #include "tracers.h"
+
+
+/**
+ * @brief Initialize the dark matter density/sidm before the calculations.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_init_dark_matter(struct runner *r, struct cell *c, int force, int timer) {
+    
+    TIMER_TIC;
+
+    cell_init_dmpart(c, r->e, 0);
+
+    if (timer) TIMER_TOC(timer_init_dark_matter);
+}
+
 
 /**
  * @brief Initialize the multipoles before the gravity calculation.
@@ -225,7 +244,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           
           /* Get a handle on the part. */
           struct dmpart *restrict dmp = &dmparts[k];
-          
+                    
           /* If the DM particle has no counterpart and needs to be kicked */
           if (dmpart_is_starting(dmp, e)) {
           

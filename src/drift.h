@@ -274,11 +274,6 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     dmp->x[1] += dmp->v_full[1] * dt_drift;
     dmp->x[2] += dmp->v_full[2] * dt_drift;
 
-    /* Give the gpart friend the same drift */
-    /*dmp->gpart->x[0] = dmp->x[0];
-    dmp->gpart->x[1] = dmp->x[1];
-    dmp->gpart->x[2] = dmp->x[2];*/
-
     /* Predict the values of the extra fields */
     /*dark_matter_predict_extra(dmp, dt_drift);*/
     

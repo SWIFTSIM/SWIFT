@@ -686,7 +686,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
   pc->black_holes.count = c->black_holes.count;
-    pc->dark_matter.count = c->dark_matter.count;
+  pc->dark_matter.count = c->dark_matter.count;
   pc->maxdepth = c->maxdepth;
 
   /* Copy the Multipole related information */
@@ -3038,6 +3038,13 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 /**
  * @brief Clear the limiter flags on the given cell.
  */
+void cell_clear_init_dark_matter_flags(struct cell *c, void *data) {
+    cell_clear_flag(c, cell_flag_do_init_dark_matter | cell_flag_do_init_sub_dark_matter);
+}
+
+/**
+ * @brief Clear the limiter flags on the given cell.
+ */
 void cell_clear_limiter_flags(struct cell *c, void *data) {
   cell_clear_flag(c,
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
@@ -3397,7 +3404,7 @@ void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s) {
     /* Mark this cell for drifting. */
     cell_set_flag(c, cell_flag_do_dark_matter_drift);
     
-    /* Set the do_stars_sub_drifts all the way up and activate the super drift
+    /* Set the do_dark_matter_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
     if (c == c->grav.super) {
         scheduler_activate(s, c->dark_matter.drift);
@@ -3530,6 +3537,44 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
     }
   }
 }
+
+/**
+ * @brief Activate the DM init up a cell hierarchy.
+ */
+void cell_activate_init_dmpart(struct cell *c, struct scheduler *s) {
+    /* If this cell is already marked for initiating DM calculations, quit early. */
+    if (cell_get_flag(c, cell_flag_do_init_dark_matter)) return;
+    
+    /* Mark this cell for DM init */
+    cell_set_flag(c, cell_flag_do_init_dark_matter);
+    
+    if (c == c->grav.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (c->dark_matter.init == NULL)
+            error("Trying to activate un-existing c->dark_matter.init");
+#endif
+        scheduler_activate(s, c->dark_matter.init);
+        /*cell_activate_drift_dmpart(c, s);*/
+    } else {
+        for (struct cell *parent = c->parent;
+             parent != NULL && !cell_get_flag(parent, cell_flag_do_init_sub_dark_matter);
+             parent = parent->parent) {
+            
+            /* Mark this cell for DM init */
+            cell_set_flag(parent, cell_flag_do_init_sub_dark_matter);
+            if (parent == c->grav.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+                if (parent->dark_matter.init == NULL)
+                    error("Trying to activate un-existing parents->dark_matter.init");
+#endif
+                scheduler_activate(s, parent->dark_matter.init);
+                /*cell_activate_drift_dmpart(parent, s);*/
+                break;
+            }
+        }
+    }
+}
+
 
 /**
  * @brief Activate the sorts up a cell hierarchy.
@@ -4018,7 +4063,9 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
                 }
             }
         } else {
-            /* We have reached the bottom of the tree: activate drift */
+            /* We have reached the bottom of the tree: */
+            /* Activate the init and drift */
+            cell_activate_init_dmpart(ci, s);
             cell_activate_drift_dmpart(ci, s);
             if (with_timestep_sync) cell_activate_sync_dmpart(ci, s);
         }
@@ -4050,15 +4097,18 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
         /* Otherwise, activate the drifts. */
         else if (cell_is_active_dark_matter(ci, e) || cell_is_active_dark_matter(cj, e)) {
             
-            /* Activate the drifts if the cells are local. */
-            if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
+            /* Activate the initializations */
+            if (ci->nodeID == engine_rank) cell_activate_init_dmpart(ci, s);
+            if (cj->nodeID == engine_rank) cell_activate_init_dmpart(cj, s);
+
             if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
-            
+            if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
+
             if (cj->nodeID == engine_rank && with_timestep_sync)
                 cell_activate_sync_dmpart(cj, s);
             if (ci->nodeID == engine_rank && with_timestep_sync)
                 cell_activate_sync_dmpart(ci, s);
-
+        
         }
     } /* Otherwise, pair interation */
 }
@@ -5246,21 +5296,23 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             (cj_active && cj_nodeID == nodeID)) {
             scheduler_activate(s, t);
             
-            /* Activate dark matter drift */
+            /* Activate dark matter init and drift */
             if (t->type == task_type_self) {
+                if (ci_nodeID == nodeID) cell_activate_init_dmpart(ci, s);
                 if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                 if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
             }
 
             else if (t->type == task_type_pair) {
-
+                /* Activate the inits. */
+                if (ci_nodeID == nodeID) cell_activate_init_dmpart(ci, s);
+                if (cj_nodeID == nodeID) cell_activate_init_dmpart(cj, s);
                 
-                    /* Activate the drift tasks. */
-                    if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                    if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-
-                    if (cj_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(cj, s);
-                    if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
+                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+                    
+                if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
+                if (cj_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(cj, s);
             }
             
             /* Store current values of dx_max and h_max. */
@@ -5280,45 +5332,9 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             /* Check whether there was too much particle motion, i.e. the
              cell neighbour conditions were violated. */
             if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
-            
-            
+        
 #ifdef WITH_MPI
-            /* Activate the send/recv tasks. */
-            if (ci_nodeID != nodeID) {
-                
-                /* Receive the foreign parts to compute DM parts interactions */
-                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);*/
-                
-                /* Send the local part information */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart, ci_nodeID);
-
-                /* Drift the cell which will be sent; note that not all sent
-                 particles will be drifted, only those that are needed. */
-                cell_activate_drift_dmpart(ci, s);
-                
-                /* Send the new DM time-steps */
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
-                                        ci_nodeID);
-
-                
-            } else if (cj_nodeID != nodeID) {
-                
-                /* Receive the foreign parts to compute DM parts interactions */
-                /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);*/
-
-                /* Send the local part information */
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart, ci_nodeID);
-
-                /* Drift the cell which will be sent; note that not all sent
-                 particles will be drifted, only those that are needed. */
-                cell_activate_drift_dmpart(cj, s);
-                
-                /* Send the new DM time-steps */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
-                                        cj_nodeID);
-
-
-            }
+           
 #endif
         }
     }
@@ -5332,7 +5348,6 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
         if (c->timestep != NULL) scheduler_activate(s, c->timestep);
    }
-    
     return rebuild;
 }
 
@@ -5842,6 +5857,65 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 }
 
 /**
+ * @brief Recursively initialize the #dmpart in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ * @param force Init of the particles irrespective of the #cell flags.
+ */
+void cell_init_dmpart(struct cell *c, const struct engine *e, int force) {
+    
+    struct dmpart *const dmparts = c->dark_matter.parts;
+    
+    /* Init irrespective of cell flags? */
+    force = (force || cell_get_flag(c, cell_flag_do_init_dark_matter));
+    
+    /* Early abort? */
+    if (c->dark_matter.count == 0) {
+        /* Clear the drift flags. */
+        cell_clear_flag(c, cell_flag_do_init_dark_matter | cell_flag_do_init_sub_dark_matter);
+        return;
+    }
+    
+    /* Ok, we have some particles somewhere in the hierarchy to drift */
+    
+    /* Are we not in a leaf ? */
+    if (c->split && (force || cell_get_flag(c, cell_flag_do_init_sub_dark_matter))) {
+        
+        /* Loop over the progeny and collect their data. */
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                struct cell *cp = c->progeny[k];
+                
+                /* Recurse */
+                cell_init_dmpart(cp, e, force);
+            }
+        }
+        
+    } else if (!c->split && force) {
+        
+        /* Loop over all the star particles in the cell */
+        const size_t nr_dmparts = c->dark_matter.count;
+        for (size_t k = 0; k < nr_dmparts; k++) {
+            /* Get a handle on the spart. */
+            struct dmpart *const dmp = &dmparts[k];
+            
+            /* Ignore inhibited particles */
+            if (dmpart_is_inhibited(dmp, e)) continue;
+            
+            /* Get ready for a density calculation */
+            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
+            
+            /* All dmparts get ready for a SIDM calculation */
+            sidm_init_dmpart(dmp);
+        }
+    }
+    
+    /* Clear the flags. */
+    cell_clear_flag(c, cell_flag_do_init_dark_matter | cell_flag_do_init_sub_dark_matter);
+}
+
+/**
  * @brief Recursively drifts the #dmpart in a cell hierarchy.
  *
  * @param c The #cell.
@@ -5964,10 +6038,10 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             cell_h_max = max(cell_h_max, dmp->h);
             
             /* Get ready for a density calculation */
-            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
+            /*if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);*/
 
             /* All dmparts get ready for a SIDM calculation */
-            sidm_init_dmpart(dmp);
+            /*sidm_init_dmpart(dmp);*/
         }
         
         /* Now, get the maximal particle motion from its square */

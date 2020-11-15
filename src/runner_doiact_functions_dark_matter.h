@@ -70,12 +70,6 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
             /* Skip inhibited particles. */
             if (dmpart_is_inhibited(pj, e)) continue;
             
-#ifdef SWIFT_DEBUG_CHECKS
-            /* Check that particles have been drifted to the current time */
-            if (pj->ti_drift != e->ti_current)
-                error("DM Particle pj not drifted to current time");
-#endif
-            
             /* Compute the pairwise distance. */
             float r2 = 0.0f;
             float dx[3];
@@ -334,12 +328,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
                 struct dmpart *restrict pj = &dmparts[indt[pjd]];
                 const float hj = pj->h;
                 
-#ifdef SWIFT_DEBUG_CHECKS
-                /* Check that particles have been drifted to the current time */
-                if (pj->ti_drift != e->ti_current)
-                    error("Particle pj not drifted to current time");
-#endif
-                
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
                 float dx[3];
@@ -466,12 +454,6 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
             const int pj_active = dmpart_is_active(pj, e);
-            
-#ifdef SWIFT_DEBUG_CHECKS
-            /* Check that particles have been drifted to the current time */
-            if (pj->ti_drift != e->ti_current)
-                error("DM Particle pj not drifted to current time");
-#endif
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),

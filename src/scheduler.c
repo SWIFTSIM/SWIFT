@@ -1745,6 +1745,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_dark_matter_ghost:
         if (t->ci == t->ci->grav.super) cost = wscale * dmcount_i;
         break;
+      case task_type_init_dark_matter:
+        cost = wscale * dmcount_i;
+        break;
       case task_type_bh_density_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
@@ -1975,6 +1978,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_drift_gpart:
         qid = t->ci->grav.super->owner;
         break;
+      case task_type_init_dark_matter:
       case task_type_drift_dmpart:
       case task_type_dark_matter_ghost:
       case task_type_sidm_kick:

@@ -197,6 +197,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_bpart;
       break;
 
+    case task_type_init_dark_matter:
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
@@ -479,6 +480,7 @@ void task_unlock(struct task *t) {
       cell_dmunlocktree(ci);
       break;
           
+    case task_type_init_dark_matter:
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
@@ -685,6 +687,7 @@ int task_lock(struct task *t) {
       }
       break;
 
+    case task_type_init_dark_matter:
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
@@ -1472,6 +1475,7 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_recv:
       return task_category_mpi;
 
+    case task_type_init_dark_matter:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
       return task_category_dark_matter;
