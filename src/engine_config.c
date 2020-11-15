@@ -724,9 +724,28 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_sub_size_self_grav", space_subsize_self_grav);
     space_splitsize = parser_get_opt_param_int(
         params, "Scheduler:cell_split_size", space_splitsize);
-    space_subdepth_diff_grav =
-        parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
-                                 space_subdepth_diff_grav_default);
+    space_subdepth_diff_grav = parser_get_opt_param_int(
+        params, "Scheduler:cell_subdepth_diff_grav", space_subdepth_diff_grav);
+
+    space_recurse_size_self_hydro = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_self_hydro",
+        space_recurse_size_self_hydro);
+    space_recurse_size_pair_hydro = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_pair_hydro",
+        space_recurse_size_pair_hydro);
+    space_recurse_size_self_stars = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_self_stars",
+        space_recurse_size_self_stars);
+    space_recurse_size_pair_stars = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_pair_stars",
+        space_recurse_size_pair_stars);
+    space_recurse_size_self_black_holes = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_self_black_holes",
+        space_recurse_size_self_black_holes);
+    space_recurse_size_pair_black_holes = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_pair_black_holes",
+        space_recurse_size_pair_black_holes);
+
     space_extra_parts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_parts", space_extra_parts);
     space_extra_sparts = parser_get_opt_param_int(
@@ -735,6 +754,8 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_gparts", space_extra_gparts);
     space_extra_bparts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_bparts", space_extra_bparts);
+    space_extra_sinks = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_sinks", space_extra_sinks);
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
