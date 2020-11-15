@@ -997,8 +997,9 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
       }
     } else {
       /* We have reached the bottom of the tree: activate drift */
-      cell_activate_drift_bpart(ci, s);
-      cell_activate_drift_part(ci, s);
+      // cell_activate_drift_bpart(ci, s);
+      // cell_activate_drift_part(ci, s);
+      // if (with_timestep_sync) cell_activate_sync_part(ci, s);
     }
   }
 
@@ -1031,16 +1032,16 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
              cell_is_active_black_holes(cj, e)) {
 
       /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-      if (cj->nodeID == engine_rank && with_timestep_sync)
-        cell_activate_sync_part(cj, s);
+      // if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
+      // if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+      // if (cj->nodeID == engine_rank && with_timestep_sync)
+      //  cell_activate_sync_part(cj, s);
 
       /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
-      if (ci->nodeID == engine_rank && with_timestep_sync)
-        cell_activate_sync_part(ci, s);
+      // if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+      // if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
+      // if (ci->nodeID == engine_rank && with_timestep_sync)
+      //  cell_activate_sync_part(ci, s);
     }
   } /* Otherwise, pair interation */
 }
@@ -2176,11 +2177,33 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       else if (t->type == task_type_sub_self) {
         cell_activate_subcell_black_holes_tasks(ci, NULL, s,
                                                 with_timestep_sync);
+
+        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+        if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
+        if (ci->nodeID == engine_rank && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_black_holes_tasks(ci, cj, s, with_timestep_sync);
+
+	/* Drift BHs whether active or not as they also act as neighbours in
+	   the swallow loops */
+	if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
+	if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
+
+        /* Activate the drifts if the cells are local. */
+        if (ci_active) {
+          if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+          if (cj->nodeID == engine_rank && with_timestep_sync)
+            cell_activate_sync_part(cj, s);
+        }
+        if (cj_active) {
+          if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+          if (ci->nodeID == engine_rank && with_timestep_sync)
+            cell_activate_sync_part(ci, s);
+        }
       }
     }
 
