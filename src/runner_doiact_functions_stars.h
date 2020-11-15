@@ -1117,10 +1117,22 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  /* Here we update the stars --> the star cell must be local */
+  const int ci_local = (ci->nodeID == e->nodeID);
+  const int cj_local = (cj->nodeID == e->nodeID);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+  /* Here we update the gas --> the gas cell must be local */
+  const int ci_local = (cj->nodeID == e->nodeID);
+  const int cj_local = (ci->nodeID == e->nodeID);
+#else
+  error("Invalid loop type!");
+#endif
+
   const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                    cell_is_active_stars(ci, e);
+                    cell_is_active_stars(ci, e) && ci_local;
   const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-                    cell_is_active_stars(cj, e);
+                    cell_is_active_stars(cj, e) && cj_local;
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
@@ -1181,13 +1193,23 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  // message("sid=%d", sid);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  /* Here we update the stars --> the star cell must be local */
+  const int ci_local = (ci->nodeID == e->nodeID);
+  const int cj_local = (cj->nodeID == e->nodeID);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+  /* Here we update the gas --> the gas cell must be local */
+  const int ci_local = (cj->nodeID == e->nodeID);
+  const int cj_local = (ci->nodeID == e->nodeID);
+#else
+  error("Invalid loop type!");
+#endif
 
   /* What kind of pair are we doing here? */
   const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                    cell_is_active_stars(ci, e);
+                    cell_is_active_stars(ci, e) && ci_local;
   const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-                    cell_is_active_stars(cj, e);
+                    cell_is_active_stars(cj, e) && cj_local;
 
   /* Should we even bother? */
   if (!do_ci && !do_cj) return;

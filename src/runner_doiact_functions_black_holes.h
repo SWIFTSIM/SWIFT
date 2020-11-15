@@ -188,12 +188,10 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
                               struct cell *restrict cj, const int limit_min_h,
                               const int limit_max_h) {
 
-#ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   if (cj->nodeID != engine_rank) error("Should be run on a different node");
-#endif
 #endif
 
   const struct engine *e = r->e;
@@ -353,21 +351,38 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
   TIMER_TIC;
 
+  const struct engine *e = r->e;
+  const int ci_active = cell_is_active_black_holes(ci, e);
+  const int cj_active = cell_is_active_black_holes(cj, e);
+
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  const int do_ci_bh = ci->nodeID == r->e->nodeID;
-  const int do_cj_bh = cj->nodeID == r->e->nodeID;
+  /* Here we update the BHs --> the BH cell must be local */
+  const int do_ci = (ci->nodeID == e->nodeID) && (ci->black_holes.count != 0) &&
+                    (cj->hydro.count != 0) && ci_active;
+  const int do_cj = (cj->nodeID == e->nodeID) && (cj->black_holes.count != 0) &&
+                    (ci->hydro.count != 0) && cj_active;
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  /* here we are updating the hydro -> switch ci, cj */
-  const int do_ci_bh = cj->nodeID == r->e->nodeID;
-  const int do_cj_bh = ci->nodeID == r->e->nodeID;
+  /* here we are updating the gas --> the gas cell must be local */
+  const int do_ci = (cj->nodeID == e->nodeID) && (ci->black_holes.count != 0) &&
+                    (cj->hydro.count != 0) && ci_active;
+  const int do_cj = (ci->nodeID == e->nodeID) && (cj->black_holes.count != 0) &&
+                    (ci->hydro.count != 0) && cj_active;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* here we are updating the BH and gas --> we always run the task */
+  const int do_ci = (ci->black_holes.count != 0) &&
+                    ((cj->black_holes.count != 0) || (cj->hydro.count != 0)) &&
+                    ci_active;
+  const int do_cj = (cj->black_holes.count != 0) &&
+                    ((ci->black_holes.count != 0) || (ci->hydro.count != 0)) &&
+                    cj_active;
 #else
-  /* The swallow task is executed on both sides */
-  const int do_ci_bh = 1;
-  const int do_cj_bh = 1;
+  const int do_ci = 0;
+  const int do_cj = 0;
+  error("Invalid loop type!");
 #endif
 
-  if (do_ci_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
-  if (do_cj_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
+  if (do_ci) DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
+  if (do_cj) DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
 
   TIMER_TOC(TIMER_DOPAIR_BH);
 }
@@ -637,23 +652,32 @@ void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj,
 
   const int ci_active = cell_is_active_black_holes(ci, e);
   const int cj_active = cell_is_active_black_holes(cj, e);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  const int do_ci_bh = ci->nodeID == e->nodeID;
-  const int do_cj_bh = cj->nodeID == e->nodeID;
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  /* here we are updating the hydro -> switch ci, cj */
-  const int do_ci_bh = cj->nodeID == e->nodeID;
-  const int do_cj_bh = ci->nodeID == e->nodeID;
-#else
-  /* The swallow task is executed on both sides */
-  const int do_ci_bh = 1;
-  const int do_cj_bh = 1;
-#endif
 
-  const int do_ci = (ci->black_holes.count != 0 && cj->hydro.count != 0 &&
-                     ci_active && do_ci_bh);
-  const int do_cj = (cj->black_holes.count != 0 && ci->hydro.count != 0 &&
-                     cj_active && do_cj_bh);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  /* Here we update the BHs --> the BH cell must be local */
+  const int do_ci = (ci->nodeID == e->nodeID) && (ci->black_holes.count != 0) &&
+                    (cj->hydro.count != 0) && ci_active;
+  const int do_cj = (cj->nodeID == e->nodeID) && (cj->black_holes.count != 0) &&
+                    (ci->hydro.count != 0) && cj_active;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+  /* here we are updating the gas --> the gas cell must be local */
+  const int do_ci = (cj->nodeID == e->nodeID) && (ci->black_holes.count != 0) &&
+                    (cj->hydro.count != 0) && ci_active;
+  const int do_cj = (ci->nodeID == e->nodeID) && (cj->black_holes.count != 0) &&
+                    (ci->hydro.count != 0) && cj_active;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* here we are updating the BH and gas --> we always run the task */
+  const int do_ci = (ci->black_holes.count != 0) &&
+                    ((cj->black_holes.count != 0) || (cj->hydro.count != 0)) &&
+                    ci_active;
+  const int do_cj = (cj->black_holes.count != 0) &&
+                    ((ci->black_holes.count != 0) || (ci->hydro.count != 0)) &&
+                    cj_active;
+#else
+  const int do_ci = 0;
+  const int do_cj = 0;
+  error("Invalid loop type!");
+#endif
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
@@ -694,22 +718,33 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  /* Should we even bother?
-   * In the swallow case we care about BH-BH and BH-gas
-   * interactions.
-   * In all other cases only BH-gas so we can abort if there is
-   * is no gas in the cell */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
-  const int do_ci =
-      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
-  const int do_cj =
-      cj->black_holes.count != 0 && cell_is_active_black_holes(cj, e);
-#else
-  const int do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
-                    cell_is_active_black_holes(ci, e);
-  const int do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
-                    cell_is_active_black_holes(cj, e);
+  const int ci_active = cell_is_active_black_holes(ci, e);
+  const int cj_active = cell_is_active_black_holes(cj, e);
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  /* Here we update the BHs --> the BH cell must be local */
+  const int do_ci = (ci->nodeID == e->nodeID) && (ci->black_holes.count != 0) &&
+                    (cj->hydro.count != 0) && ci_active;
+  const int do_cj = (cj->nodeID == e->nodeID) && (cj->black_holes.count != 0) &&
+                    (ci->hydro.count != 0) && cj_active;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+  /* here we are updating the gas --> the gas cell must be local */
+  const int do_ci = (cj->nodeID == e->nodeID) && (ci->black_holes.count != 0) &&
+                    (cj->hydro.count != 0) && ci_active;
+  const int do_cj = (ci->nodeID == e->nodeID) && (cj->black_holes.count != 0) &&
+                    (ci->hydro.count != 0) && cj_active;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  /* here we are updating the BH and gas --> we always run the task */
+  const int do_ci = (ci->black_holes.count != 0) &&
+                    ((cj->black_holes.count != 0) || (cj->hydro.count != 0)) &&
+                    ci_active;
+  const int do_cj = (cj->black_holes.count != 0) &&
+                    ((ci->black_holes.count != 0) || (ci->hydro.count != 0)) &&
+                    cj_active;
+#else
+  const int do_ci = 0;
+  const int do_cj = 0;
+  error("Invalid loop type!");
 #endif
 
   if (!do_ci && !do_cj) return;
