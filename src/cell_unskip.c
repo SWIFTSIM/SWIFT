@@ -2212,8 +2212,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_black_holes_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_black_holes_pair(cj, ci)) rebuild = 1;
+      if (cell_need_rebuild_for_black_holes_pair(ci, cj) && !t->flags) rebuild = 1;
+      if (cell_need_rebuild_for_black_holes_pair(cj, ci) && !t->flags) rebuild = 1;
 
       scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost[0]);
       scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost[0]);
