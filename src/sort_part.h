@@ -108,7 +108,8 @@ static const int sub_sid_flag[7][8] = {
  *
  * @return 1 if corner to corner, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int sort_is_corner(int sid) {
+__attribute__((always_inline, const)) INLINE static int sort_is_corner(
+    const int sid) {
   return (sid == 0 || sid == 2 || sid == 6 || sid == 8);
 }
 
@@ -119,7 +120,8 @@ __attribute__((always_inline)) INLINE static int sort_is_corner(int sid) {
  *
  * @return 1 if edge to edge, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int sort_is_edge(int sid) {
+__attribute__((always_inline, const)) INLINE static int sort_is_edge(
+    const int sid) {
   return (sid == 1 || sid == 3 || sid == 5 || sid == 7 || sid == 9 ||
           sid == 11);
 }
@@ -131,7 +133,8 @@ __attribute__((always_inline)) INLINE static int sort_is_edge(int sid) {
  *
  * @return 1 if face to face, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int sort_is_face(int sid) {
+__attribute__((always_inline, const)) INLINE static int sort_is_face(
+    const int sid) {
   return (sid == 4 || sid == 10 || sid == 12);
 }
 
