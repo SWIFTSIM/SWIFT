@@ -5359,14 +5359,6 @@ void space_synchronize_dmpart_positions_mapper(void *map_data, int nr_dmparts,
         gp->v_full[1] = dmp->v_full[1];
         gp->v_full[2] = dmp->v_full[2];
         
-        /*dmp->x[0] = dmp->gpart->x[0];
-        dmp->x[1] = dmp->gpart->x[1];
-        dmp->x[2] = dmp->gpart->x[2];
-        
-        dmp->v_full[0] = dmp->gpart->v_full[0];
-        dmp->v_full[1] = dmp->gpart->v_full[1];
-        dmp->v_full[2] = dmp->gpart->v_full[2];*/
-        
         gp->mass = dmp->mass;
     }
 }
