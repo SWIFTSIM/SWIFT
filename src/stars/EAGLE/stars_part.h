@@ -111,7 +111,7 @@ struct spart {
   struct tracers_xpart_data tracers_data;
 
   /*! Chemistry structure */
-  struct chemistry_part_data chemistry_data;
+  struct chemistry_spart_data chemistry_data;
 
   /*! Particle time bin */
   timebin_t time_bin;

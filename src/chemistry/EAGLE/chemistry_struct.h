@@ -89,6 +89,8 @@ struct chemistry_part_data {
   float smoothed_iron_mass_fraction_from_SNIa;
 };
 
+#define chemistry_spart_data chemistry_part_data
+
 /**
  * @brief Chemical abundances traced by the #bpart in the EAGLE model.
  */
