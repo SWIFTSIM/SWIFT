@@ -138,4 +138,166 @@ __attribute__((always_inline, const)) INLINE static int sort_is_face(
   return (sid == 4 || sid == 10 || sid == 12);
 }
 
+/**
+ * @brief Returns the position of the cell interface on the axis linking
+ * two neighbouring cells ci and cj.
+ *
+ * @param sid The direction of interaction
+ * @param cell_loc The location of cj.
+ * @param cell_width The width of the cells.
+ */
+INLINE static double sort_get_cell_min_dist(const int sid,
+                                            const double cell_loc[3],
+                                            const double cell_width[3]) {
+
+  double pos[3];
+
+  switch (sid) {
+
+    case 0: /* ( -1 , -1 , -1 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = cell_loc[1];
+      pos[2] = cell_loc[2];
+      break;
+    case 1: /* ( -1 , -1 ,  0 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = cell_loc[1];
+      pos[2] = 0.;
+      break;
+    case 2: /* ( -1 , -1 ,  1 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = cell_loc[1];
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 3: /* ( -1 ,  0 , -1 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = 0.;
+      pos[2] = cell_loc[2];
+      break;
+    case 4: /* ( -1 ,  0 ,  0 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = 0.;
+      pos[2] = 0.;
+      break;
+    case 5: /* ( -1 ,  0 ,  1 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = 0.;
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 6: /* ( -1 ,  1 , -1 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = cell_loc[2];
+      break;
+    case 7: /* ( -1 ,  1 ,  0 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = 0.;
+      break;
+    case 8: /* ( -1 ,  1 ,  1 ) */
+      pos[0] = cell_loc[0];
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 9: /* ( 0 , -1 , -1 ) */
+      pos[0] = 0.;
+      pos[1] = cell_loc[1];
+      pos[2] = cell_loc[2];
+      break;
+    case 10: /* ( 0 , -1 ,  0 ) */
+      pos[0] = 0.;
+      pos[1] = cell_loc[1];
+      pos[2] = 0.;
+      break;
+    case 11: /* ( 0 , -1 ,  1 ) */
+      pos[0] = 0.;
+      pos[1] = cell_loc[1];
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 12: /* ( 0 ,  0 , -1 ) */
+      pos[0] = 0.;
+      pos[1] = 0.;
+      pos[2] = cell_loc[2];
+      break;
+    case 13: /* ( 0 ,  0 ,  0 ) */
+      pos[0] = 0.;
+      pos[1] = 0.;
+      pos[2] = 0.;
+      break;
+    case 14: /* ( 0 ,  0 ,  1 ) */
+      pos[0] = 0.;
+      pos[1] = 0.;
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 15: /* ( 0 ,  1 , -1 ) */
+      pos[0] = 0.;
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = cell_loc[2];
+      break;
+    case 16: /* ( 0 ,  1 ,  0 ) */
+      pos[0] = 0.;
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = 0.;
+      break;
+    case 17: /* ( 0 ,  1 ,  1 ) */
+      pos[0] = 0.;
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 18: /* ( 1 , -1 , -1 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = cell_loc[1];
+      pos[2] = cell_loc[2];
+      break;
+    case 19: /* ( 1 , -1 ,  0 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = cell_loc[1];
+      pos[2] = 0.;
+      break;
+    case 20: /* ( 1 , -1 ,  1 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = cell_loc[1];
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 21: /* ( 1 ,  0 , -1 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = 0.;
+      pos[2] = cell_loc[2];
+      break;
+    case 22: /* ( 1 ,  0 ,  0 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = 0.;
+      pos[2] = 0.;
+      break;
+    case 23: /* ( 1 ,  0 ,  1 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = 0.;
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    case 24: /* ( 1 ,  1 , -1 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = cell_loc[2];
+      break;
+    case 25: /* ( 1 ,  1 ,  0 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = 0.;
+      break;
+    case 26: /* ( 1 ,  1 ,  1 ) */
+      pos[0] = cell_loc[0] + cell_width[0];
+      pos[1] = cell_loc[1] + cell_width[1];
+      pos[2] = cell_loc[2] + cell_width[2];
+      break;
+    default:
+      error("Invalid sid");
+      pos[0] = 0.;
+      pos[1] = 0.;
+      pos[2] = 0.;
+  }
+
+  return pos[0] * runner_shift[sid][0] + pos[1] * runner_shift[sid][1] +
+         pos[2] * runner_shift[sid][2];
+}
+
 #endif /* SWIFT_SORT_PART_H */
