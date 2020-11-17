@@ -861,6 +861,19 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
       e->time_first_stf_output = stf_time_first;
   }
 
+  /* Deal with HBT */
+  double hbt_time_first;
+  e->output_list_hbt = NULL;
+  output_list_init(&e->output_list_hbt, e, "HBT",
+                   &e->delta_time_hbt, &hbt_time_first);
+
+  if (e->output_list_hbt) {
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_hbt_output = hbt_time_first;
+    else
+      e->time_first_hbt_output = hbt_time_first;
+  }
+
   /* Deal with line of sight */
   double los_time_first;
   e->output_list_los = NULL;

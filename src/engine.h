@@ -338,6 +338,15 @@ struct engine {
 
   /* HBT information */
   char hbt_config_file_name[PARSER_MAX_LINE_SIZE];
+  double a_first_hbt_output;
+  double time_first_hbt_output;
+  double delta_time_hbt;
+
+  /* Output_List for HBT */
+  struct output_list *output_list_hbt;
+
+  /* Integer time of the next HBT output */
+  integertime_t ti_next_hbt;
 
   /* FoF black holes seeding information */
   double a_first_fof_call;

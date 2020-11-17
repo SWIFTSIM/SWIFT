@@ -2842,6 +2842,13 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (e->policy & engine_policy_hbt) {
     parser_get_param_string(params, "HBT:config_file_name",
                             e->hbt_config_file_name);
+
+    e->time_first_hbt_output =
+        parser_get_opt_param_double(params, "HBT:time_first", 0.);
+    e->a_first_hbt_output = parser_get_opt_param_double(
+        params, "HBT:scale_factor_first", 0.1);
+    e->delta_time_hbt =
+        parser_get_opt_param_double(params, "HBT:delta_time", -1.);
   }
 
   /* Initialise line of sight output. */
@@ -3108,6 +3115,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_list_clean(&e->output_list_snapshots);
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
+  output_list_clean(&e->output_list_hbt);
 
   output_options_clean(e->output_options);
 
@@ -3182,6 +3190,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->output_list_snapshots) free((void *)e->output_list_snapshots);
     if (e->output_list_stats) free((void *)e->output_list_stats);
     if (e->output_list_stf) free((void *)e->output_list_stf);
+    if (e->output_list_hbt) free((void *)e->output_list_hbt);
     if (e->output_list_los) free((void *)e->output_list_los);
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) free((void *)e->logger);
@@ -3240,6 +3249,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   if (e->output_list_stats)
     output_list_struct_dump(e->output_list_stats, stream);
   if (e->output_list_stf) output_list_struct_dump(e->output_list_stf, stream);
+  if (e->output_list_hbt) output_list_struct_dump(e->output_list_hbt, stream);
   if (e->output_list_los) output_list_struct_dump(e->output_list_los, stream);
 
 #ifdef WITH_LOGGER
@@ -3405,6 +3415,13 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
         (struct output_list *)malloc(sizeof(struct output_list));
     output_list_struct_restore(output_list_stf, stream);
     e->output_list_stf = output_list_stf;
+  }
+
+  if (e->output_list_hbt) {
+    struct output_list *output_list_hbt =
+        (struct output_list *)malloc(sizeof(struct output_list));
+    output_list_struct_restore(output_list_hbt, stream);
+    e->output_list_hbt = output_list_hbt;
   }
 
   if (e->output_list_los) {
