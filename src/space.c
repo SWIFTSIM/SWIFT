@@ -94,9 +94,9 @@ int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
 
-/*! Counter for cell IDs (when debugging) */
+/*! Counter for cell IDs (when debugging + max vals for unique IDs exceeded) */
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-int last_cell_id;
+long long last_cell_id;
 #endif
 
 /**
@@ -2412,24 +2412,24 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   if (c == NULL) return;
 
   /* Get parent ID */
-  int parent = root_cell_id;
+  long long parent = root_cell_id;
   if (c->parent != NULL) parent = c->parent->cellID;
 
   /* Get super ID */
   char superID[100] = "";
-  if (c->super != NULL) sprintf(superID, "%i", c->super->cellID);
+  if (c->super != NULL) sprintf(superID, "%lld", c->super->cellID);
 
   /* Get hydro super ID */
   char hydro_superID[100] = "";
   if (c->hydro.super != NULL)
-    sprintf(hydro_superID, "%i", c->hydro.super->cellID);
+    sprintf(hydro_superID, "%lld", c->hydro.super->cellID);
 
   /* Write line for current cell */
-  fprintf(f, "%i,%i,%i,", c->cellID, parent, c->nodeID);
+  fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
   fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
           c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-  fprintf(f, "%g, %g %i %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
+  fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
 
   /* Write children */
@@ -2466,9 +2466,9 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
 
     /* Write root data */
     fprintf(f, "%i, ,-1,", root_id);
-    fprintf(f, "%li,%li,%li, , , , , , , , , ", s->nr_parts, s->nr_sparts,
+    fprintf(f, "%li,%li,%li, , , , , , , , ,", s->nr_parts, s->nr_sparts,
             s->nr_gparts);
-    fprintf(f, ",\n");
+    fprintf(f, " , , ,\n");
   }
 
   /* Write all the top level cells (and their children) */

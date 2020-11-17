@@ -35,7 +35,7 @@ extern int space_expected_max_nr_strays;
 
 /*! Counter for cell IDs (when debugging) */
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-extern int last_cell_id;
+extern long long last_cell_id;
 #endif
 
 /**
@@ -911,8 +911,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->black_holes.ti_old_part = ti_current;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-    c->cellID = -last_cell_id;
-    last_cell_id++;
+    cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->width);
 #endif
 
     const int is_local = (c->nodeID == engine_rank);
