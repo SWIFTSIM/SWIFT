@@ -717,6 +717,9 @@ int task_lock(struct scheduler *s, struct task *t) {
             }
           }
 
+          /* Release data. */
+          free(dataptr); // XXX reuse this surely...
+
           /* May start next send now. Do nothing with the data after this
            * point. */
           if (lock_unlock(&s->send_lock) != 0) {
@@ -724,13 +727,12 @@ int task_lock(struct scheduler *s, struct task *t) {
           }
 
           //if (s->space->e->verbose) // XXX no no no
-          message("sent and acknowledged message to %d subtype: %d",
-                  cj->nodeID, subtype);
+          message("Sent and ack message to %d subtype: %d, tag %lld, size %zd",
+                  cj->nodeID, subtype, t->flags, t->size);
 
           /* And log deactivation, if logging enabled. */
           mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
 
-          free(dataptr); // XXX reuse this surely...
           return 1;
         }
       }
@@ -746,9 +748,6 @@ int task_lock(struct scheduler *s, struct task *t) {
       {
         /* Need to get the recv lock. */
         if (lock_trylock(&s->recv_lock) == 0) {
-
-          // XXX still an issue with messages arriving from subtypes with no
-          // current recvs. How do we deal with that?
 
           /* Check for a message waiting for this subtype, tag and size from our
            * expected node. If so accept. XXX need the scheduler and these
@@ -797,7 +796,7 @@ int task_lock(struct scheduler *s, struct task *t) {
               mpicache_fetch(s->mpicache, ci->nodeID, subtype, t->flags,
                              &size, &buff);
               if (size != 0 && buff != NULL) {
-                message("Cache hit from %d, subtype: %d, tag: %lld, size %zd",
+                message("Followup cache hit from %d, subtype: %d, tag: %lld, size %zd",
                         ci->nodeID, subtype, t->flags, t->size);
 
                 /* Here we go. */
@@ -817,6 +816,10 @@ int task_lock(struct scheduler *s, struct task *t) {
               /* Ready for next recv. */
               dataptr[0] = scheduler_osmpi_locked;
 
+              // XXX should we wait for this to be acknowledged before
+              // proceeding? If not could it be reset before the remote
+              // handles it?
+
               //if (s->space->e->verbose) // XXX no no no
               //message("recv message from %d/%d)", ci->nodeID, subtype);
               if (lock_unlock(&s->recv_lock) != 0) {
@@ -833,7 +836,7 @@ int task_lock(struct scheduler *s, struct task *t) {
             mpicache_fetch(s->mpicache, ci->nodeID, subtype, t->flags,
                            &size, &buff);
             if (size != 0 && buff != NULL) {
-              message("Cache hit from %d, subtype: %d, tag: %lld, size %zd",
+              message("Simple cache hit from %d, subtype: %d, tag: %lld, size %zd",
                       ci->nodeID, subtype, t->flags, t->size);
 
               /* Here we go. */
@@ -858,6 +861,7 @@ int task_lock(struct scheduler *s, struct task *t) {
           /* While we have the lock, look for any cachable messages from all
            * subtypes and nodes which we could miss if no tasks with this subtype are
            * currently queued. (XXX active subtypes) */
+          int done = 0;
           for (int k = 0; k < task_subtype_count; k++) {
             for (int j = 0; j < s->space->e->nr_nodes; j++) {
               if (j != engine_rank) {
@@ -874,12 +878,23 @@ int task_lock(struct scheduler *s, struct task *t) {
 
                   /* Ready for next recv. */
                   dataptr[0] = scheduler_osmpi_locked;
-
+                  
                   // Should we break?
+                  done = 1;
+                  break;
                 }
               }
             }
+            if (done) break;
           }
+
+          /* Need to allow for some MPI progession. Since we make no MPI calls
+           * (by intent receive is a passive target so only the sender should
+           * make calls that move data). */
+          int flag = 0;
+          int ret = MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag,
+                               MPI_STATUS_IGNORE);
+          if (ret != MPI_SUCCESS) mpi_error(ret, "MPI_Iprobe failed");
 
           /* Release the lock so another task can have a go. */
           if (lock_unlock(&s->recv_lock) != 0) {
