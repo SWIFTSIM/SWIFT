@@ -651,9 +651,10 @@ int task_lock(struct scheduler *s, struct task *t) {
           dataptr[2] = t->flags;
           memcpy(&dataptr[scheduler_osmpi_header_size], t->buff, t->size);
 
-          message("Sending message to %d from %d subtype: %d, tag %zd, size %zd"
-                  " (cf %lld %zd)", cj->nodeID, ci->nodeID, subtype, dataptr[2],
-                  dataptr[1], t->flags, t->size);
+          if (s->space->e->verbose)
+            message("Sending message to %d from %d subtype: %d, tag %zd, size %zd"
+                    " (cf %lld %zd)", cj->nodeID, ci->nodeID, subtype, dataptr[2],
+                    dataptr[1], t->flags, t->size);
 
           /* And send to the destination rank. XXX will not work subtype offsets
            * need to be shared around system, are just local and not fixed size
@@ -668,9 +669,10 @@ int task_lock(struct scheduler *s, struct task *t) {
             mpi_error(err, "Failed to send particle data.");
           }
 
-          message("Sent message to %d subtype: %d, tag %zd, size %zd"
-                  " (cf %lld %zd)", cj->nodeID, subtype, dataptr[2],
-                  dataptr[1], t->flags, t->size);
+          if (s->space->e->verbose)
+            message("Sent message to %d subtype: %d, tag %zd, size %zd"
+                    " (cf %lld %zd)", cj->nodeID, subtype, dataptr[2],
+                    dataptr[1], t->flags, t->size);
 
           /* Now we change the first element to unlocked so that the remote end
            * can find out that the data has arrived. */
@@ -726,9 +728,9 @@ int task_lock(struct scheduler *s, struct task *t) {
             error("Unlocking the MPI send lock failed.\n");
           }
 
-          //if (s->space->e->verbose) // XXX no no no
-          message("Sent and ack message to %d subtype: %d, tag %lld, size %zd",
-                  cj->nodeID, subtype, t->flags, t->size);
+          if (s->space->e->verbose)
+            message("Sent and ack message to %d subtype: %d, tag %lld, size %zd",
+                    cj->nodeID, subtype, t->flags, t->size);
 
           /* And log deactivation, if logging enabled. */
           mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
@@ -760,8 +762,9 @@ int task_lock(struct scheduler *s, struct task *t) {
              * and size? */
             if (t->flags == (int) dataptr[2] && t->size == dataptr[1]) {
 
-              message("Accepted from %d, subtype: %d, tag: %lld, size %zd",
-                      ci->nodeID, subtype, t->flags, t->size);
+              if (s->space->e->verbose)
+                message("Accepted from %d, subtype: %d, tag: %lld, size %zd",
+                        ci->nodeID, subtype, t->flags, t->size);
 
               /* And log deactivation, if logging enabled. */
               mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
@@ -772,16 +775,15 @@ int task_lock(struct scheduler *s, struct task *t) {
               /* Ready for next recv. */
               dataptr[0] = scheduler_osmpi_locked;
 
-              //if (s->space->e->verbose) // XXX no no no
-              //message("recv message from %d/%d)", ci->nodeID, subtype);
               if (lock_unlock(&s->recv_lock) != 0) {
                 error("Unlocking the MPI recv lock failed.\n");
               }
               return 1;
 
             } else {
-              message("Caching from %d, subtype: %d, tag: %zd, size %zd",
-                      ci->nodeID, subtype, dataptr[2], dataptr[1]);
+              if (s->space->e->verbose)
+                message("Caching from %d, subtype: %d, tag: %zd, size %zd",
+                        ci->nodeID, subtype, dataptr[2], dataptr[1]);
 
               /* Cache this message. */
               int result = 0;
@@ -790,14 +792,17 @@ int task_lock(struct scheduler *s, struct task *t) {
               mpicache_add(s->mpicache, ci->nodeID, subtype, dataptr[2],
                            dataptr[1], buff);
 
-              /* And check for a cached message for us. */
+              /* And check for a cached message for us. XXX never see this, so
+               * skip. */
+#if 0
               buff = NULL;
               size_t size;
               mpicache_fetch(s->mpicache, ci->nodeID, subtype, t->flags,
                              &size, &buff);
               if (size != 0 && buff != NULL) {
-                message("Followup cache hit from %d, subtype: %d, tag: %lld, size %zd",
-                        ci->nodeID, subtype, t->flags, t->size);
+                if (s->space->e->verbose)
+                  message("Followup cache hit from %d, subtype: %d, tag: %lld, size %zd",
+                          ci->nodeID, subtype, t->flags, t->size);
 
                 /* Here we go. */
                 memcpy(t->buff, buff, t->size);
@@ -807,21 +812,16 @@ int task_lock(struct scheduler *s, struct task *t) {
                 /* And log deactivation, if logging enabled. */
                 mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
 
-              }
-              //else {
+              } 
+              //else if (s->space->e->verbose) {
               //  message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
               //          ci->nodeID, subtype, t->flags, t->size);
               //}
+#endif
 
               /* Ready for next recv. */
               dataptr[0] = scheduler_osmpi_locked;
 
-              // XXX should we wait for this to be acknowledged before
-              // proceeding? If not could it be reset before the remote
-              // handles it?
-
-              //if (s->space->e->verbose) // XXX no no no
-              //message("recv message from %d/%d)", ci->nodeID, subtype);
               if (lock_unlock(&s->recv_lock) != 0) {
                 error("Unlocking the MPI recv lock failed.\n");
               }
@@ -836,8 +836,9 @@ int task_lock(struct scheduler *s, struct task *t) {
             mpicache_fetch(s->mpicache, ci->nodeID, subtype, t->flags,
                            &size, &buff);
             if (size != 0 && buff != NULL) {
-              message("Simple cache hit from %d, subtype: %d, tag: %lld, size %zd",
-                      ci->nodeID, subtype, t->flags, t->size);
+              if (s->space->e->verbose)
+                message("Simple cache hit from %d, subtype: %d, tag: %lld, size %zd",
+                        ci->nodeID, subtype, t->flags, t->size);
 
               /* Here we go. */
               memcpy(t->buff, buff, t->size);
@@ -852,7 +853,7 @@ int task_lock(struct scheduler *s, struct task *t) {
               }
               return 1;
             }
-            //else {
+            //else if (s->space->e->verbose) {
             //  message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
             //          ci->nodeID, subtype, t->flags, t->size);
             //}
@@ -861,15 +862,16 @@ int task_lock(struct scheduler *s, struct task *t) {
           /* While we have the lock, look for any cachable messages from all
            * subtypes and nodes which we could miss if no tasks with this subtype are
            * currently queued. (XXX active subtypes) */
-          int done = 0;
+          //int done = 0;
           for (int k = 0; k < task_subtype_count; k++) {
             for (int j = 0; j < s->space->e->nr_nodes; j++) {
               if (j != engine_rank) {
                 dataptr = &s->osmpi_ptr[k][s->osmpi_max_size[k] * j];
                 if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
 
-                  message("Anonymous caching from %d, subtype: %d, tag: %zd, size %zd",
-                          j, k, dataptr[2], dataptr[1]); fflush(stdout);
+                  if (s->space->e->verbose)
+                    message("Anonymous caching from %d, subtype: %d, tag: %zd, size %zd",
+                            j, k, dataptr[2], dataptr[1]); fflush(stdout);
 
                   /* Cache this message. */
                   void *buff = calloc(1, dataptr[1]);
@@ -878,14 +880,14 @@ int task_lock(struct scheduler *s, struct task *t) {
 
                   /* Ready for next recv. */
                   dataptr[0] = scheduler_osmpi_locked;
-                  
-                  // Should we break?
-                  done = 1;
+
+                  // Break for this subtype.
+                  //done = 1;
                   break;
                 }
               }
             }
-            if (done) break;
+            //if (done) break;
           }
 
           /* Need to allow for some MPI progession. Since we make no MPI calls
