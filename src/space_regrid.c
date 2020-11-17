@@ -30,11 +30,6 @@
 #include "engine.h"
 #include "scheduler.h"
 
-/*! Counter for cell IDs (when debugging) */
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-extern int last_cell_id;
-#endif
-
 /**
  * @brief Re-build the top-level cell grid.
  *
@@ -321,8 +316,7 @@ void space_regrid(struct space *s, int verbose) {
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-          c->cellID = -last_cell_id;
-          last_cell_id++;
+          cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->width);
 #endif
         }
 
