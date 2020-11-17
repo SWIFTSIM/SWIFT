@@ -755,6 +755,73 @@ void engine_compute_next_stf_time(struct engine *e) {
 }
 
 /**
+ * @brief Computes the next time (on the time line) for HBT invocation
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_hbt_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_hbt) {
+    output_list_read_next_time(e->output_list_hbt, e, "hbt", &e->ti_next_hbt);
+    return;
+  }
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_hbt;
+  else
+    time_end = e->time_end + e->delta_time_hbt;
+
+  /* Find next snasphot above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_hbt_output;
+  else
+    time = e->time_first_hbt_output;
+
+  int found_hbt_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_hbt = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_hbt = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_hbt > e->ti_current) {
+      found_hbt_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_hbt;
+    else
+      time += e->delta_time_hbt;
+  }
+
+  /* Deal with last snapshot */
+  if (!found_hbt_time) {
+    e->ti_next_hbt = -1;
+    if (e->verbose) message("No further output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const float next_hbt_time =
+          exp(e->ti_next_hbt * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next HBT time set to a=%e.", next_hbt_time);
+    } else {
+      const float next_hbt_time = e->ti_next_hbt * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next HBT time set to t=%e.", next_hbt_time);
+    }
+  }
+}
+
+/**
  * @brief Computes the next time (on the time line) for FoF black holes seeding
  *
  * @param e The #engine.
