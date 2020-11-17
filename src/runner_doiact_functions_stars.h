@@ -1098,7 +1098,7 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
             "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->" #TYPE                \
             ".dx_max_sort=%e "                                              \
             "cj->" #TYPE                                                    \
-            ".dx_max_sort_old=%e, cellID=%i super->cellID=%i"               \
+            ".dx_max_sort_old=%e, cellID=%lld super->cellID=%lld"           \
             "cj->depth=%d cj->maxdepth=%d",                                 \
             cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->TYPE.dx_max_sort, \
             cj->TYPE.dx_max_sort_old, cj->cellID, cj->hydro.super->cellID,  \

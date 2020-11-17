@@ -1178,7 +1178,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       /* Bip, bip, bip... wake-up time */
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
-        // message("Limiting particle %lld in cell %d", p->id, c->cellID);
+        // message("Limiting particle %lld in cell %lld", p->id, c->cellID);
 
         /* Apply the limiter and get the new end of time-step */
         const integertime_t ti_end_new = timestep_limit_part(p, xp, e);
