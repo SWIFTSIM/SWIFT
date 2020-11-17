@@ -732,12 +732,18 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
+  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
+  
   /* Parts are on the left? */
   if (!flipped) {
 
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
 
+      /* Get the cutoff shift. */
+      double rshift = 0.0;
+      for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+      
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
       const double pix = pi->x[0] - (shift[0]);
@@ -749,17 +755,24 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       // MATTHIEU: todo: early abort here
 
       /* Is the particle overlapping with the other cell? */
-      /* const double di = hi * kernel_gamma + pix * runner_shift[sid][0] + */
-      /*                   piy * runner_shift[sid][1] + piz *
-       * runner_shift[sid][2]; */
+      const double di = /*hi * kernel_gamma + */pix * runner_shift[sid][0] +
+	piy * runner_shift[sid][1] + piz *
+	runner_shift[sid][2]; 
 
-      /* if (di < 0.) continue; */
+      const double dj_cell = sort_get_cell_min_dist(sid, cj->loc, cj->width);  
+
+      /* Most negative position on the axis of a particle in j */
+      //const double dj_min = sort_j[0].d - cj->hydro.dx_max_sort;
+      
+      if (di > dj_cell + ci->hydro.dx_max_part) error("aa");
+      //if (dj_min  < dj_cell - cj->hydro.dx_max_part) message("bb");
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j /*&& sort_j[pjd].d < di*/; pjd++) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[pjd];
+        //struct part *restrict pj = &parts_j[sort_j[pjd].i];
+	 struct part *restrict pj = &parts_j[pjd];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -769,6 +782,16 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         const double pjy = pj->x[1];
         const double pjz = pj->x[2];
 
+	const float dj = /*hi * kernel_gamma + */pjx * runner_shift[sid][0] +
+	pjy * runner_shift[sid][1] + pjz *
+	runner_shift[sid][2]; 
+
+	//const float dj_sort = sort_j[pjd].d;
+
+	//if (dj < dj_sort - cj->hydro.dx_max_sort) error("cc rshift=%f", rshift);
+
+	if (dj < dj_cell - cj->hydro.dx_max_part) error("dd");
+	
         /* Compute the pairwise distance. */
         float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
                        (float)(piz - pjz)};
@@ -788,6 +811,9 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
+	  if (di + hi * kernel_gamma < dj_cell - cj->hydro.dx_max_part) error("ee");
+	  //if (di + hi * kernel_gamma > dj_cell - cj->hydro.dx_max_part) message("yay !");
+		  
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -821,16 +847,22 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       // MATTHIEU: todo: early abort here
 
       /* Is the particle overlapping with the other cell? */
-      /* const double di = -hi * kernel_gamma + pix * runner_shift[sid][0] + */
-      /*                   piy * runner_shift[sid][1] + piz *
-       * runner_shift[sid][2]; */
+      const double di = /*-hi * kernel_gamma  + */pix * runner_shift[sid][0] +
+                        piy * runner_shift[sid][1] + piz *
+      runner_shift[sid][2];
       /* if (di > 0.) continue; */
 
+      const double dj_cell = sort_get_cell_min_dist(sid, cj->loc, cj->width);
+
+      
+      if (di < dj_cell - ci->hydro.dx_max_part) error("aa");
+      
       /* Loop over the parts in cj. */
       for (int pjd = count_j - 1; pjd >= 0 /* && di < sort_j[pjd].d */; pjd--) {
 
         /* Get a pointer to the jth particle. */
-        struct part *restrict pj = &parts_j[pjd];
+        //struct part *restrict pj = &parts_j[pjd];
+	struct part *restrict pj = &parts_j[sort_j[pjd].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -840,6 +872,14 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         const double pjy = pj->x[1];
         const double pjz = pj->x[2];
 
+	/* const float dj = /\*hi * kernel_gamma + *\/pjx * runner_shift[sid][0] + */
+	/* pjy * runner_shift[sid][1] + pjz * */
+	/* runner_shift[sid][2];  */
+
+	//if(di < dj) error("oO");
+	
+	//if (dj > dj_cell + cj->hydro.dx_max_part) error("dd");
+	
         /* Compute the pairwise distance. */
         float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
                        (float)(piz - pjz)};
@@ -855,6 +895,9 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
+	  if (di - hi * kernel_gamma < dj_cell + cj->hydro.dx_max_part) error("ee");
+	  //if (di - hi * kernel_gamma > dj_cell - cj->hydro.dx_max_part) message("yay 2!");
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
