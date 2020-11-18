@@ -637,7 +637,7 @@ int task_lock(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
       {
         /* Need to get the send lock. */
-        if (lock_trylock(&s->send_lock) == 0) {
+        if (lock_trylock(&s->send_lock[subtype % scheduler_osmpi_max_sends]) == 0) {
 
           /* Data has the actual data and room for the header.
            * XXX horrible extra data copy, can we separate headers? */
@@ -724,7 +724,7 @@ int task_lock(struct scheduler *s, struct task *t) {
 
           /* May start next send now. Do nothing with the data after this
            * point. */
-          if (lock_unlock(&s->send_lock) != 0) {
+          if (lock_unlock(&s->send_lock[subtype % scheduler_osmpi_max_sends]) != 0) {
             error("Unlocking the MPI send lock failed.\n");
           }
 
@@ -789,7 +789,7 @@ int task_lock(struct scheduler *s, struct task *t) {
               int result = 0;
               void *buff = calloc(1, dataptr[1]);
               memcpy(buff, (void *)&dataptr[scheduler_osmpi_header_size], dataptr[1]);
-              mpicache_add(s->mpicache, ci->nodeID, subtype, dataptr[2],
+              mpicache_add(s->mpicache[subtype], ci->nodeID, subtype, dataptr[2],
                            dataptr[1], buff);
 
               /* Ready for next recv. */
@@ -798,7 +798,6 @@ int task_lock(struct scheduler *s, struct task *t) {
               if (lock_unlock(&s->recv_lock[subtype]) != 0) {
                 error("Unlocking the MPI recv lock failed.\n");
               }
-
               return result;
             }
           } else {
@@ -806,7 +805,7 @@ int task_lock(struct scheduler *s, struct task *t) {
             /* Check the cache. */
             void *buff = NULL;
             size_t size;
-            mpicache_fetch(s->mpicache, ci->nodeID, subtype, t->flags,
+            mpicache_fetch(s->mpicache[subtype], ci->nodeID, subtype, t->flags,
                            &size, &buff);
             if (size != 0 && buff != NULL) {
               if (s->space->e->verbose)
@@ -832,31 +831,43 @@ int task_lock(struct scheduler *s, struct task *t) {
             //}
           }
 
-          /* While we have the lock, look for any cachable messages from all
-           * subtypes and nodes which we could miss if no tasks with this subtype are
-           * currently queued. (XXX active subtypes) */
+          /* Look for any cachable messages from all subtypes and nodes which
+           * we could miss if no tasks with this subtype are currently
+           * queued, we need to acquire the lock for this subtype, so try that
+           * first. */
+          int done = 0;
           for (int k = 0; k < task_subtype_count; k++) {
-            for (int j = 0; j < s->space->e->nr_nodes; j++) {
-              if (j != engine_rank) {
-                dataptr = &s->osmpi_ptr[k][s->osmpi_max_size[k] * j];
-                if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
+            if (lock_trylock(&s->recv_lock[k]) == 0) {
+              for (int j = 0; j < s->space->e->nr_nodes; j++) {
+                if (j != engine_rank) {
+                  dataptr = &s->osmpi_ptr[k][s->osmpi_max_size[k] * j];
+                  if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
 
-                  if (s->space->e->verbose)
-                    message("Anonymous caching from %d, subtype: %d, tag: %zd, size %zd",
-                            j, k, dataptr[2], dataptr[1]); fflush(stdout);
+                    if (s->space->e->verbose)
+                      message("Anonymous caching from %d, subtype: %d, tag: %zd, size %zd",
+                              j, k, dataptr[2], dataptr[1]); fflush(stdout);
 
-                  /* Cache this message. */
-                  void *buff = calloc(1, dataptr[1]);
-                  memcpy(buff, (void *)&dataptr[scheduler_osmpi_header_size], dataptr[1]);
-                  mpicache_add(s->mpicache, j, k, dataptr[2], dataptr[1], buff);
+                    /* Cache this message. */
+                    void *buff = calloc(1, dataptr[1]);
+                    memcpy(buff, (void *)&dataptr[scheduler_osmpi_header_size], dataptr[1]);
+                    mpicache_add(s->mpicache[k], j, k, dataptr[2], dataptr[1], buff);
 
-                  /* Ready for next recv. */
-                  dataptr[0] = scheduler_osmpi_locked;
+                    /* Ready for next recv. */
+                    dataptr[0] = scheduler_osmpi_locked;
 
-                  // Break for this subtype.
-                  break;
+                    /* Break for this subtype, probably only a limited no. from
+                     * any other node. */
+                    done = 1;
+                    break;
+                  }
                 }
               }
+              if (lock_unlock(&s->recv_lock[k]) != 0) {
+                error("Unlocking the MPI recv lock failed.\n");
+              }
+
+              /* Got one so let's give up. */
+              if (done) break;
             }
           }
 

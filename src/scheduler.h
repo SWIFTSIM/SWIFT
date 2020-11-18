@@ -67,6 +67,9 @@
 /* Size of message header control block in blocks. The lock flag, size and tag. */
 #define scheduler_osmpi_header_size 3
 
+/* Number of threads we can use for sending. */
+#define scheduler_osmpi_max_sends 2
+
 /* Forward declarations for one-sided MPI. */
 void scheduler_osmpi_activate(struct scheduler *s, struct task *t);
 void scheduler_osmpi_init(struct scheduler *s);
@@ -138,12 +141,14 @@ struct scheduler {
   volatile scheduler_osmpi_blocktype *osmpi_ptr[task_subtype_count];
   size_t osmpi_max_size[task_subtype_count];
 
-  /* Lock for one at a time sends and recvs per subtype, which are asynchronous . */
-  swift_lock_type send_lock;
+  /* Locks for sends and recvs per subtype. We must never use as many send
+   * locks as threads as that can deadlock, so some fraction is overloaded
+   * instead, currently 2, see . */
+  swift_lock_type send_lock[scheduler_osmpi_max_sends];
   swift_lock_type recv_lock[task_subtype_count];
 
-  /* Cache for receives with no recv yet. */
-  struct mpicache *mpicache;
+  /* Caches for each subtype so we can receives without an active recv. */
+  struct mpicache *mpicache[task_subtype_count];
   
 #endif
 

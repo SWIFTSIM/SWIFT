@@ -1631,8 +1631,10 @@ void engine_launch(struct engine *e, const char *call) {
 
   /* Reset some scheduler resources. XXX bit exposed hide in schduler. */
 #ifdef WITH_MPI
-  mpicache_destroy(e->sched.mpicache);
-  e->sched.mpicache = NULL;
+  for (int k = 0; k < task_subtype_count; k++) {
+    mpicache_destroy(e->sched.mpicache[k]);
+    e->sched.mpicache[k] = NULL;
+  }
 #endif
 
   /* Store the wallclock time */

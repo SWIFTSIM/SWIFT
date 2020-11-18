@@ -1869,8 +1869,10 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s) {
 
 #ifdef WITH_MPI
-  /* Init an MPI message cache. */
-  s->mpicache = mpicache_init(s->space->e->nr_nodes);
+  /* Initialise the recv MPI message caches. */
+  for (int k = 0; k < task_subtype_count; k++) {
+    s->mpicache[k] = mpicache_init(s->space->e->nr_nodes);
+  }
 #endif
 
   /* Re-wait the tasks. */
@@ -1889,7 +1891,7 @@ void scheduler_start(struct scheduler *s) {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
-  scheduler_dump_queues(s->space->e);
+  //scheduler_dump_queues(s->space->e);
 
   /* Clear the list of active tasks. */
   s->active_count = 0;
@@ -2334,8 +2336,10 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the MPI send and recv locks */
 #ifdef WITH_MPI
+  for (int k = 0; k < scheduler_osmpi_max_sends; k++) {
+    lock_init(&s->send_lock[k]);
+  }
   for (int k = 0; k < task_subtype_count; k++) {
-    lock_init(&s->send_lock);
     lock_init(&s->recv_lock[k]);
   }
 #endif
