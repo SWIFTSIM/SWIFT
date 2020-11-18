@@ -52,6 +52,12 @@ struct dmpart {
 
   /* Particle cutoff radius. */
   float h;
+    
+  /* Velocity dispersion at the particle's location */
+  float velocity_dispersion;
+  
+  /* Neighbours velocity */
+  float velocity_ngb[3];
 
   /*! Particle time bin */
   timebin_t time_bin;

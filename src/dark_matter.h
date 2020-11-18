@@ -41,6 +41,10 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
     gp->sidm_probability = 0.f;
     gp->time_step_size = 0.f;
     gp->num_neighbours = 0.f;
+    gp->velocity_dispersion = 0.f;
+    gp->velocity_ngb[0] = 0.f;
+    gp->velocity_ngb[1] = 0.f;
+    gp->velocity_ngb[2] = 0.f;
 
 }
 
@@ -182,7 +186,20 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     /* Calculate SIDM probability (internal units) */
     gp->sidm_probability = Rate_SIDM * dt;
     gp->time_step_size = dt;
+    
+    /* Calculate the velocity dispersion */
+    const float rho_inv = 1.f / gp->rho;
+    gp->velocity_dispersion *= h_inv_dim * rho_inv;
+    gp->velocity_ngb[0] *= h_inv_dim * rho_inv;
+    gp->velocity_ngb[1] *= h_inv_dim * rho_inv;
+    gp->velocity_ngb[2] *= h_inv_dim * rho_inv;
 
+    /* Calculate (actual) velocity dispersion. Currently, the variable
+     * 'velocity_ngb' holds <v^2> instead. */
+    const double vel2 = gp->velocity_ngb[0] * gp->velocity_ngb[0] + gp->velocity_ngb[1] * gp->velocity_ngb[1] + gp->velocity_ngb[2] * gp->velocity_ngb[2];
+    
+    gp->velocity_dispersion -= vel2;
+    gp->velocity_dispersion = sqrt(gp->velocity_dispersion);
 }
 
 /**
@@ -207,6 +224,12 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     gp->density.wcount_dh = 0.f;
     gp->avg_pair_v = 0.f;
     gp->num_neighbours = 0.f;
+    
+    gp->velocity_dispersion = FLT_MAX;
+    gp->velocity_ngb[0] = FLT_MAX;
+    gp->velocity_ngb[1] = FLT_MAX;
+    gp->velocity_ngb[2] = FLT_MAX;
+
 }
 
 
@@ -277,16 +300,24 @@ __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
  * @brief Computes the dark matter time-step of a given particle
  *
  * This function returns the time-step of a particle given its DM-dynamical
- * state? A typical time-step calculation would be the use of the CFL condition.
+ * state?
  *
  * @param p Pointer to the particle data
  * @param sidm_properties The SIDM parameters
- * @param cosmo The cosmological model.
  */
-/*__attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
-    const struct dmpart *restrict dmp, const struct sidm_props *restrict sidm_properties,
-    const struct cosmology *restrict cosmo) {
-}*/
+__attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
+    const struct dmpart *restrict dmp, const struct sidm_props* sidm_props) {
+    
+    /* Limiter */
+    const float kappa = 0.01;
+    
+    /* Scattering cross section per unit mass (in internal units) */
+    const double sigma = sidm_props->sigma;
+    
+    const float dm_timestep = kappa / (dmp->rho * sigma * dmp->velocity_dispersion);
+    
+    return dm_timestep;
+}
 
 /**
  * @brief Kick the additional variables
