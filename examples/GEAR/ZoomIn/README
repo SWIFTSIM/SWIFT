@@ -6,11 +6,10 @@ The cosmology is taken from Planck 2015.
 
 The initial conditions have been cleaned to contain only the required
 fields. The ICs have been created for Gadget and the positions and box
-size are hence expressed in h-full units (e.g. box size of 32 / h Mpc).
+size are hence expressed in h-full units (e.g. box size of 3.4 / h Mpc).
 Similarly, the peculiar velocitites contain an extra sqrt(a) factor. 
 
-We will use SWIFT to cancel the h- and a-factors from the ICs. Gas
-particles will be generated at startup.
+We will use SWIFT to cancel the h- and a-factors from the ICs.
 
 MD5 check-sum of the ICS: 
 9aafe154438478ed435e88664c1c5dba zoom_in.hdf5
