@@ -2334,8 +2334,10 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the MPI send and recv locks */
 #ifdef WITH_MPI
-  lock_init(&s->send_lock);
-  lock_init(&s->recv_lock);
+  for (int k = 0; k < task_subtype_count; k++) {
+    lock_init(&s->send_lock);
+    lock_init(&s->recv_lock[k]);
+  }
 #endif
 }
 

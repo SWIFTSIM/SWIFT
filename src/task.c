@@ -749,7 +749,7 @@ int task_lock(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
       {
         /* Need to get the recv lock. */
-        if (lock_trylock(&s->recv_lock) == 0) {
+        if (lock_trylock(&s->recv_lock[subtype]) == 0) {
 
           /* Check for a message waiting for this subtype, tag and size from our
            * expected node. If so accept. XXX need the scheduler and these
@@ -775,7 +775,7 @@ int task_lock(struct scheduler *s, struct task *t) {
               /* Ready for next recv. */
               dataptr[0] = scheduler_osmpi_locked;
 
-              if (lock_unlock(&s->recv_lock) != 0) {
+              if (lock_unlock(&s->recv_lock[subtype]) != 0) {
                 error("Unlocking the MPI recv lock failed.\n");
               }
               return 1;
@@ -792,37 +792,10 @@ int task_lock(struct scheduler *s, struct task *t) {
               mpicache_add(s->mpicache, ci->nodeID, subtype, dataptr[2],
                            dataptr[1], buff);
 
-              /* And check for a cached message for us. XXX never see this, so
-               * skip. */
-#if 0
-              buff = NULL;
-              size_t size;
-              mpicache_fetch(s->mpicache, ci->nodeID, subtype, t->flags,
-                             &size, &buff);
-              if (size != 0 && buff != NULL) {
-                if (s->space->e->verbose)
-                  message("Followup cache hit from %d, subtype: %d, tag: %lld, size %zd",
-                          ci->nodeID, subtype, t->flags, t->size);
-
-                /* Here we go. */
-                memcpy(t->buff, buff, t->size);
-                result = 1;
-                free(buff);
-
-                /* And log deactivation, if logging enabled. */
-                mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
-
-              } 
-              //else if (s->space->e->verbose) {
-              //  message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
-              //          ci->nodeID, subtype, t->flags, t->size);
-              //}
-#endif
-
               /* Ready for next recv. */
               dataptr[0] = scheduler_osmpi_locked;
 
-              if (lock_unlock(&s->recv_lock) != 0) {
+              if (lock_unlock(&s->recv_lock[subtype]) != 0) {
                 error("Unlocking the MPI recv lock failed.\n");
               }
 
@@ -847,8 +820,8 @@ int task_lock(struct scheduler *s, struct task *t) {
               /* And log deactivation, if logging enabled. */
               mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
 
-              /* XXX code re-use XXX Release the lock so another task can have a go. */
-              if (lock_unlock(&s->recv_lock) != 0) {
+              /* Release the lock so another task can have a go. */
+              if (lock_unlock(&s->recv_lock[subtype]) != 0) {
                 error("Unlocking the MPI recv lock failed.\n");
               }
               return 1;
@@ -862,7 +835,6 @@ int task_lock(struct scheduler *s, struct task *t) {
           /* While we have the lock, look for any cachable messages from all
            * subtypes and nodes which we could miss if no tasks with this subtype are
            * currently queued. (XXX active subtypes) */
-          //int done = 0;
           for (int k = 0; k < task_subtype_count; k++) {
             for (int j = 0; j < s->space->e->nr_nodes; j++) {
               if (j != engine_rank) {
@@ -882,12 +854,10 @@ int task_lock(struct scheduler *s, struct task *t) {
                   dataptr[0] = scheduler_osmpi_locked;
 
                   // Break for this subtype.
-                  //done = 1;
                   break;
                 }
               }
             }
-            //if (done) break;
           }
 
           /* Need to allow for some MPI progession. Since we make no MPI calls
@@ -899,7 +869,7 @@ int task_lock(struct scheduler *s, struct task *t) {
           if (ret != MPI_SUCCESS) mpi_error(ret, "MPI_Iprobe failed");
 
           /* Release the lock so another task can have a go. */
-          if (lock_unlock(&s->recv_lock) != 0) {
+          if (lock_unlock(&s->recv_lock[subtype]) != 0) {
             error("Unlocking the MPI recv lock failed.\n");
           }
         }
