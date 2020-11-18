@@ -130,8 +130,10 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     list[6] = io_make_output_field("Time_step_size", FLOAT, 1, UNIT_CONV_TIME, 1.f, dmparts,
                                    time_step_size, "Average probability of particle scattering with another (internal units)");
 
-    
-    return 7;
+    list[7] = io_make_output_field("Velocity_dispersion", FLOAT, 1, UNIT_CONV_SPEED, 0.f, dmparts,
+                                   velocity_dispersion, "Local velocity dispersion");
+
+    return 8;
     
 }
 

@@ -61,7 +61,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     
     pi->rho += mj * wi;
     pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
-
     pi->density.wcount += wi;
     pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
@@ -75,13 +74,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     pj->density.wcount += wj;
     pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
     
-    /* Velocities of interacting particles */
-    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    /* Delta velocities :
+     * (Note we don't include a Hubble term since we are interested in the
+     * velocity contribution at the location of the particle) */
+    const double dv[3] = {pj->v_full[0] - pi->v_full[0], pj->v_full[1] - pi->v_full[1], pj->v_full[2] - pi->v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2);
     
-    pj->avg_pair_v += vij;
-    pi->avg_pair_v += vij;
+    pj->avg_pair_v += sqrt(v2);
+    pi->avg_pair_v += sqrt(v2);
+    
+    /* Contribution to the smoothed velocity */
+    pi->velocity_ngb[0] += mj * dv[0] * wi;
+    pi->velocity_ngb[1] += mj * dv[1] * wi;
+    pi->velocity_ngb[2] += mj * dv[2] * wi;
+
+    const double dvi[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    pj->velocity_ngb[0] += mi * dvi[0] * wj;
+    pj->velocity_ngb[1] += mi * dvi[1] * wj;
+    pj->velocity_ngb[2] += mi * dvi[2] * wj;
+
+    /* Contribution to the smoothed squared relative velocity (for dispersion)
+     * We will convert this to actual dispersion later. */
+    pi->velocity_dispersion += mj * wi * v2;
+    pj->velocity_dispersion += mi * wj * v2;
     
     /* Increasing counters */
     ++pi->num_neighbours;
@@ -123,13 +138,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     pi->density.wcount += wi;
     pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
     
-    /* Neighbour's (drifted) velocity in the frame of the dark matter particle
+    /* Neighbour's velocity in the frame of the dark matter particle
      * (we don't include a Hubble term since we are interested in the
      * velocity contribution at the location of the particle) */
-    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
+    const double dv[3] = {pj->v_full[0] - pi->v_full[0], pj->v_full[1] - pi->v_full[1], pj->v_full[2] - pi->v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2);    
-    pi->avg_pair_v += vij;
+    pi->avg_pair_v += sqrt(v2);
     
     /* Contribution to the smoothed velocity */
     pi->velocity_ngb[0] += mj * dv[0] * wi;
@@ -138,9 +152,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Contribution to the smoothed squared relative velocity (for dispersion)
      * We will convert this to actual dispersion later. */
-    pi->velocity_dispersion += mj * wi * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+    pi->velocity_dispersion += mj * wi * v2;
 
-    
     /* Increasing counter */
     ++pi->num_neighbours;
 }
