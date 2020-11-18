@@ -4590,8 +4590,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_dark_matter_end_max = max(ti_dark_matter_end_max, cp->dark_matter.ti_end_max);
         ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, cp->dark_matter.ti_beg_max);
 
-
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+        dark_matter_logger_add(&c->dark_matter.sh, &cp->dark_matter.sh);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;

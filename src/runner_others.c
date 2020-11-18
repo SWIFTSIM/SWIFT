@@ -43,6 +43,7 @@
 #include "chemistry.h"
 #include "cooling.h"
 #include "dark_matter.h"
+#include "dark_matter_logger.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
@@ -85,14 +86,24 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
     
+    /* Reset the logger */
+    /*dark_matter_logger_init(&c->dark_matter.sh);*/
+    
     /* Recurse? */
     if (c->split) {
         for (int k = 0; k < 8; k++) {
             if (c->progeny[k] != NULL) {
-                runner_do_sidm_kick(r, c->progeny[k]);
+                /* Load the child cell */
+                struct cell *restrict cp = c->progeny[k];
+                runner_do_sidm_kick(r, cp);
+                
+                /* Update current cell using child cells */
+                /*dark_matter_logger_add(&c->dark_matter.sh, &cp->dark_matter.sh);*/
             }
         }
     } else {
+        
+
 
         struct dmpart *restrict dmparts = c->dark_matter.parts;
         const int count = c->dark_matter.count;

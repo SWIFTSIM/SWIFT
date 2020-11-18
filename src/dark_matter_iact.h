@@ -193,11 +193,6 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     /* Randomly oriented unit vector */
     float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
     
-    double p_prev_i[3] = {pi->sidm_data.v_full[0], pi->sidm_data.v_full[1], pi->sidm_data.v_full[2]};
-    double p_prev_j[3] = {pj->sidm_data.v_full[0], pj->sidm_data.v_full[1], pj->sidm_data.v_full[2]};
-    
-    double p_before[3], p_after[3];
-
     double energy_before, energy_after;
     double energy_prev_i = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
 
@@ -214,69 +209,36 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     /* Communicating this kick to logger */
     if (pi->sidm_data.sidm_flag > 0) {
         energy_before = 0.;
-        p_before[0] = 0.;
-        p_before[1] = 0.;
-        p_before[2] = 0.;
         
         energy_after = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
         
-        p_after[0] = pi->sidm_data.v_full[0];
-        p_after[1] = pi->sidm_data.v_full[1];
-        p_after[2] = pi->sidm_data.v_full[2];
-        
         energy_after -= energy_prev_i;
-        p_after[0] -= p_prev_i[0];
-        p_after[1] -= p_prev_i[1];
-        p_after[2] -= p_prev_i[2];
-        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after, p_before, p_after);
+        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after);
 
     } else {
         energy_before = energy_prev_i;
-        p_before[0] = p_prev_i[0];
-        p_before[1] = p_prev_i[1];
-        p_before[2] = p_prev_i[2];
-        
+
         energy_after = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
         
-        p_after[0] = pi->sidm_data.v_full[0];
-        p_after[1] = pi->sidm_data.v_full[1];
-        p_after[2] = pi->sidm_data.v_full[2];
-
-        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after, p_before, p_after);
+        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after);
     }
 
     if (pj->sidm_data.sidm_flag > 0) {
         energy_before = 0.;
-        p_before[0] = 0.;
-        p_before[1] = 0.;
-        p_before[2] = 0.;
 
         energy_after = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
         
-        p_after[0] = pj->sidm_data.v_full[0];
-        p_after[1] = pj->sidm_data.v_full[1];
-        p_after[2] = pj->sidm_data.v_full[2];
-        
         energy_after -= energy_prev_j;
-        p_after[0] -= p_prev_j[0];
-        p_after[1] -= p_prev_j[1];
-        p_after[2] -= p_prev_j[2];
-        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after, p_before, p_after);
+
+        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after);
    
     } else {
         
         energy_before = energy_prev_j;
-        p_before[0] = p_prev_j[0];
-        p_before[1] = p_prev_j[1];
-        p_before[2] = p_prev_j[2];
         
         energy_after = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
         
-        p_after[0] = pj->sidm_data.v_full[0];
-        p_after[1] = pj->sidm_data.v_full[1];
-        p_after[2] = pj->sidm_data.v_full[2];
-
-        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after, p_before, p_after);
+        dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after);
     }
 
     
@@ -319,19 +281,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    const double mass_i = pi->mass;
-    const double mass_j = pj->mass;
+    /*const double mass_i = pi->mass;
+    const double mass_j = pj->mass;*/
 
-    /* DM-DM distance */
-    float hi_3 = hi * hi * hi;
-    float hj_3 = hj * hj * hj;
+    /*float hi_3 = hi * hi * hi;
+    float hj_3 = hj * hj * hj;*/
 
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);
-    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / (4.0f * M_PI * hj_3 / 3.0f);
+    float Rate_SIDM_i = sigma * vij * a_inv4 * pi->rho;
+    float Rate_SIDM_j = sigma * vij * a_inv4 * pj->rho;
+    
+    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);
+    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / (4.0f * M_PI * hj_3 / 3.0f);*/
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
@@ -381,16 +345,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    const double mass_i = pi->mass;
+    /*const double mass_i = pi->mass;*/
     
-    /* DM-DM distance */
-    float hi_3 = hi * hi * hi;
+    /*float hi_3 = hi * hi * hi;
+     float hj_3 = hj * hj * hj;*/
     
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);
+    float Rate_SIDM_i = sigma * vij * a_inv4 * pi->rho;
+    
+    /* DM-DM distance */
+    /*float hi_3 = hi * hi * hi;*/
+    
+    /*float a_inv = 1.0f / a;
+    float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
+    
+    /* Calculate scattering rate */
+    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);*/
     
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;

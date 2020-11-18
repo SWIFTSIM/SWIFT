@@ -30,11 +30,6 @@ struct sidm_history {
     
     /*! Number of SIDM events */
     int num_kicks;
-    
-    /* Total linear momentum */
-    double p_before[3];
-    double p_after[3];
-
 };
 
 /* SIDM history struct for the engine
@@ -47,10 +42,6 @@ struct sidm_history_accumulator {
     
     /*! Number of SIDM events */
     int num_kicks;
-    
-    /* Total linear momentum */
-    double p_before[3];
-    double p_after[3];
 
     /* Number of activate particles per timestep */
     int n_parts_active;
