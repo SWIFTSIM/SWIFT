@@ -1070,6 +1070,9 @@ int main(int argc, char *argv[]) {
 	  printf("Error: Cannot perform FOF seeding without black holes being in use\n");
 	return 1;
       }
+    } else {
+      if(e.snapshot_invoke_fof)
+        error("Error: Must run with --fof if Snapshots::invoke_fof=1\n");
     }
 #endif
 
