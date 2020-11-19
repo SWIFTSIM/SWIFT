@@ -963,7 +963,13 @@ void space_collect_mean_masses(struct space *s, int verbose) {
                 MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  /* Get means */
+  /* Get means
+   *
+   * Note: the Intel compiler vectorizes this loop and creates FPEs from
+   * the masked bit of the vector... Silly ICC... */
+#if defined(__ICC)
+#pragma novector
+#endif
   for (int i = 0; i < swift_type_count; ++i)
     if (s->initial_count_particles[i] > 0)
       s->initial_mean_mass_particles[i] /=
