@@ -175,14 +175,13 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     const double sigma = sidm_props->sigma;
     
     /* DM-DM distance */
-    /*const float h3 = h * h * h; */  /* * dm_kernel_gamma3;*/
+    const float h3 = h * h * h * dm_kernel_gamma3;
     const float a = cosmo->a;
     const float a_inv = 1.0f / a;
     const float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
-    /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 / (4.0f * M_PI * h3 / 3.0f);*/
-    float Rate_SIDM = sigma * gp->avg_pair_v * a_inv4 * gp->rho;
+    float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 / (4.0f * M_PI * h3 / 3.0f);
     
     /* Calculate SIDM probability (internal units) */
     gp->sidm_probability = Rate_SIDM * dt;

@@ -281,21 +281,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    /*const double mass_i = pi->mass;
-    const double mass_j = pj->mass;*/
-
-    /*float hi_3 = hi * hi * hi;
-    float hj_3 = hj * hj * hj;*/
+    const double mass_i = pi->mass;
+    const double mass_j = pj->mass;
+    
+    float hi_3 = hi * hi * hi * dm_kernel_gamma3;
+    float hj_3 = hj * hj * hj * dm_kernel_gamma3;
 
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * vij * a_inv4 * pi->rho;
-    float Rate_SIDM_j = sigma * vij * a_inv4 * pj->rho;
-    
-    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);
-    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / (4.0f * M_PI * hj_3 / 3.0f);*/
+    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);
+    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / (4.0f * M_PI * hj_3 / 3.0f);
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
@@ -345,25 +342,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    /*const double mass_i = pi->mass;*/
-    
-    /*float hi_3 = hi * hi * hi;
-     float hj_3 = hj * hj * hj;*/
-    
+    const double mass_i = pi->mass;
+
+    /*float hi_3 = hi * hi * hi;*/
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
+    float hi_3 = hi * hi * hi * dm_kernel_gamma3;
+ 
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * vij * a_inv4 * pi->rho;
-    
-    /* DM-DM distance */
-    /*float hi_3 = hi * hi * hi;*/
-    
-    /*float a_inv = 1.0f / a;
-    float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
-    
-    /* Calculate scattering rate */
-    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);*/
+    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / (4.0f * M_PI * hi_3 / 3.0f);
     
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
