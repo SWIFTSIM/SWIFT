@@ -2720,12 +2720,15 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
   e->snapshot_invoke_stf =
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
+  e->snapshot_invoke_hbt =
+      parser_get_opt_param_int(params, "Snapshots:invoke_hbt", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
   e->stf_output_count = 0;
+  e->hbt_output_count = 0;
   e->los_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
@@ -2762,6 +2765,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->parameter_file = params;
   e->output_options = output_options;
   e->stf_this_timestep = 0;
+  e->hbt_this_timestep = 0;
   e->los_properties = los_properties;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;

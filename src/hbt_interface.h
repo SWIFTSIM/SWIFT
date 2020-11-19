@@ -29,16 +29,19 @@ struct engine;
 
 /**
  * @brief Initialise HBT library
+ *
+ * e Pointer to the engine struct
+ *
  */
 void hbt_init(struct engine *e);
 
 /**
  * @brief Invoke the HBT halo finder
  *
- * @param output_nr Index of the current output
+ * @param e Pointer to the engine struct
  *
  */
-void hbt_invoke(struct engine *e, const int output_nr);
+void hbt_invoke(struct engine *e);
 
 /**
  * @brief Free resources used by HBT library

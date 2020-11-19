@@ -152,6 +152,9 @@ void hbt_get_particle(const void *data, const size_t index, HBTInt *fofid,
 
 /**
  * @brief Initialise HBT library
+ *
+ * e Pointer to the engine struct
+ *
  */
 void hbt_init(struct engine *e) {
 
@@ -191,10 +194,10 @@ void hbt_init(struct engine *e) {
 /**
  * @brief Invoke the HBT halo finder
  *
- * @param output_nr Index of the current output
+ * e Pointer to the engine struct
  *
  */
-void hbt_invoke(struct engine *e, const int output_nr) {
+void hbt_invoke(struct engine *e) {
 
   /* Find the particle data */
   const struct space *s = e->s;
@@ -211,8 +214,12 @@ void hbt_invoke(struct engine *e, const int output_nr) {
   const double scalefactor = e->cosmology->a;
 
   /* Call HBT */
-  libhbt_invoke_hbt(output_nr, scalefactor,
+  libhbt_invoke_hbt(e->hbt_output_count, scalefactor,
                     &hbt_data, nr_gparts, &hbt_get_particle);
+
+  /* Record that we ran HBT */
+  e->hbt_this_timestep = 1;
+  e->hbt_output_count += 1;
 }
 
 

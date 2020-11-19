@@ -100,10 +100,11 @@ enum engine_step_properties {
   engine_step_prop_snapshot = (1 << 4),
   engine_step_prop_restarts = (1 << 5),
   engine_step_prop_stf = (1 << 6),
-  engine_step_prop_fof = (1 << 7),
-  engine_step_prop_mesh = (1 << 8),
-  engine_step_prop_logger_index = (1 << 9),
-  engine_step_prop_done = (1 << 10),
+  engine_step_prop_hbt = (1 << 7),
+  engine_step_prop_fof = (1 << 8),
+  engine_step_prop_mesh = (1 << 9),
+  engine_step_prop_logger_index = (1 << 10),
+  engine_step_prop_done = (1 << 11),
 };
 
 /* Some constants */
@@ -316,6 +317,7 @@ struct engine {
   int snapshot_compression;
   int snapshot_int_time_label_on;
   int snapshot_invoke_stf;
+  int snapshot_invoke_hbt;
   int snapshot_invoke_fof;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
@@ -341,6 +343,7 @@ struct engine {
   double a_first_hbt_output;
   double time_first_hbt_output;
   double delta_time_hbt;
+  int hbt_output_count;
 
   /* Output_List for HBT */
   struct output_list *output_list_hbt;
@@ -532,6 +535,9 @@ struct engine {
 
   /* Has there been an stf this timestep? */
   char stf_this_timestep;
+
+  /* Has there been an HBT this timestep? */
+  char hbt_this_timestep;
 
   /* Line of sight properties. */
   struct los_props *los_properties;

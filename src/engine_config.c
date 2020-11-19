@@ -371,13 +371,13 @@ void engine_config(int restart, int fof, struct engine *e,
       fprintf(
           e->file_timesteps,
           "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d, "
-          "logger=%d\n",
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, HBT=%d, FOF=%d, "
+          "mesh=%d, logger=%d\n",
           engine_step_prop_rebuild, engine_step_prop_redistribute,
           engine_step_prop_repartition, engine_step_prop_statistics,
           engine_step_prop_snapshot, engine_step_prop_restarts,
-          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh,
-          engine_step_prop_logger_index);
+          engine_step_prop_stf, engine_step_prop_hbt, engine_step_prop_fof,
+          engine_step_prop_mesh, engine_step_prop_logger_index);
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
@@ -496,6 +496,18 @@ void engine_config(int restart, int fof, struct engine *e,
               e->a_first_stf_output, e->cosmology->a_begin);
       }
 
+      if (e->policy & engine_policy_hbt) {
+
+        if (e->delta_time_hbt == -1. && !e->snapshot_invoke_hbt)
+          error("A value for `HBT:delta_time` must be specified");
+
+        if (e->a_first_hbt_output < e->cosmology->a_begin)
+          error(
+              "Scale-factor of first HBT output (%e) must be after the "
+              "simulation start a=%e.",
+              e->a_first_hbt_output, e->cosmology->a_begin);
+      }
+
       if (e->policy & engine_policy_fof) {
 
         if (e->delta_time_fof <= 1.)
@@ -544,6 +556,21 @@ void engine_config(int restart, int fof, struct engine *e,
               "Time of first STF (%e) must be after the simulation start t=%e.",
               e->time_first_stf_output, e->time_begin);
       }
+
+      if (e->policy & engine_policy_hbt) {
+
+        if (e->delta_time_hbt == -1. && !e->snapshot_invoke_hbt)
+          error("A value for `HBT:delta_time` must be specified");
+
+        if (e->delta_time_hbt <= 0. && e->delta_time_hbt != -1.)
+          error("Time between HBT (%e) must be positive.", e->delta_time_hbt);
+
+        if (e->time_first_hbt_output < e->time_begin)
+          error(
+              "Time of first HBT (%e) must be after the simulation start t=%e.",
+              e->time_first_hbt_output, e->time_begin);
+      }
+
     }
 
     /* Try to ensure the snapshot directory exists */
@@ -600,6 +627,14 @@ void engine_config(int restart, int fof, struct engine *e,
       error(
           "Invoking VELOCIraptor after snapshots but structure finding wasn't "
           "activated at runtime (Use --velociraptor).");
+    }
+
+    /* Check that we are invoking HBT only if we have it */
+    if (e->snapshot_invoke_hbt &&
+        !(e->policy & engine_policy_hbt)) {
+      error(
+          "Invoking HBT after snapshots but HBT wasn't "
+          "activated at runtime (Use --hbt).");
     }
 
     /* Whether restarts are enabled. Yes by default. Can be changed on restart.

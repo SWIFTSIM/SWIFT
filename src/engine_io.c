@@ -38,6 +38,7 @@
 #include "parallel_io.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "hbt_interface.h"
 
 /**
  * @brief Check whether an index file has to be written during this
@@ -263,6 +264,7 @@ void engine_dump_index(struct engine *e) {
 void engine_check_for_dumps(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
+  const int with_hbt = (e->policy & engine_policy_hbt);
   const int with_los = (e->policy & engine_policy_line_of_sight);
   const int with_fof = (e->policy & engine_policy_fof);
 
@@ -272,6 +274,7 @@ void engine_check_for_dumps(struct engine *e) {
     output_snapshot,
     output_statistics,
     output_stf,
+    output_hbt,
     output_los,
   };
 
@@ -281,6 +284,7 @@ void engine_check_for_dumps(struct engine *e) {
   enum output_type type = output_none;
   integertime_t ti_output = max_nr_timesteps;
   e->stf_this_timestep = 0;
+  e->hbt_this_timestep = 0;
 
   /* Save some statistics ? */
   if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
@@ -304,6 +308,16 @@ void engine_check_for_dumps(struct engine *e) {
       if (e->ti_next_stf < ti_output) {
         ti_output = e->ti_next_stf;
         type = output_stf;
+      }
+    }
+  }
+
+  /* Do we want to run HBT? */
+  if (with_hbt) {
+    if (e->ti_end_min > e->ti_next_hbt && e->ti_next_hbt > 0) {
+      if (e->ti_next_hbt < ti_output) {
+        ti_output = e->ti_next_hbt;
+        type = output_hbt;
       }
     }
   }
@@ -366,6 +380,21 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
+        /* Do we want a corresponding HBT output? */
+        if (with_hbt && e->snapshot_invoke_hbt && !e->hbt_this_timestep) {
+
+#ifdef HAVE_HBT
+	  engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
+          hbt_invoke(e);
+          e->step_props |= engine_step_prop_hbt;
+#else
+          error(
+                "Asking for a HBT output but SWIFT was compiled without "
+                "the interface!");
+#endif
+        }
+
+
         /* Dump... */
         engine_dump_snapshot(e);
 
@@ -405,6 +434,25 @@ void engine_check_for_dumps(struct engine *e) {
 #else
         error(
             "Asking for a VELOCIraptor output but SWIFT was compiled without "
+            "the interface!");
+#endif
+        break;
+
+      case output_hbt:
+
+#ifdef HAVE_HBT
+        /* Invoke HBT */
+        if (!e->hbt_this_timestep) {
+	  engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
+          hbt_invoke(e);
+          e->step_props |= engine_step_prop_hbt;
+        }
+
+        /* ... and find the next output time */
+        engine_compute_next_hbt_time(e);
+#else
+        error(
+            "Asking for a HBT output but SWIFT was compiled without "
             "the interface!");
 #endif
         break;
@@ -451,6 +499,16 @@ void engine_check_for_dumps(struct engine *e) {
         if (e->ti_next_stf < ti_output) {
           ti_output = e->ti_next_stf;
           type = output_stf;
+        }
+      }
+    }
+
+    /* Do we want to run HBT */
+    if (with_hbt) {
+      if (e->ti_end_min > e->ti_next_hbt && e->ti_next_hbt > 0) {
+        if (e->ti_next_hbt < ti_output) {
+          ti_output = e->ti_next_hbt;
+          type = output_hbt;
         }
       }
     }
