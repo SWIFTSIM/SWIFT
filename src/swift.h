@@ -48,6 +48,7 @@
 #include "gravity_derivatives.h"
 #include "gravity_properties.h"
 #include "hashmap.h"
+#include "hbt_interface.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "line_of_sight.h"

@@ -1669,6 +1669,13 @@ int main(int argc, char *argv[]) {
 	engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
       }
 
+#ifdef HAVE_HBT
+      if (with_hbt && e.snapshot_invoke_stf && !e.hbt_this_timestep) {
+        engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+        hbt_invoke(&e);
+      }
+#endif
+
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           !e.stf_this_timestep)
@@ -1689,6 +1696,17 @@ int main(int argc, char *argv[]) {
         velociraptor_invoke(&e, /*linked_with_snap=*/0);
     }
 #endif
+
+    /* Write final HBT? */
+#ifdef HAVE_HBT
+    if (with_hbt && e.output_list_hbt) {
+      if (e.output_list_hbt->final_step_dump && !e.hbt_this_timestep) {
+        engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+        hbt_invoke(&e);
+      }
+    }
+#endif
+
   }
 
   /* Remove the stop file if used. Do this anyway, we could have missed the
