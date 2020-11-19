@@ -122,7 +122,8 @@ const char *engine_policy_names[] = {"none",
                                      "logger",
                                      "line of sight",
                                      "sink",
-                                     "rt"};
+                                     "rt",
+                                     "hbt"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
