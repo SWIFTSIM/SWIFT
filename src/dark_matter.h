@@ -182,7 +182,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     const float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
-    float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / (dm_kernel_gamma3 * h3);
+    float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * h3);
     
     /* Calculate SIDM probability (internal units) */
     gp->sidm_probability = Rate_SIDM * dt;
