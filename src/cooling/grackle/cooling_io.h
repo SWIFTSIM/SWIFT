@@ -23,6 +23,7 @@
 #include "cooling_properties.h"
 #include "cooling_struct.h"
 #include "io_properties.h"
+#include "physical_constants.h"
 
 #ifdef HAVE_HDF5
 
