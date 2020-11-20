@@ -906,6 +906,20 @@ INLINE static void starformation_print_backend(
 }
 
 /**
+ * @brief Return the star formation rate of a particle.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+INLINE static float star_formation_get_SFR(const struct part* p,
+                                           const struct xpart* xp) {
+  if (xp->sf_data.SFR <= 0.)
+    return 0.f;
+  else
+    return xp->sf_data.SFR;
+}
+
+/**
  * @brief Finishes the density calculation.
  *
  * Nothing to do here. We do not need to compute any quantity in the hydro

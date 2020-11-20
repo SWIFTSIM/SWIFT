@@ -1890,66 +1890,6 @@ case "$with_riemann" in
       AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
    ;;
 esac
-#  Cooling function
-AC_ARG_WITH([cooling],
-   [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_* default: none@:>@.
-      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
-   )],
-   [with_cooling="$withval"],
-   [with_cooling="none"]
-)
-
-if test "$with_subgrid" != "none"; then
-   if test "$with_cooling" != "none"; then
-      AC_MSG_ERROR([Cannot provide with-subgrid and with-cooling together])
-   else
-      with_cooling="$with_subgrid_cooling"
-   fi
-fi
-
-case "$with_cooling" in
-   none)
-      AC_DEFINE([COOLING_NONE], [1], [No cooling function])
-   ;;
-   const-du)
-      AC_DEFINE([COOLING_CONST_DU], [1], [Const du/dt cooling function])
-   ;;
-   const-lambda)
-      AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
-   ;;
-   compton)
-      AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
-   ;;
-   grackle_*)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      primordial_chemistry=${with_cooling:8}
-      AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
-   ;;
-   QLA)
-      AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
-      with_cooling="QLA (Ploeckinger+20 tables) with constant primordial Z"
-   ;;
-   EAGLE)
-      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
-      with_cooling="EAGLE (Wiersma+09 tables)"
-   ;;
-   Wiersma)
-      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
-      with_cooling="EAGLE (Wiersma+09 tables)"
-   ;;
-   COLIBRE)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling="COLIBRE (Ploeckinger+20 tables)"
-   ;;
-   Ploeckinger)
-      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling="COLIBRE (Ploeckinger+20 tables)"
-   ;;
-   *)
-      AC_MSG_ERROR([Unknown cooling function: $with_cooling])
-   ;;
-esac
 
 #  chemistry function
 AC_ARG_WITH([chemistry],
@@ -2001,6 +1941,70 @@ if test "$with_chemistry" != "none"; then
             AC_MSG_ERROR([Cannot run with hand vectorisation and chemistry yet. Please use --disable-hand-vec])
          fi
       fi
+   fi
+fi
+
+#  Cooling function
+AC_ARG_WITH([cooling],
+   [AS_HELP_STRING([--with-cooling=<model>],
+      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_* default: none@:>@.
+      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
+   )],
+   [with_cooling="$withval"],
+   [with_cooling="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_cooling" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-cooling together])
+   else
+      with_cooling="$with_subgrid_cooling"
+   fi
+fi
+
+case "$with_cooling" in
+   none)
+      AC_DEFINE([COOLING_NONE], [1], [No cooling function])
+   ;;
+   const-du)
+      AC_DEFINE([COOLING_CONST_DU], [1], [Const du/dt cooling function])
+   ;;
+   const-lambda)
+      AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
+   ;;
+   grackle_*)
+      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
+      primordial_chemistry=${with_cooling:8}
+      AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
+   ;;
+   QLA)
+      AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
+      with_cooling="QLA (Ploeckinger+20 tables) with constant primordial Z"
+   ;;
+   EAGLE)
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
+      with_cooling="EAGLE (Wiersma+09 tables)"
+   ;;
+   Wiersma)
+      AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
+      with_cooling="EAGLE (Wiersma+09 tables)"
+   ;;
+   COLIBRE)
+      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
+      with_cooling="COLIBRE (Ploeckinger+20 tables)"
+   ;;
+   Ploeckinger)
+      AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
+      with_cooling="COLIBRE (Ploeckinger+20 tables)"
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown cooling function: $with_cooling])
+   ;;
+esac
+
+if test "${with_cooling:0:5}" = "EAGLE" || test "${with_cooling:0:7}" = "COLIBRE"; then
+   if test "$with_chemistry" = "none"; then
+      AC_MSG_ERROR([Cannot run with EAGLE or COLIBRE cooling without chemistry. Please pick a chemistry model])
    fi
 fi
 
