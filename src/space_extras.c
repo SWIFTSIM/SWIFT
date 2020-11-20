@@ -117,20 +117,25 @@ void space_allocate_extras(struct space *s, int verbose) {
   }
 
   if (expected_num_extra_parts < s->nr_extra_parts)
-    error("Reduction in top-level cells number not handled. "
-          "Please set a lower h_max or reduce the number of top level cells.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_gparts < s->nr_extra_gparts)
-    error("Reduction in top-level cells number not handled. "
-          "Please set a lower h_max or reduce the number of top level cells.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_sparts < s->nr_extra_sparts)
-    error("Reduction in top-level cells number not handled. "
-          "Please set a lower h_max or reduce the number of top level cells.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_bparts < s->nr_extra_bparts)
-    error("Reduction in top-level cells number not handled. "
-          "Please set a lower h_max or reduce the number of top level cells.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_sinks < s->nr_extra_sinks)
-    error("Reduction in top-level cells number not handled. "
-          "Please set a lower h_max or reduce the number of top level cells.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
    * ? */
