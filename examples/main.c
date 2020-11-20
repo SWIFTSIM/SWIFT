@@ -1670,7 +1670,7 @@ int main(int argc, char *argv[]) {
       }
 
 #ifdef HAVE_HBT
-      if (with_hbt && e.snapshot_invoke_stf && !e.hbt_this_timestep) {
+      if (with_hbt && e.snapshot_invoke_hbt && !e.hbt_this_timestep) {
         engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
         hbt_invoke(&e);
       }
