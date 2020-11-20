@@ -260,7 +260,7 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *rest
 __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
           struct dmpart *restrict dmp, double dt_drift) {
     
-    if (dmp->sidm_data.sidm_flag > 2) {
+    if (dmp->sidm_data.sidm_flag > 0) {
         
         double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->v_full[0], dmp->sidm_data.v_full[1] - dmp->v_full[1], dmp->sidm_data.v_full[2] - dmp->v_full[2]};
         
