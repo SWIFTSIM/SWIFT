@@ -746,13 +746,13 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
+  /* const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid); */
 
-  int is_ci = 0;
-  if (ci->loc[0] > 0.6 && ci->loc[0] < 0.7 &&
-      ci->loc[1] > 0.3 && ci->loc[1] < 0.4 &&
-      ci->loc[2] > 0.3 && ci->loc[2] < 0.4)
-    is_ci = 1;
+  /* int is_ci = 0; */
+  /* if (ci->loc[0] > 0.6 && ci->loc[0] < 0.7 && */
+  /*     ci->loc[1] > 0.3 && ci->loc[1] < 0.4 && */
+  /*     ci->loc[2] > 0.3 && ci->loc[2] < 0.4) */
+  /*   is_ci = 1; */
   
   /* Parts are on the left? */
   if (!flipped) {
@@ -761,14 +761,14 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       double rshift = 0.0;
       for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
     
-    if(is_ci)
-      message("NOT flipped! ci->loc=[%e %e %e] width=%f sid=%d", ci->loc[0], ci->loc[1], ci->loc[2], ci->dmin, sid);
+    /* if(is_ci) */
+    /*   message("NOT flipped! ci->loc=[%e %e %e] width=%f sid=%d", ci->loc[0], ci->loc[1], ci->loc[2], ci->dmin, sid); */
 
-    if(is_ci)
-      message("    other:   cj->loc=[%e %e %e] shift=[%e %e %e]", cj->loc[0], cj->loc[1], cj->loc[2], shift[0], shift[1], shift[2]);
+    /* if(is_ci) */
+    /*   message("    other:   cj->loc=[%e %e %e] shift=[%e %e %e]", cj->loc[0], cj->loc[1], cj->loc[2], shift[0], shift[1], shift[2]); */
 
-    if(is_ci)
-      message("    rshift= %e", rshift);
+    /* if(is_ci) */
+    /*   message("    rshift= %e", rshift); */
     
     /* Loop over the parts_i. */
     for (int pid = 0; pid < count; pid++) {
@@ -803,14 +803,14 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
 
       const double dj_cell = sort_get_cell_min_dist(sid, cj->loc, cj->width);
 
-      if(is_ci && pid == 0)
-	message("     dj_cell= %e", dj_cell);
+      /* if(is_ci && pid == 0) */
+      /* 	message("     dj_cell= %e", dj_cell); */
       
       /* Most negative position on the axis of a particle in j */
-      const double dj_min = sort_j[0].d - cj->hydro.dx_max_sort;
+      //const double dj_min = sort_j[0].d - cj->hydro.dx_max_sort;
 
-      if (di > dj_cell + ci->hydro.dx_max_part) error("aa");
-      if (dj_min  < dj_cell - cj->hydro.dx_max_part) message("bb");
+      //if (di > dj_cell + ci->hydro.dx_max_part) error("aa");
+      //if (dj_min  < dj_cell - cj->hydro.dx_max_part) message("bb");
 
       /* No particle in range */
       //if(is_ci)
@@ -825,8 +825,8 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       for (int pjd = 0; pjd < count_j /*&& sort_j[pjd].d < di*/; pjd++) {
 
         /* Get a pointer to the jth particle. */
-	struct part *restrict pj = &parts_j[sort_j[pjd].i];
-        //struct part *restrict pj = &parts_j[pjd];
+	//struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct part *restrict pj = &parts_j[pjd];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -836,17 +836,17 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         const double pjy = pj->x[1];
         const double pjz = pj->x[2];
 
-        const float dj = /*hi * kernel_gamma + */ pjx *
-        runner_shift[sid][0] +
-                         pjy * runner_shift[sid][1] +
-                         pjz * runner_shift[sid][2];
+        /* const float dj = /\*hi * kernel_gamma + *\/ pjx * */
+        /* runner_shift[sid][0] + */
+        /*                  pjy * runner_shift[sid][1] + */
+        /*                  pjz * runner_shift[sid][2]; */
 
-        const float dj_sort = sort_j[pjd].d;
+        /* const float dj_sort = sort_j[pjd].d; */
 
-        if (dj < dj_sort - cj->hydro.dx_max_sort) error("cc rshift=%f",
-							rshift);
+        /* if (dj < dj_sort - cj->hydro.dx_max_sort) error("cc rshift=%f", */
+	/* 						rshift); */
 
-        if (dj < dj_cell - cj->hydro.dx_max_part) error("dd");
+        /* if (dj < dj_cell - cj->hydro.dx_max_part) error("dd"); */
 
         /* Compute the pairwise distance. */
         float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
@@ -867,8 +867,8 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          if (di + hi * kernel_gamma < dj_cell - cj->hydro.dx_max_part)
-            error("ee");
+          /* if (di + hi * kernel_gamma < dj_cell - cj->hydro.dx_max_part) */
+          /*   error("ee"); */
           /* if (di + hi * kernel_gamma > dj_cell - cj->hydro.dx_max_part) */
           /* message("yay !"); */
 
@@ -896,13 +896,13 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
     
-    if(is_ci)
-      message("flipped! ci->loc=[%e %e %e] width=%f sid=%d", ci->loc[0], ci->loc[1], ci->loc[2], ci->dmin, sid);
-    if(is_ci)
-      message("  other: cj->loc=[%e %e %e] shift=[%e %e %e]", cj->loc[0], cj->loc[1], cj->loc[2], shift[0], shift[1], shift[2]);
+    /* if(is_ci) */
+    /*   message("flipped! ci->loc=[%e %e %e] width=%f sid=%d", ci->loc[0], ci->loc[1], ci->loc[2], ci->dmin, sid); */
+    /* if(is_ci) */
+    /*   message("  other: cj->loc=[%e %e %e] shift=[%e %e %e]", cj->loc[0], cj->loc[1], cj->loc[2], shift[0], shift[1], shift[2]); */
 
-    if(is_ci)
-      message(" rshift= %e", rshift);
+    /* if(is_ci) */
+    /*   message(" rshift= %e", rshift); */
 
     
     /* Loop over the parts_i. */
@@ -936,11 +936,11 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
 
       const double di_cell = sort_get_cell_min_dist(sid, ci->loc, ci->width);
 
-      if(is_ci && pid == 0)
-	message("     di_cell= %e", di_cell);
+      /* if(is_ci && pid == 0) */
+      /* 	message("     di_cell= %e", di_cell); */
       
       //if(is_ci)
-	if (di < di_cell - ci->hydro.dx_max_part) error("aa");
+      //if (di < di_cell - ci->hydro.dx_max_part) error("aa");
 
       /* No particle in range */
 	//if (0)
@@ -955,8 +955,8 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
       for (int pjd = count_j - 1; pjd >= 0 /* && di < sort_j[pjd].d */; pjd--) {
 
         /* Get a pointer to the jth particle. */
-        // struct part *restrict pj = &parts_j[pjd];
-        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+        struct part *restrict pj = &parts_j[pjd];
+        //struct part *restrict pj = &parts_j[sort_j[pjd].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -966,17 +966,17 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         const double pjy = pj->x[1];
         const double pjz = pj->x[2];
 
-        const float dj = pjx * runner_shift[sid][0] + pjy * runner_shift[sid][1] + pjz * runner_shift[sid][2];
+        /* const float dj = pjx * runner_shift[sid][0] + pjy * runner_shift[sid][1] + pjz * runner_shift[sid][2]; */
 
-        const float dj_sort = sort_j[pjd].d;
-        if (dj < dj_sort - cj->hydro.dx_max_sort) error("cc rshift=%f",
-							rshift);
+        /* const float dj_sort = sort_j[pjd].d; */
+        /* if (dj < dj_sort - cj->hydro.dx_max_sort) error("cc rshift=%f", */
+	/* 						rshift); */
 
 	
         //if(di < dj) error("oO");
 
-	if(is_ci)
-	  if (dj > di_cell + cj->hydro.dx_max_part) error("dd rshift=%f", rshift);
+	/* if(is_ci) */
+	/*   if (dj > di_cell + cj->hydro.dx_max_part) error("dd rshift=%f", rshift); */
 
         /* Compute the pairwise distance. */
         float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
@@ -1015,8 +1015,8 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
     }   /* loop over the parts in ci. */
   }
 
-  if(is_ci)
-    message("");
+  /* if(is_ci) */
+  /*   message(""); */
 
   
   TIMER_TOC(timer_dopair_subset);
