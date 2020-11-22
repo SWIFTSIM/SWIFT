@@ -796,13 +796,17 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         error("Invalid position along z!");
 #endif
 
-      // MATTHIEU: todo: early abort here
-
-      /* Is the particle overlapping with the other cell? */
-      const double di = /*hi * kernel_gamma + */ pix * runner_shift[sid][0] +
+      /* Position of the particle on the axis linking the cells */
+      const double di = pix * runner_shift[sid][0] +
                         piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
 
+      /* Position of the other cell on the axis */
       const double dj_cell = sort_get_cell_min_dist(sid, cj->loc, cj->width);
+
+      /* Are there particles in range? */
+      if (di + hi * kernel_gamma < dj_cell - cj->hydro.dx_max_part) {
+        continue;
+      }
 
       /* if(is_ci && pid == 0) */
       /* 	message("     dj_cell= %e", dj_cell); */
@@ -812,13 +816,6 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
 
       // if (di > dj_cell + ci->hydro.dx_max_part) error("aa");
       // if (dj_min  < dj_cell - cj->hydro.dx_max_part) message("bb");
-
-      /* No particle in range */
-      // if(is_ci)
-      if (di + hi * kernel_gamma < dj_cell - cj->hydro.dx_max_part) {
-        // message("Abort!");
-        continue;
-      }
 
       // if(is_ci) message("hello");
 
@@ -929,26 +926,23 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
         error("Invalid position along z!");
 #endif
 
-      // MATTHIEU: todo: early abort here
-
-      /* Is the particle overlapping with the other cell? */
-      const double di = /*-hi * kernel_gamma  + */ pix * runner_shift[sid][0] +
+      /* Position of the particle on the axis linking the cells */
+      const double di = pix * runner_shift[sid][0] +
                         piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
 
+      /* Position of the other cell on the axis */
       const double di_cell = sort_get_cell_min_dist(sid, ci->loc, ci->width);
+
+      /* Are there particles in range? */
+      if (di - hi * kernel_gamma > di_cell - rshift + cj->hydro.dx_max_part) {
+        continue;
+      }
 
       /* if(is_ci && pid == 0) */
       /* 	message("     di_cell= %e", di_cell); */
 
       // if(is_ci)
       // if (di < di_cell - ci->hydro.dx_max_part) error("aa");
-
-      /* No particle in range */
-      // if (0)
-      if (di - hi * kernel_gamma > di_cell - rshift + cj->hydro.dx_max_part) {
-        // message("Abort!");
-        continue;
-      }
 
       // if(is_ci) message("hello");
 
