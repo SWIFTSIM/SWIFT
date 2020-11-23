@@ -1005,7 +1005,8 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
         /* Recurse. */
         /*if (c->split && (c->dark_matter.count_total > engine_max_dmparts_per_ghost))*/
         /* Recurse but not below the maximal splitting depth */
-        if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav))
+        /*if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav))*/
+        if (c->split)
             for (int k = 0; k < 8; k++)
                 if (c->progeny[k] != NULL)
                     engine_make_hierarchical_tasks_dark_matter(e, c->progeny[k]);

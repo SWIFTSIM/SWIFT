@@ -200,6 +200,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     const double vel2 = gp->velocity_ngb[0] * gp->velocity_ngb[0] + gp->velocity_ngb[1] * gp->velocity_ngb[1] + gp->velocity_ngb[2] * gp->velocity_ngb[2];
     
     gp->velocity_dispersion -= vel2;
+    gp->velocity_dispersion /= 3.;
     gp->velocity_dispersion = sqrt(gp->velocity_dispersion);
 }
 
@@ -310,13 +311,13 @@ __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     const struct dmpart *restrict dmp, const struct sidm_props* sidm_props) {
     
     /* Limiter */
-    const float kappa = 0.01;
+    const float kappa = 1e-2;
     
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
 
     /* Timestep limiter (internal units) */
-    const float dm_timestep = kappa / (dmp->rho * sigma * dmp->velocity_dispersion);
+    const float dm_timestep = kappa / (dmp->rho * sigma * dmp->velocity_dispersion * 4. /sqrt(M_PI));
     
     return dm_timestep;
 }

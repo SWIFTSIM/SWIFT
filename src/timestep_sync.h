@@ -26,6 +26,7 @@
 #include "engine.h"
 #include "kick.h"
 #include "timestep.h"
+#include "drift.h"
 
 /**
  * @brief Processes a particle that has been flagged for synchronization on the
@@ -53,7 +54,6 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   if (p->time_bin <= max_active_bin) {
       return;
   }
-  //message(" Synchronizing particle! %lld old bin=%d", p->id_or_neg_offset, p->time_bin);
 
   /* We want to make the particle finish it's time-step now. */
 
@@ -120,6 +120,9 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   } else {
       dt_drift = (new_dti) * e->time_base;
   }
+    
+  /* Drift dm part to current time */
+  drift_dmpart(p, dt_drift, old_ti_beg, new_ti_end);
     
   /* Did this particle had a SIDM kick? if so, resolve */
   do_sidm_kick_to_dmpart(p, dt_drift);

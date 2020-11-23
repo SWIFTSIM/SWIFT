@@ -168,14 +168,14 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct dmpart *dmparts,
             /* Loop over all progeny. */
             DOSUB_SUBSET(r, sub, dmparts, ind, count, NULL);
             for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-            DOSUB_SUBSET(r, sub, dmparts, ind, count, ci->progeny[j]);
+               if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
+                   DOSUB_SUBSET(r, sub, dmparts, ind, count, ci->progeny[j]);
             
         }
         
         /* Otherwise, compute self-interaction. */
         else
-        DOSELF_SUBSET(r, ci, dmparts, ind, count);
+           DOSELF_SUBSET(r, ci, dmparts, ind, count);
     } /* self-interaction. */
     
     /* Otherwise, it's a pair interaction. */
@@ -194,9 +194,9 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct dmpart *dmparts,
                 const int pid = csp->pairs[k].pid;
                 const int pjd = csp->pairs[k].pjd;
                 if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-                DOSUB_SUBSET(r, ci->progeny[pid], dmparts, ind, count, cj->progeny[pjd]);
+                   DOSUB_SUBSET(r, ci->progeny[pid], dmparts, ind, count, cj->progeny[pjd]);
                 if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-                DOSUB_SUBSET(r, cj->progeny[pjd], dmparts, ind, count, ci->progeny[pid]);
+                   DOSUB_SUBSET(r, cj->progeny[pjd], dmparts, ind, count, ci->progeny[pid]);
             }
         }
         
@@ -565,9 +565,9 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     double shift[3] = {0.0, 0.0, 0.0};
     for (int k = 0; k < 3; k++) {
         if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-        shift[k] = e->s->dim[k];
+           shift[k] = e->s->dim[k];
         else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-        shift[k] = -e->s->dim[k];
+           shift[k] = -e->s->dim[k];
     }
     
     /* Loop over the parts in ci. */
@@ -782,7 +782,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
             const int pid = csp->pairs[k].pid;
             const int pjd = csp->pairs[k].pjd;
             if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-            DOSUB_PAIR1(r, ci->progeny[pid], cj->progeny[pjd]);
+               DOSUB_PAIR1(r, ci->progeny[pid], cj->progeny[pjd]);
         }
     }
     
@@ -817,8 +817,8 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci) {
             if (ci->progeny[k] != NULL) {
                 DOSUB_SELF1(r, ci->progeny[k]);
                 for (int j = k + 1; j < 8; j++)
-                if (ci->progeny[j] != NULL)
-                DOSUB_PAIR1(r, ci->progeny[k], ci->progeny[j]);
+                   if (ci->progeny[j] != NULL)
+                       DOSUB_PAIR1(r, ci->progeny[k], ci->progeny[j]);
             }
     }
     

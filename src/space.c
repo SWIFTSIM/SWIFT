@@ -500,13 +500,21 @@ void space_regrid(struct space *s, int verbose) {
   if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
   /* Get the new putative cell dimensions. */
-  const int cdim[3] = {
+  /*const int cdim[3] = {
       (int)floor(s->dim[0] /
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[1] /
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[2] /
-                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};*/
+    
+    const int cdim[3] = {
+        (int)floor(s->dim[0] /
+                   fmax(dm_h_max * dm_kernel_gamma * space_stretch, s->cell_min)),
+        (int)floor(s->dim[1] /
+                   fmax(dm_h_max * dm_kernel_gamma * space_stretch, s->cell_min)),
+        (int)floor(s->dim[2] /
+                   fmax(dm_h_max * dm_kernel_gamma * space_stretch, s->cell_min))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -6435,11 +6443,11 @@ void space_init(struct space *s, struct swift_params *params,
   }
     
   /* Read in imposed dark matter smoothing length */
-  /*s->initial_dmpart_h = parser_get_opt_param_float(
+  s->initial_dmpart_h = parser_get_opt_param_float(
       params, "SIDM:h_sidm", -1.f);
   if (s->initial_dmpart_h != -1.f) {
         message("Imposing a DM smoothing length of %e", s->initial_dmpart_h);
-  }*/
+  }
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};

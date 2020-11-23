@@ -353,7 +353,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Calculate scattering rate */
     float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
-    
+
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
     

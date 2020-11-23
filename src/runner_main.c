@@ -400,7 +400,7 @@ void *runner_main(void *data) {
           break;
         case task_type_timestep_sync:
           runner_do_sync(r, ci, 0, 1);
-          runner_do_sync_dmparts(r, ci);
+          runner_do_sync_dmparts(r, ci, 0);
           break;
 #ifdef WITH_MPI
         case task_type_send:

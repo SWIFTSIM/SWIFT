@@ -1402,7 +1402,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
  * @param force Limit the particles irrespective of the #cell flags.
  * @param timer Are we timing this ?
  */
-void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
+void runner_do_sync_dmparts(struct runner *r, struct cell *c, int force) {
     
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
@@ -1417,8 +1417,15 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
     if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
 #endif
     
+    integertime_t ti_dark_matter_end_min = max_nr_timesteps, ti_dark_matter_end_max = 0,
+    ti_dark_matter_beg_max = 0;
+
     integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
     ti_gravity_beg_max = 0;
+    
+    /* Limit irrespective of cell flags? */
+    force = (force || cell_get_flag(c, cell_flag_do_dark_matter_sync));
+
     
     /* Early abort? */
     if (c->dark_matter.count == 0) {
@@ -1428,15 +1435,19 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
     }
     
     /* Loop over the progeny ? */
-    if (c->split) {
+    if (c->split && (force || cell_get_flag(c, cell_flag_do_dark_matter_sub_sync))) {
         for (int k = 0; k < 8; k++) {
             if (c->progeny[k] != NULL) {
                 struct cell *restrict cp = c->progeny[k];
                 
                 /* Recurse */
-                runner_do_sync_dmparts(r, cp);
+                runner_do_sync_dmparts(r, cp, force);
                 
                 /* And aggregate */
+                ti_dark_matter_end_min = min(cp->dark_matter.ti_end_min, ti_dark_matter_end_min);
+                ti_dark_matter_end_max = max(cp->dark_matter.ti_end_max, ti_dark_matter_end_max);
+                ti_dark_matter_beg_max = max(cp->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+
                 ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
                 ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
                 ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
@@ -1444,11 +1455,19 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
         }
         
         /* Store the updated values */
+        c->dark_matter.ti_end_min = min(c->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        c->dark_matter.ti_end_max = max(c->dark_matter.ti_end_max, ti_dark_matter_end_max);
+        c->dark_matter.ti_beg_max = max(c->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+
         c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
         c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
         c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
         
-    } else if (!c->split) {
+    } else if (!c->split && force) {
+        
+        ti_dark_matter_end_min = c->dark_matter.ti_end_min;
+        ti_dark_matter_end_max = c->dark_matter.ti_end_max;
+        ti_dark_matter_beg_max = c->dark_matter.ti_beg_max;
         
         ti_gravity_end_min = c->grav.ti_end_min;
         ti_gravity_end_max = c->grav.ti_end_max;
@@ -1484,11 +1503,11 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
                 if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
                 
                 /* What is the next sync-point ? */
-                ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
-                ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+                ti_dark_matter_end_min = min(ti_current + ti_new_step, ti_dark_matter_end_min);
+                ti_dark_matter_end_max = max(ti_current + ti_new_step, ti_dark_matter_end_max);
                 
                 /* What is the next starting point for this cell ? */
-                ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+                ti_dark_matter_beg_max = max(ti_current, ti_dark_matter_beg_max);
 
                 /* Also limit the gpart counter-part */
                 if (p->gpart != NULL) {
@@ -1510,6 +1529,10 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c) {
         }
         
         /* Store the updated values */
+        c->dark_matter.ti_end_min = min(c->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        c->dark_matter.ti_end_max = max(c->dark_matter.ti_end_max, ti_dark_matter_end_max);
+        c->dark_matter.ti_beg_max = max(c->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+
         c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
         c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
         c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
