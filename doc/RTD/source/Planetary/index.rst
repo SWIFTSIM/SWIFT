@@ -26,7 +26,7 @@ These allow for multiple materials to be used,
 chosen from the several available equations of state.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: More information:
    
    Hydro Scheme <hydro_scheme>
