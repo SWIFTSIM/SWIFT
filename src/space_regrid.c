@@ -144,8 +144,8 @@ void space_regrid(struct space *s, int verbose) {
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
 #ifdef WITH_MPI
-  double oldwidth[3];
-  double oldcdim[3];
+  double oldwidth[3] = {0., 0., 0.};
+  double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
 
