@@ -860,10 +860,14 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           /* Calculate age of the star at current time */
           double star_age_end_of_step;
           if (with_cosmology) {
-            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-                cosmo, (double)sp->birth_scale_factor, cosmo->a);
+            if (cosmo->a > (double)sp->birth_scale_factor)
+              star_age_end_of_step =
+                  cosmology_get_delta_time_from_scale_factors(
+                      cosmo, (double)sp->birth_scale_factor, cosmo->a);
+            else
+              star_age_end_of_step = 0.;
           } else {
-            star_age_end_of_step = e->time - (double)sp->birth_time;
+            star_age_end_of_step = max(e->time - (double)sp->birth_time, 0.);
           }
 
           /* Get the length of the enrichment time-step */
