@@ -90,6 +90,7 @@ EAGLEFeedback:
   IMF_max_mass_Msun:                  100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
   SNII_min_mass_Msun:                   6.0             # Minimal mass considered for SNII stars in solar masses.
   SNII_max_mass_Msun:                 100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_feedback_model:                  Random          # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   SNII_sampled_delay:                   0               # Sample the SNII lifetimes to do feedback.
   SNII_wind_delay_Gyr:                  0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
   SNII_delta_T_K:                       3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
@@ -100,7 +101,8 @@ EAGLEFeedback:
   SNII_energy_fraction_n_0_H_p_cm3:     0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:             0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:             0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNII_energy_fraction_use_birth_props: 0               # Are we using the density and metallicity at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_density: 0             # Are we using the density and metallicity at birth to compute f_E or at feedback time?
+  SNII_energy_fraction_use_birth_metallicity: 0         # Are we using the density and metallicity at birth to compute f_E or at feedback time?
   SNIa_DTD:                             Exponential     # Use the EAGLE-Ref SNIa DTD.
   SNIa_DTD_delay_Gyr:                   0.04            # Age of the most massive SNIa in Gyr.
   SNIa_DTD_exp_timescale_Gyr:           2.0             # Time-scale of the exponential decay of the SNIa rates in Gyr.

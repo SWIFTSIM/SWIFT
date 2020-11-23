@@ -27,6 +27,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "feedback.h"
 #include "hydro_properties.h"
 #include "parser.h"
 #include "part.h"
@@ -306,6 +307,9 @@ INLINE static void star_formation_copy_properties(
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
     const int convert_part) {
+
+  /* Initialize the feedback */
+  feedback_init_after_star_formation(sp, e->feedback_props);
 
   /* Store the current mass */
   const float mass_gas = hydro_get_mass(p);
