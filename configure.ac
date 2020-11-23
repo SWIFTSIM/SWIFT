@@ -425,6 +425,18 @@ elif test "$fixed_boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
+# Check if fixed entropy is on for settling planetary initial conditions
+AC_ARG_ENABLE([planetary-fixed-entropy],
+   [AS_HELP_STRING([--enable-planetary-fixed-entropy],
+     [Force entropies to stay fixed for settling planetary initial conditions @<:@yes/no@:>@]
+   )],
+   [planetary_fixed_entropy="$enableval"],
+   [planetary_fixed_entropy="no"]
+)
+if test "$planetary_fixed_entropy" = "yes"; then
+   AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -2468,6 +2480,7 @@ AC_MSG_RESULT([
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
+   Planetary fixed entropy     : $planetary_fixed_entropy
 
    Particle Logger      : $with_logger
    Python enabled       : $have_python
