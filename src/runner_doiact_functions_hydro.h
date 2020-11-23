@@ -742,6 +742,9 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
     error("Subset of particles not within ci!");
 #endif
 
+  /* Early abort? */
+  if (count_j == 0) return;
+
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;

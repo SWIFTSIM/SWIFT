@@ -636,18 +636,29 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
-  /* Cosmological terms */
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (&sparts_i[scount - 1] < &sparts_i[0]) error("Strange particle order!");
+  if ((&sparts_i[scount - 1] < ci->stars.parts) ||
+      (&sparts_i[0] > ci->stars.parts + ci->stars.count))
+    error("Subset of particles not within ci!");
+#endif
 
   /* Early abort? */
   if (count_j == 0) return;
 
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
   /* Sparts are on the left? */
   if (!flipped) {
+
+    /* Get the cutoff shift on the axis. */
+    // double rshift = 0.0;
+    // for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
     /* Loop over the sparts_i. */
     for (int pid = 0; pid < scount; pid++) {
@@ -660,14 +671,29 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
       const float hi = spi->h;
       const float hig2 = hi * hi * kernel_gamma2;
 
-      // MATTHIEU: todo: early abort here
+#ifdef SWIFT_DEBUG_CHECKS
+      if ((spi->x[0] < ci->loc[0] - ci->stars.dx_max_part) ||
+          (spi->x[0] > ci->loc[0] + ci->width[0] + ci->stars.dx_max_part))
+        error("Invalid position along x!");
+      if ((spi->x[1] < ci->loc[1] - ci->stars.dx_max_part) ||
+          (spi->x[1] > ci->loc[1] + ci->width[1] + ci->stars.dx_max_part))
+        error("Invalid position along y!");
+      if ((spi->x[2] < ci->loc[2] - ci->stars.dx_max_part) ||
+          (spi->x[2] > ci->loc[2] + ci->width[2] + ci->stars.dx_max_part))
+        error("Invalid position along z!");
+#endif
 
-      /* Is the particle overlapping with the other cell? */
-      /* const double di = hi * kernel_gamma + pix * runner_shift[sid][0] + */
-      /*                   piy * runner_shift[sid][1] + piz *
-       * runner_shift[sid][2]; */
+      /* Position of the particle on the axis linking the cells */
+      const double di = pix * runner_shift[sid][0] +
+                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
 
-      /* if (di < 0.) continue; */
+      /* Position of the other cell on the axis */
+      const double dj_cell = sort_get_cell_min_dist(sid, cj->loc, cj->width);
+
+      /* Are there particles in range? */
+      if (di + hi * kernel_gamma < dj_cell - cj->hydro.dx_max_part) {
+        continue;
+      }
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j /*&& sort_j[pjd].d < di*/; pjd++) {
@@ -678,14 +704,14 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+        const float hj = pj->h;
         const double pjx = pj->x[0];
         const double pjy = pj->x[1];
         const double pjz = pj->x[2];
-        const float hj = pj->h;
 
         /* Compute the pairwise distance. */
-        float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
-                       (float)(piz - pjz)};
+        const float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
+                             (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -718,6 +744,10 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   /* Sparts are on the right. */
   else {
 
+    /* Get the cutoff shift on the axis. */
+    double rshift = 0.0;
+    for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
+
     /* Loop over the sparts_i. */
     for (int pid = 0; pid < scount; pid++) {
 
@@ -729,13 +759,29 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
       const float hi = spi->h;
       const float hig2 = hi * hi * kernel_gamma2;
 
-      // MATTHIEU: todo: early abort here
+#ifdef SWIFT_DEBUG_CHECKS
+      if ((spi->x[0] < ci->loc[0] - ci->stars.dx_max_part) ||
+          (spi->x[0] > ci->loc[0] + ci->width[0] + ci->stars.dx_max_part))
+        error("Invalid position along x!");
+      if ((spi->x[1] < ci->loc[1] - ci->stars.dx_max_part) ||
+          (spi->x[1] > ci->loc[1] + ci->width[1] + ci->stars.dx_max_part))
+        error("Invalid position along y!");
+      if ((spi->x[2] < ci->loc[2] - ci->stars.dx_max_part) ||
+          (spi->x[2] > ci->loc[2] + ci->width[2] + ci->stars.dx_max_part))
+        error("Invalid position along z!");
+#endif
 
-      /* Is the particle overlapping with the other cell? */
-      /* const double di = -hi * kernel_gamma + pix * runner_shift[sid][0] + */
-      /*                   piy * runner_shift[sid][1] + piz *
-       * runner_shift[sid][2]; */
-      /* if (di > 0.) continue; */
+      /* Position of the particle on the axis linking the cells */
+      const double di = pix * runner_shift[sid][0] +
+                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+      /* Position of the other cell on the axis */
+      const double di_cell = sort_get_cell_min_dist(sid, ci->loc, ci->width);
+
+      /* Are there particles in range? */
+      if (di - hi * kernel_gamma > di_cell - rshift + cj->hydro.dx_max_part) {
+        continue;
+      }
 
       /* Loop over the parts in cj. */
       for (int pjd = count_j - 1; pjd >= 0 /* && di < sort_j[pjd].d */; pjd--) {
@@ -746,14 +792,14 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+        const float hj = pj->h;
         const double pjx = pj->x[0];
         const double pjy = pj->x[1];
         const double pjz = pj->x[2];
-        const float hj = pj->h;
 
         /* Compute the pairwise distance. */
-        float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
-                       (float)(piz - pjz)};
+        const float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
+                             (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
