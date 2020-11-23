@@ -392,10 +392,15 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
+  const float pressure =
+      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   /* Update variables. */
+  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -472,6 +477,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -507,6 +516,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= h_inv_dim;
   p->density.wcount_dh *= h_inv_dim_plus_one;
+
+  const float rho_inv = 1.f / p->rho;
+  const float a_inv2 = cosmo->a2_inv;
+
+  /* Finish calculation of the (physical) velocity curl components */
+  p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+  p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+  /* Finish calculation of the (physical) velocity divergence */
+  p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 }
 
 /**
@@ -534,6 +554,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
+  p->density.div_v = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -558,15 +582,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  const float fac_mu = cosmo->a_factor_mu;
+  const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
   /* Compute the norm of the curl */
   const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
                              p->density.rot_v[1] * p->density.rot_v[1] +
                              p->density.rot_v[2] * p->density.rot_v[2]);
 
-  /* Compute the norm of div v */
-  const float abs_div_v = fabsf(p->density.div_v);
+  /* Compute the norm of div v including the Hubble flow term */
+  const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
+  const float abs_div_physical_v = fabsf(div_physical_v);
+
+#ifdef PLANETARY_FIXED_ENTROPY
+  /* Override the internal energy to satisfy the fixed entropy */
+  p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
+  xp->u_full = p->u;
+#endif
 
   /* Compute the pressure */
   const float pressure =
@@ -576,23 +607,30 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
 
-  /* Compute the "grad h" term */
-  const float rho_inv = 1.f / p->rho;
-  float rho_dh = p->density.rho_dh;
+  /* Compute the "grad h" term  - Note here that we have \tilde{x}
+   * as 1 as we use the local number density to find neighbours. This
+   * introduces a j-component that is considered in the force loop,
+   * meaning that this cached grad_h_term gives:
+   *
+   * f_ij = 1.f - grad_h_term_i / m_j */
+  const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
+  float grad_h_term = common_factor * p->density.rho_dh /
+                      (1.f + common_factor * p->density.wcount_dh);
+
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
-    rho_dh = 0.f;
+    grad_h_term = 0.f;
   }
-  const float grad_h_term =
-      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
 
   /* Compute the Balsara switch */
 #ifdef PLANETARY_SPH_NO_BALSARA
   const float balsara = hydro_props->viscosity.alpha;
 #else
-  const float balsara =
-      hydro_props->viscosity.alpha * abs_div_v /
-      (abs_div_v + curl_v + 0.0001f * fac_mu * soundspeed / p->h);
+  /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
+   * functions */
+  const float balsara = hydro_props->viscosity.alpha * abs_div_physical_v /
+                        (abs_div_physical_v + curl_v +
+                         0.0001f * fac_Balsara_eps * soundspeed / p->h);
 #endif
 
   /* Update variables. */
@@ -641,12 +679,12 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[1] = xp->v_full[1];
   p->v[2] = xp->v_full[2];
 
-  /* Re-set the entropy */
+  /* Re-set the internal energy */
   p->u = xp->u_full;
 
   /* Compute the pressure */
   const float pressure =
-      gas_pressure_from_internal_energy(p->rho, xp->u_full, p->mat_id);
+      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -654,6 +692,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -683,7 +723,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->u += p->u_dt * dt_therm;
 
   /* Check against absolute minimum */
-  const float min_u = hydro_props->minimal_internal_energy;
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
   p->u = max(p->u, min_u);
 
@@ -713,6 +754,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -759,7 +802,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
 
   /* Check against absolute minimum */
-  const float min_u = hydro_props->minimal_internal_energy;
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
   if (xp->u_full < min_u) {
     xp->u_full = min_u;
