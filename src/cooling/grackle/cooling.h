@@ -68,10 +68,33 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct part* restrict p,
                              struct xpart* restrict xp);
 
-float cooling_get_subgrid_temperature(const struct part* p,
-                                      const struct xpart* xp);
+/**
+ * @brief Returns the subgrid temperature of a particle.
+ *
+ * This model has no subgrid quantity. We return an error.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+INLINE static float cooling_get_subgrid_temperature(const struct part* p,
+                                                    const struct xpart* xp) {
+  error("This cooling model does not use subgrid quantities!");
+  return -1.f;
+}
 
-float cooling_get_subgrid_density(const struct part* p, const struct xpart* xp);
+/**
+ * @brief Returns the subgrid density of a particle.
+ *
+ * This model has no subgrid quantity. We return an error.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+INLINE static float cooling_get_subgrid_density(const struct part* p,
+                                                const struct xpart* xp) {
+  error("This cooling model does not use subgrid quantities!");
+  return -1.f;
+}
 
 float cooling_get_radiated_energy(const struct xpart* restrict xp);
 void cooling_print_backend(const struct cooling_function_data* cooling);

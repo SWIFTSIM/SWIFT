@@ -58,6 +58,9 @@ struct feedback_spart_data {
 
   /*! Chemical composition of the mass ejected */
   double metal_mass_ejected[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Does the particle needs the feedback loop? */
+  char will_do_feedback;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */
