@@ -1152,17 +1152,17 @@ int engine_marktasks(struct engine *e) {
   scheduler_osmpi_init(s);
 #endif
 
-
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, (size_t)rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), threadpool_auto_chunk_size, extra_data);
   rebuild_space = extra_data[1];
 
-  /* Now all tasks have been sized, we can allocate the one-sided buffers. */
+  /* Now all tasks have marked, we can allocate the one-sided buffers for MPI.
+   */
 #ifdef WITH_MPI
   /* Initialise for one-sided MPI. */
-  scheduler_osmpi_init_buffers(e->nr_nodes, s);
+  scheduler_osmpi_init_buffers(s);
 #endif
 
   if (e->verbose)

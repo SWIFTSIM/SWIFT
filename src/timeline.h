@@ -64,7 +64,7 @@ get_integer_timestep(timebin_t bin) {
 #ifdef SWIFT_DEBUG_CHECKS
   if ((size_t)bin > (sizeof(integertime_t) * CHAR_BIT))
     error("Time bin exceeds limit of %zd", sizeof(integertime_t) * CHAR_BIT);
-#endif 
+#endif
   return 1LL << (bin + 1);
 }
 

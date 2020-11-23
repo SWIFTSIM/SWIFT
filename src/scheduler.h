@@ -35,6 +35,7 @@
 #include "cell.h"
 #include "inline.h"
 #include "lock.h"
+#include "memuse_rnodes.h"
 #include "mpicache.h"
 #include "queue.h"
 #include "task.h"
@@ -56,7 +57,7 @@
 #define scheduler_flag_steal (1 << 1)
 
 /* Constants for one-sided, os, MPI work. Flags for controlling access. */
-#define scheduler_osmpi_locked  -2
+#define scheduler_osmpi_locked -2
 #define scheduler_osmpi_unlocked -3
 
 /* Size of a block of memory. Need to send MPI messages aligned to this size. */
@@ -64,18 +65,21 @@
 #define scheduler_osmpi_mpi_blocktype MPI_AINT
 #define scheduler_osmpi_bytesinblock sizeof(size_t)
 
-/* Size of message header control block in blocks. The lock flag, size and tag. */
+/* Size of message header control block in blocks. The lock flag, size and tag.
+ */
 #define scheduler_osmpi_header_size 3
 
 /* Number of threads we can use for sending. */
 #define scheduler_osmpi_max_sends 2
 
-/* Forward declarations for one-sided MPI. */
-void scheduler_osmpi_activate(struct scheduler *s, struct task *t);
-void scheduler_osmpi_init(struct scheduler *s);
-void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s);
-scheduler_osmpi_blocktype scheduler_osmpi_toblocks(size_t nr_bytes);
-size_t scheduler_osmpi_tobytes(scheduler_osmpi_blocktype nr_blocks);
+/* Convert a byte count into a number of blocks, rounds up. */
+#define scheduler_osmpi_toblocks(nr_bytes)           \
+  ((nr_bytes + (scheduler_osmpi_bytesinblock - 1)) / \
+   scheduler_osmpi_bytesinblock)
+
+/* Convert a block count into a number of bytes. */
+#define scheduler_osmpi_tobytes(nr_blocks) \
+  (nr_blocks * scheduler_osmpi_bytesinblock)
 
 /* Data of a scheduler. */
 struct scheduler {
@@ -136,22 +140,19 @@ struct scheduler {
   ticks total_ticks;
 
 #ifdef WITH_MPI
-  /* MPI windows for one-sided messages. We have one per task subtype. */
-  MPI_Win osmpi_window[task_subtype_count];
-  volatile scheduler_osmpi_blocktype *osmpi_ptr[task_subtype_count];
-  size_t osmpi_max_size[task_subtype_count];
+  /* MPI windows for one-sided messages. */
+  /* Pointers to the windows and associated memory. We have one per remote
+   * node per subtype. Use a radix tree to look up these values given the
+   * originating node and subtype. */
+  MPI_Win *osmpi_windows;
+  volatile scheduler_osmpi_blocktype **osmpi_ptrs;
+  struct memuse_rnode *osmpi_rnodes;
 
-  /* Locks for sends and recvs per subtype. We must never use as many send
-   * locks as threads as that can deadlock, so some fraction is overloaded
-   * instead, currently 2, see . */
-  swift_lock_type send_lock[scheduler_osmpi_max_sends];
-  swift_lock_type recv_lock[task_subtype_count];
-
-  /* Caches for each subtype so we can receives without an active recv. */
-  struct mpicache *mpicache[task_subtype_count];
-  
+  /* Caches for capturing the MPI tasks and working out the window sizes and
+   * offsets. */
+  struct mpicache *send_mpicache;
+  struct mpicache *recv_mpicache;
 #endif
-
 };
 
 /* Inlined functions (for speed). */
@@ -193,7 +194,7 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
     error("Missing link to send task.");
   }
 #ifdef WITH_MPI
-  scheduler_osmpi_activate(s, l->t);
+  mpicache_add(s->send_mpicache, l->t->cj->nodeID, l->t);
 #endif
   scheduler_activate(s, l->t);
   return l;
@@ -218,6 +219,9 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
   if (l == NULL) {
     error("Missing link to recv task.");
   }
+#ifdef WITH_MPI
+  mpicache_add(s->recv_mpicache, l->t->ci->nodeID, l->t);
+#endif
   scheduler_activate(s, l->t);
   return l;
 }
@@ -254,4 +258,7 @@ void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
 
 size_t scheduler_mpi_size(struct task *t);
+
+void scheduler_osmpi_init(struct scheduler *s);
+void scheduler_osmpi_init_buffers(struct scheduler *s);
 #endif /* SWIFT_SCHEDULER_H */

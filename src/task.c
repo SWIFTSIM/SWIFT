@@ -635,261 +635,149 @@ int task_lock(struct scheduler *s, struct task *t) {
     /* Communication task? */
     case task_type_send:
 #ifdef WITH_MPI
-      {
-        /* Need to get the send lock. */
-        if (lock_trylock(&s->send_lock[subtype % scheduler_osmpi_max_sends]) == 0) {
+    {
+      /* Data has the actual data and room for the header.
+       * XXX horrible extra data copy, can we separate headers? */
+      scheduler_osmpi_blocktype datasize =
+          scheduler_osmpi_toblocks(t->size) + scheduler_osmpi_header_size;
+      scheduler_osmpi_blocktype *dataptr =
+          calloc(datasize, scheduler_osmpi_bytesinblock);
 
-          /* Data has the actual data and room for the header.
-           * XXX horrible extra data copy, can we separate headers? */
-          scheduler_osmpi_blocktype datasize = scheduler_osmpi_toblocks(t->size) +
-            scheduler_osmpi_header_size;
-          scheduler_osmpi_blocktype *dataptr = calloc(datasize, scheduler_osmpi_bytesinblock);
+      /* First element is marked as LOCKED, so only we can update. */
+      dataptr[0] = scheduler_osmpi_locked;
+      dataptr[1] = t->size;
+      dataptr[2] = t->flags;
+      memcpy(&dataptr[scheduler_osmpi_header_size], t->buff, t->size);
 
-          /* First element is marked as LOCKED, so only we can update. */
-          dataptr[0] = scheduler_osmpi_locked;
-          dataptr[1] = t->size;
-          dataptr[2] = t->flags;
-          memcpy(&dataptr[scheduler_osmpi_header_size], t->buff, t->size);
+      if (s->space->e->verbose)
+        message(
+            "Sending message to %d from %d subtype: %d, tag %zd, size %zd"
+            " (cf %lld %zd)",
+            cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
+            t->size);
+
+      /* And send to the destination rank. Could put this into the task? */
+      union key {
+        int32_t ikey;
+        uint8_t ukey[4];
+      };
+      union key keyval;
+      keyval.ikey = mpicache_lookup_key(cj->nodeID, subtype);
+      struct memuse_rnode *child =
+          memuse_rnode_find_child(s->osmpi_rnodes, 0, keyval.ukey, 4);
+      if (child == NULL || child->value < 0) {
+        error("Failed to lookup osmpi window index");
+      }
+      int window_index = child->value;
+
+      int err = MPI_Accumulate(
+          dataptr, datasize, scheduler_osmpi_mpi_blocktype, cj->nodeID,
+          t->offset, datasize, scheduler_osmpi_mpi_blocktype, MPI_REPLACE,
+          s->osmpi_windows[window_index]);  // XXX
+                                            // create this window
+
+      if (err != MPI_SUCCESS) {
+        mpi_error(err, "Failed to send particle data.");
+      }
+
+      if (s->space->e->verbose)
+        message(
+            "Sent message to %d subtype: %d, tag %zd, size %zd"
+            " (cf %lld %zd)",
+            cj->nodeID, subtype, dataptr[2], dataptr[1], t->flags, t->size);
+
+      /* Now we change the first element to unlocked so that the remote end
+       * can find out that the data has arrived. */
+      scheduler_osmpi_blocktype newval[1];
+      scheduler_osmpi_blocktype oldval[1];
+      newval[0] = scheduler_osmpi_unlocked;
+      oldval[0] = 0;
+      err = MPI_Compare_and_swap(&newval[0], dataptr, &oldval[0],
+                                 scheduler_osmpi_mpi_blocktype, cj->nodeID,
+                                 t->offset, s->osmpi_windows[window_index]);
+
+      if (err != MPI_SUCCESS) {
+        mpi_error(err, "Compare and swap send error for particle data.");
+      }
+
+      // XXX try to live without this.
+      err = MPI_Win_flush(cj->nodeID, s->osmpi_windows[window_index]);
+      if (err != MPI_SUCCESS) mpi_error(err, "MPI_Win_flush failed");
+
+      /* Release data. XXX not yet, we need to wait, perhaps a local poll?*/
+      // free(dataptr); // XXX reuse this surely...
+
+      if (s->space->e->verbose)
+        message("Sent and ack message to %d subtype: %d, tag %lld, size %zd",
+                cj->nodeID, subtype, t->flags, t->size);
+
+      /* And log deactivation, if logging enabled. */
+      mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
+
+      return 1;
+    }
+
+#endif
+    break;
+
+    case task_type_recv:
+#ifdef WITH_MPI
+    {
+
+      /* Check for a message waiting for this subtype from our expected
+       * node. */
+      union key {
+        int32_t ikey;
+        uint8_t ukey[4];
+      };
+      union key keyval;
+      keyval.ikey = mpicache_lookup_key(ci->nodeID, subtype);
+      struct memuse_rnode *child =
+          memuse_rnode_find_child(s->osmpi_rnodes, 0, keyval.ukey, 4);
+      if (child == NULL || child->value < 0) {
+        error("Failed to lookup osmpi window index");
+      }
+      int window_index = child->value;
+
+      volatile scheduler_osmpi_blocktype *dataptr =
+          &(s->osmpi_ptrs[window_index])[t->offset];
+      if (dataptr[0] == (scheduler_osmpi_blocktype)scheduler_osmpi_unlocked) {
+
+        /* Message from our remote and subtype waiting, does it match our tag
+         * and size? */
+        if (t->flags == (int)dataptr[2] && t->size == dataptr[1]) {
 
           if (s->space->e->verbose)
-            message("Sending message to %d from %d subtype: %d, tag %zd, size %zd"
-                    " (cf %lld %zd)", cj->nodeID, ci->nodeID, subtype, dataptr[2],
-                    dataptr[1], t->flags, t->size);
-
-          /* And send to the destination rank. XXX will not work subtype offsets
-           * need to be shared around system, are just local and not fixed size
-           * so cannot * myrank (ci->nodeID) XXX */
-          int err = MPI_Accumulate(dataptr, datasize, scheduler_osmpi_mpi_blocktype,
-                                   cj->nodeID,
-                                   s->osmpi_max_size[subtype] * ci->nodeID,
-                                   datasize, scheduler_osmpi_mpi_blocktype,
-                                   MPI_REPLACE, s->osmpi_window[subtype]);
-
-          if (err != MPI_SUCCESS) {
-            mpi_error(err, "Failed to send particle data.");
-          }
-
-          if (s->space->e->verbose)
-            message("Sent message to %d subtype: %d, tag %zd, size %zd"
-                    " (cf %lld %zd)", cj->nodeID, subtype, dataptr[2],
-                    dataptr[1], t->flags, t->size);
-
-          /* Now we change the first element to unlocked so that the remote end
-           * can find out that the data has arrived. */
-          scheduler_osmpi_blocktype newval[1];
-          scheduler_osmpi_blocktype oldval[1];
-          newval[0] = scheduler_osmpi_unlocked;
-          oldval[0] = 0;
-          err = MPI_Compare_and_swap(&newval[0], dataptr, &oldval[0],
-                                     scheduler_osmpi_mpi_blocktype,
-                                     cj->nodeID,
-                                     s->osmpi_max_size[subtype] * ci->nodeID,
-                                     s->osmpi_window[subtype]);
-
-          if (err != MPI_SUCCESS) {
-            mpi_error(err, "Compare and swap send error for particle data.");
-          }
-
-          /* Attempt to hurry it along... */
-          err = MPI_Win_flush(cj->nodeID, s->osmpi_window[subtype]);
-
-          /* Wait for completion, this is when remote flips back to LOCKED. We
-           * poll on a get, as the local window is only used for receiving. Use
-           * an Rget so we can use MPI_Test to get some local progression. */
-          newval[0] = scheduler_osmpi_unlocked;
-          while (newval[0] != (scheduler_osmpi_blocktype)
-                 scheduler_osmpi_locked) {
-
-            MPI_Request request;
-            err = MPI_Rget(&newval[0], 1, scheduler_osmpi_mpi_blocktype,
-                           cj->nodeID,
-                           s->osmpi_max_size[subtype] * ci->nodeID,
-                           1, scheduler_osmpi_mpi_blocktype,
-                           s->osmpi_window[subtype], &request);
-            if (err != MPI_SUCCESS) mpi_error(err, "MPI_Rget failed");
-
-            /* After the rget to make sure we get a chance at completion. */
-            err = MPI_Win_flush(cj->nodeID, s->osmpi_window[subtype]);
-            if (err != MPI_SUCCESS) mpi_error(err, "MPI_Win_flush failed");
-
-            int flag = 0;
-            while (flag == 0) {
-              err = MPI_Test(&request, &flag, MPI_STATUS_IGNORE);
-              if (err != MPI_SUCCESS) mpi_error(err, "MPI_Test failed");
-            }
-          }
-
-          /* Release data. */
-          free(dataptr); // XXX reuse this surely...
-
-          /* May start next send now. Do nothing with the data after this
-           * point. */
-          if (lock_unlock(&s->send_lock[subtype % scheduler_osmpi_max_sends]) != 0) {
-            error("Unlocking the MPI send lock failed.\n");
-          }
-
-          if (s->space->e->verbose)
-            message("Sent and ack message to %d subtype: %d, tag %lld, size %zd",
-                    cj->nodeID, subtype, t->flags, t->size);
+            message("Accepted from %d, subtype: %d, tag: %lld, size %zd",
+                    ci->nodeID, subtype, t->flags, t->size);
 
           /* And log deactivation, if logging enabled. */
           mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
 
-          return 1;
-        }
-      }
+          /* Ready to process. So copy to local buffers. */
+          memcpy(t->buff, (void *)&dataptr[scheduler_osmpi_header_size],
+                 t->size);
 
-      /* Locked for now. */
-      return 0;
-
-#endif
-      break;
-
-    case task_type_recv:
-#ifdef WITH_MPI
-      {
-        /* Need to get the recv lock. */
-        if (lock_trylock(&s->recv_lock[subtype]) == 0) {
-
-          /* Check for a message waiting for this subtype, tag and size from our
-           * expected node. If so accept. XXX need the scheduler and these
-           * max_sizes need synchronizing... */
-          volatile scheduler_osmpi_blocktype *dataptr =
-            &s->osmpi_ptr[subtype][s->osmpi_max_size[subtype] * ci->nodeID];
-          if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
-
-            /* Message from our remote and subtype waiting, does it match our tag
-             * and size? */
-            if (t->flags == (int) dataptr[2] && t->size == dataptr[1]) {
-
-              if (s->space->e->verbose)
-                message("Accepted from %d, subtype: %d, tag: %lld, size %zd",
-                        ci->nodeID, subtype, t->flags, t->size);
-
-              /* And log deactivation, if logging enabled. */
-              mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
-
-              /* Ready to process. So copy to local buffers. */
-              memcpy(t->buff, (void *)&dataptr[scheduler_osmpi_header_size], t->size);
-
-              /* Ready for next recv. */
-              dataptr[0] = scheduler_osmpi_locked;
-
-              if (lock_unlock(&s->recv_lock[subtype]) != 0) {
-                error("Unlocking the MPI recv lock failed.\n");
-              }
-              return 1;
-
-            } else {
-              if (s->space->e->verbose)
-                message("Caching from %d, subtype: %d, tag: %zd, size %zd",
-                        ci->nodeID, subtype, dataptr[2], dataptr[1]);
-
-              /* Cache this message. */
-              int result = 0;
-              void *buff = calloc(1, dataptr[1]);
-              memcpy(buff, (void *)&dataptr[scheduler_osmpi_header_size], dataptr[1]);
-              mpicache_add(s->mpicache[subtype], ci->nodeID, subtype, dataptr[2],
-                           dataptr[1], buff);
-
-              /* Ready for next recv. */
-              dataptr[0] = scheduler_osmpi_locked;
-
-              if (lock_unlock(&s->recv_lock[subtype]) != 0) {
-                error("Unlocking the MPI recv lock failed.\n");
-              }
-              return result;
-            }
-          } else {
-
-            /* Check the cache. */
-            void *buff = NULL;
-            size_t size;
-            mpicache_fetch(s->mpicache[subtype], ci->nodeID, subtype, t->flags,
-                           &size, &buff);
-            if (size != 0 && buff != NULL) {
-              if (s->space->e->verbose)
-                message("Simple cache hit from %d, subtype: %d, tag: %lld, size %zd",
-                        ci->nodeID, subtype, t->flags, t->size);
-
-              /* Here we go. */
-              memcpy(t->buff, buff, t->size);
-              free(buff);
-
-              /* And log deactivation, if logging enabled. */
-              mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
-
-              /* Release the lock so another task can have a go. */
-              if (lock_unlock(&s->recv_lock[subtype]) != 0) {
-                error("Unlocking the MPI recv lock failed.\n");
-              }
-              return 1;
-            }
-            //else if (s->space->e->verbose) {
-            //  message("Cache miss from %d, subtype: %d, tag: %lld, size %zd",
-            //          ci->nodeID, subtype, t->flags, t->size);
-            //}
-          }
-
-          /* Look for any cachable messages from all subtypes and nodes which
-           * we could miss if no tasks with this subtype are currently
-           * queued, we need to acquire the lock for this subtype, so try that
-           * first. */
-          int done = 0;
-          for (int k = 0; k < task_subtype_count; k++) {
-            if (lock_trylock(&s->recv_lock[k]) == 0) {
-              for (int j = 0; j < s->space->e->nr_nodes; j++) {
-                if (j != engine_rank) {
-                  dataptr = &s->osmpi_ptr[k][s->osmpi_max_size[k] * j];
-                  if (dataptr[0] == (scheduler_osmpi_blocktype) scheduler_osmpi_unlocked) {
-
-                    if (s->space->e->verbose)
-                      message("Anonymous caching from %d, subtype: %d, tag: %zd, size %zd",
-                              j, k, dataptr[2], dataptr[1]); fflush(stdout);
-
-                    /* Cache this message. */
-                    void *buff = calloc(1, dataptr[1]);
-                    memcpy(buff, (void *)&dataptr[scheduler_osmpi_header_size], dataptr[1]);
-                    mpicache_add(s->mpicache[k], j, k, dataptr[2], dataptr[1], buff);
-
-                    /* Ready for next recv. */
-                    dataptr[0] = scheduler_osmpi_locked;
-
-                    /* Break for this subtype, probably only a limited no. from
-                     * any other node. */
-                    done = 1;
-                    break;
-                  }
-                }
-              }
-              if (lock_unlock(&s->recv_lock[k]) != 0) {
-                error("Unlocking the MPI recv lock failed.\n");
-              }
-
-              /* Got one so let's give up. */
-              if (done) break;
-            }
-          }
+          /* Ready for next recv (iff reused). */
+          dataptr[0] = scheduler_osmpi_locked;
 
           /* Need to allow for some MPI progession. Since we make no MPI calls
            * (by intent receive is a passive target so only the sender should
            * make calls that move data). */
           int flag = 0;
-          int ret = MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag,
-                               MPI_STATUS_IGNORE);
+          int ret = MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
+                               &flag, MPI_STATUS_IGNORE);
           if (ret != MPI_SUCCESS) mpi_error(ret, "MPI_Iprobe failed");
 
-          /* Release the lock so another task can have a go. */
-          if (lock_unlock(&s->recv_lock[subtype]) != 0) {
-            error("Unlocking the MPI recv lock failed.\n");
-          }
+          return 1;
         }
       }
       return 0;
+    }
 #else
       error("SWIFT was not compiled with MPI support.");
 #endif
-      break;
+    break;
 
     case task_type_kick1:
     case task_type_kick2:

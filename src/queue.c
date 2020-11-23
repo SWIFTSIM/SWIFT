@@ -226,7 +226,7 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param blocking Block until access to the queue is granted.
  */
 struct task *queue_gettask(struct scheduler *s, struct queue *q,
-      	                   const struct task *prev, int blocking) {
+                           const struct task *prev, int blocking) {
 
   swift_lock_type *qlock = &q->lock;
   struct task *res = NULL;

@@ -18,8 +18,7 @@
 
 /**
  *  @file mpicache.c
- *  @brief file of routines to cache MPI task messages that arrive without a
- *         ready recv task.
+ *  @brief file of routines to cache MPI task messages
  */
 /* Config parameters. */
 #include "../config.h"
@@ -35,6 +34,7 @@
 
 /* Local defines. */
 #include "mpicache.h"
+#include "scheduler.h"
 
 /* Local includes. */
 #include "atomic.h"
@@ -43,150 +43,113 @@
 #include "memuse_rnodes.h"
 #include "task.h"
 
-#define CHECKS 1
-
-/* A single cache entry. */
-struct mpicache_entry {
-  size_t size;
-  void *data;
-#ifdef CHECKS
-  int rank;
-  int subtype;
-  int tag;
-#endif
-};
-
-/* Mapping a key into an 8 byte pointer. */
-union key {
-  size_t keyval;
-  uint8_t ptr[sizeof(size_t)];
-};
-
-/* Bit shift to accomodate all the bits of the maximum rank id. */
-static int rank_shift = 0;
+/* Size of the cache entry buffer increment. */
+#define CACHE_INC_SIZE 5000
 
 /* Bit shift to accomodate all the bits of the maximum subtype. */
-static int subtype_shift = 0;
+int mpicache_subtype_shift = 0;
+
+/* Comparator function to sort in node, subtype, tag order. */
+#ifdef WITH_MPI
+static int mpicache_entry_cmp(const void *a, const void *b) {
+  const struct mpicache_entry *e1 = (const struct mpicache_entry *)a;
+  const struct mpicache_entry *e2 = (const struct mpicache_entry *)b;
+
+  int comp = e1->node - e2->node;
+  if (comp < 0) return -1;
+  if (comp > 0) return 1;
+
+  /* Same node, check subtype. */
+  comp = e1->task->subtype - e2->task->subtype;
+  if (comp < 0) return -1;
+  if (comp > 0) return 1;
+
+  /* Same subtype, check tag. */
+  return e1->task->flags - e2->task->flags;
+}
+#endif
 
 /**
- * @brief Convert ranks, subtype and tag into a unique compact key.
- *
- * @param rank the MPI rank that the message came from.
- * @param subtype the task subtype of the message.
- * @param tag the message tag.
- *
- * @result the key for this information.
- * 
- * XXX do we also need size, if so need a word twice as large.
+ * @brief reallocate the cache entries to make more space available.
  */
-size_t mpicache_makekey(int rank, int subtype, int tag) {
+static void mpicache_reallocate(struct mpicache *cache, int ind) {
 
-  /* Compact all these values into a single size_t word. */
-  size_t result = subtype | engine_rank << subtype_shift |
-                  rank << (subtype_shift + rank_shift) |
-                  tag << (subtype_shift * 2 + rank_shift);
-  return result;
+  if (ind == 0) {
+
+    /* Need to perform initialization. */
+    if ((cache->entries = (struct mpicache_entry *)malloc(
+             CACHE_INC_SIZE * sizeof(struct mpicache_entry))) == NULL) {
+      error("Failed to allocate MPI cache.");
+    }
+
+    /* Last action, releases threads. */
+    cache->entries_size = CACHE_INC_SIZE;
+
+  } else {
+    struct mpicache_entry *new_entries;
+    if ((new_entries = (struct mpicache_entry *)malloc(
+             sizeof(struct mpicache_entry) *
+             (cache->entries_size + CACHE_INC_SIZE))) == NULL) {
+      error("Failed to re-allocate MPI cache.");
+    }
+
+    /* Wait for all writes to the old buffer to complete. */
+    while (cache->entries_done < cache->entries_size)
+      ;
+
+    /* Copy to new buffer. */
+    memcpy(new_entries, cache->entries,
+           sizeof(struct mpicache_entry) * cache->entries_size);
+    free(cache->entries);
+    cache->entries = new_entries;
+
+    /* Last action, releases waiting threads. */
+    atomic_add(&cache->entries_size, CACHE_INC_SIZE);
+  }
 }
 
 /**
  * @brief Initialize an mpicache for use.
  *
- * @param nr_ranks the number of MPI ranks.
- *
  * @return the new mpicache
  */
-struct mpicache *mpicache_init(int nr_ranks) {
-
-  /* Create the root of the cache. */
-  struct mpicache *cache = (struct mpicache *)
-    calloc(1, sizeof(struct mpicache));
-  cache->root.value = -1;
+struct mpicache *mpicache_init() {
 
   /* Initialise the bitshifts needed to create the compact key. */
-  if (rank_shift == 0) {
-    rank_shift = (sizeof(int) * CHAR_BIT) - __builtin_clz(nr_ranks);
-    subtype_shift = (sizeof(int) * CHAR_BIT) - __builtin_clz(task_subtype_count);
+  if (mpicache_subtype_shift == 0) {
+    mpicache_subtype_shift =
+        (sizeof(int) * CHAR_BIT) - __builtin_clz(task_subtype_count);
   }
 
+  /* Create an initial cache. */
+  struct mpicache *cache =
+      (struct mpicache *)calloc(1, sizeof(struct mpicache));
   return cache;
 }
 
 /**
- * @brief Add a new MPI messages to the cache.
+ * @brief Add a new MPI task to the cache.
  *
  * @param cache the #mpicache
- * @param rank the MPI rank that the message came from.
- * @param subtype the task subtype of the message.
- * @param tag the message tag.
- * @param size size of message in bytes.
- * @param data the message data.
+ * @param node the MPI rank that the message originates.
+ * @param t the #task struct.
  */
-void mpicache_add(struct mpicache *cache, int rank, int subtype, int tag,
-                  size_t size, void *data) {
+void mpicache_add(struct mpicache *cache, int node, struct task *t) {
 
-  union key key;
-  key.keyval = mpicache_makekey(rank, subtype, tag);
+  /* Append this to the cache. */
+  size_t ind = atomic_inc(&(cache->nr_entries));
+  if (ind == cache->entries_size) mpicache_reallocate(cache, ind);
 
-  /* Check if this record is already present. */
-  struct memuse_rnode *child =
-    memuse_rnode_find_child(&cache->root, 0, key.ptr, sizeof(size_t));
-  if (child != NULL && child->value != -1) {
+  /* Wait if needed while the reallocation occurs. */
+  while (ind > cache->entries_size)
+    ;
 
-    /* Already present, this is an error. */
-    error("Attempt to add existing MPI message to cache");
-  }
+  /* And store. */
+  cache->entries[ind].node = node;
+  cache->entries[ind].task = t;
 
-  struct mpicache_entry *entry = (struct mpicache_entry *)
-    calloc(1, sizeof(struct mpicache_entry));
-  entry->data = data;
-  entry->size = size;
-#ifdef CHECKS
-  entry->rank = rank;
-  entry->subtype = subtype;
-  entry->tag = tag;
-#endif
+  atomic_inc(&(cache->entries_done));
 
-  memuse_rnode_insert_child(&cache->root, 0, key.ptr,
-                            sizeof(size_t), (int64_t)entry);
-  return;
-}
-
-/**
- * @brief Fetch an MPI messages from the cache, if it exists. Once found the
- *        message is released.
- *
- * @param cache the #mpicache
- * @param rank the MPI rank that the message is expected from
- * @param subtype the task subtype of the message.
- * @param tag the message tag.
- * @param size size of message in bytes if found, zero it not.
- * @param data the message data.
- */
-void mpicache_fetch(struct mpicache *cache, int rank, int subtype, int tag,
-                    size_t *size, void **data) {
-
-  union key key;
-  key.keyval = mpicache_makekey(rank, subtype, tag);
-
-  /* Check if this record is already present. */
-  struct memuse_rnode *child =
-    memuse_rnode_find_child(&cache->root, 0, key.ptr, sizeof(size_t));
-  if (child != NULL && child->value != -1) {
-
-    struct mpicache_entry *entry = (struct mpicache_entry *) child->value;
-    *size = entry->size;
-    *data = entry->data;
-#ifdef CHECKS
-    if (entry->rank != rank || entry->subtype != subtype || entry->tag != tag)
-      error("Fetched the wrong entry");
-#endif
-
-    free(entry);
-    child->value = -1;
-  } else {
-    *size = 0;
-    *data = NULL;
-  }
   return;
 }
 
@@ -196,6 +159,77 @@ void mpicache_fetch(struct mpicache *cache, int rank, int subtype, int tag,
  * @param cache the #mpicache
  */
 void mpicache_destroy(struct mpicache *cache) {
+  free(cache->entries);
   free(cache);
 }
 
+/**
+ * @brief Apply the cache.
+ *
+ * The expected results are the updating of the MPI tasks so that their
+ * offsets fields match the MPI window used and the expected sizes of the
+ * windows are updated in the cache.
+ *
+ * @param cache the #mpicache.
+ */
+void mpicache_apply(struct mpicache *cache) {
+
+#ifdef WITH_MPI
+
+  /* First job is to sort the entries to gives us the entries in
+   * node|subtask|tag order. Within each node section the subtask|tag should
+   * be the same on the send and recv sides, that is necessary so that the
+   * offsets match. */
+  qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
+        mpicache_entry_cmp);
+
+  /* Now we go through the entries and generate the offsets. */
+  int node = -1;
+  int subtype = -1;
+  cache->window_sizes = calloc(26, sizeof(int));  // 26 *task_subtype_count?
+  cache->window_nodes = calloc(26, sizeof(int));
+  cache->window_subtypes = calloc(26, sizeof(int));
+  cache->window_size = 26;
+  cache->nr_windows = 0;
+  for (size_t k = 0; k < cache->nr_entries; k++) {
+
+    /* New node started, so we loop until the start of the next one. */
+    node = cache->entries[k].node;
+    for (; k < cache->nr_entries; k++) {
+      if (cache->entries[k].node != node) break;
+
+      /* New subtype started, so we start a new set of offsets. */
+      subtype = cache->entries[k].task->subtype;
+
+      if (cache->nr_windows == cache->window_size) {
+        cache->window_size += 26;
+        cache->window_sizes =
+            realloc(cache->window_sizes, cache->window_size * sizeof(int));
+        cache->window_nodes =
+            realloc(cache->window_nodes, cache->window_size * sizeof(int));
+        cache->window_subtypes =
+            realloc(cache->window_subtypes, cache->window_size * sizeof(int));
+      }
+      cache->window_sizes[cache->nr_windows] = 0;
+      cache->window_nodes[cache->nr_windows] = node;
+      cache->window_subtypes[cache->nr_windows] = subtype;
+
+      size_t offset = 0;
+      for (; k < cache->nr_entries; k++) {
+        if (cache->entries[k].task->subtype != subtype) break;
+
+        /* Offsets are in osmpi blocks, but window sizes are in bytes. */
+        cache->window_sizes[cache->nr_windows] +=
+            cache->entries[k].task->size +
+            scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
+        cache->entries[k].task->offset = offset;
+
+        /* Make room for this message and the control header next loop. */
+        offset += scheduler_osmpi_toblocks(cache->entries[k].task->size) +
+                  scheduler_osmpi_header_size;
+      }
+      cache->nr_windows++;
+    }
+  }
+#endif /* WITH_MPI */
+}

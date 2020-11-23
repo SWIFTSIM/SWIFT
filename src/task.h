@@ -34,6 +34,7 @@
 struct cell;
 struct engine;
 struct scheduler;
+struct task;
 
 #define task_align 128
 
@@ -225,6 +226,9 @@ struct task {
 
   /*! Size of the buffer. */
   size_t size;
+
+  /*! Offset of the buffer in remote window. */
+  size_t offset;
 
 #endif
 

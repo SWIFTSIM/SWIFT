@@ -1868,13 +1868,6 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
-#ifdef WITH_MPI
-  /* Initialise the recv MPI message caches. */
-  for (int k = 0; k < task_subtype_count; k++) {
-    s->mpicache[k] = mpicache_init(s->space->e->nr_nodes);
-  }
-#endif
-
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
@@ -1891,7 +1884,7 @@ void scheduler_start(struct scheduler *s) {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
-  //scheduler_dump_queues(s->space->e);
+  // scheduler_dump_queues(s->space->e);
 
   /* Clear the list of active tasks. */
   s->active_count = 0;
@@ -2005,7 +1998,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
                               t->ci->nodeID, t->flags);
@@ -2039,13 +2031,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_tend_bpart) {
 
           t->buff = malloc(t->size);
-          cell_pack_end_step_black_holes(t->ci,
-                                         (struct pcell_step_black_holes *)t->buff);
+          cell_pack_end_step_black_holes(
+              t->ci, (struct pcell_step_black_holes *)t->buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
           t->buff = malloc(t->size);
-          cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)t->buff);
+          cell_pack_part_swallow(t->ci,
+                                 (struct black_holes_part_data *)t->buff);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
 
@@ -2226,7 +2219,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       /* Try to get a task from the suggested queue. */
       if (s->queues[qid].count > 0 || s->queues[qid].count_incoming > 0) {
         TIMER_TIC
-          res = queue_gettask(s, &s->queues[qid], prev, 0);
+        res = queue_gettask(s, &s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
         if (res != NULL) break;
       }
@@ -2241,7 +2234,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
-            res = queue_gettask(s, &s->queues[qids[ind]], prev, 0);
+          res = queue_gettask(s, &s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
@@ -2333,16 +2326,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks_ind = NULL;
   pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
-
-  /* Init the MPI send and recv locks */
-#ifdef WITH_MPI
-  for (int k = 0; k < scheduler_osmpi_max_sends; k++) {
-    lock_init(&s->send_lock[k]);
-  }
-  for (int k = 0; k < task_subtype_count; k++) {
-    lock_init(&s->recv_lock[k]);
-  }
-#endif
 }
 
 /**
@@ -2470,10 +2453,11 @@ void scheduler_dump_queues(struct engine *e) {
 #ifdef WITH_MPI
   /* Open a file per rank and write the header. Use per rank to avoid MPI
    * calls that can interact with other blocking ones.  */
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat_%d_%d", e->step,
-           e->nodeID, index);
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat_%d_%d",
+           e->step, e->nodeID, index);
 #else
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat_%d", e->step, index);
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat_%d", e->step,
+           index);
 #endif
   index++;
 
@@ -2553,41 +2537,7 @@ void scheduler_report_task_times(const struct scheduler *s,
 }
 
 /**
- * @brief Initialise the buffers for handling one-sided MPI messages.
- *
- * @param s the #scheduler
- */
-void scheduler_osmpi_init(struct scheduler *s) {
-#ifdef WITH_MPI
-
-  for (int k = 0; k < task_subtype_count; k++) {
-    s->osmpi_ptr[k] = NULL; // XXX Needs to be freed
-    s->osmpi_max_size[k] = scheduler_osmpi_toblocks(100*1024*1024); // 100M bytes, surely big enough... XXX should be 0;
-  }
-
-#endif
-}
-
-/**
- * @brief Handle the activation of a task will use using one-sided MPI.
- *
- * @param s the #scheduler
- * @param t the #task
- */
-void scheduler_osmpi_activate(struct scheduler *s, struct task *t) {
-#ifdef WITH_MPI
-
-  /* We need the maximum size of a message, so work that out. */
-  // XXX use fixed size, need to sync this across the ranks.
-  // completion), so in fact we need to do something else... XXX
-
-  //size_t size = scheduler_osmpi_toblocks(scheduler_mpi_size(t));
-  //atomic_max_st(&s->osmpi_max_size[t->subtype],size);
-#endif
-}
-
-/**
- * @brief Determine the size of an MPI message based subty
+ * @brief Determine the size of an MPI message based on the subtype.
  *
  * @param t the MPI #task
  */
@@ -2613,8 +2563,7 @@ size_t scheduler_mpi_size(struct task *t) {
   } else if (t->subtype == task_subtype_bpart_merger) {
     size = sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
 
-  } else if (t->subtype == task_subtype_xv ||
-             t->subtype == task_subtype_rho ||
+  } else if (t->subtype == task_subtype_xv || t->subtype == task_subtype_rho ||
              t->subtype == task_subtype_gradient ||
              t->subtype == task_subtype_limiter) {
     size = t->ci->hydro.count * sizeof(struct part);
@@ -2643,50 +2592,102 @@ size_t scheduler_mpi_size(struct task *t) {
 }
 
 /**
- * @brief Allocate the buffers for one-sided MPI exchanges.
+ * @brief Initialise the caches for handling one-sided MPI.
  *
- * @param nr_nodes the number of MPI ranks exchanging messages.
  * @param s the #scheduler
  */
-void scheduler_osmpi_init_buffers(int nr_nodes, struct scheduler *s) {
+void scheduler_osmpi_init(struct scheduler *s) {
 #ifdef WITH_MPI
-  for (int k = 0; k < task_subtype_count; k++) {
-    size_t size = s->osmpi_max_size[k];
-    if (size > 0) {
-      /* Size needs to have room for the header (size is in blocks). */
-      size += scheduler_osmpi_header_size;
-      MPI_Win_allocate(scheduler_osmpi_tobytes(size) * nr_nodes,
-                       scheduler_osmpi_bytesinblock,
-                       MPI_INFO_NULL, subtaskMPI_comms[k], &s->osmpi_ptr[k],
-                       &s->osmpi_window[k]);
-
-      /* Assert a shared lock with all the other processes on this window. */
-      MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_window[k]);
-    }
-  } /* XXX leaking... */
+  s->send_mpicache = mpicache_init();
+  s->recv_mpicache = mpicache_init();
 #endif
 }
 
 /**
- * @brief Convert a byte count into a number of blocks, rounds up.
+ * @brief Allocate the windows buffers for one-sided MPI exchanges.
  *
- * @param nr_bytes the number of bytes.
- *
- * @result the number of blocks needed.
+ * @param s the #scheduler
  */
-scheduler_osmpi_blocktype scheduler_osmpi_toblocks(size_t nr_bytes) {
-  return (nr_bytes + (scheduler_osmpi_bytesinblock - 1)) /
-         scheduler_osmpi_bytesinblock;
-}
+void scheduler_osmpi_init_buffers(struct scheduler *s) {
+#ifdef WITH_MPI
 
-/**
- * @brief Convert a block count into a number of bytes.
- *
- * @param nr_block the number of blocks.
- *
- * @result the number of bytes.
- */
-size_t scheduler_osmpi_tobytes(scheduler_osmpi_blocktype nr_blocks) {
-  return (nr_blocks * scheduler_osmpi_bytesinblock);
-}
+  /* First apply the caches to the tasks, so we get the window sizes and the
+   * offsets. The send cache only really wants the offsets. */
+  mpicache_apply(s->send_mpicache);
+  mpicache_apply(s->recv_mpicache);
 
+  /* Now create the one sided windows and buffers, we have one for each remote
+   * node and subtype. */
+  s->osmpi_ptrs =
+      calloc(s->recv_mpicache->nr_windows + s->send_mpicache->nr_windows,
+             sizeof(void *));
+  s->osmpi_windows =
+      calloc(s->recv_mpicache->nr_windows + s->send_mpicache->nr_windows,
+             sizeof(MPI_Win *) * 2);
+  s->osmpi_rnodes = calloc(1, sizeof(struct memuse_rnode));
+  union key { /* XXX hide all this mess in some APIs. */
+    int32_t ikey;
+    uint8_t ukey[4];
+  };
+  union key keyval;
+
+  int index = 0;
+  for (int k = 0; k < s->recv_mpicache->nr_windows; k++) {
+    int err = MPI_Win_allocate(
+        s->recv_mpicache->window_sizes[k], scheduler_osmpi_bytesinblock,
+        MPI_INFO_NULL, subtaskMPI_comms[s->recv_mpicache->window_subtypes[k]],
+        &s->osmpi_ptrs[index], &s->osmpi_windows[index]);
+    if (err != MPI_SUCCESS) {
+      mpi_error(err, "Failed to allocate osmpi window for subtype: %d",
+                s->recv_mpicache->window_subtypes[k]);
+    }
+
+    // XXX do we need to do this?
+    size_t size = scheduler_osmpi_tobytes(s->recv_mpicache->window_sizes[k]);
+    if (size > 0) memset((void *)s->osmpi_ptrs[index], 0, size);
+
+    /* Fast lookup of node and subtype into these. */
+    keyval.ikey = mpicache_lookup_key(s->recv_mpicache->window_nodes[k],
+                                      s->recv_mpicache->window_subtypes[k]);
+    memuse_rnode_insert_child(s->osmpi_rnodes, 0, keyval.ukey, 4, index);
+
+    /* Assert a shared lock with all the other processes on this window. */
+    err = MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_windows[index]);
+    if (err != MPI_SUCCESS) {
+      mpi_error(err, "Failed to lock osmpi window");
+    }
+    index++;
+  }
+
+  /* We need also need one sided windows for sends that do not have any
+   * receives, so let's check that as well. */
+  for (int k = 0; k < s->send_mpicache->nr_windows; k++) {
+    keyval.ikey = mpicache_lookup_key(s->send_mpicache->window_nodes[k],
+                                      s->send_mpicache->window_subtypes[k]);
+    struct memuse_rnode *child =
+        memuse_rnode_find_child(s->osmpi_rnodes, 0, keyval.ukey, 4);
+    if (child == NULL) {
+      /* Not present, need to add another window. */
+      message("send with no friends");
+      int err = MPI_Win_allocate(
+          1, scheduler_osmpi_bytesinblock, MPI_INFO_NULL,
+          subtaskMPI_comms[s->send_mpicache->window_subtypes[k]],
+          &s->osmpi_ptrs[index], &s->osmpi_windows[index]);
+      if (err != MPI_SUCCESS) {
+        mpi_error(err, "Failed to allocate osmpi window for subtype: %d",
+                  s->send_mpicache->window_subtypes[k]);
+      }
+
+      memuse_rnode_insert_child(s->osmpi_rnodes, 0, keyval.ukey, 4, k);
+
+      /* Assert a shared lock with all the other processes on this window. */
+      err = MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_windows[index]);
+      if (err != MPI_SUCCESS) {
+        mpi_error(err, "Failed to lock osmpi window");
+      }
+      index++;
+    }
+  }
+
+#endif
+}

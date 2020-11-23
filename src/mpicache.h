@@ -24,22 +24,51 @@
 
 /* Local includes. */
 #include "cycle.h"
-#include "memuse_rnodes.h"
+#include "task.h"
 
 /* Includes. */
 #include <stdlib.h>
 
+/* A single cache entry. */
+struct mpicache_entry {
+  int node;
+  struct task *task;
+};
+
+/* Shift needed for subtype bits. */
+extern int mpicache_subtype_shift;
+
 /* A cache. */
 struct mpicache {
-  struct memuse_rnode root;
+  size_t entries_size;
+  size_t nr_entries;
+  size_t entries_done;
+  struct mpicache_entry *entries;
+
+  int *window_sizes;
+  int *window_nodes;
+  int *window_subtypes;
+  int window_size;
+  int nr_windows;
 };
 
 /* API. */
-size_t mpicache_makekey(int rank, int subtype, int tag);
-struct mpicache *mpicache_init(int nr_ranks);
-void mpicache_add(struct mpicache *cache, int rank, int subtype, int tag,
-                  size_t size, void *data);
-void mpicache_fetch(struct mpicache *cache, int rank, int subtype, int tag,
-                    size_t *size, void **data);
+struct mpicache *mpicache_init(void);
+void mpicache_add(struct mpicache *cache, int node, struct task *t);
 void mpicache_destroy(struct mpicache *cache);
+void mpicache_apply(struct mpicache *cache);
+
+/**
+ * @brief Convert node and subtype into a unique compact key.
+ *
+ * @param node the MPI rank that the message came from.
+ * @param subtype the task subtype of the message.
+ *
+ * @result the key for this information.
+ */
+__attribute__((always_inline)) INLINE static int mpicache_lookup_key(
+    int node, int subtype) {
+  return (subtype | node << mpicache_subtype_shift);
+}
+
 #endif /* SWIFT_MPICACHE_H */
