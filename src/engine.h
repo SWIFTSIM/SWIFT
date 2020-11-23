@@ -344,6 +344,7 @@ struct engine {
   double time_first_hbt_output;
   double delta_time_hbt;
   int hbt_output_count;
+  char hbt_base_name[PARSER_MAX_LINE_SIZE];
 
   /* Output_List for HBT */
   struct output_list *output_list_hbt;

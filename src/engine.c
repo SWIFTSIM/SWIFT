@@ -2847,7 +2847,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (e->policy & engine_policy_hbt) {
     parser_get_param_string(params, "HBT:config_file_name",
                             e->hbt_config_file_name);
-
+    parser_get_param_string(params, "HBT:basename",
+                            e->hbt_base_name);
     e->time_first_hbt_output =
         parser_get_opt_param_double(params, "HBT:time_first", 0.);
     e->a_first_hbt_output = parser_get_opt_param_double(

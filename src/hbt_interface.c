@@ -172,6 +172,15 @@ void hbt_init(struct engine *e) {
   struct phys_const cgs_pc;
   phys_const_init(&cgs_us, /*params=*/NULL, &cgs_pc);
 
+  /* Determine box size */
+  const double *dim = e->s->dim;
+  double BoxSize = dim[0];
+  if(dim[1] != dim[0] || dim[2] != dim[0])
+    error("Can only use HBT on cubic boxes!");
+  
+  /* HBT output location */
+  const char *SubhaloPath = e->hbt_base_name;
+
   /* Retrieve information needed by HBT */
   const double h              = e->cosmology->h;
   const char * config_file    = e->hbt_config_file_name;
@@ -186,8 +195,8 @@ void hbt_init(struct engine *e) {
   const long long NullGroupId = e->fof_properties->group_id_default;  
   
   /* Initialise HBT */
-  libhbt_init(config_file, num_threads, omega_m0, omega_lambda0,
-              MassInMsunh, LengthInMpch, VelInKmS, NullGroupId);
+  libhbt_init(config_file, num_threads, SubhaloPath, omega_m0, omega_lambda0,
+              BoxSize, MassInMsunh, LengthInMpch, VelInKmS, NullGroupId);
 }
 
 
