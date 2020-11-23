@@ -21,3 +21,18 @@ They are available with documentation and examples at
 https://github.com/srbonilla/WoMa and https://github.com/jkeger/seagen,
 or can be installed directly with ``pip``
 (https://pypi.org/project/woma/, https://pypi.org/project/seagen/).
+
+
+Settling initial conditions with fixed entropies
+------------------------------------------------
+
+If the particles' equations of state include specific entropies, 
+and the initial conditions file includes specific entropies for each particle
+(in ``PartType0/Entropies``), 
+then configuring SWIFT with ``--enable-planetary-fixed-entropy``
+will override the internal energy of each particle each step such that its 
+specific entropy remains constant. 
+
+This should be used with caution, but may be a convenient way to maintain an 
+entropy profile while initial conditions settle to equilibrium with their 
+slightly different SPH densities.
