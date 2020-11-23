@@ -32,10 +32,14 @@
 void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
                           const struct engine* restrict e);
 
-int feedback_will_do_feedback(const struct spart* sp,
-                              const struct feedback_props* feedback_props,
-                              const int with_cosmology,
-                              const struct cosmology* cosmo, const double time);
+void feedback_will_do_feedback(struct spart* sp,
+                               const struct feedback_props* feedback_props,
+                               const int with_cosmology,
+                               const struct cosmology* cosmo, const double time,
+                               const struct unit_system* us,
+                               const struct phys_const* phys_const,
+                               const double star_age_beg_step, const double dt,
+                               const integertime_t ti_begin);
 
 int feedback_is_active(const struct spart* sp, const double time,
                        const struct cosmology* cosmo, const int with_cosmology);
@@ -46,20 +50,22 @@ double feedback_get_enrichment_timestep(const struct spart* sp,
                                         const double dt_star);
 void feedback_init_spart(struct spart* sp);
 
+void feedback_init_after_star_formation(
+    struct spart* sp, const struct feedback_props* feedback_props);
 void feedback_reset_feedback(struct spart* sp,
                              const struct feedback_props* feedback_props);
 void feedback_first_init_spart(struct spart* sp,
                                const struct feedback_props* feedback_props);
 void feedback_prepare_spart(struct spart* sp,
                             const struct feedback_props* feedback_props);
-void feedback_evolve_spart(struct spart* restrict sp,
-                           const struct feedback_props* feedback_props,
-                           const struct cosmology* cosmo,
-                           const struct unit_system* us,
-                           const struct phys_const* phys_const,
-                           const double star_age_beg_step, const double dt,
-                           const double time, const integertime_t ti_begin,
-                           const int with_cosmology);
+void feedback_prepare_feedback(struct spart* restrict sp,
+                               const struct feedback_props* feedback_props,
+                               const struct cosmology* cosmo,
+                               const struct unit_system* us,
+                               const struct phys_const* phys_const,
+                               const double star_age_beg_step, const double dt,
+                               const double time, const integertime_t ti_begin,
+                               const int with_cosmology);
 void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
 void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 void feedback_clean(struct feedback_props* feedback);
