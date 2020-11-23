@@ -1121,10 +1121,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
           /* Improve the bisection bounds */
-          /* if (n_sum < n_target) */
-          /*   left[i] = max(left[i], h_old); */
-          /* else if (n_sum > n_target) */
-          /*   right[i] = min(right[i], h_old); */
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Check the validity of the left and right bounds */
