@@ -669,12 +669,15 @@ int task_lock(struct scheduler *s, struct task *t) {
         error("Failed to lookup osmpi window index");
       }
       int window_index = child->value;
+      message("picked window: %d, node: %d, subtype: %d, size: %d", window_index,
+              s->send_mpicache->window_nodes[window_index],
+              s->send_mpicache->window_subtypes[window_index],
+              s->send_mpicache->window_sizes[window_index]);
 
       int err = MPI_Accumulate(
           dataptr, datasize, scheduler_osmpi_mpi_blocktype, cj->nodeID,
           t->offset, datasize, scheduler_osmpi_mpi_blocktype, MPI_REPLACE,
-          s->osmpi_windows[window_index]);  // XXX
-                                            // create this window
+          s->osmpi_windows[window_index]);
 
       if (err != MPI_SUCCESS) {
         mpi_error(err, "Failed to send particle data.");

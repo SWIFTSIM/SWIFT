@@ -2623,7 +2623,7 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
              sizeof(void *));
   s->osmpi_windows =
       calloc(s->recv_mpicache->nr_windows + s->send_mpicache->nr_windows,
-             sizeof(MPI_Win *) * 2);
+             sizeof(MPI_Win *));
   s->osmpi_rnodes = calloc(1, sizeof(struct memuse_rnode));
   union key { /* XXX hide all this mess in some APIs. */
     int32_t ikey;
@@ -2643,8 +2643,8 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
     }
 
     // XXX do we need to do this?
-    size_t size = scheduler_osmpi_tobytes(s->recv_mpicache->window_sizes[k]);
-    if (size > 0) memset((void *)s->osmpi_ptrs[index], 0, size);
+    size_t size = s->recv_mpicache->window_sizes[k];
+    if (size > 0 && s->osmpi_ptrs[index] != NULL) memset((void *)s->osmpi_ptrs[index], 0, size);
 
     /* Fast lookup of node and subtype into these. */
     keyval.ikey = mpicache_lookup_key(s->recv_mpicache->window_nodes[k],

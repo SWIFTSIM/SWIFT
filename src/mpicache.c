@@ -144,10 +144,14 @@ void mpicache_add(struct mpicache *cache, int node, struct task *t) {
   while (ind > cache->entries_size)
     ;
 
+  /* Derive the size in bytes, may not be set yet. */
+#ifdef WITH_MPI
+  t->size = scheduler_mpi_size(t);
+#endif
+
   /* And store. */
   cache->entries[ind].node = node;
   cache->entries[ind].task = t;
-
   atomic_inc(&(cache->entries_done));
 
   return;
@@ -175,6 +179,11 @@ void mpicache_destroy(struct mpicache *cache) {
 void mpicache_apply(struct mpicache *cache) {
 
 #ifdef WITH_MPI
+  /* Do nothing if we have nothing. */
+  cache->nr_windows = 0;
+  if (cache->nr_entries == 0) {
+    return;
+  }
 
   /* First job is to sort the entries to gives us the entries in
    * node|subtask|tag order. Within each node section the subtask|tag should
@@ -182,6 +191,25 @@ void mpicache_apply(struct mpicache *cache) {
    * offsets match. */
   qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
         mpicache_entry_cmp);
+
+  /* These entries will have duplicates as the same tasks can be unskipped
+   * more than once, we need to skip repeats. */
+  size_t nr_uniq = 0;
+  struct task *task = NULL;
+  struct task *prev = NULL;
+  for (size_t k = 0; k < cache->nr_entries; k++) {
+    task = cache->entries[k].task;
+    if (task == prev) continue;
+
+    /* Valid task, move up the list once a duplicate appears. */
+    if (k != nr_uniq) {
+      memcpy(&cache->entries[nr_uniq], &cache->entries[k],
+             sizeof(struct mpicache_entry));
+    }
+    nr_uniq++;
+    prev = task;
+  }
+  cache->nr_entries = nr_uniq;
 
   /* Now we go through the entries and generate the offsets. */
   int node = -1;
@@ -216,20 +244,25 @@ void mpicache_apply(struct mpicache *cache) {
 
       size_t offset = 0;
       for (; k < cache->nr_entries; k++) {
-        if (cache->entries[k].task->subtype != subtype) break;
+        task = cache->entries[k].task;
+        if (task->subtype != subtype) break;
 
         /* Offsets are in osmpi blocks, but window sizes are in bytes. */
-        cache->window_sizes[cache->nr_windows] +=
-            cache->entries[k].task->size +
-            scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
-        cache->entries[k].task->offset = offset;
+        cache->window_sizes[cache->nr_windows] += task->size +
+          scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
+        task->offset = offset;
 
         /* Make room for this message and the control header next loop. */
-        offset += scheduler_osmpi_toblocks(cache->entries[k].task->size) +
+        offset += scheduler_osmpi_toblocks(task->size) +
                   scheduler_osmpi_header_size;
       }
+      message("window: %d, node: %d, subtype: %s, size: %d", cache->nr_windows,
+              cache->window_nodes[cache->nr_windows],
+              subtaskID_names[cache->window_subtypes[cache->nr_windows]],
+              cache->window_sizes[cache->nr_windows]);
       cache->nr_windows++;
     }
   }
+
 #endif /* WITH_MPI */
 }
