@@ -419,6 +419,13 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *parts_j = cj->hydro.parts;
   struct xpart *xparts_j = cj->hydro.xparts;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (&bparts_i[bcount - 1] < &bparts_i[0]) error("Strange particle order!");
+  if ((&bparts_i[bcount - 1] < ci->black_holes.parts) ||
+      (&bparts_i[0] > ci->black_holes.parts + ci->black_holes.count))
+    error("Subset of particles not within ci!");
+#endif
+
   /* Early abort? */
   if (count_j == 0) return;
 

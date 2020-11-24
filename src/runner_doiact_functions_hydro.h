@@ -991,7 +991,7 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
  * @param count The number of particles in @c ind.
  */
 void DOSELF_SUBSET(struct runner *r, const struct cell *ci, struct part *parts,
-                   const int *ind, int count) {
+                   const int *ind, const int count) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -1044,7 +1044,7 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *ci, struct part *parts,
       const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
                             (float)(pj->x[1] - ci->loc[1]),
                             (float)(pj->x[2] - ci->loc[2])};
-      float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
+      const float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
