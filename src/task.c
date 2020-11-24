@@ -652,9 +652,9 @@ int task_lock(struct scheduler *s, struct task *t) {
       if (s->space->e->verbose)
         message(
             "Sending message to %d from %d subtype: %d, tag %zd, size %zd"
-            " (cf %lld %zd)",
+            " (cf %lld %zd), offset: %zd",
             cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
-            t->size);
+            t->size, t->offset);
 
       /* And send to the destination rank. Could put this into the task? */
       union key {
@@ -669,7 +669,7 @@ int task_lock(struct scheduler *s, struct task *t) {
         error("Failed to lookup osmpi window index");
       }
       int window_index = child->value;
-      message("picked window: %d, node: %d, subtype: %d, size: %d", window_index,
+      message("send picked window: %d, node: %d, subtype: %d, size: %d", window_index,
               s->send_mpicache->window_nodes[window_index],
               s->send_mpicache->window_subtypes[window_index],
               s->send_mpicache->window_sizes[window_index]);
@@ -741,6 +741,10 @@ int task_lock(struct scheduler *s, struct task *t) {
         error("Failed to lookup osmpi window index");
       }
       int window_index = child->value;
+      message("recv picked window: %d, node: %d, subtype: %d, size: %d", window_index,
+              s->send_mpicache->window_nodes[window_index],
+              s->send_mpicache->window_subtypes[window_index],
+              s->send_mpicache->window_sizes[window_index]);
 
       volatile scheduler_osmpi_blocktype *dataptr =
           &(s->osmpi_ptrs[window_index])[t->offset];
@@ -751,8 +755,9 @@ int task_lock(struct scheduler *s, struct task *t) {
         if (t->flags == (int)dataptr[2] && t->size == dataptr[1]) {
 
           if (s->space->e->verbose)
-            message("Accepted from %d, subtype: %d, tag: %lld, size %zd",
-                    ci->nodeID, subtype, t->flags, t->size);
+            message("Accepted from %d, subtype: %d, tag: %lld, size %zd,"
+                    " offset %zd", ci->nodeID, subtype, t->flags,
+                    t->size, t->offset);
 
           /* And log deactivation, if logging enabled. */
           mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
@@ -773,6 +778,11 @@ int task_lock(struct scheduler *s, struct task *t) {
           if (ret != MPI_SUCCESS) mpi_error(ret, "MPI_Iprobe failed");
 
           return 1;
+        } else {
+          message("missed remote send at our offset %zd from %d, "
+                  "subtype: %d, tag: %lld, size %zd, see %zd/%zd/%zd",
+                  t->offset, ci->nodeID, subtype, t->flags,
+                  t->size, dataptr[2], dataptr[1], dataptr[0]);
         }
       }
       return 0;

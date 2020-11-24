@@ -211,58 +211,73 @@ void mpicache_apply(struct mpicache *cache) {
   }
   cache->nr_entries = nr_uniq;
 
+  //for (size_t k = 0; k < cache->nr_entries; k++) {
+  //  task = cache->entries[k].task;
+  //  message("using node = %d, size = %zd, type = %d, subtype = %d, tag = %lld",
+  //          cache->entries[k].node, task->size, task->type, task->subtype,
+  //          task->flags);
+  //}
+
   /* Now we go through the entries and generate the offsets. */
-  int node = -1;
-  int subtype = -1;
   cache->window_sizes = calloc(26, sizeof(int));  // 26 *task_subtype_count?
   cache->window_nodes = calloc(26, sizeof(int));
   cache->window_subtypes = calloc(26, sizeof(int));
   cache->window_size = 26;
   cache->nr_windows = 0;
+
+  /* Preload the first entry into the first window. */
+  cache->window_sizes[cache->nr_windows] = 0;
+  cache->window_nodes[cache->nr_windows] = cache->entries[0].node;
+  cache->window_subtypes[cache->nr_windows] = cache->entries[0].task->subtype;
+
+  size_t offset = 0;
   for (size_t k = 0; k < cache->nr_entries; k++) {
 
-    /* New node started, so we loop until the start of the next one. */
-    node = cache->entries[k].node;
-    for (; k < cache->nr_entries; k++) {
-      if (cache->entries[k].node != node) break;
+    /* New node started, so start the accumulation. */
+    int node = cache->entries[k].node;
+    int subtype = cache->entries[k].task->subtype;
 
-      /* New subtype started, so we start a new set of offsets. */
-      subtype = cache->entries[k].task->subtype;
+    /* Window sizes are in bytes. */
+    cache->window_sizes[cache->nr_windows] += cache->entries[k].task->size +
+      scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
 
+    /* Offsets are in blocks. */
+    cache->entries[k].task->offset = offset;
+    offset += scheduler_osmpi_toblocks(cache->entries[k].task->size) +
+      scheduler_osmpi_header_size;
+
+    /* Check next task to see if this breaks the run of subtypes or nodes. */
+    if (k < (cache->nr_entries - 1) && 
+        (cache->entries[k+1].task->subtype != subtype ||
+         cache->entries[k+1].node != node)) {
+      
+      /* Yes, so we start a new window. */
+      cache->nr_windows++;
       if (cache->nr_windows == cache->window_size) {
         cache->window_size += 26;
         cache->window_sizes =
-            realloc(cache->window_sizes, cache->window_size * sizeof(int));
+          realloc(cache->window_sizes, cache->window_size * sizeof(int));
         cache->window_nodes =
-            realloc(cache->window_nodes, cache->window_size * sizeof(int));
+          realloc(cache->window_nodes, cache->window_size * sizeof(int));
         cache->window_subtypes =
-            realloc(cache->window_subtypes, cache->window_size * sizeof(int));
+          realloc(cache->window_subtypes, cache->window_size * sizeof(int));
       }
+
       cache->window_sizes[cache->nr_windows] = 0;
-      cache->window_nodes[cache->nr_windows] = node;
-      cache->window_subtypes[cache->nr_windows] = subtype;
-
-      size_t offset = 0;
-      for (; k < cache->nr_entries; k++) {
-        task = cache->entries[k].task;
-        if (task->subtype != subtype) break;
-
-        /* Offsets are in osmpi blocks, but window sizes are in bytes. */
-        cache->window_sizes[cache->nr_windows] += task->size +
-          scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
-        task->offset = offset;
-
-        /* Make room for this message and the control header next loop. */
-        offset += scheduler_osmpi_toblocks(task->size) +
-                  scheduler_osmpi_header_size;
-      }
-      message("window: %d, node: %d, subtype: %s, size: %d", cache->nr_windows,
-              cache->window_nodes[cache->nr_windows],
-              subtaskID_names[cache->window_subtypes[cache->nr_windows]],
-              cache->window_sizes[cache->nr_windows]);
-      cache->nr_windows++;
+      cache->window_nodes[cache->nr_windows] = cache->entries[k+1].node;
+      cache->window_subtypes[cache->nr_windows] = cache->entries[k+1].task->subtype;
+      offset = 0;
     }
   }
+  cache->nr_windows++;
+
+  //for (int k = 0; k < cache->nr_windows; k++) {
+  //  message("window %d %d %d %d", k, 
+  //          cache->window_sizes[k],
+  //          cache->window_nodes[k],
+  //          cache->window_subtypes[k]);
+  //}
+
 
 #endif /* WITH_MPI */
 }
