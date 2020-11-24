@@ -287,8 +287,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                              t_current, cosmo, with_cosmology);
+        runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                     t_current, cosmo, with_cosmology);
 #endif
       }
 
