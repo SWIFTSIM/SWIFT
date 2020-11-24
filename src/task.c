@@ -669,10 +669,10 @@ int task_lock(struct scheduler *s, struct task *t) {
         error("Failed to lookup osmpi window index");
       }
       int window_index = child->value;
-      message("send picked window: %d, node: %d, subtype: %d, size: %d", window_index,
-              s->send_mpicache->window_nodes[window_index],
-              s->send_mpicache->window_subtypes[window_index],
-              s->send_mpicache->window_sizes[window_index]);
+      //message("send picked window: %d, node: %d, subtype: %d, size: %d", window_index,
+      //        s->send_mpicache->window_nodes[window_index],
+      //        s->send_mpicache->window_subtypes[window_index],
+      //        s->send_mpicache->window_sizes[window_index]);
 
       int err = MPI_Accumulate(
           dataptr, datasize, scheduler_osmpi_mpi_blocktype, cj->nodeID,
@@ -741,10 +741,10 @@ int task_lock(struct scheduler *s, struct task *t) {
         error("Failed to lookup osmpi window index");
       }
       int window_index = child->value;
-      message("recv picked window: %d, node: %d, subtype: %d, size: %d", window_index,
-              s->send_mpicache->window_nodes[window_index],
-              s->send_mpicache->window_subtypes[window_index],
-              s->send_mpicache->window_sizes[window_index]);
+      //message("recv picked window: %d, node: %d, subtype: %d, size: %d", window_index,
+      //        s->send_mpicache->window_nodes[window_index],
+      //        s->send_mpicache->window_subtypes[window_index],
+      //        s->send_mpicache->window_sizes[window_index]);
 
       volatile scheduler_osmpi_blocktype *dataptr =
           &(s->osmpi_ptrs[window_index])[t->offset];
@@ -778,12 +778,13 @@ int task_lock(struct scheduler *s, struct task *t) {
           if (ret != MPI_SUCCESS) mpi_error(ret, "MPI_Iprobe failed");
 
           return 1;
-        } else {
-          message("missed remote send at our offset %zd from %d, "
-                  "subtype: %d, tag: %lld, size %zd, see %zd/%zd/%zd",
-                  t->offset, ci->nodeID, subtype, t->flags,
-                  t->size, dataptr[2], dataptr[1], dataptr[0]);
-        }
+        } 
+        //else {
+        //  message("missed remote send at our offset %zd from %d, "
+        //          "subtype: %d, tag: %lld, size %zd, see %zd/%zd/%zd",
+        //          t->offset, ci->nodeID, subtype, t->flags,
+        //          t->size, dataptr[2], dataptr[1], dataptr[0]);
+        //}
       }
       return 0;
     }

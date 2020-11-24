@@ -464,6 +464,11 @@ void engine_unskip(struct engine *e) {
     local_active_cells = local_cells;
   }
 
+#ifdef WITH_MPI
+  /* Initialise for one-sided MPI. */
+  scheduler_osmpi_init(&e->sched);
+#endif
+
   /* We now have a list of local active cells duplicated as many times as
    * we have broad task types. We can now release all the threads on the list */
 
@@ -480,6 +485,12 @@ void engine_unskip(struct engine *e) {
 #ifdef WITH_PROFILER
   ProfilerStop();
 #endif  // WITH_PROFILER
+
+#ifdef WITH_MPI
+  /* Initialise for one-sided MPI. */
+  scheduler_osmpi_init_buffers(&e->sched);
+#endif
+
 
   /* Free stuff? */
   if (multiplier > 1) {
