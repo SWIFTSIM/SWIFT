@@ -273,7 +273,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *extra_data) {
 
 #ifdef SWIFT_DEBUG_THREADPOOL
-  ticks tic = getticks();
+  ticks tic_total = getticks();
 #endif
 
   /* If we just have a single thread, call the map function directly. */
@@ -284,7 +284,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 
 #ifdef SWIFT_DEBUG_THREADPOOL
       tp->map_function = map_function;
-      threadpool_log(tp, 0, N, tic, getticks());
+      threadpool_log(tp, 0, N, tic_total, getticks());
 #endif
     } else {
 
@@ -343,7 +343,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   /* Log the total call time to thread id -1. */
-  threadpool_log(tp, -1, N, tic, getticks());
+  threadpool_log(tp, -1, N, tic_total, getticks());
 #endif
 }
 
