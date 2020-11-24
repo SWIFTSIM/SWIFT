@@ -1426,26 +1426,37 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c,
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF_STARS);
 }
-
-struct cell *FIND_SUB_STARS(const struct cell *const ci,
+/**
+ * @brief Find which sub-cell of a cell contain the subset of star particles
+ * given by the list of indices.
+ *
+ * Will throw an error if the sub-cell can't be found.
+ *
+ * @param c The #cell
+ * @param sparts An array of #spart.
+ * @param ind Index of the #spart's in the particle array to find in the subs.
+ */
+struct cell *FIND_SUB_STARS(const struct cell *const c,
                             const struct spart *const sparts, const int *ind) {
 
-  /* Find out in which sub-cell of ci the parts are. */
-  struct cell *sub = NULL;
-  if (ci->split) {
-    for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] != NULL) {
-        if (&sparts[ind[0]] >= &ci->progeny[k]->stars.parts[0] &&
-            &sparts[ind[0]] <
-                &ci->progeny[k]->stars.parts[ci->progeny[k]->stars.count]) {
-          sub = ci->progeny[k];
-          break;
-        }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!c->split) error("Can't search for subs in a non-split cell");
+#endif
+
+  /* Find out in which sub-cell of ci the parts are.
+   *
+   * Note: We only need to check the first particle in the list */
+  for (int k = 0; k < 8; k++) {
+    if (c->progeny[k] != NULL) {
+      if (&sparts[ind[0]] >= &c->progeny[k]->stars.parts[0] &&
+          &sparts[ind[0]] <
+              &c->progeny[k]->stars.parts[c->progeny[k]->stars.count]) {
+        return c->progeny[k];
       }
     }
   }
-
-  return sub;
+  error("Invalid sub!");
+  return NULL;
 }
 
 void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,

@@ -881,26 +881,38 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *c, int recurse_below_h_max,
   TIMER_TOC(TIMER_DOSUB_SELF_BH);
 }
 
-struct cell *FIND_SUB_BH(const struct cell *const ci,
+/**
+ * @brief Find which sub-cell of a cell contain the subset of BH particles
+ * given by the list of indices.
+ *
+ * Will throw an error if the sub-cell can't be found.
+ *
+ * @param c The #cell
+ * @param bparts An array of #bpart.
+ * @param ind Index of the #bpart's in the particle array to find in the subs.
+ */
+struct cell *FIND_SUB_BH(const struct cell *const c,
                          const struct bpart *const bparts, const int *ind) {
 
-  /* Find out in which sub-cell of ci the parts are. */
-  struct cell *sub = NULL;
-  if (ci->split) {
-    for (int k = 0; k < 8; k++) {
-      if (ci->progeny[k] != NULL) {
-        if (&bparts[ind[0]] >= &ci->progeny[k]->black_holes.parts[0] &&
-            &bparts[ind[0]] <
-                &ci->progeny[k]
-                     ->black_holes.parts[ci->progeny[k]->black_holes.count]) {
-          sub = ci->progeny[k];
-          break;
-        }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!c->split) error("Can't search for subs in a non-split cell");
+#endif
+
+  /* Find out in which sub-cell of ci the parts are.
+   *
+   * Note: We only need to check the first particle in the list */
+  for (int k = 0; k < 8; k++) {
+    if (c->progeny[k] != NULL) {
+      if (&bparts[ind[0]] >= &c->progeny[k]->black_holes.parts[0] &&
+          &bparts[ind[0]] <
+              &c->progeny[k]
+                   ->black_holes.parts[c->progeny[k]->black_holes.count]) {
+        return c->progeny[k];
       }
     }
   }
-
-  return sub;
+  error("Invalid sub!");
+  return NULL;
 }
 
 void DOSUB_PAIR_SUBSET_BH(struct runner *r, struct cell *ci,
