@@ -1550,8 +1550,8 @@ int main(int argc, char *argv[]) {
     /* Dump MPI requests if collected. */
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
     {
-      char dumpfile[40];
-      snprintf(dumpfile, 40, "mpiuse_report-rank%d-step%d.dat", engine_rank,
+      char dumpfile[80];
+      snprintf(dumpfile, 80, "mpiuse_report-rank%d-step%d.dat", engine_rank,
                j + 1);
       mpiuse_log_dump(dumpfile, e.tic_step);
     }
@@ -1560,12 +1560,12 @@ int main(int argc, char *argv[]) {
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */
     if (dump_threadpool && (dump_threadpool == 1 || j % dump_threadpool == 1)) {
-      char dumpfile[40];
+      char dumpfile[80];
 #ifdef WITH_MPI
-      snprintf(dumpfile, 40, "threadpool_info-rank%d-step%d.dat", engine_rank,
+      snprintf(dumpfile, 80, "threadpool_info-rank%d-step%d.dat", engine_rank,
                j + 1);
 #else
-      snprintf(dumpfile, 40, "threadpool_info-step%d.dat", j + 1);
+      snprintf(dumpfile, 80, "threadpool_info-step%d.dat", j + 1);
 #endif  // WITH_MPI
       threadpool_dump_log(&e.threadpool, dumpfile, 1);
     } else {
