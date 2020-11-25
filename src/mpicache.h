@@ -40,10 +40,10 @@ extern int mpicache_subtype_shift;
 
 /* A cache. */
 struct mpicache {
-  size_t entries_size;
-  size_t nr_entries;
-  size_t entries_done;
-  struct mpicache_entry *entries;
+  volatile size_t entries_size;
+  volatile size_t nr_entries;
+  volatile size_t entries_done;
+  struct mpicache_entry *volatile entries;
 
   int *window_sizes;
   int *window_nodes;
