@@ -177,6 +177,14 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
                   entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+
+        /* Update the accelerations to be used in the drift for hydro */
+        if (p->gpart != NULL) {
+
+          xp->a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+          xp->a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+          xp->a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
+        }
       }
     }
 
@@ -624,6 +632,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct feedback_props *feedback_props = e->feedback_props;
+  const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int count = c->hydro.count;
@@ -839,9 +851,44 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         sp->gpart->time_bin = get_time_bin(ti_new_step);
 
         /* Update feedback related counters */
-        if (with_feedback)
-          feedback_will_do_feedback(sp, e->feedback_props, with_cosmology,
-                                    e->cosmology, e->time);
+        if (with_feedback) {
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+          const integertime_t ti_begin_star =
+              get_integer_time_begin(e->ti_current, sp->time_bin);
+
+          /* Get particle time-step */
+          double dt_star;
+          if (with_cosmology) {
+            dt_star = cosmology_get_delta_time(e->cosmology, ti_begin_star,
+                                               ti_begin_star + ti_step);
+          } else {
+            dt_star = get_timestep(sp->time_bin, e->time_base);
+          }
+
+          /* Calculate age of the star at current time */
+          double star_age_end_of_step;
+          if (with_cosmology) {
+            if (cosmo->a > (double)sp->birth_scale_factor)
+              star_age_end_of_step =
+                  cosmology_get_delta_time_from_scale_factors(
+                      cosmo, (double)sp->birth_scale_factor, cosmo->a);
+            else
+              star_age_end_of_step = 0.;
+          } else {
+            star_age_end_of_step = max(e->time - (double)sp->birth_time, 0.);
+          }
+
+          /* Get the length of the enrichment time-step */
+          const double dt_enrichment = feedback_get_enrichment_timestep(
+              sp, with_cosmology, cosmo, e->time, dt_star);
+          const double star_age_beg_of_step =
+              star_age_end_of_step - dt_enrichment;
+
+          /* Compute the stellar evolution  */
+          feedback_will_do_feedback(
+              sp, feedback_props, with_cosmology, cosmo, e->time, us,
+              phys_const, star_age_beg_of_step, dt_enrichment, ti_begin_star);
+        }
 
         /* Number of updated s-particles */
         s_updated++;
@@ -1178,7 +1225,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       /* Bip, bip, bip... wake-up time */
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
-        // message("Limiting particle %lld in cell %d", p->id, c->cellID);
+        // message("Limiting particle %lld in cell %lld", p->id, c->cellID);
 
         /* Apply the limiter and get the new end of time-step */
         const integertime_t ti_end_new = timestep_limit_part(p, xp, e);

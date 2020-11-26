@@ -94,9 +94,9 @@ int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
 
-/*! Counter for cell IDs (when debugging) */
+/*! Counter for cell IDs (when debugging + max vals for unique IDs exceeded) */
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-int last_cell_id;
+long long last_cell_id;
 #endif
 
 /**
@@ -840,6 +840,140 @@ void space_convert_quantities(struct space *s, int verbose) {
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+void space_collect_sum_part_mass(void *restrict map_data, int count,
+                                 void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct part *parts = (const struct part *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += hydro_get_mass(&parts[i]);
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[0], sum);
+  atomic_add(&s->initial_count_particles[0], count);
+}
+
+void space_collect_sum_gpart_mass(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct gpart *gparts = (const struct gpart *)map_data;
+
+  /* Local collection */
+  double sum_DM = 0., sum_DM_background = 0.;
+  long long count_DM = 0, count_DM_background = 0;
+  for (int i = 0; i < count; ++i) {
+    if (gparts[i].type == swift_type_dark_matter) {
+      sum_DM += gparts[i].mass;
+      count_DM++;
+    }
+    if (gparts[i].type == swift_type_dark_matter_background) {
+      sum_DM_background += gparts[i].mass;
+      count_DM_background++;
+    }
+  }
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[1], sum_DM);
+  atomic_add(&s->initial_count_particles[1], count_DM);
+  atomic_add_d(&s->initial_mean_mass_particles[2], sum_DM_background);
+  atomic_add(&s->initial_count_particles[2], count_DM_background);
+}
+
+void space_collect_sum_sink_mass(void *restrict map_data, int count,
+                                 void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct sink *sinks = (const struct sink *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += sinks[i].mass;
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[3], sum);
+  atomic_add(&s->initial_count_particles[3], count);
+}
+
+void space_collect_sum_spart_mass(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct spart *sparts = (const struct spart *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += sparts[i].mass;
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[4], sum);
+  atomic_add(&s->initial_count_particles[4], count);
+}
+
+void space_collect_sum_bpart_mass(void *restrict map_data, int count,
+                                  void *restrict extra_data) {
+
+  struct space *s = (struct space *)extra_data;
+  const struct bpart *bparts = (const struct bpart *)map_data;
+
+  /* Local collection */
+  double sum = 0.;
+  for (int i = 0; i < count; ++i) sum += bparts[i].mass;
+
+  /* Store back */
+  atomic_add_d(&s->initial_mean_mass_particles[5], sum);
+  atomic_add(&s->initial_count_particles[5], count);
+}
+
+/**
+ * @breif Collect the mean mass of each particle type in the #space.
+ */
+void space_collect_mean_masses(struct space *s, int verbose) {
+
+  /* Init counters */
+  for (int i = 0; i < swift_type_count; ++i)
+    s->initial_mean_mass_particles[i] = 0.;
+  for (int i = 0; i < swift_type_count; ++i) s->initial_count_particles[i] = 0;
+
+  /* Collect each particle type */
+  threadpool_map(&s->e->threadpool, space_collect_sum_part_mass, s->parts,
+                 s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_gpart_mass, s->gparts,
+                 s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_spart_mass, s->sparts,
+                 s->nr_sparts, sizeof(struct spart), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_sink_mass, s->sinks,
+                 s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
+                 s);
+  threadpool_map(&s->e->threadpool, space_collect_sum_bpart_mass, s->bparts,
+                 s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 s);
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, s->initial_mean_mass_particles, swift_type_count,
+                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, s->initial_count_particles, swift_type_count,
+                MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  /* Get means
+   *
+   * Note: the Intel compiler vectorizes this loop and creates FPEs from
+   * the masked bit of the vector... Silly ICC... */
+#if defined(__ICC)
+#pragma novector
+#endif
+  for (int i = 0; i < swift_type_count; ++i)
+    if (s->initial_count_particles[i] > 0)
+      s->initial_mean_mass_particles[i] /=
+          (double)s->initial_count_particles[i];
 }
 
 /**
@@ -2284,24 +2418,24 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   if (c == NULL) return;
 
   /* Get parent ID */
-  int parent = root_cell_id;
+  long long parent = root_cell_id;
   if (c->parent != NULL) parent = c->parent->cellID;
 
   /* Get super ID */
   char superID[100] = "";
-  if (c->super != NULL) sprintf(superID, "%i", c->super->cellID);
+  if (c->super != NULL) sprintf(superID, "%lld", c->super->cellID);
 
   /* Get hydro super ID */
   char hydro_superID[100] = "";
   if (c->hydro.super != NULL)
-    sprintf(hydro_superID, "%i", c->hydro.super->cellID);
+    sprintf(hydro_superID, "%lld", c->hydro.super->cellID);
 
   /* Write line for current cell */
-  fprintf(f, "%i,%i,%i,", c->cellID, parent, c->nodeID);
+  fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
   fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
           c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-  fprintf(f, "%g, %g %i %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
+  fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
 
   /* Write children */
@@ -2338,9 +2472,9 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
 
     /* Write root data */
     fprintf(f, "%i, ,-1,", root_id);
-    fprintf(f, "%li,%li,%li, , , , , , , , , ", s->nr_parts, s->nr_sparts,
+    fprintf(f, "%li,%li,%li, , , , , , , , ,", s->nr_parts, s->nr_sparts,
             s->nr_gparts);
-    fprintf(f, ",\n");
+    fprintf(f, " , , ,\n");
   }
 
   /* Write all the top level cells (and their children) */

@@ -30,14 +30,17 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Parameters
-low_metal = -6  # low metal abundance
-high_metal = -5  # High metal abundance
-sigma_metal = 0.1  # relative standard deviation for Z
+low_metal = -6     # low metal abundance
+high_metal = -5.5  # High metal abundance
+sigma_metal = 0.2  # relative standard deviation for Z
+max_shift = 1      # Shift between the different elements
 
-Nelem = 9
+Nelem = 10
 # shift all metals in order to obtain nicer plots
-low_metal = [low_metal] * Nelem + np.linspace(0, 3, Nelem)
-high_metal = [high_metal] * Nelem + np.linspace(0, 3, Nelem)
+low_metal = [low_metal] * Nelem + np.linspace(0, max_shift, Nelem)
+low_metal = 10**low_metal
+high_metal = [high_metal] * Nelem + np.linspace(0, max_shift, Nelem)
+high_metal = 10**high_metal
 
 # ---------------------------------------------------------------
 # Don't touch anything after this.
@@ -80,12 +83,20 @@ kernel = sim["/HydroScheme"].attrs["Kernel function"]
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
 chemistry = sim["/SubgridScheme"].attrs["Chemistry Model"]
+chemistry = str(chemistry)
 git = sim["Code"].attrs["Git Revision"]
 
 pos = sim["/PartType0/Coordinates"][:, :]
 d = pos[:, 0] - boxSize / 2
-smooth_metal = sim["/PartType0/SmoothedElementMassFractions"][:, :]
-metal = sim["/PartType0/ElementMassFractions"][:, :]
+gear_name = "/PartType0/MetalMassFractions"
+eagle_name = "/PartType0/ElementAbundances"
+if gear_name in sim:
+    smooth_metal = sim["/PartType0/SmoothedMetalMassFractions"][:, :]
+    metal = sim[gear_name][:, :]
+else:
+    smooth_metal = sim["/PartType0/SmoothedElementAbundances"][:, :]
+    metal = sim[eagle_name][:, :]
+
 h = sim["/PartType0/SmoothingLengths"][:]
 h = np.mean(h)
 
@@ -165,15 +176,15 @@ plt.figure()
 # Metallicity --------------------------------
 plt.subplot(221)
 for e in range(Nelem):
-    plt.plot(metal[:, e], smooth_metal[:, e], ".", ms=0.5, alpha=0.2)
+    plt.loglog(metal[:, e], smooth_metal[:, e], ".", ms=0.5, alpha=0.2)
 
 xmin, xmax = metal.min(), metal.max()
 ymin, ymax = smooth_metal.min(), smooth_metal.max()
 x = max(xmin, ymin)
 y = min(xmax, ymax)
-plt.plot([x, y], [x, y], "--k", lw=1.0)
-plt.xlabel("${\\rm{Metallicity}}~Z_\\textrm{part}$", labelpad=0)
-plt.ylabel("${\\rm{Smoothed~Metallicity}}~Z_\\textrm{sm}$", labelpad=0)
+plt.loglog([x, y], [x, y], "--k", lw=1.0)
+plt.xlabel("${\\rm{Metal~mass~fraction}}$", labelpad=0)
+plt.ylabel("${\\rm{Smoothed~metal~mass~fraction}}$", labelpad=0)
 
 # Metallicity --------------------------------
 e = 0
@@ -183,10 +194,11 @@ plt.plot(d_a, sol[:, e], "--", color="b", alpha=0.8, lw=1.2)
 plt.fill_between(
     d_a, sig[:, e, 0], sig[:, e, 1], facecolor="b", interpolate=True, alpha=0.5
 )
+plt.yscale("log")
 plt.xlabel("${\\rm{Distance}}~r$", labelpad=0)
-plt.ylabel("${\\rm{Smoothed~Metallicity}}~Z_\\textrm{sm}$", labelpad=0)
+plt.ylabel("${\\rm{Smoothed~metal~mass~fraction}}$", labelpad=0)
 plt.xlim(-0.5, 0.5)
-plt.ylim(low_metal[e] - 1, high_metal[e] + 1)
+# plt.ylim(low_metal[e] - 1, high_metal[e] + 1)
 
 # Information -------------------------------------
 plt.subplot(222, frameon=False)

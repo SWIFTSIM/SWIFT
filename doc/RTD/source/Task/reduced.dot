@@ -1,0 +1,83 @@
+digraph task_dep {
+	 # Header
+	 compound=true;
+	 node[nodesep=0.1, fontsize=20, penwidth=3.];
+	 edge[fontsize=0, penwidth=0.5];
+	 ranksep=0.8;
+
+	 # Special tasks
+	 hydro[color=blue3,shape=folder];
+	 limiter[color=black,shape=folder];
+	 grav[color=red3,shape=folder];
+	 stars[color=darkorange1,shape=folder];
+	 drift_part[color=blue3];
+	 drift_spart[color=darkorange1];
+	 drift_gpart[color=red3];
+	 kick2[color=black];
+	 timestep[color=black];
+	 timestep_limiter[color=black];
+	 timestep_sync[color=black];
+	 recv_limiter[shape=diamond,style=filled,fillcolor=azure,color=black];
+	 recv_tend_part[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 recv_sf_count[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+	 cooling[color=blue3];
+	 cooling_in[style=filled,fillcolor=grey90,color=blue3];
+	 cooling_out[style=filled,fillcolor=grey90,color=blue3];
+	 star_formation[color=blue3];
+	 kick1[color=black];
+	 recv_tend_gpart[shape=diamond,style=filled,fillcolor=azure,color=red3];
+	 recv_tend_spart[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+	 send_tend_part[shape=diamond,style=filled,fillcolor=azure,color=blue3,rank=min];
+	 send_limiter[shape=diamond,style=filled,fillcolor=azure,color=black,rank=min];
+	 send_tend_spart[shape=diamond,style=filled,fillcolor=azure,color=darkorange1,rank=min];
+	 send_tend_gpart[shape=diamond,style=filled,fillcolor=azure,color=red3,rank=min];
+	 send_sf_count[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+
+	 # Dependencies
+	 hydro->stars[fontcolor=blue3,color=blue3]
+	 limiter->kick1[fontcolor=black,color=black]
+	 limiter->timestep_limiter[fontcolor=black,color=black]
+	 stars->timestep_sync[fontcolor=darkorange1,color=darkorange1]
+	 hydro->recv_tend_part[fontcolor=blue3,color=blue3]
+	 grav->recv_tend_gpart[fontcolor=red3,color=red3]
+	 stars->recv_tend_spart[fontcolor=darkorange1,color=darkorange1]
+	 stars->recv_tend_spart[fontcolor=darkorange1,color=darkorange1]
+	 drift_part->hydro[fontcolor=blue3,color=blue3]
+	 drift_part->stars[fontcolor=blue3,color=blue3]
+	 drift_part->limiter[fontcolor=blue3,color=blue3]
+	 drift_spart->kick2[fontcolor=darkorange1,color=darkorange1]
+	 drift_spart->stars[fontcolor=darkorange1,color=darkorange1]
+	 drift_gpart->grav[fontcolor=red3,color=red3]
+	 hydro->cooling_in[fontcolor=blue3,color=blue3]
+	 kick2->timestep[fontcolor=black,color=black]
+	 kick2->stars[fontcolor=black,color=black]
+	 kick2->star_formation[fontcolor=black,color=black]
+	 timestep->kick1[fontcolor=black,color=black]
+	 timestep->timestep_limiter[fontcolor=black,color=black]
+	 timestep->timestep_sync[fontcolor=black,color=black]
+	 timestep->limiter[fontcolor=black,color=black]
+	 timestep->send_tend_part[fontcolor=black,color=black]
+	 timestep->send_limiter[fontcolor=black,color=black]
+	 timestep->send_tend_spart[fontcolor=black,color=black]
+	 timestep->send_tend_gpart[fontcolor=black,color=black]
+	 timestep_limiter->kick1[fontcolor=black,color=black]
+	 timestep_limiter->timestep_sync[fontcolor=black,color=black]
+	 timestep_sync->kick1[fontcolor=black,color=black]
+	 recv_limiter->limiter[fontcolor=black,color=black]
+	 recv_tend_part->limiter[fontcolor=blue3,color=blue3]
+	  recv_sf_count->stars[fontcolor=darkorange1,color=darkorange1]
+	 grav->kick2[fontcolor=red3,color=red3]
+	 cooling->cooling_out[fontcolor=blue3,color=blue3]
+	 cooling_in->cooling[fontcolor=blue3,color=blue3]
+	 cooling_out->kick2[fontcolor=blue3,color=blue3]
+	 star_formation->timestep[fontcolor=blue3,color=blue3]
+	 star_formation->stars[fontcolor=blue3,color=blue3]
+	 star_formation->send_sf_count[fontcolor=blue3,color=blue3]
+	 stars->timestep[fontcolor=darkorange1,color=darkorange1]
+
+   # style
+   timestep_limiter->send_tend_part[style=invis];
+   timestep_limiter->send_tend_gpart[style=invis];
+   timestep_limiter->send_tend_spart[style=invis];
+   timestep_limiter->send_limiter[style=invis];
+}

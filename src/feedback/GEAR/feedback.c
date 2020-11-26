@@ -87,21 +87,69 @@ void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
 }
 
 /**
- * @brief Should we do feedback for this star?
+ * @brief Will this star particle want to do feedback during the next time-step?
  *
- * @param sp The star to consider.
- * @param feedback_props The #feedback_props.
- * @param with_cosmology Is the cosmology switch on?
- * @param cosmo The #cosmology.
- * @param time The current time.
+ * This is called in the time step task.
+ *
+ * In GEAR, we compute the full stellar evolution here.
+ *
+ * @param sp The particle to act upon
+ * @param feedback_props The #feedback_props structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The #phys_const.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
+ * @param time The physical time in internal units.
+ * @param ti_begin The integer time at the beginning of the step.
+ * @param with_cosmology Are we running with cosmology on?
  */
-int feedback_will_do_feedback(const struct spart* sp,
-                              const struct feedback_props* feedback_props,
-                              const int with_cosmology,
-                              const struct cosmology* cosmo,
-                              const double time) {
+void feedback_will_do_feedback(struct spart* sp,
+                               const struct feedback_props* feedback_props,
+                               const int with_cosmology,
+                               const struct cosmology* cosmo, const double time,
+                               const struct unit_system* us,
+                               const struct phys_const* phys_const,
+                               const double star_age_beg_step, const double dt,
+                               const integertime_t ti_begin) {
 
-  return (sp->birth_time != -1.);
+  /* Zero the energy of supernovae */
+  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.will_do_feedback = 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
+
+  if (star_age_beg_step < -1e-6) {
+    error("Negative age for a star");
+  }
+#endif
+  /* Has this star been around for a while ? */
+  if (star_age_beg_step + dt <= 0.) return;
+
+  const double star_age_beg_step_safe =
+      star_age_beg_step < 0 ? 0 : star_age_beg_step;
+
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  const float metal =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  const struct stellar_model* model =
+      metal < threshold ? &feedback_props->stellar_model_first_stars
+                        : &feedback_props->stellar_model;
+
+  /* Compute the stellar evolution */
+  stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
+                                 star_age_beg_step_safe, dt);
+
+  /* Transform the number of SN to the energy */
+  sp->feedback_data.energy_ejected =
+      sp->feedback_data.number_sn * feedback_props->energy_per_supernovae;
+
+  /* Set the particle as doing some feedback */
+  sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
 }
 
 /**
@@ -116,14 +164,7 @@ int feedback_is_active(const struct spart* sp, const double time,
                        const struct cosmology* cosmo,
                        const int with_cosmology) {
 
-  // TODO improve this with estimates for SNII and SNIa
-  if (sp->birth_time == -1.) return 0;
-
-  if (with_cosmology) {
-    return ((double)cosmo->a) > sp->birth_scale_factor;
-  } else {
-    return time > sp->birth_time;
-  }
+  return sp->feedback_data.will_do_feedback;
 }
 
 /**
@@ -157,15 +198,30 @@ void feedback_init_spart(struct spart* sp) {
 }
 
 /**
- * @brief Prepares a star's feedback field before computing what
- * needs to be distributed.
+ * @brief Reset the feedback field when the spart is not
+ * in a correct state for feeedback_will_do_feedback.
+ *
+ * This function is called in the timestep task.
  */
-void feedback_reset_feedback(struct spart* sp,
-                             const struct feedback_props* feedback_props) {
+void feedback_init_after_star_formation(
+    struct spart* sp, const struct feedback_props* feedback_props) {
+  feedback_init_spart(sp);
 
   /* Zero the energy of supernovae */
   sp->feedback_data.energy_ejected = 0;
+
+  /* Activate the feedback loop for the first step */
+  sp->feedback_data.will_do_feedback = 1;
 }
+
+/**
+ * @brief Prepares a star's feedback field before computing what
+ * needs to be distributed.
+ *
+ * This is called in the stars ghost.
+ */
+void feedback_reset_feedback(struct spart* sp,
+                             const struct feedback_props* feedback_props) {}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -181,7 +237,11 @@ void feedback_first_init_spart(struct spart* sp,
 
   feedback_init_spart(sp);
 
-  feedback_reset_feedback(sp, feedback_props);
+  /* Zero the energy of supernovae */
+  sp->feedback_data.energy_ejected = 0;
+
+  /* Activate the feedback loop for the first step */
+  sp->feedback_data.will_do_feedback = 1;
 }
 
 /**
@@ -197,10 +257,11 @@ void feedback_prepare_spart(struct spart* sp,
                             const struct feedback_props* feedback_props) {}
 
 /**
- * @brief Evolve the stellar properties of a #spart.
+ * @brief Prepare a #spart for the feedback task.
  *
- * This function compute the SN rate and yields before sending
- * this information to a different MPI rank.
+ * This is called in the stars ghost task.
+ *
+ * In here, we only need to add the missing coefficients.
  *
  * @param sp The particle to act upon
  * @param feedback_props The #feedback_props structure.
@@ -214,50 +275,18 @@ void feedback_prepare_spart(struct spart* sp,
  * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
  */
-void feedback_evolve_spart(struct spart* restrict sp,
-                           const struct feedback_props* feedback_props,
-                           const struct cosmology* cosmo,
-                           const struct unit_system* us,
-                           const struct phys_const* phys_const,
-                           const double star_age_beg_step, const double dt,
-                           const double time, const integertime_t ti_begin,
-                           const int with_cosmology) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
-
-  if (star_age_beg_step < -1e-6) {
-    error("Negative age for a star");
-  }
-#endif
-  const double star_age_beg_step_safe =
-      star_age_beg_step < 0 ? 0 : star_age_beg_step;
-
-  /* Reset the feedback */
-  feedback_reset_feedback(sp, feedback_props);
-
+void feedback_prepare_feedback(struct spart* restrict sp,
+                               const struct feedback_props* feedback_props,
+                               const struct cosmology* cosmo,
+                               const struct unit_system* us,
+                               const struct phys_const* phys_const,
+                               const double star_age_beg_step, const double dt,
+                               const double time, const integertime_t ti_begin,
+                               const int with_cosmology) {
   /* Add missing h factor */
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
-
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
-
-  /* Pick the correct table. (if only one table, threshold is < 0) */
-  const float metal =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-  const float threshold = feedback_props->metallicity_max_first_stars;
-
-  const struct stellar_model* model =
-      metal < threshold ? &feedback_props->stellar_model_first_stars
-                        : &feedback_props->stellar_model;
-
-  /* Compute the stellar evolution */
-  stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
-                                 star_age_beg_step_safe, dt);
-
-  /* Transform the number of SN to the energy */
-  sp->feedback_data.energy_ejected =
-      sp->feedback_data.number_sn * feedback_props->energy_per_supernovae;
 }
 
 /**

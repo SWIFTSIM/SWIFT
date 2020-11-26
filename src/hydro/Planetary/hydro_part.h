@@ -61,6 +61,9 @@ struct xpart {
   /*! Velocity at the last full step. */
   float v_full[3];
 
+  /*! Gravitational acceleration at the end of the last step */
+  float a_grav[3];
+
   /*! Internal energy at the last full step. */
   float u_full;
 
@@ -206,6 +209,11 @@ struct part {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+#endif
+
+#ifdef PLANETARY_FIXED_ENTROPY
+  /* Fixed specific entropy */
+  float s_fixed;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

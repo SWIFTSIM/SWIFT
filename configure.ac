@@ -425,6 +425,18 @@ elif test "$fixed_boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_FIXED_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
+# Check if fixed entropy is on for settling planetary initial conditions
+AC_ARG_ENABLE([planetary-fixed-entropy],
+   [AS_HELP_STRING([--enable-planetary-fixed-entropy],
+     [Force entropies to stay fixed for settling planetary initial conditions @<:@yes/no@:>@]
+   )],
+   [planetary_fixed_entropy="$enableval"],
+   [planetary_fixed_entropy="no"]
+)
+if test "$planetary_fixed_entropy" = "yes"; then
+   AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -1244,8 +1256,6 @@ AC_ARG_WITH([velociraptor],
     [with_velociraptor="no"]
 )
 if test "x$with_velociraptor" != "xno"; then
-   AC_PROG_FC
-   AC_FC_LIBRARY_LDFLAGS
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
       VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5"
       CFLAGS="$CFLAGS -fopenmp"
@@ -1890,6 +1900,60 @@ case "$with_riemann" in
       AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
    ;;
 esac
+
+#  chemistry function
+AC_ARG_WITH([chemistry],
+   [AS_HELP_STRING([--with-chemistry=<function>],
+      [chemistry function @<:@none, GEAR_*, GEAR_DIFFUSION_*, QLA, EAGLE default: none@:>@
+      For GEAR, you need to provide the number of elements (e.g. GEAR_10)]
+   )],
+   [with_chemistry="$withval"],
+   [with_chemistry="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_chemistry" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-chemistry together])
+   else
+      with_chemistry="$with_subgrid_chemistry"
+   fi
+fi
+
+case "$with_chemistry" in
+   none)
+      AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
+   ;;
+   GEAR_DIFFUSION_*)
+      AC_DEFINE([CHEMISTRY_GEAR_DIFFUSION], [1], [Chemistry taken from the GEAR model including the metal diffusion])
+      number_element=${with_chemistry:15}
+      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
+   ;;
+   GEAR_*)
+      AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
+      number_element=${with_chemistry:5}
+      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
+   ;;
+   QLA)
+      AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
+   ;;
+   EAGLE)
+      AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
+   ;;
+esac
+
+if test "$with_chemistry" != "none"; then
+   if test "$enable_hand_vec" == "yes"; then
+      if test "$enable_vec" == "yes"; then
+         if test "$with_hydro" == "gadget2"; then
+            AC_MSG_ERROR([Cannot run with hand vectorisation and chemistry yet. Please use --disable-hand-vec])
+         fi
+      fi
+   fi
+fi
+
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
@@ -1917,9 +1981,6 @@ case "$with_cooling" in
    ;;
    const-lambda)
       AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
-   ;;
-   compton)
-      AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
    ;;
    grackle_*)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
@@ -1951,51 +2012,9 @@ case "$with_cooling" in
    ;;
 esac
 
-#  chemistry function
-AC_ARG_WITH([chemistry],
-   [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, GEAR_*, QLA, EAGLE default: none@:>@
-      For GEAR, you need to provide the number of elements (e.g. GEAR_10)]
-   )],
-   [with_chemistry="$withval"],
-   [with_chemistry="none"]
-)
-
-if test "$with_subgrid" != "none"; then
-   if test "$with_chemistry" != "none"; then
-      AC_MSG_ERROR([Cannot provide with-subgrid and with-chemistry together])
-   else
-      with_chemistry="$with_subgrid_chemistry"
-   fi
-fi
-
-case "$with_chemistry" in
-   none)
-      AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
-   ;;
-   GEAR_*)
-      AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
-      number_element=${with_chemistry:5}
-      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
-   ;;
-   QLA)
-      AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
-   ;;
-   EAGLE)
-      AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
-   ;;
-   *)
-      AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
-   ;;
-esac
-
-if test "$with_chemistry" != "none"; then
-   if test "$enable_hand_vec" == "yes"; then
-      if test "$enable_vec" == "yes"; then
-         if test "$with_hydro" == "gadget2"; then
-            AC_MSG_ERROR([Cannot run with hand vectorisation and chemistry yet. Please use --disable-hand-vec])
-         fi
-      fi
+if test "${with_cooling:0:5}" = "EAGLE" || test "${with_cooling:0:7}" = "COLIBRE"; then
+   if test "$with_chemistry" = "none"; then
+      AC_MSG_ERROR([Cannot run with EAGLE or COLIBRE cooling without chemistry. Please pick a chemistry model])
    fi
 fi
 
@@ -2346,22 +2365,22 @@ DX_INIT_DOXYGEN(SWIFT, doc/Doxyfile, doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Check if using QLA cooling
-AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:3}" == "QLA"])
+AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:3}" = "QLA"])
 
 # Check if using EAGLE cooling
-AM_CONDITIONAL([HAVEEAGLECOOLING], [test "${with_cooling:0:5}" == "EAGLE"])
+AM_CONDITIONAL([HAVEEAGLECOOLING], [test "${with_cooling:0:5}" = "EAGLE"])
 
 # Check if using COLIBRE cooling
-AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "${with_cooling:0:7}" == "COLIBRE"])
+AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "${with_cooling:0:7}" = "COLIBRE"])
 
 # Check if using EAGLE feedback
-AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test "$with_feedback" == "EAGLE"])
+AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test "$with_feedback" = "EAGLE"])
 
 # check if using grackle cooling
-AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "${with_cooling:0:7}" == "grackle"])
+AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "${with_cooling:0:7}" = "grackle"])
 
 # check if using gear feedback
-AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" == "GEAR"])
+AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
@@ -2459,6 +2478,7 @@ AC_MSG_RESULT([
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
+   Planetary fixed entropy     : $planetary_fixed_entropy
 
    Particle Logger      : $with_logger
    Python enabled       : $have_python

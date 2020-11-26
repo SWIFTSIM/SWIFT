@@ -781,6 +781,19 @@ the SHUFFLE filter is also applied to get higher compression rates. Note that up
 until HDF5 1.10.x this option is not available when using the MPI-parallel
 version of the i/o routines.
 
+Users can run a program after a snapshot is dumped to disk using the following
+parameters:
+
+* Use the extra command after snapshot creation: ``run_on_dump`` (default :``0``)
+* Command to run after snapshot creation: ``dump_command`` (default: nothing)
+
+These are particularly useful should you wish to submit a job for postprocessing
+the snapshot after it has just been created. Your script will be invoked with
+two parameters, the snapshot base-name, and the snapshot number that was just
+output as a zero-padded integer. For example, if the base-name is "eagle" and
+snapshot 7 was just dumped, with ``dump_command`` set to ``./postprocess.sh``,
+then SWIFT will run ``./postprocess.sh eagle 0007``.
+
 Finally, it is possible to specify a different system of units for the snapshots
 than the one that was used internally by SWIFT. The format is identical to the
 one described above (See the :ref:`Parameters_units` section) and read:

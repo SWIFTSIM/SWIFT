@@ -42,8 +42,8 @@ INLINE static int chemistry_read_particles(struct part* parts,
 
   /* List what we want to read */
   list[0] = io_make_input_field(
-      "ElementAbundance", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT, OPTIONAL,
-      UNIT_CONV_NO_UNITS, parts, chemistry_data.metal_mass_fraction);
+      "MetalMassFraction", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT, OPTIONAL,
+      UNIT_CONV_NO_UNITS, parts, chemistry_data.metal_mass);
 
   return 1;
 }
@@ -53,7 +53,7 @@ INLINE static void convert_gas_metals(const struct engine* e,
                                       const struct xpart* xp, double* ret) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    ret[0] = p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
+    ret[i] = p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
   }
 }
 
@@ -74,13 +74,13 @@ INLINE static int chemistry_write_particles(const struct part* parts,
 
   /* List what we want to write */
   list[0] = io_make_output_field(
-      "SmoothedElementAbundances", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
+      "SmoothedMetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_NO_UNITS, 0.f, parts,
       chemistry_data.smoothed_metal_mass_fraction,
-      "Element abundances smoothed over the neighbors");
+      "Mass fraction of each element smoothed over the neighbors");
 
   list[1] = io_make_output_field_convert_part(
-      "ElementAbundances", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
+      "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_NO_UNITS, 0.f, parts, xparts, convert_gas_metals,
       "Mass fraction of each element");
 
@@ -100,7 +100,7 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
 
   /* List what we want to write */
   list[0] = io_make_output_field(
-      "ElementAbundances", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
+      "MetalMassFractions", DOUBLE, GEAR_CHEMISTRY_ELEMENT_COUNT,
       UNIT_CONV_NO_UNITS, 0.f, sparts, chemistry_data.metal_mass_fraction,
       "Mass fraction of each element");
 
