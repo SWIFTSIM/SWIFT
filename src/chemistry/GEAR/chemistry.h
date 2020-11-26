@@ -145,6 +145,12 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   const float initial_metallicity = parser_get_param_float(
       parameter_file, "GEARChemistry:initial_metallicity");
 
+  if (initial_metallicity < 0) {
+    message("Setting the initial metallicity from the snapshot.");
+  } else {
+    message("Setting the initial metallicity from the parameter file.");
+  }
+
   /* Set the initial metallicities */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     data->initial_metallicities[i] = initial_metallicity;
@@ -177,10 +183,6 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Reset the smoothed metallicity */
     cpd->smoothed_metal_mass_fraction[i] = 0.f;
-
-    /* Convert the total mass into mass fraction */
-    /* Now the metal mass is not available anymore */
-    cpd->metal_mass_fraction[i] = cpd->metal_mass[i] / p->mass;
   }
 }
 
@@ -204,21 +206,15 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
-  const float m = p->mass;
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Final operation on the density (add self-contribution). */
-    cpd->smoothed_metal_mass_fraction[i] +=
-        m * cpd->metal_mass_fraction[i] * kernel_root;
+    cpd->smoothed_metal_mass_fraction[i] += cpd->metal_mass[i] * kernel_root;
 
     /* Finish the calculation by inserting the missing h-factors */
     cpd->smoothed_metal_mass_fraction[i] *= factor;
-
-    /* Convert the mass fraction into a total mass */
-    /* Now the metal mass fraction is not available anymore */
-    cpd->metal_mass[i] = m * cpd->metal_mass_fraction[i];
   }
 }
 
@@ -229,7 +225,8 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
-    struct part* restrict p, const struct cosmology* cosmo) {}
+    struct part* restrict p, const struct cosmology* cosmo,
+    const int with_cosmology, const double time, const double dt) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -248,9 +245,7 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
   /* Set the smoothed fractions with the non smoothed fractions */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.smoothed_metal_mass_fraction[i] =
-        p->chemistry_data.metal_mass_fraction[i];
-    p->chemistry_data.metal_mass[i] =
-        p->chemistry_data.metal_mass_fraction[i] * p->mass;
+        p->chemistry_data.metal_mass[i] / hydro_get_mass(p);
   }
 }
 
@@ -294,7 +289,14 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     struct xpart* restrict xp) {
 
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.metal_mass[i] = data->initial_metallicities[i] * p->mass;
+    if (data->initial_metallicities[i] < 0) {
+      /* Use the value from the IC. We are reading the metal mass fraction. */
+      p->chemistry_data.metal_mass[i] *= hydro_get_mass(p);
+    } else {
+      /* Use the value from the parameter file */
+      p->chemistry_data.metal_mass[i] =
+          data->initial_metallicities[i] * hydro_get_mass(p);
+    }
   }
 
   chemistry_init_part(p, data);
@@ -405,7 +407,7 @@ __attribute__((always_inline)) INLINE static void chemistry_split_part(
  */
 __attribute__((always_inline)) INLINE static float const*
 chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
-
+  error("Not implemented");
   return NULL;
 }
 
@@ -420,6 +422,7 @@ chemistry_get_metal_mass_fraction_for_feedback(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static float
 chemistry_get_total_metal_mass_fraction_for_feedback(
     const struct part* restrict p) {
+  error("Not implemented");
   return 0.f;
 }
 
@@ -537,7 +540,7 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
-
+  error("Not implemented");
   return 0.f;
 }
 

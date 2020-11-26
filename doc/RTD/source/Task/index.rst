@@ -17,6 +17,7 @@ Everything is described in :ref:`Analysis_Tools`.
    :maxdepth: 2
    :caption: Contents:
 
+   current_dependencies
    adding_your_own
    adding_your_own_neighbour_loop
    adding_to_dependency_plotting_tool

@@ -531,6 +531,14 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  double MassTable[swift_type_count] = {0};
+  io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
+  io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
+                     e->s->initial_mean_mass_particles, swift_type_count);
+  unsigned int flagEntropy[swift_type_count] = {0};
+  flagEntropy[0] = writeEntropyFlag();
+  io_write_attribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
+                     swift_type_count);
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", 1);
   io_write_attribute_i(h_grp, "ThisFile", 0);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");

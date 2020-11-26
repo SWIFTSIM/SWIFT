@@ -99,10 +99,13 @@ INLINE static double feedback_get_enrichment_timestep(
     const struct cosmology* cosmo, const double time, const double dt_star) {
 
   if (with_cosmology) {
-    return cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->last_enrichment_time, cosmo->a);
+    if (cosmo->a > (double)sp->last_enrichment_time)
+      return cosmology_get_delta_time_from_scale_factors(
+          cosmo, (double)sp->last_enrichment_time, cosmo->a);
+    else
+      return 0.;
   } else {
-    return time - sp->last_enrichment_time;
+    return max(time - sp->last_enrichment_time, 0.);
   }
 }
 
@@ -170,10 +173,9 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
     struct spart* sp, const struct feedback_props* feedback_props) {}
 
 /**
- * @brief Evolve the stellar properties of a #spart.
+ * @brief Prepare a #spart for the feedback task.
  *
- * This function allows for example to compute the SN rate before sending
- * this information to a different MPI rank.
+ * In EAGLE, this function evolves the stellar properties of a #spart.
  *
  * @param sp The particle to act upon
  * @param feedback_props The #feedback_props structure.
@@ -187,7 +189,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
  * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
  */
-__attribute__((always_inline)) INLINE static void feedback_evolve_spart(
+__attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
     const struct phys_const* phys_const, const double star_age_beg_step,
@@ -225,16 +227,27 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
 /**
  * @brief Will this star particle want to do feedback during the next time-step?
  *
- * @param sp The star of interest.
- * @param feedback_props The properties of the feedback model.
- * @param with_cosmology Are we running a cosmological problem?
- * @param cosmo The cosmological model.
- * @param time The current time (since the start of the run / Big Bang).
+ * This is called in the time step task and increases counters of time-steps
+ * that have been performed.
+ *
+ * @param sp The particle to act upon
+ * @param feedback_props The #feedback_props structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The #phys_const.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
+ * @param time The physical time in internal units.
+ * @param ti_begin The integer time at the beginning of the step.
+ * @param with_cosmology Are we running with cosmology on?
  */
-__attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
-    struct spart* restrict sp, const struct feedback_props* feedback_props,
-    const int with_cosmology, const struct cosmology* cosmo,
-    const double time) {
+__attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
+    struct spart* sp, const struct feedback_props* feedback_props,
+    const int with_cosmology, const struct cosmology* cosmo, const double time,
+    const struct unit_system* us, const struct phys_const* phys_const,
+    const double star_age_beg_step, const double dt,
+    const integertime_t ti_begin) {
 
   /* Special case for new-born stars */
   if (with_cosmology) {
@@ -242,28 +255,25 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
-
-      /* Say we want to do feedback */
-      return 1;
     }
   } else {
     if (sp->birth_time == (float)time) {
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
-
-      /* Say we want to do feedback */
-      return 1;
     }
   }
 
   /* Calculate age of the star at current time */
   double age_of_star;
   if (with_cosmology) {
-    age_of_star = cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+    if (cosmo->a > (double)sp->birth_scale_factor)
+      age_of_star = cosmology_get_delta_time_from_scale_factors(
+          cosmo, (double)sp->birth_scale_factor, cosmo->a);
+    else
+      age_of_star = 0.;
   } else {
-    age_of_star = time - (double)sp->birth_time;
+    age_of_star = max(time - (double)sp->birth_time, 0.);
   }
 
   /* Is the star still young? */
@@ -271,9 +281,6 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
 
     /* Set the counter to "let's do enrichment" */
     sp->count_since_last_enrichment = 0;
-
-    /* Say we want to do feedback */
-    return 1;
 
   } else {
 
@@ -285,14 +292,6 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
 
       /* Reset counter */
       sp->count_since_last_enrichment = 0;
-
-      /* Say we want to do feedback */
-      return 1;
-
-    } else {
-
-      /* Say we don't want to do feedback */
-      return 0;
     }
   }
 }

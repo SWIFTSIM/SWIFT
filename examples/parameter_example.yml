@@ -158,6 +158,9 @@ Snapshots:
   output_list:         snaplist.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
   select_output_on:    0  # (Optional) Enable the output selection behaviour
   select_output:       selectoutput.yml # (Optional) File containing information to select outputs with (see documentation in the "Output Selection" section)
+  run_on_dump:         0 # (Optional) Run the dump_command each time that a snapshot is dumped?
+  dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
+  
 
 # Parameters governing the logger snapshot system
 Logger:
@@ -454,6 +457,7 @@ EAGLEChemistry:
 GEARChemistry:
   initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
+  diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2).
 
 
 # Parameters related to star formation models  -----------------------------------------------

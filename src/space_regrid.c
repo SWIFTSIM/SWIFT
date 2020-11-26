@@ -30,11 +30,6 @@
 #include "engine.h"
 #include "scheduler.h"
 
-/*! Counter for cell IDs (when debugging) */
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-extern int last_cell_id;
-#endif
-
 /**
  * @brief Re-build the top-level cell grid.
  *
@@ -149,8 +144,8 @@ void space_regrid(struct space *s, int verbose) {
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
 #ifdef WITH_MPI
-  double oldwidth[3];
-  double oldcdim[3];
+  double oldwidth[3] = {0., 0., 0.};
+  double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
 
@@ -321,8 +316,7 @@ void space_regrid(struct space *s, int verbose) {
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-          c->cellID = -last_cell_id;
-          last_cell_id++;
+          cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->width);
 #endif
         }
 

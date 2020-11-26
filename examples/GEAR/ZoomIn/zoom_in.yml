@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitLength_in_cgs:   3.08567758e21 # kpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
@@ -52,10 +52,10 @@ Gravity:
   MAC:                           geometric  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
-  comoving_DM_softening:     0.1278 # Comoving softening length (in internal units).
-  max_physical_DM_softening: 0.03365    # Physical softening length (in internal units).
-  comoving_baryon_softening:     0.03365 # Comoving softening length (in internal units).
-  max_physical_baryon_softening: 0.00673    # Physical softening length (in internal units).
+  comoving_DM_softening:     0.2823 # Comoving softening length (in internal units).
+  max_physical_DM_softening: 0.07429    # Physical softening length (in internal units).
+  comoving_baryon_softening:     0.07429 # Comoving softening length (in internal units).
+  max_physical_baryon_softening: 0.01485    # Physical softening length (in internal units).
   softening_ratio_background:    0.0285714      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
   mesh_side_length:       128        # Number of cells along each axis for the periodic gravity mesh.
   
@@ -101,7 +101,7 @@ GEARPressureFloor:
   jeans_factor: 10
 
 GEARFeedback:
-  supernovae_energy_erg: 0.135e51
+  supernovae_energy_erg: 0.1e51
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
   discrete_yields: 1
   yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars.

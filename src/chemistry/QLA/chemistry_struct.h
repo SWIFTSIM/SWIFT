@@ -43,6 +43,8 @@ struct chemistry_global_data {};
  */
 struct chemistry_part_data {};
 
+#define chemistry_spart_data chemistry_part_data
+
 /**
  * @brief Chemistry properties carried by the #bpart.
  *

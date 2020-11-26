@@ -1,0 +1,158 @@
+digraph task_dep {
+	 # Header
+	 compound=true;
+	 ratio=1.41;
+	 node[nodesep=0.15, fontsize=30, penwidth=3.];
+	 edge[fontsize=0, penwidth=0.5];
+	 ranksep=0.8;
+
+	 # Special tasks
+	 sort[color=blue3];
+	 self_density[color=blue3];
+	 self_gradient[color=blue3];
+	 self_force[color=blue3];
+	 self_stars_density[color=darkorange1];
+	 pair_density[color=blue3];
+	 pair_gradient[color=blue3];
+	 pair_force[color=blue3];
+	 pair_limiter[color=black];
+	 pair_stars_density[color=darkorange1];
+	 sub_self_density[color=blue3];
+	 sub_self_gradient[color=blue3];
+	 sub_self_force[color=blue3];
+	 sub_self_limiter[color=black];
+	 sub_self_stars_density[color=darkorange1];
+	 sub_pair_density[color=blue3];
+	 sub_pair_gradient[color=blue3];
+	 sub_pair_force[color=blue3];
+	 sub_pair_limiter[color=black];
+	 sub_pair_stars_density[color=darkorange1];
+	 ghost_in[style=filled,fillcolor=grey90,color=blue3];
+	 ghost[color=blue3];
+	 ghost_out[style=filled,fillcolor=grey90,color=blue3];
+	 extra_ghost[color=blue3];
+	 drift_part[color=blue3];
+	 end_hydro_force[color=blue3];
+	 send_gradient[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 send_xv[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 send_rho[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 recv_gradient[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 recv_tend_part[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 recv_xv[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 recv_rho[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 cooling_in[style=filled,fillcolor=grey90,color=blue3];
+	 
+	 # Clusters
+	 subgraph clusterDensity {
+		 label="";
+		 bgcolor="grey99";
+		 pair_density;
+		 self_density;
+		 sub_pair_density;
+		 sub_self_density;
+	 };
+
+	 subgraph clusterForce {
+		 label="";
+		 bgcolor="grey99";
+		 pair_force;
+		 self_force;
+		 sub_pair_force;
+		 sub_self_force;
+	 };
+
+	 subgraph clusterGradient {
+		 label="";
+		 bgcolor="grey99";
+		 pair_gradient;
+		 self_gradient;
+		 sub_pair_gradient;
+		 sub_self_gradient;
+	 };
+
+	 subgraph clusterStarsDensity {
+		 label="";
+		 bgcolor="grey99";
+		 pair_stars_density;
+		 self_stars_density;
+		 sub_pair_stars_density;
+		 sub_self_stars_density;
+	 };
+
+	 subgraph clusterTimestep_limiter {
+		 label="";
+		 bgcolor="grey99";
+		 pair_limiter;
+		 self_limiter;
+		 sub_pair_limiter;
+		 sub_self_limiter;
+	 };
+
+
+	 # Dependencies
+	 sort->pair_density[fontcolor=blue3,color=blue3]
+	 sort->pair_stars_density[fontcolor=blue3,color=blue3]
+	 sort->recv_rho[fontcolor=blue3,color=blue3]
+	 sort->sub_self_density[fontcolor=blue3,color=blue3]
+	 sort->sub_self_stars_density[fontcolor=blue3,color=blue3]
+	 sort->sub_pair_density[fontcolor=blue3,color=blue3]
+	 sort->sub_pair_stars_density[fontcolor=blue3,color=blue3]
+	 self_density->ghost_in[fontcolor=blue3,color=blue3]
+	 self_gradient->extra_ghost[fontcolor=blue3,color=blue3]
+	 self_force->end_hydro_force[fontcolor=blue3,color=blue3]
+	 pair_density->ghost_in[fontcolor=blue3,color=blue3]
+	 pair_density->recv_rho[fontcolor=blue3,color=blue3]
+	 pair_gradient->extra_ghost[fontcolor=blue3,color=blue3]
+	 pair_gradient->recv_gradient[fontcolor=blue3,color=blue3]
+	 pair_force->end_hydro_force[fontcolor=blue3,color=blue3]
+	 pair_force->recv_tend_part[fontcolor=blue3,color=blue3]
+	 sub_self_density->ghost_in[fontcolor=blue3,color=blue3]
+	 sub_self_gradient->extra_ghost[fontcolor=blue3,color=blue3]
+	 sub_self_force->end_hydro_force[fontcolor=blue3,color=blue3]
+	 sub_pair_density->ghost_in[fontcolor=blue3,color=blue3]
+	 sub_pair_density->recv_rho[fontcolor=blue3,color=blue3]
+	 sub_pair_gradient->extra_ghost[fontcolor=blue3,color=blue3]
+	 sub_pair_gradient->recv_gradient[fontcolor=blue3,color=blue3]
+	 sub_pair_force->end_hydro_force[fontcolor=blue3,color=blue3]
+	 sub_pair_force->recv_tend_part[fontcolor=blue3,color=blue3]
+	 ghost_in->ghost[fontcolor=blue3,color=blue3]
+	 ghost->ghost_out[fontcolor=blue3,color=blue3]
+	 ghost_out->self_gradient[fontcolor=blue3,color=blue3]
+	 ghost_out->pair_gradient[fontcolor=blue3,color=blue3]
+	 ghost_out->send_rho[fontcolor=blue3,color=blue3]
+	 ghost_out->sub_self_gradient[fontcolor=blue3,color=blue3]
+	 ghost_out->sub_pair_gradient[fontcolor=blue3,color=blue3]
+	 extra_ghost->self_force[fontcolor=blue3,color=blue3]
+	 extra_ghost->pair_force[fontcolor=blue3,color=blue3]
+	 extra_ghost->send_gradient[fontcolor=blue3,color=blue3]
+	 extra_ghost->sub_self_force[fontcolor=blue3,color=blue3]
+	 extra_ghost->sub_pair_force[fontcolor=blue3,color=blue3]
+	 drift_part->self_density[fontcolor=blue3,color=blue3]
+	 drift_part->self_stars_density[fontcolor=blue3,color=blue3]
+	 drift_part->self_limiter[fontcolor=blue3,color=blue3]
+	 drift_part->pair_density[fontcolor=blue3,color=blue3]
+	 drift_part->pair_stars_density[fontcolor=blue3,color=blue3]
+	 drift_part->pair_limiter[fontcolor=blue3,color=blue3]
+	 drift_part->sort[fontcolor=blue3,color=blue3]
+	 drift_part->send_rho[fontcolor=blue3,color=blue3]
+	 drift_part->send_xv[fontcolor=blue3,color=blue3]
+	 drift_part->sub_self_density[fontcolor=blue3,color=blue3]
+	 drift_part->sub_self_stars_density[fontcolor=blue3,color=blue3]
+	 drift_part->sub_self_limiter[fontcolor=blue3,color=blue3]
+	 drift_part->sub_pair_density[fontcolor=blue3,color=blue3]
+	 drift_part->sub_pair_stars_density[fontcolor=blue3,color=blue3]
+	 drift_part->sub_pair_limiter[fontcolor=blue3,color=blue3]
+	 end_hydro_force->cooling_in[fontcolor=blue3,color=blue3]
+	 send_gradient->end_hydro_force[fontcolor=blue3,color=blue3]
+	 send_xv->ghost_in[fontcolor=blue3,color=blue3]
+	 send_rho->extra_ghost[fontcolor=blue3,color=blue3]
+	 recv_gradient->pair_force[fontcolor=blue3,color=blue3]
+	 recv_gradient->sub_pair_force[fontcolor=blue3,color=blue3]
+	 recv_xv->sort[fontcolor=blue3,color=blue3]
+	 recv_xv->pair_density[fontcolor=blue3,color=blue3]
+	 recv_xv->sub_pair_density[fontcolor=blue3,color=blue3]
+	 recv_rho->pair_gradient[fontcolor=blue3,color=blue3]
+	 recv_rho->pair_stars_density[fontcolor=blue3,color=blue3]
+	 recv_rho->sub_pair_gradient[fontcolor=blue3,color=blue3]
+	 recv_rho->sub_pair_stars_density[fontcolor=blue3,color=blue3]
+}

@@ -1,0 +1,113 @@
+digraph task_dep {
+	 # Header
+	 compound=true;
+	 ratio=1.41;
+	 node[nodesep=0.15, fontsize=30, penwidth=3.];
+	 edge[fontsize=0, penwidth=0.5];
+	 ranksep=0.8;
+
+	 # Special tasks
+	 sort[color=blue3];
+	 self_stars_density[color=darkorange1];
+	 self_stars_feedback[color=darkorange1];
+	 pair_stars_density[color=darkorange1];
+	 pair_stars_feedback[color=darkorange1];
+	 sub_self_stars_density[color=darkorange1];
+	 sub_self_stars_feedback[color=darkorange1];
+	 sub_pair_stars_density[color=darkorange1];
+	 sub_pair_stars_feedback[color=darkorange1];
+	 drift_part[color=blue3];
+	 drift_spart[color=darkorange1];
+	 kick2[color=black];
+	 timestep[color=black];
+	 timestep_sync[color=black];
+	 send_spart[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+	 recv_rho[shape=diamond,style=filled,fillcolor=azure,color=blue3];
+	 recv_spart[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+	 recv_sf_count[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+	 star_formation[color=blue3];
+	 stars_in[style=filled,fillcolor=grey90,color=darkorange1];
+	 stars_out[style=filled,fillcolor=grey90,color=darkorange1];
+	 stars_ghost[color=darkorange1];
+	 stars_sort[color=darkorange1];
+	 stars_resort[color=darkorange1];
+	 recv_tend_spart[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+	 send_sf_count[shape=diamond,style=filled,fillcolor=azure,color=darkorange1];
+
+	 subgraph clusterStarsDensity {
+		 label="";
+		 bgcolor="grey99";
+		 pair_stars_density;
+		 self_stars_density;
+		 sub_pair_stars_density;
+		 sub_self_stars_density;
+	 };
+
+	 subgraph clusterStarsFeedback {
+		 label="";
+		 bgcolor="grey99";
+		 pair_stars_feedback;
+		 self_stars_feedback;
+		 sub_pair_stars_feedback;
+		 sub_self_stars_feedback;
+	 };
+
+
+	 # Dependencies
+	 sort->pair_stars_density[fontcolor=blue3,color=blue3]
+	 sort->sub_self_stars_density[fontcolor=blue3,color=blue3]
+	 sort->sub_pair_stars_density[fontcolor=blue3,color=blue3]
+	 self_stars_density->stars_ghost[fontcolor=darkorange1,color=darkorange1]
+	 self_stars_feedback->stars_out[fontcolor=darkorange1,color=darkorange1]
+	 self_stars_feedback->timestep_sync[fontcolor=darkorange1,color=darkorange1]
+	 pair_stars_density->stars_ghost[fontcolor=darkorange1,color=darkorange1]
+	 pair_stars_density->recv_spart[fontcolor=darkorange1,color=darkorange1]
+	 pair_stars_feedback->stars_out[fontcolor=darkorange1,color=darkorange1]
+	 pair_stars_feedback->timestep_sync[fontcolor=darkorange1,color=darkorange1]
+	 pair_stars_feedback->recv_tend_spart[fontcolor=darkorange1,color=darkorange1]
+	 sub_self_stars_density->stars_ghost[fontcolor=darkorange1,color=darkorange1]
+	 sub_self_stars_feedback->stars_out[fontcolor=darkorange1,color=darkorange1]
+	 sub_self_stars_feedback->timestep_sync[fontcolor=darkorange1,color=darkorange1]
+	 sub_pair_stars_density->stars_ghost[fontcolor=darkorange1,color=darkorange1]
+	 sub_pair_stars_density->recv_spart[fontcolor=darkorange1,color=darkorange1]
+	 sub_pair_stars_feedback->stars_out[fontcolor=darkorange1,color=darkorange1]
+	 sub_pair_stars_feedback->timestep_sync[fontcolor=darkorange1,color=darkorange1]
+	 sub_pair_stars_feedback->recv_tend_spart[fontcolor=darkorange1,color=darkorange1]
+	 drift_part->self_stars_density[fontcolor=blue3,color=blue3]
+	 drift_part->pair_stars_density[fontcolor=blue3,color=blue3]
+	 drift_part->sub_self_stars_density[fontcolor=blue3,color=blue3]
+	 drift_part->sub_pair_stars_density[fontcolor=blue3,color=blue3]
+	 drift_spart->kick2[fontcolor=darkorange1,color=darkorange1]
+	 drift_spart->self_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 drift_spart->pair_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 drift_spart->stars_sort[fontcolor=darkorange1,color=darkorange1]
+	 drift_spart->send_spart[fontcolor=darkorange1,color=darkorange1]
+	 drift_spart->sub_self_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 drift_spart->sub_pair_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 kick2->stars_in[fontcolor=black,color=black]
+	 kick2->star_formation[fontcolor=black,color=black]
+	 send_spart->stars_out[fontcolor=darkorange1,color=darkorange1]
+	 recv_rho->pair_stars_density[fontcolor=blue3,color=blue3]
+	 recv_spart->stars_sort[fontcolor=darkorange1,color=darkorange1]
+	 recv_spart->pair_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 recv_spart->sub_pair_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 recv_sf_count->recv_spart[fontcolor=darkorange1,color=darkorange1]
+	 star_formation->stars_resort[fontcolor=blue3,color=blue3]
+	 star_formation->send_sf_count[fontcolor=blue3,color=blue3]
+	 stars_in->self_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 stars_in->pair_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 stars_in->sub_self_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 stars_in->sub_pair_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 stars_out->timestep[fontcolor=darkorange1,color=darkorange1]
+	 stars_ghost->self_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 stars_ghost->pair_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 stars_ghost->send_spart[fontcolor=darkorange1,color=darkorange1]
+	 stars_ghost->sub_self_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 stars_ghost->sub_pair_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 stars_sort->pair_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 stars_sort->pair_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 stars_sort->sub_self_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 stars_sort->sub_pair_stars_density[fontcolor=darkorange1,color=darkorange1]
+	 stars_sort->sub_pair_stars_feedback[fontcolor=darkorange1,color=darkorange1]
+	 stars_resort->stars_in[fontcolor=darkorange1,color=darkorange1]
+}

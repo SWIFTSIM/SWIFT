@@ -1386,12 +1386,14 @@ void cell_check_sort_flags(const struct cell *c) {
   const int do_stars_sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
 
   if (do_hydro_sub_sort)
-    error("cell %d has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
-          c->cellID, c->nodeID, c->depth, c->maxdepth);
+    error(
+        "cell %lld has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+        c->cellID, c->nodeID, c->depth, c->maxdepth);
 
   if (do_stars_sub_sort)
-    error("cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d",
-          c->cellID, c->nodeID, c->depth, c->maxdepth);
+    error(
+        "cell %lld has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+        c->cellID, c->nodeID, c->depth, c->maxdepth);
 
   if (c->split) {
     for (int k = 0; k < 8; ++k) {

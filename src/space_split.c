@@ -33,11 +33,6 @@
 #include "star_formation_logger.h"
 #include "threadpool.h"
 
-/*! Counter for cell IDs (when debugging) */
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-extern int last_cell_id;
-#endif
-
 /**
  * @brief Recursively split a cell.
  *
@@ -250,7 +245,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-      cp->cellID = last_cell_id++;
+      cell_assign_cell_index(cp, c);
 #endif
     }
 

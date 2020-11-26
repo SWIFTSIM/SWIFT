@@ -88,7 +88,7 @@ GrackleCooling:
 GEARStarFormation:
   star_formation_efficiency: 0.01   # star formation efficiency (c_*)
   maximal_temperature:  1e10         # Upper limit to the temperature of a star forming particle
-  n_stars_per_particle: 4
+  n_stars_per_particle: 1
   min_mass_frac: 0.5
 
 GEARPressureFloor:
@@ -107,5 +107,5 @@ GEARChemistry:
   scale_initial_metallicity: 1
 
 Restarts:
-  delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
+  delta_hours:   1.        # (Optional) decimal hours between dumps of restart files.
 
