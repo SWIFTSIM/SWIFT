@@ -2319,6 +2319,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->space = space;
   s->nodeID = nodeID;
   s->threadpool = tp;
+#if WITH_MPI
+  int res = MPI_Comm_size(MPI_COMM_WORLD, &s->nr_ranks);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to determine number of MPI ranks");
+#endif
 
   /* Init the tasks array. */
   s->size = 0;
@@ -2613,43 +2618,33 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
 
   /* First apply the caches to the tasks, so we get the window sizes and the
    * offsets. The send cache only really wants the offsets. */
-  mpicache_apply(s->send_mpicache);
-  mpicache_apply(s->recv_mpicache);
+  mpicache_apply(s->send_mpicache, 0);
+  mpicache_apply(s->recv_mpicache, 1);
 
   /* Now create the one sided windows and buffers, we have one for each remote
    * node and subtype. */
-  s->osmpi_ptrs =
-      calloc(s->recv_mpicache->nr_windows + s->send_mpicache->nr_windows,
-             sizeof(void *));
-  s->osmpi_windows =
-      calloc(s->recv_mpicache->nr_windows + s->send_mpicache->nr_windows,
-             sizeof(MPI_Win *));
-  s->osmpi_rnodes = calloc(1, sizeof(struct memuse_rnode));
-  union key { /* XXX hide all this mess in some APIs. */
-    int32_t ikey;
-    uint8_t ukey[4];
-  };
-  union key keyval;
+  s->osmpi_ptrs = calloc(s->nr_ranks * task_subtype_count, sizeof(void *));
+  s->osmpi_windows = calloc(s->nr_ranks * task_subtype_count, sizeof(MPI_Win *));
 
-  int index = 0;
   for (int k = 0; k < s->recv_mpicache->nr_windows; k++) {
-    int err = MPI_Win_allocate(
-        s->recv_mpicache->window_sizes[k], scheduler_osmpi_bytesinblock,
-        MPI_INFO_NULL, subtaskMPI_comms[s->recv_mpicache->window_subtypes[k]],
-        &s->osmpi_ptrs[index], &s->osmpi_windows[index]);
+    int node = s->recv_mpicache->window_nodes[k];
+    int subtype = s->recv_mpicache->window_subtypes[k];
+    size_t size = s->recv_mpicache->window_sizes[k];
+    int index = node * s->nr_ranks + subtype;
+
+    int err = MPI_Win_allocate(size, scheduler_osmpi_bytesinblock,
+                               MPI_INFO_NULL, subtaskMPI_comms[subtype],
+                               &s->osmpi_ptrs[index], 
+                               &s->osmpi_windows[index]);
     if (err != MPI_SUCCESS) {
       mpi_error(err, "Failed to allocate osmpi window for subtype: %d",
                 s->recv_mpicache->window_subtypes[k]);
     }
 
     // XXX do we need to do this?
-    size_t size = s->recv_mpicache->window_sizes[k];
-    if (size > 0 && s->osmpi_ptrs[index] != NULL) memset((void *)s->osmpi_ptrs[index], 0, size);
-
-    /* Fast lookup of node and subtype into these. */
-    keyval.ikey = mpicache_lookup_key(s->recv_mpicache->window_nodes[k],
-                                      s->recv_mpicache->window_subtypes[k]);
-    memuse_rnode_insert_child(s->osmpi_rnodes, 0, keyval.ukey, 4, index);
+    if (size > 0 && s->osmpi_ptrs[index] != NULL) {
+      memset((void *)s->osmpi_ptrs[index], 0, size);
+    }
 
     /* Assert a shared lock with all the other processes on this window. */
     err = MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_windows[index]);
@@ -2662,30 +2657,27 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
   /* We need also need one sided windows for sends that do not have any
    * receives, so let's check that as well. */
   for (int k = 0; k < s->send_mpicache->nr_windows; k++) {
-    keyval.ikey = mpicache_lookup_key(s->send_mpicache->window_nodes[k],
-                                      s->send_mpicache->window_subtypes[k]);
-    struct memuse_rnode *child =
-        memuse_rnode_find_child(s->osmpi_rnodes, 0, keyval.ukey, 4);
-    if (child == NULL) {
-      /* Not present, need to add another window. */
-      message("send with no friends");
-      int err = MPI_Win_allocate(
-          1, scheduler_osmpi_bytesinblock, MPI_INFO_NULL,
-          subtaskMPI_comms[s->send_mpicache->window_subtypes[k]],
-          &s->osmpi_ptrs[index], &s->osmpi_windows[index]);
+    int node = s->send_mpicache->window_nodes[k];
+    int subtype = s->send_mpicache->window_subtypes[k];
+    size_t size = s->send_mpicache->window_sizes[k];
+    int index = node * s->nr_ranks + subtype;
+
+    if (size > 0 && s->osmpi_ptrs[index] == NULL) {
+      int err = MPI_Win_allocate(size, scheduler_osmpi_bytesinblock,
+                                 MPI_INFO_NULL, subtaskMPI_comms[subtype],
+                                 &s->osmpi_ptrs[index], 
+                                 &s->osmpi_windows[index]);
+
       if (err != MPI_SUCCESS) {
         mpi_error(err, "Failed to allocate osmpi window for subtype: %d",
                   s->send_mpicache->window_subtypes[k]);
       }
-
-      memuse_rnode_insert_child(s->osmpi_rnodes, 0, keyval.ukey, 4, k);
 
       /* Assert a shared lock with all the other processes on this window. */
       err = MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_windows[index]);
       if (err != MPI_SUCCESS) {
         mpi_error(err, "Failed to lock osmpi window");
       }
-      index++;
     }
   }
 

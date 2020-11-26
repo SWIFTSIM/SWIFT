@@ -94,7 +94,7 @@ extern int engine_rank;
     int len = 1024;                                                        \
     char buf[len];                                                         \
     MPI_Error_string(res, buf, &len);                                      \
-    fprintf(stderr, "%s\n\n", buf);                                        \
+    fprintf(stderr, "[%04i] %s\n\n", engine_rank, buf);                    \
     memdump(engine_rank);                                                  \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })

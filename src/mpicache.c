@@ -49,13 +49,33 @@
 /* Bit shift to accomodate all the bits of the maximum subtype. */
 int mpicache_subtype_shift = 0;
 
-/* Comparator function to sort in node, subtype, tag order. */
+/* Comparator function to sort by send node, subtype, tag order. */
 #ifdef WITH_MPI
-static int mpicache_entry_cmp(const void *a, const void *b) {
+static int mpicache_entry_send_cmp(const void *a, const void *b) {
   const struct mpicache_entry *e1 = (const struct mpicache_entry *)a;
   const struct mpicache_entry *e2 = (const struct mpicache_entry *)b;
 
-  int comp = e1->node - e2->node;
+  int comp = e1->send_node - e2->send_node;
+  if (comp < 0) return -1;
+  if (comp > 0) return 1;
+
+  /* Same node, check subtype. */
+  comp = e1->task->subtype - e2->task->subtype;
+  if (comp < 0) return -1;
+  if (comp > 0) return 1;
+
+  /* Same subtype, check tag. */
+  return e1->task->flags - e2->task->flags;
+}
+#endif
+
+/* Comparator function to sort by recv node, subtype, tag order. */
+#ifdef WITH_MPI
+static int mpicache_entry_recv_cmp(const void *a, const void *b) {
+  const struct mpicache_entry *e1 = (const struct mpicache_entry *)a;
+  const struct mpicache_entry *e2 = (const struct mpicache_entry *)b;
+
+  int comp = e1->recv_node - e2->recv_node;
   if (comp < 0) return -1;
   if (comp > 0) return 1;
 
@@ -131,10 +151,11 @@ struct mpicache *mpicache_init() {
  * @brief Add a new MPI task to the cache.
  *
  * @param cache the #mpicache
- * @param node the MPI rank that the message originates.
+ * @param send_node the MPI rank that the message originates.
+ * @param recv_node the MPI rank that the message is intended for.
  * @param t the #task struct.
  */
-void mpicache_add(struct mpicache *cache, int node, struct task *t) {
+void mpicache_add(struct mpicache *cache, int send_node, int recv_node, struct task *t) {
 
   /* Append this to the cache. */
   size_t ind = atomic_inc(&(cache->nr_entries));
@@ -150,7 +171,8 @@ void mpicache_add(struct mpicache *cache, int node, struct task *t) {
 #endif
 
   /* And store. */
-  cache->entries[ind].node = node;
+  cache->entries[ind].send_node = send_node;
+  cache->entries[ind].recv_node = recv_node;
   cache->entries[ind].task = t;
   atomic_inc(&(cache->entries_done));
 
@@ -175,8 +197,9 @@ void mpicache_destroy(struct mpicache *cache) {
  * windows are updated in the cache.
  *
  * @param cache the #mpicache.
+ * @param sort_by_send sort by the send targer, otherwise recv.
  */
-void mpicache_apply(struct mpicache *cache) {
+void mpicache_apply(struct mpicache *cache, int sort_by_send) {
 
 #ifdef WITH_MPI
   /* Do nothing if we have nothing. */
@@ -189,8 +212,13 @@ void mpicache_apply(struct mpicache *cache) {
    * node|subtask|tag order. Within each node section the subtask|tag should
    * be the same on the send and recv sides, that is necessary so that the
    * offsets match. */
-  qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
-        mpicache_entry_cmp);
+  if (sort_by_send) {
+    qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
+          mpicache_entry_send_cmp);
+  } else {
+    qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
+          mpicache_entry_recv_cmp);
+  }
 
   /* These entries will have duplicates as the same tasks can be unskipped
    * more than once, we need to skip repeats. */
@@ -211,13 +239,6 @@ void mpicache_apply(struct mpicache *cache) {
   }
   cache->nr_entries = nr_uniq;
 
-  //for (size_t k = 0; k < cache->nr_entries; k++) {
-  //  task = cache->entries[k].task;
-  //  message("using node = %d, size = %zd, type = %d, subtype = %d, tag = %lld",
-  //          cache->entries[k].node, task->size, task->type, task->subtype,
-  //          task->flags);
-  //}
-
   /* Now we go through the entries and generate the offsets. */
   cache->window_sizes = calloc(26, sizeof(int));  // 26 *task_subtype_count?
   cache->window_nodes = calloc(26, sizeof(int));
@@ -227,14 +248,23 @@ void mpicache_apply(struct mpicache *cache) {
 
   /* Preload the first entry into the first window. */
   cache->window_sizes[cache->nr_windows] = 0;
-  cache->window_nodes[cache->nr_windows] = cache->entries[0].node;
+  if (sort_by_send) {
+    cache->window_nodes[cache->nr_windows] = cache->entries[0].send_node;
+  } else {
+    cache->window_nodes[cache->nr_windows] = cache->entries[0].recv_node;
+  }
   cache->window_subtypes[cache->nr_windows] = cache->entries[0].task->subtype;
 
   size_t offset = 0;
   for (size_t k = 0; k < cache->nr_entries; k++) {
 
     /* New node started, so start the accumulation. */
-    int node = cache->entries[k].node;
+    int node = -1;
+    if (sort_by_send) {
+      node = cache->entries[k].send_node;
+    } else {
+      node = cache->entries[k].recv_node;
+    }
     int subtype = cache->entries[k].task->subtype;
 
     /* Window sizes are in bytes. */
@@ -247,36 +277,52 @@ void mpicache_apply(struct mpicache *cache) {
       scheduler_osmpi_header_size;
 
     /* Check next task to see if this breaks the run of subtypes or nodes. */
-    if (k < (cache->nr_entries - 1) && 
-        (cache->entries[k+1].task->subtype != subtype ||
-         cache->entries[k+1].node != node)) {
-      
-      /* Yes, so we start a new window. */
-      cache->nr_windows++;
-      if (cache->nr_windows == cache->window_size) {
-        cache->window_size += 26;
-        cache->window_sizes =
-          realloc(cache->window_sizes, cache->window_size * sizeof(int));
-        cache->window_nodes =
-          realloc(cache->window_nodes, cache->window_size * sizeof(int));
-        cache->window_subtypes =
-          realloc(cache->window_subtypes, cache->window_size * sizeof(int));
+    if (k < (cache->nr_entries - 1)) {
+      int next_node = -1;
+      if (sort_by_send) {
+        next_node = cache->entries[k+1].send_node;
+      } else {
+        next_node = cache->entries[k+1].recv_node;
       }
+      int next_subtype = cache->entries[k+1].task->subtype;
 
-      cache->window_sizes[cache->nr_windows] = 0;
-      cache->window_nodes[cache->nr_windows] = cache->entries[k+1].node;
-      cache->window_subtypes[cache->nr_windows] = cache->entries[k+1].task->subtype;
-      offset = 0;
+      if (next_subtype != subtype || next_node != node) {
+
+        /* Start a new window. */
+        cache->nr_windows++;
+        if (cache->nr_windows == cache->window_size) {
+          cache->window_size += 26;
+          cache->window_sizes =
+            realloc(cache->window_sizes, cache->window_size * sizeof(int));
+          cache->window_nodes =
+            realloc(cache->window_nodes, cache->window_size * sizeof(int));
+          cache->window_subtypes =
+            realloc(cache->window_subtypes, cache->window_size * sizeof(int));
+        }
+
+        cache->window_sizes[cache->nr_windows] = 0;
+        cache->window_nodes[cache->nr_windows] = next_node;
+        cache->window_subtypes[cache->nr_windows] = next_subtype;
+        offset = 0;
+      }
     }
   }
   cache->nr_windows++;
 
-  //for (int k = 0; k < cache->nr_windows; k++) {
-  //  message("window %d %d %d %d", k, 
-  //          cache->window_sizes[k],
-  //          cache->window_nodes[k],
-  //          cache->window_subtypes[k]);
-  //}
+  for (size_t k = 0; k < cache->nr_entries; k++) {
+    task = cache->entries[k].task;
+    message("sort_by_send %d nodes %d/%d size %zd type %d subtype %d "
+            "tag = %lld offset = %zd",
+            sort_by_send, cache->entries[k].send_node, cache->entries[k].recv_node,
+            task->size, task->type, task->subtype, task->flags, task->offset);
+  }
+
+  for (int k = 0; k < cache->nr_windows; k++) {
+    message("sort_by_send %d window %d %d %d %d", sort_by_send, k,
+            cache->window_sizes[k],
+            cache->window_nodes[k],
+            cache->window_subtypes[k]);
+  }
 
 
 #endif /* WITH_MPI */

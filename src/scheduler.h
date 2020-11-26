@@ -70,7 +70,7 @@
 #define scheduler_osmpi_header_size 3
 
 /* Number of threads we can use for sending. */
-#define scheduler_osmpi_max_sends 2
+#define scheduler_osmpi_max_sends 1
 
 /* Convert a byte count into a number of blocks, rounds up. */
 #define scheduler_osmpi_toblocks(nr_bytes)           \
@@ -148,6 +148,9 @@ struct scheduler {
   volatile scheduler_osmpi_blocktype **osmpi_ptrs;
   struct memuse_rnode *osmpi_rnodes;
 
+  /* Number of MPI ranks. */
+  int nr_ranks;
+
   /* Caches for capturing the MPI tasks and working out the window sizes and
    * offsets. */
   struct mpicache *send_mpicache;
@@ -194,7 +197,7 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
     error("Missing link to send task.");
   }
 #ifdef WITH_MPI
-  mpicache_add(s->send_mpicache, l->t->cj->nodeID, l->t);
+  mpicache_add(s->send_mpicache, l->t->ci->nodeID, l->t->cj->nodeID, l->t);
 #endif
   scheduler_activate(s, l->t);
   return l;
@@ -220,7 +223,7 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
     error("Missing link to recv task.");
   }
 #ifdef WITH_MPI
-  mpicache_add(s->recv_mpicache, l->t->ci->nodeID, l->t);
+  mpicache_add(s->recv_mpicache, l->t->ci->nodeID, -1, l->t);
 #endif
   scheduler_activate(s, l->t);
   return l;

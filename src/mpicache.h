@@ -31,7 +31,8 @@
 
 /* A single cache entry. */
 struct mpicache_entry {
-  int node;
+  int send_node;
+  int recv_node;
   struct task *task;
 };
 
@@ -54,21 +55,8 @@ struct mpicache {
 
 /* API. */
 struct mpicache *mpicache_init(void);
-void mpicache_add(struct mpicache *cache, int node, struct task *t);
+void mpicache_add(struct mpicache *cache, int send_node, int recv_node, struct task *t);
 void mpicache_destroy(struct mpicache *cache);
-void mpicache_apply(struct mpicache *cache);
-
-/**
- * @brief Convert node and subtype into a unique compact key.
- *
- * @param node the MPI rank that the message came from.
- * @param subtype the task subtype of the message.
- *
- * @result the key for this information.
- */
-__attribute__((always_inline)) INLINE static int mpicache_lookup_key(
-    int node, int subtype) {
-  return (subtype | node << mpicache_subtype_shift);
-}
+void mpicache_apply(struct mpicache *cache, int sort_by_send);
 
 #endif /* SWIFT_MPICACHE_H */

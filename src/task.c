@@ -46,7 +46,6 @@
 #include "error.h"
 #include "inline.h"
 #include "lock.h"
-#include "mpicache.h"
 #include "mpiuse.h"
 
 /* Task type names. */
@@ -656,38 +655,30 @@ int task_lock(struct scheduler *s, struct task *t) {
             cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
             t->size, t->offset);
 
-      /* And send to the destination rank. Could put this into the task? */
-      union key {
-        int32_t ikey;
-        uint8_t ukey[4];
-      };
-      union key keyval;
-      keyval.ikey = mpicache_lookup_key(cj->nodeID, subtype);
-      struct memuse_rnode *child =
-          memuse_rnode_find_child(s->osmpi_rnodes, 0, keyval.ukey, 4);
-      if (child == NULL || child->value < 0) {
-        error("Failed to lookup osmpi window index");
-      }
-      int window_index = child->value;
-      //message("send picked window: %d, node: %d, subtype: %d, size: %d", window_index,
-      //        s->send_mpicache->window_nodes[window_index],
-      //        s->send_mpicache->window_subtypes[window_index],
-      //        s->send_mpicache->window_sizes[window_index]);
-
-      int err = MPI_Accumulate(
-          dataptr, datasize, scheduler_osmpi_mpi_blocktype, cj->nodeID,
-          t->offset, datasize, scheduler_osmpi_mpi_blocktype, MPI_REPLACE,
-          s->osmpi_windows[window_index]);
+      /* And send to the destination rank. */
+      int index = cj->nodeID * s->nr_ranks + subtype; // XXX why isn't this ci?
+      message("send window %d, node %d, subtype %d, size %d offset %zd", index,
+              s->send_mpicache->window_nodes[index],
+              s->send_mpicache->window_subtypes[index],
+              s->send_mpicache->window_sizes[index],
+              t->offset); fflush(stdout);
+      
+      int err = MPI_Accumulate(dataptr, datasize,
+                               scheduler_osmpi_mpi_blocktype,
+                               cj->nodeID,
+                               t->offset, datasize,
+                               scheduler_osmpi_mpi_blocktype, MPI_REPLACE,
+                               s->osmpi_windows[index]);
 
       if (err != MPI_SUCCESS) {
         mpi_error(err, "Failed to send particle data.");
       }
 
-      if (s->space->e->verbose)
-        message(
-            "Sent message to %d subtype: %d, tag %zd, size %zd"
-            " (cf %lld %zd)",
-            cj->nodeID, subtype, dataptr[2], dataptr[1], t->flags, t->size);
+      if (s->space->e->verbose) {
+        message("Sent message to %d subtype: %d, tag %zd, size %zd offset %zd"
+                " (cf %lld %zd)", cj->nodeID, subtype, dataptr[2], dataptr[1],
+                t->offset, t->flags, t->size);
+      }
 
       /* Now we change the first element to unlocked so that the remote end
        * can find out that the data has arrived. */
@@ -697,14 +688,14 @@ int task_lock(struct scheduler *s, struct task *t) {
       oldval[0] = 0;
       err = MPI_Compare_and_swap(&newval[0], dataptr, &oldval[0],
                                  scheduler_osmpi_mpi_blocktype, cj->nodeID,
-                                 t->offset, s->osmpi_windows[window_index]);
+                                 t->offset, s->osmpi_windows[index]);
 
       if (err != MPI_SUCCESS) {
         mpi_error(err, "Compare and swap send error for particle data.");
       }
 
       // XXX try to live without this.
-      err = MPI_Win_flush(cj->nodeID, s->osmpi_windows[window_index]);
+      err = MPI_Win_flush(cj->nodeID, s->osmpi_windows[index]);
       if (err != MPI_SUCCESS) mpi_error(err, "MPI_Win_flush failed");
 
       /* Release data. XXX not yet, we need to wait, perhaps a local poll?*/
@@ -729,25 +720,18 @@ int task_lock(struct scheduler *s, struct task *t) {
 
       /* Check for a message waiting for this subtype from our expected
        * node. */
-      union key {
-        int32_t ikey;
-        uint8_t ukey[4];
-      };
-      union key keyval;
-      keyval.ikey = mpicache_lookup_key(ci->nodeID, subtype);
-      struct memuse_rnode *child =
-          memuse_rnode_find_child(s->osmpi_rnodes, 0, keyval.ukey, 4);
-      if (child == NULL || child->value < 0) {
-        error("Failed to lookup osmpi window index");
-      }
-      int window_index = child->value;
-      //message("recv picked window: %d, node: %d, subtype: %d, size: %d", window_index,
-      //        s->send_mpicache->window_nodes[window_index],
-      //        s->send_mpicache->window_subtypes[window_index],
-      //        s->send_mpicache->window_sizes[window_index]);
+      int index = ci->nodeID * s->nr_ranks + subtype; // need nranks...
 
-      volatile scheduler_osmpi_blocktype *dataptr =
-          &(s->osmpi_ptrs[window_index])[t->offset];
+      //message("recv picked window: %d, node: %d, subtype: %d, size: %d", index,
+      //        s->send_mpicache->window_nodes[index],
+      //        s->send_mpicache->window_subtypes[index],
+      //        s->send_mpicache->window_sizes[index]);
+
+      message("recv window %d for remote node %d subtype %d offset %zd tag %lld, size %zd",
+              index, ci->nodeID, subtype, t->offset, t->flags, t->size);
+
+      volatile scheduler_osmpi_blocktype *dataptr = &(s->osmpi_ptrs[index])[t->offset];
+      volatile scheduler_osmpi_blocktype lock = dataptr[0];
       if (dataptr[0] == (scheduler_osmpi_blocktype)scheduler_osmpi_unlocked) {
 
         /* Message from our remote and subtype waiting, does it match our tag
@@ -779,12 +763,12 @@ int task_lock(struct scheduler *s, struct task *t) {
 
           return 1;
         } 
-        //else {
-        //  message("missed remote send at our offset %zd from %d, "
-        //          "subtype: %d, tag: %lld, size %zd, see %zd/%zd/%zd",
-        //          t->offset, ci->nodeID, subtype, t->flags,
-        //          t->size, dataptr[2], dataptr[1], dataptr[0]);
-        //}
+        else {
+          message("missed remote send at our offset %zd from %d, "
+                  "subtype: %d, tag: %lld, size %zd, see %zd/%zd/%zd",
+                  t->offset, ci->nodeID, subtype, t->flags,
+                  t->size, dataptr[2], dataptr[1], dataptr[0]);
+        }
       }
       return 0;
     }
