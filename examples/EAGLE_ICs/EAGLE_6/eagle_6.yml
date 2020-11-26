@@ -142,7 +142,7 @@ EAGLEStarFormation:
   KS_normalisation:                  1.515e-4     # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4          # The exponent of the Kennicutt-Schmidt law.
   min_over_density:                  100.0        # The over-density above which star-formation is allowed.
-  KS_high_density_threshold_H_p_cm3: 1e3          # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_threshold_H_p_cm3: 1e8          # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0          # Slope of the Kennicut-Schmidt law above the high-density threshold.
   EOS_entropy_margin_dex:            0.3          # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1          # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
@@ -248,3 +248,4 @@ EAGLEAGN:
   threshold_minor_merger:             0.1             # Mass ratio threshold to consider a BH merger as 'minor'
   merger_threshold_type:              2               # Type of velocity threshold for BH mergers (0: v_circ at kernel edge, 1: v_esc at actual distance, with softening, 2: v_esc at actual distance, no softening).
   merger_max_distance_ratio:          3.0             # Maximal distance over which two BHs can merge, in units of the softening length.
+  minimum_timestep_Myr:               0.1             # Minimum of the accretion-limited time-step length.

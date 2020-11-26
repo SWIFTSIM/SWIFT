@@ -139,7 +139,7 @@ EAGLEStarFormation:
   KS_normalisation:                  1.515e-4     # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4          # The exponent of the Kennicutt-Schmidt law.
   min_over_density:                  100.0        # The over-density above which star-formation is allowed.
-  KS_high_density_threshold_H_p_cm3: 1e3          # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_threshold_H_p_cm3: 1e8          # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0          # Slope of the Kennicut-Schmidt law above the high-density threshold.
   EOS_entropy_margin_dex:            0.3          # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1          # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
@@ -216,7 +216,7 @@ EAGLEAGN:
   boost_n_h_star_H_p_cm3:             0.1             # Normalization of the power law for the Booth & Schaye 2009 model in cgs (cm^-3).
   radiative_efficiency:               0.1             # Fraction of the accreted mass that gets radiated.
   use_nibbling:                       1               # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
-  min_gas_mass_for_nibbling:          9e5             # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
+  min_gas_mass_for_nibbling:          7.2e6           # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   max_eddington_fraction:             1.              # Maximal allowed accretion rate in units of the Eddington rate.
   eddington_fraction_for_recording:   0.1             # Record the last time BHs reached an Eddington ratio above this threshold.
   coupling_efficiency:                0.1             # Fraction of the radiated energy that couples to the gas in feedback events.
@@ -245,3 +245,4 @@ EAGLEAGN:
   threshold_minor_merger:             0.1             # Mass ratio threshold to consider a BH merger as 'minor'
   merger_threshold_type:              2               # Type of velocity threshold for BH mergers (0: v_circ at kernel edge, 1: v_esc at actual distance, with softening, 2: v_esc at actual distance, no softening).
   merger_max_distance_ratio:          3.0             # Maximal distance over which two BHs can merge, in units of the softening length.
+  minimum_timestep_Myr:               0.1             # Minimum of the accretion-limited time-step length.
