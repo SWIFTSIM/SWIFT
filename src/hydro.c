@@ -285,7 +285,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_exact, "# Hydro accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
   fprintf(file_exact, "# periodic= %d\n", s->periodic);
-  fprintf(file_swift, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
+  fprintf(file_exact, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
           e->hydro_properties->delta_neighbours);
   fprintf(file_exact, "# Git Branch: %s\n", git_branch());
   fprintf(file_exact, "# Git Revision: %s\n", git_revision());
