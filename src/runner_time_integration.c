@@ -177,6 +177,14 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_mesh_grav,
                   dt_kick_therm, dt_kick_corr, cosmo, hydro_props,
                   entropy_floor, ti_begin, ti_end, ti_begin_mesh, ti_end_mesh);
+
+        /* Update the accelerations to be used in the drift for hydro */
+        if (p->gpart != NULL) {
+
+          xp->a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+          xp->a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+          xp->a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
+        }
       }
     }
 
