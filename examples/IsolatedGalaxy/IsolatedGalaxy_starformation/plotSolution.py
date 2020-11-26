@@ -43,10 +43,8 @@ params = {
     "figure.subplot.hspace": 0.12,
     "lines.markersize": 6,
     "lines.linewidth": 2.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 snap = int(sys.argv[1])
 filename = "output_%.4d.hdf5" % snap
@@ -76,34 +74,6 @@ G = G_in_cgs * (unit_length_in_cgs ** 3 / unit_mass_in_cgs / unit_time_in_cgs **
     -1
 )
 
-# Read parameters of the SF model
-KS_law_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_exponent"])
-KS_law_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_normalisation"])
-KS_thresh_Z0 = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_Z0"])
-KS_thresh_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_slope"])
-KS_thresh_norm = float(
-    f["/Parameters"].attrs["EAGLEStarFormation:threshold_norm_H_p_cm3"]
-)
-KS_gas_fraction = float(f["/Parameters"].attrs["EAGLEStarFormation:gas_fraction"])
-KS_thresh_max_norm = float(
-    f["/Parameters"].attrs["EAGLEStarFormation:threshold_max_density_H_p_cm3"]
-)
-KS_high_den_thresh = float(
-    f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_threshold_H_p_cm3"]
-)
-KS_law_slope_high_den = float(
-    f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_exponent"]
-)
-EOS_gamma_effective = float(
-    f["/Parameters"].attrs["EAGLEStarFormation:EOS_gamma_effective"]
-)
-EOS_density_norm = float(
-    f["/Parameters"].attrs["EAGLEStarFormation:EOS_density_norm_H_p_cm3"]
-)
-EOS_temp_norm = float(
-    f["/Parameters"].attrs["EAGLEStarFormation:EOS_temperature_norm_K"]
-)
-
 # Read reference metallicity
 EAGLE_Z = float(f["/Parameters"].attrs["EAGLEChemistry:init_abundance_metal"])
 
@@ -126,6 +96,40 @@ EAGLEfloor_cool_temperature_norm_K = float(
 EAGLEfloor_cool_gamma_effective = float(
     f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_gamma_effective"]
 )
+
+# Read parameters of the SF model
+KS_law_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_exponent"])
+KS_law_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_normalisation"])
+KS_thresh_Z0 = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_Z0"])
+KS_thresh_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_slope"])
+KS_thresh_norm = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:threshold_norm_H_p_cm3"]
+)
+KS_gas_fraction = float(f["/Parameters"].attrs["EAGLEStarFormation:gas_fraction"])
+KS_thresh_max_norm = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:threshold_max_density_H_p_cm3"]
+)
+KS_high_den_thresh = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_threshold_H_p_cm3"]
+)
+KS_law_slope_high_den = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_exponent"]
+)
+try:
+    EOS_gamma_effective = float(
+        f["/Parameters"].attrs["EAGLEStarFormation:EOS_gamma_effective"]
+    )
+    EOS_density_norm = float(
+        f["/Parameters"].attrs["EAGLEStarFormation:EOS_density_norm_H_p_cm3"]
+    )
+    EOS_temp_norm = float(
+        f["/Parameters"].attrs["EAGLEStarFormation:EOS_temperature_norm_K"]
+    )
+except:
+    EOS_gamma_effective = EAGLEfloor_Jeans_gamma_effective
+    EOS_density_norm = EAGLEfloor_Jeans_rho_norm
+    EOS_temp_norm = EAGLEfloor_Jeans_temperature_norm_K
+
 
 # Properties of the KS law
 KS_law_norm_cgs = KS_law_norm * Msun_in_cgs / (1e6 * pc_in_cgs ** 2 * year_in_cgs)
