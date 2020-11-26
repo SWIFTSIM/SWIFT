@@ -134,7 +134,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           feedback_is_active(&sparts[k], e->time, cosmo, with_cosmology)) {
         sid[scount] = k;
         h_0[scount] = sparts[k].h;
-        left[scount] = 0.f;
+        left[scount] = stars_h_min;
         right[scount] = stars_h_max;
         ++scount;
       }
@@ -174,6 +174,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Double h and try again */
           h_new = 2.f * h_old;
+
+          /* Improve the bisection bound as well */
+          left[i] = max(left[i], h_old);
 
         } else {
 
@@ -577,7 +580,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
       if (bpart_is_active(&bparts[k], e)) {
         sid[bcount] = k;
         h_0[bcount] = bparts[k].h;
-        left[bcount] = 0.f;
+        left[bcount] = black_holes_h_min;
         right[bcount] = black_holes_h_max;
         ++bcount;
       }
@@ -617,6 +620,9 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
           /* Double h and try again */
           h_new = 2.f * h_old;
+
+          /* Improve the bisection bound as well */
+          left[i] = max(left[i], h_old);
 
         } else {
 
