@@ -54,6 +54,9 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  /*! Gravitational acceleration at the end of the last step */
+  float a_grav[3];
+
   /* Entropy at the last full step. */
   float entropy_full;
 
