@@ -98,7 +98,7 @@ struct star_formation {
     /*! Slope of the high density KS law */
     double KS_high_den_power_law;
 
-    /*! KS law High density threshold (internal units) */
+    /*! KS law High density (H number density) threshold (internal units) */
     double KS_high_den_thresh;
 
     /*! KS high density normalization (internal units) */
@@ -404,6 +404,8 @@ INLINE static void star_formation_compute_SFR_pressure_law(
   /* Hydrogen number density of this particle (assuming primordial H abundance)
    */
   const double physical_density = hydro_get_physical_density(p, cosmo);
+  const double nH = hydro_props->hydrogen_mass_fraction * physical_density /
+                    phys_const->const_proton_mass;
 
   /* Get the pressure used for the star formation, this is
    * the maximum the physical pressure of the particle and the
@@ -413,8 +415,7 @@ INLINE static void star_formation_compute_SFR_pressure_law(
 
   /* Calculate the specific star formation rate */
   double SFRpergasmass;
-  if (physical_density < starform->pressure_law.KS_high_den_thresh *
-                             phys_const->const_proton_mass) {
+  if (nH < starform->pressure_law.KS_high_den_thresh) {
 
     SFRpergasmass = starform->pressure_law.SF_normalization *
                     pow(pressure, starform->pressure_law.SF_power_law);
@@ -711,15 +712,20 @@ INLINE static void starformation_init_backend(
     starform->pressure_law.SF_high_den_power_law =
         (starform->pressure_law.KS_high_den_power_law - 1.) / 2.;
 
-    /* Read the high density criteria for the KS law in number density per cm^3
+    /* Read the high density criterion for the KS law in number density per cm^3
      */
     starform->pressure_law.KS_high_den_thresh_HpCM3 = parser_get_param_double(
         parameter_file, "EAGLEStarFormation:KS_high_density_threshold_H_p_cm3");
 
-    /* Transform the KS high density criteria to simulation units */
+    /* Transform the KS high density criterion to simulation units */
     starform->pressure_law.KS_high_den_thresh =
         starform->pressure_law.KS_high_den_thresh_HpCM3 *
         number_density_from_cgs;
+
+    /* Convert to a mass density assuming primordial abundances */
+    const float KS_high_den_thresh_rho =
+        starform->pressure_law.KS_high_den_thresh *
+        phys_const->const_proton_mass / hydro_props->hydrogen_mass_fraction;
 
     /* Pressure on the entropy floor at the high-density threshold
      *
@@ -727,9 +733,8 @@ INLINE static void starformation_init_backend(
      * the floor is applied no matter what redshift we are at. This will
      * always be a density above the comoving density threashold for the floor
      * to be used.*/
-    const double EOS_high_den_pressure =
-        entropy_floor_gas_pressure(starform->pressure_law.KS_high_den_thresh,
-                                   FLT_MAX, cosmo, entropy_floor);
+    const double EOS_high_den_pressure = entropy_floor_gas_pressure(
+        KS_high_den_thresh_rho, FLT_MAX, cosmo, entropy_floor);
 
     /* Calculate the KS high density normalization
      * We want the SF law to be continous so the normalisation of the second
