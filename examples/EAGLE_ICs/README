@@ -45,6 +45,10 @@ the following changes have been made (at standard resolution):
    at least 100 (was 57.7).
  - Particles with a density above 10^5 cm^-3 are not turned into
    stars instantaneously any more.
+ - The normalisation of the SF law at high densities has been corrected
+   from the original code where the break in slope of the K-S law
+   also led to a jump. This change of slope is not used anymore (was
+   a K-S slope of 2 at volume particle densities > 10^3 cm^-3).
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
  - The SNII feedback heats the particle closest to the star particle
    (was a random set of particles in the kernel).
@@ -78,6 +82,8 @@ the following changes have been made (at standard resolution):
  - The angular momentum term in the BH accretion model of
    Rosas-Guevara et al. (2015) is now switched off.
  - The coupling efficency of the BH feedback is now 0.1 (was 0.15).
+ - The BHs compute a time-step length based on their accretion rate
+   with a minimum time-step length of 10^5 years.
  - The AGN feedback heats the particles closest to the BH particle
    (was a random set of particles in the kernel).
  - The AGN does not use a combination of probability and reservoir
