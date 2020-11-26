@@ -41,6 +41,9 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  /*! Gravitational acceleration at the end of the last step */
+  float a_grav[3];
+
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
