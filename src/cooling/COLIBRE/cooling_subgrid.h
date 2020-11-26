@@ -430,7 +430,7 @@ double compute_subgrid_property(
 
     for (int i = iden + 1; i < colibre_cooling_N_density; i++) {
 
-      float log10_Peq_current;
+      float log10_Peq_current, log10_n_at_Peq;
 
       if ((log10_Teq <= log10_T) &&
           (logZZsol <=
@@ -458,17 +458,27 @@ double compute_subgrid_property(
 
       if (log10_Peq_current >= log10_P_cgs) {
 
-        /* first density bin where log P_eq >= log P_SPH
-         * the solution is therefore between log10_Peq_prev and
-         * log10_Peq_current */
+        if (log10_Peq_current == log10_Peq_prev) {
 
-        const float delta_P_eq = (log10_P_cgs - log10_Peq_prev) /
-                                 (log10_Peq_current - log10_Peq_prev);
+          /* the interpolated pressure exactly equals the input pressure
+           * on the first density iteration (where log10_Peq_prev =
+           * log10_P_cgs), no interpolation necessary */
 
-        /* Interpolate to get the density at equilibrium */
-        const float log10_n_at_Peq =
-            cooling->nH[i - 1] +
-            delta_P_eq * (cooling->nH[i] - cooling->nH[i - 1]);
+          log10_n_at_Peq = cooling->nH[i];
+
+        } else {
+
+          /* first density bin where log P_eq >= log P_SPH
+           * the solution is therefore between log10_Peq_prev and
+           * log10_Peq_current */
+
+          const float delta_P_eq = (log10_P_cgs - log10_Peq_prev) /
+                                   (log10_Peq_current - log10_Peq_prev);
+
+          /* Interpolate to get the density at equilibrium */
+          log10_n_at_Peq = cooling->nH[i - 1] +
+                           delta_P_eq * (cooling->nH[i] - cooling->nH[i - 1]);
+        }
 
         /* Return case 5:
          * SPH density and temperatures are projected onto the thermal
