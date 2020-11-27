@@ -286,14 +286,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     float hi_3 = hi * hi * hi;
     float hj_3 = hj * hj * hj;
-    float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
+    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;*/
 
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
-    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);
+    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
+    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);*/
+    
+    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * hi_3);
+    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / ((4. * M_PI / 3. ) * hj_3);
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
@@ -305,6 +308,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
 
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
+        
+        /* If part j is not within the timestep, let's wake it up for the SIDM kick */
+        timestep_sync_dmpart(pj);
+        
+        /* If part i is not within the timestep, let's wake it up for the SIDM kick */
+        timestep_sync_dmpart(pi);
         
         /* Doing SIDM kick */
         sidm_do_kick(pi, pj, ti_current, sidm_history);
@@ -349,10 +358,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     float hi_3 = hi * hi * hi;
-    float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
+    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;*/
 
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
+    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);*/
+    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * hi_3);
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
@@ -363,8 +373,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > rand) {
         
-        /* Part j is not within the timestep. Let's wake it up for the SIDM kick */
+        /* If part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
+        
+        /* If part i is not within the timestep, let's wake it up for the SIDM kick */
+        timestep_sync_dmpart(pi);
         
         /* Doing SIDM kick */
         sidm_do_kick(pi, pj, ti_current, sidm_history);

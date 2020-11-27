@@ -22,8 +22,6 @@
 
 /* Local headers. */
 #include "active.h"
-#include "dark_matter.h"
-#include "dark_matter_iact.h"
 #include "cell.h"
 #include "engine.h"
 #include "runner.h"
@@ -31,12 +29,8 @@
 #include "timers.h"
 #include "timestep_limiter_iact.h"
 
-
-/* Import the dark matter density loop functions. */
-#define FUNCTION dark_matter_density
-#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
-#include "runner_doiact_functions_dark_matter.h"
+/* Import the limiter loop functions. */
+#define FUNCTION dm_limiter
+#include "runner_doiact_functions_dark_matter_limiter.h"
 #undef FUNCTION
-#undef FUNCTION_TASK_LOOP
-
 

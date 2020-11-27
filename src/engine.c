@@ -1699,8 +1699,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 
   if (e->policy & engine_policy_timestep_limiter) {
-    n1 += 18;
-    n2 += 1;
+    n1 += 36;
+    n2 += 2;
   }
   if (e->policy & engine_policy_self_gravity) {
     n1 += 125;
@@ -2181,7 +2181,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_kick1 || t->type == task_type_sidm_kick || t->type == task_type_kick2 ||
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
-        t->type == task_type_timestep_sync || 
+        t->type == task_type_timestep_sync ||
+        t->type == task_type_timestep_dark_matter_limiter ||
+        t->type == task_type_timestep_dark_matter_sync ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
@@ -2194,6 +2196,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
         t->type == task_type_bh_out || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
+        t->subtype == task_subtype_dark_matter_limiter ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_sidm ||
         t->subtype == task_subtype_stars_feedback ||
@@ -2218,6 +2221,7 @@ void engine_skip_force_and_kick(struct engine *e) {
   /* Run through the cells and clear some flags. */
   space_map_cells_pre(e->s, 1, cell_clear_drift_flags, NULL);
   space_map_cells_pre(e->s, 1, cell_clear_limiter_flags, NULL);
+  space_map_cells_pre(e->s, 1, cell_clear_dm_limiter_flags, NULL);
 }
 
 /**

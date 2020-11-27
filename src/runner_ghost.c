@@ -1538,6 +1538,8 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                     if (((p->h >= dark_matter_h_max) && (f < 0.f)) ||
                         ((p->h <= dark_matter_h_min) && (f > 0.f))) {
                         
+                        timestep_limiter_prepare_sidm(p);
+                        
                         /* Ok, we are done with this particle */
                         continue;
                     }
@@ -1558,11 +1560,6 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                                 n_target, left[i], right[i]);
                     }
                     
-/*#ifdef SWIFT_DEBUG_CHECKS
-                    if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
-                        error(
-                              "Smoothing length correction not going in the right direction");
-#endif*/
                     
                     /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
                     h_new = min(h_new, 2.f * h_old);
@@ -1635,6 +1632,9 @@ void runner_do_dark_matter_density_ghost(struct runner *r, struct cell *c) {
                 
                 /* Check if h_max is increased */
                 h_max = max(h_max, p->h);
+                
+                /* Preparing limiter task */
+                timestep_limiter_prepare_sidm(p);
                 
             }
             

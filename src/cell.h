@@ -345,7 +345,9 @@ enum cell_flags {
   cell_flag_do_dark_matter_drift = (1UL << 17),
   cell_flag_do_dark_matter_sub_drift = (1UL << 18),
   cell_flag_do_dark_matter_sync = (1UL << 19),
-  cell_flag_do_dark_matter_sub_sync = (1UL << 20)
+  cell_flag_do_dark_matter_sub_sync = (1UL << 20),
+  cell_flag_do_dark_matter_limiter = (1UL << 21),
+  cell_flag_do_dark_matter_sub_limiter = (1UL << 22)
 };
 
 /**
@@ -736,8 +738,18 @@ struct cell {
         /*! Linked list of the tasks computing this cell's dark matter density. */
         struct link *density;
         
+        /*! Linked list of the tasks computing this cell's limiter. */
+        struct link *limiter;
+        
         /*! kick due to DM-DM interactions */
         struct task *sidm_kick;
+        
+        /*! The task to limit the time-step of inactive particles */
+        struct task *timestep_limiter;
+        
+        /*! The task to synchronize the time-step of inactive particles hit by
+         * feedback */
+        struct task *timestep_sync;
         
         /*! Last (integer) time the cell's spart were drifted forward in time. */
         integertime_t ti_old_part;
@@ -1115,7 +1127,8 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              const int with_timestep_sync);
 void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
-                                             const int with_timestep_sync);
+                                             const int with_timestep_sync,
+                                             const int with_timestep_limiter);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
@@ -1130,8 +1143,10 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_dark_matter_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
+void cell_activate_dm_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
+void cell_clear_dm_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);

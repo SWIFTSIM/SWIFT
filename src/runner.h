@@ -110,6 +110,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer);
+void runner_do_dm_limiter(struct runner *r, struct cell *c, int force);
 void runner_do_sync(struct runner *r, struct cell *c, int force, int timer);
 void runner_do_sync_dmparts(struct runner *r, struct cell *c, int force);
 void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer);

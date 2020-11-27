@@ -971,6 +971,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c) {
     
     struct scheduler *s = &e->sched;
+    const int with_timestep_limiter = (e->policy & engine_policy_timestep_limiter);
+    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
     
     /* Are we in a super-cell ? */
     if (c->grav.super == c) {
@@ -991,21 +993,37 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             c->dark_matter.ghost = scheduler_addtask(s, task_type_dark_matter_ghost, task_subtype_none, 0, 0, c, NULL);
 
             /* Link implicit tasks? */
-            /*scheduler_addunlock(s, c->dark_matter.drift, c->dark_matter.ghost);
-            scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm_kick);*/
             scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
             
-            /*scheduler_addunlock(s, c->dark_matter.ghost, c->dark_matter.sidm_kick);
-            scheduler_addunlock(s, c->dark_matter.sidm_kick, c->dark_matter.drift);
-            scheduler_addunlock(s, c->dark_matter.drift, c->super->kick2);*/
+            /* Time-step limiter */
+            if (with_timestep_limiter) {
+                
+                c->dark_matter.timestep_limiter = scheduler_addtask(s, task_type_timestep_dark_matter_limiter, task_subtype_none, 0, 0, c, NULL);
+                
+                scheduler_addunlock(s, c->super->kick2, c->dark_matter.timestep_limiter);
+                scheduler_addunlock(s, c->dark_matter.timestep_limiter, c->super->timestep);
+            }
             
+            /* Time-step synchronization */
+            if (with_timestep_sync) {
+                
+                c->dark_matter.timestep_sync = scheduler_addtask(s, task_type_timestep_dark_matter_sync,
+                                                     task_subtype_none, 0, 0, c, NULL);
+                
+                scheduler_addunlock(s, c->super->kick2, c->dark_matter.timestep_sync);
+                scheduler_addunlock(s, c->dark_matter.timestep_sync, c->super->timestep);
+            }
+            
+            if (with_timestep_limiter && with_timestep_sync) {
+                
+                scheduler_addunlock(s, c->dark_matter.timestep_limiter, c->dark_matter.timestep_sync);
+            }
         }
     } else { /* We are above the super-cell so need to go deeper */
         
         /* Recurse. */
         /*if (c->split && (c->dark_matter.count_total > engine_max_dmparts_per_ghost))*/
         /* Recurse but not below the maximal splitting depth */
-        /*if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav))*/
         if (c->split)
             for (int k = 0; k < 8; k++)
                 if (c->progeny[k] != NULL)
@@ -1645,6 +1663,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->dark_matter.density, t);
       } else if (t_subtype == task_subtype_sidm) {
         engine_addlink(e, &ci->dark_matter.sidm, t);
+      } else if (t_subtype == task_subtype_dark_matter_limiter) {
+          engine_addlink(e, &ci->dark_matter.limiter, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1673,6 +1693,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_sidm) {
           engine_addlink(e, &ci->dark_matter.sidm, t);
           engine_addlink(e, &cj->dark_matter.sidm, t);
+      } else if (t_subtype == task_subtype_dark_matter_limiter) {
+          engine_addlink(e, &ci->dark_matter.limiter, t);
+          engine_addlink(e, &cj->dark_matter.limiter, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -1705,6 +1728,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->dark_matter.density, t);
       } else if (t_subtype == task_subtype_sidm) {
           engine_addlink(e, &ci->dark_matter.sidm, t);
+      } else if (t_subtype == task_subtype_dark_matter_limiter) {
+          engine_addlink(e, &ci->dark_matter.limiter, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -1733,6 +1758,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_sidm) {
           engine_addlink(e, &ci->dark_matter.sidm, t);
           engine_addlink(e, &cj->dark_matter.sidm, t);
+      } else if (t_subtype == task_subtype_dark_matter_limiter) {
+          engine_addlink(e, &ci->dark_matter.limiter, t);
+          engine_addlink(e, &cj->dark_matter.limiter, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -1933,196 +1961,6 @@ void engine_link_gravity_tasks(struct engine *e) {
 }
 
 
-/**
- * @brief Creates all the task dependencies for the dark matter
- *
- * @param e The #engine
- */
-void engine_link_dark_matter_tasks(struct engine *e) {
-    
-    struct scheduler *sched = &e->sched;
-    const int nodeID = e->nodeID;
-    const int nr_tasks = sched->nr_tasks;
-    struct task *t_sidm = NULL;
-    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
-    
-    for (int k = 0; k < nr_tasks; k++) {
-        
-        /* Get a pointer to the task. */
-        struct task *t = &sched->tasks[k];
-        
-        if (t->type == task_type_none) continue;
-        
-        /* Get the cells we act on */
-        struct cell *ci = t->ci;
-        struct cell *cj = t->cj;
-        const enum task_types t_type = t->type;
-        const enum task_subtypes t_subtype = t->subtype;
-        const long long flags = t->flags;
-        
-        /* Pointers to the parent cells for tasks going up and down the tree
-         * In the case where we are at the super-level we don't
-         * want the parent as no tasks are defined above that level. */
-        struct cell *ci_parent, *cj_parent;
-        if (ci->parent != NULL && ci->grav.super != ci)
-            ci_parent = ci->parent;
-        else
-            ci_parent = ci;
-        
-        if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
-            cj_parent = cj->parent;
-        else
-            cj_parent = cj;
-        
-        /* Node ID (if running with MPI) */
-#ifdef WITH_MPI
-        const int ci_nodeID = ci->nodeID;
-        const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-        const int ci_nodeID = nodeID;
-        const int cj_nodeID = nodeID;
-#endif
-        
-        /* Self-interaction for DM density? */
-        if (t_type == task_type_self && t_subtype == task_subtype_dark_matter_density) {
-            
-#ifdef SWIFT_DEBUG_CHECKS
-            if (ci_nodeID != nodeID) error("Non-local self task");
-#endif
-            /* Make the self-density tasks depend on the drift only. */
-            scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
-
-            /* density --> ghost --> sidm --> sidm_kick */
-            scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
-
-            /* task for the second loop */
-            t_sidm = scheduler_addtask(sched, task_type_self, task_subtype_sidm, flags, 0, ci_parent, NULL);
-
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
-            
-            scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
-            scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-            
-            if (with_timestep_sync) {
-                scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
-            }
-        }
-        
-        /* Otherwise, pair interaction? */
-        else if (t_type == task_type_pair && t_subtype == task_subtype_dark_matter_density) {
-            
-            /* task for the second loop */
-            t_sidm = scheduler_addtask(sched, task_type_pair, task_subtype_sidm, flags, 0, ci_parent, cj_parent);
-            
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
-            engine_addlink(e, &cj_parent->dark_matter.sidm, t_sidm);
-
-            
-            if (ci_nodeID == nodeID) {
-                
-                scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
-                
-                /* density --> ghost --> sidm --> sidm_kick */
-                scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
-                scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
-                scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-                
-                if (with_timestep_sync) {
-                    scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
-                }
-                
-            }
-            if (cj_nodeID == nodeID) {
-                
-                if (ci_parent != cj_parent) { /* Avoid double unlock */
-                    
-                    scheduler_addunlock(sched, cj->grav.super->dark_matter.drift, t);
-                    
-                    /* density --> ghost --> sidm --> sidm_kick */
-                    scheduler_addunlock(sched, t, cj->grav.super->dark_matter.ghost);
-                    
-                    scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
-                    scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
-                    
-                    if (with_timestep_sync) {
-                        scheduler_addunlock(sched, t, cj->grav.super->timestep_sync);
-                    }
-
-                }
-            }
-        }
-        
-        /* Otherwise, sub-self interaction? */
-        else if (t_type == task_type_sub_self && t_subtype == task_subtype_dark_matter_density) {
-            
-#ifdef SWIFT_DEBUG_CHECKS
-            if (ci_nodeID != nodeID) error("Non-local sub-self task");
-#endif
-            scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
-
-            /* density --> ghost --> sidm --> sidm_kick */
-            scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
-            
-            /* task for the second loop */
-            t_sidm = scheduler_addtask(sched, task_type_sub_self, task_subtype_sidm, flags, 0, ci_parent, NULL);
-            
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
-            
-            scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
-            scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-            
-            if (with_timestep_sync) {
-                scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
-            }
-
-        }
-        
-        /* Otherwise, sub-pair interaction? */
-        else if (t_type == task_type_sub_pair && t_subtype == task_subtype_dark_matter_density) {
-            
-            /* task for the second loop */
-            t_sidm = scheduler_addtask(sched, task_type_sub_pair, task_subtype_sidm, flags, 0, ci_parent, cj_parent);
-            
-            /*Link the tasks to the cells */
-            engine_addlink(e, &ci_parent->dark_matter.sidm, t_sidm);
-            engine_addlink(e, &cj_parent->dark_matter.sidm, t_sidm);
-
-            if (ci_nodeID == nodeID) {
-                
-                scheduler_addunlock(sched, ci->grav.super->dark_matter.drift, t);
-                
-                /* density --> ghost --> sidm --> sidm_kick */
-                scheduler_addunlock(sched, t, ci->grav.super->dark_matter.ghost);
-                scheduler_addunlock(sched, ci->grav.super->dark_matter.ghost, t_sidm);
-                scheduler_addunlock(sched, t_sidm, ci->grav.super->dark_matter.sidm_kick);
-                
-                if (with_timestep_sync) {
-                    scheduler_addunlock(sched, t, ci->grav.super->timestep_sync);
-                }
-
-            }
-            if (cj_nodeID == nodeID) {
-                
-                if (ci_parent != cj_parent) { /* Avoid double unlock */
-                    
-                    scheduler_addunlock(sched, cj->grav.super->dark_matter.drift, t);
-
-                    /* density --> ghost --> sidm --> sidm_kick */
-                    scheduler_addunlock(sched, t, cj->grav.super->dark_matter.ghost);
-                    scheduler_addunlock(sched, cj->grav.super->dark_matter.ghost, t_sidm);
-                    scheduler_addunlock(sched, t_sidm, cj->grav.super->dark_matter.sidm_kick);
-                    
-                    if (with_timestep_sync) {
-                        scheduler_addunlock(sched, t, cj->grav.super->timestep_sync);
-                    }
-                }
-            }
-        }
-    }
-}
 
 /**
  * @brief Creates the dependency network for the dark matter tasks of a given cell.
@@ -2132,15 +1970,20 @@ void engine_link_dark_matter_tasks(struct engine *e) {
  * @param sidm The sidm task to link.
  * @param c The cell.
  */
-static inline void engine_make_dark_matter_loops_dependencies(struct scheduler *sched, struct task *density, struct task *sidm, struct cell *c, int with_timestep_sync) {
+static inline void engine_make_dark_matter_loops_dependencies(struct scheduler *sched, struct task *density, struct task *sidm, struct task *limiter, struct cell *c, int with_timestep_sync, int with_timestep_limiter) {
     
     /* density --> ghost --> sidm --> sidm_kick */
     scheduler_addunlock(sched, density, c->grav.super->dark_matter.ghost);
     scheduler_addunlock(sched, c->grav.super->dark_matter.ghost, sidm);
     scheduler_addunlock(sched, sidm, c->grav.super->dark_matter.sidm_kick);
-    
+
+    if (with_timestep_limiter) {
+        scheduler_addunlock(sched, sidm, limiter);
+        scheduler_addunlock(sched, limiter, c->grav.super->dark_matter.timestep_limiter);
+    }
+
     if (with_timestep_sync) {
-        scheduler_addunlock(sched, density, c->grav.super->timestep_sync);
+        scheduler_addunlock(sched, sidm, c->grav.super->dark_matter.timestep_sync);
     }
 }
 
@@ -2162,7 +2005,9 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
     struct scheduler *sched = &e->sched;
     const int nodeID = e->nodeID;
     const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
+    const int with_timestep_limiter = (e->policy & engine_policy_timestep_limiter);
     struct task *t_sidm = NULL;
+    struct task *t_dm_limiter = NULL;
 
     for (int ind = 0; ind < num_elements; ind++) {
         
@@ -2185,11 +2030,20 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
             /* Task for the second hydro loop, */
             t_sidm = scheduler_addtask(sched, task_type_self, task_subtype_sidm, flags, 0, ci, NULL);
             
+            /* The task for the time-step limiter */
+            if (with_timestep_limiter) {
+                t_dm_limiter = scheduler_addtask(sched, task_type_self, task_subtype_dark_matter_limiter, flags, 0, ci, NULL);
+            }
+
             /* Link the tasks to the cells */
             engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
             
+            if (with_timestep_limiter) {
+                engine_addlink(e, &ci->dark_matter.limiter, t_dm_limiter);
+            }
+
             /* Now, build all the dependencies for the dark matter */
-            engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, ci, with_timestep_sync);
+            engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, t_dm_limiter, ci, with_timestep_sync, with_timestep_limiter);
         }
         
         /* Otherwise, pair interaction? */
@@ -2206,16 +2060,26 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
             /* New task for the SIDM loop */
             t_sidm = scheduler_addtask(sched, task_type_pair, task_subtype_sidm, flags, 0, ci, cj);
             
+            /* The task for the time-step limiter */
+            if (with_timestep_limiter) {
+                t_dm_limiter = scheduler_addtask(sched, task_type_pair, task_subtype_dark_matter_limiter, flags, 0, ci, cj);
+            }
+            
             engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
             engine_addlink(e, &cj->dark_matter.sidm, t_sidm);
+            
+            if (with_timestep_limiter) {
+                engine_addlink(e, &ci->dark_matter.limiter, t_dm_limiter);
+                engine_addlink(e, &cj->dark_matter.limiter, t_dm_limiter);
+            }
             
             /* Now, build all the dependencies for the DM for the cells */
             /* that are local and are not descendant of the same super_grav-cells */
             if (ci->nodeID == nodeID) {
-                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, ci, with_timestep_sync);
+                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, t_dm_limiter, ci, with_timestep_sync, with_timestep_limiter);
             }
             if ((cj->nodeID == nodeID) && (ci->grav.super != cj->grav.super)) {
-                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, cj, with_timestep_sync);
+                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, t_dm_limiter, cj, with_timestep_sync, with_timestep_limiter);
             }
         }
         
@@ -2229,12 +2093,21 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
             /* Start by constructing the task for the second hydro loop */
             t_sidm = scheduler_addtask(sched, task_type_sub_self, task_subtype_sidm, flags, 0, ci, NULL);
             
+            /* The task for the time-step limiter */
+            if (with_timestep_limiter) {
+                t_dm_limiter = scheduler_addtask(sched, task_type_sub_self, task_subtype_dark_matter_limiter, flags, 0, ci, NULL);
+            }
+            
             /* Add the link between the new loop and the cell */
             engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
+            
+            if (with_timestep_limiter) {
+                engine_addlink(e, &ci->dark_matter.limiter, t_dm_limiter);
+            }
 
             /* Now, build all the dependencies for the DM for the cells */
             /* that are local and are not descendant of the same super_hydro-cells */
-            engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, ci, with_timestep_sync);
+            engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, t_dm_limiter, ci, with_timestep_sync, with_timestep_limiter);
         }
         
         /* Otherwise, sub-pair interaction? */
@@ -2251,16 +2124,26 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
             /* New task for the force */
             t_sidm = scheduler_addtask(sched, task_type_sub_pair, task_subtype_sidm, flags, 0, ci, cj);
             
+            /* The task for the time-step limiter */
+            if (with_timestep_limiter) {
+                t_dm_limiter = scheduler_addtask(sched, task_type_sub_pair, task_subtype_dark_matter_limiter, flags, 0, ci, cj);
+            }
+            
             engine_addlink(e, &ci->dark_matter.sidm, t_sidm);
             engine_addlink(e, &cj->dark_matter.sidm, t_sidm);
+            
+            if (with_timestep_limiter) {
+                engine_addlink(e, &ci->dark_matter.limiter, t_dm_limiter);
+                engine_addlink(e, &cj->dark_matter.limiter, t_dm_limiter);
+            }
 
             /* Now, build all the dependencies for the hydro for the cells */
             /* that are local and are not descendant of the same super_hydro-cells */
             if (ci->nodeID == nodeID) {
-                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, ci, with_timestep_sync);
+                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, t_dm_limiter, ci, with_timestep_sync, with_timestep_limiter);
             }
             if ((cj->nodeID == nodeID) && (ci->grav.super != cj->grav.super)) {
-                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, cj, with_timestep_sync);
+                engine_make_dark_matter_loops_dependencies(sched, t, t_sidm, t_dm_limiter, cj, with_timestep_sync, with_timestep_limiter);
             }
         }
     }

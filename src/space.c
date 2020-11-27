@@ -263,6 +263,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->dark_matter.sidm = NULL;
     c->dark_matter.sidm_kick = NULL;
     c->dark_matter.drift = NULL;
+    c->dark_matter.limiter = NULL;
+    c->dark_matter.timestep_limiter = NULL;
+    c->dark_matter.timestep_sync = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -5877,6 +5880,11 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
         
         dark_matter_first_init_dmpart(&dmp[k], sidm_props);
         
+        dmp[k].limiter_data.min_ngb_time_bin = num_time_bins + 1;
+        dmp[k].limiter_data.wakeup = time_bin_not_awake;
+        dmp[k].limiter_data.to_be_synchronized = 0;
+
+        
 #ifdef SWIFT_DEBUG_CHECKS
         if (dmp[k].gpart && dmp[k].gpart->id_or_neg_offset != -(k + delta))
             error("Invalid gpart -> dmpart link");
@@ -5884,7 +5892,6 @@ void space_first_init_dmparts_mapper(void *restrict map_data, int count,
         /* Initialise the time-integration check variables */
         dmp[k].ti_drift = 0;
         dmp[k].ti_kick = 0;
-        dmp[k].to_be_synchronized = 0;
 
 #endif
     }

@@ -44,6 +44,10 @@
 #include "runner_doiact_dark_matter.h"
 #undef FUNCTION
 
+/* Import the limiter loop functions. */
+#define FUNCTION dm_limiter
+#include "runner_doiact_dark_matter_limiter.h"
+#undef FUNCTION
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -189,6 +193,8 @@ void *runner_main(void *data) {
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci);
+          else if (t->subtype == task_subtype_dark_matter_limiter)
+            runner_doself1_branch_dm_limiter(r, ci);
           else if (t->subtype == task_subtype_dark_matter_density)
             runner_doself1_branch_dark_matter_density(r, ci);
           else if (t->subtype == task_subtype_sidm)
@@ -227,6 +233,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj);
+          else if (t->subtype == task_subtype_dark_matter_limiter)
+            runner_dopair1_branch_dm_limiter(r, ci, cj);
           else if (t->subtype == task_subtype_dark_matter_density)
             runner_dopair1_branch_dark_matter_density(r, ci, cj);
           else if (t->subtype == task_subtype_sidm)
@@ -263,6 +271,8 @@ void *runner_main(void *data) {
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, 1);
+          else if (t->subtype == task_subtype_dark_matter_limiter)
+            runner_dosub_self1_dm_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_stars_feedback)
@@ -297,6 +307,8 @@ void *runner_main(void *data) {
             runner_dosub_pair2_force(r, ci, cj, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_dark_matter_limiter)
+            runner_dosub_pair1_dm_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_feedback)
@@ -398,8 +410,13 @@ void *runner_main(void *data) {
         case task_type_timestep_limiter:
           runner_do_limiter(r, ci, 0, 1);
           break;
+        case task_type_timestep_dark_matter_limiter:
+          runner_do_dm_limiter(r, ci, 0);
+          break;
         case task_type_timestep_sync:
           runner_do_sync(r, ci, 0, 1);
+          break;
+        case task_type_timestep_dark_matter_sync:
           runner_do_sync_dmparts(r, ci, 0);
           break;
 #ifdef WITH_MPI

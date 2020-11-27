@@ -41,7 +41,7 @@ __attribute__((always_inline)) INLINE static void timestep_sync_part(
 __attribute__((always_inline)) INLINE static void timestep_sync_dmpart(
     struct dmpart *p) {
     
-    p->to_be_synchronized = 1;
+    p->limiter_data.to_be_synchronized = 1;
 }
 
 #endif /* SWIFT_TIMESTEP_SYNC_PART_H */

@@ -1570,7 +1570,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
         else if (t->subtype == task_subtype_dark_matter_density ||
-                 t->subtype == task_subtype_sidm)
+                 t->subtype == task_subtype_sidm ||
+                 t->subtype == task_subtype_dark_matter_limiter)
           cost = 1.f * (wscale * dmcount_i) * dmcount_i;
         else if (t->subtype == task_subtype_stars_density ||
                  t->subtype == task_subtype_stars_feedback)
@@ -1601,7 +1602,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * (wscale * gcount_i) * gcount_j;
 
         } else if (t->subtype == task_subtype_dark_matter_density ||
-                   t->subtype == task_subtype_sidm) {
+                   t->subtype == task_subtype_sidm ||
+                   t->subtype == task_subtype_dark_matter_limiter) {
             if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
                 cost = 3.f * ( wscale * dmcount_i ) * dmcount_j * sid_scale[t->flags];
             else
@@ -1655,7 +1657,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->flags < 0) error("Negative flag value!");
 #endif
         if (t->subtype == task_subtype_dark_matter_density ||
-            t->subtype == task_subtype_sidm) {
+            t->subtype == task_subtype_sidm ||
+            t->subtype == task_subtype_dark_matter_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * dmcount_i) * dmcount_j * sid_scale[t->flags];
           } else {
@@ -1713,7 +1716,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_dark_matter_density ||
-                   t->subtype == task_subtype_sidm) {
+                   t->subtype == task_subtype_sidm ||
+                   t->subtype == task_subtype_dark_matter_limiter) {
           cost = 1.f * (wscale * dmcount_i) * dmcount_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
@@ -1808,8 +1812,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_timestep_limiter:
         cost = wscale * count_i;
         break;
+      case task_type_timestep_dark_matter_limiter:
+        cost = wscale * dmcount_i;
+        break;
+      case task_type_timestep_dark_matter_sync:
+        cost = wscale * dmcount_i;
+        break;
       case task_type_timestep_sync:
-        cost = wscale * (count_i + dmcount_i);
+        cost = wscale * count_i;
         break;
       case task_type_send:
         if (count_i < 1e5)
@@ -1962,7 +1972,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_external_grav ||
             t->subtype == task_subtype_sidm ||
-            t->subtype == task_subtype_dark_matter_density)
+            t->subtype == task_subtype_dark_matter_density ||
+            t->subtype == task_subtype_dark_matter_limiter)
           qid = t->ci->grav.super->owner;
         else
           qid = t->ci->hydro.super->owner;
@@ -1978,6 +1989,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_drift_dmpart:
       case task_type_dark_matter_ghost:
       case task_type_sidm_kick:
+      case task_type_timestep_dark_matter_limiter:
+      case task_type_timestep_dark_matter_sync:
         qid = t->ci->grav.super->owner;
         break;
       case task_type_kick1:

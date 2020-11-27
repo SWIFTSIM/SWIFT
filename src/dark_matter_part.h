@@ -62,9 +62,6 @@ struct dmpart {
   /*! Particle time bin */
   timebin_t time_bin;
     
-  /* Syncronization flag */
-  char to_be_synchronized;
-    
 #ifdef SWIFT_DEBUG_CHECKS
     
   /* Time of the last drift */
@@ -98,6 +95,22 @@ struct dmpart {
       float rho_dh;
       
   } density;
+    
+    /**
+     * @brief #part-carried quantities for the time-step limiter
+     */
+  struct {
+        
+        /* Need waking-up ? */
+        timebin_t wakeup;
+        
+        /*! Minimal time-bin across all neighbours */
+        timebin_t min_ngb_time_bin;
+        
+        /* Do we want this particle to be synched back on the time-line? */
+        char to_be_synchronized;
+        
+    } limiter_data;
 
   /*! Add self-interacting DM specific stuff. */
   struct sidm_dmpart_data sidm_data;
