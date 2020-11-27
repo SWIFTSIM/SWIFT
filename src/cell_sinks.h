@@ -48,6 +48,9 @@ struct cell_sinks {
   /*! Max cut off radius in this cell. */
   float r_cut_max;
 
+  /*! Max cut off radius of active particles in this cell. */
+  float r_cut_max_active;
+
   /*! Values of r_cut_max before the drifts, used for sub-cell tasks. */
   float r_cut_max_old;
 

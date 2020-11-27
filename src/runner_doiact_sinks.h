@@ -52,9 +52,12 @@
 #define _IACT_SINK(f) PASTE(runner_iact_nonsym_sinks, f)
 #define IACT_SINK _IACT_SINK(FUNCTION)
 
-void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c);
-void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj);
+void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c, const int limit_min,
+                          const int limit_max);
+void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int limit_min, const int limit_max);
 
-void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer);
+void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci,
+                       int recurse_below_h_max, const int gettimer);
 void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
-                       int gettimer);
+                       int recurse_below_h_max, const int gettimer);

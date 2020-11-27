@@ -745,6 +745,12 @@ void engine_config(int restart, int fof, struct engine *e,
     space_recurse_size_pair_black_holes = parser_get_opt_param_int(
         params, "Scheduler:cell_recurse_size_pair_black_holes",
         space_recurse_size_pair_black_holes);
+    space_recurse_size_self_sinks = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_self_sinks",
+        space_recurse_size_self_sinks);
+    space_recurse_size_pair_sinks = parser_get_opt_param_int(
+        params, "Scheduler:cell_recurse_size_pair_sinks",
+        space_recurse_size_pair_sinks);
 
     space_extra_parts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_parts", space_extra_parts);

@@ -33,7 +33,8 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_SINKS(struct runner *r, struct cell *c, const int limit_min_h,
+                   const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -55,17 +56,25 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
   struct sink *restrict sinks = c->sinks.parts;
   struct part *restrict parts = c->hydro.parts;
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Loop over the sinks in ci. */
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith sink in ci. */
     struct sink *restrict si = &sinks[sid];
+    const float ri = si->r_cut;
+    const float ri2 = ri * ri;
 
     /* Skip inactive particles */
     if (!sink_is_active(si, e)) continue;
 
-    const float ri = si->r_cut;
-    const float ri2 = ri * ri;
+    /* Skip particles not in the range of h we care about */
+    if (ri >= h_max) continue;
+    if (ri < h_min) continue;
+
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
                           (float)(si->x[2] - c->loc[2])};
@@ -84,7 +93,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                             (float)(pj->x[1] - c->loc[1]),
                             (float)(pj->x[2] - c->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -108,7 +117,8 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
  * @param cj The second #cell
  */
 void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
-                                 struct cell *restrict cj) {
+                                 struct cell *restrict cj,
+                                 const int limit_min_h, const int limit_max_h) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -139,6 +149,10 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Loop over the sinks in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
@@ -154,6 +168,15 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ri > ci->sinks.r_cut_max_active)
+      error("Particle has h larger than h_max_active");
+#endif
+
+    /* Skip particles not in the range of h we care about */
+    if (ri >= h_max) continue;
+    if (ri < h_min) continue;
+
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
 
@@ -168,7 +191,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                             (float)(pj->x[1] - cj->loc[1]),
                             (float)(pj->x[2] - cj->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -193,9 +216,10 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param sid The direction of the pair.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
-                        const int sid, const double *shift) {
-
+void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *restrict ci,
+                        struct cell *restrict cj, const int limit_min_h,
+                        const int limit_max_h, const int sid,
+                        const double shift[3]) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -211,6 +235,10 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                           (cj->hydro.count != 0) && cell_is_active_sinks(ci, e);
   const int do_cj_sinks = (cj->nodeID == e->nodeID) && (cj->sinks.count != 0) &&
                           (ci->hydro.count != 0) && cell_is_active_sinks(cj, e);
+
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   if (do_ci_sinks) {
 
@@ -247,6 +275,10 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
 
       /* Skip inactive particles */
       if (!sink_is_active(spi, e)) continue;
+
+      /* Skip particles not in the range of h we care about */
+      if (ri >= h_max) continue;
+      if (ri < h_min) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -358,6 +390,10 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Skip inactive particles */
       if (!sink_is_active(spj, e)) continue;
 
+      /* Skip particles not in the range of h we care about */
+      if (rj >= h_max) continue;
+      if (rj < h_min) continue;
+
       /* Compute distance from the other cell. */
       const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
       float dist = px[0] * runner_shift[sid][0] + px[1] * runner_shift[sid][1] +
@@ -436,14 +472,15 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
 }
 
 void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
-                         struct cell *restrict cj, int timer) {
+                         struct cell *restrict cj, const int limit_min_h,
+                         const int limit_max_h) {
 
   const int do_ci_sinks = ci->nodeID == r->e->nodeID;
   const int do_cj_sinks = cj->nodeID == r->e->nodeID;
   if (do_ci_sinks && ci->sinks.count != 0 && cj->hydro.count != 0)
-    DO_NONSYM_PAIR1_SINKS_NAIVE(r, ci, cj);
+    DO_NONSYM_PAIR1_SINKS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
   if (do_cj_sinks && cj->sinks.count != 0 && ci->hydro.count != 0)
-    DO_NONSYM_PAIR1_SINKS_NAIVE(r, cj, ci);
+    DO_NONSYM_PAIR1_SINKS_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
 }
 
 /**
@@ -454,7 +491,8 @@ void DOPAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c,
+                          const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -465,10 +503,18 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
   if (!cell_is_active_sinks(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->sinks.r_cut_max_old > c->dmin)
-    error("Cell smaller than the cut off radius");
+  if (!limit_max_h && c->sinks.r_cut_max_active > c->dmin)
+    error("Cell smaller than smoothing length");
 
-  DOSELF1_SINKS(r, c, 1);
+  /* Did we mess up the recursion? */
+  if (limit_min_h && !limit_max_h)
+    error("Fundamental error in the recursion logic");
+
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(c, e) || !cell_are_spart_drifted(c, e))
+    error("Interacting undrifted cell.");
+
+  DOSELF1_SINKS(r, c, limit_min_h, limit_max_h);
 }
 
 /**
@@ -481,7 +527,8 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -519,9 +566,9 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
     error("Interacting unsorted cells.");
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_SINKS
-  DOPAIR1_SINKS_NAIVE(r, ci, cj, 1);
+  DOPAIR1_SINKS_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
-  DO_SYM_PAIR1_SINKS(r, ci, cj, sid, shift);
+  DO_SYM_PAIR1_SINKS(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #endif
 }
 
@@ -537,12 +584,14 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
  * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
-                       int gettimer) {
-
-  TIMER_TIC;
+                       int recurse_below_h_max, const int gettimer) {
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
+
+  /* Get the type of pair and flip ci/cj if needed. */
+  double shift[3];
+  const int sid = space_getsid(s, &ci, &cj, shift);
 
   /* Should we even bother? */
   const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
@@ -551,64 +600,48 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                            cell_is_active_sinks(cj, e);
   if (!should_do_ci && !should_do_cj) return;
 
-  /* Get the type of pair and flip ci/cj if needed. */
-  double shift[3];
-  const int sid = space_getsid(s, &ci, &cj, shift);
+  /* We reached a leaf OR a cell small enough to be processed quickly */
+  if (!ci->split || ci->sinks.count < space_recurse_size_pair_sinks ||
+      !cj->split || cj->sinks.count < space_recurse_size_pair_sinks) {
 
-  /* Recurse? */
-  if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-      cell_can_recurse_in_pair_sinks_task(cj, ci)) {
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOPAIR1_BRANCH_SINKS(r, ci, cj, /*limit_h_min=*/0,
+                         /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Both ci and cj are split */
+
+    /* Should we change the recursion regime because we encountered a large
+       particle? */
+    if (!recurse_below_h_max && (!cell_can_recurse_in_pair_sinks_task1(ci) ||
+                                 !cell_can_recurse_in_pair_sinks_task1(cj))) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOPAIR1_BRANCH_SINKS(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    const struct cell_split_pair *const csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
-      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_SINKS(r, ci->progeny[pid], cj->progeny[pjd], 0);
-    }
-  }
-
-  /* Otherwise, compute the pair directly. */
-  else {
-
-    const int do_ci_sinks = ci->nodeID == e->nodeID;
-    const int do_cj_sinks = cj->nodeID == e->nodeID;
-    const int do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
-                      cell_is_active_sinks(ci, e) && do_ci_sinks;
-    const int do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
-                      cell_is_active_sinks(cj, e) && do_cj_sinks;
-
-    if (do_ci) {
-
-      /* Make sure both cells are drifted to the current timestep. */
-      if (!cell_are_sink_drifted(ci, e))
-        error("Interacting undrifted cells (sinks).");
-
-      if (!cell_are_part_drifted(cj, e))
-        error("Interacting undrifted cells (parts).");
-
-      /* Do any of the cells need to be sorted first? */
-      if (!(cj->hydro.sorted & (1 << sid)) ||
-          cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-        error("Interacting unsorted cell (parts). %i", cj->nodeID);
-    }
-
-    if (do_cj) {
-
-      /* Make sure both cells are drifted to the current timestep. */
-      if (!cell_are_part_drifted(ci, e))
-        error("Interacting undrifted cells (parts).");
-
-      if (!cell_are_sink_drifted(cj, e))
-        error("Interacting undrifted cells (sinks).");
-
-      /* Do any of the cells need to be sorted first? */
-      if (!(ci->hydro.sorted & (1 << sid)) ||
-          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        error("Interacting unsorted cell (parts).");
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
+        DOSUB_PAIR1_SINKS(r, ci->progeny[pid], cj->progeny[pjd],
+                          recurse_below_h_max,
+                          /*gettimer=*/0);
       }
     }
-
-    if (do_ci || do_cj) DOPAIR1_BRANCH_SINKS(r, ci, cj);
   }
 }
 
@@ -619,37 +652,61 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF1_SINKS(struct runner *r, struct cell *c,
+                       int recurse_below_h_max, const int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->nodeID != engine_rank)
+  if (c->nodeID != engine_rank)
     error("This function should not be called on foreign cells");
 #endif
 
   /* Should we even bother? */
-  if (ci->hydro.count == 0 || ci->sinks.count == 0 ||
-      !cell_is_active_sinks(ci, r->e))
+  if (c->hydro.count == 0 || c->sinks.count == 0 ||
+      !cell_is_active_sinks(c, r->e))
     return;
 
-  /* Recurse? */
-  if (cell_can_recurse_in_self_sinks_task(ci)) {
+  /* We reached a leaf OR a cell small enough to process quickly */
+  if (!c->split || c->sinks.count < space_recurse_size_self_sinks) {
 
-    /* Loop over all progeny. */
-    for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL) {
-        DOSUB_SELF1_SINKS(r, ci->progeny[k], 0);
-        for (int j = k + 1; j < 8; j++)
-          if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1_SINKS(r, ci->progeny[k], ci->progeny[j], 0);
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOSELF1_BRANCH_SINKS(r, c, /*limit_h_min=*/0,
+                         /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Should we change the recursion regime because we encountered a large
+       particle at this level? */
+    if (!recurse_below_h_max && !cell_can_recurse_in_self_sinks_task1(c)) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOSELF1_BRANCH_SINKS(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        DOSUB_SELF1_SINKS(r, c->progeny[k], recurse_below_h_max,
+                          /*gettimer=*/0);
+        for (int j = k + 1; j < 8; j++) {
+          if (c->progeny[j] != NULL) {
+            DOSUB_PAIR1_SINKS(r, c->progeny[k], c->progeny[j],
+                              recurse_below_h_max,
+                              /*gettimer=*/0);
+          }
+        }
       }
-  }
-
-  /* Otherwise, compute self-interaction. */
-  else {
-
-    /* Drift the cell to the current timestep if needed. */
-    if (!cell_are_sink_drifted(ci, r->e)) error("Interacting undrifted cell.");
-
-    DOSELF1_BRANCH_SINKS(r, ci);
+    }
   }
 }

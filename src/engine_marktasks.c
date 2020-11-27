@@ -201,7 +201,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_sink_compute_formation) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
-          cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
         }
       }
 
@@ -583,7 +582,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_sink_compute_formation) {
-          cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
+          scheduler_activate(s, t);
         }
       }
 

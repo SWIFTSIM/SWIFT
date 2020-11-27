@@ -784,6 +784,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_r_max = 0.f;
+  float cell_r_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_sink_drift));
@@ -824,11 +825,13 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
         /* Update */
         dx_max = max(dx_max, cp->sinks.dx_max_part);
         cell_r_max = max(cell_r_max, cp->sinks.r_cut_max);
+        cell_r_max_active = max(cell_r_max_active, cp->sinks.r_cut_max_active);
       }
     }
 
     /* Store the values */
     c->sinks.r_cut_max = cell_r_max;
+    c->sinks.r_cut_max_active = cell_r_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -913,6 +916,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (sink_is_active(sink, e)) {
         sink_init_sink(sink);
+
+        cell_r_max_active = max(cell_r_max_active, sink->r_cut);
       }
     }
 
@@ -921,6 +926,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->sinks.r_cut_max = cell_r_max;
+    c->sinks.r_cut_max_active = cell_r_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */

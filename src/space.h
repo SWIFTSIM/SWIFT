@@ -66,6 +66,8 @@ struct hydro_props;
 #define space_recurse_size_pair_stars_default 100
 #define space_recurse_size_self_black_holes_default 100
 #define space_recurse_size_pair_black_holes_default 100
+#define space_recurse_size_self_sinks_default 100
+#define space_recurse_size_pair_sinks_default 100
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -96,6 +98,8 @@ extern int space_recurse_size_self_stars;
 extern int space_recurse_size_pair_stars;
 extern int space_recurse_size_self_black_holes;
 extern int space_recurse_size_pair_black_holes;
+extern int space_recurse_size_self_sinks;
+extern int space_recurse_size_pair_sinks;
 
 /**
  * @brief The space in which the cells and particles reside.
