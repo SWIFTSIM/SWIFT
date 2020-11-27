@@ -81,9 +81,9 @@
 
 /* Check whether this scheme implements the density checks */
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-#if !defined(GADGET2_SPH) && !defined(SPHENIX_SPH)
+#if !defined(SPHENIX_SPH)
 #error \
-    "Can only use the hydro brute-force density checks with the Gadget2 and SPHENIX hydro schemes."
+    "Can only use the hydro brute-force density checks with the SPHENIX hydro scheme."
 #endif
 #endif
 

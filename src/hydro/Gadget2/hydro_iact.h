@@ -122,11 +122,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->N_density++;
-  pj->N_density++;
-#endif
-
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
   if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
@@ -202,10 +197,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += fac * curlvr[0];
   pi->density.rot_v[1] += fac * curlvr[1];
   pi->density.rot_v[2] += fac * curlvr[2];
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->N_density++;
-#endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
@@ -569,13 +560,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     pj->ids_ngbs_force[pj->num_ngb_force] = pi->id;
   ++pj->num_ngb_force;
 #endif
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pj->n_force += wi + wj;
-  pi->N_force++;
-  pj->N_force++;
-#endif
 }
 
 /**
@@ -692,11 +676,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   if (pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
     pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
   ++pi->num_ngb_force;
-#endif
-
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
-  pi->n_force += wi + wj;
-  pi->N_force++;
 #endif
 }
 
