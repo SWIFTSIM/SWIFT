@@ -188,7 +188,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 #endif
 
             /* One last action before death? */
-            hydro_remove_part(p, xp);
+            hydro_remove_part(p, xp, e->time);
 
             /* Remove the particle entirely */
             cell_remove_part(e, c, p, xp);

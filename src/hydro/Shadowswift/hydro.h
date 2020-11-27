@@ -962,8 +962,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
  *
  * @param p The particle.
  * @param xp The extended particle data.
+ * @param time The simulation time.
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part* p, const struct xpart* xp) {}
+    const struct part* p, const struct xpart* xp, const double time) {}
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_H */

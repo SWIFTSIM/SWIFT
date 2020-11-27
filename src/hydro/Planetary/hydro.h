@@ -885,13 +885,21 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
  *
  * @param p The particle.
  * @param xp The extended particle data.
+ * @param time The simulation time.
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part *p, const struct xpart *xp) {
+    const struct part *p, const struct xpart *xp, const double time) {
 
-  printf("Removed particle id=%lld \n", p->id);
-  printParticle_single(p, xp);
-  fflush(stdout);
+  /* Print the particle info as csv to facilitate later analysis, e.g. with
+   * grep '## Removed' -A 1 --no-group-separator output.txt > removed.txt
+   */
+  printf(
+      "## Removed particle: "
+      "id, x, y, z, vx, vy, vz, m, u, P, rho, h, mat_id, time \n"
+      "%lld, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
+      "%.7g, %.7g, %.7g, %.7g, %.7g, %d, %.7g \n",
+      p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->mass,
+      p->u, p->force.pressure, p->rho, p->h, p->mat_id, time);
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_H */
