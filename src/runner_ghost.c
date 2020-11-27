@@ -1100,6 +1100,19 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Improve the bisection bound as well */
           left[i] = max(left[i], h_old);
 
+          /* Be verbose about the particles that struggle to converge */
+          if (num_reruns > max_smoothing_iter - 18) {
+
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e "
+                "h_min=%12.8e h_max=%12.8e",
+                num_reruns, p->id, h_init, h_old, h_new, 0., 0.,
+                kernel_root * pow_dimension(1.f / h_old), hydro_eta_dim,
+                left[i], right[i], hydro_h_min, hydro_h_max);
+          }
+
         } else {
 
           /* Finish the density calculation */
@@ -1209,14 +1222,15 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           h_new = h_old - f / (f_prime + FLT_MIN);
 
           /* Be verbose about the particles that struggle to converge */
-          if (num_reruns > max_smoothing_iter - 10) {
+          if (num_reruns > max_smoothing_iter - 18) {
 
             message(
                 "Smoothing length convergence problem: iter=%d p->id=%lld "
                 "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e "
+                "h_min=%12.8e h_max=%12.8e",
                 num_reruns, p->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                n_target, left[i], right[i]);
+                n_target, left[i], right[i], hydro_h_min, hydro_h_max);
           }
 
 #ifdef SWIFT_DEBUG_CHECKS
