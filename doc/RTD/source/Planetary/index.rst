@@ -32,3 +32,4 @@ chosen from the several available equations of state.
    Hydro Scheme <hydro_scheme>
    Equations of State <equations_of_state>
    Initial Conditions <initial_conditions>
+   Removed Particles <removed_particles>
