@@ -19,6 +19,13 @@
 #ifndef SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
 #define SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H
 
+/**
+ * @file equation_of_state/planetary/ideal_gas.h
+ *
+ * Contains the ideal gas EOS functions for
+ * equation_of_state/planetary/equation_of_state.h
+ */
+
 /* Some standard headers. */
 #include <math.h>
 
@@ -28,14 +35,19 @@
 #include "inline.h"
 #include "physical_constants.h"
 
-extern struct eos_parameters eos;
+// Ideal gas parameters
+struct idg_params {
+  enum eos_planetary_material_id mat_id;
+  float gamma, one_over_gamma_minus_one;
+};
 
-/**
- * @brief The parameters of the equation of state for the gas.
- *
- * This equation of state is parameter-free.
- */
-struct eos_parameters {};
+// Parameter values for each material
+INLINE static void set_idg_def(struct idg_params *mat,
+                               enum eos_planetary_material_id mat_id) {
+  mat->mat_id = mat_id;
+  mat->gamma = hydro_gamma;  // set by --with-adiabatic-index, default 5/3
+  mat->one_over_gamma_minus_one = 1.f / (mat->gamma - 1.f);
+}
 
 /**
  * @brief Returns the internal energy given density and entropy
@@ -45,11 +57,11 @@ struct eos_parameters {};
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_internal_energy_from_entropy(float density, float entropy) {
+INLINE static float idg_internal_energy_from_entropy(
+    float density, float entropy, const struct idg_params *mat) {
 
-  return entropy * pow_gamma_minus_one(density) *
-         hydro_one_over_gamma_minus_one;
+  return entropy * powf(density, mat->gamma - 1.f) *
+         mat->one_over_gamma_minus_one;
 }
 
 /**
@@ -60,10 +72,10 @@ gas_internal_energy_from_entropy(float density, float entropy) {
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_pressure_from_entropy(float density, float entropy) {
+INLINE static float idg_pressure_from_entropy(float density, float entropy,
+                                              const struct idg_params *mat) {
 
-  return entropy * pow_gamma(density);
+  return entropy * powf(density, mat->gamma);
 }
 
 /**
@@ -75,10 +87,10 @@ gas_pressure_from_entropy(float density, float entropy) {
  * @param pressure The pressure \f$P\f$.
  * @return The entropy \f$A\f$.
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_entropy_from_pressure(float density, float pressure) {
+INLINE static float idg_entropy_from_pressure(float density, float pressure,
+                                              const struct idg_params *mat) {
 
-  return pressure * pow_minus_gamma(density);
+  return pressure * powf(density, -mat->gamma);
 }
 
 /**
@@ -89,24 +101,24 @@ gas_entropy_from_pressure(float density, float pressure) {
  * @param density The density \f$\rho\f$.
  * @param entropy The entropy \f$A\f$.
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_soundspeed_from_entropy(float density, float entropy) {
+INLINE static float idg_soundspeed_from_entropy(float density, float entropy,
+                                                const struct idg_params *mat) {
 
-  return sqrtf(hydro_gamma * pow_gamma_minus_one(density) * entropy);
+  return sqrtf(mat->gamma * powf(density, mat->gamma - 1.f) * entropy);
 }
 
 /**
  * @brief Returns the entropy given density and internal energy
  *
- * Computes \f$A = \frac{(\gamma - 1)u}{\rho^{\gamma-1}}\f$.
+ * Computes \f$A = (\gamma - 1) u \rho^{1-\gamma}\f$.
  *
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_entropy_from_internal_energy(float density, float u) {
+INLINE static float idg_entropy_from_internal_energy(
+    float density, float u, const struct idg_params *mat) {
 
-  return hydro_gamma_minus_one * u * pow_minus_gamma_minus_one(density);
+  return (mat->gamma - 1.f) * u * powf(density, 1.f - mat->gamma);
 }
 
 /**
@@ -117,10 +129,10 @@ gas_entropy_from_internal_energy(float density, float u) {
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_pressure_from_internal_energy(float density, float u) {
+INLINE static float idg_pressure_from_internal_energy(
+    float density, float u, const struct idg_params *mat) {
 
-  return hydro_gamma_minus_one * u * density;
+  return (mat->gamma - 1.f) * u * density;
 }
 
 /**
@@ -132,10 +144,10 @@ gas_pressure_from_internal_energy(float density, float u) {
  * @param pressure The pressure \f$P\f$.
  * @return The internal energy \f$u\f$.
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_internal_energy_from_pressure(float density, float pressure) {
+INLINE static float idg_internal_energy_from_pressure(
+    float density, float pressure, const struct idg_params *mat) {
 
-  return hydro_one_over_gamma_minus_one * pressure / density;
+  return mat->one_over_gamma_minus_one * pressure / density;
 }
 
 /**
@@ -146,10 +158,10 @@ gas_internal_energy_from_pressure(float density, float pressure) {
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_soundspeed_from_internal_energy(float density, float u) {
+INLINE static float idg_soundspeed_from_internal_energy(
+    float density, float u, const struct idg_params *mat) {
 
-  return sqrtf(u * hydro_gamma * hydro_gamma_minus_one);
+  return sqrtf(u * mat->gamma * (mat->gamma - 1.f));
 }
 
 /**
@@ -160,52 +172,10 @@ gas_soundspeed_from_internal_energy(float density, float u) {
  * @param density The density \f$\rho\f$
  * @param P The pressure \f$P\f$
  */
-__attribute__((always_inline, const)) INLINE static float
-gas_soundspeed_from_pressure(float density, float P) {
+INLINE static float idg_soundspeed_from_pressure(float density, float P,
+                                                 const struct idg_params *mat) {
 
-  return sqrtf(hydro_gamma * P / density);
+  return sqrtf(mat->gamma * P / density);
 }
-
-/**
- * @brief Initialize the eos parameters
- *
- * Nothing to do here since this EoS is parameter-free.
- *
- * @param e The #eos_parameters.
- * @param phys_const The physical constants in the internal unit system.
- * @param us The internal unit system.
- * @param params The parsed parameters.
- */
-INLINE static void eos_init(struct eos_parameters *e,
-                            const struct phys_const *phys_const,
-                            const struct unit_system *us,
-                            struct swift_params *params) {}
-/**
- * @brief Print the equation of state
- *
- * @param e The #eos_parameters
- */
-INLINE static void eos_print(const struct eos_parameters *e) {
-
-  message("Equation of state: Ideal gas.");
-
-  message("Adiabatic index gamma: %f.", hydro_gamma);
-}
-
-#if defined(HAVE_HDF5)
-/**
- * @brief Write equation of state information to the snapshot
- *
- * @param h_grpsph The HDF5 group in which to write
- * @param e The #eos_parameters
- */
-INLINE static void eos_print_snapshot(hid_t h_grpsph,
-                                      const struct eos_parameters *e) {
-
-  io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
-
-  io_write_attribute_s(h_grpsph, "Equation of state", "Ideal gas");
-}
-#endif
 
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */
