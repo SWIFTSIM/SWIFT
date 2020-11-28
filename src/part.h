@@ -46,7 +46,10 @@ struct threadpool;
 #define sink_align 128
 
 /* Import the right hydro particle definition */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #elif defined(GADGET2_SPH)

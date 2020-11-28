@@ -2100,8 +2100,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_black_holes_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_black_holes_pair(cj, ci)) rebuild = 1;
 
-      scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost[0]);
-      scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost[0]);
+      scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost_0);
+      scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost_0);
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -2282,12 +2282,12 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
     if (c->black_holes.density_ghost != NULL)
       scheduler_activate(s, c->black_holes.density_ghost);
-    if (c->black_holes.swallow_ghost[0] != NULL)
-      scheduler_activate(s, c->black_holes.swallow_ghost[0]);
-    if (c->black_holes.swallow_ghost[1] != NULL)
-      scheduler_activate(s, c->black_holes.swallow_ghost[1]);
-    if (c->black_holes.swallow_ghost[2] != NULL)
-      scheduler_activate(s, c->black_holes.swallow_ghost[2]);
+    if (c->black_holes.swallow_ghost_0 != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost_0);
+    if (c->black_holes.swallow_ghost_1 != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost_1);
+    if (c->black_holes.swallow_ghost_2 != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost_2);
     if (c->black_holes.black_holes_in != NULL)
       scheduler_activate(s, c->black_holes.black_holes_in);
     if (c->black_holes.black_holes_out != NULL)

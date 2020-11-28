@@ -29,7 +29,11 @@
 #include "part.h"
 
 /* Import the right functions */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro.h"
+#include "./hydro/None/hydro_iact.h"
+#define SPH_IMPLEMENTATION "No hydro scheme"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro.h"
 #include "./hydro/Minimal/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH (e.g. Price 2010)"

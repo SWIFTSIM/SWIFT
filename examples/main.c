@@ -949,6 +949,12 @@ int main(int argc, char *argv[]) {
       cosmology_init_no_cosmo(&cosmo);
     if (myrank == 0 && with_cosmology) cosmology_print(&cosmo);
 
+    if (with_hydro) {
+#ifdef NONE_SPH
+      error("Can't run with hydro when compiled without hydro model!");
+#endif
+    }
+
     /* Initialise the hydro properties */
     if (with_hydro)
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
