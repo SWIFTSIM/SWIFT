@@ -176,7 +176,19 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           h_new = 2.f * h_old;
 
           /* Improve the bisection bound as well */
-          left[i] = max(left[i], h_old);
+          if (num_reruns > 10) left[i] = max(left[i], h_old);
+
+          /* Be verbose about the particles that struggle to converge */
+          if (num_reruns > max_smoothing_iter - 15) {
+
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e "
+                "h_min=%12.8e h_max=%12.8e",
+                num_reruns, sp->id, h_init, h_old, h_new, 0., 0., kernel_root,
+                stars_eta_dim, left[i], right[i], stars_h_min, stars_h_max);
+          }
 
         } else {
 
@@ -191,10 +203,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               sp->density.wcount_dh * h_old_dim +
               hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
 
-          /* Improve the bisection bounds */
-          if (n_sum < n_target)
+          /* Improve the bisection bounds if we have already tried a few steps
+           * the normal way */
+          if (num_reruns > 10 && n_sum < n_target)
             left[i] = max(left[i], h_old);
-          else if (n_sum > n_target)
+          else if (num_reruns > 10 && n_sum > n_target)
             right[i] = min(right[i], h_old);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -271,14 +284,15 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           h_new = h_old - f / (f_prime + FLT_MIN);
 
           /* Be verbose about the particles that struggle to converge */
-          if (num_reruns > max_smoothing_iter - 10) {
+          if (num_reruns > max_smoothing_iter - 15) {
 
             message(
                 "Smoothing length convergence problem: iter=%d p->id=%lld "
                 "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e "
+                "h_min=%12.8e h_max=%12.8e",
                 num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                n_target, left[i], right[i]);
+                n_target, left[i], right[i], stars_h_min, stars_h_max);
           }
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
@@ -622,7 +636,20 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           h_new = 2.f * h_old;
 
           /* Improve the bisection bound as well */
-          left[i] = max(left[i], h_old);
+          if (num_reruns < 10) left[i] = max(left[i], h_old);
+
+          /* Be verbose about the particles that struggle to converge */
+          if (num_reruns > max_smoothing_iter - 15) {
+
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e "
+                "h_min=%12.8e h_max=%12.8e",
+                num_reruns, bp->id, h_init, h_old, h_new, 0., 0., kernel_root,
+                black_holes_eta_dim, left[i], right[i], black_holes_h_min,
+                black_holes_h_max);
+          }
 
         } else {
 
@@ -637,10 +664,11 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               bp->density.wcount_dh * h_old_dim +
               hydro_dimension * bp->density.wcount * h_old_dim_minus_one;
 
-          /* Improve the bisection bounds */
-          if (n_sum < n_target)
+          /* Improve the bisection bounds if we have already tried a few steps
+           * the normal way */
+          if (num_reruns > 10 && n_sum < n_target)
             left[i] = max(left[i], h_old);
-          else if (n_sum > n_target)
+          else if (num_reruns > 10 && n_sum > n_target)
             right[i] = min(right[i], h_old);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -667,14 +695,16 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           h_new = h_old - f / (f_prime + FLT_MIN);
 
           /* Be verbose about the particles that struggle to converge */
-          if (num_reruns > max_smoothing_iter - 10) {
+          if (num_reruns > max_smoothing_iter - 15) {
 
             message(
                 "Smoothing length convergence problem: iter=%d p->id=%lld "
                 "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
-                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e "
+                "h_min=%12.8e h_max=%12.8e",
                 num_reruns, bp->id, h_init, h_old, h_new, f, f_prime, n_sum,
-                n_target, left[i], right[i]);
+                n_target, left[i], right[i], black_holes_h_min,
+                black_holes_h_max);
           }
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
