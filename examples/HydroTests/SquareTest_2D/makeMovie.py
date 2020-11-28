@@ -56,7 +56,7 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
         return load_and_make_image(n, resolution, property)
 
     # Make frames in parallel (reading also parallel!)
-    frames = map(baked_in_load, list(range(start, stop)))
+    frames = list(map(baked_in_load, list(range(start, stop))))
 
     vmax = max(list(map(max, frames)))
     vmin = min(list(map(min, frames)))
@@ -108,9 +108,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         "--property",
-        help="(swiftsimio) Property to plot. Default: internal_energy",
+        help="(swiftsimio) Property to plot. Default: internal_energies",
         type=str,
-        default="internal_energy",
+        default="internal_energies",
     )
 
     parser.add_argument(

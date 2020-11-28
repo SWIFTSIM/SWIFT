@@ -20,9 +20,11 @@ to check the regions of validity.
 
 So far, we have implemented several Tillotson, ANEOS, SESAME, 
 and Hubbard \& MacFarlane (1980) materials, with more on the way.
-The material's ID is set by a base type ID (multiplied by 100), 
-plus a minor type:
+The material's ID is set by a somewhat arbitrary base type ID 
+(multiplied by 100) plus an individual value:
 
++ Ideal gas: ``0``
+    + Default (\\(\\gamma\\) set using ``--with-adiabatic-index``, default 5/3): ``0``
 + Tillotson (Melosh, 2007): ``1``
     + Iron: ``100``
     + Granite: ``101``
@@ -42,7 +44,7 @@ plus a minor type:
     + Fe85Si15 (Stewart, zenodo.org/record/3866550): ``402``
     
 The data files for the tabulated EoS can be downloaded using 
-the ``examples/EoSTables/get_eos_tables.sh`` script.
+the ``examples/Planetary/EoSTables/get_eos_tables.sh`` script.
 
 To enable one or multiple EoS, the corresponding ``planetary_use_*:``
 flag(s) must be set to ``1`` in the parameter file for a simulation,
@@ -57,7 +59,7 @@ do not always include transformations between the internal energy,
 temperature, and entropy. At the moment, we have implemented 
 \\(P(\\rho, u)\\) and \\(c_s(\\rho, u)\\), 
 which is sufficient for the :ref:`planetary_sph` hydro scheme, 
-but makes these materials currently incompatible with entropy-based schemes.
+but makes most materials currently incompatible with entropy-based schemes.
 
 The Tillotson sound speed was derived using 
 \\(c_s^2 = \\left. ( \\partial P / \\partial \\rho ) \\right|_S \\)
@@ -66,3 +68,5 @@ as described in
 Note that there is a typo in the sign of
 \\(du = T dS - P dV = T dS + (P / \\rho^2) d\\rho \\) in the appendix;
 the correct version was used in the derivation.
+
+The ideal gas uses the same equations detailed in :ref:`equation_of_state`.
