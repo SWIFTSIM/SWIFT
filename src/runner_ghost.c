@@ -1098,19 +1098,18 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           h_new = 2.f * h_old;
 
           /* Improve the bisection bound as well */
-          left[i] = max(left[i], h_old);
+          if (num_reruns > 10) left[i] = max(left[i], h_old);
 
           /* Be verbose about the particles that struggle to converge */
-          if (num_reruns > max_smoothing_iter - 18) {
+          if (num_reruns > max_smoothing_iter - 15) {
 
             message(
                 "Smoothing length convergence problem: iter=%d p->id=%lld "
                 "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
                 "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e "
                 "h_min=%12.8e h_max=%12.8e",
-                num_reruns, p->id, h_init, h_old, h_new, 0., 0.,
-                kernel_root * pow_dimension(1.f / h_old), hydro_eta_dim,
-                left[i], right[i], hydro_h_min, hydro_h_max);
+                num_reruns, p->id, h_init, h_old, h_new, 0., 0., kernel_root,
+                hydro_eta_dim, left[i], right[i], hydro_h_min, hydro_h_max);
           }
 
         } else {
@@ -1142,10 +1141,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               p->density.wcount_dh * h_old_dim +
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
-          /* Improve the bisection bounds */
-          if (n_sum < n_target)
+          /* Improve the bisection bounds if we have already tried a few steps
+           * the normal way */
+          if (num_reruns > 10 && n_sum < n_target)
             left[i] = max(left[i], h_old);
-          else if (n_sum > n_target)
+          else if (num_reruns > 10 && n_sum > n_target)
             right[i] = min(right[i], h_old);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1222,7 +1222,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           h_new = h_old - f / (f_prime + FLT_MIN);
 
           /* Be verbose about the particles that struggle to converge */
-          if (num_reruns > max_smoothing_iter - 18) {
+          if (num_reruns > max_smoothing_iter - 15) {
 
             message(
                 "Smoothing length convergence problem: iter=%d p->id=%lld "
