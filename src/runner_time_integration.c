@@ -396,7 +396,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
     if (periodic && e->mesh->ti_end_mesh_last == e->ti_current) {
 
       const integertime_t ti_step =
-          e->mesh->ti_end_mesh_next - e->mesh->ti_beg_mesh_next;
+          e->mesh->ti_end_mesh_last - e->mesh->ti_beg_mesh_last;
       ti_begin_mesh = e->mesh->ti_beg_mesh_last + ti_step / 2;
       ti_end_mesh = e->mesh->ti_end_mesh_last;
 
