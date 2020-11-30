@@ -47,9 +47,17 @@ print("basename: %s" % basename)
 print("time: %g" % time)
 
 # read the logger
+gas_type = 0
 with logger.Reader(basename, verbose=0) as reader:
     t = reader.get_time_limits()
-    pos, ent = reader.get_particle_data(["Coordinates", "Entropies"], time)
+
+    fields = reader.get_list_fields(gas_type)
+    if ("Coordinates" not in fields or
+        "Entropies" not in fields):
+        raise Exception("Field not found in the logfile")
+
+    pos, ent = reader.get_particle_data(
+        ["Coordinates", "Entropies"], time, gas_type)
 
 print("Min/Max of the position:", pos.min(), pos.max())
 print("Min/Max of the entropy:", ent.min(), ent.max())
