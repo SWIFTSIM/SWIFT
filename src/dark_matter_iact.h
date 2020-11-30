@@ -29,6 +29,65 @@
 #include "dark_matter_logger.h"
 #include "timestep_sync_part.h"
 
+INLINE static float double_kernel_integral(float r2, float hi, float hj){
+    
+    const float r = sqrtf(r2);
+    
+    float wi, wj;
+    const float hi_inv = 1.f / hi;
+    const float hj_inv = 1.f / hj;
+    
+    /* Set maximum smoothing length */
+    float h_max = hi;
+    if (hj > h_max) h_max = hj;
+    
+    /* Number of steps */
+    const int n = 100;
+    
+    /* Intermediate step length */
+    const float r_int = h_max * dm_kernel_gamma / n;
+    
+    float ui = r_int * hi_inv;
+    float uj = (r_int + r) * hj_inv;
+
+    dm_kernel_eval(ui, &wi);
+    dm_kernel_eval(uj, &wj);
+
+    float double_kernel_eval = r_int * r_int * wi * wj;
+    
+    /* First term contribution */
+    float sum = 0.5 * double_kernel_eval;
+    
+    /* Last term contribution */
+    ui = n * r_int * hi_inv;
+    uj = (n * r_int + r) * hj_inv;
+    
+    dm_kernel_eval(ui, &wi);
+    dm_kernel_eval(uj, &wj);
+    
+    double_kernel_eval = n * n * r_int * r_int * wi * wj;
+    
+    sum += 0.5 * double_kernel_eval;
+
+    /* Intermediate terms contribution */
+    for (int k = 0; k < n-1; k++) {
+        
+        ui = k * r_int * hi_inv;
+        uj = (k * r_int + r) * hj_inv;
+        
+        dm_kernel_eval(ui, &wi);
+        dm_kernel_eval(uj, &wj);
+        
+        double_kernel_eval = k * k * r_int * r_int * wi * wj;
+        
+        sum += double_kernel_eval;
+    }
+    sum *= r_int * 2 * M_PI;
+
+    return sum;
+}
+
+    
 /**
  * @brief Density interaction between two particles.
  *
@@ -281,11 +340,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    const double mass_i = pi->mass;
-    const double mass_j = pj->mass;
+    /*const double mass_i = pi->mass;
+    const double mass_j = pj->mass;*/
     
-    float hi_3 = hi * hi * hi;
-    float hj_3 = hj * hj * hj;
+    /*float hi_3 = hi * hi * hi;
+    float hj_3 = hj * hj * hj;*/
     /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;*/
 
     float a_inv = 1.0f / a;
@@ -295,8 +354,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
     float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);*/
     
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * hi_3);
-    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / ((4. * M_PI / 3. ) * hj_3);
+    /*const float gi = double_kernel_integral(r2, hi, hj);
+    const float gj = double_kernel_integral(r2, hj, hi);*/
+    
+    /*float wi, wj;
+    
+    const float r = sqrtf(r2);
+    
+    const float hi_inv = 1.f / hi;
+    const float hj_inv = 1.f / hj;
+    const float ui = r * hi_inv;
+    const float uj = r * hj_inv;
+
+    dm_kernel_eval(ui, &wi);
+    dm_kernel_eval(uj, &wj);*/
+
+    float Rate_SIDM_i = sigma * vij * a_inv4 * pi->rho;
+    float Rate_SIDM_j = sigma * vij * a_inv4 * pj->rho;
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
@@ -352,17 +426,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    const double mass_i = pi->mass;
+    /*const double mass_i = pi->mass;*/
 
     float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
-    float hi_3 = hi * hi * hi;
+    /*float hi_3 = hi * hi * hi;*/
     /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;*/
 
     /* Calculate scattering rate */
     /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);*/
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * hi_3);
+    /*const float gi = double_kernel_integral(r2, hi, hj);*/
+    
+    /*float wi;
+    const float r = sqrtf(r2);
+    const float hi_inv = 1.f / hi;
+    const float ui = r * hi_inv;
+    dm_kernel_eval(ui, &wi);*/
+    
+    float Rate_SIDM_i = sigma * vij * a_inv4 * pi->rho;
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
