@@ -59,6 +59,8 @@
 #include "timestep_limiter.h"
 #include "tracers.h"
 
+extern ticks sf_task, sf_loop;
+
 /**
  * @brief Calculate gravity acceleration from external potential
  *
@@ -201,6 +203,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+  const ticks tic_task = getticks();
+  
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
     error("Running star formation task on a foreign node!");
@@ -238,6 +242,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
       }
   } else {
 
+    const ticks tic_loop = getticks();
+    
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
@@ -376,6 +382,10 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         }
       }
     } /* Loop over particles */
+
+
+    const ticks toc_loop = getticks();
+    atomic_add(&sf_loop, toc_loop - tic_loop);
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to
@@ -385,6 +395,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     cell_set_star_resort_flag(c);
   }
 
+  const ticks toc_task = getticks();
+  atomic_add(&sf_task, toc_task - tic_task);
+  
   if (timer) TIMER_TOC(timer_do_star_formation);
 }
 

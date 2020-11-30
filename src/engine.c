@@ -129,6 +129,8 @@ int engine_rank;
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
 
+ticks sf_task, sf_loop, sf_shift, sf_memmove, sf_links, sf_convert;
+
 /**
  * @brief Link a density/force task to a cell.
  *
@@ -1606,6 +1608,13 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
+  sf_task = 0;
+  sf_loop = 0;
+  sf_convert = 0;
+  sf_shift = 0;
+  sf_memmove = 0;
+  sf_links = 0;
+  
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
   space_reset_task_counters(e->s);
@@ -1632,6 +1641,14 @@ void engine_launch(struct engine *e, const char *call) {
   /* Store the wallclock time */
   e->sched.total_ticks += getticks() - tic;
 
+  message("launch  = %.3f %s.", e->nr_threads * clocks_from_ticks(getticks() - tic), clocks_getunit());
+  message("SFtask  = %.3f %s.", clocks_from_ticks(sf_task), clocks_getunit());
+  message("loop    = %.3f %s.", clocks_from_ticks(sf_loop), clocks_getunit());
+  message("convert = %.3f %s.", clocks_from_ticks(sf_convert), clocks_getunit());
+  message("shift   = %.3f %s.", clocks_from_ticks(sf_shift), clocks_getunit());
+  message("memmove = %.3f %s.", clocks_from_ticks(sf_memmove), clocks_getunit());
+  message("links   = %.3f %s.", clocks_from_ticks(sf_links), clocks_getunit());
+  
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
