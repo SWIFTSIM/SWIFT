@@ -41,6 +41,7 @@ void logger_history_init(struct logger_history *hist) {
   /* Set the counters to their initial value */
   hist->size = 0;
   hist->capacity = LOGGER_HISTORY_INIT_SIZE;
+  lock_init(hist->lock);
 
   hist->data = (struct logger_index_data *)swift_malloc(
       "logger_history",
@@ -73,6 +74,7 @@ void logger_history_free(struct logger_history *hist) {
   /* Set the counters to 0 */
   hist->size = 0;
   hist->capacity = 0;
+  lock_destroy(hist->lock);
 
   /* Free the memory */
   if (hist->data != NULL) {
@@ -99,6 +101,9 @@ void logger_history_log(struct logger_history *hist, const long long id,
 #endif
   const struct logger_index_data data = {id, last_offset};
 
+  /* Lock the history */
+  lock_lock(hist->lock);
+
   /* Check if enough space is left */
   if (hist->size == hist->capacity) {
     /* Compute the previous amount of memory */
@@ -123,6 +128,9 @@ void logger_history_log(struct logger_history *hist, const long long id,
 
   /* Increase the element counter */
   hist->size += 1;
+
+  /* Unlock the history. */
+  lock_unlock(hist->lock);
 }
 
 /**
