@@ -272,6 +272,138 @@ static PyObject *pyExit(__attribute__((unused)) PyObject *self,
 
   Py_RETURN_NONE;
 }
+
+static PyObject *pyGetListFields(__attribute__((unused)) PyObject *self,
+                                 PyObject *args) {
+  PyObjectReader *self_reader = (PyObjectReader *)self;
+  if (!self_reader->ready) {
+    error_python(
+        "The logger is not ready yet."
+        "Did you forget to open it with \"with\"?");
+  }
+
+  /* input variables. */
+  PyObject *types = Py_None;
+
+  /* parse the arguments. */
+  if (!PyArg_ParseTuple(args, "|O", &types)) return NULL;
+
+  /* Get the type of particles to read. */
+  int read_types[swift_type_count] = {0};
+  /* By default, we read everything */
+  if (types == Py_None) {
+    for (int i = 0; i < swift_type_count; i++) {
+      read_types[i] = 1;
+    }
+  }
+  /* Deal with the case of a single int. */
+  else if (PyLong_Check(types)) {
+    const size_t type = PyLong_AsSize_t(types);
+    if (type >= swift_type_count) {
+      error_python("Unexpected particle type %zi", type);
+    }
+    read_types[type] = 1;
+  }
+  /* Deal with the case of a list */
+  else if (PyList_Check(types)) {
+    const size_t size = PyList_Size(types);
+    for (size_t i = 0; i < size; i++) {
+      PyObject *cur = PyList_GetItem(types, i);
+      const size_t type = PyLong_AsSize_t(cur);
+      if (type >= swift_type_count) {
+        error_python("Unexpected particle type %zi", type);
+      }
+      read_types[type] = 1;
+    }
+  }
+
+  /* initialize the reader. */
+  struct logger_reader *reader = &self_reader->reader;
+  const struct header *h = &reader->log.header;
+
+  /* Create the array to check if a field is present. */
+  int *field_present = (int *)malloc(h->masks_count * sizeof(int));
+  if (field_present == NULL) {
+    error("Failed to allocate the memory for the fields present.");
+  }
+
+  /* Initialize the array */
+  for (int i = 0; i < h->masks_count; i++) {
+    field_present[i] = 1;
+  }
+
+  /* Check all the fields */
+  for (int i = 0; i < swift_type_count; i++) {
+    /* Skip the types that are not required */
+    if (read_types[i] == 0) continue;
+
+    /* Get the list of fields for each particle types. */
+    const char **field_names = NULL;
+    int number_fields = -1;
+    switch (i) {
+      case swift_type_gas:
+        number_fields = hydro_logger_field_count;
+        field_names = hydro_logger_field_names;
+        break;
+
+      case swift_type_dark_matter:
+      case swift_type_dark_matter_background:
+        number_fields = gravity_logger_field_count;
+        field_names = gravity_logger_field_names;
+        break;
+
+      case swift_type_stars:
+        number_fields = stars_logger_field_count;
+        field_names = stars_logger_field_names;
+        break;
+
+      default:
+        message("Particle type %i not implemented, skipping it", i);
+        continue;
+    }
+
+    for (int j = 0; j < h->masks_count; j++) {
+      /* Skip the fields not found in previous type. */
+      if (field_present[j] == 0) continue;
+
+      /* Check if the field is present */
+      int found = 0;
+      for (int k = 0; k < number_fields; k++) {
+        if (strcmp(h->masks[j].name, field_names[k]) == 0) {
+          found = 1;
+          break;
+        }
+      }
+
+      /* Set the field as not found */
+      if (!found) field_present[j] = 0;
+    }
+  }
+
+  /* Count the number of fields found */
+  int number_fields = 0;
+  for (int i = 0; i < h->masks_count; i++) {
+    number_fields += field_present[i];
+  }
+
+  /* Create the python list for the output*/
+  PyObject *list = PyList_New(number_fields);
+  int current = 0;
+  for (int i = 0; i < h->masks_count; i++) {
+    /* Keep only the field present. */
+    if (field_present[i] == 0) continue;
+
+    PyObject *name = PyUnicode_FromString(h->masks[i].name);
+    PyList_SetItem(list, current, name);
+    current += 1;
+  }
+
+  /* Free the memory. */
+  free(field_present);
+
+  return list;
+}
+
 /**
  * @brief Read some fields at a given time.
  *
@@ -391,9 +523,20 @@ static PyMethodDef libloggerReaderMethods[] = {
      "  The list of fields (e.g. 'Coordinates', 'Entropies', ...)\n\n"
      "time: float\n"
      "  The time at which the fields must be read.\n\n"
+     "Returns\n"
      "-------\n\n"
      "list_of_fields: list\n"
      "  Each element is a numpy array containing the corresponding field.\n"},
+    {"get_list_fields", pyGetListFields, METH_VARARGS,
+     "Read the list of available fields in the logfile.\n\n"
+     "Parameters\n"
+     "----------\n\n"
+     "type: int, list\n"
+     "  The particle type for the list of fields\n\n"
+     "Returns\n"
+     "-------\n"
+     "fields: tuple\n"
+     "  The list of fields present in the logfile.\n"},
     {"__enter__", pyEnter, METH_VARARGS, ""},
     {"__exit__", pyExit, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL} /* Sentinel */
@@ -438,6 +581,10 @@ static PyTypeObject PyObjectReader_Type = {
         ">>> import liblogger as logger\n"
         ">>> with logger.Reader(\"index_0000\") as reader:\n"
         ">>>    t0, t1 = reader.get_time_limits()\n"
+        ">>>    fields = reader.get_list_fields()\n"
+        ">>>    if \"Coordinates\" not in fields:\n"
+        ">>>        raise Exception(\"Field Coordinates not present in the "
+        "logfile.\")\n"
         ">>>    pos, ent = reader.get_particle_data([\"Coordinates\", "
         "\"Entropies\"]"
         ", 0.5 * (t0 + t1))\n",
