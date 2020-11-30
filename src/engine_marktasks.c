@@ -1147,11 +1147,6 @@ int engine_marktasks(struct engine *e) {
   const ticks tic = getticks();
   int rebuild_space = 0;
 
-#ifdef WITH_MPI
-  /* Initialise for one-sided MPI. */
-  scheduler_osmpi_init(s);
-#endif
-
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, (size_t)rebuild_space, (size_t)&e->sched};
   threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks, s->nr_tasks,
@@ -1160,10 +1155,6 @@ int engine_marktasks(struct engine *e) {
 
   /* Now all tasks have marked, we can allocate the one-sided buffers for MPI.
    */
-#ifdef WITH_MPI
-  /* Initialise for one-sided MPI. */
-  scheduler_osmpi_init_buffers(s);
-#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

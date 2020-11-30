@@ -650,59 +650,67 @@ int task_lock(struct scheduler *s, struct task *t) {
 
       if (s->space->e->verbose)
         message(
-            "Sending message to %d from %d subtype: %d, tag %zd, size %zd"
-            " (cf %lld %zd), offset: %zd",
+            "Sending message to %d from %d subtype: %d, tag %zu, size %zu"
+            " (cf %lld %zu), offset: %zu",
             cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
             t->size, t->offset);
 
-      /* And send to the destination rank. */
-      int index = cj->nodeID * s->nr_ranks + subtype; // XXX why isn't this ci?
-      message("send window %d, node %d, subtype %d, size %d offset %zd", index,
-              s->send_mpicache->window_nodes[index],
-              s->send_mpicache->window_subtypes[index],
-              s->send_mpicache->window_sizes[index],
-              t->offset); fflush(stdout);
+      /* And send to the destination rank. Need offset for this message into
+       * the remote window. */
+#define INDEX3(nx, ny, x, y, z) (nx * ny * z + nx * y + x)
+      size_t index = INDEX3(task_subtype_count, s->nr_ranks, subtype, 
+                            cj->nodeID, ci->nodeID);
+      size_t offset = s->global_offsets[index] + t->offset;
+      
+      //message("%d %d task send: goff[%d,%d,%d] = %zu / %zu / %zu tags %lld",
+      //        engine_rank, cj->cellID, subtype, cj->nodeID, ci->nodeID, offset,
+      //        s->global_offsets[index], t->offset, t->flags);
       
       int err = MPI_Accumulate(dataptr, datasize,
                                scheduler_osmpi_mpi_blocktype,
                                cj->nodeID,
-                               t->offset, datasize,
+                               offset, datasize,
                                scheduler_osmpi_mpi_blocktype, MPI_REPLACE,
-                               s->osmpi_windows[index]);
+                               s->osmpi_windows[subtype]);
 
       if (err != MPI_SUCCESS) {
         mpi_error(err, "Failed to send particle data.");
       }
 
       if (s->space->e->verbose) {
-        message("Sent message to %d subtype: %d, tag %zd, size %zd offset %zd"
-                " (cf %lld %zd)", cj->nodeID, subtype, dataptr[2], dataptr[1],
-                t->offset, t->flags, t->size);
+        message("Sent message to %d subtype: %d, tag %zu, size %zu offset %zu"
+                " (cf %lld %zu)", cj->nodeID, subtype, dataptr[2], dataptr[1],
+                offset, t->flags, t->size);
       }
 
       /* Now we change the first element to unlocked so that the remote end
        * can find out that the data has arrived. */
-      scheduler_osmpi_blocktype newval[1];
-      scheduler_osmpi_blocktype oldval[1];
-      newval[0] = scheduler_osmpi_unlocked;
-      oldval[0] = 0;
-      err = MPI_Compare_and_swap(&newval[0], dataptr, &oldval[0],
-                                 scheduler_osmpi_mpi_blocktype, cj->nodeID,
-                                 t->offset, s->osmpi_windows[index]);
+      //scheduler_osmpi_blocktype newval[1];
+      //scheduler_osmpi_blocktype oldval[1];
+      //newval[0] = scheduler_osmpi_unlocked;
+      //oldval[0] = 0;
+      //err = MPI_Compare_and_swap(&newval[0], dataptr, &oldval[0],
+      //                           scheduler_osmpi_mpi_blocktype, cj->nodeID,
+      //                           offset, s->osmpi_windows[subtype]);
 
+      dataptr[0] = scheduler_osmpi_unlocked;
+      err = MPI_Accumulate(dataptr, 1, scheduler_osmpi_mpi_blocktype,
+                           cj->nodeID, offset, 1,
+                           scheduler_osmpi_mpi_blocktype, MPI_REPLACE,
+                           s->osmpi_windows[subtype]);
       if (err != MPI_SUCCESS) {
         mpi_error(err, "Compare and swap send error for particle data.");
       }
 
       // XXX try to live without this.
-      err = MPI_Win_flush(cj->nodeID, s->osmpi_windows[index]);
+      err = MPI_Win_flush(cj->nodeID, s->osmpi_windows[subtype]);
       if (err != MPI_SUCCESS) mpi_error(err, "MPI_Win_flush failed");
 
       /* Release data. XXX not yet, we need to wait, perhaps a local poll?*/
       // free(dataptr); // XXX reuse this surely...
 
       if (s->space->e->verbose)
-        message("Sent and ack message to %d subtype: %d, tag %lld, size %zd",
+        message("Sent and ack message to %d subtype: %d, tag %lld, size %zu",
                 cj->nodeID, subtype, t->flags, t->size);
 
       /* And log deactivation, if logging enabled. */
@@ -720,18 +728,15 @@ int task_lock(struct scheduler *s, struct task *t) {
 
       /* Check for a message waiting for this subtype from our expected
        * node. */
-      int index = ci->nodeID * s->nr_ranks + subtype; // need nranks...
+#define INDEX3(nx, ny, x, y, z) (nx * ny * z + nx * y + x)
+      size_t index = INDEX3(task_subtype_count, s->nr_ranks, subtype, 
+                            engine_rank, ci->nodeID);
+      size_t offset = s->global_offsets[index] + t->offset;
+      //message("%d %d task recv: goff[%d,%d,%d] = %zu / %zu / %zu tags: %lld",
+      //        engine_rank, ci->cellID, subtype, engine_rank, ci->nodeID, offset,
+      //        s->global_offsets[index], t->offset, t->flags);
 
-      //message("recv picked window: %d, node: %d, subtype: %d, size: %d", index,
-      //        s->send_mpicache->window_nodes[index],
-      //        s->send_mpicache->window_subtypes[index],
-      //        s->send_mpicache->window_sizes[index]);
-
-      message("recv window %d for remote node %d subtype %d offset %zd tag %lld, size %zd",
-              index, ci->nodeID, subtype, t->offset, t->flags, t->size);
-
-      volatile scheduler_osmpi_blocktype *dataptr = &(s->osmpi_ptrs[index])[t->offset];
-      volatile scheduler_osmpi_blocktype lock = dataptr[0];
+      volatile scheduler_osmpi_blocktype *dataptr = &s->osmpi_ptrs[subtype][offset];
       if (dataptr[0] == (scheduler_osmpi_blocktype)scheduler_osmpi_unlocked) {
 
         /* Message from our remote and subtype waiting, does it match our tag
@@ -739,9 +744,9 @@ int task_lock(struct scheduler *s, struct task *t) {
         if (t->flags == (int)dataptr[2] && t->size == dataptr[1]) {
 
           if (s->space->e->verbose)
-            message("Accepted from %d, subtype: %d, tag: %lld, size %zd,"
-                    " offset %zd", ci->nodeID, subtype, t->flags,
-                    t->size, t->offset);
+            message("Accepted from %d, subtype: %d, tag: %lld, size %zu,"
+                    " offset %zu", ci->nodeID, subtype, t->flags,
+                    t->size, offset);
 
           /* And log deactivation, if logging enabled. */
           mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
@@ -764,9 +769,9 @@ int task_lock(struct scheduler *s, struct task *t) {
           return 1;
         } 
         else {
-          message("missed remote send at our offset %zd from %d, "
-                  "subtype: %d, tag: %lld, size %zd, see %zd/%zd/%zd",
-                  t->offset, ci->nodeID, subtype, t->flags,
+          message("missed remote send at our offset %zu from %d, "
+                  "subtype: %d, tag: %lld, size %zu, see %zu/%zu/%zu",
+                  offset, ci->nodeID, subtype, t->flags,
                   t->size, dataptr[2], dataptr[1], dataptr[0]);
         }
       }

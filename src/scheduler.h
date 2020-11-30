@@ -35,7 +35,6 @@
 #include "cell.h"
 #include "inline.h"
 #include "lock.h"
-#include "memuse_rnodes.h"
 #include "mpicache.h"
 #include "queue.h"
 #include "task.h"
@@ -141,20 +140,20 @@ struct scheduler {
 
 #ifdef WITH_MPI
   /* MPI windows for one-sided messages. */
-  /* Pointers to the windows and associated memory. We have one per remote
-   * node per subtype. Use a radix tree to look up these values given the
-   * originating node and subtype. */
-  MPI_Win *osmpi_windows;
-  volatile scheduler_osmpi_blocktype **osmpi_ptrs;
-  struct memuse_rnode *osmpi_rnodes;
+  MPI_Win osmpi_windows[task_subtype_count];
+  size_t osmpi_sizes[task_subtype_count];
+  volatile scheduler_osmpi_blocktype *osmpi_ptrs[task_subtype_count];
 
-  /* Number of MPI ranks. */
+  /* Number of MPI ranks in the system. */
   int nr_ranks;
 
   /* Caches for capturing the MPI tasks and working out the window sizes and
    * offsets. */
   struct mpicache *send_mpicache;
   struct mpicache *recv_mpicache;
+
+  /* Array of offsets for each node into another nodes subtypes. */
+  size_t *global_offsets;
 #endif
 };
 
@@ -196,9 +195,6 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
   if (l == NULL) {
     error("Missing link to send task.");
   }
-#ifdef WITH_MPI
-  mpicache_add(s->send_mpicache, l->t->ci->nodeID, l->t->cj->nodeID, l->t);
-#endif
   scheduler_activate(s, l->t);
   return l;
 }
@@ -222,12 +218,29 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
   if (l == NULL) {
     error("Missing link to recv task.");
   }
-#ifdef WITH_MPI
-  mpicache_add(s->recv_mpicache, l->t->ci->nodeID, -1, l->t);
-#endif
   scheduler_activate(s, l->t);
   return l;
 }
+
+/* Forward declaration. */
+size_t scheduler_mpi_size(struct task *t);
+
+/**
+ * @brief Add an MPI task a cache and set the message size.
+ *
+ * @param s The #scheduler.
+ * @param cache the #mpicache, usually one of those in the scheduler.
+ * @param node the MPI rank that the message originates from.
+ */
+__attribute__((always_inline)) INLINE static 
+void scheduler_cache_mpitask(struct mpicache *cache, int node, struct task *t) {
+#if WITH_MPI
+  mpicache_add(cache, node, t);
+  t->size = scheduler_mpi_size(t);
+#endif
+}
+
+
 
 /* Function prototypes. */
 void scheduler_clear_active(struct scheduler *s);
@@ -260,7 +273,6 @@ void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
 
-size_t scheduler_mpi_size(struct task *t);
 
 void scheduler_osmpi_init(struct scheduler *s);
 void scheduler_osmpi_init_buffers(struct scheduler *s);

@@ -2617,69 +2617,74 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
 #ifdef WITH_MPI
 
   /* First apply the caches to the tasks, so we get the window sizes and the
-   * offsets. The send cache only really wants the offsets. */
-  mpicache_apply(s->send_mpicache, 0);
-  mpicache_apply(s->recv_mpicache, 1);
+   * remote offsets set in the tasks. */
+  mpicache_apply(s->send_mpicache, s->nr_ranks, "send");
+  mpicache_apply(s->recv_mpicache, s->nr_ranks, "recv");
 
-  /* Now create the one sided windows and buffers, we have one for each remote
-   * node and subtype. */
-  s->osmpi_ptrs = calloc(s->nr_ranks * task_subtype_count, sizeof(void *));
-  s->osmpi_windows = calloc(s->nr_ranks * task_subtype_count, sizeof(MPI_Win *));
+  /* We have one window per subtype, which is large enough for all exchanges. */
+  for (int k = 0; k < task_subtype_count; k++) {
+    s->osmpi_sizes[k] = s->recv_mpicache->window_sizes[k];
 
-  for (int k = 0; k < s->recv_mpicache->nr_windows; k++) {
-    int node = s->recv_mpicache->window_nodes[k];
-    int subtype = s->recv_mpicache->window_subtypes[k];
-    size_t size = s->recv_mpicache->window_sizes[k];
-    int index = node * s->nr_ranks + subtype;
+    //message("created window subtype %d with sizes %zu / %zu", k,
+    //        s->osmpi_sizes[k], s->send_mpicache->window_sizes[k]);
+    /* Note windows can have zero size, but must exist on both sides of any
+     * exchange and this is effectively a collective operation across the
+     * communicator. */
+    int err = MPI_Win_allocate(s->osmpi_sizes[k], scheduler_osmpi_bytesinblock,
+                               MPI_INFO_NULL, subtaskMPI_comms[k],
+                               &s->osmpi_ptrs[k], 
+                               &s->osmpi_windows[k]);
 
-    int err = MPI_Win_allocate(size, scheduler_osmpi_bytesinblock,
-                               MPI_INFO_NULL, subtaskMPI_comms[subtype],
-                               &s->osmpi_ptrs[index], 
-                               &s->osmpi_windows[index]);
     if (err != MPI_SUCCESS) {
-      mpi_error(err, "Failed to allocate osmpi window for subtype: %d",
-                s->recv_mpicache->window_subtypes[k]);
-    }
-
-    // XXX do we need to do this?
-    if (size > 0 && s->osmpi_ptrs[index] != NULL) {
-      memset((void *)s->osmpi_ptrs[index], 0, size);
+      mpi_error(err, "Failed to create osmpi window for subtype: %d", k);
     }
 
     /* Assert a shared lock with all the other processes on this window. */
-    err = MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_windows[index]);
+    err = MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_windows[k]);
     if (err != MPI_SUCCESS) {
       mpi_error(err, "Failed to lock osmpi window");
     }
-    index++;
   }
 
-  /* We need also need one sided windows for sends that do not have any
-   * receives, so let's check that as well. */
-  for (int k = 0; k < s->send_mpicache->nr_windows; k++) {
-    int node = s->send_mpicache->window_nodes[k];
-    int subtype = s->send_mpicache->window_subtypes[k];
-    size_t size = s->send_mpicache->window_sizes[k];
-    int index = node * s->nr_ranks + subtype;
+  /* 3D index of array. */
+#define INDEX3(nx, ny, x, y, z) (nx * ny * z + nx * y + x)
+#define INDEX2(nx, x, y) (nx * y + x)
 
-    if (size > 0 && s->osmpi_ptrs[index] == NULL) {
-      int err = MPI_Win_allocate(size, scheduler_osmpi_bytesinblock,
-                                 MPI_INFO_NULL, subtaskMPI_comms[subtype],
-                                 &s->osmpi_ptrs[index], 
-                                 &s->osmpi_windows[index]);
+  /* Now we need to build an array that allows all nodes to find their offsets
+   * into the windows of any other node per subtype and exchange this with
+   * all the other nodes. */
+  s->global_offsets = calloc(task_subtype_count * s->nr_ranks *
+                             s->nr_ranks, sizeof(size_t));
+  for (int k = 0; k < task_subtype_count; k++) {
+    for (int j = 0; j < s->nr_ranks; j++) {
+      size_t offset = s->recv_mpicache->window_node_offsets[INDEX2(task_subtype_count, k, j)];
+      if (offset != LLONG_MAX) {
+        s->global_offsets[INDEX3(task_subtype_count, s->nr_ranks, k, engine_rank, j)] = offset;
+        //message("%d: goff[%d,%d,%d] = %zu", engine_rank, k, engine_rank, j, offset);
+      } 
+      //else {
+      //  message("%d: goff[ %d , %d , %d ] = %d", engine_rank, k, engine_rank, j, 0);
+      //}
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE, s->global_offsets, task_subtype_count * s->nr_ranks * s->nr_ranks,
+                MPI_AINT, MPI_SUM, MPI_COMM_WORLD);
 
-      if (err != MPI_SUCCESS) {
-        mpi_error(err, "Failed to allocate osmpi window for subtype: %d",
-                  s->send_mpicache->window_subtypes[k]);
-      }
-
-      /* Assert a shared lock with all the other processes on this window. */
-      err = MPI_Win_lock_all(MPI_MODE_NOCHECK, s->osmpi_windows[index]);
-      if (err != MPI_SUCCESS) {
-        mpi_error(err, "Failed to lock osmpi window");
+#if 0
+  if (engine_rank == 0 ) {
+    for (int k = 0; k < task_subtype_count; k++) {
+      for (int j = 0; j < s->nr_ranks; j++) {
+        for (int i = 0; i < s->nr_ranks; i++) {
+          size_t index = INDEX3(task_subtype_count, s->nr_ranks, k, i, j);
+          size_t goff = s->global_offsets[index];
+          fflush(stdout);
+          message("%d %d %d reduced to: %zu", k, i, j, goff);
+          fflush(stdout);
+        }
       }
     }
   }
+#endif
 
 #endif
 }

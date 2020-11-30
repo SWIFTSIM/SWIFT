@@ -31,8 +31,7 @@
 
 /* A single cache entry. */
 struct mpicache_entry {
-  int send_node;
-  int recv_node;
+  int node;
   struct task *task;
 };
 
@@ -46,17 +45,14 @@ struct mpicache {
   volatile size_t entries_done;
   struct mpicache_entry *volatile entries;
 
-  int *window_sizes;
-  int *window_nodes;
-  int *window_subtypes;
-  int window_size;
-  int nr_windows;
+  size_t window_sizes[task_subtype_count];
+  size_t *window_node_offsets;
 };
 
 /* API. */
 struct mpicache *mpicache_init(void);
-void mpicache_add(struct mpicache *cache, int send_node, int recv_node, struct task *t);
+void mpicache_add(struct mpicache *cache, int node, struct task *t);
 void mpicache_destroy(struct mpicache *cache);
-void mpicache_apply(struct mpicache *cache, int sort_by_send);
+void mpicache_apply(struct mpicache *cache, int nr_ranks, const char *prefix);
 
 #endif /* SWIFT_MPICACHE_H */

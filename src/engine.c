@@ -1629,14 +1629,6 @@ void engine_launch(struct engine *e, const char *call) {
   /* Sit back and wait for the runners to come home. */
   swift_barrier_wait(&e->wait_barrier);
 
-  /* Reset some scheduler resources. XXX bit exposed hide in scheduler. */
-#ifdef WITH_MPI
-  mpicache_destroy(e->sched.send_mpicache);
-  mpicache_destroy(e->sched.recv_mpicache);
-  e->sched.send_mpicache = NULL;
-  e->sched.recv_mpicache = NULL;
-#endif
-
   /* Store the wallclock time */
   e->sched.total_ticks += getticks() - tic;
 

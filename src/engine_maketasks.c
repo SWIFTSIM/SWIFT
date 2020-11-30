@@ -95,9 +95,11 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_grav);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_gpart,
                                ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_ti);
 
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
@@ -169,20 +171,25 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
                                0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_xv);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_gradient);
 #endif
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_part,
                                ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_ti);
 
       if (with_limiter) {
         t_limiter = scheduler_addtask(s, task_type_send, task_subtype_limiter,
                                       ci->mpi.tag, 0, ci, cj);
+        scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_limiter);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -280,6 +287,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts,
                                     ci->mpi.tag, 0, ci, cj);
+    scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_sf_counts);
     scheduler_addunlock(s, ci->hydro.star_formation, t_sf_counts);
   }
 
@@ -300,9 +308,11 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Create the tasks and their dependencies? */
       t_feedback = scheduler_addtask(s, task_type_send, task_subtype_spart,
                                      ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_feedback);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_spart,
                                ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_ti);
 
       /* The send_stars task should unlock the super_cell's kick task. */
       scheduler_addunlock(s, t_feedback, ci->hydro.super->stars.stars_out);
@@ -381,19 +391,24 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
       /* Create the tasks and their dependencies? */
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_bpart_rho,
                                 ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_rho);
 
       t_bh_merger = scheduler_addtask(
           s, task_type_send, task_subtype_bpart_merger, ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_bh_merger);
 
       t_gas_swallow = scheduler_addtask(
           s, task_type_send, task_subtype_part_swallow, ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_gas_swallow);
 
       t_feedback =
           scheduler_addtask(s, task_type_send, task_subtype_bpart_feedback,
                             ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_feedback);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_bpart,
                                ci->mpi.tag, 0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_ti);
 
       /* The send_black_holes task should unlock the super_cell's BH exit point
        * task. */
@@ -478,19 +493,24 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag, 0,
                              c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_xv);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
                               0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_rho);
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_gradient);
 #endif
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_part,
                              c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_ti);
 
     if (with_limiter) {
       t_limiter = scheduler_addtask(s, task_type_recv, task_subtype_limiter,
                                     c->mpi.tag, 0, c, NULL);
+      scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_limiter);
     }
   }
 
@@ -592,6 +612,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
                                     c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_sf_counts);
   }
 
   /* Have we reached a level where there are any stars tasks ? */
@@ -605,9 +626,11 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_feedback = scheduler_addtask(s, task_type_recv, task_subtype_spart,
                                    c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_feedback);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_spart,
                              c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_ti);
 
     if (with_star_formation && c->hydro.count > 0) {
 
@@ -687,18 +710,23 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_bpart_rho,
                               c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_rho);
 
     t_bh_merger = scheduler_addtask(
         s, task_type_recv, task_subtype_bpart_merger, c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_bh_merger);
 
     t_gas_swallow = scheduler_addtask(
         s, task_type_recv, task_subtype_part_swallow, c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_gas_swallow);
 
     t_feedback = scheduler_addtask(
         s, task_type_recv, task_subtype_bpart_feedback, c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_feedback);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_bpart,
                              c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_ti);
   }
 
   if (t_rho != NULL) {
@@ -780,9 +808,11 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_grav);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
                              c->mpi.tag, 0, c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_ti);
   }
 
   /* If we have tasks, link them. */
@@ -3512,6 +3542,11 @@ void engine_maketasks(struct engine *e) {
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
+#ifdef WITH_MPI
+  /* Initialise for one-sided MPI. */
+  scheduler_osmpi_init(sched);
+#endif
+
   ticks tic2 = getticks();
 
   /* Construct the first hydro loop over neighbours */
@@ -3770,6 +3805,11 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the tasks age. */
   e->tasks_age = 0;
+
+#ifdef WITH_MPI
+  /* Initialise windows and offsets for one-sided MPI. */
+  scheduler_osmpi_init_buffers(sched);
+#endif
 
   if (e->verbose)
     message("took %.3f %s (including reweight).",

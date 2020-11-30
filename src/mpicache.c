@@ -49,33 +49,13 @@
 /* Bit shift to accomodate all the bits of the maximum subtype. */
 int mpicache_subtype_shift = 0;
 
-/* Comparator function to sort by send node, subtype, tag order. */
+/* Comparator function to sort by node, subtype, tag order. */
 #ifdef WITH_MPI
-static int mpicache_entry_send_cmp(const void *a, const void *b) {
+static int mpicache_entry_cmp(const void *a, const void *b) {
   const struct mpicache_entry *e1 = (const struct mpicache_entry *)a;
   const struct mpicache_entry *e2 = (const struct mpicache_entry *)b;
 
-  int comp = e1->send_node - e2->send_node;
-  if (comp < 0) return -1;
-  if (comp > 0) return 1;
-
-  /* Same node, check subtype. */
-  comp = e1->task->subtype - e2->task->subtype;
-  if (comp < 0) return -1;
-  if (comp > 0) return 1;
-
-  /* Same subtype, check tag. */
-  return e1->task->flags - e2->task->flags;
-}
-#endif
-
-/* Comparator function to sort by recv node, subtype, tag order. */
-#ifdef WITH_MPI
-static int mpicache_entry_recv_cmp(const void *a, const void *b) {
-  const struct mpicache_entry *e1 = (const struct mpicache_entry *)a;
-  const struct mpicache_entry *e2 = (const struct mpicache_entry *)b;
-
-  int comp = e1->recv_node - e2->recv_node;
+  int comp = e1->node - e2->node;
   if (comp < 0) return -1;
   if (comp > 0) return 1;
 
@@ -151,11 +131,10 @@ struct mpicache *mpicache_init() {
  * @brief Add a new MPI task to the cache.
  *
  * @param cache the #mpicache
- * @param send_node the MPI rank that the message originates.
- * @param recv_node the MPI rank that the message is intended for.
+ * @param send_node the MPI rank that the message originates from.
  * @param t the #task struct.
  */
-void mpicache_add(struct mpicache *cache, int send_node, int recv_node, struct task *t) {
+void mpicache_add(struct mpicache *cache, int node, struct task *t) {
 
   /* Append this to the cache. */
   size_t ind = atomic_inc(&(cache->nr_entries));
@@ -171,8 +150,7 @@ void mpicache_add(struct mpicache *cache, int send_node, int recv_node, struct t
 #endif
 
   /* And store. */
-  cache->entries[ind].send_node = send_node;
-  cache->entries[ind].recv_node = recv_node;
+  cache->entries[ind].node = node;
   cache->entries[ind].task = t;
   atomic_inc(&(cache->entries_done));
 
@@ -197,13 +175,12 @@ void mpicache_destroy(struct mpicache *cache) {
  * windows are updated in the cache.
  *
  * @param cache the #mpicache.
- * @param sort_by_send sort by the send targer, otherwise recv.
+ * @param nr_ranks number of MPI ranks. 
  */
-void mpicache_apply(struct mpicache *cache, int sort_by_send) {
+void mpicache_apply(struct mpicache *cache, int nr_ranks, const char *prefix) {
 
 #ifdef WITH_MPI
   /* Do nothing if we have nothing. */
-  cache->nr_windows = 0;
   if (cache->nr_entries == 0) {
     return;
   }
@@ -212,116 +189,45 @@ void mpicache_apply(struct mpicache *cache, int sort_by_send) {
    * node|subtask|tag order. Within each node section the subtask|tag should
    * be the same on the send and recv sides, that is necessary so that the
    * offsets match. */
-  if (sort_by_send) {
-    qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
-          mpicache_entry_send_cmp);
-  } else {
-    qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
-          mpicache_entry_recv_cmp);
-  }
+  qsort(cache->entries, cache->nr_entries, sizeof(struct mpicache_entry),
+        mpicache_entry_cmp);
 
-  /* These entries will have duplicates as the same tasks can be unskipped
-   * more than once, we need to skip repeats. */
-  size_t nr_uniq = 0;
-  struct task *task = NULL;
-  struct task *prev = NULL;
-  for (size_t k = 0; k < cache->nr_entries; k++) {
-    task = cache->entries[k].task;
-    if (task == prev) continue;
-
-    /* Valid task, move up the list once a duplicate appears. */
-    if (k != nr_uniq) {
-      memcpy(&cache->entries[nr_uniq], &cache->entries[k],
-             sizeof(struct mpicache_entry));
-    }
-    nr_uniq++;
-    prev = task;
-  }
-  cache->nr_entries = nr_uniq;
-
-  /* Now we go through the entries and generate the offsets. */
-  cache->window_sizes = calloc(26, sizeof(int));  // 26 *task_subtype_count?
-  cache->window_nodes = calloc(26, sizeof(int));
-  cache->window_subtypes = calloc(26, sizeof(int));
-  cache->window_size = 26;
-  cache->nr_windows = 0;
-
-  /* Preload the first entry into the first window. */
-  cache->window_sizes[cache->nr_windows] = 0;
-  if (sort_by_send) {
-    cache->window_nodes[cache->nr_windows] = cache->entries[0].send_node;
-  } else {
-    cache->window_nodes[cache->nr_windows] = cache->entries[0].recv_node;
-  }
-  cache->window_subtypes[cache->nr_windows] = cache->entries[0].task->subtype;
-
-  size_t offset = 0;
+  /* Lists of offsets for each node in the subtype window. Keep this square
+   * for convenience. */
+  cache->window_node_offsets = (size_t *)malloc(task_subtype_count * nr_ranks * sizeof(size_t));
+  for (int k = 0; k < task_subtype_count * nr_ranks; k++)
+    cache->window_node_offsets[k] = LLONG_MAX;
+  
+  size_t offset[task_subtype_count] = {0};
   for (size_t k = 0; k < cache->nr_entries; k++) {
 
-    /* New node started, so start the accumulation. */
-    int node = -1;
-    if (sort_by_send) {
-      node = cache->entries[k].send_node;
-    } else {
-      node = cache->entries[k].recv_node;
+    struct task *task =  cache->entries[k].task;
+    int node = cache->entries[k].node;
+    int subtype = task->subtype;
+
+#define INDEX2(nx, x, y) (nx * y + x)
+    if (cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] == LLONG_MAX) {
+
+      /* Offset for this node and subtype not seen, so this is the first. */
+      cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] = offset[subtype];
+      //message("node %d offset for subtype %d = %zu", node, subtype, offset[subtype]);
+
+      /* And now first in this subtype once more. */
+      offset[subtype] = 0;
     }
-    int subtype = cache->entries[k].task->subtype;
 
     /* Window sizes are in bytes. */
-    cache->window_sizes[cache->nr_windows] += cache->entries[k].task->size +
-      scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
+    cache->window_sizes[subtype] += task->size + scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
 
     /* Offsets are in blocks. */
-    cache->entries[k].task->offset = offset;
-    offset += scheduler_osmpi_toblocks(cache->entries[k].task->size) +
-      scheduler_osmpi_header_size;
+    task->offset = offset[subtype];
+    offset[subtype] += scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size;
 
-    /* Check next task to see if this breaks the run of subtypes or nodes. */
-    if (k < (cache->nr_entries - 1)) {
-      int next_node = -1;
-      if (sort_by_send) {
-        next_node = cache->entries[k+1].send_node;
-      } else {
-        next_node = cache->entries[k+1].recv_node;
-      }
-      int next_subtype = cache->entries[k+1].task->subtype;
-
-      if (next_subtype != subtype || next_node != node) {
-
-        /* Start a new window. */
-        cache->nr_windows++;
-        if (cache->nr_windows == cache->window_size) {
-          cache->window_size += 26;
-          cache->window_sizes =
-            realloc(cache->window_sizes, cache->window_size * sizeof(int));
-          cache->window_nodes =
-            realloc(cache->window_nodes, cache->window_size * sizeof(int));
-          cache->window_subtypes =
-            realloc(cache->window_subtypes, cache->window_size * sizeof(int));
-        }
-
-        cache->window_sizes[cache->nr_windows] = 0;
-        cache->window_nodes[cache->nr_windows] = next_node;
-        cache->window_subtypes[cache->nr_windows] = next_subtype;
-        offset = 0;
-      }
-    }
-  }
-  cache->nr_windows++;
-
-  for (size_t k = 0; k < cache->nr_entries; k++) {
-    task = cache->entries[k].task;
-    message("sort_by_send %d nodes %d/%d size %zd type %d subtype %d "
-            "tag = %lld offset = %zd",
-            sort_by_send, cache->entries[k].send_node, cache->entries[k].recv_node,
-            task->size, task->type, task->subtype, task->flags, task->offset);
-  }
-
-  for (int k = 0; k < cache->nr_windows; k++) {
-    message("sort_by_send %d window %d %d %d %d", sort_by_send, k,
-            cache->window_sizes[k],
-            cache->window_nodes[k],
-            cache->window_subtypes[k]);
+    //message("%s %d applied task %d subtype %d at %zd tag %lld node %d size %zu blocks %zu node offset %zu",
+    //        prefix, task->ci->cellID, task->type, subtype, task->offset,
+    //        task->flags, node, task->size,
+    //        scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size,
+    //        cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)]);
   }
 
 
