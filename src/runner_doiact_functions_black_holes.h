@@ -42,14 +42,14 @@ void DOSELF1_BH(struct runner *r, struct cell *c, const int limit_min_h,
 
   TIMER_TIC;
 
-  /* Anything to do here? */
-  if (c->black_holes.count == 0) return;
-  if (!cell_is_active_black_holes(c, e)) return;
-
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+
+  /* Anything to do here? */
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
 
   const int bcount = c->black_holes.count;
   const int count = c->hydro.count;
