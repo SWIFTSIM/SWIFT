@@ -631,6 +631,8 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c, const int limit_min_h,
   /* Anything to do here? */
   if (!cell_is_active_black_holes(c, e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   /* Did we mess up the recursion? */
   if (!limit_max_h && c->black_holes.h_max_active * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
@@ -638,6 +640,8 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c, const int limit_min_h,
   /* Did we mess up the recursion? */
   if (limit_min_h && !limit_max_h)
     error("Fundamental error in the recursion logic");
+
+#endif
 
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e) || !cell_are_bpart_drifted(c, e))

@@ -1099,6 +1099,8 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c,
   /* Anything to do here? */
   if (!cell_is_active_stars(c, e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   /* Did we mess up the recursion? */
   if (!limit_max_h && c->stars.h_max_active * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
@@ -1106,6 +1108,8 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c,
   /* Did we mess up the recursion? */
   if (limit_min_h && !limit_max_h)
     error("Fundamental error in the recursion logic");
+
+#endif
 
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e) || !cell_are_spart_drifted(c, e))
