@@ -170,19 +170,16 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The #phys_const.
- * @param star_age_beg_step The age of the star at the star of the time-step in
- * internal units.
- * @param dt The time-step size of this star in internal units.
  * @param time The physical time in internal units.
- * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
+ * @param ti_current The current time (in integer)
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     const struct spart* sp, const struct feedback_props* feedback_props,
     const int with_cosmology, const struct cosmology* cosmo, const double time,
     const struct unit_system* us, const struct phys_const* phys_const,
-    const double star_age_beg_step, const double dt,
-    const integertime_t ti_begin) {}
+    const integertime_t ti_current, const double time_base) {}
 
 /**
  * @brief Clean-up the memory allocated for the feedback routines
