@@ -1185,6 +1185,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
+
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
             (float)(pi->x[2] - c->loc[2])};
@@ -1339,6 +1340,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
+
         const int pi_active = dmpart_is_active(pi, e);
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
@@ -1353,7 +1355,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
-
+            
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
             const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
@@ -1424,7 +1426,7 @@ void runner_dopair2_branch_dark_matter_sidm(struct runner *r, struct cell *ci, s
     
     const int do_ci = (ci->dark_matter.count != 0 && ci_active);
     const int do_cj = (cj->dark_matter.count != 0 && cj_active);
-    
+
     /* Anything to do here? */
     if (!do_ci && !do_cj) return;
 
@@ -1457,6 +1459,7 @@ void runner_dosub_pair2_dark_matter_sidm(struct runner *r, struct cell *ci, stru
     /* Should we even bother? */
     const int should_do_ci = ci->dark_matter.count != 0 && cell_is_active_dark_matter(ci, e);
     const int should_do_cj = cj->dark_matter.count != 0 && cell_is_active_dark_matter(cj, e);
+    
     if (!should_do_ci && !should_do_cj) return;
     
     /* Get the type of pair and flip ci/cj if needed. */
