@@ -838,13 +838,6 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
 
   TIMER_TIC;
 
-  /* Should we even bother? */
-  /* const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter); */
-  /* const int do_j = cell_get_flag(cj, cell_flag_do_hydro_limiter); */
-  /* const int do_sub_i = cell_get_flag(ci, cell_flag_do_hydro_sub_limiter); */
-  /* const int do_sub_j = cell_get_flag(cj, cell_flag_do_hydro_sub_limiter); */
-
-  /* if (!do_i && !do_j && !do_sub_i && !do_sub_j) return; */
   if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
@@ -898,10 +891,6 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
         runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
       }
-
-      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
-       */
-      /* 	      cj->hydro.count); */
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
