@@ -852,42 +852,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Update feedback related counters */
         if (with_feedback) {
-          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-          const integertime_t ti_begin_star =
-              get_integer_time_begin(e->ti_current, sp->time_bin);
 
-          /* Get particle time-step */
-          double dt_star;
-          if (with_cosmology) {
-            dt_star = cosmology_get_delta_time(e->cosmology, ti_begin_star,
-                                               ti_begin_star + ti_step);
-          } else {
-            dt_star = get_timestep(sp->time_bin, e->time_base);
-          }
-
-          /* Calculate age of the star at current time */
-          double star_age_end_of_step;
-          if (with_cosmology) {
-            if (cosmo->a > (double)sp->birth_scale_factor)
-              star_age_end_of_step =
-                  cosmology_get_delta_time_from_scale_factors(
-                      cosmo, (double)sp->birth_scale_factor, cosmo->a);
-            else
-              star_age_end_of_step = 0.;
-          } else {
-            star_age_end_of_step = max(e->time - (double)sp->birth_time, 0.);
-          }
-
-          /* Get the length of the enrichment time-step */
-          const double dt_enrichment = feedback_get_enrichment_timestep(
-              sp, with_cosmology, cosmo, e->time, dt_star);
-          const double star_age_beg_of_step =
-              star_age_end_of_step - dt_enrichment;
-
-          /* Compute the stellar evolution  */
-          feedback_will_do_feedback(
-              sp, feedback_props, with_cosmology, cosmo, e->time, us,
-              phys_const, star_age_beg_of_step, dt_enrichment, ti_begin_star);
+          feedback_will_do_feedback(sp, feedback_props, with_cosmology, cosmo,
+                                    e->time, us, phys_const, e->ti_current,
+                                    e->time_base);
         }
 
         /* Number of updated s-particles */

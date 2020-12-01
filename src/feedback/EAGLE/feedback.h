@@ -99,13 +99,10 @@ INLINE static double feedback_get_enrichment_timestep(
     const struct cosmology* cosmo, const double time, const double dt_star) {
 
   if (with_cosmology) {
-    if (cosmo->a > (double)sp->last_enrichment_time)
-      return cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->last_enrichment_time, cosmo->a);
-    else
-      return 0.;
+    return cosmology_get_delta_time_from_scale_factors(
+        cosmo, (double)sp->last_enrichment_time, cosmo->a);
   } else {
-    return max(time - sp->last_enrichment_time, 0.);
+    return time - sp->last_enrichment_time;
   }
 }
 
@@ -235,19 +232,16 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The #phys_const.
- * @param star_age_beg_step The age of the star at the star of the time-step in
- * internal units.
- * @param dt The time-step size of this star in internal units.
  * @param time The physical time in internal units.
- * @param ti_begin The integer time at the beginning of the step.
  * @param with_cosmology Are we running with cosmology on?
+ * @param ti_current The current time (in integer)
+ * @param time_base The time base.
  */
 __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     struct spart* sp, const struct feedback_props* feedback_props,
     const int with_cosmology, const struct cosmology* cosmo, const double time,
     const struct unit_system* us, const struct phys_const* phys_const,
-    const double star_age_beg_step, const double dt,
-    const integertime_t ti_begin) {
+    const integertime_t ti_current, const double time_base) {
 
   /* Special case for new-born stars */
   if (with_cosmology) {
@@ -255,25 +249,28 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
+
+      /* Ok, we are done. */
+      return;
     }
   } else {
     if (sp->birth_time == (float)time) {
 
       /* Set the counter to "let's do enrichment" */
       sp->count_since_last_enrichment = 0;
+
+      /* Ok, we are done. */
+      return;
     }
   }
 
   /* Calculate age of the star at current time */
   double age_of_star;
   if (with_cosmology) {
-    if (cosmo->a > (double)sp->birth_scale_factor)
-      age_of_star = cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->birth_scale_factor, cosmo->a);
-    else
-      age_of_star = 0.;
+    age_of_star = cosmology_get_delta_time_from_scale_factors(
+        cosmo, (double)sp->birth_scale_factor, cosmo->a);
   } else {
-    age_of_star = max(time - (double)sp->birth_time, 0.);
+    age_of_star = time - (double)sp->birth_time;
   }
 
   /* Is the star still young? */
