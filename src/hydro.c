@@ -232,7 +232,7 @@ void hydro_exact_density_compute(struct space *s, const struct engine *e,
 }
 
 /**
- * @brief Check the particles' density and force calculations against the
+ * @brief Check the gas particles' density and force calculations against the
  * values obtained via the brute-force summation.
  *
  * @param s The #space.

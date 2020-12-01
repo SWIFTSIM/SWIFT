@@ -150,7 +150,8 @@ void black_holes_exact_density_compute_mapper(void *map_data, int nr_bparts,
  * @param s The #space.
  * @param e The #engine.
  */
-void black_holes_exact_density_compute(struct space *s, const struct engine *e) {
+void black_holes_exact_density_compute(struct space *s,
+                                       const struct engine *e) {
 
 #ifdef SWIFT_BH_DENSITY_CHECKS
 

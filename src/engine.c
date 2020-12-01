@@ -1872,7 +1872,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->policy & engine_policy_stars) stars_exact_density_compute(e->s, e);
 
   /* Check the accuracy of the stars calculation */
-  if (e->policy & engine_policy_stars) stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+  if (e->policy & engine_policy_stars)
+    stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_BH_DENSITY_CHECKS
