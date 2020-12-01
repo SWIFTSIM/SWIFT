@@ -36,10 +36,8 @@
 struct engine;
 struct space;
 
-void black_holes_exact_density_compute(struct space *s, const struct engine *e,
-                                       const int check_force);
+void black_holes_exact_density_compute(struct space *s, const struct engine *e);
 void black_holes_exact_density_check(struct space *s, const struct engine *e,
-                                     const float rel_tol,
-                                     const int check_force);
+                                     const double rel_tol);
 
 #endif

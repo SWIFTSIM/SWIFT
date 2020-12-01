@@ -38,6 +38,14 @@ struct exact_density_data {
   int counter_global;
 };
 
+/**
+ * @brief Mapper function for the exact BH checks.
+ *
+ * @brief map_data The #bpart's.
+ * @brief nr_bparts The number of BH particles.
+ * @brief extra_data Pointers to the structure containing global interaction
+ * counters.
+ */
 void black_holes_exact_density_compute_mapper(void *map_data, int nr_bparts,
                                               void *extra_data) {
 #ifdef SWIFT_BH_DENSITY_CHECKS
@@ -133,8 +141,16 @@ void black_holes_exact_density_compute_mapper(void *map_data, int nr_bparts,
 #endif
 }
 
-void black_holes_exact_density_compute(struct space *s, const struct engine *e,
-                                       const int check_force) {
+/**
+ * @brief Compute the exact interactions for a selection of BH particles
+ * by running a brute force loop over all the particles in the simulation.
+ *
+ * Will be incorrect over MPI.
+ *
+ * @param s The #space.
+ * @param e The #engine.
+ */
+void black_holes_exact_density_compute(struct space *s, const struct engine *e) {
 
 #ifdef SWIFT_BH_DENSITY_CHECKS
 
@@ -157,9 +173,16 @@ void black_holes_exact_density_compute(struct space *s, const struct engine *e,
 #endif
 }
 
+/**
+ * @brief Check the BH particles' density and force calculations against the
+ * values obtained via the brute-force summation.
+ *
+ * @param s The #space.
+ * @param e The #engine.
+ * @param rel_tol Relative tolerance for the checks
+ */
 void black_holes_exact_density_check(struct space *s, const struct engine *e,
-                                     const float rel_tol,
-                                     const int check_force) {
+                                     const double rel_tol) {
 
 #ifdef SWIFT_BH_DENSITY_CHECKS
 

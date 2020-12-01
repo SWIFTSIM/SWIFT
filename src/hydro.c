@@ -39,6 +39,14 @@ struct exact_density_data {
   int check_force;
 };
 
+/**
+ * @brief Mapper function for the exact hydro checks.
+ *
+ * @brief map_data The #part's.
+ * @brief nr_parts The number of particles.
+ * @brief extra_data Pointers to the structure containing global interaction
+ * counters.
+ */
 void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
                                         void *extra_data) {
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -188,6 +196,16 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
 #endif
 }
 
+/**
+ * @brief Compute the exact interactions for a selection of gas particles
+ * by running a brute force loop over all the particles in the simulation.
+ *
+ * Will be incorrect over MPI.
+ *
+ * @param s The #space.
+ * @param e The #engine.
+ * @param check_force Whether or not to run checks also for the force loop.
+ */
 void hydro_exact_density_compute(struct space *s, const struct engine *e,
                                  const int check_force) {
 
@@ -213,6 +231,15 @@ void hydro_exact_density_compute(struct space *s, const struct engine *e,
 #endif
 }
 
+/**
+ * @brief Check the particles' density and force calculations against the
+ * values obtained via the brute-force summation.
+ *
+ * @param s The #space.
+ * @param e The #engine.
+ * @param rel_tol Relative tolerance for the checks
+ * @param check_force Whether or not to run checks also for the force loop.
+ */
 void hydro_exact_density_check(struct space *s, const struct engine *e,
                                const float rel_tol, const int check_force) {
 
