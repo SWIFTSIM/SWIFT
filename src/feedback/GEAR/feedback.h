@@ -32,14 +32,11 @@
 void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
                           const struct engine* restrict e);
 
-void feedback_will_do_feedback(struct spart* sp,
-                               const struct feedback_props* feedback_props,
-                               const int with_cosmology,
-                               const struct cosmology* cosmo, const double time,
-                               const struct unit_system* us,
-                               const struct phys_const* phys_const,
-                               const double star_age_beg_step, const double dt,
-                               const integertime_t ti_begin);
+void feedback_will_do_feedback(
+    struct spart* sp, const struct feedback_props* feedback_props,
+    const int with_cosmology, const struct cosmology* cosmo, const double time,
+    const struct unit_system* us, const struct phys_const* phys_const,
+    const integertime_t ti_current, const double time_base);
 
 int feedback_is_active(const struct spart* sp, const double time,
                        const struct cosmology* cosmo, const int with_cosmology);
