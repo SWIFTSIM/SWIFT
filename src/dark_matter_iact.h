@@ -277,7 +277,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
-    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;*/
+    float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
 
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
@@ -292,8 +292,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;
     
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
-    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);
+    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
+    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);*/
+    
+    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / (pi->num_neighbours * hi_3);
+    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 * eta_3 / (pj->num_neighbours * hj_3);
+
     
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
@@ -345,7 +349,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
-    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;*/
+    float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
 
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
@@ -359,7 +363,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float hi_3 = hi * hi * hi;
 
     /* Calculate scattering rate */
-    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
+    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);*/
+    float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 * eta_3 / (pi->num_neighbours * hi_3);
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
