@@ -156,17 +156,6 @@ enum lossy_compression_schemes output_options_get_field_compression(
       output_options->select_output, field, compression_level,
       lossy_compression_schemes_names[compression_level_current_default]);
 
-#ifdef SWIFT_DEBUG_CHECKS
-
-  int should_write =
-      strcmp(lossy_compression_schemes_names[compression_do_not_write],
-             compression_level);
-  message(
-      "Check for whether %s should be written returned %s from a provided "
-      "value of \"%s\"",
-      field, should_write ? "True" : "False", compression_level);
-#endif
-
   return compression_scheme_from_name(compression_level);
 }
 
@@ -212,21 +201,6 @@ enum lossy_compression_schemes output_options_get_ptype_default_compression(
         "compression must be set on a field-by-field basis.",
         snapshot_type, part_type);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check whether we could translate the level string to a known entry. */
-  if (level_index >= compression_level_count)
-    error(
-        "Could not resolve compression level \"%s\" as default compression "
-        "level of particle type %s in snapshot type %s.",
-        compression_level, part_type_names[part_type], snapshot_type);
-
-  message(
-      "Determined default compression level of %s in snapshot type %s "
-      "as \"%s\", corresponding to level code %d",
-      part_type_names[part_type], snapshot_type, compression_level,
-      level_index);
-#endif
-
   return (enum lossy_compression_schemes)level_index;
 }
 
@@ -244,25 +218,6 @@ int output_options_get_num_fields_to_write(
   /* Get the ID of the output selection in the structure */
   int selection_id =
       parser_get_section_id(output_options->select_output, selection_name);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* The only situation where we might legitimately not find the selection
-   * name is if it is the default. Everything else means trouble. */
-  if (strcmp(selection_name, select_output_header_default_name) &&
-      selection_id < 0)
-    error(
-        "Output selection '%s' could not be located in output_options "
-        "structure. Please investigate.",
-        selection_name);
-
-  /* While we're at it, make sure the selection ID is not impossibly high */
-  if (selection_id >= output_options->select_output->sectionCount)
-    error(
-        "Output selection '%s' was apparently located in index %d of the "
-        "output_options structure, but this only has %d sections.",
-        selection_name, selection_id,
-        output_options->select_output->sectionCount);
-#endif
 
   /* Special treatment for absent `Default` section */
   if (selection_id < 0)

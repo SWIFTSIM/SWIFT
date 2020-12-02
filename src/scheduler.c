@@ -57,6 +57,10 @@
 #include "timers.h"
 #include "version.h"
 
+/* Index into 2 and 3D arrays. */
+#define INDEX3(nx, ny, x, y, z) (nx * ny * z + nx * y + x)
+#define INDEX2(nx, x, y) (nx * y + x)
+
 /**
  * @brief Re-set the list of active tasks.
  */
@@ -2646,45 +2650,42 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
     }
   }
 
-  /* 3D index of array. */
-#define INDEX3(nx, ny, x, y, z) (nx * ny * z + nx * y + x)
-#define INDEX2(nx, x, y) (nx * y + x)
-
   /* Now we need to build an array that allows all nodes to find their offsets
    * into the windows of any other node per subtype and exchange this with
    * all the other nodes. */
   s->global_offsets = calloc(task_subtype_count * s->nr_ranks *
-                             s->nr_ranks, sizeof(size_t));
+                             s->nr_ranks, scheduler_osmpi_bytesinblock);
   for (int k = 0; k < task_subtype_count; k++) {
     for (int j = 0; j < s->nr_ranks; j++) {
-      size_t offset = s->recv_mpicache->window_node_offsets[INDEX2(task_subtype_count, k, j)];
+      size_t offset =
+        s->recv_mpicache->window_node_offsets[INDEX2(task_subtype_count, k, j)];
       if (offset != LLONG_MAX) {
-        s->global_offsets[INDEX3(task_subtype_count, s->nr_ranks, k, engine_rank, j)] = offset;
-        //message("%d: goff[%d,%d,%d] = %zu", engine_rank, k, engine_rank, j, offset);
-      } 
-      //else {
-      //  message("%d: goff[ %d , %d , %d ] = %d", engine_rank, k, engine_rank, j, 0);
-      //}
+        s->global_offsets[INDEX3(task_subtype_count, s->nr_ranks, k, j, engine_rank)] = offset;
+        //if (k == task_subtype_xv) {
+        //  message("local subtype %d from %d to %d set to: %zu", k, j, engine_rank, offset);
+        //}
+      }
     }
   }
   MPI_Allreduce(MPI_IN_PLACE, s->global_offsets, task_subtype_count * s->nr_ranks * s->nr_ranks,
-                MPI_AINT, MPI_SUM, MPI_COMM_WORLD);
+                scheduler_osmpi_mpi_blocktype, MPI_SUM, MPI_COMM_WORLD);
 
 #if 0
   if (engine_rank == 0 ) {
     for (int k = 0; k < task_subtype_count; k++) {
       for (int j = 0; j < s->nr_ranks; j++) {
         for (int i = 0; i < s->nr_ranks; i++) {
-          size_t index = INDEX3(task_subtype_count, s->nr_ranks, k, i, j);
-          size_t goff = s->global_offsets[index];
-          fflush(stdout);
-          message("%d %d %d reduced to: %zu", k, i, j, goff);
-          fflush(stdout);
+          if (i != j) {
+            size_t index = INDEX3(task_subtype_count, s->nr_ranks, k, j, i);
+            size_t goff = s->global_offsets[index];
+            message("subtype %d from %d to %d reduced to: %zu", k, j, i, goff);
+          }
         }
       }
     }
+    message("All offsets are exchanged");
   }
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
-
 #endif
 }

@@ -64,9 +64,10 @@
 #define scheduler_osmpi_mpi_blocktype MPI_AINT
 #define scheduler_osmpi_bytesinblock sizeof(size_t)
 
-/* Size of message header control block in blocks. The lock flag, size and tag.
+/* Size of message header control block in blocks. The lock flag, size and tag
+ * and originating node (for consistency checks).
  */
-#define scheduler_osmpi_header_size 3
+#define scheduler_osmpi_header_size 4
 
 /* Number of threads we can use for sending. */
 #define scheduler_osmpi_max_sends 1
@@ -153,7 +154,7 @@ struct scheduler {
   struct mpicache *recv_mpicache;
 
   /* Array of offsets for each node into another nodes subtypes. */
-  size_t *global_offsets;
+  scheduler_osmpi_blocktype *global_offsets;
 #endif
 };
 

@@ -43,6 +43,9 @@
 #include "memuse_rnodes.h"
 #include "task.h"
 
+/* Index of 2D array. */
+#define INDEX2(nx, x, y) (nx * y + x)
+
 /* Size of the cache entry buffer increment. */
 #define CACHE_INC_SIZE 5000
 
@@ -198,36 +201,39 @@ void mpicache_apply(struct mpicache *cache, int nr_ranks, const char *prefix) {
   for (int k = 0; k < task_subtype_count * nr_ranks; k++)
     cache->window_node_offsets[k] = LLONG_MAX;
   
-  size_t offset[task_subtype_count] = {0};
+  size_t node_offset[task_subtype_count] = {0};
+  size_t task_offset[task_subtype_count] = {0};
   for (size_t k = 0; k < cache->nr_entries; k++) {
 
     struct task *task =  cache->entries[k].task;
     int node = cache->entries[k].node;
     int subtype = task->subtype;
 
-#define INDEX2(nx, x, y) (nx * y + x)
     if (cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] == LLONG_MAX) {
 
       /* Offset for this node and subtype not seen, so this is the first. */
-      cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] = offset[subtype];
-      //message("node %d offset for subtype %d = %zu", node, subtype, offset[subtype]);
+      node_offset[subtype] += task_offset[subtype];
+      cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] = node_offset[subtype];
+      //message("%s node %d offset for subtype %d = %zu", prefix, node, subtype, node_offset[subtype]);
 
-      /* And now first in this subtype once more. */
-      offset[subtype] = 0;
+      /* And now first in this task subtype once more. */
+      task_offset[subtype] = 0;
     }
 
     /* Window sizes are in bytes. */
     cache->window_sizes[subtype] += task->size + scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
 
     /* Offsets are in blocks. */
-    task->offset = offset[subtype];
-    offset[subtype] += scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size;
+    task->offset = task_offset[subtype];
+    task_offset[subtype] += scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size;
 
-    //message("%s %d applied task %d subtype %d at %zd tag %lld node %d size %zu blocks %zu node offset %zu",
+    //message("%s %d applied task %d subtype %d at %zd tag %lld node %d "
+    //        "size %zu blocks %zu node offsets %zu %zu",
     //        prefix, task->ci->cellID, task->type, subtype, task->offset,
     //        task->flags, node, task->size,
     //        scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size,
-    //        cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)]);
+    //        cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)],
+    //        cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)]+task->offset);
   }
 
 
