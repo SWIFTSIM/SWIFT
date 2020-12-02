@@ -169,6 +169,13 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     /* Finish the average calculation by diving by num. of neighbours */
     gp->avg_pair_v /= gp->num_neighbours;
     
+    /* Calculate the velocity dispersion */
+    const float rho_inv = 1.f / gp->rho;
+    gp->velocity_dispersion *= h_inv_dim * rho_inv;
+    gp->velocity_ngb[0] *= h_inv_dim * rho_inv;
+    gp->velocity_ngb[1] *= h_inv_dim * rho_inv;
+    gp->velocity_ngb[2] *= h_inv_dim * rho_inv;
+    
     /* Calculate avg. probability of scattering */
     
     /* Scattering cross section per unit mass (in internal units) */
@@ -186,16 +193,9 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / h3;*/
 
     /* Calculate SIDM probability (internal units) */
-    gp->sidm_probability *= sigma * dt;
+    gp->sidm_probability *= sigma * dt * h_inv_dim * rho_inv;;
     gp->time_step_size = dt;
     
-    /* Calculate the velocity dispersion */
-    const float rho_inv = 1.f / gp->rho;
-    gp->velocity_dispersion *= h_inv_dim * rho_inv;
-    gp->velocity_ngb[0] *= h_inv_dim * rho_inv;
-    gp->velocity_ngb[1] *= h_inv_dim * rho_inv;
-    gp->velocity_ngb[2] *= h_inv_dim * rho_inv;
-
     /* Calculate (actual) velocity dispersion. Currently, the variable
      * 'velocity_ngb' holds <v^2> instead. */
     const double vel2 = gp->velocity_ngb[0] * gp->velocity_ngb[0] + gp->velocity_ngb[1] * gp->velocity_ngb[1] + gp->velocity_ngb[2] * gp->velocity_ngb[2];
