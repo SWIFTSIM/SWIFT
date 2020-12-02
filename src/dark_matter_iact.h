@@ -399,7 +399,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     /* Calculate SIDM probability */
     float Probability_SIDM_i = pi->sidm_probability / pi->num_neighbours;
-    Probability_SIDM_i *= eta_3 / hi_3
+    Probability_SIDM_i *= eta_3 / hi_3;
     
     /* Draw a random number */
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
