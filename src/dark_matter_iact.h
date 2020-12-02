@@ -283,8 +283,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);*/
     
-    float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
-
+    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
+    */
     /* Scattering cross section per unit mass (in internal units) */
     /*const double sigma = sidm_props->sigma;*/
     
@@ -306,9 +306,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
 
     dm_kernel_eval(uj, &wj);*/
 
-    float hi_3 = hi * hi * hi;
+    /*float hi_3 = hi * hi * hi;
     float hj_3 = hj * hj * hj;
-    
+    */
     /*float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
     
@@ -320,11 +320,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /*float Probability_SIDM_i = Rate_SIDM_i * dti;
     float Probability_SIDM_j = Rate_SIDM_j * dtj;*/
     
-    float Probability_SIDM_i = pi->sidm_probability / pi->num_neighbours;
-    float Probability_SIDM_j = pj->sidm_probability / pj->num_neighbours;
-    
-    Probability_SIDM_i *= eta_3 / hi_3;
-    Probability_SIDM_j *= eta_3 / hj_3;
+    float Probability_SIDM_i = pi->sidm_probability;
+    float Probability_SIDM_j = pj->sidm_probability; 
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
@@ -372,8 +369,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);*/
     
-    float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
-
+    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
+    */
     /* Scattering cross section per unit mass (in internal units) */
     /*const double sigma = sidm_props->sigma;*/
     
@@ -392,14 +389,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /*float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
     
-    float hi_3 = hi * hi * hi;
+    /*float hi_3 = hi * hi * hi;*/
 
     /* Calculate scattering rate */
     /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);*/
     
     /* Calculate SIDM probability */
-    float Probability_SIDM_i = pi->sidm_probability / pi->num_neighbours;
-    Probability_SIDM_i *= eta_3 / hi_3;
+    float Probability_SIDM_i = pi->sidm_probability;
     
     /* Draw a random number */
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
