@@ -292,23 +292,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /*const double mass_i = pi->mass;
     const double mass_j = pj->mass;*/
 
-    /*const float r = sqrtf(r2);
-    float wi, wj;*/
+    const float r = sqrtf(r2);
+    float wi, wj;
 
     /* Compute density of pi. */
-    /*const float hi_inv = 1.f / hi;
-    const float ui = r * hi_inv;*/
+    const float hi_inv = 1.f / hi;
+    const float ui = r * hi_inv;
 
-    /*dm_kernel_eval(ui, &wi);
+    dm_kernel_eval(ui, &wi);
     
     const float hj_inv = 1.f / hj;
     const float uj = r * hj_inv;
 
-    dm_kernel_eval(uj, &wj);*/
+    dm_kernel_eval(uj, &wj);
 
-    /*float hi_3 = hi * hi * hi;
+    float hi_3 = hi * hi * hi;
     float hj_3 = hj * hj * hj;
-    float a_inv = 1.0f / a;
+    
+    /*float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
     
     /* Calculate scattering rate */
@@ -321,6 +322,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     float Probability_SIDM_i = pi->sidm_probability / pi->num_neighbours;
     float Probability_SIDM_j = pj->sidm_probability / pj->num_neighbours;
+    
+    Probability_SIDM_i *= wi / pi->density.wcount;
+    Probability_SIDM_i /= hi_3;
+
+    Probability_SIDM_j *= wj / pj->density.wcount;
+    Probability_SIDM_j /= hj_3;
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
@@ -374,27 +381,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /*const double sigma = sidm_props->sigma;*/
     
     /* DM particle mass */
-    /*const double mass_i = pi->mass;
+    /*const double mass_i = pi->mass;*/
 
     const float r = sqrtf(r2);
-    float wi;*/
+    float wi;
 
     /* Compute density of pi. */
-    /*const float hi_inv = 1.f / hi;
+    const float hi_inv = 1.f / hi;
     const float ui = r * hi_inv;
 
-    dm_kernel_eval(ui, &wi);*/
+    dm_kernel_eval(ui, &wi);
 
     /*float a_inv = 1.0f / a;
     float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
     
-    /*float hi_3 = hi * hi * hi;*/
+    float hi_3 = hi * hi * hi;
 
     /* Calculate scattering rate */
     /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);*/
     
     /* Calculate SIDM probability */
     float Probability_SIDM_i = pi->sidm_probability / pi->num_neighbours;
+    
+    Probability_SIDM_i *= wi / pi->density.wcount;
+    Probability_SIDM_i /= hi_3;
     
     /* Draw a random number */
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
