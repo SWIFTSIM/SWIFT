@@ -193,7 +193,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / h3;*/
 
     /* Calculate SIDM probability (internal units) */
-    gp->sidm_probability *= sigma * dt * h_inv_dim;;
+    gp->sidm_probability = gp->rho * sigma * gp->avg_pair_v * dt / gp->num_neighbours;
     gp->time_step_size = dt;
     
     /* Calculate (actual) velocity dispersion. Currently, the variable

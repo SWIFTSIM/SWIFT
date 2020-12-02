@@ -101,10 +101,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     /* Increasing counters */
     ++pi->num_neighbours;
     ++pj->num_neighbours;
-    
-    pi->sidm_probability += mj * wi * sqrt(v2);
-    pj->sidm_probability += mi * wj * sqrt(v2);
-
 }
 
 /**
@@ -159,9 +155,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Increasing counter */
     ++pi->num_neighbours;
-    
-    pi->sidm_probability += mj * wi * sqrt(v2);
-
 }
 
 /**
@@ -279,9 +272,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
-    /*const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
+    const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2);*/
+    double vij = sqrt(v2);
     
     /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
     */
@@ -316,12 +309,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
     float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);*/
     
-    /* Calculate SIDM probability */
-    /*float Probability_SIDM_i = Rate_SIDM_i * dti;
-    float Probability_SIDM_j = Rate_SIDM_j * dtj;*/
+    float Rate_SIDM_i = pi->rho * sigma * vij;
+    float Rate_SIDM_j = pj->rho * sigma * vij;
     
-    float Probability_SIDM_i = pi->sidm_probability;
-    float Probability_SIDM_j = pj->sidm_probability; 
+    /* Calculate SIDM probability */
+    float Probability_SIDM_i = Rate_SIDM_i * dti / pi->num_neighbours;
+    float Probability_SIDM_j = Rate_SIDM_j * dtj / pj->num_neighbours;
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
@@ -365,9 +358,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
-    /*const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
+    const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2);*/
+    double vij = sqrt(v2);
     
     /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
     */
@@ -392,10 +385,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /*float hi_3 = hi * hi * hi;*/
 
     /* Calculate scattering rate */
-    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);*/
+    float Rate_SIDM_i = pi->rho * sigma * vij;
     
     /* Calculate SIDM probability */
-    float Probability_SIDM_i = pi->sidm_probability;
+    float Probability_SIDM_i = Rate_SIDM_i * dti / pi->num_neighbours;
     
     /* Draw a random number */
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
