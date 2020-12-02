@@ -175,18 +175,18 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     const double sigma = sidm_props->sigma;
     
     /* DM-DM distance */
-    float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
+    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
     const float h3 = h * h * h;
     const float a = cosmo->a;
     const float a_inv = 1.0f / a;
-    const float a_inv4 = a_inv * a_inv * a_inv * a_inv;
+    const float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
     
     /* Calculate scattering rate */
     /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * h3);*/
-    float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / h3;
+    /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / h3;*/
 
     /* Calculate SIDM probability (internal units) */
-    gp->sidm_probability = Rate_SIDM * dt;
+    gp->sidm_probability *= sigma * dt;
     gp->time_step_size = dt;
     
     /* Calculate the velocity dispersion */
