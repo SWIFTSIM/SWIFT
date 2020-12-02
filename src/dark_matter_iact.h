@@ -30,6 +30,62 @@
 #include "timestep_sync_part.h"
 
 /**
+ * @brief Integrate the kernels using the trapezoidal rule.
+ */
+INLINE static double integrate_kernels(float r2, float hi, float hj) {
+    
+    float h_max = hi;
+    if (hj > h_max) h_max = hj;
+    
+    /* Bin spacing. Assumes uniform spacing. */
+    const float r = sqrtf(r2);
+    const int N_bins = 100;
+    const float bin_size = h_max / N_bins;
+    
+    /* Array for the integrand */
+    double integrand[N_bins];
+    const int i_min = 0;
+    const int i_max = N_bins-1;
+
+    float wi, wj, ui, uj, r_int;
+    const float hi_inv = 1.f / hi;
+    const float hj_inv = 1.f / hj;
+
+    const float hi_inv3 = hi_inv * hi_inv * hi_inv;
+    const float hj_inv3 = hj_inv * hj_inv * hj_inv;
+
+    /* Calculate integral function */
+    for (int i = i_min; i < i_max + 1; i++) {
+        
+        r_int = (i + 1) * bin_size;
+        
+        ui = r_int * hi_inv;
+        dm_kernel_eval(ui, &wi);
+        
+        uj = (r_int + r) * hj_inv;
+        dm_kernel_eval(uj, &wj);
+        
+        integrand[i] = wi * wj * r_int * r_int;
+        integrand[i] *= hi_inv3 * hj_inv3;
+    }
+    
+    /* Integrate using trapezoidal rule */
+    double result = 0.;
+    for (int i = i_min; i < i_max + 1; i++) {
+        result += integrand[i];
+    }
+    
+    /* Update end bins since contribution was overcounted when summing up all
+     * entries */
+    result -= 0.5 * (integrand[i_min] + integrand[i_max]);
+    result *= bin_size * 2.f * M_PI;
+    
+    /* Done */
+    return result;
+}
+
+
+/**
  * @brief Density interaction between two particles.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -283,8 +339,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    /*const double mass_i = pi->mass;
-    const double mass_j = pj->mass;*/
+    const double mass_i = pi->mass;
+    const double mass_j = pj->mass;
 
     /*const float r = sqrtf(r2);
     float wi, wj;*/
@@ -310,12 +366,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
     float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);*/
     
-    float Rate_SIDM_i = pi->rho * sigma * vij;
-    float Rate_SIDM_j = pj->rho * sigma * vij;
+    float gij = integrate_kernels(r2, hi, hj);
+    float gji = integrate_kernels(r2, hj, hi);
+
+    float Rate_SIDM_i = mass_i * sigma * vij * gij;
+    float Rate_SIDM_j = mass_j * sigma * vij * gji;
     
     /* Calculate SIDM probability */
-    float Probability_SIDM_i = Rate_SIDM_i * dti / pi->num_neighbours;
-    float Probability_SIDM_j = Rate_SIDM_j * dtj / pj->num_neighbours;
+    float Probability_SIDM_i = Rate_SIDM_i * dti;
+    float Probability_SIDM_j = Rate_SIDM_j * dtj;
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
@@ -370,7 +429,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    /*const double mass_i = pi->mass;*/
+    const double mass_i = pi->mass;
 
     /*const float r = sqrtf(r2);
     float wi;*/
@@ -387,10 +446,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /*float hi_3 = hi * hi * hi;*/
 
     /* Calculate scattering rate */
-    float Rate_SIDM_i = pi->rho * sigma * vij;
+    float gij = integrate_kernels(r2, hi, hj);
+    
+    float Rate_SIDM_i = mass_i * sigma * vij * gij;
     
     /* Calculate SIDM probability */
-    float Probability_SIDM_i = Rate_SIDM_i * dti / pi->num_neighbours;
+    float Probability_SIDM_i = Rate_SIDM_i * dti;
     
     /* Draw a random number */
     const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
