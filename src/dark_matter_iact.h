@@ -278,8 +278,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
     */
+    
     /* Scattering cross section per unit mass (in internal units) */
-    /*const double sigma = sidm_props->sigma;*/
+    const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
     /*const double mass_i = pi->mass;
@@ -364,8 +365,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
     */
+    
     /* Scattering cross section per unit mass (in internal units) */
-    /*const double sigma = sidm_props->sigma;*/
+    const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
     /*const double mass_i = pi->mass;*/
