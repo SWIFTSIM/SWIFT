@@ -45,7 +45,7 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
     /* Array for the integrand */
     double integrand[N_bins];
     const int i_min = 0;
-    const int i_max = N_bins-1;
+    const int i_max = N_bins - 1;
 
     float wi, wj, ui, uj, r_int;
     const float hi_inv = 1.f / hi;
@@ -71,6 +71,7 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
     
     /* Integrate using trapezoidal rule */
     double result = 0.;
+    
     for (int i = i_min; i < i_max + 1; i++) {
         result += integrand[i];
     }
@@ -78,7 +79,7 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
     /* Update end bins since contribution was overcounted when summing up all
      * entries */
     result -= 0.5 * (integrand[i_min] + integrand[i_max]);
-    result *= bin_size * 2.f * M_PI;
+    result *= bin_size * 4.f * M_PI;
     
     /* Done */
     return result;
@@ -332,29 +333,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
-    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
-    */
-    
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
     const double mass_i = pi->mass;
     const double mass_j = pj->mass;
-
-    /*const float r = sqrtf(r2);
-    float wi, wj;*/
-
-    /* Compute density of pi. */
-    /*const float hi_inv = 1.f / hi;
-    const float ui = r * hi_inv;
-
-    dm_kernel_eval(ui, &wi);
-    
-    const float hj_inv = 1.f / hj;
-    const float uj = r * hj_inv;
-
-    dm_kernel_eval(uj, &wj);*/
 
     /*float hi_3 = hi * hi * hi;
     float hj_3 = hj * hj * hj;
@@ -375,6 +359,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
     float Probability_SIDM_j = Rate_SIDM_j * dtj;
+    
+    printf("%f",Probability_SIDM_i);
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
@@ -422,28 +408,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
-    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
-    */
-    
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
     const double mass_i = pi->mass;
-
-    /*const float r = sqrtf(r2);
-    float wi;*/
-
-    /* Compute density of pi. */
-    /*const float hi_inv = 1.f / hi;
-    const float ui = r * hi_inv;
-
-    dm_kernel_eval(ui, &wi);*/
-
-    /*float a_inv = 1.0f / a;
-    float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
-    
-    /*float hi_3 = hi * hi * hi;*/
 
     /* Calculate scattering rate */
     float gij = integrate_kernels(r2, hi, hj);
