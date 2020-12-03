@@ -66,7 +66,7 @@
 
 /* Size of message header control block in blocks. The lock flag, size and tag
  * and originating node (for consistency checks).
- */
+ * XXX make some of these debugging checks. */
 #define scheduler_osmpi_header_size 4
 
 /* Number of threads we can use for sending. */
@@ -233,15 +233,13 @@ size_t scheduler_mpi_size(struct task *t);
  * @param cache the #mpicache, usually one of those in the scheduler.
  * @param node the MPI rank that the message originates from.
  */
-__attribute__((always_inline)) INLINE static 
-void scheduler_cache_mpitask(struct mpicache *cache, int node, struct task *t) {
+__attribute__((always_inline)) INLINE static void scheduler_cache_mpitask(
+    struct mpicache *cache, int node, struct task *t) {
 #if WITH_MPI
   mpicache_add(cache, node, t);
   t->size = scheduler_mpi_size(t);
 #endif
 }
-
-
 
 /* Function prototypes. */
 void scheduler_clear_active(struct scheduler *s);
@@ -273,7 +271,6 @@ void scheduler_write_task_level(const struct scheduler *s);
 void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
-
 
 void scheduler_osmpi_init(struct scheduler *s);
 void scheduler_osmpi_init_buffers(struct scheduler *s);

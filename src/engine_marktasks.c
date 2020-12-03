@@ -1153,9 +1153,6 @@ int engine_marktasks(struct engine *e) {
                  sizeof(struct task), threadpool_auto_chunk_size, extra_data);
   rebuild_space = extra_data[1];
 
-  /* Now all tasks have marked, we can allocate the one-sided buffers for MPI.
-   */
-
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

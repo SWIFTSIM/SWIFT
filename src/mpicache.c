@@ -147,7 +147,7 @@ void mpicache_add(struct mpicache *cache, int node, struct task *t) {
   while (ind > cache->entries_size)
     ;
 
-  /* Derive the size in bytes, may not be set yet. */
+    /* Derive the size in bytes, may not be set yet. */
 #ifdef WITH_MPI
   t->size = scheduler_mpi_size(t);
 #endif
@@ -179,7 +179,7 @@ void mpicache_destroy(struct mpicache *cache) {
  * windows are updated in the cache.
  *
  * @param cache the #mpicache.
- * @param nr_ranks number of MPI ranks. 
+ * @param nr_ranks number of MPI ranks.
  */
 void mpicache_apply(struct mpicache *cache, int nr_ranks, const char *prefix) {
 
@@ -198,45 +198,52 @@ void mpicache_apply(struct mpicache *cache, int nr_ranks, const char *prefix) {
 
   /* Lists of offsets for each node in the subtype window. Keep this square
    * for convenience. */
-  cache->window_node_offsets = (size_t *)malloc(task_subtype_count * nr_ranks * sizeof(size_t));
+  cache->window_node_offsets =
+      (size_t *)malloc(task_subtype_count * nr_ranks * sizeof(size_t));
   for (int k = 0; k < task_subtype_count * nr_ranks; k++)
     cache->window_node_offsets[k] = LLONG_MAX;
-  
+
   size_t node_offset[task_subtype_count] = {0};
   size_t task_offset[task_subtype_count] = {0};
   for (size_t k = 0; k < cache->nr_entries; k++) {
 
-    struct task *task =  cache->entries[k].task;
+    struct task *task = cache->entries[k].task;
     int node = cache->entries[k].node;
     int subtype = task->subtype;
 
-    if (cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] == LLONG_MAX) {
+    if (cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] ==
+        LLONG_MAX) {
 
       /* Offset for this node and subtype not seen, so this is the first. */
       node_offset[subtype] += task_offset[subtype];
-      cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] = node_offset[subtype];
-      //message("%s node %d offset for subtype %d = %zu", prefix, node, subtype, node_offset[subtype]);
+      cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)] =
+          node_offset[subtype];
+      // message("%s node %d offset for subtype %d = %zu", prefix, node,
+      // subtype, node_offset[subtype]);
 
       /* And now first in this task subtype once more. */
       task_offset[subtype] = 0;
     }
 
     /* Window sizes are in bytes. */
-    cache->window_sizes[subtype] += task->size + scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
+    cache->window_sizes[subtype] +=
+        task->size + scheduler_osmpi_tobytes(scheduler_osmpi_header_size);
 
     /* Offsets are in blocks. */
     task->offset = task_offset[subtype];
-    task_offset[subtype] += scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size;
+    task_offset[subtype] +=
+        scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size;
 
-    //message("%s %d applied task %d subtype %d at %zd tag %lld node %d "
+    // message("%s %d applied task %d subtype %d at %zd tag %lld node %d "
     //        "size %zu blocks %zu node offsets %zu %zu",
     //        prefix, task->ci->cellID, task->type, subtype, task->offset,
     //        task->flags, node, task->size,
-    //        scheduler_osmpi_toblocks(task->size) + scheduler_osmpi_header_size,
-    //        cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)],
-    //        cache->window_node_offsets[INDEX2(task_subtype_count, subtype, node)]+task->offset);
+    //        scheduler_osmpi_toblocks(task->size) +
+    //        scheduler_osmpi_header_size,
+    //        cache->window_node_offsets[INDEX2(task_subtype_count, subtype,
+    //        node)], cache->window_node_offsets[INDEX2(task_subtype_count,
+    //        subtype, node)]+task->offset);
   }
-
 
 #endif /* WITH_MPI */
 }

@@ -2338,7 +2338,8 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
     mpi_error(res, "Failed to determine number of MPI ranks");
 
   /* Clear the MPI one sided windows. */
-  for (int k = 0; k < task_subtype_count; k++) s->osmpi_windows[k] = MPI_WIN_NULL;
+  for (int k = 0; k < task_subtype_count; k++)
+    s->osmpi_windows[k] = MPI_WIN_NULL;
 #endif
 }
 
@@ -2648,8 +2649,7 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
      * communicator. */
     int err = MPI_Win_allocate(s->osmpi_sizes[k], scheduler_osmpi_bytesinblock,
                                MPI_INFO_NULL, subtaskMPI_comms[k],
-                               &s->osmpi_ptrs[k],
-                               &s->osmpi_windows[k]);
+                               &s->osmpi_ptrs[k], &s->osmpi_windows[k]);
 
     if (err != MPI_SUCCESS) {
       mpi_error(err, "Failed to create osmpi window for subtype: %d", k);
@@ -2665,23 +2665,25 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
   /* Now we need to build an array that allows all nodes to find their offsets
    * into the windows of any other node per subtype and exchange this with
    * all the other nodes. */
-  s->global_offsets = calloc(task_subtype_count * s->nr_ranks *
-                             s->nr_ranks, scheduler_osmpi_bytesinblock);
+  s->global_offsets = calloc(task_subtype_count * s->nr_ranks * s->nr_ranks,
+                             scheduler_osmpi_bytesinblock);
   for (int k = 0; k < task_subtype_count; k++) {
     for (int j = 0; j < s->nr_ranks; j++) {
       size_t offset =
-        s->recv_mpicache->window_node_offsets[INDEX2(task_subtype_count, k, j)];
+          s->recv_mpicache
+              ->window_node_offsets[INDEX2(task_subtype_count, k, j)];
       if (offset != LLONG_MAX) {
-        s->global_offsets[INDEX3(task_subtype_count, s->nr_ranks, k, j, engine_rank)] = offset;
+        s->global_offsets[INDEX3(task_subtype_count, s->nr_ranks, k, j,
+                                 engine_rank)] = offset;
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE, s->global_offsets, task_subtype_count * s->nr_ranks * s->nr_ranks,
+  MPI_Allreduce(MPI_IN_PLACE, s->global_offsets,
+                task_subtype_count * s->nr_ranks * s->nr_ranks,
                 scheduler_osmpi_mpi_blocktype, MPI_SUM, MPI_COMM_WORLD);
 
 #endif
 }
-
 
 /**
  * @brief Free any buffers used for one-sided MPI exchanges.
