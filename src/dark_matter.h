@@ -193,7 +193,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / h3;*/
 
     /* Calculate SIDM probability (internal units) */
-    gp->sidm_probability = gp->rho * sigma * gp->avg_pair_v * dt / gp->num_neighbours;
+    gp->sidm_probability = 2.f * gp->rho * sigma * gp->avg_pair_v * dt / gp->num_neighbours;
     gp->time_step_size = dt;
     
     /* Calculate (actual) velocity dispersion. Currently, the variable
@@ -227,6 +227,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     gp->density.wcount_dh = 0.f;
     gp->avg_pair_v = 0.f;
     gp->num_neighbours = 0.f;
+    gp->sidm_probability = 0.f;
     
     gp->velocity_dispersion = FLT_MAX;
     gp->velocity_ngb[0] = FLT_MAX;
