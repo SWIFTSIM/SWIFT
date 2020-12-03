@@ -85,6 +85,49 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
     return result;
 }
 
+/**
+ * @brief Calculate the norm of double kernels integral.
+ */
+INLINE static double norm_for_kernels_integral(float hi, float hj) {
+    
+    float h_max = hi;
+    if (hj > h_max) h_max = hj;
+    
+    /* Bin spacing. Assumes uniform spacing. */
+    const int N_bins = 100;
+    const float bin_size = h_max / N_bins;
+    float r_int;
+    
+    /* Array for the integrand */
+    double integrand[N_bins];
+    const int i_min = 0;
+    const int i_max = N_bins - 1;
+    
+    /* Calculate integral function */
+    for (int i = i_min; i < i_max + 1; i++) {
+        
+        r_int = (i + 1) * bin_size;
+        
+        integrand[i] = integrate_kernels(r_int * r_int, hi, hj);
+        integrand[i] *= r_int * r_int;
+    }
+    
+    /* Integrate using trapezoidal rule */
+    double result = 0.;
+    
+    for (int i = i_min; i < i_max + 1; i++) {
+        result += integrand[i];
+    }
+    
+    /* Update end bins since contribution was overcounted when summing up all
+     * entries */
+    result -= 0.5 * (integrand[i_min] + integrand[i_max]);
+    result *= bin_size * 4.f * M_PI;
+    
+    /* Done */
+    return result;
+    
+}
 
 /**
  * @brief Density interaction between two particles.
@@ -352,16 +395,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     float gij = integrate_kernels(r2, hi, hj);
     float gji = integrate_kernels(r2, hj, hi);
+    
+    float normed_gij = norm_for_kernels_integral(hi, hj);
+    float normed_gji = norm_for_kernels_integral(hj, hi);
 
-    float Rate_SIDM_i = mass_i * sigma * vij * gij;
-    float Rate_SIDM_j = mass_j * sigma * vij * gji;
+    float Rate_SIDM_i = mass_i * sigma * vij * gij / normed_gij;
+    float Rate_SIDM_j = mass_j * sigma * vij * gji / normed_gji;
     
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
     float Probability_SIDM_j = Rate_SIDM_j * dtj;
     
-    printf("%f",Probability_SIDM_i);
-
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
@@ -416,8 +460,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Calculate scattering rate */
     float gij = integrate_kernels(r2, hi, hj);
+    float normed_gij = norm_for_kernels_integral(hi, hj);
     
-    float Rate_SIDM_i = mass_i * sigma * vij * gij;
+    float Rate_SIDM_i = mass_i * sigma * vij * gij / normed_gij;
     
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
