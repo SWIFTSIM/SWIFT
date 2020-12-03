@@ -277,4 +277,5 @@ void scheduler_report_task_times(const struct scheduler *s,
 
 void scheduler_osmpi_init(struct scheduler *s);
 void scheduler_osmpi_init_buffers(struct scheduler *s);
+void scheduler_osmpi_free(struct scheduler *s);
 #endif /* SWIFT_SCHEDULER_H */

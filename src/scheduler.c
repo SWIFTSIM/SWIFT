@@ -1437,7 +1437,7 @@ void scheduler_ranktasks(struct scheduler *s) {
 }
 
 /**
- * @brief (Re)allocate the task arrays.
+ * @brief (Re)allocate the task arrays and reset one-sided MPI.
  *
  * @param s The #scheduler.
  * @param size The maximum number of tasks in the #scheduler.
@@ -2323,11 +2323,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->space = space;
   s->nodeID = nodeID;
   s->threadpool = tp;
-#if WITH_MPI
-  int res = MPI_Comm_size(MPI_COMM_WORLD, &s->nr_ranks);
-  if (res != MPI_SUCCESS)
-    mpi_error(res, "Failed to determine number of MPI ranks");
-#endif
 
   /* Init the tasks array. */
   s->size = 0;
@@ -2335,6 +2330,16 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks_ind = NULL;
   pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
+
+#ifdef WITH_MPI
+  /* No of ranks in the system. */
+  int res = MPI_Comm_size(MPI_COMM_WORLD, &s->nr_ranks);
+  if (res != MPI_SUCCESS)
+    mpi_error(res, "Failed to determine number of MPI ranks");
+
+  /* Clear the MPI one sided windows. */
+  for (int k = 0; k < task_subtype_count; k++) s->osmpi_windows[k] = MPI_WIN_NULL;
+#endif
 }
 
 /**
@@ -2366,6 +2371,9 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
  */
 void scheduler_clean(struct scheduler *s) {
   scheduler_free_tasks(s);
+#ifdef WITH_MPI
+  scheduler_osmpi_free(s);
+#endif
   swift_free("unlocks", s->unlocks);
   swift_free("unlock_ind", s->unlock_ind);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
@@ -2607,6 +2615,12 @@ size_t scheduler_mpi_size(struct task *t) {
  */
 void scheduler_osmpi_init(struct scheduler *s) {
 #ifdef WITH_MPI
+
+  /* Free any previous caches and windows. */
+  scheduler_osmpi_free(s);
+
+  /* And get new caches. Windows and buffers can only be initialised once more
+   * after all the tasks have been made. */
   s->send_mpicache = mpicache_init();
   s->recv_mpicache = mpicache_init();
 #endif
@@ -2629,14 +2643,12 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
   for (int k = 0; k < task_subtype_count; k++) {
     s->osmpi_sizes[k] = s->recv_mpicache->window_sizes[k];
 
-    //message("created window subtype %d with sizes %zu / %zu", k,
-    //        s->osmpi_sizes[k], s->send_mpicache->window_sizes[k]);
     /* Note windows can have zero size, but must exist on both sides of any
      * exchange and this is effectively a collective operation across the
      * communicator. */
     int err = MPI_Win_allocate(s->osmpi_sizes[k], scheduler_osmpi_bytesinblock,
                                MPI_INFO_NULL, subtaskMPI_comms[k],
-                               &s->osmpi_ptrs[k], 
+                               &s->osmpi_ptrs[k],
                                &s->osmpi_windows[k]);
 
     if (err != MPI_SUCCESS) {
@@ -2661,31 +2673,43 @@ void scheduler_osmpi_init_buffers(struct scheduler *s) {
         s->recv_mpicache->window_node_offsets[INDEX2(task_subtype_count, k, j)];
       if (offset != LLONG_MAX) {
         s->global_offsets[INDEX3(task_subtype_count, s->nr_ranks, k, j, engine_rank)] = offset;
-        //if (k == task_subtype_xv) {
-        //  message("local subtype %d from %d to %d set to: %zu", k, j, engine_rank, offset);
-        //}
       }
     }
   }
   MPI_Allreduce(MPI_IN_PLACE, s->global_offsets, task_subtype_count * s->nr_ranks * s->nr_ranks,
                 scheduler_osmpi_mpi_blocktype, MPI_SUM, MPI_COMM_WORLD);
 
-#if 0
-  if (engine_rank == 0 ) {
-    for (int k = 0; k < task_subtype_count; k++) {
-      for (int j = 0; j < s->nr_ranks; j++) {
-        for (int i = 0; i < s->nr_ranks; i++) {
-          if (i != j) {
-            size_t index = INDEX3(task_subtype_count, s->nr_ranks, k, j, i);
-            size_t goff = s->global_offsets[index];
-            message("subtype %d from %d to %d reduced to: %zu", k, j, i, goff);
-          }
-        }
-      }
-    }
-    message("All offsets are exchanged");
-  }
-  MPI_Barrier(MPI_COMM_WORLD);
 #endif
+}
+
+
+/**
+ * @brief Free any buffers used for one-sided MPI exchanges.
+ *
+ * @param s the #scheduler
+ */
+void scheduler_osmpi_free(struct scheduler *s) {
+#ifdef WITH_MPI
+
+  /* Free the MPI caches. */
+  if (s->send_mpicache != NULL) mpicache_destroy(s->send_mpicache);
+  s->send_mpicache = NULL;
+  if (s->recv_mpicache != NULL) mpicache_destroy(s->recv_mpicache);
+  s->recv_mpicache = NULL;
+
+  /* Free the windows, locks and associated buffers. */
+  for (int k = 0; k < task_subtype_count; k++) {
+    if (s->osmpi_windows[k] != MPI_WIN_NULL) {
+      MPI_Win_unlock_all(s->osmpi_windows[k]);
+      MPI_Win_free(&s->osmpi_windows[k]);
+      s->osmpi_windows[k] = MPI_WIN_NULL;
+    }
+    s->osmpi_ptrs[k] = NULL;
+  }
+
+  /* Free the offsets cache. */
+  if (s->global_offsets != NULL) free(s->global_offsets);
+  s->global_offsets = NULL;
+
 #endif
 }

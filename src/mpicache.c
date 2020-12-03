@@ -166,6 +166,7 @@ void mpicache_add(struct mpicache *cache, int node, struct task *t) {
  * @param cache the #mpicache
  */
 void mpicache_destroy(struct mpicache *cache) {
+  free(cache->window_node_offsets);
   free(cache->entries);
   free(cache);
 }
