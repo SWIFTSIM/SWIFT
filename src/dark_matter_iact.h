@@ -36,6 +36,7 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
     
     float h_max = hi;
     if (hj > h_max) h_max = hj;
+    h_max *= dm_kernel_gamma;
     
     /* Bin spacing. Assumes uniform spacing. */
     const float r = sqrtf(r2);
@@ -92,6 +93,7 @@ INLINE static double norm_for_kernels_integral(float hi, float hj) {
     
     float h_max = hi;
     if (hj > h_max) h_max = hj;
+    h_max *= dm_kernel_gamma;
     
     /* Bin spacing. Assumes uniform spacing. */
     const int N_bins = 100;
