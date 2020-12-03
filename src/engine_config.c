@@ -610,7 +610,12 @@ void engine_config(int restart, int fof, struct engine *e,
       engine_compute_next_stf_time(e);
     }
 
-    /* Find the time of the first stf output */
+    /* Find the time of the first HBT output */
+    if (e->policy & engine_policy_hbt) {
+      engine_compute_next_hbt_time(e);
+    }
+
+    /* Find the time of the first black hole seeding */
     if (e->policy & engine_policy_fof && e->fof_properties->seed_black_holes_enabled) {
       engine_compute_next_fof_time(e);
     }
