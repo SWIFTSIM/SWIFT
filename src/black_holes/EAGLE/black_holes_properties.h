@@ -121,6 +121,16 @@ struct black_holes_props {
   /*! Minimum gas particle mass in nibbling mode */
   float min_gas_mass_for_nibbling;
 
+  /*! Switch to calculate the sound speed with a fixed T near the EoS */
+  int with_fixed_T_near_EoS;
+
+  /*! Factor above EoS below which fixed T applies for sound speed */
+  float fixed_T_above_EoS_factor;
+
+  /*! Fixed T (expressed as internal energy) for sound speed near EoS */
+  float fixed_u_for_soundspeed;
+
+
   /* ---- Properties of the feedback model ------- */
 
   /*! AGN feedback model: random, isotropic or minimum distance */
@@ -270,6 +280,13 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
                                           const struct hydro_props *hydro_props,
                                           const struct cosmology *cosmo) {
 
+  /* Calculate temperature to internal energy conversion factor (all internal
+   * units) */
+  const double k_B = phys_const->const_boltzmann_k;
+  const double m_p = phys_const->const_proton_mass;
+  const double mu = hydro_props->mu_ionised;
+  bp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
+
   /* Read in the basic neighbour search properties or default to the hydro
      ones if the user did not provide any different values */
 
@@ -367,6 +384,17 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->min_gas_mass_for_nibbling =
         parser_get_param_float(params, "EAGLEAGN:min_gas_mass_for_nibbling");
     bp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
+  }
+
+  bp->with_fixed_T_near_EoS =
+      parser_get_param_int(params, "EAGLEAGN:with_fixed_T_near_EoS");
+  if (bp->with_fixed_T_near_EoS) {
+    bp->fixed_T_above_EoS_factor = pow(10.,
+        parser_get_param_float(params, "EAGLEAGN:fixed_T_above_EoS_dex")); 
+    bp->fixed_u_for_soundspeed =
+        parser_get_param_float(params, "EAGLEAGN:fixed_T_near_EoS_K") /
+        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) *
+        bp->temp_to_u_factor;
   }
 
   /* Feedback parameters ---------------------------------- */
@@ -529,13 +557,6 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
                       units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
   /* Common conversion factors ----------------------------- */
-
-  /* Calculate temperature to internal energy conversion factor (all internal
-   * units) */
-  const double k_B = phys_const->const_boltzmann_k;
-  const double m_p = phys_const->const_proton_mass;
-  const double mu = hydro_props->mu_ionised;
-  bp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
 
   /* Calculate conversion factor from rho to n_H.
    * Note this assumes primoridal abundance */
