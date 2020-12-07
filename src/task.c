@@ -771,25 +771,24 @@ int task_lock(struct scheduler *s, struct task *t) {
           dataptr[1] = scheduler_osmpi_locked;
           dataptr[2] = scheduler_osmpi_locked;
           dataptr[3] = scheduler_osmpi_locked;
-
-          /* Need to allow for some MPI progession. Since we make no MPI calls
-           * (by intent receive is a passive target so only the sender should
-           * make calls that move data). */
-          int flag = 0;
-          int ret = MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
-                               &flag, MPI_STATUS_IGNORE);
-          if (ret != MPI_SUCCESS) mpi_error(ret, "MPI_Iprobe failed");
-
           return 1;
         } else {
           message(
-              "missed recv at our offsets %zu %zu %zu from %d "
-              "subtype %d tag %lld size %zu "
-              "see tag %zu size %zu from %zu",
-              s->global_offsets[index], t->offset, offset, ci->nodeID, subtype,
-              t->flags, t->size, dataptr[2], dataptr[1], dataptr[3]);
+                  "missed recv at our offsets %zu %zu %zu from %d "
+                  "subtype %d tag %lld size %zu "
+                  "see tag %zu size %zu from %zu",
+                  s->global_offsets[index], t->offset, offset, ci->nodeID, subtype,
+                  t->flags, t->size, dataptr[2], dataptr[1], dataptr[3]);
         }
       }
+
+      /* Need to allow for some MPI progession. Since we make no MPI calls
+       * (by intent receive is a passive target so only the sender should
+       * make calls that move data). */
+      int flag = 0;
+      int ret = MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
+                           &flag, MPI_STATUS_IGNORE);
+      if (ret != MPI_SUCCESS) mpi_error(ret, "MPI_Iprobe failed");
       return 0;
     }
 #else
