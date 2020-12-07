@@ -122,7 +122,7 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   }
     
   /* Drift dm part to current time */
-  drift_dmpart(p, dt_drift, old_ti_beg, new_ti_end);
+  /*drift_dmpart(p, dt_drift, old_ti_beg, new_ti_end);*/
     
   /* Did this particle had a SIDM kick? if so, resolve */
   do_sidm_kick_to_dmpart(p, dt_drift);

@@ -1620,8 +1620,6 @@ void runner_do_sync_dmparts(struct runner *r, struct cell *c, int force) {
             
             if (p->limiter_data.to_be_synchronized == 1) {
                 
-                message("Synchronizing particle %lld", p->id_or_neg_offset);
-                
                 /* Finish this particle's time-step? */
                 timestep_process_sync_dmpart(p, e, cosmo);
                 

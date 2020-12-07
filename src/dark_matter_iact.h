@@ -67,15 +67,18 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
         dm_kernel_eval(uj, &wj);
         
         integrand[i] = wi * wj * r_int * r_int;
-        integrand[i] *= hi_inv3 * hj_inv3;
     }
-    
+
     /* Integrate using trapezoidal rule */
     double result = 0.;
     
     for (int i = i_min; i < i_max + 1; i++) {
         result += integrand[i];
     }
+    
+    /* Adding missing h factors */
+    result *= hi_inv3;
+    result *= hj_inv3;
     
     /* Update end bins since contribution was overcounted when summing up all
      * entries */
@@ -203,6 +206,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     /* Increasing counters */
     ++pi->num_neighbours;
     ++pj->num_neighbours;
+    
+    /*float gij = integrate_kernels(r2, hi, hj);
+    float normed_gij = norm_for_kernels_integral(hi, hj);
+    float gji = integrate_kernels(r2, hj, hi);
+    float normed_gji = norm_for_kernels_integral(hj, hi);
+
+    pi->sidm_probability += mj * sqrt(v2) * gij / normed_gij;
+    pj->sidm_probability += mi * sqrt(v2) * gji / normed_gji;*/
+
 }
 
 /**
@@ -257,6 +269,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Increasing counter */
     ++pi->num_neighbours;
+    
+    /* Calculate probability */
+    /*float gij = integrate_kernels(r2, hi, hj);
+    float normed_gij = norm_for_kernels_integral(hi, hj);
+    
+    pi->sidm_probability += mj * sqrt(v2) * gij / normed_gij;*/
 }
 
 /**
@@ -401,9 +419,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float normed_gij = norm_for_kernels_integral(hi, hj);
     float normed_gji = norm_for_kernels_integral(hj, hi);
 
-    float Rate_SIDM_i = mass_i * sigma * vij * gij / normed_gij;
-    float Rate_SIDM_j = mass_j * sigma * vij * gji / normed_gji;
+    float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
+    float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
     
+    pi->sidm_probability += 0.02 * 2.f * mass_j * sigma * vij * gij * dti / normed_gij;
+    pj->sidm_probability += 0.02 * 2.f * mass_i * sigma * vij * gji * dtj / normed_gji;
+
     /*float Rate_SIDM_i = pi->rho * sigma * vij;
     float Rate_SIDM_j = pj->rho * sigma * vij;*/
 
@@ -476,6 +497,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /*float Rate_SIDM_i = pi->rho * sigma * vij;*/
     /* Calculate SIDM probability */
     /*float Probability_SIDM_i = 2.f * Rate_SIDM_i * dti / pi->num_neighbours;*/
+    
+    pi->sidm_probability += 0.02 * 2.f * mass_i * sigma * vij * gij * dti / normed_gij;
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = 2.f * Rate_SIDM_i * dti;

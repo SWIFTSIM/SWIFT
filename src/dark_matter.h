@@ -179,21 +179,10 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     /* Calculate avg. probability of scattering */
     
     /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    /*const double sigma = sidm_props->sigma;*/
     
-    /* DM-DM distance */
-    /*float eta_3 = sidm_props->eta_neighbours * sidm_props->eta_neighbours * sidm_props->eta_neighbours;
-    const float h3 = h * h * h;
-    const float a = cosmo->a;
-    const float a_inv = 1.0f / a;
-    const float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
-    
-    /* Calculate scattering rate */
-    /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * h3);*/
-    /*float Rate_SIDM = sigma * gp->mass * gp->avg_pair_v * a_inv4 * eta_3 / h3;*/
-
     /* Calculate SIDM probability (internal units) */
-    gp->sidm_probability = 2.f * gp->rho * sigma * gp->avg_pair_v * dt / gp->num_neighbours;
+    /*gp->sidm_probability *= 2.f * sigma * dt / gp->num_neighbours;*/
     gp->time_step_size = dt;
     
     /* Calculate (actual) velocity dispersion. Currently, the variable
@@ -265,18 +254,18 @@ __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
     
     if (dmp->sidm_data.sidm_flag > 0) {
         
-        double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->v_full[0], dmp->sidm_data.v_full[1] - dmp->v_full[1], dmp->sidm_data.v_full[2] - dmp->v_full[2]};
+        /*double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->v_full[0], dmp->sidm_data.v_full[1] - dmp->v_full[1], dmp->sidm_data.v_full[2] - dmp->v_full[2]};*/
         
         /* Drift the particle */
-        dmp->x[0] += delta_v[0] * dt_drift;
+        /*dmp->x[0] += delta_v[0] * dt_drift;
         dmp->x[1] += delta_v[1] * dt_drift;
-        dmp->x[2] += delta_v[2] * dt_drift;
+        dmp->x[2] += delta_v[2] * dt_drift;*/
         
         /* Compute offsets since last cell construction */
-        for (int k = 0; k < 3; k++) {
+        /*for (int k = 0; k < 3; k++) {
             const float dx = dmp->v_full[k] * dt_drift;
             dmp->x_diff[k] -= dx;
-        }
+        }*/
             
         /* Rewrite gparticle's velocity */
         dmp->v_full[0] = dmp->sidm_data.v_full[0];
@@ -287,9 +276,9 @@ __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
         struct gpart *gp = dmp->gpart;
         
         /* Synchronize positions and velocities */
-        gp->x[0] = dmp->x[0];
+        /*gp->x[0] = dmp->x[0];
         gp->x[1] = dmp->x[1];
-        gp->x[2] = dmp->x[2];
+        gp->x[2] = dmp->x[2];*/
         
         gp->v_full[0] = dmp->v_full[0];
         gp->v_full[1] = dmp->v_full[1];
