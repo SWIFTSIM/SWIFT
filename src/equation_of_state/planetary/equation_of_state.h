@@ -1539,7 +1539,7 @@ __attribute__((always_inline)) INLINE static void eos_init(
     set_SESAME_iron(&e->SESAME_iron, eos_planetary_id_SESAME_iron);
     set_SESAME_basalt(&e->SESAME_basalt, eos_planetary_id_SESAME_basalt);
     set_SESAME_water(&e->SESAME_water, eos_planetary_id_SESAME_water);
-    set_SS08_water(&e->SESAME_water, eos_planetary_id_SS08_water);
+    set_SS08_water(&e->SS08_water, eos_planetary_id_SS08_water);
 
     parser_get_param_string(params, "EoS:planetary_SESAME_iron_table_file",
                             SESAME_iron_table_file);
