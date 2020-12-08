@@ -379,9 +379,9 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
 
         /* Do we want FoF group IDs in the snapshot? */
-	if(with_fof && e->snapshot_invoke_fof) {
-	  engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
-	}
+        if (with_fof && e->snapshot_invoke_fof) {
+          engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
+        }
 
         /* Do we want a corresponding VELOCIraptor output? */
         if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
