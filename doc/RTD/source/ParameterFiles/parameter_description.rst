@@ -746,6 +746,13 @@ in the corresponding section of the YAML parameter file. When running with
 _more_ calls to VELOCIraptor than snapshots, gaps between snapshot numbers will
 be created to accommodate for the intervening VELOCIraptor-only catalogs.
 
+It is also possible to run the FOF algorithm just before writing each snapshot.
+
+* Run FOF every time a snapshot is dumped: ``invoke_fof``
+  (default: ``0``).
+
+See the section :ref:`Parameters_fof` for details of the FOF parameters.
+
 When running over MPI, users have the option to split the snapshot over more
 than one file. This can be useful if the parallel-io on a given system is slow
 but has the drawback of producing many files per time slice. This is activated

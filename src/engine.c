@@ -1349,7 +1349,7 @@ int engine_prepare(struct engine *e) {
   /* Perform FOF search to seed black holes. Only if there is a rebuild coming
    * and no repartitioing. */
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
-      e->run_fof) {
+      e->run_fof && e->fof_properties->seed_black_holes_enabled) {
 
     /* Let's start by drifting everybody to the current time */
     engine_drift_all(e, /*drift_mpole=*/0);
@@ -2728,6 +2728,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
   e->snapshot_invoke_stf =
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
+  e->snapshot_invoke_fof =
+      parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
