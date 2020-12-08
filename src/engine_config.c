@@ -495,7 +495,7 @@ void engine_config(int restart, int fof, struct engine *e,
               e->a_first_stf_output, e->cosmology->a_begin);
       }
 
-      if (e->policy & engine_policy_fof &
+      if (e->policy & engine_policy_fof &&
           e->fof_properties->seed_black_holes_enabled) {
 
         if (e->delta_time_fof <= 1.)
