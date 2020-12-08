@@ -66,7 +66,7 @@ Stars:
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs.
-  min_group_size:                  32         # The minimum no. of particles required for a group.
+  min_group_size:                  32          # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
   seed_black_holes_enabled:        1           # Enable seeding of black holes in FoF groups
   black_hole_seed_halo_mass_Msun:  1.0e10      # Minimal halo mass in which to seed a black hole (in solar masses).
