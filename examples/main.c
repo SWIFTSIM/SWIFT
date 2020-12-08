@@ -1051,12 +1051,14 @@ int main(int argc, char *argv[]) {
     if (with_fof) {
       fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0);
       if (fof_properties.seed_black_holes_enabled && !with_black_holes) {
-	if (myrank == 0)
-	  printf("Error: Cannot perform FOF seeding without black holes being in use\n");
-	return 1;
+        if (myrank == 0)
+          printf(
+              "Error: Cannot perform FOF seeding without black holes being in "
+              "use\n");
+        return 1;
       }
     } else {
-      if(e.snapshot_invoke_fof)
+      if (e.snapshot_invoke_fof)
         error("Error: Must run with --fof if Snapshots::invoke_fof=1\n");
     }
 #endif
@@ -1423,8 +1425,8 @@ int main(int argc, char *argv[]) {
     if (!e.output_list_snapshots) {
 
       /* Run FoF first, if we're adding FoF info to the snapshot */
-      if(with_fof && e.snapshot_invoke_fof) {
-	engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+      if (with_fof && e.snapshot_invoke_fof) {
+        engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
       }
 
       engine_dump_snapshot(&e);
@@ -1648,8 +1650,8 @@ int main(int argc, char *argv[]) {
     if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
         !e.output_list_snapshots) {
 
-      if(with_fof && e.snapshot_invoke_fof) {
-	engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+      if (with_fof && e.snapshot_invoke_fof) {
+        engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
       }
 
 #ifdef HAVE_VELOCIRAPTOR

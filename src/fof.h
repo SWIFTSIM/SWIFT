@@ -56,7 +56,7 @@ struct fof_props {
 
   /*! Whether we're doing periodic FoF calls to seed black holes. */
   int seed_black_holes_enabled;
-  
+
   /* ----------- Parameters of the FOF search ------- */
 
   /*! The linking length in units of the mean DM inter-particle separation. */
