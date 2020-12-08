@@ -353,7 +353,14 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
               colibre_cooling_N_electrontypes * sizeof(float)) != 0)
     error("Failed to allocate Telectron_fraction array\n");
 
+  /* Dataset is named /Tdep/ElectronFractions in the published version of the
+   * tables and for historical reasons /Tdep/ElectronFractionsVol in the version
+   * used in the COLIBRE repository. Content is identical but we deal
+   * here with both names */
   dataset = H5Dopen(tempfile_id, "/Tdep/ElectronFractionsVol", H5P_DEFAULT);
+  if (dataset < 0)
+    dataset = H5Dopen(tempfile_id, "/Tdep/ElectronFractions", H5P_DEFAULT);
+
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->table.Telectron_fraction);
   if (status < 0) error("error reading electron_fraction (temperature)\n");
@@ -369,7 +376,14 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
               colibre_cooling_N_electrontypes * sizeof(float)) != 0)
     error("Failed to allocate Uelectron_fraction array\n");
 
+  /* Dataset is named /Udep/ElectronFractions in the published version of the
+   * tables and for historical reasons /Udep/ElectronFractionsVol in the version
+   * used in the COLIBRE repository. Content is identical but we deal
+   * here with both names */
   dataset = H5Dopen(tempfile_id, "/Udep/ElectronFractionsVol", H5P_DEFAULT);
+  if (dataset < 0)
+    dataset = H5Dopen(tempfile_id, "/Udep/ElectronFractions", H5P_DEFAULT);
+
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->table.Uelectron_fraction);
   if (status < 0) error("error reading electron_fraction (internal energy)\n");
@@ -439,7 +453,6 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
   status = H5Dclose(dataset);
   if (status < 0) error("error closing mu dataset");
 
-  /* Hydrogen fractions at thermal equilibirum temperature */
   /* Hydrogen fractions at thermal equilibirum temperature */
   if (swift_memalign(
           "cooling_table.Hfracs", (void **)&cooling->table.logHfracs_Teq,
