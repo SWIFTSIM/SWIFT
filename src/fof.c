@@ -109,6 +109,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   /* Read the minimum group size. */
   props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");
 
+  /* Read whether we're doing FoF calls to seed black holes. */
+  props->seed_black_holes_enabled =
+      parser_get_param_int(params, "FOF:seed_black_holes_enabled");
+
   /* Read the default group ID of particles in groups below the minimum group
    * size. */
   props->group_id_default = parser_get_opt_param_int(
@@ -132,7 +136,7 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   if (props->l_x_ratio <= 0. && props->l_x_absolute == -1.)
     error("The FOF linking length ratio can't be negative!");
 
-  if (!stand_alone_fof) {
+  if (!stand_alone_fof && props->seed_black_holes_enabled) {
 
     /* Read the minimal halo mass for black hole seeding */
     props->seed_halo_mass =

@@ -32,8 +32,14 @@ minimal halo mass (see below).
 ------------------------
 
 In the case of black holes seeding, we run the FOF module on-the-fly during
-a cosmological simulation. The time of the first FOF call is controlled by
-the following two options:
+a cosmological simulation. Black hole seeding is enabled with the following
+parameter:
+
+  * Enable seeding of black holes in FOF groups: ``seed_black_holes_enabled``
+
+This should be set to 1 to enable or 0 to disable black hole seeding. The
+time of the first FOF call for seeding is controlled by the following two
+options:
 
   * Time of the first FOF call (non-cosmological runs): ``time_first``,
   * Scale-factor of the first FOF call (cosmological runs):
@@ -51,9 +57,13 @@ halo (group) mass considered for seeding black holes. This is specified by
 the parameter ``black_hole_seed_halo_mass_Msun`` which is expressed in
 solar masses.
 
+Currently the only way to invoke FOF on the fly for purposes other than
+black hole seeding is to set the ``invoke_fof`` parameter in the ``Snapshots``
+section of the parameter file.
+
 ------------------------
 
-In the case of the stand-alone module, the four seeding parameters
+In the case of the stand-alone module, the five seeding parameters
 described above are ignored but an additional one needs to be
 specified. This is the name of the file in which the catalogue of groups will
 be written. This is specified by the parameter ``fof_output``. The linking

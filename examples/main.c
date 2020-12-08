@@ -513,14 +513,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (with_fof && !with_black_holes) {
-    if (myrank == 0)
-      printf(
-          "Error: Cannot perform FOF seeding without black holes being in use, "
-          "-B must be chosen.\n");
-    return 1;
-  }
-
   if (!with_stars && with_star_formation) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -1056,8 +1048,19 @@ int main(int argc, char *argv[]) {
     /* Initialise the FOF properties */
     bzero(&fof_properties, sizeof(struct fof_props));
 #ifdef WITH_FOF
-    if (with_fof)
+    if (with_fof) {
       fof_init(&fof_properties, params, &prog_const, &us, /*stand-alone=*/0);
+      if (fof_properties.seed_black_holes_enabled && !with_black_holes) {
+        if (myrank == 0)
+          printf(
+              "Error: Cannot perform FOF seeding without black holes being in "
+              "use\n");
+        return 1;
+      }
+    } else {
+      if (e.snapshot_invoke_fof)
+        error("Error: Must run with --fof if Snapshots::invoke_fof=1\n");
+    }
 #endif
 
     /* Be verbose about what happens next */
@@ -1419,7 +1422,15 @@ int main(int argc, char *argv[]) {
     }
 #endif
     /* Dump initial state snapshot, if not working with an output list */
-    if (!e.output_list_snapshots) engine_dump_snapshot(&e);
+    if (!e.output_list_snapshots) {
+
+      /* Run FoF first, if we're adding FoF info to the snapshot */
+      if (with_fof && e.snapshot_invoke_fof) {
+        engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+      }
+
+      engine_dump_snapshot(&e);
+    }
 
     /* Dump initial state statistics, if not working with an output list */
     if (!e.output_list_stats) engine_print_stats(&e);
@@ -1638,6 +1649,10 @@ int main(int argc, char *argv[]) {
     /* Write final snapshot? */
     if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
         !e.output_list_snapshots) {
+
+      if (with_fof && e.snapshot_invoke_fof) {
+        engine_fof(&e, /*dump_results=*/0, /*seed_black_holes=*/0);
+      }
 
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
