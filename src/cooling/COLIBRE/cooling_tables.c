@@ -357,9 +357,14 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
    * tables and for historical reasons /Tdep/ElectronFractionsVol in the version
    * used in the COLIBRE repository. Content is identical but we deal
    * here with both names */
-  dataset = H5Dopen(tempfile_id, "/Tdep/ElectronFractionsVol", H5P_DEFAULT);
-  if (dataset < 0)
+  if (H5Lexists(tempfile_id, "/Tdep/ElectronFractionsVol", H5P_DEFAULT) > 0) {
+    dataset = H5Dopen(tempfile_id, "/Tdep/ElectronFractionsVol", H5P_DEFAULT);
+  } else if (H5Lexists(tempfile_id, "/Tdep/ElectronFractions", H5P_DEFAULT) >
+             0) {
     dataset = H5Dopen(tempfile_id, "/Tdep/ElectronFractions", H5P_DEFAULT);
+  } else {
+    error("Could not find the electron_fraction (temperature)!");
+  }
 
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->table.Telectron_fraction);
@@ -380,9 +385,14 @@ void read_cooling_tables(struct cooling_function_data *restrict cooling) {
    * tables and for historical reasons /Udep/ElectronFractionsVol in the version
    * used in the COLIBRE repository. Content is identical but we deal
    * here with both names */
-  dataset = H5Dopen(tempfile_id, "/Udep/ElectronFractionsVol", H5P_DEFAULT);
-  if (dataset < 0)
+  if (H5Lexists(tempfile_id, "/Udep/ElectronFractionsVol", H5P_DEFAULT) > 0) {
+    dataset = H5Dopen(tempfile_id, "/Udep/ElectronFractionsVol", H5P_DEFAULT);
+  } else if (H5Lexists(tempfile_id, "/Udep/ElectronFractions", H5P_DEFAULT) >
+             0) {
     dataset = H5Dopen(tempfile_id, "/Udep/ElectronFractions", H5P_DEFAULT);
+  } else {
+    error("Could not find the electron_fraction (internal energy)!");
+  }
 
   status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    cooling->table.Uelectron_fraction);
