@@ -686,7 +686,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
   pc->black_holes.count = c->black_holes.count;
-    pc->dark_matter.count = c->dark_matter.count;
+  pc->dark_matter.count = c->dark_matter.count;
   pc->maxdepth = c->maxdepth;
 
   /* Copy the Multipole related information */

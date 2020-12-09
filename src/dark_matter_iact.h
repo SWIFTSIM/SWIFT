@@ -40,7 +40,7 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
     
     /* Bin spacing. Assumes uniform spacing. */
     const float r = sqrtf(r2);
-    const int N_bins = 100;
+    const int N_bins = 50;
     const float bin_size = h_max / N_bins;
     
     /* Array for the integrand */
@@ -99,7 +99,7 @@ INLINE static double norm_for_kernels_integral(float hi, float hj) {
     h_max *= dm_kernel_gamma;
     
     /* Bin spacing. Assumes uniform spacing. */
-    const int N_bins = 100;
+    const int N_bins = 50;
     const float bin_size = h_max / N_bins;
     float r_int;
     
@@ -402,16 +402,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* DM particle mass */
     const double mass_i = pi->mass;
     const double mass_j = pj->mass;
-
-    /*float hi_3 = hi * hi * hi;
-    float hj_3 = hj * hj * hj;
-    */
-    /*float a_inv = 1.0f / a;
-    float a_inv4 = a_inv * a_inv * a_inv * a_inv;*/
-    
-    /* Calculate scattering rate */
-    /*float Rate_SIDM_i = sigma * mass_i * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hi_3);
-    float Rate_SIDM_j = sigma * mass_j * vij * a_inv4 / ((4. * M_PI / 3. ) * dm_kernel_gamma3 * hj_3);*/
     
     float gij = integrate_kernels(r2, hi, hj);
     float gji = integrate_kernels(r2, hj, hi);
@@ -422,26 +412,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
     float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
     
-    pi->sidm_probability += 0.02 * 2.f * mass_j * sigma * vij * gij * dti / normed_gij;
-    pj->sidm_probability += 0.02 * 2.f * mass_i * sigma * vij * gji * dtj / normed_gji;
-
-    /*float Rate_SIDM_i = pi->rho * sigma * vij;
-    float Rate_SIDM_j = pj->rho * sigma * vij;*/
+    pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;
+    pj->sidm_probability += mass_i * sigma * vij * gji * dtj / normed_gji;
 
     /* Calculate SIDM probability */
-    /*float Probability_SIDM_i = 2.f * Rate_SIDM_i * dti / pi->num_neighbours;
-    float Probability_SIDM_j = 2.f * Rate_SIDM_j * dtj / pj->num_neighbours;*/
-
-    /* Calculate SIDM probability */
-    float Probability_SIDM_i = 2.f * Rate_SIDM_i * dti;
-    float Probability_SIDM_j = 2.f * Rate_SIDM_j * dtj;
+    float Probability_SIDM_i = Rate_SIDM_i * dti;
+    float Probability_SIDM_j = Rate_SIDM_j * dtj;
+    float Probability = Probability_SIDM_i + Probability_SIDM_j;
     
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
+    if (Probability > randi || Probability > randj) {
         
         /* If part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
@@ -487,28 +471,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     /* DM particle mass */
     const double mass_i = pi->mass;
+    const double mass_j = pj->mass;
 
     /* Calculate scattering rate */
     float gij = integrate_kernels(r2, hi, hj);
     float normed_gij = norm_for_kernels_integral(hi, hj);
-    
-    float Rate_SIDM_i = mass_i * sigma * vij * gij / normed_gij;
+    float gji = integrate_kernels(r2, hj, hi);
+    float normed_gji = norm_for_kernels_integral(hj, hi);
 
-    /*float Rate_SIDM_i = pi->rho * sigma * vij;*/
-    /* Calculate SIDM probability */
-    /*float Probability_SIDM_i = 2.f * Rate_SIDM_i * dti / pi->num_neighbours;*/
+    float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
+    float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
     
-    pi->sidm_probability += 0.02 * 2.f * mass_i * sigma * vij * gij * dti / normed_gij;
+    pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;
 
     /* Calculate SIDM probability */
-    float Probability_SIDM_i = 2.f * Rate_SIDM_i * dti;
-    
+    float Probability_SIDM_i = Rate_SIDM_i * dti;
+    float Probability_SIDM_j = Rate_SIDM_j * dtj;
+    float Probability = Probability_SIDM_i  + Probability_SIDM_j;
+
     /* Draw a random number */
-    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
-    
+    const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
+    const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
+
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > rand) {
-        
+    if (Probability > randi || Probability > randj) {
+
         /* If part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
         
