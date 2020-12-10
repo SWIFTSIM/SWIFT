@@ -400,32 +400,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
-    const double mass_i = pi->mass;
     const double mass_j = pj->mass;
     
     float gij = integrate_kernels(r2, hi, hj);
-    float gji = integrate_kernels(r2, hj, hi);
-    
     float normed_gij = norm_for_kernels_integral(hi, hj);
-    float normed_gji = norm_for_kernels_integral(hj, hi);
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
-    float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
     
     pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;
-    pj->sidm_probability += mass_i * sigma * vij * gji * dtj / normed_gji;
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
-    float Probability_SIDM_j = Rate_SIDM_j * dtj;
-    float Probability = Probability_SIDM_i + Probability_SIDM_j;
     
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
-    const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability > randi || Probability > randj) {
+    if (Probability_SIDM_i > randi) {
         
         /* If part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
@@ -483,18 +474,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
     
     pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;
+    pj->sidm_probability += mass_i * sigma * vij * gji * dtj / normed_gji;
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
     float Probability_SIDM_j = Rate_SIDM_j * dtj;
-    float Probability = Probability_SIDM_i  + Probability_SIDM_j;
 
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability > randi || Probability > randj) {
+    if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
 
         /* If part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
