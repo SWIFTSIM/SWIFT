@@ -3543,8 +3543,8 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
 #ifdef WITH_MPI
-  /* Initialise for one-sided MPI. */
-  scheduler_osmpi_init(sched);
+  /* Start collection of data for RDMA connections. */
+  scheduler_rdma_init(sched);
 #endif
 
   ticks tic2 = getticks();
@@ -3807,8 +3807,8 @@ void engine_maketasks(struct engine *e) {
   e->tasks_age = 0;
 
 #ifdef WITH_MPI
-  /* Initialise windows and offsets for one-sided MPI. */
-  scheduler_osmpi_init_buffers(sched);
+  /* Initialise RDMA connections to the other ranks. */
+  scheduler_rdma_init_communications(sched);
 #endif
 
   if (e->verbose)

@@ -55,31 +55,31 @@
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
 
-/* Constants for one-sided, os, MPI work. Flags for controlling access. */
-#define scheduler_osmpi_locked -2
-#define scheduler_osmpi_unlocked -3
+/* Constants for one-sided RDMA work. Flags for controlling access. */
+#define scheduler_rdma_locked -2
+#define scheduler_rdma_unlocked -3
 
-/* Size of a block of memory. Need to send MPI messages aligned to this size. */
-#define scheduler_osmpi_blocktype size_t
-#define scheduler_osmpi_mpi_blocktype MPI_AINT
-#define scheduler_osmpi_bytesinblock sizeof(size_t)
+/* Size of a block of memory. Need to send RDMA messages aligned to this size. */
+#define scheduler_rdma_blocktype size_t
+#define scheduler_rdma_mpi_blocktype MPI_AINT
+#define scheduler_rdma_bytesinblock sizeof(size_t)
 
 /* Size of message header control block in blocks. The lock flag, size and tag
  * and originating node (for consistency checks).
  * XXX make some of these debugging checks. */
-#define scheduler_osmpi_header_size 4
+#define scheduler_rdma_header_size 4
 
 /* Number of threads we can use for sending. */
-#define scheduler_osmpi_max_sends 1
+#define scheduler_rdma_max_sends 1
 
 /* Convert a byte count into a number of blocks, rounds up. */
-#define scheduler_osmpi_toblocks(nr_bytes)           \
-  ((nr_bytes + (scheduler_osmpi_bytesinblock - 1)) / \
-   scheduler_osmpi_bytesinblock)
+#define scheduler_rdma_toblocks(nr_bytes)           \
+  ((nr_bytes + (scheduler_rdma_bytesinblock - 1)) / \
+   scheduler_rdma_bytesinblock)
 
 /* Convert a block count into a number of bytes. */
-#define scheduler_osmpi_tobytes(nr_blocks) \
-  (nr_blocks * scheduler_osmpi_bytesinblock)
+#define scheduler_rdma_tobytes(nr_blocks) \
+  (nr_blocks * scheduler_rdma_bytesinblock)
 
 /* Data of a scheduler. */
 struct scheduler {
@@ -140,11 +140,6 @@ struct scheduler {
   ticks total_ticks;
 
 #ifdef WITH_MPI
-  /* MPI windows for one-sided messages. */
-  MPI_Win osmpi_windows[task_subtype_count];
-  size_t osmpi_sizes[task_subtype_count];
-  volatile scheduler_osmpi_blocktype *osmpi_ptrs[task_subtype_count];
-
   /* Number of MPI ranks in the system. */
   int nr_ranks;
 
@@ -152,9 +147,10 @@ struct scheduler {
    * offsets. */
   struct mpicache *send_mpicache;
   struct mpicache *recv_mpicache;
-
-  /* Array of offsets for each node into another nodes subtypes. */
-  scheduler_osmpi_blocktype *global_offsets;
+  
+  /* Handles for the RDMA queue pair connections. */
+  void *recv_handle;
+  void *send_handle;
 #endif
 };
 
@@ -272,7 +268,7 @@ void scheduler_dump_queues(struct engine *e);
 void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
 
-void scheduler_osmpi_init(struct scheduler *s);
-void scheduler_osmpi_init_buffers(struct scheduler *s);
-void scheduler_osmpi_free(struct scheduler *s);
+void scheduler_rdma_init(struct scheduler *s);
+void scheduler_rdma_init_communications(struct scheduler *s);
+void scheduler_rdma_free(struct scheduler *s);
 #endif /* SWIFT_SCHEDULER_H */

@@ -44,9 +44,7 @@ struct mpicache {
   volatile size_t nr_entries;
   volatile size_t entries_done;
   struct mpicache_entry *volatile entries;
-
-  size_t window_sizes[task_subtype_count];
-  size_t *window_node_offsets;
+  size_t *window_sizes;
 };
 
 /* API. */
