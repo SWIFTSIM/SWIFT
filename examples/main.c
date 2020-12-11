@@ -909,7 +909,7 @@ int main(int argc, char *argv[]) {
 
     /* Prepare and verify the selection of outputs */
     io_prepare_output_fields(output_options, with_cosmology, with_fof,
-                             with_structure_finding);
+                             with_structure_finding, e.verbose);
 
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */

@@ -1532,7 +1532,7 @@ void write_output_serial(struct engine* e,
         const enum lossy_compression_schemes compression_level_current_default =
             output_options_get_ptype_default_compression(
                 output_options->select_output, current_selection_name,
-                (enum part_type)ptype);
+                (enum part_type)ptype, e->verbose);
 
         /* Write everything that is not cancelled */
         int num_fields_written = 0;
@@ -1542,7 +1542,8 @@ void write_output_serial(struct engine* e,
           const enum lossy_compression_schemes compression_level =
               output_options_get_field_compression(
                   output_options, current_selection_name, list[i].name,
-                  (enum part_type)ptype, compression_level_current_default);
+                  (enum part_type)ptype, compression_level_current_default,
+                  e->verbose);
 
           if (compression_level != compression_do_not_write) {
             write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
