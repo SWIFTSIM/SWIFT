@@ -405,8 +405,9 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
  *
  * @param s The #scheduler we are working in.
  * @param verbose Are we verbose about this?
+ * @param step The current step number.
  */
-void scheduler_write_dependencies(struct scheduler *s, int verbose) {
+void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
   const ticks tic = getticks();
 
   /* Number of possible relations between tasks */
@@ -443,6 +444,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
   /* loop over all tasks */
   for (int i = 0; i < s->nr_tasks; i++) {
     const struct task *ta = &s->tasks[i];
+
+    /* Are we using this task?
+     * For the 0-step, we wish to show all the tasks (even the inactives). */
+    if (step != 0 && ta->skip) continue;
 
     /* Current index */
     const int ind = ta->type * task_subtype_count + ta->subtype;
@@ -482,6 +487,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
     /* and their dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb = ta->unlock_tasks[j];
+
+      /* Are we using this task?
+       * For the 0-step, we wish to show all the tasks (even the inactive). */
+      if (step != 0 && tb->skip) continue;
 
       const struct cell *ci_b = tb->ci;
       const struct cell *cj_b = tb->cj;
@@ -592,7 +601,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   if (s->nodeID == 0) {
     /* Create file */
-    const char *filename = "dependency_graph.csv";
+    char filename[50];
+    sprintf(filename, "dependency_graph_%i.csv", step);
     FILE *f = fopen(filename, "w");
     if (f == NULL) error("Error opening dependency graph file.");
 

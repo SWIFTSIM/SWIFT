@@ -15,6 +15,8 @@ It requires the ``dot`` package that is available in the library graphviz.
 This script has also the possibility to generate a list of function calls for each task with the option ``--with-calls`` (this list may be incomplete) and to describe at which level each task are run ``--with-levels`` (a larger simulation will provide more accurate levels).
 You can convert the ``dot`` file into a ``png`` with the following command
 ``dot -Tpng dependency_graph.dot -o dependency_graph.png`` or directly read it with the python module ``xdot`` with ``python -m xdot dependency_graph.dot``.
+If you wish to have more dependency graphs, you can use the parameter ``Scheduler:dependency_graph_frequency``. It defines how many steps are done in between two graphs.
+While the initial graph is showing all the tasks/dependencies, the next ones are only showing the active tasks/dependencies.
 
 
 Cell graph
