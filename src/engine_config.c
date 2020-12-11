@@ -186,6 +186,13 @@ void engine_config(int restart, int fof, struct engine *e,
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
 
+  /* Get the frequency of the dependency graph dumping */
+  e->sched.frequency_dependency = parser_get_opt_param_int(
+      params, "Scheduler:dependency_graph_frequency", 0);
+  if (e->sched.frequency_dependency < 0) {
+    error("Scheduler:dependency_graph_frequency should be >= 0");
+  }
+
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);

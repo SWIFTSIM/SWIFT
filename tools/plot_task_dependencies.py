@@ -4,7 +4,7 @@ description = """
 This file generates a graphviz file that represents the SWIFT tasks
 dependencies.
 
-Example: ./plot_task_dependencies.py dependency_graph_*.csv
+Example: ./plot_task_dependencies.py dependency_graph.csv
 """
 from pandas import read_csv
 import numpy as np
@@ -122,84 +122,6 @@ def get_git_version(f, git):
         raise Exception("Files were not produced by the same version")
 
     return new_git
-
-
-def append_single_data(data0, datai):
-    """
-    Append two DataFrame together
-
-    Parameters
-    ----------
-
-    data0: DataFrame
-        One of the dataframe
-
-    datai: DataFrame
-        The second dataframe
-
-
-    Returns
-    -------
-
-    data0: DataFrame
-        The updated dataframe
-    """
-
-    # loop over all rows in datai
-    for i, row in datai.iterrows():
-        # get data
-        ta = datai["task_in"][i]
-        tb = datai["task_out"][i]
-        ind = np.logical_and(data0["task_in"] == ta, data0["task_out"] == tb)
-
-        # check number of ta->tb
-        N = np.sum(ind)
-        if N > 1:
-            raise Exception("Same dependency written multiple times %s->%s" % (ta, tb))
-        # if not present in data0
-        if N == 0:
-            data0.append(row)
-        else:
-            # otherwise just update the number of link
-            ind = ind[ind].index[0]
-            tmp = data0["number_link"][ind] + datai["number_link"][i]
-            data0.at[ind, "number_link"] = tmp
-
-    return data0
-
-
-def append_data(data):
-    """
-    Append all the dataframe together, and add a column for colour type
-
-    Parameters
-    ----------
-
-    data: list
-        List containing all the dataframe to append together
-
-
-    Returns
-    -------
-
-    data: DataFrame
-        The complete dataframe
-    """
-    N = len(data)
-    if N == 1:
-        # set default color
-        data[0]["task_colour"] = "black"
-        return data[0]
-
-    # add number link to data[0]
-    for i in range(N - 1):
-        i += 1
-        data[0] = append_single_data(data[0], data[i])
-
-    # set default color
-    data[0]["task_colour"] = "black"
-
-    return data[0]
 
 
 def get_task_colour(taskname):
@@ -755,35 +677,34 @@ if __name__ == "__main__":
 
     args, files = parse_args()
 
-    # output
-    dot_output = "dependency_graph.dot"
-    png_output = "dependency_graph.png"
-
-    # read files
-    data = []
-    git = None
     for f in files:
-        tmp = read_csv(f, delimiter=",", comment="#")
+        # output
+        basename = path.splitext(f)[0]
+        dot_output = basename + ".dot"
+        png_output = basename + ".png"
+
+        # read file
+        data = []
+        git = None
+        data = read_csv(f, delimiter=",", comment="#")
         git = get_git_version(f, git)
-        data.append(tmp)
 
-    data = append_data(data)
-    data = set_task_colours(data)
+        data = set_task_colours(data)
 
-    # write output
-    with open(dot_output, "w") as f:
-        write_header(f, data, git, args)
+        # write output
+        with open(dot_output, "w") as f:
+            write_header(f, data, git, args)
 
-        write_clusters(f, data)
+            write_clusters(f, data)
 
-        write_dependencies(f, data)
+            write_dependencies(f, data)
 
-        write_footer(f)
+            write_footer(f)
 
-    call(["dot", "-Tpng", dot_output, "-o", png_output])
+        call(["dot", "-Tpng", dot_output, "-o", png_output])
 
-    print("You will find the graph in %s" % png_output)
+        print("You will find the graph in %s" % png_output)
 
-    if args.with_calls:
-        print("We recommand to use the python package xdot available on pypi:")
-        print("  python -m xdot %s" % dot_output)
+        if args.with_calls:
+            print("We recommand to use the python package xdot available on pypi:")
+            print("  python -m xdot %s" % dot_output)
