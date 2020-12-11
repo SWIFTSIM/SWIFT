@@ -159,10 +159,11 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
  * @param with_cosmology Ran with cosmology?
  * @param with_fof Are we running with on-the-fly Fof?
  * @param with_stf Are we running with on-the-fly structure finder?
+ * @param verbose The verbose level
  */
 void io_prepare_output_fields(struct output_options* output_options,
                               const int with_cosmology, const int with_fof,
-                              const int with_stf) {
+                              const int with_stf, int verbose) {
 
   const int MAX_NUM_PTYPE_FIELDS = 100;
 
@@ -206,8 +207,8 @@ void io_prepare_output_fields(struct output_options* output_options,
 
       /* Internally also verifies that the default level is allowed */
       const enum lossy_compression_schemes compression_level_current_default =
-          output_options_get_ptype_default_compression(params, section_name,
-                                                       (enum part_type)ptype);
+          output_options_get_ptype_default_compression(
+              params, section_name, (enum part_type)ptype, verbose);
 
       if (compression_level_current_default == compression_do_not_write) {
         ptype_default_write_status[ptype] = 0;

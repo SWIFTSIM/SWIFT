@@ -1351,7 +1351,7 @@ void prepare_file(struct engine* e, const char* fileName,
     const enum lossy_compression_schemes compression_level_current_default =
         output_options_get_ptype_default_compression(
             output_options->select_output, current_selection_name,
-            (enum part_type)ptype);
+            (enum part_type)ptype, e->verbose);
 
     /* Prepare everything that is not cancelled */
     int num_fields_written = 0;
@@ -1361,7 +1361,8 @@ void prepare_file(struct engine* e, const char* fileName,
       const enum lossy_compression_schemes compression_level =
           output_options_get_field_compression(
               output_options, current_selection_name, list[i].name,
-              (enum part_type)ptype, compression_level_current_default);
+              (enum part_type)ptype, compression_level_current_default,
+              e->verbose);
 
       if (compression_level != compression_do_not_write) {
         prepare_array_parallel(e, h_grp, fileName, xmfFile, partTypeGroupName,
@@ -1938,7 +1939,7 @@ void write_output_parallel(struct engine* e,
     const enum lossy_compression_schemes compression_level_current_default =
         output_options_get_ptype_default_compression(
             output_options->select_output, current_selection_name,
-            (enum part_type)ptype);
+            (enum part_type)ptype, e->verbose);
 
     /* Write everything that is not cancelled */
     for (int i = 0; i < num_fields; ++i) {
@@ -1947,7 +1948,8 @@ void write_output_parallel(struct engine* e,
       const enum lossy_compression_schemes compression_level =
           output_options_get_field_compression(
               output_options, current_selection_name, list[i].name,
-              (enum part_type)ptype, compression_level_current_default);
+              (enum part_type)ptype, compression_level_current_default,
+              e->verbose);
 
       if (compression_level != compression_do_not_write) {
         write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
