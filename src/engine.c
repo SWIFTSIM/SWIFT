@@ -1818,7 +1818,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     gravity_exact_force_compute(e->s, e);
 #endif
 
-  scheduler_write_dependencies(&e->sched, e->verbose);
+  scheduler_write_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */
@@ -2226,6 +2226,11 @@ void engine_step(struct engine *e) {
   double start_systime = 0.0;
   clocks_get_cputimes_used(&start_usertime, &start_systime);
 #endif
+
+  /* Write the dependencies */
+  if (e->sched.frequency_dependency != 0 &&
+      e->step % e->sched.frequency_dependency == 0)
+    scheduler_write_dependencies(&e->sched, e->verbose, e->step);
 
   /* Start all the tasks. */
   TIMER_TIC;
