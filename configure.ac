@@ -52,6 +52,7 @@ AM_CONFIG_HEADER(config.h)
 # Find and test the compiler.
 AX_CHECK_ENABLE_DEBUG
 AC_PROG_CC
+AC_PROG_CXX
 AM_PROG_CC_C_O
 AC_OPENMP
 
@@ -156,6 +157,9 @@ AC_ARG_ENABLE([mpi],
 )
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
+    AC_LANG_PUSH([C++])
+    AX_MPI([CXX="$MPICXX" AC_DEFINE(HAVE_MPI_CXX, 1, [Define if you have the MPI library.]) ])
+    AC_LANG_POP([C++])
     AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
     MPI_LIBRARY="Unknown MPI"
 
@@ -1305,6 +1309,34 @@ AC_ARG_ENABLE([velociraptor-orphans],
 if test "$enable_velociraptor_orphans" = "yes"; then
    AC_DEFINE([HAVE_VELOCIRAPTOR_ORPHANS], 1, [Orphan particles should be written out])
 fi
+
+# Check for the RDMA infinity library.
+have_infinity="no"
+AC_ARG_WITH([infinity],
+    [AS_HELP_STRING([--with-infinity=PATH],
+       [Directory where RDMA infinity library is installed @<:@yes/no@:>@]
+    )],
+    [with_infinity="$withval"],
+    [with_infinity="no"]
+)
+if test "x$with_infinity" != "xno"; then
+   if test "x$with_infinity" != "xyes" -a "x$with_infinity" != "x"; then
+      INFINITY_LIBS="-L$with_infinity -linfinity -libverbs"
+      INFINITY_INCS="-I$with_infinity/include"
+   else
+      INFINITY_LIBS="-linfinity -libverbs"
+      INFINITY_INCS=""
+   fi
+
+   # XXX need a check, tricky as infinity is pure C++ without any direct C
+   # linkage functions. Can we write a wrapper?
+   have_infinity="yes"
+   AC_DEFINE([HAVE_INFINITY], 1, [The infinity RDMA library will be used])
+fi
+AC_SUBST([INFINITY_LIBS])
+AC_SUBST([INFINITY_INCS])
+AM_CONDITIONAL([HAVEINFINITY],[test -n "$INFINITY_LIBS"])
+
 
 # Check for floating-point execeptions
 AC_CHECK_FUNC(feenableexcept, AC_DEFINE([HAVE_FE_ENABLE_EXCEPT],[1],

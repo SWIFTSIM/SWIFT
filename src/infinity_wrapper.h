@@ -20,11 +20,11 @@
 #define INFINITY_WRAPPER_H
 
 /* Config parameters. */
-//#include "../config.h"
+#include "../config.h"
 
 /* Base port no. Ranks use +rank. XXX we need to handle this more
  * dynamically. */
-static int BASE_PORT = 27771;
+#define BASE_PORT 27771
 
 /* Maximum length of formatted server IP address. */
 #define infinity_max_server_ip 24
@@ -34,6 +34,7 @@ struct mpi_servers {
   char *ip;
 };
 
+char *toipaddr(char *hostname);
 void *infinity_connect_clients(struct mpi_servers *servers, int nr_servers,
                                int myrank, int verbose);
 void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,

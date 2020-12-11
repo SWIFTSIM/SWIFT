@@ -23,12 +23,11 @@
  * from the infinity library so we must use a C++ compiler.
  */
 /* Config parameters. */
-//#include "../config.h"
-#define HAVE_INFINITY
+#include "../config.h"
 
 /* Standard includes. */
 #include <arpa/inet.h>
-#ifdef WITH_MPI
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
 #include <mpi.h>
 #endif
 #include <netdb.h>
@@ -38,7 +37,7 @@
 #include <unistd.h>
 
 /* Infinity C++ headers. */
-#ifdef HAVE_INFINITY
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
 #include <infinity/core/Context.h>
 #include <infinity/memory/Buffer.h>
 #include <infinity/memory/RegionToken.h>
@@ -55,16 +54,19 @@
 
 /* Size of a block of memory. MESSAGE_SIZE needs to be a multiple of this as
  * as we need to align in memory. */
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
 #define BLOCKTYPE size_t
 #define MPI_BLOCKTYPE MPI_AINT
 static const int BYTESINBLOCK = sizeof(BLOCKTYPE);
 
 /* Flags for controlling access. High end of size_t. */
 static size_t UNLOCKED = (((size_t)2 << 63) - 1);
+#endif
 
 /* Struct of QPs and associated data. */
 struct qps_data {
   int nr_qps;
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
   infinity::core::Context *context;
   infinity::queues::QueuePairFactory *factory;
   infinity::queues::QueuePair **qps;
@@ -72,6 +74,7 @@ struct qps_data {
   infinity::memory::RegionToken **remote_buffers;
   infinity::memory::Buffer **readwrite_buffers;
   infinity::memory::RegionToken **token_buffers;
+#endif
 };
 
 /**
@@ -82,7 +85,7 @@ struct qps_data {
  * @result the IP address, note copy away to keep.
  */
 
-static char *toipaddr(char *hostname) {
+char *infinity_toipaddr(char *hostname) {
 
   struct hostent *hostent = gethostbyname(hostname);
   if (hostent == NULL) {
@@ -107,7 +110,7 @@ static char *toipaddr(char *hostname) {
  */
 void *infinity_connect_clients(struct mpi_servers *servers, int nr_servers,
                                int myrank, int verbose) {
-#ifdef HAVE_INFINITY
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
 
   /* Struct to hold all the persistent data. */
   struct qps_data *cqps = (struct qps_data *)calloc(1, sizeof(struct qps_data));
@@ -180,7 +183,7 @@ void *infinity_connect_clients(struct mpi_servers *servers, int nr_servers,
  */
 void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
                         size_t offset) {
-#ifdef HAVE_INFINITY
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
   struct qps_data *cqps = (struct qps_data *)qphandle;
 
   /* Need to assign to a buffer to register memory. XXX make this as big as
@@ -223,7 +226,7 @@ void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
  */
 void infinity_clients_free(void *qphandle) {
 
-#ifdef HAVE_INFINITY
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
   struct qps_data *cqps = (struct qps_data *)qphandle;
   for (int k = 0; k < cqps->nr_qps; k++) delete cqps->qps[k];
   free(cqps->qps);
@@ -262,7 +265,7 @@ void infinity_clients_free(void *qphandle) {
 void *infinity_create_servers(struct mpi_servers *servers, int nr_servers,
                               size_t *sizes, int myrank, int verbose) {
 
-#ifdef HAVE_INFINITY
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
   /* Struct to hold all the persistent data. */
   struct qps_data *cqps = (struct qps_data *)calloc(1, sizeof(struct qps_data));
 
@@ -331,7 +334,7 @@ void *infinity_create_servers(struct mpi_servers *servers, int nr_servers,
 void *infinity_check_ready(void *qphandle, int index, size_t offset) {
 
   void *result = NULL;
-#ifdef HAVE_INFINITY
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
   struct qps_data *cqps = (struct qps_data *)qphandle;
 
   /* Get the data location. */
