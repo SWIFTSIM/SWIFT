@@ -61,11 +61,12 @@ void output_options_struct_restore(struct output_options* output_options,
 enum lossy_compression_schemes output_options_get_field_compression(
     const struct output_options* output_options, const char* snapshot_type,
     const char* field_name, const enum part_type part_type,
-    const enum lossy_compression_schemes comp_level_current_default);
+    const enum lossy_compression_schemes comp_level_current_default,
+    int verbose);
 
 enum lossy_compression_schemes output_options_get_ptype_default_compression(
     struct swift_params* output_params, const char* snapshot_type,
-    const enum part_type part_type);
+    const enum part_type part_type, int verbose);
 
 int output_options_get_num_fields_to_write(
     const struct output_options* output_options, const char* selection_name,
