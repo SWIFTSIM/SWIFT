@@ -55,6 +55,7 @@ void output_options_init(struct swift_params* parameter_file, int mpi_rank,
       (struct swift_params*)malloc(sizeof(struct swift_params));
   if (select_output == NULL)
     error("Error allocating memory for select output options.");
+  bzero(select_output, sizeof(struct swift_params));
 
   if (mpi_rank == 0) {
     const int select_output_on = parser_get_opt_param_int(
