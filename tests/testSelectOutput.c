@@ -164,7 +164,8 @@ int main(int argc, char *argv[]) {
   message("Checking output parameters.");
   io_prepare_output_fields(&output_options, /*with_cosmology=*/0,
                            /*with_fof=*/0,
-                           /*with_structure_finding=*/0);
+                           /*with_structure_finding=*/0,
+                           /*verbose=*/1);
 
   /* write output file */
   message("Writing output.");
