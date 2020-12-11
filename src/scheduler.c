@@ -150,12 +150,14 @@ int scheduler_get_number_relation(const struct scheduler *s,
   for (int i = 0; i < s->nr_tasks; i++) {
     const struct task *ta_tmp = &s->tasks[i];
 
+    /* Early abort? */
+    if (ta_tmp->type != ta->type || ta_tmp->subtype != ta->subtype) continue;
+
     /* and their dependencies */
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb_tmp = ta->unlock_tasks[j];
 
-      if (ta->type == ta_tmp->type && ta->subtype == ta_tmp->subtype &&
-          tb->type == tb_tmp->type && tb->subtype == tb_tmp->subtype) {
+      if (tb->type == tb_tmp->type && tb->subtype == tb_tmp->subtype) {
         count += 1;
       }
     }
