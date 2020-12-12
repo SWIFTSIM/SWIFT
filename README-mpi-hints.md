@@ -48,3 +48,13 @@ UCX_TLS=ud_x,shm,self
 UCX_RC_MLX5_TM_ENABLE=n
 UCX_DC_MLX5_TM_ENABLE=n
 ```
+
+These environment variables (set on the Mellanox-base cosma system in Durham)
+for version 4.0.5 with the UCX backend can also be useful:
+
+```
+OMPI_MCA_btl                    ^openib
+OMPI_MCA_btl_openib_flags       1
+OMPI_MCA_plm_rsh_num_concurrent 768
+OMPI_MCA_mpool_rdma_rcache_size_limit   209715200
+```
