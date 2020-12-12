@@ -397,7 +397,7 @@ int main(int argc, char *argv[]) {
 
   /* Prepare and verify the selection of outputs */
   io_prepare_output_fields(output_options, with_cosmology, /*with_fof=*/1,
-                           /*with_structure_finding=*/0);
+                           /*with_structure_finding=*/0, talking);
 
   /* Initialize unit system and constants */
   units_init_from_params(&us, params, "InternalUnitSystem");
