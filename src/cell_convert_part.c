@@ -60,6 +60,7 @@ void cell_recursively_shift_sparts(struct cell *c,
     }
   }
 
+  /* Do some shifting around if we are in a leaf */
   if (!c->split && c->stars.count > 0) {
 
     /* Swap the extra particle into the first spot of this cell */
@@ -70,8 +71,8 @@ void cell_recursively_shift_sparts(struct cell *c,
      * range */
     c->stars.parts[c->stars.count].gpart->id_or_neg_offset -= c->stars.count;
 
-    /* Verify link */
 #ifdef SWIFT_DEBUG_CHECKS
+    /* Verify link */
     if (-c->stars.parts[c->stars.count].gpart->id_or_neg_offset !=
         &c->stars.parts[c->stars.count] - s->sparts)
       error("Wrong link star=%ld link=%lld",
@@ -278,8 +279,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* We now have an empty spart as the first particle in that leaf cell */
   struct spart *sp = &c->stars.parts[0];
+
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Verify that it is indeed the particle we expected to that
+  /* Verify that it is indeed the particle we expected that
    * trickled down into the correct position */
   if (sp->gpart->id_or_neg_offset != 42)
     error("Wrong particle trickled down!!");
