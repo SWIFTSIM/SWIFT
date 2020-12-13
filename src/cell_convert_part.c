@@ -33,8 +33,6 @@
 
 extern ticks sf_task, sf_convert, sf_shift, sf_memmove, sf_links;
 
-struct space *my_s;
-
 /**
  * @brief Recursively update the pointer and counter for #spart after the
  * addition of a new particle.
@@ -44,10 +42,12 @@ struct space *my_s;
  * leaf-cell where the particle was added.
  * @param main_branch Are we in a cell directly above the leaf where the new
  * particle was added?
+ * @param s The #space (for debugging checks only)
  */
 void cell_recursively_shift_sparts(struct cell *c,
                                    const int progeny_list[space_cell_maxdepth],
-                                   const int main_branch) {
+                                   const int main_branch,
+                                   const struct space *const s) {
   if (c->split) {
 
     /* No need to recurse in progenies located before the insertion point */
@@ -56,7 +56,7 @@ void cell_recursively_shift_sparts(struct cell *c,
     for (int k = 7; k >= first_progeny; --k) {
       if (c->progeny[k] != NULL)
         cell_recursively_shift_sparts(c->progeny[k], progeny_list,
-                                      main_branch && (k == first_progeny));
+                                      main_branch && (k == first_progeny), s);
     }
   }
 
@@ -78,12 +78,13 @@ void cell_recursively_shift_sparts(struct cell *c,
     /* 	    c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset); */
 
     /* Verify link */
+#ifdef SWIFT_DEBUG_CHECKS
     if (-c->stars.parts[c->stars.count].gpart->id_or_neg_offset !=
-        &c->stars.parts[c->stars.count] - my_s->sparts)
-      error("AA Wrong link star=%ld link=%lld",
-            &c->stars.parts[c->stars.count] - my_s->sparts,
+        &c->stars.parts[c->stars.count] - s->sparts)
+      error("Wrong link star=%ld link=%lld",
+            &c->stars.parts[c->stars.count] - s->sparts,
             -c->stars.parts[c->stars.count].gpart->id_or_neg_offset);
-
+#endif
     // c->stars.parts[c->stars.count].gpart->id_or_neg_offset--;
     // c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset++;
   }
@@ -106,11 +107,13 @@ void cell_recursively_shift_sparts(struct cell *c,
     /* 	    c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset); */
 
     /* Verify link */
+#ifdef SWIFT_DEBUG_CHECKS
     if (-c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset !=
-        &c->stars.parts[c->stars.count - 1] - my_s->sparts)
-      error("BB Wrong link star=%ld link=%lld",
-            &c->stars.parts[c->stars.count - 1] - my_s->sparts,
+        &c->stars.parts[c->stars.count - 1] - s->sparts)
+      error("Wrong link star=%ld link=%lld",
+            &c->stars.parts[c->stars.count - 1] - s->sparts,
             -c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset);
+#endif
 
     // c->stars.parts[c->stars.count].gpart->id_or_neg_offset -=
     // (c->stars.count-1); c->stars.parts[0].gpart->id_or_neg_offset +=
@@ -129,6 +132,12 @@ void cell_recursively_shift_sparts(struct cell *c,
     cell_free_stars_sorts(c);
 
   } else {
+
+    /* Indicate that the cell is not sorted and cancel the pointer sorting
+     * arrays. */
+    c->stars.sorted = 0;
+    cell_free_stars_sorts(c);
+
     c->stars.parts++;
   }
 }
@@ -306,16 +315,15 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   const ticks tic_shift = getticks();
 
+#ifdef SWIFT_DEBUG_CHECKS
   struct gpart temp;
   temp.id_or_neg_offset = 42;
-  // top->stars.parts[top->stars.count_total-1].gpart->id_or_neg_offset - 1;
   top->stars.parts[top->stars.count].gpart = &temp;
-
-  my_s = e->s;
+#endif
 
   /* Recursively shift all the stars to get a free spot at the start of the
    * current cell*/
-  cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
+  cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1, e->s);
 
   const ticks toc_shift = getticks();
   atomic_add(&sf_shift, toc_shift - tic_shift);
@@ -335,7 +343,10 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
-  message("neg_offset=%lld", sp->gpart->id_or_neg_offset);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->gpart->id_or_neg_offset != 42)
+    error("Wrong particle trickled down!!");
+#endif
   bzero(sp, sizeof(struct spart));
 
   /* Give it a decent position */
@@ -354,12 +365,6 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Register that we used one of the free slots. */
   const size_t one = 1;
   atomic_sub(&e->s->nr_extra_sparts, one);
-
-  /* part_verify_links(top->hydro.parts, top->grav.parts, NULL,
-   * top->stars.parts, */
-  /*                   NULL, top->hydro.count, top->grav.count, */
-  /*                   0, top->stars.count, 0, */
-  /*                   1); */
 
   return sp;
 }
