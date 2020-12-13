@@ -237,52 +237,27 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
     return NULL;
   }
 
-  /* Number of particles to shift in order to get a free space. */
-  const size_t n_copy = &top->stars.parts[top->stars.count] - c->stars.parts;
+  const ticks tic_memmove = getticks();
+  const ticks toc_memmove = getticks();
+  atomic_add(&sf_memmove, toc_memmove - tic_memmove);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->stars.parts + n_copy > top->stars.parts + top->stars.count)
-    error("Copying beyond the allowed range");
-#endif
-
-  if (n_copy > 0) {
-
-    const ticks tic_memmove = getticks();
-
-    // MATTHIEU: This can be improved. We don't need to copy everything, just
-    // need to swap a few particles.
-    // memmove(&c->stars.parts[1], &c->stars.parts[0],
-    //        n_copy * sizeof(struct spart));
-
-    const ticks toc_memmove = getticks();
-    atomic_add(&sf_memmove, toc_memmove - tic_memmove);
-
-    const ticks tic_links = getticks();
-
-    /* Update the spart->gpart links (shift by 1) */
-    // for (size_t i = 0; i < n_copy; ++i) {
-    //#ifdef SWIFT_DEBUG_CHECKS
-    //  if (c->stars.parts[i + 1].gpart == NULL) {
-    //    error("Incorrectly linked spart!");
-    //  }
-    //#endif
-    // c->stars.parts[i + 1].gpart->id_or_neg_offset--;
-    //}
-
-    const ticks toc_links = getticks();
-    atomic_add(&sf_links, toc_links - tic_links);
-  }
+  const ticks tic_links = getticks();
+  const ticks toc_links = getticks();
+  atomic_add(&sf_links, toc_links - tic_links);
 
   const ticks tic_shift = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the trickling down of the new spart is done correclty
+   * by adding a silly watermark offset and catching it further down. */
   struct gpart temp;
   temp.id_or_neg_offset = 42;
   top->stars.parts[top->stars.count].gpart = &temp;
 #endif
 
-  /* Recursively shift all the stars to get a free spot at the start of the
-   * current cell*/
+  /* Swap the star particles at the beginning of their leaf cells with
+   * the spot that is beyond the cell's range starting from the last leaf
+   * to get a free spot at the start of the current leaf cell. */
   cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1, e->s);
 
   const ticks toc_shift = getticks();
@@ -301,12 +276,16 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   if (lock_unlock(&top->stars.star_formation_lock) != 0)
     error("Failed to unlock the top-level cell.");
 
-  /* We now have an empty spart as the first particle in that cell */
+  /* We now have an empty spart as the first particle in that leaf cell */
   struct spart *sp = &c->stars.parts[0];
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that it is indeed the particle we expected to that
+   * trickled down into the correct position */
   if (sp->gpart->id_or_neg_offset != 42)
     error("Wrong particle trickled down!!");
 #endif
+
+  /* Initisalise the new star */
   bzero(sp, sizeof(struct spart));
 
   /* Give it a decent position */
