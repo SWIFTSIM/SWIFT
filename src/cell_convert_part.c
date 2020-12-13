@@ -28,9 +28,12 @@
 /* Local headers. */
 #include "engine.h"
 #include "hydro.h"
+#include "memswap.h"
 #include "sink_properties.h"
 
 extern ticks sf_task, sf_convert, sf_shift, sf_memmove, sf_links;
+
+struct space *my_s;
 
 /**
  * @brief Recursively update the pointer and counter for #spart after the
@@ -46,19 +49,77 @@ void cell_recursively_shift_sparts(struct cell *c,
                                    const int progeny_list[space_cell_maxdepth],
                                    const int main_branch) {
   if (c->split) {
-    /* No need to recurse in progenies located before the insestion point */
+
+    /* No need to recurse in progenies located before the insertion point */
     const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
 
-    for (int k = first_progeny; k < 8; ++k) {
+    for (int k = 7; k >= first_progeny; --k) {
       if (c->progeny[k] != NULL)
         cell_recursively_shift_sparts(c->progeny[k], progeny_list,
                                       main_branch && (k == first_progeny));
     }
   }
 
-  /* When directly above the leaf with the new particle: increase the particle
-   * count */
-  /* When after the leaf with the new particle: shift by one position */
+  if (!c->split && c->stars.count > 0) {
+
+    /* memswap_unaligned(&c->stars.parts[c->stars.count].gpart->id_or_neg_offset,
+     */
+    /* 		      &c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset,
+     */
+    /* 		      sizeof(long long)); */
+
+    memswap(&c->stars.parts[c->stars.count],
+            &c->stars.parts[c->stars.count - 1], sizeof(struct spart));
+
+    c->stars.parts[c->stars.count].gpart->id_or_neg_offset--;
+
+    /* message("AA %d %lld %lld", c->depth, */
+    /* 	    c->stars.parts[c->stars.count].gpart->id_or_neg_offset, */
+    /* 	    c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset); */
+
+    /* Verify link */
+    if (-c->stars.parts[c->stars.count].gpart->id_or_neg_offset !=
+        &c->stars.parts[c->stars.count] - my_s->sparts)
+      error("AA Wrong link star=%ld link=%lld",
+            &c->stars.parts[c->stars.count] - my_s->sparts,
+            -c->stars.parts[c->stars.count].gpart->id_or_neg_offset);
+
+    // c->stars.parts[c->stars.count].gpart->id_or_neg_offset--;
+    // c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset++;
+  }
+
+  if (!c->split && c->stars.count > 1) {
+
+    /* memswap_unaligned(&c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset,
+     */
+    /* 		      &c->stars.parts[0].gpart->id_or_neg_offset, */
+    /* 		      sizeof(long long)); */
+
+    memswap(&c->stars.parts[0], &c->stars.parts[c->stars.count - 1],
+            sizeof(struct spart));
+
+    c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset -=
+        c->stars.count - 1;
+
+    /* message("BB %d %lld %lld", c->depth, */
+    /* 	    c->stars.parts[0].gpart->id_or_neg_offset, */
+    /* 	    c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset); */
+
+    /* Verify link */
+    if (-c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset !=
+        &c->stars.parts[c->stars.count - 1] - my_s->sparts)
+      error("BB Wrong link star=%ld link=%lld",
+            &c->stars.parts[c->stars.count - 1] - my_s->sparts,
+            -c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset);
+
+    // c->stars.parts[c->stars.count].gpart->id_or_neg_offset -=
+    // (c->stars.count-1); c->stars.parts[0].gpart->id_or_neg_offset +=
+    // (c->stars.count - 1);
+  }
+
+  /* When directly above the leaf with the new spart: increase the particle
+   * count.
+   * When after the leaf with the new particle: shift by one position */
   if (main_branch) {
     c->stars.count++;
 
@@ -218,40 +279,47 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   if (n_copy > 0) {
 
     const ticks tic_memmove = getticks();
-    
+
     // MATTHIEU: This can be improved. We don't need to copy everything, just
     // need to swap a few particles.
-    memmove(&c->stars.parts[1], &c->stars.parts[0],
-            n_copy * sizeof(struct spart));
+    // memmove(&c->stars.parts[1], &c->stars.parts[0],
+    //        n_copy * sizeof(struct spart));
 
     const ticks toc_memmove = getticks();
     atomic_add(&sf_memmove, toc_memmove - tic_memmove);
 
     const ticks tic_links = getticks();
-    
+
     /* Update the spart->gpart links (shift by 1) */
-    for (size_t i = 0; i < n_copy; ++i) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (c->stars.parts[i + 1].gpart == NULL) {
-        error("Incorrectly linked spart!");
-      }
-#endif
-      c->stars.parts[i + 1].gpart->id_or_neg_offset--;
-    }
+    // for (size_t i = 0; i < n_copy; ++i) {
+    //#ifdef SWIFT_DEBUG_CHECKS
+    //  if (c->stars.parts[i + 1].gpart == NULL) {
+    //    error("Incorrectly linked spart!");
+    //  }
+    //#endif
+    // c->stars.parts[i + 1].gpart->id_or_neg_offset--;
+    //}
 
     const ticks toc_links = getticks();
     atomic_add(&sf_links, toc_links - tic_links);
   }
 
   const ticks tic_shift = getticks();
-  
+
+  struct gpart temp;
+  temp.id_or_neg_offset = 42;
+  // top->stars.parts[top->stars.count_total-1].gpart->id_or_neg_offset - 1;
+  top->stars.parts[top->stars.count].gpart = &temp;
+
+  my_s = e->s;
+
   /* Recursively shift all the stars to get a free spot at the start of the
    * current cell*/
   cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
 
   const ticks toc_shift = getticks();
   atomic_add(&sf_shift, toc_shift - tic_shift);
-  
+
   /* Make sure the gravity will be recomputed for this particle in the next
    * step */
   struct cell *top2 = c;
@@ -267,6 +335,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
+  message("neg_offset=%lld", sp->gpart->id_or_neg_offset);
   bzero(sp, sizeof(struct spart));
 
   /* Give it a decent position */
@@ -285,6 +354,12 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Register that we used one of the free slots. */
   const size_t one = 1;
   atomic_sub(&e->s->nr_extra_sparts, one);
+
+  /* part_verify_links(top->hydro.parts, top->grav.parts, NULL,
+   * top->stars.parts, */
+  /*                   NULL, top->hydro.count, top->grav.count, */
+  /*                   0, top->stars.count, 0, */
+  /*                   1); */
 
   return sp;
 }
@@ -833,7 +908,7 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp) {
 
   ticks tic = getticks();
-  
+
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -885,7 +960,7 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
 
   ticks toc = getticks();
   atomic_add(&sf_convert, toc - tic);
-    
+
   /* Here comes the Sun! */
   return sp;
 }
