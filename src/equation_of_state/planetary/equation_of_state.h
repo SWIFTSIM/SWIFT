@@ -130,6 +130,22 @@ enum eos_planetary_material_id {
   /*! Senft & Stewart (2008) SESAME-like water */
   eos_planetary_id_SS08_water =
       eos_planetary_type_SESAME * eos_planetary_type_factor + 3,
+    
+  /*! AQUA (Haldemann et al. 2020) SESAME-like water */
+  eos_planetary_id_AQUA =
+      eos_planetary_type_SESAME * eos_planetary_type_factor + 4,
+    
+  /*! CMS19 hydrogen (Chabrier et al. 2019) SESAME-like hydrogen */
+  eos_planetary_id_CMS19_H =
+      eos_planetary_type_SESAME * eos_planetary_type_factor + 5,
+    
+  /*! CMS19 helium (Chabrier et al. 2019) SESAME-like helium */
+  eos_planetary_id_CMS19_He =
+      eos_planetary_type_SESAME * eos_planetary_type_factor + 6,
+    
+  /*! CMS19 hydrogen-helium (Chabrier et al. 2019) SESAME-like H-He mixture (Y=0.275) */
+  eos_planetary_id_CMS19_HHe =
+      eos_planetary_type_SESAME * eos_planetary_type_factor + 7,
 
   /* ANEOS */
 
@@ -159,7 +175,7 @@ struct eos_parameters {
   struct idg_params idg_def;
   struct Til_params Til_iron, Til_granite, Til_water, Til_basalt;
   struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
-  struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water;
+  struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water, AQUA, CMS19_H, CMS19_He, CMS19_HHe;
   struct SESAME_params ANEOS_forsterite, ANEOS_iron, ANEOS_Fe85Si15;
 };
 
@@ -275,6 +291,26 @@ gas_internal_energy_from_entropy(float density, float entropy,
         case eos_planetary_id_SS08_water:
           return SESAME_internal_energy_from_entropy(density, entropy,
                                                      &eos.SS08_water);
+          break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.CMS19_HHe);
           break;
 
         default:
@@ -413,11 +449,31 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
         case eos_planetary_id_SESAME_water:
           return SESAME_pressure_from_entropy(density, entropy,
                                               &eos.SESAME_water);
+          break;
 
         case eos_planetary_id_SS08_water:
           return SESAME_pressure_from_entropy(density, entropy,
                                               &eos.SS08_water);
           break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.CMS19_HHe);
           break;
 
         default:
@@ -558,6 +614,22 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
 
         case eos_planetary_id_SS08_water:
           return SESAME_entropy_from_pressure(density, P, &eos.SS08_water);
+          break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_entropy_from_pressure(density, P, &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_entropy_from_pressure(density, P, &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_entropy_from_pressure(density, P, &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_entropy_from_pressure(density, P, &eos.CMS19_HHe);
           break;
 
         default:
@@ -701,6 +773,26 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
           return SESAME_soundspeed_from_entropy(density, entropy,
                                                 &eos.SS08_water);
           break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.CMS19_HHe);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -843,6 +935,26 @@ gas_entropy_from_internal_energy(float density, float u,
         case eos_planetary_id_SS08_water:
           return SESAME_entropy_from_internal_energy(density, u,
                                                      &eos.SS08_water);
+          break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.CMS19_HHe);
           break;
 
         default:
@@ -988,6 +1100,26 @@ gas_pressure_from_internal_energy(float density, float u,
         case eos_planetary_id_SS08_water:
           return SESAME_pressure_from_internal_energy(density, u,
                                                       &eos.SS08_water);
+          break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.CMS19_HHe);
           break;
 
         default:
@@ -1136,6 +1268,26 @@ gas_internal_energy_from_pressure(float density, float P,
         case eos_planetary_id_SS08_water:
           return SESAME_internal_energy_from_pressure(density, P,
                                                       &eos.SS08_water);
+          break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.CMS19_HHe);
           break;
 
         default:
@@ -1287,6 +1439,26 @@ gas_soundspeed_from_internal_energy(float density, float u,
           return SESAME_soundspeed_from_internal_energy(density, u,
                                                         &eos.SS08_water);
           break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.CMS19_HHe);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -1427,6 +1599,22 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
         case eos_planetary_id_SS08_water:
           return SESAME_soundspeed_from_pressure(density, P, &eos.SS08_water);
           break;
+              
+        case eos_planetary_id_AQUA:
+          return SESAME_soundspeed_from_pressure(density, P, &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+          return SESAME_soundspeed_from_pressure(density, P, &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+          return SESAME_soundspeed_from_pressure(density, P, &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+          return SESAME_soundspeed_from_pressure(density, P, &eos.CMS19_HHe);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -1483,6 +1671,10 @@ __attribute__((always_inline)) INLINE static void eos_init(
   char SESAME_basalt_table_file[PARSER_MAX_LINE_SIZE];
   char SESAME_water_table_file[PARSER_MAX_LINE_SIZE];
   char SS08_water_table_file[PARSER_MAX_LINE_SIZE];
+  char AQUA_table_file[PARSER_MAX_LINE_SIZE];
+  char CMS19_H_table_file[PARSER_MAX_LINE_SIZE];
+  char CMS19_He_table_file[PARSER_MAX_LINE_SIZE];
+  char CMS19_HHe_table_file[PARSER_MAX_LINE_SIZE];
   char ANEOS_forsterite_table_file[PARSER_MAX_LINE_SIZE];
   char ANEOS_iron_table_file[PARSER_MAX_LINE_SIZE];
   char ANEOS_Fe85Si15_table_file[PARSER_MAX_LINE_SIZE];
@@ -1540,6 +1732,10 @@ __attribute__((always_inline)) INLINE static void eos_init(
     set_SESAME_basalt(&e->SESAME_basalt, eos_planetary_id_SESAME_basalt);
     set_SESAME_water(&e->SESAME_water, eos_planetary_id_SESAME_water);
     set_SS08_water(&e->SS08_water, eos_planetary_id_SS08_water);
+    set_AQUA(&e->AQUA, eos_planetary_id_AQUA);
+    set_CMS19_H(&e->CMS19_H, eos_planetary_id_CMS19_H);
+    set_CMS19_He(&e->CMS19_He, eos_planetary_id_CMS19_He);
+    set_CMS19_HHe(&e->CMS19_HHe, eos_planetary_id_CMS19_HHe);
 
     parser_get_param_string(params, "EoS:planetary_SESAME_iron_table_file",
                             SESAME_iron_table_file);
@@ -1549,21 +1745,41 @@ __attribute__((always_inline)) INLINE static void eos_init(
                             SESAME_water_table_file);
     parser_get_param_string(params, "EoS:planetary_SS08_water_table_file",
                             SS08_water_table_file);
+    parser_get_param_string(params, "EoS:planetary_AQUA_table_file",
+                            AQUA_table_file);
+    parser_get_param_string(params, "EoS:planetary_CMS19_H_table_file",
+                            CMS19_H_table_file);
+    parser_get_param_string(params, "EoS:planetary_CMS19_He_table_file",
+                            CMS19_He_table_file);
+    parser_get_param_string(params, "EoS:planetary_CMS19_HHe_table_file",
+                            CMS19_HHe_table_file);
 
     load_table_SESAME(&e->SESAME_iron, SESAME_iron_table_file);
     load_table_SESAME(&e->SESAME_basalt, SESAME_basalt_table_file);
     load_table_SESAME(&e->SESAME_water, SESAME_water_table_file);
     load_table_SESAME(&e->SS08_water, SS08_water_table_file);
+    load_table_SESAME(&e->AQUA, AQUA_table_file);
+    load_table_SESAME(&e->CMS19_H, CMS19_H_table_file);
+    load_table_SESAME(&e->CMS19_He, CMS19_He_table_file);
+    load_table_SESAME(&e->CMS19_HHe, CMS19_HHe_table_file);
 
     prepare_table_SESAME(&e->SESAME_iron);
     prepare_table_SESAME(&e->SESAME_basalt);
     prepare_table_SESAME(&e->SESAME_water);
     prepare_table_SESAME(&e->SS08_water);
+    prepare_table_SESAME(&e->AQUA);
+    prepare_table_SESAME(&e->CMS19_H);
+    prepare_table_SESAME(&e->CMS19_He);
+    prepare_table_SESAME(&e->CMS19_HHe);
 
     convert_units_SESAME(&e->SESAME_iron, us);
     convert_units_SESAME(&e->SESAME_basalt, us);
     convert_units_SESAME(&e->SESAME_water, us);
     convert_units_SESAME(&e->SS08_water, us);
+    convert_units_SESAME(&e->AQUA, us);
+    convert_units_SESAME(&e->CMS19_H, us);
+    convert_units_SESAME(&e->CMS19_He, us);
+    convert_units_SESAME(&e->CMS19_HHe, us);
   }
 
   // ANEOS -- using SESAME-style tables
