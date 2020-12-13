@@ -148,10 +148,21 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_compute_formation",
 };
 
-const char *task_category_names[task_category_count] = {
-    "drift",       "sort",    "hydro",          "gravity", "feedback",
-    "black holes", "cooling", "star formation", "limiter", "time integration",
-    "mpi",         "fof",     "others",         "sink"};
+const char *task_category_names[task_category_count] = {"drift",
+                                                        "sort",
+                                                        "resort",
+                                                        "hydro",
+                                                        "gravity",
+                                                        "feedback",
+                                                        "black holes",
+                                                        "cooling",
+                                                        "star formation",
+                                                        "limiter",
+                                                        "time integration",
+                                                        "mpi",
+                                                        "fof",
+                                                        "others",
+                                                        "sink"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -1439,8 +1450,10 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_sort:
     case task_type_stars_sort:
-    case task_type_stars_resort:
       return task_category_sort;
+
+    case task_type_stars_resort:
+      return task_category_resort;
 
     case task_type_send:
     case task_type_recv:

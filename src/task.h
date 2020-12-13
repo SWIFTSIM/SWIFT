@@ -166,6 +166,7 @@ enum task_actions {
 enum task_categories {
   task_category_drift,
   task_category_sort,
+  task_category_resort,
   task_category_hydro,
   task_category_gravity,
   task_category_feedback,
