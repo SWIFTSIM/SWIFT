@@ -62,20 +62,13 @@ void cell_recursively_shift_sparts(struct cell *c,
 
   if (!c->split && c->stars.count > 0) {
 
-    /* memswap_unaligned(&c->stars.parts[c->stars.count].gpart->id_or_neg_offset,
-     */
-    /* 		      &c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset,
-     */
-    /* 		      sizeof(long long)); */
+    /* Swap the extra particle into the first spot of this cell */
+    memswap(&c->stars.parts[0], &c->stars.parts[c->stars.count],
+            sizeof(struct spart));
 
-    memswap(&c->stars.parts[c->stars.count],
-            &c->stars.parts[c->stars.count - 1], sizeof(struct spart));
-
-    c->stars.parts[c->stars.count].gpart->id_or_neg_offset--;
-
-    /* message("AA %d %lld %lld", c->depth, */
-    /* 	    c->stars.parts[c->stars.count].gpart->id_or_neg_offset, */
-    /* 	    c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset); */
+    /* Update the link for the particle that was just swapped beyond the cell
+     * range */
+    c->stars.parts[c->stars.count].gpart->id_or_neg_offset -= c->stars.count;
 
     /* Verify link */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -85,39 +78,6 @@ void cell_recursively_shift_sparts(struct cell *c,
             &c->stars.parts[c->stars.count] - s->sparts,
             -c->stars.parts[c->stars.count].gpart->id_or_neg_offset);
 #endif
-    // c->stars.parts[c->stars.count].gpart->id_or_neg_offset--;
-    // c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset++;
-  }
-
-  if (!c->split && c->stars.count > 1) {
-
-    /* memswap_unaligned(&c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset,
-     */
-    /* 		      &c->stars.parts[0].gpart->id_or_neg_offset, */
-    /* 		      sizeof(long long)); */
-
-    memswap(&c->stars.parts[0], &c->stars.parts[c->stars.count - 1],
-            sizeof(struct spart));
-
-    c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset -=
-        c->stars.count - 1;
-
-    /* message("BB %d %lld %lld", c->depth, */
-    /* 	    c->stars.parts[0].gpart->id_or_neg_offset, */
-    /* 	    c->stars.parts[c->stars.count-1].gpart->id_or_neg_offset); */
-
-    /* Verify link */
-#ifdef SWIFT_DEBUG_CHECKS
-    if (-c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset !=
-        &c->stars.parts[c->stars.count - 1] - s->sparts)
-      error("Wrong link star=%ld link=%lld",
-            &c->stars.parts[c->stars.count - 1] - s->sparts,
-            -c->stars.parts[c->stars.count - 1].gpart->id_or_neg_offset);
-#endif
-
-    // c->stars.parts[c->stars.count].gpart->id_or_neg_offset -=
-    // (c->stars.count-1); c->stars.parts[0].gpart->id_or_neg_offset +=
-    // (c->stars.count - 1);
   }
 
   /* When directly above the leaf with the new spart: increase the particle
