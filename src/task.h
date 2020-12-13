@@ -61,6 +61,7 @@ enum task_types {
   task_type_drift_bpart,
   task_type_drift_gpart,
   task_type_drift_dmpart,
+  task_type_drift2_dmpart,
   task_type_drift_gpart_out, /* Implicit */
   task_type_end_hydro_force,
   task_type_kick1,

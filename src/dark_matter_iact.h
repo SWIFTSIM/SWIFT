@@ -40,7 +40,7 @@ INLINE static double integrate_kernels(float r2, float hi, float hj) {
     
     /* Bin spacing. Assumes uniform spacing. */
     const float r = sqrtf(r2);
-    const int N_bins = 50;
+    const int N_bins = 20;
     const float bin_size = h_max / N_bins;
     
     /* Array for the integrand */
@@ -99,7 +99,7 @@ INLINE static double norm_for_kernels_integral(float hi, float hj) {
     h_max *= dm_kernel_gamma;
     
     /* Bin spacing. Assumes uniform spacing. */
-    const int N_bins = 50;
+    const int N_bins = 20;
     const float bin_size = h_max / N_bins;
     float r_int;
     

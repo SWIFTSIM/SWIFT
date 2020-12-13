@@ -176,13 +176,6 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     gp->velocity_ngb[1] *= h_inv_dim * rho_inv;
     gp->velocity_ngb[2] *= h_inv_dim * rho_inv;
     
-    /* Calculate avg. probability of scattering */
-    
-    /* Scattering cross section per unit mass (in internal units) */
-    /*const double sigma = sidm_props->sigma;*/
-    
-    /* Calculate SIDM probability (internal units) */
-    /*gp->sidm_probability *= 2.f * sigma * dt / gp->num_neighbours;*/
     gp->time_step_size = dt;
     
     /* Calculate (actual) velocity dispersion. Currently, the variable

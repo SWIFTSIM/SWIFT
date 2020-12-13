@@ -988,13 +988,17 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
 
             /* SIDM kick */
             c->dark_matter.sidm_kick = scheduler_addtask(s, task_type_sidm_kick, task_subtype_none, 0, 0, c, NULL);
-            
+
+            /* DM drift2 */
+            c->dark_matter.drift2 = scheduler_addtask(s, task_type_drift2_dmpart, task_subtype_none, 0, 0, c, NULL);
+
             /* Add the ghost task and its dependencies */
             c->dark_matter.ghost = scheduler_addtask(s, task_type_dark_matter_ghost, task_subtype_none, 0, 0, c, NULL);
 
             /* Link implicit tasks? */
-            scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
-            
+            scheduler_addunlock(s, c->dark_matter.sidm_kick, c->dark_matter.drift2);
+            scheduler_addunlock(s, c->dark_matter.drift2, c->super->kick2);
+
             /* Time-step limiter */
             if (with_timestep_limiter) {
                 
@@ -1055,8 +1059,12 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
         
+      c->dark_matter.drift2 = scheduler_addtask(s, task_type_drift2_dmpart, task_subtype_none, 0, 0, c, NULL);
+        
       c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
                                         task_subtype_none, 0, 0, c, NULL);
+        
+      scheduler_addunlock(s, c->dark_matter.drift2, c->grav.drift);
 
       c->grav.end_force = scheduler_addtask(s, task_type_end_grav_force,
                                             task_subtype_none, 0, 0, c, NULL);

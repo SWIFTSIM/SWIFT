@@ -729,8 +729,11 @@ struct cell {
         /*! Linked list of the tasks computing this cell's dm self-interactions. */
         struct link *sidm;
         
-        /*! The drift task for parts */
+        /*! The drift task for dmparts */
         struct task *drift;
+
+        /*! The drift task for dmparts */
+        struct task *drift2;
 
         /*! The dark matter ghost task itself */
         struct task *ghost;
