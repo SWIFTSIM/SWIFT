@@ -107,6 +107,12 @@ struct sidm_dmpart_data {
     /*! Velocity changed due to DM-DM self-interactions. */
     float v_full[3];
 
+    /*! Velocity changed due to DM-DM self-interactions. */
+    float x[3];
+
+    /*! Velocity changed due to DM-DM self-interactions. */
+    float h;
+
     /*! Drift timestep */
     float dt_drift;
     

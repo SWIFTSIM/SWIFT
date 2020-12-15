@@ -498,7 +498,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
                 
-                runner_iact_dark_matter_density(r2, dx, hj, hi, pj, pi, a, H);
+                runner_iact_nonsym_dark_matter_density(r2, dx, hj, hi, pj, pi, a, H);
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1182,20 +1182,24 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         }
         
         const int pi_active = dmpart_is_active(pi, e);
-        const float hi = pi->h;
+        /*const float hi = pi->h;*/
+        const float hi = pi->sidm_data.h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
-
-        const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
+        /*const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
-            (float)(pi->x[2] - c->loc[2])};
-        
+            (float)(pi->x[2] - c->loc[2])};*/
+        const float pix[3] = {(float)(pi->sidm_data.x[0] - c->loc[0]),
+            (float)(pi->sidm_data.x[1] - c->loc[1]),
+            (float)(pi->sidm_data.x[2] - c->loc[2])};
+
         /* Loop over the dmparts in cj. */
         for (int pjd = pid + 1; pjd < count; pjd++) {
             
             /* Get a pointer to the jth particle. */
             struct dmpart *restrict pj = &dmparts[pjd];
             
-            const float hj = pj->h;
+            /*const float hj = pj->h;*/
+            const float hj = pj->sidm_data.h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
             const int pj_active = dmpart_is_active(pj, e);
 
@@ -1211,9 +1215,12 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             }
             
             /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+            /*const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                 (float)(pj->x[1] - c->loc[1]),
-                (float)(pj->x[2] - c->loc[2])};
+                (float)(pj->x[2] - c->loc[2])};*/
+            const float pjx[3] = {(float)(pj->sidm_data.x[0] - c->loc[0]),
+                (float)(pj->sidm_data.x[1] - c->loc[1]),
+                (float)(pj->sidm_data.x[2] - c->loc[2])};
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
@@ -1336,13 +1343,17 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             dti = get_timestep(pi->time_bin, e->time_base);
         }
         
-        const float hi = pi->h;
+        /*const float hi = pi->h;*/
+        const float hi = pi->sidm_data.h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
 
         const int pi_active = dmpart_is_active(pi, e);
-        const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
+        /*const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
-            (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
+            (float)(pi->x[2] - (cj->loc[2] + shift[2]))};*/
+        const float pix[3] = {(float)(pi->sidm_data.x[0] - (cj->loc[0] + shift[0])),
+            (float)(pi->sidm_data.x[1] - (cj->loc[1] + shift[1])),
+            (float)(pi->sidm_data.x[2] - (cj->loc[2] + shift[2]))};
         
         /* Loop over the parts in cj. */
         for (int pjd = 0; pjd < count_j; pjd++) {
@@ -1351,7 +1362,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             struct dmpart *restrict pj = &dmparts_j[pjd];
             
             const int pj_active = dmpart_is_active(pj, e);
-            const float hj = pj->h;
+            /*const float hj = pj->h;*/
+            const float hj = pj->sidm_data.h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
             
             /* Get j particle time-step */
@@ -1366,9 +1378,12 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             }
             
             /* Compute the pairwise distance. */
-            const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+            /*const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                 (float)(pj->x[1] - cj->loc[1]),
-                (float)(pj->x[2] - cj->loc[2])};
+                (float)(pj->x[2] - cj->loc[2])};*/
+            const float pjx[3] = {(float)(pj->sidm_data.x[0] - cj->loc[0]),
+                (float)(pj->sidm_data.x[1] - cj->loc[1]),
+                (float)(pj->sidm_data.x[2] - cj->loc[2])};
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 

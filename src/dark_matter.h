@@ -62,7 +62,15 @@ __attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart
     gp->sidm_data.v_full[0] = gp->v_full[0];
     gp->sidm_data.v_full[1] = gp->v_full[1];
     gp->sidm_data.v_full[2] = gp->v_full[2];
-    
+
+    /* Set copy of particle position */
+    gp->sidm_data.x[0] = gp->x[0];
+    gp->sidm_data.x[1] = gp->x[1];
+    gp->sidm_data.x[2] = gp->x[2];
+
+    /* Set copy of particle smoothing length */
+    gp->sidm_data.h = gp->h;
+
     gp->sidm_data.dt_drift = dt_drift;
 
 }
@@ -94,7 +102,13 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->sidm_data.v_full[0] = 0.0f;
     dmp->sidm_data.v_full[1] = 0.0f;
     dmp->sidm_data.v_full[2] = 0.0f;
-    
+
+    dmp->sidm_data.x[0] = 0.0f;
+    dmp->sidm_data.x[1] = 0.0f;
+    dmp->sidm_data.x[2] = 0.0f;
+
+    dmp->sidm_data.h = 0.0f;
+
     dmp->sidm_data.dt_drift = 0.0f;
 
     dmp->time_bin = 0;
@@ -238,7 +252,13 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *rest
     gp->sidm_data.v_full[0] = 0.0f;
     gp->sidm_data.v_full[1] = 0.0f;
     gp->sidm_data.v_full[2] = 0.0f;
-    
+
+    gp->sidm_data.x[0] = 0.0f;
+    gp->sidm_data.x[1] = 0.0f;
+    gp->sidm_data.x[2] = 0.0f;
+
+    gp->sidm_data.h = 0.0f;
+
     gp->sidm_data.dt_drift = 0.0f;
     
 }
