@@ -63,6 +63,7 @@ include_HEADERS += feedback.h feedback_struct.h feedback_properties.h
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += logger_history.h
+include_HEADERS += particle_splitting.h particle_splitting_struct.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =

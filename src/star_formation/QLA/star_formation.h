@@ -166,6 +166,9 @@ INLINE static void star_formation_copy_properties(
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);
 
+  /* Move over the splitting data */
+  sp->split_data = xp->split_data;
+
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
     sp->birth_scale_factor = cosmo->a;

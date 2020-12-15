@@ -29,6 +29,7 @@
 #include "chemistry.h"
 #include "cooling.h"
 #include "hydro.h"
+#include "particle_splitting.h"
 #include "random.h"
 #include "star_formation.h"
 #include "tracers.h"
@@ -169,6 +170,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       if (with_gravity) {
         memcpy(&global_gparts[k_gparts], gp, sizeof(struct gpart));
       }
+
+      /* Update splitting tree */
+      particle_splitting_update_binary_tree(&global_xparts[k_parts].split_data,
+                                            &xp->split_data);
 
       /* Update the IDs. */
       if (generate_random_ids) {

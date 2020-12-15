@@ -262,6 +262,46 @@ case of the densities and assuming the usual system of units
 
 In the case of a non-cosmological simulation, these two expressions
 are identical since :math:`a=1`.
+
+Particle splitting metadata
+---------------------------
+
+When particle splitting is turned on (see :ref:`Parameters_basics`; by using
+``particle_splitting=1`` in the parameter file) some particles in the output
+may have been created from the 'splitting' of a single, over-massive, particle.
+
+There are three fields, associated with all gas, star, and black hole particles,
+that can be used to understand if, and how, these particles were split.
+
+These three fields are:
+
++ ``ProgenitorIDs``, the IDs of the gas particles in the initial conditions
+  that is the direct progenitor of this particle.
++ ``SplitCounts``, the number of times this gas particle has been split; or,
+  if a star or black hole, how many times the gas particle that became this
+  star (or black hole seed) was split before becoming so.
++ ``SplitTrees``, a binary tree (encoded as a 64 bit integer) showing how this
+  particle was split. Each item in the tree shows whether this particle retained
+  its original ID (encoded as 0) or was given a new ID (encoded as 1) in the
+  splitting event. This data is enough to completely reconstruct the splitting 
+  history of the particles.
+
+For example, if a particle has been split 5 times (``SplitCounts=5`` for this
+particle), and has a binary tree of "10010", it retained its original ID in
+the first event, was given a new one in the second event, for the next two
+events it retained its new ID (obtained in the second event), and finally was
+given a new ID in the final event. Throughout this process, the value of
+``ProgenitorIDs`` remained the same. Through this system, we can ensure that
+the combination of ``ProgenitorID`` and this binary tree corresponds to a
+fully traceable, unique, identifier for every particle in the simulation volume.
+
+Note that we can only track 64 splitting events for a given particle, and after
+this the binary tree is meaningless. In practice, however, such a high number
+of splitting events is extremely unlikely to occur.
+
+An example is provided in ``examples/SubgridTests/ParticleSplitting`, with
+a figure showing how one particle is split (eventually) into 16 descendants
+that makes use of this metadata.
    
 Quick access to particles via hash-tables
 -----------------------------------------

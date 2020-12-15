@@ -25,6 +25,7 @@
 /* Read additional subgrid models */
 #include "chemistry_struct.h"
 #include "feedback_struct.h"
+#include "particle_splitting_struct.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
 
@@ -90,6 +91,9 @@ struct spart {
 
   /*! Chemistry structure */
   struct chemistry_spart_data chemistry_data;
+
+  /*! Splitting structure */
+  struct particle_splitting_data split_data;
 
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */

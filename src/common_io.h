@@ -56,6 +56,7 @@ enum IO_DATA_TYPE {
   INT,
   LONG,
   LONGLONG,
+  UINT8,
   UINT,
   UINT64,
   ULONG,
