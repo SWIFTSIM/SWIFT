@@ -1170,7 +1170,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   space_rebuild(e->s, repartitioned, e->verbose);
 
   /* Report the number of cells and memory */
-  if (e->verbose)
+  //if (e->verbose)
     message(
         "Nr. of top-level cells: %d Nr. of local cells: %d memory use: %zd MB.",
         e->s->nr_cells, e->s->tot_cells,
@@ -1178,7 +1178,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
             (1024 * 1024));
 
   /* Report the number of multipoles and memory */
-  if (e->verbose && (e->policy & engine_policy_self_gravity))
+  //if (e->verbose && (e->policy & engine_policy_self_gravity))
     message(
         "Nr. of top-level mpoles: %d Nr. of local mpoles: %d memory use: %zd "
         "MB.",

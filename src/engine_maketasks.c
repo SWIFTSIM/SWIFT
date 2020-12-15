@@ -3478,13 +3478,13 @@ void engine_make_fof_tasks(struct engine *e) {
 #endif
 
   /* Report the number of tasks we actually used */
-  if (e->verbose)
-    message(
-        "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
-        e->sched.nr_tasks, e->sched.size,
-        (float)e->sched.nr_tasks / (float)e->sched.size,
-        e->sched.size * sizeof(struct task) / (1024 * 1024));
-
+  //if (e->verbose)
+  message(
+	  "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
+	  e->sched.nr_tasks, e->sched.size,
+	  (float)e->sched.nr_tasks / (float)e->sched.size,
+	  e->sched.size * sizeof(struct task) / (1024 * 1024));
+  
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
