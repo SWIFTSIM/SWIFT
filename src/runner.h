@@ -101,7 +101,6 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_spart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_dmpart(struct runner *r, struct cell *c, int timer);
-void runner_do_drift2_dmpart(struct runner *r, struct cell *c);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_sidm_kick(struct runner *r, struct cell *c);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);

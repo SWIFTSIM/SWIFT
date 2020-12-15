@@ -85,14 +85,10 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   }
 #endif
     
-  if (gp->type != swift_type_dark_matter){
-
-      /* Drift... */
-      gp->x[0] += gp->v_full[0] * dt_drift;
-      gp->x[1] += gp->v_full[1] * dt_drift;
-      gp->x[2] += gp->v_full[2] * dt_drift;
-
-  }
+  /* Drift... */
+  gp->x[0] += gp->v_full[0] * dt_drift;
+  gp->x[1] += gp->v_full[1] * dt_drift;
+  gp->x[2] += gp->v_full[2] * dt_drift;
 
   gravity_predict_extra(gp, grav_props);
         
@@ -278,14 +274,6 @@ __attribute__((always_inline)) INLINE static void drift_dmpart(
     dmp->x[1] += dmp->v_full[1] * dt_drift;
     dmp->x[2] += dmp->v_full[2] * dt_drift;
     
-    /* Get its gravity friend */
-    struct gpart *gp = dmp->gpart;
-    
-    /* Synchronize positions */
-    gp->x[0] = dmp->x[0];
-    gp->x[1] = dmp->x[1];
-    gp->x[2] = dmp->x[2];
-
     /* Predict the values of the extra fields */
     /*dark_matter_predict_extra(dmp, dt_drift);*/
     

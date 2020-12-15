@@ -30,6 +30,8 @@
 #include "space_getsid.h"
 #include "timers.h"
 #include "timestep_limiter_iact.h"
+#include "timestep_sync.h"
+
 
 
 /* Import the dark matter density loop functions. */

@@ -385,7 +385,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
  * @param H Current Hubble parameter.
  * @param ti_current Current integer time (for random numbers).
  */
-__attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
@@ -414,22 +414,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     /* Draw a random number */
     const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
-
+    
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi) {
         
-        /* If part j is not within the timestep, let's wake it up for the SIDM kick */
+        /* Part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
-        
-        /* If part i is not within the timestep, let's wake it up for the SIDM kick */
-        timestep_sync_dmpart(pi);
-        
-        /* Doing SIDM kick */
-        sidm_do_kick(pi, pj, ti_current, sidm_history);
         
         /* Log the kick */
         dark_matter_log_num_events(sidm_history, 1);
-
+        
+        /* Doing SIDM kick */
+        sidm_do_kick(pi, pj, ti_current, sidm_history);
     }
 }
 
@@ -446,7 +442,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter_sidm(
+__attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
@@ -487,12 +483,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
 
-        /* If part j is not within the timestep, let's wake it up for the SIDM kick */
-        timestep_sync_dmpart(pj);
-        
-        /* If part i is not within the timestep, let's wake it up for the SIDM kick */
-        timestep_sync_dmpart(pi);
-        
         /* Doing SIDM kick */
         sidm_do_kick(pi, pj, ti_current, sidm_history);
         

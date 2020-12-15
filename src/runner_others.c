@@ -74,11 +74,11 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
     const struct engine *e = r->e;
     const int periodic = e->s->periodic;
     const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
-    const int with_cosmology = (e->policy & engine_policy_cosmology);
+    /*const int with_cosmology = (e->policy & engine_policy_cosmology);*/
     const float dark_matter_h_max = e->sidm_properties->h_max;
     const float dark_matter_h_min = e->sidm_properties->h_min;
-    const integertime_t ti_old_dmpart = c->dark_matter.ti_old_part;
-    const integertime_t ti_current = e->ti_current;
+    /*const integertime_t ti_old_dmpart = c->dark_matter.ti_old_part;
+    const integertime_t ti_current = e->ti_current;*/
     
     float dx_max = 0.f, dx2_max = 0.f;
     float cell_h_max = 0.f;
@@ -116,17 +116,9 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             
             /* Anything to do here? (i.e. does this particle need updating?) */
             if (dmpart_is_active(dmp, e)) {
-                
-                double dt_drift;
-                if (with_cosmology) {
-                    dt_drift =
-                    cosmology_get_drift_factor(e->cosmology, ti_old_dmpart, ti_current);
-                } else {
-                    dt_drift = (ti_current - ti_old_dmpart) * e->time_base;
-                }
-                
+                                
                 /* do the sidm kick */
-                do_sidm_kick_to_dmpart(dmp, dt_drift);
+                do_sidm_kick_to_dmpart(dmp);
                 
                 /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
                 if (!periodic) {

@@ -19,7 +19,6 @@
 
 #include "runner_doiact_dark_matter.h"
 
-
 /**
  * @brief Compute the interactions between a cell pair, but only for the
  *      given indices in ci.
@@ -1243,7 +1242,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
                 
                 runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);
-                
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1376,7 +1374,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
             const int doi = pi_active && (r2 < hig2);
             const int doj = pj_active && (r2 < hjg2);
-
+            
             /* Hit or miss? */
             if (doi && doj) {
 
@@ -1399,7 +1397,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history);
                 
                 runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);
-
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */

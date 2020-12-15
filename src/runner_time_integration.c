@@ -256,7 +256,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           /* do the kick */
           kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
               
-        }          
+        }                    
       }
 
     /* Loop over the stars particles in this cell. */

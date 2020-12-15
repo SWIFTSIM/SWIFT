@@ -112,23 +112,14 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   }
 
   kick_dmpart(p, dt_kick_grav, new_ti_beg, new_ti_beg + new_dti);
-  
-  double dt_drift = 0.;
-    
-  if (with_cosmology) {
-      dt_drift = cosmology_get_drift_factor(cosmo, old_ti_beg, new_ti_beg + new_dti);
-  } else {
-      dt_drift = (new_dti) * e->time_base;
-  }
-    
+      
   /* Did this particle had a SIDM kick? if so, resolve */
-  do_sidm_kick_to_dmpart(p, dt_drift);
+  do_sidm_kick_to_dmpart(p);
 
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
   p->time_bin = -min_active_bin;
   p->limiter_data.wakeup = time_bin_not_awake;
-  p->limiter_data.to_be_synchronized = 0;
 
 }
 

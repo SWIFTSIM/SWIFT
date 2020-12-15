@@ -106,6 +106,9 @@ struct sidm_dmpart_data {
 
     /*! Velocity changed due to DM-DM self-interactions. */
     float v_full[3];
+
+    /*! Drift timestep */
+    float dt_drift;
     
     /*! flag indicating if particle in given time-step has been scattered*/
     float sidm_flag;

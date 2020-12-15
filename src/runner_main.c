@@ -386,9 +386,6 @@ void *runner_main(void *data) {
         case task_type_drift_dmpart:
           runner_do_drift_dmpart(r, ci, 1);
           break;
-        case task_type_drift2_dmpart:
-          runner_do_drift2_dmpart(r, ci);
-          break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;

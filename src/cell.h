@@ -732,9 +732,6 @@ struct cell {
         /*! The drift task for dmparts */
         struct task *drift;
 
-        /*! The drift task for dmparts */
-        struct task *drift2;
-
         /*! The dark matter ghost task itself */
         struct task *ghost;
         
