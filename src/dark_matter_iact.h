@@ -206,15 +206,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     /* Increasing counters */
     ++pi->num_neighbours;
     ++pj->num_neighbours;
-    
-    /*float gij = integrate_kernels(r2, hi, hj);
-    float normed_gij = norm_for_kernels_integral(hi, hj);
-    float gji = integrate_kernels(r2, hj, hi);
-    float normed_gji = norm_for_kernels_integral(hj, hi);
-
-    pi->sidm_probability += mj * sqrt(v2) * gij / normed_gij;
-    pj->sidm_probability += mi * sqrt(v2) * gji / normed_gji;*/
-
 }
 
 /**
@@ -269,12 +260,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Increasing counter */
     ++pi->num_neighbours;
-    
-    /* Calculate probability */
-    /*float gij = integrate_kernels(r2, hi, hj);
-    float normed_gij = norm_for_kernels_integral(hi, hj);
-    
-    pi->sidm_probability += mj * sqrt(v2) * gij / normed_gij;*/
 }
 
 /**
