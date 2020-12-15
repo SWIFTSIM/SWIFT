@@ -24,6 +24,7 @@
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
+#include "particle_splitting_struct.h"
 #include "timeline.h"
 
 /**
@@ -258,6 +259,9 @@ struct bpart {
     double delta_x[3];
 
   } reposition;
+
+  /*! Splitting structure */
+  struct particle_splitting_data split_data;
 
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */

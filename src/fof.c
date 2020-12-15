@@ -1990,6 +1990,7 @@ void fof_seed_black_holes(const struct fof_props *props,
 
       /* Handle on the particle to convert */
       struct part *p = &s->parts[part_index];
+      struct xpart *xp = &s->xparts[part_index];
       struct gpart *gp = p->gpart;
 
       /* Let's destroy the gas particle */
@@ -2029,7 +2030,7 @@ void fof_seed_black_holes(const struct fof_props *props,
 #endif
 
       /* Copy over all the gas properties that we want */
-      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p);
+      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp);
 
       /* Move to the next BH slot */
       k++;
