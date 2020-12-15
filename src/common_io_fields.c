@@ -34,6 +34,7 @@
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "particle_splitting.h"
 #include "rt_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
@@ -91,6 +92,8 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_gas:
       hydro_write_particles(NULL, NULL, list, &num_fields);
+      num_fields += particle_splitting_write_particles(
+          NULL, NULL, list + num_fields, with_cosmology);
       num_fields += chemistry_write_particles(NULL, NULL, list + num_fields,
                                               with_cosmology);
       num_fields +=
@@ -122,6 +125,8 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_stars:
       stars_write_particles(NULL, list, &num_fields, with_cosmology);
+      num_fields +=
+          particle_splitting_write_sparticles(NULL, list + num_fields);
       num_fields += chemistry_write_sparticles(NULL, list + num_fields);
       num_fields +=
           tracers_write_sparticles(NULL, list + num_fields, with_cosmology);
@@ -138,6 +143,8 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_black_hole:
       black_holes_write_particles(NULL, list, &num_fields, with_cosmology);
+      num_fields +=
+          particle_splitting_write_bparticles(NULL, list + num_fields);
       num_fields += chemistry_write_bparticles(NULL, list + num_fields);
       if (with_fof) num_fields += fof_write_bparts(NULL, list + num_fields);
       if (with_stf)

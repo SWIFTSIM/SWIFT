@@ -55,6 +55,7 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "particle_splitting.h"
 #include "rt_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
@@ -1265,6 +1266,8 @@ void prepare_file(struct engine* e, const char* fileName,
 
       case swift_type_gas:
         hydro_write_particles(parts, xparts, list, &num_fields);
+        num_fields += particle_splitting_write_particles(
+            parts, xparts, list + num_fields, with_cosmology);
         num_fields += chemistry_write_particles(
             parts, xparts, list + num_fields, with_cosmology);
         if (with_cooling || with_temperature) {
@@ -1315,6 +1318,8 @@ void prepare_file(struct engine* e, const char* fileName,
 
       case swift_type_stars:
         stars_write_particles(sparts, list, &num_fields, with_cosmology);
+        num_fields +=
+            particle_splitting_write_sparticles(sparts, list + num_fields);
         num_fields += chemistry_write_sparticles(sparts, list + num_fields);
         num_fields +=
             tracers_write_sparticles(sparts, list + num_fields, with_cosmology);
@@ -1333,6 +1338,8 @@ void prepare_file(struct engine* e, const char* fileName,
 
       case swift_type_black_hole:
         black_holes_write_particles(bparts, list, &num_fields, with_cosmology);
+        num_fields +=
+            particle_splitting_write_bparticles(bparts, list + num_fields);
         num_fields += chemistry_write_bparticles(bparts, list + num_fields);
         if (with_fof) {
           num_fields += fof_write_bparts(bparts, list + num_fields);
@@ -1646,6 +1653,8 @@ void write_output_parallel(struct engine* e,
           /* No inhibted particles: easy case */
           Nparticles = Ngas;
           hydro_write_particles(parts, xparts, list, &num_fields);
+          num_fields += particle_splitting_write_particles(
+              parts, xparts, list + num_fields, with_cosmology);
           num_fields += chemistry_write_particles(
               parts, xparts, list + num_fields, with_cosmology);
           if (with_cooling || with_temperature) {
@@ -1689,6 +1698,8 @@ void write_output_parallel(struct engine* e,
           /* Select the fields to write */
           hydro_write_particles(parts_written, xparts_written, list,
                                 &num_fields);
+          num_fields += particle_splitting_write_particles(
+              parts_written, xparts_written, list + num_fields, with_cosmology);
           num_fields += chemistry_write_particles(
               parts_written, xparts_written, list + num_fields, with_cosmology);
           if (with_cooling || with_temperature) {
@@ -1835,6 +1846,8 @@ void write_output_parallel(struct engine* e,
           /* No inhibted particles: easy case */
           Nparticles = Nstars;
           stars_write_particles(sparts, list, &num_fields, with_cosmology);
+          num_fields +=
+              particle_splitting_write_sparticles(sparts, list + num_fields);
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
@@ -1868,6 +1881,8 @@ void write_output_parallel(struct engine* e,
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields,
                                 with_cosmology);
+          num_fields += particle_splitting_write_sparticles(sparts_written,
+                                                            list + num_fields);
           num_fields +=
               chemistry_write_sparticles(sparts_written, list + num_fields);
           num_fields += tracers_write_sparticles(
@@ -1894,6 +1909,8 @@ void write_output_parallel(struct engine* e,
           Nparticles = Nblackholes;
           black_holes_write_particles(bparts, list, &num_fields,
                                       with_cosmology);
+          num_fields +=
+              particle_splitting_write_bparticles(bparts, list + num_fields);
           num_fields += chemistry_write_bparticles(bparts, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_bparts(bparts, list + num_fields);
@@ -1919,7 +1936,10 @@ void write_output_parallel(struct engine* e,
           /* Select the fields to write */
           black_holes_write_particles(bparts_written, list, &num_fields,
                                       with_cosmology);
-          num_fields += chemistry_write_bparticles(bparts, list + num_fields);
+          num_fields += particle_splitting_write_bparticles(bparts_written,
+                                                            list + num_fields);
+          num_fields +=
+              chemistry_write_bparticles(bparts_written, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_bparts(bparts_written, list + num_fields);
           }

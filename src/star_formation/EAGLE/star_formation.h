@@ -591,6 +591,9 @@ INLINE static void star_formation_copy_properties(
     sp->birth_time = e->time;
   }
 
+  /* Move over the splitting data */
+  sp->split_data = xp->split_data;
+
   /* Store the chemistry struct in the star particle */
   sp->chemistry_data = p->chemistry_data;
 

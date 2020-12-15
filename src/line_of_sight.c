@@ -35,6 +35,7 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
+#include "particle_splitting.h"
 #include "periodic.h"
 #include "rt_io.h"
 #include "star_formation_io.h"
@@ -440,6 +441,8 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
 
   /* Find all the gas output fields */
   hydro_write_particles(parts, xparts, list, &num_fields);
+  num_fields += particle_splitting_write_particles(
+      parts, xparts, list + num_fields, with_cosmology);
   num_fields += chemistry_write_particles(parts, xparts, list + num_fields,
                                           with_cosmology);
   if (with_cooling || with_temperature) {

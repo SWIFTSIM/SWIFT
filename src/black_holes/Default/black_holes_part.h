@@ -20,6 +20,7 @@
 #define SWIFT_DEFAULT_BLACK_HOLE_PART_H
 
 #include "chemistry_struct.h"
+#include "particle_splitting_struct.h"
 #include "timeline.h"
 
 /**
@@ -62,6 +63,9 @@ struct bpart {
     float wcount_dh;
 
   } density;
+
+  /*! Splitting structure */
+  struct particle_splitting_data split_data;
 
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */

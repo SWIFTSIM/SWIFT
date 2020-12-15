@@ -1187,11 +1187,12 @@ black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
  * @param constants The physical constants in internal units.
  * @param cosmo The current cosmological model.
  * @param p The #part that became a black hole.
+ * @param xp The #xpart that became a black hole.
  */
 INLINE static void black_holes_create_from_gas(
     struct bpart* bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
-    const struct part* p) {
+    const struct part* p, const struct xpart* xp) {
 
   /* All the non-basic properties of the black hole have been zeroed
    * in the FOF code. We update them here.
@@ -1219,6 +1220,9 @@ INLINE static void black_holes_create_from_gas(
   bp->number_of_repositions = 0;
   bp->number_of_reposition_attempts = 0;
   bp->last_repos_vel = 0.f;
+
+  /* Copy over the splitting struct */
+  bp->split_data = xp->split_data;
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);
