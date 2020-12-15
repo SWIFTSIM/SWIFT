@@ -5978,7 +5978,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
             
             /* All dmparts get ready for a SIDM calculation */
-            sidm_init_dmpart(dmp, dt_drift);
+            /*sidm_init_dmpart(dmp, dt_drift);*/
             
             /* Now drift... */
             drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);
