@@ -5974,11 +5974,14 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             /* Ignore inhibited particles */
             if (dmpart_is_inhibited(dmp, e)) continue;
             
-            /* Get ready for a density calculation */
-            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
-            
-            /* All dmparts get ready for a SIDM calculation */
-            /*sidm_init_dmpart(dmp, dt_drift);*/
+            if (dmpart_is_active(dmp, e)) {
+                
+                /* Get ready for a density calculation */
+                dark_matter_init_dmpart(dmp);
+                
+                /* All dmparts get ready for a SIDM calculation */
+                sidm_init_dmpart(dmp);
+            }
             
             /* Now drift... */
             drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);

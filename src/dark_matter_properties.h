@@ -104,17 +104,14 @@ struct sidm_props {
  */
 struct sidm_dmpart_data {
 
-    /*! Velocity changed due to DM-DM self-interactions. */
+    /*! Velocity changed due to DM-DM collisions. */
     float v_full[3];
 
-    /*! Velocity changed due to DM-DM self-interactions. */
-    float x[3];
+    /*! Velocity *before* DM-DM collisions. */
+    float vi_full[3];
 
-    /*! Velocity changed due to DM-DM self-interactions. */
-    float h;
-
-    /*! Drift timestep */
-    float dt_drift;
+    /*! Acceleration due to DM self-interactions. */
+    float a_sidm[3];
     
     /*! flag indicating if particle in given time-step has been scattered*/
     float sidm_flag;

@@ -227,7 +227,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           struct dmpart *restrict dmp = &dmparts[k];
           
           /* All dmparts get ready for SIDM calculation */
-          sidm_init_dmpart(dmp);
+          sidm_init_velocities(dmp);
           
           /* If the DM particle has no counterpart and needs to be kicked */
           if (dmpart_is_starting(dmp, e)) {
@@ -258,6 +258,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           
           /* do the kick */
           kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+              
+          /* Add half sidm kick */
+          add_half_sidm_kick_to_dmpart(dmp, dt_kick_grav);
               
         }                    
       }
@@ -524,8 +527,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               kick_dmpart(dmp, dt_kick_grav, ti_begin + ti_step / 2,
                          ti_begin + ti_step);
               
-              /* Kick extra and complete SIDM kick */
-              do_sidm_kick_to_dmpart(dmp);
+              /* Add half kick extra from SIDM */
+              do_sidm_kick_to_dmpart(dmp, dt_kick_grav);
               
 #ifdef SWIFT_DEBUG_CHECKS
               /* Check that kick and the drift are synchronized */
