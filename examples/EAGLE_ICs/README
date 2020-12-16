@@ -21,6 +21,8 @@ the following changes have been made (at standard resolution):
    been changed to 1.79 ckpc. This follows the recommendations of
    Ludlow et al. 2019. Old values were 0.7 pkpc and 2.69 ckpc for
    all the particle species.
+ - The minimal smoothing length of SPH particles has been reduced
+   to 0.01 of the softening length (was 0.1).
  - SPH particles reaching a mass larger than 7*10^6 Msun (~4x the
    initial gas particle mass) are now split into 2 equal mass
    particles within the smoothing length of the original particle.
