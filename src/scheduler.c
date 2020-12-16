@@ -647,7 +647,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     fclose(f);
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_MPI)
   /* Check if we have the correct number of dependencies. */
   if (step == 0) {
     int count_total = 0;
