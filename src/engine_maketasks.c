@@ -1418,8 +1418,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
-      /* And the dark matter stuff */
-      engine_make_hierarchical_tasks_dark_matter(e, c);
+    /* And the dark matter stuff */
+    engine_make_hierarchical_tasks_dark_matter(e, c);
   }
 }
 
