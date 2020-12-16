@@ -132,39 +132,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   atomic_inc(&s->completed_unlock_writes);
 }
 
-/**
- * @brief compute the number of similar dependencies
- *
- * @param s The #scheduler
- * @param ta The #task
- * @param tb The dependent #task
- *
- * @return Number of dependencies
- */
-int scheduler_get_number_relation(const struct scheduler *s,
-                                  const struct task *ta,
-                                  const struct task *tb) {
-  int count = 0;
-
-  /* loop over all tasks */
-  for (int i = 0; i < s->nr_tasks; i++) {
-    const struct task *ta_tmp = &s->tasks[i];
-
-    /* Early abort? */
-    if (ta_tmp->type != ta->type || ta_tmp->subtype != ta->subtype) continue;
-
-    /* and their dependencies */
-    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
-      const struct task *tb_tmp = ta->unlock_tasks[j];
-
-      if (tb->type == tb_tmp->type && tb->subtype == tb_tmp->subtype) {
-        count += 1;
-      }
-    }
-  }
-  return count;
-}
-
 /* Conservative number of dependencies per task type */
 #define MAX_NUMBER_DEP 128
 
@@ -517,8 +484,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
           cur->implicit_out[k] = tb->implicit;
 
           /* statistics */
-          const int count = scheduler_get_number_relation(s, ta, tb);
-          cur->number_link[k] = count;
+          cur->number_link[k] = 1;
           cur->number_rank[k] = 1;
 
           /* Are we dealing with a task at the top level? */
@@ -540,6 +506,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
         /* already written */
         if (cur->type_out[k] == tb->type &&
             cur->subtype_out[k] == tb->subtype) {
+
+          /* Increase the number of link. */
+          cur->number_link[k] += 1;
 
           /* Are we dealing with a task at the top level? */
           if (!(is_ci_b_top && is_cj_b_top)) {
@@ -677,6 +646,24 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     /* Close the file */
     fclose(f);
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check if we have the correct number of dependencies. */
+  if (step == 0) {
+    int count_total = 0;
+    for (int i = 0; i < nber_tasks; i++) {
+      for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+        if (task_dep[i].number_link[j] != -1)
+          count_total += task_dep[i].number_link[j];
+      }
+    }
+
+    if (count_total != s->nr_unlocks) {
+      error("Not all the dependencies were found: %i != %i", count_total,
+            s->nr_unlocks);
+    }
+  }
+#endif
 
   /* Be clean */
   free(task_dep);
