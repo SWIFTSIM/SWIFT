@@ -53,26 +53,33 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
  *
  * @param gp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart* gp, float dt_drift) {
-    
-    /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
-    gp->sidm_data.sidm_flag = 0.0f;
+__attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dmpart* gp) {
     
     /* Set copy of particle velocity */
     gp->sidm_data.v_full[0] = gp->v_full[0];
     gp->sidm_data.v_full[1] = gp->v_full[1];
     gp->sidm_data.v_full[2] = gp->v_full[2];
 
-    /* Set copy of particle position */
-    gp->sidm_data.x[0] = gp->x[0];
-    gp->sidm_data.x[1] = gp->x[1];
-    gp->sidm_data.x[2] = gp->x[2];
+    gp->sidm_data.vi_full[0] = gp->v_full[0];
+    gp->sidm_data.vi_full[1] = gp->v_full[1];
+    gp->sidm_data.vi_full[2] = gp->v_full[2];
 
-    /* Set copy of particle smoothing length */
-    gp->sidm_data.h = gp->h;
+}
 
-    gp->sidm_data.dt_drift = dt_drift;
-
+/**
+ * @brief Prepares a dm-particle for its SIDM interactions
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart* dmp) {
+    
+    /* No SIDM flag */
+    dmp->sidm_data.sidm_flag = 0.0f;
+    
+    /* And no acceleration at the beginning of the step */
+    dmp->sidm_data.a_sidm[0] = 0.0f;
+    dmp->sidm_data.a_sidm[1] = 0.0f;
+    dmp->sidm_data.a_sidm[2] = 0.0f;
 }
 
 
@@ -99,17 +106,17 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->sidm_data.num_sidm = 0.0f;
     
     /* Particle velocity */
-    dmp->sidm_data.v_full[0] = 0.0f;
-    dmp->sidm_data.v_full[1] = 0.0f;
-    dmp->sidm_data.v_full[2] = 0.0f;
+    dmp->sidm_data.v_full[0] = dmp->v_full[0];
+    dmp->sidm_data.v_full[1] = dmp->v_full[1];
+    dmp->sidm_data.v_full[2] = dmp->v_full[2];
 
-    dmp->sidm_data.x[0] = 0.0f;
-    dmp->sidm_data.x[1] = 0.0f;
-    dmp->sidm_data.x[2] = 0.0f;
+    dmp->sidm_data.vi_full[0] = dmp->v_full[0];
+    dmp->sidm_data.vi_full[1] = dmp->v_full[1];
+    dmp->sidm_data.vi_full[2] = dmp->v_full[2];
 
-    dmp->sidm_data.h = 0.0f;
-
-    dmp->sidm_data.dt_drift = 0.0f;
+    dmp->sidm_data.a_sidm[0] = 0.0f;
+    dmp->sidm_data.a_sidm[1] = 0.0f;
+    dmp->sidm_data.a_sidm[2] = 0.0f;
 
     dmp->time_bin = 0;
 
@@ -245,22 +252,15 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
  */
 __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *restrict gp) {
     
-    /*! Flag to indicate the particle has been scattered yes(1)/no(0) */
-    gp->sidm_data.sidm_flag = 0.0f;
-    
     /* Particle velocity */
     gp->sidm_data.v_full[0] = 0.0f;
     gp->sidm_data.v_full[1] = 0.0f;
     gp->sidm_data.v_full[2] = 0.0f;
 
-    gp->sidm_data.x[0] = 0.0f;
-    gp->sidm_data.x[1] = 0.0f;
-    gp->sidm_data.x[2] = 0.0f;
+    gp->sidm_data.vi_full[0] = 0.0f;
+    gp->sidm_data.vi_full[1] = 0.0f;
+    gp->sidm_data.vi_full[2] = 0.0f;
 
-    gp->sidm_data.h = 0.0f;
-
-    gp->sidm_data.dt_drift = 0.0f;
-    
 }
 
 
@@ -271,36 +271,32 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *rest
  *
  */
 __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
-          struct dmpart *restrict dmp) {
+          struct dmpart *restrict dmp, double dt_kick_grav) {
     
     if (dmp->sidm_data.sidm_flag > 0) {
         
-        double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->v_full[0], dmp->sidm_data.v_full[1] - dmp->v_full[1], dmp->sidm_data.v_full[2] - dmp->v_full[2]};
+        /* Delta velocity: final - initial */
+        double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0],
+                             dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1],
+                             dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};
         
-        /* Drift the particle */
-        dmp->x[0] += delta_v[0] * dmp->sidm_data.dt_drift;
-        dmp->x[1] += delta_v[1] * dmp->sidm_data.dt_drift;
-        dmp->x[2] += delta_v[2] * dmp->sidm_data.dt_drift;
-            
-        /* Rewrite gparticle's velocity */
-        dmp->v_full[0] = dmp->sidm_data.v_full[0];
-        dmp->v_full[1] = dmp->sidm_data.v_full[1];
-        dmp->v_full[2] = dmp->sidm_data.v_full[2];
+        /* Get full dt step from half the step */
+        double dt_grav = 2.f * dt_kick_grav;
         
-        /* Compute offsets since last cell construction */
-        for (int k = 0; k < 3; k++) {
-            const float dx = dmp->v_full[k] * dmp->sidm_data.dt_drift;
-            dmp->x_diff[k] -= dx;
-        }
+        /* Calculate acceleration due to collision */
+        dmp->sidm_data.a_sidm[0] += delta_v[0] / dt_grav;
+        dmp->sidm_data.a_sidm[1] += delta_v[1] / dt_grav;
+        dmp->sidm_data.a_sidm[2] += delta_v[2] / dt_grav;
+        
+        /* Add acceleration due to collision */
+        dmp->v_full[0] += dmp->sidm_data.a_sidm[0] * dt_kick_grav;
+        dmp->v_full[1] += dmp->sidm_data.a_sidm[1] * dt_kick_grav;
+        dmp->v_full[2] += dmp->sidm_data.a_sidm[2] * dt_kick_grav;
         
         /* Get its gravity friend */
         struct gpart *gp = dmp->gpart;
-        
-        /* Synchronize positions and velocities */
-        gp->x[0] = dmp->x[0];
-        gp->x[1] = dmp->x[1];
-        gp->x[2] = dmp->x[2];
-        
+
+        /* Synchronize particle's velocities */
         gp->v_full[0] = dmp->v_full[0];
         gp->v_full[1] = dmp->v_full[1];
         gp->v_full[2] = dmp->v_full[2];
@@ -308,6 +304,35 @@ __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
     
     /* Reset particle SIDM variables */
     sidm_reset(dmp);
+}
+
+/**
+ * @brief Updates #dmparts velocities
+ *
+ * @param dmp #dmpart
+ *
+ */
+__attribute__((always_inline)) INLINE static void add_half_sidm_kick_to_dmpart(struct dmpart *restrict dmp, double dt_grav) {
+    
+    if (dmp->sidm_data.sidm_flag > 0) {
+        
+        /* Add half acceleration due to previous DM collision */
+        dmp->v_full[0] += dmp->sidm_data.a_sidm[0] * dt_grav;
+        dmp->v_full[1] += dmp->sidm_data.a_sidm[1] * dt_grav;
+        dmp->v_full[2] += dmp->sidm_data.a_sidm[2] * dt_grav;
+        
+        /* Get its gravity friend */
+        struct gpart *gp = dmp->gpart;
+        
+        /* Synchronize particle's velocities */
+        gp->v_full[0] = dmp->v_full[0];
+        gp->v_full[1] = dmp->v_full[1];
+        gp->v_full[2] = dmp->v_full[2];
+        
+        /* Remove flag */
+        dmp->sidm_data.sidm_flag = 0.0f;
+
+    }
 }
 
 /**

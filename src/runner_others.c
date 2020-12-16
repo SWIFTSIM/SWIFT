@@ -118,7 +118,7 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             if (dmpart_is_active(dmp, e)) {
                                 
                 /* do the sidm kick */
-                do_sidm_kick_to_dmpart(dmp);
+                /*do_sidm_kick_to_dmpart(dmp);*/
                 
                 /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
                 if (!periodic) {

@@ -192,7 +192,7 @@ __attribute__((always_inline)) INLINE static void kick_dmpart(
     dmp->gpart->v_full[1] = dmp->v_full[1];
     dmp->gpart->v_full[2] = dmp->v_full[2];
 
-    /* Kick extra variables Perform SIDM kick? */
+    /* Kick extra and complete SIDM kick */
     /*dark_matter_kick_extra(dmp, dt_kick_grav);*/
 }
 

@@ -206,15 +206,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     /* Increasing counters */
     ++pi->num_neighbours;
     ++pj->num_neighbours;
-    
-    /*float gij = integrate_kernels(r2, hi, hj);
-    float normed_gij = norm_for_kernels_integral(hi, hj);
-    float gji = integrate_kernels(r2, hj, hi);
-    float normed_gji = norm_for_kernels_integral(hj, hi);
-
-    pi->sidm_probability += mj * sqrt(v2) * gij / normed_gij;
-    pj->sidm_probability += mi * sqrt(v2) * gji / normed_gji;*/
-
 }
 
 /**
@@ -269,12 +260,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Increasing counter */
     ++pi->num_neighbours;
-    
-    /* Calculate probability */
-    /*float gij = integrate_kernels(r2, hi, hj);
-    float normed_gij = norm_for_kernels_integral(hi, hj);
-    
-    pi->sidm_probability += mj * sqrt(v2) * gij / normed_gij;*/
 }
 
 /**
@@ -413,10 +398,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float Probability_SIDM_i = Rate_SIDM_i * dti;
     
     /* Draw a random number */
-    const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
+    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
     
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > randi) {
+    if (Probability_SIDM_i > rand) {
         
         /* Part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
@@ -478,12 +463,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float Probability = 0.5 * (Probability_SIDM_i + Probability_SIDM_j);
 
     /* Draw a random number */
-    const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
-    /*const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);*/
+    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
-    /*if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {*/
-    if (Probability > randi) {
+    if (Probability > rand) {
 
         /* Doing SIDM kick */
         sidm_do_kick(pi, pj, ti_current, sidm_history);
