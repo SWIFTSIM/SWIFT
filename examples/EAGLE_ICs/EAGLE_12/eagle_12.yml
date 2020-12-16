@@ -50,7 +50,7 @@ Gravity:
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  h_min_ratio:                       0.1      # Minimal smoothing length in units of softening.
+  h_min_ratio:                       0.01     # Minimal smoothing length in units of softening.
   h_max:                             0.5      # Maximal smoothing length in co-moving internal units.
   CFL_condition:                     0.2      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:               100.0    # (internal units)
