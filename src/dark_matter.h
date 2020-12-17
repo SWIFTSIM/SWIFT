@@ -377,10 +377,11 @@ __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     const float kappa = 1e-2;
     
     /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    /*const double sigma = sidm_props->sigma;*/
 
     /* Timestep limiter (internal units) */
-    const float dm_timestep = kappa / (dmp->rho * sigma * dmp->velocity_dispersion * 4. /sqrt(M_PI));
+    /*const float dm_timestep = kappa / (dmp->rho * sigma * dmp->velocity_dispersion * 4. /sqrt(M_PI));*/
+    const float dm_timestep = kappa / dmp->sidm_probability;
     
     return dm_timestep;
 }
