@@ -240,7 +240,7 @@ INLINE static double integrate_kernels_analytical(float r2, float hi, float hj) 
     float hj3 = hj * hj * hj;
     const float r = sqrtf(r2);
     
-    double integrand;
+    double integrand = 0.;
     float x1 = hi/2.f;
     float x3 = hi;
     float x2, x4;
