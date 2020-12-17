@@ -25,6 +25,11 @@ Cosmology:
   Omega_r:        0.            # (Optional) Radiation density parameter
   w_0:            -1.0          # (Optional) Dark-energy equation-of-state parameter at z=0.
   w_a:            0.            # (Optional) Dark-energy equation-of-state time evolution parameter.
+  T_nu_0:         1.9514        # (Optional) Present-day neutrino temperature in internal units, used for massive neutrinos
+  N_ur:           1.0196        # (Optional) Number of ultra-relativistic species (e.g. massless neutrinos). Assumes instantaneous decoupling T_ur/T_g=(4/11)^(1/3). Cannot be used together with Omega_r.
+  N_nu:           2             # (Optional) Integer number of massive neutrinos. Note that neutrinos do NOT contribute to Omega_m = Omega_cdm + Omega_b in our conventions.
+  M_nu_eV:        0.05, 0.01    # (Optional) Comma-separated list of N_nu nonzero neutrino masses in electron-volts
+  deg_nu:         1.0, 1.0      # (Optional) Comma-separated list of N_nu neutrino degeneracies (default values of 1.0)
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -128,7 +133,6 @@ Scheduler:
   engine_max_parts_per_ghost:    1000  # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:   1000  # (Optional) Maximum number of sparts per ghost.
   engine_max_parts_per_cooling: 10000  # (Optional) Maximum number of parts per cooling task.
-  dependency_graph_frequency:       0  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -169,7 +173,7 @@ Logger:
   basename:             index  # Common part of the filenames
   initial_buffer_size:  1      # (Optional) Buffer size in GB
   buffer_scale:	        10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale
-  
+
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-2        # Time between statistics output
@@ -234,7 +238,7 @@ DomainDecomposition:
 StructureFinding:
   config_file_name:     stf_input.cfg # Name of the STF config file.
   basename:             haloes        # Common part of the name of output files.
-  subdir_per_output:    stf           # (Optional) Sub-directory (within Snapshots:subdir) to use for each invocation of STF. Defaults to "" (i.e. no sub-directory) 
+  subdir_per_output:    stf           # (Optional) Sub-directory (within Snapshots:subdir) to use for each invocation of STF. Defaults to "" (i.e. no sub-directory)
   scale_factor_first:   0.92          # (Optional) Scale-factor of the first structure finding (cosmological run)
   time_first:           0.01          # (Optional) Time of the first structure finding output (in internal units).
   delta_time:           1.10          # (Optional) Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
@@ -283,7 +287,7 @@ EoS:
 
 # Point mass external potentials
 PointMassPotential:
-  useabspos:       0                   # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:       0                   # 0 -> positions based on centre, 1 -> absolute positions
   position:        [50.,50.,50.]       # location of external point mass (internal units)
   mass:            1e10                # mass of external point mass (internal units)
   timestep_mult:   0.03                # Dimensionless pre-factor for the time-step condition
@@ -291,15 +295,15 @@ PointMassPotential:
 
 # Isothermal potential parameters
 IsothermalPotential:
-  useabspos:       0                   # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:       0                   # 0 -> positions based on centre, 1 -> absolute positions
   position:        [100.,100.,100.]    # Location of centre of isothermal potential with respect to centre of the box (internal units)
   vrot:            200.                # Rotation speed of isothermal potential (internal units)
   timestep_mult:   0.03                # Dimensionless pre-factor for the time-step condition
   epsilon:         0.1                 # Softening size (internal units)
-  
+
 # Hernquist potential parameters
 HernquistPotential:
-  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions
   position:        [100.,100.,100.]    # Location of centre of Henrquist potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
   idealizeddisk:   0        # (Optional) Whether to run with idealizeddisk or without, 0 used the mass and scalelength as mandatory parameters, while 1 uses more advanced disk dependent paramters
   mass:            1e10     # (Optional 0) default parameter, Mass of the Hernquist potential
@@ -314,10 +318,10 @@ HernquistPotential:
   bulgefraction:              0.00705852860979  # (Optional 1) Bulge mass fraction (equal to MB in MakeNewDisk and GalIC)
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:         0.1      # Softening size (internal units)
- 
+
 # NFW potential parameters
 NFWPotential:
-  useabspos:          0             # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:          0             # 0 -> positions based on centre, 1 -> absolute positions
   position:           [0.0,0.0,0.0] # Location of centre of the NFW potential with respect to centre of the box (internal units) if useabspos=0 otherwise with respect to the 0,0,0, coordinates.
   concentration:      8.            # Concentration of the halo
   M_200:              2.0e+12       # Mass of the halo (M_200 in internal units)
@@ -326,7 +330,7 @@ NFWPotential:
 
 # NFW + Miyamoto-Nagai disk potential
 NFW_MNPotential:
-  useabspos:         0         # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:         0         # 0 -> positions based on centre, 1 -> absolute positions
   position:         [0.,0.,0.] # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
   timestep_mult:    0.01       # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:          0.01       # Softening size (internal units)
@@ -336,7 +340,7 @@ NFW_MNPotential:
   Mdisk:            3.0        # Mass of the disk (internal units)
   Rdisk:            4.0        # Effective radius of the disk (internal units)
   Zdisk:            0.4704911  # Scale-height of the disk (internal units)
-  
+
 # Disk-patch potential parameters. The potential is along the x-axis.
 DiscPatchPotential:
   surface_density: 10.      # Surface density of the disc (internal units)
@@ -423,7 +427,7 @@ COLIBRECooling:
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   rapid_cooling_threshold: 0.333333          # Switch to rapid cooling regime for dt / t_cool above this threshold.
   delta_logTEOS_subgrid_properties: 0.3      # delta log T above the EOS below which the subgrid properties use Teq assumption
-  
+
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -458,7 +462,6 @@ EAGLEChemistry:
 GEARChemistry:
   initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
-  diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2).
 
 
 # Parameters related to star formation models  -----------------------------------------------
@@ -552,7 +555,7 @@ GEARFeedback:
 
 
 # Parameters related to AGN models  -----------------------------------------------
-  
+
 # EAGLE AGN model
 EAGLEAGN:
   subgrid_seed_mass_Msun:             1.5e5      # Black hole subgrid mass at creation time in solar masses.
@@ -569,7 +572,7 @@ EAGLEAGN:
   radiative_efficiency:               0.1        # Fraction of the accreted mass that gets radiated.
   max_eddington_fraction:             1.         # Maximal allowed accretion rate in units of the Eddington rate.
   eddington_fraction_for_recording:   0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
-  use_nibbling:                       0          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]? 
+  use_nibbling:                       0          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
   min_gas_mass_for_nibbling:          9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_feedback_model:                 Random     # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity

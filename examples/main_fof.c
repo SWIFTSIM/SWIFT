@@ -542,14 +542,17 @@ int main(int argc, char *argv[]) {
   const int with_DM_background_particles =
       N_total[swift_type_dark_matter_background] > 0;
 
+  /* Do we have neutrino particles? */
+  const int with_neutrinos = 0;  // no for now
+
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
              sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
              periodic, replicate, /*remap_ids=*/0,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
-             /*with_star_formation=*/0, with_DM_background_particles, talking,
-             /*dry_run=*/0, nr_nodes);
+             /*with_star_formation=*/0, with_DM_background_particles,
+             with_neutrinos, talking, /*dry_run=*/0, nr_nodes);
 
   if (myrank == 0) {
     clocks_gettime(&toc);

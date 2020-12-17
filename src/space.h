@@ -111,6 +111,9 @@ struct space {
   /*! Are we running with some DM background particles? */
   int with_DM_background;
 
+  /*! Are we running with neutrino particles? */
+  int with_neutrinos;
+
   /*! Width of the top-level cells. */
   double width[3];
 
@@ -346,8 +349,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int remap_ids, int generate_gas_in_ics, int hydro, int gravity,
-                int star_formation, int DM_background, int verbose, int dry_run,
-                int nr_nodes);
+                int star_formation, int DM_background, int neutrinos,
+                int verbose, int dry_run, int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
