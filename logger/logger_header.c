@@ -171,6 +171,11 @@ void header_read(struct header *h, struct logger_logfile *log) {
     map = logger_loader_io_read_data(map, sizeof(unsigned int),
                                      &h->masks[i].size);
 
+    /* Print the information. */
+    if (reader->verbose > 1) {
+      message("Field %s found in the logfile", h->masks[i].name);
+    }
+
     /* Keep the timestamp mask in memory */
     if (strcmp(h->masks[i].name, "Timestamp") == 0) {
       h->timestamp_mask = h->masks[i].mask;
@@ -180,6 +185,16 @@ void header_read(struct header *h, struct logger_logfile *log) {
   /* Check that the timestamp mask exists */
   if (h->timestamp_mask == 0) {
     error_python("Unable to find the timestamp mask.");
+  }
+
+  /* check the special flag. */
+  if (strcmp(h->masks[logger_index_special_flags].name, "SpecialFlags") != 0) {
+    error("The special flag is expected to be at position %i",
+          logger_index_special_flags);
+  }
+
+  if (h->masks[logger_index_special_flags].size != sizeof(uint32_t)) {
+    error("The special flag is expected to be 32 bits");
   }
 
   /* Check the logfile header's size. */

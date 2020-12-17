@@ -45,6 +45,11 @@ size_t logger_particle_read_field(const struct logger_reader *reader,
                                   const int *local_to_global,
                                   const int local_count, int field,
                                   size_t *mask, size_t *h_offset);
+
+enum logger_special_flags logger_particle_read_special_flag(
+    const struct logger_reader *reader, size_t offset, size_t *mask,
+    size_t *h_offset, int *data);
+
 /**
  * @brief Generate the data for the special flags.
  *
