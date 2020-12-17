@@ -1019,7 +1019,7 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int remap_ids, int generate_gas_in_ics, int hydro,
                 int self_gravity, int star_formation, int DM_background,
-                int verbose, int dry_run, int nr_nodes) {
+                int neutrinos, int verbose, int dry_run, int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1033,6 +1033,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
   s->with_DM_background = DM_background;
+  s->with_neutrinos = neutrinos;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
@@ -1855,13 +1856,21 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     const double rho_crit0 = cosmo->critical_density * H0 * H0 / (H * H);
 
     /* Compute the mass density */
-    const double Omega_m = (total_mass / volume) / rho_crit0;
+    const double Omega_sim = (total_mass / volume) / rho_crit0;
 
-    if (fabs(Omega_m - cosmo->Omega_m) > 1e-3)
+    /* The density required to match the cosmology */
+    double Omega_cosmo;
+    if (s->with_neutrinos)
+      Omega_cosmo = cosmo->Omega_m + cosmo->Omega_nu_0;
+    else
+      Omega_cosmo = cosmo->Omega_m;
+
+    if (fabs(Omega_sim - Omega_cosmo) > 1e-3)
       error(
           "The matter content of the simulation does not match the cosmology "
-          "in the parameter file cosmo.Omega_m=%e Omega_m=%e",
-          cosmo->Omega_m, Omega_m);
+          "in the parameter file cosmo.Omega_m=%e Omega_particles=%e. Are you"
+          "running with neutrinos? Then account for cosmo.Omega_nu_0=%e too.",
+          cosmo->Omega_m, Omega_sim, cosmo->Omega_nu_0);
   }
 }
 
