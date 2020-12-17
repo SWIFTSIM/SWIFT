@@ -77,13 +77,15 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       io_make_output_field("HeatedBySNIIFeedback", CHAR, 1, UNIT_CONV_NO_UNITS,
                            0.f, xparts, tracers_data.hit_by_SNII_feedback,
                            "Flags the particles that have been directly hit by "
-                           "a SNII feedback event at some point in the past.");
+                           "a SNII feedback event at some point in the past. "
+                           "If > 0, contains the number of individual events.");
 
   list[3] =
       io_make_output_field("HeatedByAGNFeedback", CHAR, 1, UNIT_CONV_NO_UNITS,
                            0.f, xparts, tracers_data.hit_by_AGN_feedback,
                            "Flags the particles that have been directly hit by "
-                           "an AGN feedback event at some point in the past.");
+                           "an AGN feedback event at some point in the past. "
+                           "If > 0, contains the number of individual events.");
 
   list[4] = io_make_output_field("EnergiesReceivedFromAGNFeedback", FLOAT, 1,
                                  UNIT_CONV_ENERGY, 0.f, xparts,
