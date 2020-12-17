@@ -145,7 +145,7 @@ static INLINE void tracers_first_init_xpart(
  */
 static INLINE void tracers_after_feedback(struct xpart *xp) {
 
-  xp->tracers_data.hit_by_SNII_feedback = 1;
+  xp->tracers_data.hit_by_SNII_feedback++;
 }
 
 /**
@@ -163,7 +163,7 @@ static INLINE void tracers_after_black_holes_feedback(
     struct xpart *xp, const int with_cosmology, const float scale_factor,
     const double time, const double delta_energy) {
 
-  xp->tracers_data.hit_by_AGN_feedback = 1;
+  xp->tracers_data.hit_by_AGN_feedback++;
   xp->tracers_data.AGN_feedback_energy += delta_energy;
 }
 
