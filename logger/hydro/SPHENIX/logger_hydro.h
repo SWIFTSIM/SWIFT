@@ -16,22 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_LOGGER_STARS_H
-#define SWIFT_DEFAULT_LOGGER_STARS_H
+#ifndef SWIFT_SPHENIX_LOGGER_HYDRO_H
+#define SWIFT_SPHENIX_LOGGER_HYDRO_H
 
 #include "../config.h"
 
 /* local includes */
+#include "hydro.h"
+#include "hydro_logger.h"
 #include "logger_interpolation.h"
 #include "logger_loader_io.h"
 #include "logger_python_tools.h"
-#include "stars_logger.h"
 
 /* Index of the mask in the header mask array */
-extern int stars_logger_local_to_global[stars_logger_field_count];
+extern int hydro_logger_local_to_global[hydro_logger_field_count];
 
 /* Size for each mask */
-extern const int stars_logger_field_size[stars_logger_field_count];
+extern const int hydro_logger_field_size[hydro_logger_field_count];
 
 /**
  * @brief Create the link between the fields and their derivatives.
@@ -39,15 +40,15 @@ extern const int stars_logger_field_size[stars_logger_field_count];
  * @param head The #header.
  */
 __attribute__((always_inline)) INLINE static void
-stars_logger_reader_link_derivatives(struct header *head) {
+hydro_logger_reader_link_derivatives(struct header *head) {
 
   /* Set the first and second derivatives */
   const int pos_id =
-      stars_logger_local_to_global[stars_logger_field_coordinates];
+      hydro_logger_local_to_global[hydro_logger_field_coordinates];
   const int vel_id =
-      stars_logger_local_to_global[stars_logger_field_velocities];
+      hydro_logger_local_to_global[hydro_logger_field_velocities];
   const int acc_id =
-      stars_logger_local_to_global[stars_logger_field_accelerations];
+      hydro_logger_local_to_global[hydro_logger_field_accelerations];
 
   /* Coordinates */
   header_set_first_derivative(head, pos_id, vel_id);
@@ -71,10 +72,10 @@ stars_logger_reader_link_derivatives(struct header *head) {
  * @param t_after Time of field_after (> t).
  * @param t Requested time.
  * @param field The field to reconstruct (follows the order of
- * #stars_logger_fields).
+ * #hydro_logger_fields).
  */
 __attribute__((always_inline)) INLINE static void
-stars_logger_interpolate_field(const double t_before,
+hydro_logger_interpolate_field(const double t_before,
                                const struct logger_field *restrict before,
                                const double t_after,
                                const struct logger_field *restrict after,
@@ -85,55 +86,92 @@ stars_logger_interpolate_field(const double t_before,
   /* Check the times */
   if (t_before > t || t_after < t) {
     error(
-        "The times for the interpolation are not correct"
-        " %g < %g < %g.",
+        "The times for the interpolation are not "
+        "monotonically increasing %g < %g < %g.",
         t_before, t, t_after);
   }
 #endif
 
   switch (field) {
-    case stars_logger_field_coordinates:
+    /* Do the position */
+    case hydro_logger_field_coordinates:
       interpolate_quintic_double_float_ND(t_before, before, t_after, after,
                                           output, t, /* dimension= */ 3);
       break;
-    case stars_logger_field_velocities:
+      /* Do the velocity */
+    case hydro_logger_field_velocities:
       interpolate_cubic_float_ND(t_before, before, t_after, after, output, t,
                                  /* dimension= */ 3);
       break;
-    case stars_logger_field_accelerations:
+    case hydro_logger_field_accelerations:
+    case hydro_logger_field_viscosity_diffusion:
       interpolate_linear_float_ND(t_before, before, t_after, after, output, t,
                                   /* dimension= */ 3);
       break;
-    case stars_logger_field_smoothing_lengths:
-    case stars_logger_field_masses:
+      /* Do the linear interpolation of float. */
+    case hydro_logger_field_masses:
+    case hydro_logger_field_smoothing_lengths:
+    case hydro_logger_field_internal_energies:
+    case hydro_logger_field_densities:
+    case hydro_logger_field_entropies:
+    case hydro_logger_field_pressures:
       interpolate_linear_float(t_before, before, t_after, after, output, t);
       break;
-    case stars_logger_field_particle_ids:
+      /* Check the ids */
+    case hydro_logger_field_particle_ids:
       interpolate_ids(t_before, before, t_after, after, output, t);
       break;
+
+    case hydro_logger_field_velocity_divergences: {
+      /* Get some variables */
+      const float wa = (t - t_before) / (t_after - t_before);
+      const float wb = 1. - wa;
+      float *x = (float *)output;
+      const float *div_bef = (float *)before->field;
+      const float *div_aft = (float *)after->field;
+
+      /* Use cubic hermite spline. */
+      x[0] = interpolate_cubic_hermite_spline(
+          t_before, div_bef[0], div_bef[1], t_after, div_aft[0], div_aft[1], t);
+      /* Use the linear interpolation */
+      x[1] = wa * div_aft[1] + wb * div_bef[1];
+      break;
+    }
+
     default:
       error("Not implemented");
   }
 }
 
 #ifdef HAVE_PYTHON
-__attribute__((always_inline)) INLINE static void stars_logger_generate_python(
+__attribute__((always_inline)) INLINE static void hydro_logger_generate_python(
     struct logger_python_field *fields) {
 
-  fields[stars_logger_field_coordinates] =
+  fields[hydro_logger_field_coordinates] =
       logger_loader_python_field(/* Dimension */ 3, NPY_DOUBLE);
-  fields[stars_logger_field_velocities] =
+  fields[hydro_logger_field_velocities] =
       logger_loader_python_field(/* Dimension */ 3, NPY_FLOAT32);
-  fields[stars_logger_field_accelerations] =
+  fields[hydro_logger_field_accelerations] =
       logger_loader_python_field(/* Dimension */ 3, NPY_FLOAT32);
-  fields[stars_logger_field_masses] =
+  fields[hydro_logger_field_masses] =
       logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
-  fields[stars_logger_field_smoothing_lengths] =
+  fields[hydro_logger_field_smoothing_lengths] =
       logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
-  fields[stars_logger_field_particle_ids] =
+  fields[hydro_logger_field_internal_energies] =
+      logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
+  fields[hydro_logger_field_particle_ids] =
       logger_loader_python_field(/* Dimension */ 1, NPY_LONGLONG);
+  fields[hydro_logger_field_densities] =
+      logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
+  fields[hydro_logger_field_entropies] =
+      logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
+  fields[hydro_logger_field_pressures] =
+      logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
+  fields[hydro_logger_field_viscosity_diffusion] =
+      logger_loader_python_field(/* Dimension */ 3, NPY_FLOAT32);
+  fields[hydro_logger_field_velocity_divergences] =
+      logger_loader_python_field(/* Dimension */ 2, NPY_FLOAT32);
 }
 
 #endif  // HAVE_PYTHON
-
-#endif  // SWIFT_DEFAULT_LOGGER_STARS_H
+#endif  /* SWIFT_SPHENIX_LOGGER_HYDRO_H */

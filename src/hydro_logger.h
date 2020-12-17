@@ -48,7 +48,7 @@
 #elif defined(PLANETARY_SPH)
 #error TODO
 #elif defined(SPHENIX_SPH)
-#error TODO
+#include "./hydro/SPHENIX/hydro_logger.h"
 #elif defined(ANARCHY_PU_SPH)
 #error TODO
 #else
