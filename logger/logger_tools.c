@@ -139,7 +139,6 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
 
   /* first records do not have a previous partner. */
   if (prev_offset == cur_offset) return after_current_record;
-
   if (prev_offset > cur_offset)
     error_python("Unexpected offset: header %lu, current %lu.", prev_offset,
                  cur_offset);
@@ -187,8 +186,20 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
   size_t mask;
   size_t pointed_offset;
 
+  const size_t mask_special_flag =
+      h->masks[header_get_field_index(h, "SpecialFlags")].mask;
+
   /* read mask + offset. */
   map = logger_loader_io_read_mask(h, map, &mask, &pointed_offset);
+
+  /* set offset after current record. */
+  map = (char *)map + header_get_record_size_from_mask(h, mask);
+  const size_t offset_ret = (size_t)((char *)map - (char *)file_init);
+
+  /* If something happened, skip the check. */
+  if (mask & mask_special_flag) {
+    return offset_ret;
+  }
 
   /* get absolute offset. */
   if (header_is_forward(h))
@@ -202,11 +213,7 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
     error_python("Offset are corrupted.");
   }
 
-  /* set offset after current record. */
-  map = (char *)map + header_get_record_size_from_mask(h, mask);
-
-  if (pointed_offset == offset || pointed_offset == 0)
-    return (size_t)((char *)map - (char *)file_init);
+  if (pointed_offset == offset || pointed_offset == 0) return offset_ret;
 
   /* read mask of the pointed record. */
   size_t pointed_mask = 0;
@@ -219,103 +226,5 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
     error_python("Error in the offset (mask %lu at %lu != %lu at %lu).", mask,
                  offset, pointed_mask, pointed_offset);
 
-  return (size_t)((char *)map - (char *)file_init);
-}
-
-/**
- * @brief Compute the quintic hermite spline interpolation.
- *
- * @param t0 The time at the left of the interval.
- * @param x0 The function at the left of the interval.
- * @param v0 The first derivative at the left of the interval.
- * @param a0 The second derivative at the left of the interval.
- * @param t1 The time at the right of the interval.
- * @param x1 The function at the right of the interval.
- * @param v1 The first derivative at the right of the interval.
- * @param a1 The second derivative at the right of the interval.
- * @param t The time of the interpolation.
- *
- * @return The function evaluated at t.
- */
-double logger_tools_quintic_hermite_spline(double t0, double x0, float v0,
-                                           float a0, double t1, double x1,
-                                           float v1, float a1, double t) {
-
-  /* Generates recurring variables  */
-  /* Time differences */
-  const double dt = t1 - t0;
-  const double dt2 = dt * dt;
-  const double dt3 = dt2 * dt;
-  const double dt4 = dt3 * dt;
-  const double dt5 = dt4 * dt;
-
-  const double t_t0 = t - t0;
-  const double t_t0_2 = t_t0 * t_t0;
-  const double t_t0_3 = t_t0_2 * t_t0;
-  const double t_t1 = t - t1;
-  const double t_t1_2 = t_t1 * t_t1;
-
-  /* Derivatives */
-  const double v0_dt = v0 * dt;
-  const double a0_dt2 = 0.5 * a0 * dt2;
-  const double v1_dt = v1 * dt;
-  const double a1_dt2 = 0.5 * a1 * dt2;
-
-  /* Do the first 3 terms of the hermite spline */
-  double x = x0 + v0 * t_t0 + 0.5 * a0 * t_t0_2;
-
-  /* Cubic term */
-  x += (x1 - x0 - v0_dt - a0_dt2) * t_t0_3 / dt3;
-
-  /* Quartic term */
-  x += (3. * x0 - 3. * x1 + v1_dt + 2. * v0_dt + a0_dt2) * t_t0_3 * t_t1 / dt4;
-
-  /* Quintic term */
-  x += (6. * x1 - 6. * x0 - 3. * v0_dt - 3. * v1_dt + a1_dt2 - a0_dt2) *
-       t_t0_3 * t_t1_2 / dt5;
-
-  return x;
-}
-
-/**
- * @brief Compute the cubic hermite spline interpolation.
- *
- * @param t0 The time at the left of the interval.
- * @param v0 The first derivative at the left of the interval.
- * @param a0 The second derivative at the left of the interval.
- * @param t1 The time at the right of the interval.
- * @param v1 The first derivative at the right of the interval.
- * @param a1 The second derivative at the right of the interval.
- * @param t The time of the interpolation.
- *
- * @return The function evaluated at t.
- */
-float logger_tools_cubic_hermite_spline(double t0, float v0, float a0,
-                                        double t1, float v1, float a1,
-                                        double t) {
-
-  /* Generates recurring variables  */
-  /* Time differences */
-  const float dt = t1 - t0;
-  const float dt2 = dt * dt;
-  const float dt3 = dt2 * dt;
-
-  const float t_t0 = t - t0;
-  const float t_t0_2 = t_t0 * t_t0;
-  const float t_t1 = t - t1;
-
-  /* Derivatives */
-  const float a0_dt = a0 * dt;
-  const float a1_dt = a1 * dt;
-
-  /* Do the first 2 terms of the hermite spline */
-  float x = v0 + a0 * t_t0;
-
-  /* Square term */
-  x += (v1 - v0 - a0_dt) * t_t0_2 / dt2;
-
-  /* Cubic term */
-  x += (2. * v0 - 2. * v1 + a1_dt + a0_dt) * t_t0_2 * t_t1 / dt3;
-
-  return x;
+  return offset_ret;
 }

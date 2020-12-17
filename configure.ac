@@ -2382,6 +2382,12 @@ AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "${with_cooling:0:7}" = "grackle"])
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
 
+# check if using SPHENIX
+AM_CONDITIONAL([HAVE_SPHENIX], [test "$with_hydro" = "sphenix"])
+
+# check if using GADGET2 SPH
+AM_CONDITIONAL([HAVE_GADGET2], [test "$with_hydro" = "gadget2"])
+
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile logger/Makefile logger/tests/Makefile])

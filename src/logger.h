@@ -44,6 +44,15 @@ struct engine;
 /* Size of the strings. */
 #define logger_string_length 200
 
+/*
+ * The two following defines need to correspond to the list's order
+ * in logger_init_masks.
+ */
+/* Index of the special flags in the list of masks */
+#define logger_index_special_flags 0
+/* Index of the timestamp in the list of masks */
+#define logger_index_timestamp 1
+
 /**
  * Logger entries contain messages representing the particle data at a given
  * point in time during the simulation.

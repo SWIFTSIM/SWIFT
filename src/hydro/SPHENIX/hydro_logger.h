@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GADGET2_HYDRO_LOGGER_H
-#define SWIFT_GADGET2_HYDRO_LOGGER_H
+#ifndef SWIFT_SPHENIX_HYDRO_LOGGER_H
+#define SWIFT_SPHENIX_HYDRO_LOGGER_H
 
 #include "hydro.h"
 #include "logger_io.h"
@@ -34,16 +34,23 @@ enum hydro_logger_fields {
   hydro_logger_field_accelerations,
   hydro_logger_field_masses,
   hydro_logger_field_smoothing_lengths,
-  hydro_logger_field_entropies,
+  hydro_logger_field_internal_energies,
   hydro_logger_field_particle_ids,
   hydro_logger_field_densities,
+  hydro_logger_field_entropies,
+  hydro_logger_field_pressures,
+  hydro_logger_field_viscosity_diffusion,
+  hydro_logger_field_velocity_divergences,
   hydro_logger_field_count,
 };
 
 /* Name of each possible mask. */
 static const char *hydro_logger_field_names[hydro_logger_field_count] = {
-    "Coordinates",      "Velocities", "Accelerations", "Masses",
-    "SmoothingLengths", "Entropies",  "ParticleIDs",   "Densities"};
+    "Coordinates", "Velocities",         "Accelerations",
+    "Masses",      "SmoothingLengths",   "InternalEnergies",
+    "ParticleIDs", "Densities",          "Entropies",
+    "Pressures",   "ViscosityDiffusion", "VelocityDivergences",
+};
 
 /**
  * @brief Initialize the logger.
@@ -76,8 +83,9 @@ INLINE static int hydro_logger_writer_populate_mask_data(
       hydro_logger_field_names[hydro_logger_field_smoothing_lengths],
       sizeof(float));
 
-  mask_data[hydro_logger_field_entropies] = logger_create_mask_entry(
-      hydro_logger_field_names[hydro_logger_field_entropies], sizeof(float));
+  mask_data[hydro_logger_field_internal_energies] = logger_create_mask_entry(
+      hydro_logger_field_names[hydro_logger_field_internal_energies],
+      sizeof(float));
 
   mask_data[hydro_logger_field_particle_ids] = logger_create_mask_entry(
       hydro_logger_field_names[hydro_logger_field_particle_ids],
@@ -85,6 +93,20 @@ INLINE static int hydro_logger_writer_populate_mask_data(
 
   mask_data[hydro_logger_field_densities] = logger_create_mask_entry(
       hydro_logger_field_names[hydro_logger_field_densities], sizeof(float));
+
+  mask_data[hydro_logger_field_entropies] = logger_create_mask_entry(
+      hydro_logger_field_names[hydro_logger_field_entropies], sizeof(float));
+
+  mask_data[hydro_logger_field_pressures] = logger_create_mask_entry(
+      hydro_logger_field_names[hydro_logger_field_pressures], sizeof(float));
+
+  mask_data[hydro_logger_field_viscosity_diffusion] = logger_create_mask_entry(
+      hydro_logger_field_names[hydro_logger_field_viscosity_diffusion],
+      3 * sizeof(float));
+
+  mask_data[hydro_logger_field_velocity_divergences] = logger_create_mask_entry(
+      hydro_logger_field_names[hydro_logger_field_velocity_divergences],
+      2 * sizeof(float));
 
   return hydro_logger_field_count;
 }
@@ -130,8 +152,8 @@ INLINE static void hydro_logger_compute_size_and_mask(
   *mask |= logger_add_field_to_mask(masks[hydro_logger_field_smoothing_lengths],
                                     buffer_size);
 
-  /* Add the entropies. */
-  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_entropies],
+  /* Add the energies. */
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_internal_energies],
                                     buffer_size);
 
   /* Add the ID. */
@@ -141,6 +163,22 @@ INLINE static void hydro_logger_compute_size_and_mask(
   /* Add the density. */
   *mask |= logger_add_field_to_mask(masks[hydro_logger_field_densities],
                                     buffer_size);
+
+  /* Add the entropies. */
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_entropies],
+                                    buffer_size);
+
+  /* Add the pressures. */
+  *mask |= logger_add_field_to_mask(masks[hydro_logger_field_pressures],
+                                    buffer_size);
+
+  /* Add the viscosity / diffusion. */
+  *mask |= logger_add_field_to_mask(
+      masks[hydro_logger_field_viscosity_diffusion], buffer_size);
+
+  /* Add the velocity divergences + derivative. */
+  *mask |= logger_add_field_to_mask(
+      masks[hydro_logger_field_velocity_divergences], buffer_size);
 }
 
 /**
@@ -207,10 +245,10 @@ INLINE static char *hydro_logger_write_particle(
     buff += sizeof(float);
   }
 
-  /* Write the entropy. */
-  if (logger_should_write_field(mask_data[hydro_logger_field_entropies],
+  /* Write the energy. */
+  if (logger_should_write_field(mask_data[hydro_logger_field_internal_energies],
                                 mask)) {
-    memcpy(buff, &p->entropy, sizeof(float));
+    memcpy(buff, &p->u, sizeof(float));
     buff += sizeof(float);
   }
 
@@ -228,8 +266,44 @@ INLINE static char *hydro_logger_write_particle(
     buff += sizeof(float);
   }
 
+  /* Write the entropy. */
+  if (logger_should_write_field(mask_data[hydro_logger_field_entropies],
+                                mask)) {
+    const float entropy = hydro_get_comoving_entropy(p, xp);
+    memcpy(buff, &entropy, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Write the pressures. */
+  if (logger_should_write_field(mask_data[hydro_logger_field_pressures],
+                                mask)) {
+    const float pressure = hydro_get_comoving_pressure(p);
+    memcpy(buff, &pressure, sizeof(float));
+    buff += sizeof(float);
+  }
+
+  /* Write the viscosity / diffusion. */
+  if (logger_should_write_field(
+          mask_data[hydro_logger_field_viscosity_diffusion], mask)) {
+    const float coef[3] = {p->viscosity.alpha * p->force.balsara,
+                           p->diffusion.alpha, p->diffusion.laplace_u};
+    memcpy(buff, coef, sizeof(coef));
+    buff += sizeof(coef);
+  }
+
+  /* Write the velocity divergence. */
+  if (logger_should_write_field(
+          mask_data[hydro_logger_field_velocity_divergences], mask)) {
+    const float div[2] = {
+        p->viscosity.div_v,
+        p->viscosity.div_v_dt,
+    };
+    memcpy(buff, div, sizeof(div));
+    buff += sizeof(div);
+  }
+
   return buff;
 }
 
 #endif  // WITH_LOGGER
-#endif  // SWIFT_GADGET2_HYDRO_LOGGER_H
+#endif  // SWIFT_SPHENIX_HYDRO_LOGGER_H

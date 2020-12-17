@@ -22,6 +22,7 @@
 #include "config.h"
 
 int hydro_logger_local_to_global[hydro_logger_field_count];
+
 /* Define the size of all the fields. */
 #define member_size(type, member) sizeof(((type *)0)->member)
 
@@ -31,7 +32,11 @@ const int hydro_logger_field_size[hydro_logger_field_count] = {
     member_size(struct part, a_hydro),  // accelerations
     member_size(struct part, mass),     // massses
     member_size(struct part, h),        // Smoothing Length
-    member_size(struct part, entropy),  // Entropy
+    member_size(struct part, u),        // InternalEnergies
     member_size(struct part, id),       // IDs
     member_size(struct part, rho),      // density
+    sizeof(float),                      // Entropy
+    sizeof(float),                      // Pressure
+    3 * sizeof(float),                  // Viscosity / diffusion
+    2 * sizeof(float),                  // Velocity divergence + deriv
 };
