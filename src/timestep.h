@@ -208,7 +208,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_dmpart_timestep(
     const struct dmpart *restrict dmp, const struct engine *restrict e) {
     
     /* Compute the next timestep (dark matter condition) */
-    /*const float new_dt_dm = dark_matter_compute_timestep(dmp, e->sidm_properties);*/
+    const float new_dt_dm = dark_matter_compute_timestep(dmp, e->sidm_properties);
     
     /* Compute the next timestep (gravity condition) */
     float new_dt_grav = FLT_MAX, new_dt_self_grav = FLT_MAX, new_dt_ext_grav = FLT_MAX;
@@ -226,8 +226,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_dmpart_timestep(
     }
     
     /* Final time-step is minimum of gravity and subgrid */
-    /*float new_dt = min(new_dt_dm, new_dt_grav);*/
-    float new_dt = new_dt_grav;
+    float new_dt = min(new_dt_dm, new_dt_grav);
+    /*float new_dt = new_dt_grav;*/
 
     /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
     new_dt = min(new_dt, e->dt_max_RMS_displacement);

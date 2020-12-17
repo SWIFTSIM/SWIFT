@@ -5978,10 +5978,16 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
                 
                 /* Get ready for a density calculation */
                 dark_matter_init_dmpart(dmp);
-                
-                /* All dmparts get ready for a SIDM calculation */
-                sidm_init_dmpart(dmp);
+            } else {
+                /* Get drifted velocities */
+                dark_matter_get_drifted_velocities(dmp, dt_drift);
             }
+            
+            /* All dmparts get ready for a SIDM calculation */
+            /*sidm_init_dmpart(dmp);*/
+            
+            /* Get drifted velocities */
+            /*dark_matter_get_drifted_velocities(dmp, dt_drift);*/
             
             /* Now drift... */
             drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);

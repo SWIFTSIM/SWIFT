@@ -134,6 +134,202 @@ INLINE static double norm_for_kernels_integral(float hi, float hj) {
     
 }
 
+
+/**
+ * @brief Analytical form of Int[x^2 W1(x/hi) W1(x/hj+r/hj)]dx
+ */
+INLINE static double w1w1(float x, float hi, float hj, float r) {
+    r /= hj;
+    float x3 = x * x * x;
+    float x2 = x * x;
+    float hi3 = hi * hi * hi;
+    float hj3 = hj * hj * hj;
+    float f;
+
+    f = 14. * hj3 * (1. - 6.*r*r + 6.*r*r*r) * (5.*hi3 - 18.*hi*x2 + 15.*x3);
+    f += 45.*hj*hj*r*(-2. + 3.*r)*x*(7.*hi3 - 28.*hi*x2 + 24.*x3);
+    f += 9.*hj*(-1. + 3.*r)*x2*(28.*hi3 - 120.*hi*x2 + 105.*x3);
+    f += 105.*(2.*hi3*x3 - 9.*hi*x3*x2 + 8.*x3*x3);
+    f *= 0.00119048*x3;
+    f /= (hj3*hi3);
+    f *= 4. * M_PI;
+    return f;
+}
+
+/**
+ * @brief Analytical form of Int[4 pi x^2 W1(x/hi) W2(x/hj+r/hj)]dx
+ */
+INLINE static double w1w2(float x, float hi, float hj, float r) {
+    r /= hj;
+    float x3 = x * x * x;
+    float x2 = x * x;
+    float hi3 = hi * hi * hi;
+    float hj3 = hj * hj * hj;
+    float f;
+
+    f = 0.333333*hj3*hi3*(-1. + r)*(-1. + r)*(-1. + r)*x3 + 0.75*hj*hj*hi3*(-1. + r)*(-1. + r)*x2*x2;
+    f -= 0.6*hj*hi*(-1.*hi*hi + 2.*hj*hj*(-1. + r)*(-1. + r))*(-1. + r)*x3*x2;
+    f += 0.166667*(hi3 - 18.*hj*hj*hi*(-1. + r)*(-1. + r) + 6.*hj3*(-1. + r)*(-1. + r)*(-1. + r))*x3*x3;
+    f += 2.57143*hj*(-1.*hi + hj*(-1. + r))*(-1. + r)*x3*x3*x;
+    f -= 0.75*(hi - 3.*hj*(-1. + r))*x3*x3*x2;
+    f += 0.666667*x3*x3*x3;
+    f *= (-0.5);
+    f /= (hj3*hi3);
+    f *= 4. * M_PI;
+    return f;
+}
+
+/**
+ * @brief Analytical form of Int[4 pi x^2 W2(x/hi) W1(x/hj+r/hj)]dx
+ */
+INLINE static double w2w1(float x, float hi, float hj, float r) {
+    r /= hj;
+    float x3 = x * x * x;
+    float x2 = x * x;
+    float hi3 = hi * hi * hi;
+    float hj3 = hj * hj * hj;
+    float f;
+    
+    f = 5.*x3 * (84.*hi3 - 216.*hi*hi*x + 189.*hi*x2 - 56.*x3);
+    f += 9.*hj*(-1. + 3.*r)*x2*(56.*hi3 - 140.*hi*hi*x + 120.*hi*x2 - 35.*x3);
+    f += 18.*hj*hj*r*(-2. + 3.*r)*x*(35.*hi3 - 84.*hi*hi*x + 70.*hi*x2 - 20.*x3);
+    f += 7.*hj3*(1. - 6.*r*r + 6.*r*r*r)*(20.*hi3 - 45.*hi*hi*x + 36.*hi*x2 - 10.*x3);
+    f *= 0.00119048*x3;
+    
+    f /= (hj3*hi3);
+    f *= 4. * M_PI;
+    return f;
+}
+
+/**
+ * @brief Analytical form of Int[4 pi x^2 W2(x/hi) W2(x/hj+r/hj)]dx
+ */
+INLINE static double w2w2(float x, float hi, float hj, float r) {
+    r /= hj;
+    float x3 = x * x * x;
+    float x2 = x * x;
+    float hi3 = hi * hi * hi;
+    float hj3 = hj * hj * hj;
+    float f;
+    
+    f = (hj3*hi3*(-1. + r)*(-1. + r)*(-1. + r)*x3)/3.;
+    f += (3.*hj*hj*hi*hi*(-1. + r)*(-1. + r)*(hj + hi - hj*r)*x2*x2)/4.;
+    f += (3.*hj*hi*(hi*hi - 3.*hj*hi*(-1. + r) + hj*hj*(-1. + r)*(-1. + r))*(-1. + r)*x3*x2)/5.;
+    f += ((hi3 - 9.*hj*hi*hi*(-1. + r) + 9.*hj*hj*hi*(-1. + r)*(-1. + r) - hj3*(-1. + r)*(-1. + r)*(-1. + r))*x3*x3)/6.;
+    f -= (3.*(hi*hi - 3.*hj*hi*(-1. + r) + hj*hj*(-1. + r)*(-1. + r))*x3*x2*x2)/7.;
+    f += (3.*(hj + hi - hj*r)*x3*x3*x2)/8.f;
+    f -= x3*x3*x3/9.;
+    f /= (hj3*hi3);
+    f *= -1.;
+    f *= 4. * M_PI;
+    return f;
+}
+
+    
+
+/**
+ * @brief Integrate the kernels using analytical solution
+ */
+INLINE static double integrate_kernels_analytical(float r2, float hi, float hj) {
+    
+    hi *= dm_kernel_gamma;
+    hj *= dm_kernel_gamma;
+    float h_max = hi;
+    if (hj > h_max) h_max = hj;
+    float hi3 = hi * hi * hi;
+    float hj3 = hj * hj * hj;
+    const float r = sqrtf(r2);
+    
+    double integrand;
+    float x1 = hi/2.f;
+    float x3 = hi;
+    float x2, x4;
+    
+    x2 = hj/2.f-r;
+    if (x2<0.) x2=0.f;
+    x4 = hj-r;
+    if (x4<0.) x4=0.f;
+    
+    if (x1 <= x2 && x2 <= x3 && x3 <= x4){
+        integrand = w1w1(x1,hi,hj,r);
+        integrand += w2w1(x2,hi,hj,r)-w2w1(x1,hi,hj,r);
+        integrand += w2w2(x3,hi,hj,r)-w2w2(x2,hi,hj,r);
+    }
+    
+    if (x1 <= x2 && x2 <= x4 && x4 <= x3){
+        integrand = w1w1(x1,hi,hj,r);
+        integrand += w2w1(x2,hi,hj,r)-w2w1(x1,hi,hj,r);
+        integrand += w2w2(x4,hi,hj,r)-w2w2(x2,hi,hj,r);
+    }
+    
+    if (x2 <= x1 && x1 <= x3 && x3 <= x4){
+        integrand = w1w1(x2,hi,hj,r);
+        integrand += w1w2(x1,hi,hj,r)-w1w2(x2,hi,hj,r);
+        integrand += w2w2(x3,hi,hj,r)-w2w2(x1,hi,hj,r);
+    }
+
+    if (x2 <= x4 && x4 <= x1 && x1 <= x3){
+        integrand = w1w1(x2,hi,hj,r);
+        integrand += w1w2(x4,hi,hj,r)-w1w2(x2,hi,hj,r);
+    }
+
+    if (x1 <= x3 && x3 <= x2 && x2 <= x4){
+        integrand = w1w1(x1,hi,hj,r);
+        integrand += w2w1(x3,hi,hj,r)-w2w1(x1,hi,hj,r);
+    }
+    
+    integrand *= dm_kernel_constant * dm_kernel_constant;
+    integrand /= hi3;
+    integrand /= hj3;
+
+    return integrand;
+}
+
+/**
+ * @brief Calculate the norm of double kernels integral.
+ */
+INLINE static double norm_for_kernels_analytical_integral(float hi, float hj) {
+    
+    float h_max = hi;
+    if (hj > h_max) h_max = hj;
+    h_max *= dm_kernel_gamma;
+    
+    /* Bin spacing. Assumes uniform spacing. */
+    const int N_bins = 50;
+    const float bin_size = h_max / N_bins;
+    float r_int;
+    
+    /* Array for the integrand */
+    double integrand[N_bins];
+    const int i_min = 0;
+    const int i_max = N_bins - 1;
+    
+    /* Calculate integral function */
+    for (int i = i_min; i < i_max + 1; i++) {
+        
+        r_int = (i + 1) * bin_size;
+        
+        integrand[i] = integrate_kernels_analytical(r_int * r_int, hi, hj);
+        integrand[i] *= r_int * r_int;
+    }
+    
+    /* Integrate using trapezoidal rule */
+    double result = 0.;
+    
+    for (int i = i_min; i < i_max + 1; i++) {
+        result += integrand[i];
+    }
+    
+    /* Update end bins since contribution was overcounted when summing up all
+     * entries */
+    result -= 0.5 * (integrand[i_min] + integrand[i_max]);
+    result *= bin_size * 4.f * M_PI;
+    
+    /* Done */
+    return result;
+    
+}
+
 /**
  * @brief Density interaction between two particles.
  *
@@ -387,8 +583,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /* DM particle mass */
     const double mass_j = pj->mass;
     
-    float gij = integrate_kernels(r2, hi, hj);
-    float normed_gij = norm_for_kernels_integral(hi, hj);
+    /*float gij = integrate_kernels(r2, hi, hj);
+    float normed_gij = norm_for_kernels_integral(hi, hj);*/
+    float gij = integrate_kernels_analytical(r2, hi, hj);
+    float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
     
@@ -446,10 +644,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double mass_j = pj->mass;
 
     /* Calculate scattering rate */
-    float gij = integrate_kernels(r2, hi, hj);
+    /*float gij = integrate_kernels(r2, hi, hj);
     float normed_gij = norm_for_kernels_integral(hi, hj);
     float gji = integrate_kernels(r2, hj, hi);
-    float normed_gji = norm_for_kernels_integral(hj, hi);
+    float normed_gji = norm_for_kernels_integral(hj, hi);*/
+    float gij = integrate_kernels_analytical(r2, hi, hj);
+    float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
+    float gji = integrate_kernels_analytical(r2, hj, hi);
+    float normed_gji = norm_for_kernels_analytical_integral (hj, hi);
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
     float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
