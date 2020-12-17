@@ -38,13 +38,14 @@
 #include "logger.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "dump.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity_logger.h"
-#include "hydro_io.h"
-#include "stars_io.h"
+#include "hydro_logger.h"
+#include "stars_logger.h"
 #include "units.h"
 
 /*
@@ -127,6 +128,7 @@ void logger_write_data(struct dump *d, size_t *offset, size_t size,
 /**
  * @brief log all particles in the engine.
  *
+ * TODO use threadpool + logger function for multiple particles.
  * @param log The #logger_writer
  * @param e The #engine
  */
@@ -140,18 +142,37 @@ void logger_log_all_particles(struct logger_writer *log,
   const struct space *s = e->s;
 
   /* log the parts. */
-  logger_log_parts(log, s->parts, s->xparts, s->nr_parts, e,
-                   /* log_all_fields= */ 1, /* flag= */ 0, /* flag_data= */ 0);
+  for (size_t i = 0; i < s->nr_parts; i++) {
+    struct part *p = &s->parts[i];
+    struct xpart *xp = &s->xparts[i];
+    if (!part_is_inhibited(p, e) && p->time_bin != time_bin_not_created) {
+      logger_log_part(log, p, xp, e,
+                      /* log_all_fields */ 1, /* Special flags */ 0,
+                      /* data */ 0);
+    }
+  }
 
   /* log the gparts */
-  logger_log_gparts(log, s->gparts, s->nr_gparts, e,
-                    /* log_all_fields= */ 1, /* flag= */ 0,
-                    /* flag_data= */ 0);
+  for (size_t i = 0; i < s->nr_gparts; i++) {
+    struct gpart *gp = &s->gparts[i];
+    if (!gpart_is_inhibited(gp, e) && gp->time_bin != time_bin_not_created &&
+        (gp->type == swift_type_dark_matter ||
+         gp->type == swift_type_dark_matter_background)) {
+      logger_log_gpart(log, gp, e,
+                       /* log_all_fields */ 1, /* Special flags */ 0,
+                       /* data */ 0);
+    }
+  }
 
   /* log the parts */
-  logger_log_sparts(log, s->sparts, s->nr_sparts, e,
-                    /* log_all_fields= */ 1, /* flag= */ 0,
-                    /* flag_data= */ 0);
+  for (size_t i = 0; i < s->nr_sparts; i++) {
+    struct spart *sp = &s->sparts[i];
+    if (!spart_is_inhibited(sp, e) && sp->time_bin != time_bin_not_created) {
+      logger_log_spart(log, sp, e,
+                       /* log_all_fields */ 1, /* Special flags */ 0,
+                       /* data */ 0);
+    }
+  }
 
   if (e->total_nr_bparts > 0) error("Not implemented");
 }
@@ -184,10 +205,6 @@ void logger_copy_part_fields(const struct logger_writer *log,
   /* Write the header. */
   buff = logger_write_record_header(buff, &mask, offset, offset_new);
 
-  /* Write the hydro fields */
-  buff = hydro_logger_write_particle(log->mask_data_pointers.hydro, p, xp,
-                                     &mask, buff);
-
   /* Special flags */
   if (mask & log->logger_mask_data[logger_index_special_flags].mask) {
     memcpy(buff, &special_flags,
@@ -195,6 +212,10 @@ void logger_copy_part_fields(const struct logger_writer *log,
     buff += log->logger_mask_data[logger_index_special_flags].size;
     mask &= ~log->logger_mask_data[logger_index_special_flags].mask;
   }
+
+  /* Write the hydro fields */
+  buff = hydro_logger_write_particle(log->mask_data_pointers.hydro, p, xp,
+                                     &mask, buff);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (mask) {
@@ -243,18 +264,27 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
                       const int flag_data) {
 
   /* Build the special flag */
+  const int size_special_flag =
+      log->logger_mask_data[logger_index_special_flags].size;
   const uint32_t special_flags = logger_pack_flags_and_data(flag, flag_data);
 
   /* Compute the size of the buffer. */
   size_t size_total = 0;
   if (log_all_fields) {
-    size_total = count * (log->max_size_record_part + logger_header_bytes);
+    size_t size = log->max_size_record_part + logger_header_bytes;
+    if (flag != 0) {
+      size += size_special_flag;
+    }
+    size_total = count * size;
   } else {
     for (int i = 0; i < count; i++) {
       unsigned int mask = 0;
       size_t size = 0;
       hydro_logger_compute_size_and_mask(log->mask_data_pointers.hydro, &p[i],
                                          &xp[i], log_all_fields, &size, &mask);
+      if (flag != 0) {
+        size += size_special_flag;
+      }
       size_total += size + logger_header_bytes;
     }
   }
@@ -272,8 +302,14 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
                                        &xp[i], log_all_fields, &size, &mask);
     size += logger_header_bytes;
 
-    if (special_flags != 0) {
+    /* Add the special flag. */
+    if (flag != 0) {
       mask |= log->logger_mask_data[logger_index_special_flags].mask;
+      size += size_special_flag;
+      /* reset the offset of the previous log */
+      if (flag == logger_flag_create || flag == logger_flag_mpi_enter) {
+        xp[i].logger_data.last_offset = 0;
+      }
     }
 
     /* Copy everything into the buffer */
@@ -281,22 +317,21 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
                             &xp[i].logger_data.last_offset, offset_new, buff,
                             special_flags);
 
-    /* Write the particle into the history if needed. */
-    if (flag & logger_flag_create || flag & logger_flag_mpi_enter) {
-      logger_history_log(&log->history_new[swift_type_gas], p->id,
-                         xp->logger_data.last_offset);
-
-    } else if (flag & logger_flag_change_type || flag & logger_flag_delete ||
-               flag & logger_flag_mpi_exit) {
-      logger_history_log(&log->history_removed[swift_type_gas], p->id,
-                         xp->logger_data.last_offset);
-    }
-
     /* Update the pointers */
     xp[i].logger_data.last_offset = offset_new;
     xp[i].logger_data.steps_since_last_output = 0;
     buff += size;
     offset_new += size;
+
+    /* Write the particle into the history if needed. */
+    if (flag == logger_flag_create || flag == logger_flag_mpi_enter) {
+      logger_history_log(&log->history_new[swift_type_gas], p[i].id,
+                         xp[i].logger_data.last_offset);
+    } else if (flag == logger_flag_change_type || flag == logger_flag_delete ||
+               flag == logger_flag_mpi_exit) {
+      logger_history_log(&log->history_removed[swift_type_gas], p[i].id,
+                         xp[i].logger_data.last_offset);
+    }
   }
 }
 
@@ -327,10 +362,6 @@ void logger_copy_spart_fields(const struct logger_writer *log,
   /* Write the header. */
   buff = logger_write_record_header(buff, &mask, offset, offset_new);
 
-  /* Write the stellar fields */
-  buff = stars_logger_write_particle(log->mask_data_pointers.stars, sp, &mask,
-                                     buff);
-
   /* Special flags */
   if (mask & log->logger_mask_data[logger_index_special_flags].mask) {
     memcpy(buff, &special_flags,
@@ -339,6 +370,9 @@ void logger_copy_spart_fields(const struct logger_writer *log,
     mask &= ~log->logger_mask_data[logger_index_special_flags].mask;
   }
 
+  /* Write the stellar fields */
+  buff = stars_logger_write_particle(log->mask_data_pointers.stars, sp, &mask,
+                                     buff);
 #ifdef SWIFT_DEBUG_CHECKS
   if (mask) {
     error("Requested logging of values not present in sparts. %u", mask);
@@ -380,18 +414,27 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp, int count,
                        const enum logger_special_flags flag,
                        const int flag_data) {
   /* Build the special flag */
+  const int size_special_flag =
+      log->logger_mask_data[logger_index_special_flags].size;
   const uint32_t special_flags = logger_pack_flags_and_data(flag, flag_data);
 
   /* Compute the size of the buffer. */
   size_t size_total = 0;
   if (log_all_fields) {
-    size_total = count * (log->max_size_record_spart + logger_header_bytes);
+    size_t size = log->max_size_record_spart + logger_header_bytes;
+    if (flag != 0) {
+      size += size_special_flag;
+    }
+    size_total = count * size;
   } else {
     for (int i = 0; i < count; i++) {
       unsigned int mask = 0;
       size_t size = 0;
       stars_logger_compute_size_and_mask(log->mask_data_pointers.stars, &sp[i],
                                          log_all_fields, &size, &mask);
+      if (flag != 0) {
+        size += size_special_flag;
+      }
       size_total += size + logger_header_bytes;
     }
   }
@@ -408,8 +451,15 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp, int count,
                                        log_all_fields, &size, &mask);
     size += logger_header_bytes;
 
-    if (special_flags != 0) {
+    /* Add the special flag. */
+    if (flag != 0) {
       mask |= log->logger_mask_data[logger_index_special_flags].mask;
+      size += size_special_flag;
+
+      /* reset the offset of the previous log */
+      if (flag == logger_flag_create || flag == logger_flag_mpi_enter) {
+        sp[i].logger_data.last_offset = 0;
+      }
     }
 
     /* Copy everything into the buffer */
@@ -417,22 +467,21 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp, int count,
                              &sp[i].logger_data.last_offset, offset_new, buff,
                              special_flags);
 
-    /* Write the particle into the history if needed. */
-    if (flag & logger_flag_create || flag & logger_flag_mpi_enter) {
-      logger_history_log(&log->history_new[swift_type_stars], sp->id,
-                         sp->logger_data.last_offset);
-
-    } else if (flag & logger_flag_change_type || flag & logger_flag_delete ||
-               flag & logger_flag_mpi_exit) {
-      logger_history_log(&log->history_removed[swift_type_stars], sp->id,
-                         sp->logger_data.last_offset);
-    }
-
     /* Update the pointers */
     sp[i].logger_data.last_offset = offset_new;
     sp[i].logger_data.steps_since_last_output = 0;
     buff += size;
     offset_new += size;
+
+    /* Write the particle into the history if needed. */
+    if (flag == logger_flag_create || flag == logger_flag_mpi_enter) {
+      logger_history_log(&log->history_new[swift_type_stars], sp[i].id,
+                         sp[i].logger_data.last_offset);
+    } else if (flag == logger_flag_change_type || flag == logger_flag_delete ||
+               flag == logger_flag_mpi_exit) {
+      logger_history_log(&log->history_removed[swift_type_stars], sp[i].id,
+                         sp[i].logger_data.last_offset);
+    }
   }
 }
 
@@ -463,10 +512,6 @@ void logger_copy_gpart_fields(const struct logger_writer *log,
   /* Write the header. */
   buff = logger_write_record_header(buff, &mask, offset, offset_new);
 
-  /* Write the hydro fields */
-  buff = gravity_logger_write_particle(log->mask_data_pointers.gravity, gp,
-                                       &mask, buff);
-
   /* Special flags */
   if (mask & log->logger_mask_data[logger_index_special_flags].mask) {
     memcpy(buff, &special_flags,
@@ -474,6 +519,10 @@ void logger_copy_gpart_fields(const struct logger_writer *log,
     buff += log->logger_mask_data[logger_index_special_flags].size;
     mask &= ~log->logger_mask_data[logger_index_special_flags].mask;
   }
+
+  /* Write the gravity fields */
+  buff = gravity_logger_write_particle(log->mask_data_pointers.gravity, gp,
+                                       &mask, buff);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (mask) {
@@ -515,21 +564,32 @@ void logger_log_gparts(struct logger_writer *log, struct gpart *p, int count,
                        const enum logger_special_flags flag,
                        const int flag_data) {
   /* Build the special flag */
+  const int size_special_flag =
+      log->logger_mask_data[logger_index_special_flags].size;
   const uint32_t special_flags = logger_pack_flags_and_data(flag, flag_data);
 
   /* Compute the size of the buffer. */
   size_t size_total = 0;
   if (log_all_fields) {
-    size_total = count * (log->max_size_record_gpart + logger_header_bytes);
+    size_t size = log->max_size_record_gpart + logger_header_bytes;
+    if (flag != 0) {
+      size += size_special_flag;
+    }
+    size_total = count * size;
   } else {
     for (int i = 0; i < count; i++) {
       /* Log only the dark matter */
-      if (p[i].type != swift_type_dark_matter) continue;
+      if (p[i].type != swift_type_dark_matter &&
+          p[i].type != swift_type_dark_matter_background)
+        continue;
 
       unsigned int mask = 0;
       size_t size = 0;
       gravity_logger_compute_size_and_mask(log->mask_data_pointers.gravity,
                                            &p[i], log_all_fields, &size, &mask);
+      if (flag != 0) {
+        size += size_special_flag;
+      }
       size_total += size + logger_header_bytes;
     }
   }
@@ -540,7 +600,9 @@ void logger_log_gparts(struct logger_writer *log, struct gpart *p, int count,
 
   for (int i = 0; i < count; i++) {
     /* Log only the dark matter */
-    if (p[i].type != swift_type_dark_matter) continue;
+    if (p[i].type != swift_type_dark_matter &&
+        p[i].type != swift_type_dark_matter_background)
+      continue;
 
     /* Get the masks */
     size_t size = 0;
@@ -549,30 +611,36 @@ void logger_log_gparts(struct logger_writer *log, struct gpart *p, int count,
                                          log_all_fields, &size, &mask);
     size += logger_header_bytes;
 
-    if (special_flags != 0) {
+    /* Add the special flag. */
+    if (flag != 0) {
       mask |= log->logger_mask_data[logger_index_special_flags].mask;
+      size += size_special_flag;
+
+      /* reset the offset of the previous log */
+      if (flag == logger_flag_create || flag == logger_flag_mpi_enter) {
+        p[i].logger_data.last_offset = 0;
+      }
     }
 
     /* Copy everything into the buffer */
     logger_copy_gpart_fields(log, &p[i], e, mask, &p[i].logger_data.last_offset,
                              offset_new, buff, special_flags);
 
-    /* Write the particle into the history if needed. */
-    if (flag & logger_flag_create || flag & logger_flag_mpi_enter) {
-      logger_history_log(&log->history_new[swift_type_dark_matter],
-                         p->id_or_neg_offset, p->logger_data.last_offset);
-
-    } else if (flag & logger_flag_change_type || flag & logger_flag_delete ||
-               flag & logger_flag_mpi_exit) {
-      logger_history_log(&log->history_removed[swift_type_dark_matter],
-                         p->id_or_neg_offset, p->logger_data.last_offset);
-    }
-
     /* Update the pointers */
     p[i].logger_data.last_offset = offset_new;
     p[i].logger_data.steps_since_last_output = 0;
     buff += size;
     offset_new += size;
+
+    /* Write the particle into the history if needed. */
+    if (flag == logger_flag_create || flag == logger_flag_mpi_enter) {
+      logger_history_log(&log->history_new[swift_type_dark_matter],
+                         p[i].id_or_neg_offset, p[i].logger_data.last_offset);
+    } else if (flag == logger_flag_change_type || flag == logger_flag_delete ||
+               flag == logger_flag_mpi_exit) {
+      logger_history_log(&log->history_removed[swift_type_dark_matter],
+                         p[i].id_or_neg_offset, p[i].logger_data.last_offset);
+    }
   }
 }
 
@@ -873,7 +941,7 @@ void logger_init(struct logger_writer *log, const struct engine *e,
   const float max_memory_size =
       parser_get_opt_param_float(params, "Logger:maximal_memory_size", 1.);
   log->maximal_size_history =
-      max_memory_size / sizeof(struct logger_index_data);
+      1e9 * max_memory_size / sizeof(struct logger_index_data);
 
   if (e->nodeID == 0) {
     message("Maximal memory size for the logger history: %g GB",

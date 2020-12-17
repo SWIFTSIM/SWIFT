@@ -50,7 +50,6 @@
 #error TODO
 #include "./hydro/Planetary/logger_hydro.h"
 #elif defined(SPHENIX_SPH)
-#error TODO
 #include "./hydro/SPHENIX/logger_hydro.h"
 #elif defined(ANARCHY_PU_SPH)
 #error TODO

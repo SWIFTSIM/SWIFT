@@ -68,6 +68,12 @@ struct logger_index {
 
   /* The mapped file */
   struct mapped_file index;
+
+  /* Number of particles created. */
+  uint64_t nparts_created[swift_type_count];
+
+  /* Number of particles removed. */
+  uint64_t nparts_removed[swift_type_count];
 };
 
 void logger_index_write_sorted(struct logger_index *index);
@@ -81,5 +87,9 @@ size_t logger_index_get_particle_offset(struct logger_index *index,
 void logger_index_free(struct logger_index *index);
 void logger_index_sort_file(struct logger_index *index);
 struct index_data *logger_index_get_data(struct logger_index *index, int type);
+struct index_data *logger_index_get_created_history(struct logger_index *index,
+                                                    int type);
+struct index_data *logger_index_get_removed_history(struct logger_index *index,
+                                                    int type);
 
 #endif  // LOGGER_LOGGER_INDEX_H

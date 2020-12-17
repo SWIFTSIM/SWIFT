@@ -23,6 +23,7 @@
 
 /* local includes */
 #include "hydro_logger.h"
+#include "logger_interpolation.h"
 #include "logger_loader_io.h"
 #include "logger_python_tools.h"
 
@@ -90,84 +91,31 @@ hydro_logger_interpolate_field(const double t_before,
   }
 #endif
 
-  /* Compute the interpolation scaling. */
-  const double wa = (t - t_before) / (t_after - t_before);
-  const double wb = 1. - wa;
-
   switch (field) {
     /* Do the position */
     case hydro_logger_field_coordinates:
-      for (int i = 0; i < 3; i++) {
-        double *x = (double *)output;
-        const double *x_bef = (double *)before->field;
-        const float *v_bef = (float *)before->first_deriv;
-        const float *a_bef = (float *)before->second_deriv;
-
-        const double *x_aft = (double *)after->field;
-        const float *v_aft = (float *)after->first_deriv;
-        const float *a_aft = (float *)after->second_deriv;
-
-        /* Use quintic hermite spline. */
-        if (v_bef && v_aft && a_bef && a_aft) {
-          x[i] = logger_tools_quintic_hermite_spline(
-              t_before, x_bef[i], v_bef[i], a_bef[i], t_after, x_aft[i],
-              v_aft[i], a_aft[i], t);
-        }
-        /* Use cubic hermite spline. */
-        else if (v_bef && v_aft) {
-          x[i] = logger_tools_cubic_hermite_spline(
-              t_before, x_bef[i], v_bef[i], t_after, x_aft[i], v_aft[i], t);
-        }
-        /* Use linear interpolation. */
-        else {
-          x[i] = wa * x_aft[i] + wb * x_bef[i];
-        }
-      }
+      interpolate_quintic_double_float_ND(t_before, before, t_after, after,
+                                          output, t, /* dimesion= */ 3);
       break;
       /* Do the velocity */
     case hydro_logger_field_velocities:
-      for (int i = 0; i < 3; i++) {
-        float *v = (float *)output;
-        const float *v_bef = (float *)before->field;
-        const float *a_bef = (float *)before->first_deriv;
-
-        const float *v_aft = (float *)after->field;
-        const float *a_aft = (float *)after->first_deriv;
-
-        /* Use a cubic hermite spline. */
-        if (a_bef && a_aft) {
-          v[i] = logger_tools_cubic_hermite_spline(
-              t_before, v_bef[i], a_bef[i], t_after, v_aft[i], a_aft[i], t);
-        }
-        /* Use linear interpolation. */
-        else {
-          v[i] = wa * v_aft[i] + wb * v_bef[i];
-        }
-      }
+      interpolate_cubic_float_ND(t_before, before, t_after, after, output, t,
+                                 /* dimesion= */ 3);
       break;
     case hydro_logger_field_accelerations:
-      /* interpolate vectors. */
-      for (int i = 0; i < 3; i++) {
-        float *a = (float *)output;
-        const float *a_bef = (float *)before->field;
-        const float *a_aft = (float *)after->field;
-        a[i] = wa * a_aft[i] + wb * a_bef[i];
-      }
+      interpolate_linear_float_ND(t_before, before, t_after, after, output, t,
+                                  /* dimesion= */ 3);
       break;
       /* Do the linear interpolation of float. */
     case hydro_logger_field_smoothing_lengths:
     case hydro_logger_field_entropies:
     case hydro_logger_field_densities:
     case hydro_logger_field_masses:
-      ((float *)output)[0] =
-          wa * ((float *)after->field)[0] + wb * ((float *)before->field)[0];
+      interpolate_linear_float(t_before, before, t_after, after, output, t);
       break;
       /* Check the ids */
     case hydro_logger_field_particle_ids:
-      if (*(long long *)after->field != *(long long *)before->field) {
-        error("Interpolating different particles");
-      }
-      *(long long *)output = *(long long *)after->field;
+      interpolate_ids(t_before, before, t_after, after, output, t);
       break;
     default:
       error("Not implemented");

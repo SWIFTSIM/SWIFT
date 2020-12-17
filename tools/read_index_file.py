@@ -51,7 +51,6 @@ with open(filename, "rb") as f:
             continue
 
         data = np.fromfile(f, dtype=dt, count=n)
-
         print("\t", data)
 
     # print the history of particles removed
@@ -63,5 +62,4 @@ with open(filename, "rb") as f:
             continue
 
         data = np.fromfile(f, dtype=dt, count=n)
-
         print("\t", data)

@@ -428,12 +428,43 @@ static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
   /* input variables. */
   PyObject *fields = NULL;
   double time = 0;
+  PyObject *types = Py_None;
+
   /* parse the arguments. */
-  if (!PyArg_ParseTuple(args, "Od", &fields, &time)) return NULL;
+  if (!PyArg_ParseTuple(args, "Od|O", &fields, &time, &types)) return NULL;
 
   /* Check the inputs. */
   if (!PyList_Check(fields)) {
     error_python("Expecting a list of fields");
+  }
+
+  /* Get the type of particles to read. */
+  int read_types[swift_type_count] = {0};
+  /* By default, we read everything */
+  if (types == Py_None) {
+    for (int i = 0; i < swift_type_count; i++) {
+      read_types[i] = 1;
+    }
+  }
+  /* Deal with the case of a single int. */
+  else if (PyLong_Check(types)) {
+    const size_t type = PyLong_AsSize_t(types);
+    if (type >= swift_type_count) {
+      error_python("Unexpected particle type %zi", type);
+    }
+    read_types[type] = 1;
+  }
+  /* Deal with the case of a list */
+  else if (PyList_Check(types)) {
+    const size_t size = PyList_Size(types);
+    for (size_t i = 0; i < size; i++) {
+      PyObject *cur = PyList_GetItem(types, i);
+      const size_t type = PyLong_AsSize_t(cur);
+      if (type >= swift_type_count) {
+        error_python("Unexpected particle type %zi", type);
+      }
+      read_types[type] = 1;
+    }
   }
 
   /* initialize the reader. */
@@ -474,10 +505,10 @@ static PyObject *pyGetParticleData(__attribute__((unused)) PyObject *self,
   logger_reader_set_time(reader, time);
 
   /* Get the number of particles. */
-  int n_type = 0;
-  const uint64_t *n_part = logger_reader_get_number_particles(reader, &n_type);
+  uint64_t n_part[swift_type_count];
+  logger_reader_get_number_particles(reader, n_part, read_types);
   uint64_t n_tot = 0;
-  for (int i = 0; i < n_type; i++) {
+  for (int i = 0; i < swift_type_count; i++) {
     n_tot += n_part[i];
   }
 

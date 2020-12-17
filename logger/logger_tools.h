@@ -71,13 +71,6 @@ size_t tools_reverse_offset(const struct header *h, void *map, size_t offset);
 size_t tools_check_record_consistency(const struct logger_reader *reader,
                                       size_t offset);
 
-double logger_tools_quintic_hermite_spline(double t0, double x0, float v0,
-                                           float a0, double t1, double x1,
-                                           float v1, float a1, double t);
-float logger_tools_cubic_hermite_spline(double t0, float v0, float a0,
-                                        double t1, float v1, float a1,
-                                        double t);
-
 #ifndef HAVE_PYTHON
 #define error_python(s, ...) error(s, ##__VA_ARGS__);
 #else

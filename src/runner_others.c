@@ -278,14 +278,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
                                                     dt_star)) {
 
-#ifdef WITH_LOGGER
-            /* Write the particle */
-            /* Logs all the fields request by the user */
-            // TODO select only the requested fields
-            logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
-                            logger_flag_change_type, swift_type_stars);
-#endif
-
             /* Convert the gas particle to a star particle */
             struct spart *sp = NULL;
             const int spawn_spart =
@@ -301,6 +293,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               } else {
                 /* Convert the gas particle to a star particle */
                 sp = cell_convert_part_to_spart(e, c, p, xp);
+#ifdef WITH_LOGGER
+                /* Write the particle */
+                /* Logs all the fields request by the user */
+                // TODO select only the requested fields
+                logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
+                                logger_flag_change_type, swift_type_stars);
+#endif
               }
 
             } else {
@@ -343,8 +342,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               }
 
 #ifdef WITH_LOGGER
-              /* Copy the properties back to the stellar particle */
-              sp->logger_data = xp->logger_data;
+              if (spawn_spart) {
+                /* Set to zero the logger data. */
+                logger_part_data_init(&sp->logger_data);
+              } else {
+                /* Copy the properties back to the stellar particle */
+                sp->logger_data = xp->logger_data;
+              }
 
               /* Write the s-particle */
               logger_log_spart(e->logger, sp, e, /* log_all */ 1,
@@ -769,7 +773,9 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* Write only the dark matter particles */
-      if (gp->type != swift_type_dark_matter) continue;
+      if (gp->type != swift_type_dark_matter &&
+          gp->type != swift_type_dark_matter_background)
+        continue;
 
       /* If particle needs to be log */
       if (gpart_is_active(gp, e)) {
