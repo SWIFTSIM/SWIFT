@@ -2870,6 +2870,9 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "FOF:scale_factor_first", 0.1);
     e->delta_time_fof =
         parser_get_opt_param_double(params, "FOF:delta_time", -1.);
+  } else {
+    if (e->snapshot_invoke_fof)
+      error("Error: Must run with --fof if Snapshots::invoke_fof=1\n");
   }
 
   /* Initialize the star formation history structure */
