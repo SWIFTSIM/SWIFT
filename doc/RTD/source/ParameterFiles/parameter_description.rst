@@ -171,6 +171,31 @@ w_0 + w_a (1 - a)`. The two parameters in the YAML file are:
 If unspecified these parameters default to the default
 :math:`\Lambda\rm{CDM}` values of :math:`w_0 = -1` and :math:`w_a = 0`.
 
+The radiation density :math:`\Omega_r` can also be specified by setting
+an alternative optional parameter:
+
+* The number of ultra-relativistic degrees of freedom :math:`N_\rm{ur}`:
+  ``N_ur``.
+
+The radiation density :math:`\Omega_r` is then automatically inferred from
+:math:`N_\rm{ur}` and the present-day CMB temperature
+:math:`T_{\rm{CMB},0}=2.7255` Kelvin. This parametrization cannot
+be used together with :math:`\Omega_r`. If neither parameter is used, SWIFT
+defaults to :math:`\Omega_r = 0`. Note that :math:`N_\rm{ur}` differs from
+:math:`N_\rm{eff}`, the latter of which also includes massive neutrinos.
+
+Massive neutrinos can be included by specifying the optional parameters:
+
+* The number of massive neutrino species :math:`N_{\nu}`: ``N_nu``,
+* A comma-separated list of neutrino masses in eV: ``M_nu_eV``,
+* A comma-separated list of neutrino degeneracies: ``deg_nu``,
+* The present-day neutrino temperature :math:`T_{\nu,0}`: ``T_nu_0``.
+
+When including massive neutrinos, only ``N_nu`` and ``M_nu_eV`` are necessary.
+By default, SWIFT will assume non-degenerate species and
+:math:`T_{\nu,0}=(4/11)^{1/3}T_{\rm{CMB},0}`. Neutrinos do not contribute to
+:math:`\Omega_m = \Omega_\rm{cdm} + \Omega_b` in our conventions.
+
 For a Planck+13 cosmological model (ignoring radiation density as is
 commonly done) and running from :math:`z=127` to :math:`z=0`, one would hence
 use the following parameters:
