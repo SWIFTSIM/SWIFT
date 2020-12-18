@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
   const int cols = 3;
   double CLASS_table[rows * cols];
   FILE *stream = fopen("testNeutrinoCosmology.dat", "r");
+  if (stream == NULL) error("Could not open reference solution file!");
   char line[1024];
   int row = 0;
   while (fgets(line, 1024, stream)) {
@@ -182,7 +183,8 @@ int main(int argc, char *argv[]) {
         double time2 = CLASS_table[1 + 3 * j];
         double Onu2 = CLASS_table[2 + 3 * j];
 
-        /* Class defines years as 365.25 days, we use 365 days. */
+        /* Class defines years as 365.25 days, we use 365 days (in this test).
+         */
         time2 *= 365.25 / 365.0;
 
         assert(fabs(a1 - a2) / (a1 + a2) < EXTERNAL_TOLERANCE);
