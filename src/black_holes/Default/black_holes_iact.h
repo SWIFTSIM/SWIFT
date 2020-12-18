@@ -41,8 +41,9 @@ runner_iact_nonsym_bh_gas_density(
     struct bpart *bi, const struct part *pj, const struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct black_holes_props *bh_props, const integertime_t ti_current,
-    const double time) {
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 
   float wi, wi_dx;
 
@@ -89,15 +90,14 @@ runner_iact_nonsym_bh_gas_density(
  * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct bpart *bi, struct part *pj,
-                                  struct xpart *xpj, const int with_cosmology,
-                                  const struct cosmology *cosmo,
-                                  const struct gravity_props *grav_props,
-                                  const struct black_holes_props *bh_props,
-                                  const integertime_t ti_current,
-                                  const double time) {}
+runner_iact_nonsym_bh_gas_swallow(
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct bpart *bi, struct part *pj, struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {}
 
 /**
  * @brief Swallowing interaction between two BH particles (non-symmetric).
@@ -141,15 +141,14 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
-                                   const float hi, const float hj,
-                                   struct bpart *bi, struct part *pj,
-                                   struct xpart *xpj, const int with_cosmology,
-                                   const struct cosmology *cosmo,
-                                   const struct gravity_props *grav_props,
-                                   const struct black_holes_props *bh_props,
-                                   const integertime_t ti_current,
-                                   const double time) {
+runner_iact_nonsym_bh_gas_feedback(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *bi, struct part *pj, struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)
