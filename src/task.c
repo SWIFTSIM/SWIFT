@@ -703,6 +703,9 @@ int task_lock(struct scheduler *s, struct task *t) {
           memcpy(t->buff, (void *)&dataptr[scheduler_rdma_header_size],
                  t->size);
 
+          /* Back to locked. */
+          dataptr[0] = 0;
+
           return 1;
         } else {
           message(
