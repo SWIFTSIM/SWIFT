@@ -226,41 +226,56 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           /* Get a handle on the part. */
           struct dmpart *restrict dmp = &dmparts[k];
           
-          /* All dmparts get ready for SIDM calculation */
-          sidm_init_velocities(dmp);
+          const integertime_t ti_step_dmp = get_integer_timestep(dmp->time_bin);
+          const integertime_t ti_begin_dmp = get_integer_time_begin(ti_current + 1, dmp->time_bin);
           
-          /* If the DM particle has no counterpart and needs to be kicked */
-          if (dmpart_is_starting(dmp, e)) {
-          
-          const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
-          const integertime_t ti_begin =
-          get_integer_time_begin(ti_current + 1, dmp->time_bin);
-          
-#ifdef SWIFT_DEBUG_CHECKS
-          const integertime_t ti_end =
-          get_integer_time_end(ti_current + 1, dmp->time_bin);
-          
-          if (ti_begin != ti_current)
-              error(
-                    "DM-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
-                    "ti_step=%lld time_bin=%d ti_current=%lld",
-                    ti_end, ti_begin, ti_step, dmp->time_bin, ti_current);
-#endif
-          
-          /* Time interval for this half-kick */
-          double dt_kick_grav;
+          /* Time interval for this step */
+          double dt_kick_grav_dmp;
           if (with_cosmology) {
-              dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
-                                                            ti_begin + ti_step / 2);
+              dt_kick_grav_dmp = cosmology_get_grav_kick_factor(cosmo, ti_begin_dmp,
+                                                            ti_begin_dmp + ti_step_dmp);
           } else {
-              dt_kick_grav = (ti_step / 2) * time_base;
+              dt_kick_grav_dmp = (ti_step_dmp) * time_base;
           }
           
-          /* do the kick */
-          kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+          /* Get drifted velocities */
+          dark_matter_get_drifted_velocities(dmp, dt_kick_grav_dmp);
+
+          /* If the DM particle has no counterpart and needs to be kicked */
+          if (dmpart_is_starting(dmp, e)) {
               
-          /* Add half sidm kick */
-          /*add_half_sidm_kick_to_dmpart(dmp, dt_kick_grav);*/
+              /* Active DMparts go back in velocity get ready for SIDM calculation */
+              sidm_init_velocities(dmp);
+          
+              const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
+              const integertime_t ti_begin =
+              get_integer_time_begin(ti_current + 1, dmp->time_bin);
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              const integertime_t ti_end =
+              get_integer_time_end(ti_current + 1, dmp->time_bin);
+              
+              if (ti_begin != ti_current)
+                  error(
+                        "DM-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+                        "ti_step=%lld time_bin=%d ti_current=%lld",
+                        ti_end, ti_begin, ti_step, dmp->time_bin, ti_current);
+#endif
+              
+              /* Time interval for this half-kick */
+              double dt_kick_grav;
+              if (with_cosmology) {
+                  dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                                ti_begin + ti_step / 2);
+              } else {
+                  dt_kick_grav = (ti_step / 2) * time_base;
+              }
+              
+              /* do the kick */
+              kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+              
+              /* Add half sidm kick */
+              /*add_half_sidm_kick_to_dmpart(dmp, dt_kick_grav);*/
               
         }                    
       }

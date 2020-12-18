@@ -59,9 +59,9 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
  */
 __attribute__((always_inline)) INLINE static void dark_matter_get_drifted_velocities(struct dmpart *restrict dmp, float dt_kick_grav) {
     
-    dmp->sidm_data.v_full[0] = dmp->sidm_data.vi_full[0] + dmp->gpart->a_grav[0] * dt_kick_grav;
-    dmp->sidm_data.v_full[1] = dmp->sidm_data.vi_full[1] + dmp->gpart->a_grav[1] * dt_kick_grav;
-    dmp->sidm_data.v_full[2] = dmp->sidm_data.vi_full[2] + dmp->gpart->a_grav[2] * dt_kick_grav;
+    dmp->sidm_data.v_full[0] = dmp->v_full[0] + dmp->gpart->a_grav[0] * dt_kick_grav;
+    dmp->sidm_data.v_full[1] = dmp->v_full[1] + dmp->gpart->a_grav[1] * dt_kick_grav;
+    dmp->sidm_data.v_full[2] = dmp->v_full[2] + dmp->gpart->a_grav[2] * dt_kick_grav;
     
     dmp->sidm_data.vi_full[0] = dmp->sidm_data.v_full[0];
     dmp->sidm_data.vi_full[1] = dmp->sidm_data.v_full[1];
