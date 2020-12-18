@@ -600,6 +600,7 @@ if test "$enable_san" = "yes"; then
    fi
    if test "$enable_san" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
+      CXXFLAGS="$CXXFLAGS -fsanitize=address -fno-omit-frame-pointer"
       AC_MSG_RESULT([added address sanitizer support])
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
@@ -627,6 +628,7 @@ if test "$enable_ubsan" = "yes"; then
    fi
    if test "$enable_ubsan" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=undefined"
+      CXXFLAGS="$CXXFLAGS -fsanitize=undefined"
       AC_MSG_RESULT([added undefined sanitizer support])
    else
       AC_MSG_WARN([Compiler does not support undefined sanitizer option])
