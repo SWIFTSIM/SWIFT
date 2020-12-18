@@ -133,6 +133,7 @@ Scheduler:
   engine_max_parts_per_ghost:    1000  # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:   1000  # (Optional) Maximum number of sparts per ghost.
   engine_max_parts_per_cooling: 10000  # (Optional) Maximum number of parts per cooling task.
+  dependency_graph_frequency:       0  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -462,7 +463,7 @@ EAGLEChemistry:
 GEARChemistry:
   initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
-
+  diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2).
 
 # Parameters related to star formation models  -----------------------------------------------
 
