@@ -16,30 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_LOGGER_H
-#define SWIFT_STARS_LOGGER_H
 
-/* Include config */
 #include "../config.h"
 
-/* Local includes */
-#include "./const.h"
-#include "align.h"
-#include "logger.h"
-#include "part_type.h"
-#include "timeline.h"
+#ifdef WITH_LOGGER
 
-/* Load the correct star type */
-#if defined(FEEDBACK_CONST)
-#error TODO
-#elif defined(STARS_NONE)
-#include "./stars/Default/stars_logger.h"
-#elif defined(STARS_EAGLE)
-#error TODO
-#elif defined(STARS_GEAR)
-#include "./stars/GEAR/stars_logger.h"
-#else
-#error "Invalid choice of star model"
+#include "hydro_logger.h"
+
+const char *hydro_logger_field_names[hydro_logger_field_count] = {
+    "Coordinates",      "Velocities", "Accelerations", "Masses",
+    "SmoothingLengths", "Entropies",  "ParticleIDs",   "Densities"};
+
 #endif
-
-#endif /* SWIFT_STARS_LOGGER_H */
