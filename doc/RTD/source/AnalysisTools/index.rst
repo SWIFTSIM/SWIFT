@@ -10,13 +10,31 @@ Analysis Tools
 Task dependencies
 -----------------
 
-At the beginning of each simulation the file ``dependency_graph.csv`` is generated and can be transformed into a ``dot`` and a ``png`` file with the script ``tools/plot_task_dependencies.py``.
+At the beginning of each simulation the file ``dependency_graph_0.csv`` is generated and can be transformed into a ``dot`` and a ``png`` file with the script ``tools/plot_task_dependencies.py``.
 It requires the ``dot`` package that is available in the library graphviz.
 This script has also the possibility to generate a list of function calls for each task with the option ``--with-calls`` (this list may be incomplete) and to describe at which level each task are run ``--with-levels`` (a larger simulation will provide more accurate levels).
 You can convert the ``dot`` file into a ``png`` with the following command
 ``dot -Tpng dependency_graph.dot -o dependency_graph.png`` or directly read it with the python module ``xdot`` with ``python -m xdot dependency_graph.dot``.
 If you wish to have more dependency graphs, you can use the parameter ``Scheduler:dependency_graph_frequency``. It defines how many steps are done in between two graphs.
 While the initial graph is showing all the tasks/dependencies, the next ones are only showing the active tasks/dependencies.
+
+
+
+Task levels
+-----------------
+
+At the beginning of each simulation the file ``task_level_0.txt`` is generated. 
+It contains the counts of all tasks at all levels (depths) in the tree.
+The depths and counts of the tasks can be plotted with the script ``tools/plot_task_levels.py``.
+It will display the individual tasks at the x-axis, the number of each task at a given level on the y-axis, and the level is shown as the colour of the plotted point.
+Additionally, the script can write out in brackets next to each tasks's name on the x-axis on how many different levels the task exists using the ``--count`` flag.
+Finally, in some cases the counts for different levels of a task may be very close to each other and overlap on the plot, making them barely visible.
+This can be alleviated by using the ``--displace`` flag: 
+It will displace the plot points w.r.t. the y-axis in an attempt to make them better visible, however the counts won't be exact in that case.
+If you wish to have more task level plots, you can use the parameter ``Scheduler:task_level_output_frequency``. 
+It defines how many steps are done in between two task level output dumps.
+
+
 
 
 Cell graph
