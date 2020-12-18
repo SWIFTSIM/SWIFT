@@ -24,6 +24,7 @@
 
 /* Local includes. */
 #include "chemistry.h"
+#include "exp10.h"
 #include "hydro_properties.h"
 
 /* Includes. */
@@ -129,7 +130,6 @@ struct black_holes_props {
 
   /*! Fixed T (expressed as internal energy) for sound speed near EoS */
   float fixed_u_for_soundspeed;
-
 
   /* ---- Properties of the feedback model ------- */
 
@@ -389,8 +389,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->with_fixed_T_near_EoS =
       parser_get_param_int(params, "EAGLEAGN:with_fixed_T_near_EoS");
   if (bp->with_fixed_T_near_EoS) {
-    bp->fixed_T_above_EoS_factor = pow(10.,
-        parser_get_param_float(params, "EAGLEAGN:fixed_T_above_EoS_dex")); 
+    bp->fixed_T_above_EoS_factor =
+        exp10(parser_get_param_float(params, "EAGLEAGN:fixed_T_above_EoS_dex"));
     bp->fixed_u_for_soundspeed =
         parser_get_param_float(params, "EAGLEAGN:fixed_T_near_EoS_K") /
         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE) *
