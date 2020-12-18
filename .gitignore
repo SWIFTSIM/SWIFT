@@ -171,6 +171,7 @@ tests/testFormat.sh
 tests/testCooling
 tests/testComovingCooling
 tests/testHashmap
+tests/testNeutrinoCosmology
 tests/*.png
 tests/*.txt
 
