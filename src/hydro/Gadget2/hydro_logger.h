@@ -41,9 +41,7 @@ enum hydro_logger_fields {
 };
 
 /* Name of each possible mask. */
-static const char *hydro_logger_field_names[hydro_logger_field_count] = {
-    "Coordinates",      "Velocities", "Accelerations", "Masses",
-    "SmoothingLengths", "Entropies",  "ParticleIDs",   "Densities"};
+extern const char *hydro_logger_field_names[hydro_logger_field_count];
 
 /**
  * @brief Initialize the logger.

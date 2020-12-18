@@ -71,6 +71,7 @@
 #include "hydro.h"
 #include "line_of_sight.h"
 #include "logger.h"
+#include "logger_io.h"
 #include "map.h"
 #include "memuse.h"
 #include "minmax.h"
@@ -1824,7 +1825,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose, e->step);
-  if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
+  if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
   /* Run the 0th time-step */
   TIMER_TIC2;
@@ -2241,6 +2242,11 @@ void engine_step(struct engine *e) {
   if (e->sched.frequency_dependency != 0 &&
       e->step % e->sched.frequency_dependency == 0)
     scheduler_write_dependencies(&e->sched, e->verbose, e->step);
+
+  /* Write the task levels */
+  if (e->sched.frequency_task_levels != 0 &&
+      e->step % e->sched.frequency_task_levels == 0)
+    scheduler_write_task_level(&e->sched, e->step);
 
   /* Start all the tasks. */
   TIMER_TIC;
