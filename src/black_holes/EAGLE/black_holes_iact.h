@@ -95,14 +95,8 @@ runner_iact_nonsym_bh_gas_density(
                         bh_props->temp_to_u_factor;
     if (pj->u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
         pj->u > bh_props->fixed_u_for_soundspeed) {
-      /*const float cj_old = cj; */
       cj = gas_soundspeed_from_internal_energy(
           pj->rho, bh_props->fixed_u_for_soundspeed);
-      /*message("Changing cj=%g to %g for p ID=%lld. u=%g (T=%g); "
-              "rho=%g (nH=%g); u_EoS=%g (T_EoS=%g).",
-              cj_old, cj, pj->id, pj->u, pj->u / bh_props->temp_to_u_factor,
-              pj->rho, pj->rho * cosmo->a3_inv * bh_props->rho_to_n_cgs,
-              u_EoS, u_EoS / bh_props->temp_to_u_factor); */
     }
   }
   bi->sound_speed_gas += mj * wi * cj;
