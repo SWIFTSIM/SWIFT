@@ -2388,6 +2388,27 @@ AM_CONDITIONAL([HAVE_SPHENIX], [test "$with_hydro" = "sphenix"])
 # check if using GADGET2 SPH
 AM_CONDITIONAL([HAVE_GADGET2], [test "$with_hydro" = "gadget2"])
 
+# check if using none chemistry
+AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
+
+# check if using GEAR chemistry
+AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "${with_chemistry:0:5}" = "GEAR_"])
+
+# check if using default stars
+AM_CONDITIONAL([HAVE_STARS_DEFAULT], [test "$with_stars" = "none"])
+
+# check if using GEAR stars
+AM_CONDITIONAL([HAVE_STARS_GEAR], [test "$with_stars" = "GEAR"])
+
+# check if using default star formation
+AM_CONDITIONAL([HAVE_STAR_FORMATION_DEFAULT], [test "$with_star_formation" = "none"])
+
+# check if using GEAR star formation
+AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"])
+
+# check if using multi softening gravity
+AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])
+
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile logger/Makefile logger/tests/Makefile])

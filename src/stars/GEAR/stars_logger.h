@@ -34,6 +34,7 @@ enum stars_logger_fields {
   stars_logger_field_masses,
   stars_logger_field_smoothing_lengths,
   stars_logger_field_particle_ids,
+  stars_logger_field_birth_scale_factors,
   stars_logger_field_count,
 };
 
@@ -74,6 +75,10 @@ INLINE static int stars_logger_writer_populate_mask_data(
   mask_data[stars_logger_field_particle_ids] = logger_create_mask_entry(
       stars_logger_field_names[stars_logger_field_particle_ids],
       sizeof(long long));
+
+  mask_data[stars_logger_field_birth_scale_factors] = logger_create_mask_entry(
+      stars_logger_field_names[stars_logger_field_birth_scale_factors],
+      sizeof(float));
 
   return stars_logger_field_count;
 }
@@ -120,6 +125,10 @@ INLINE static void stars_logger_compute_size_and_mask(
   /* Add the ID. */
   *mask |= logger_add_field_to_mask(masks[stars_logger_field_particle_ids],
                                     buffer_size);
+
+  /* Add the birth scale factor. */
+  *mask |= logger_add_field_to_mask(
+      masks[stars_logger_field_birth_scale_factors], buffer_size);
 }
 
 /**
@@ -178,6 +187,13 @@ INLINE static char *stars_logger_write_particle(
                                 mask)) {
     memcpy(buff, &p->id, sizeof(long long));
     buff += sizeof(long long);
+  }
+
+  /* Write the birth scale factor. */
+  if (logger_should_write_field(
+          mask_data[stars_logger_field_birth_scale_factors], mask)) {
+    memcpy(buff, &p->birth_scale_factor, sizeof(float));
+    buff += sizeof(float);
   }
 
   return buff;

@@ -26,6 +26,7 @@
 
 /* Local include */
 #include "error.h"
+#include "lock.h"
 #include "part_type.h"
 
 #if defined(WITH_LOGGER)

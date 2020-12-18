@@ -102,18 +102,18 @@ void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
  * @param time_base The time base.
  * @param time The current time (in double)
  */
-void compute_time(struct spart* sp, const struct engine* e,
-                  const int with_cosmology, const struct cosmology* cosmo,
-                  double* star_age_beg_of_step, double* dt_enrichment,
-                  integertime_t* ti_begin_star, const integertime_t ti_current,
-                  const double time_base, const double time) {
+void compute_time(struct spart* sp, const int with_cosmology,
+                  const struct cosmology* cosmo, double* star_age_beg_of_step,
+                  double* dt_enrichment, integertime_t* ti_begin_star,
+                  const integertime_t ti_current, const double time_base,
+                  const double time) {
   const integertime_t ti_step = get_integer_timestep(sp->time_bin);
   *ti_begin_star = get_integer_time_begin(ti_current, sp->time_bin);
 
   /* Get particle time-step */
   double dt_star;
   if (with_cosmology) {
-    dt_star = cosmology_get_delta_time(cosmology, *ti_begin_star,
+    dt_star = cosmology_get_delta_time(cosmo, *ti_begin_star,
                                        *ti_begin_star + ti_step);
   } else {
     dt_star = get_timestep(sp->time_bin, time_base);
@@ -163,7 +163,7 @@ void feedback_will_do_feedback(
   double star_age_beg_step = 0;
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
-  compute_time(sp, e, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
+  compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time);
 
   /* Zero the energy of supernovae */

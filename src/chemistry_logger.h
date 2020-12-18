@@ -16,30 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_LOGGER_H
-#define SWIFT_STARS_LOGGER_H
+#ifndef SWIFT_CHEMISTRY_LOGGER_H
+#define SWIFT_CHEMISTRY_LOGGER_H
 
-/* Include config */
+/* Config parameters. */
 #include "../config.h"
 
 /* Local includes */
-#include "./const.h"
 #include "align.h"
 #include "logger.h"
 #include "part_type.h"
 #include "timeline.h"
 
-/* Load the correct star type */
-#if defined(FEEDBACK_CONST)
+/* Import the right function */
+#if defined(CHEMISTRY_NONE)
+#include "./chemistry/none/chemistry_logger.h"
+#elif defined(CHEMISTRY_GEAR)
+#include "./chemistry/GEAR/chemistry_logger.h"
+#elif defined(CHEMISTRY_GEAR_DIFFUSION)
 #error TODO
-#elif defined(STARS_NONE)
-#include "./stars/Default/stars_logger.h"
-#elif defined(STARS_EAGLE)
+#elif defined(CHEMISTRY_QLA)
 #error TODO
-#elif defined(STARS_GEAR)
-#include "./stars/GEAR/stars_logger.h"
+#elif defined(CHEMISTRY_EAGLE)
+#error TODO
 #else
-#error "Invalid choice of star model"
+#error "Invalid choice of chemistry function."
 #endif
 
-#endif /* SWIFT_STARS_LOGGER_H */
+#endif /* SWIFT_CHEMISTRY_LOGGER_H */
