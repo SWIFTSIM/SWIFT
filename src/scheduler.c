@@ -369,7 +369,7 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
 /**
  * @brief Write a csv file with the task dependencies.
  *
- * Run plot_task_dependencies.sh for an example of how to use it
+ * Run plot_task_dependencies.py for an example of how to use it
  * to generate the figure.
  *
  * @param s The #scheduler we are working in.
@@ -2489,9 +2489,16 @@ void scheduler_free_tasks(struct scheduler *s) {
 }
 
 /**
- * @brief write down each task level
+ * @brief write down the levels and the number of tasks at that level.
+ *
+ * Run plot_task_level.py for an example of how to use it
+ * to generate the figure.
+ *
+ * @param s The #scheduler we are working in.
+ * @param step The current step number.
  */
-void scheduler_write_task_level(const struct scheduler *s) {
+void scheduler_write_task_level(const struct scheduler *s, int step) {
+
   /* init */
   const int max_depth = 30;
   const struct task *tasks = s->tasks;
@@ -2519,8 +2526,18 @@ void scheduler_write_task_level(const struct scheduler *s) {
     }
   }
 
+  /* Generate filename */
+  char filename[200] = "task_level_\0";
+#ifdef WITH_MPI
+  char rankstr[6];
+  sprintf(rankstr, "%04d_", s->nodeID);
+  strcat(filename, rankstr);
+#endif
+  char stepstr[100];
+  sprintf(stepstr, "%d.txt", step);
+  strcat(filename, stepstr);
+
   /* Open file */
-  char filename[200] = "task_level.txt";
   FILE *f = fopen(filename, "w");
   if (f == NULL) error("Error opening task level file.");
 

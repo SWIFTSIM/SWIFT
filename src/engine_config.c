@@ -193,6 +193,13 @@ void engine_config(int restart, int fof, struct engine *e,
     error("Scheduler:dependency_graph_frequency should be >= 0");
   }
 
+  /* Get the frequency of the task level dumping */
+  e->sched.frequency_task_levels = parser_get_opt_param_int(
+      params, "Scheduler:task_level_output_frequency", 0);
+  if (e->sched.frequency_task_levels < 0) {
+    error("Scheduler:task_level_output_frequency should be >= 0");
+  }
+
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
