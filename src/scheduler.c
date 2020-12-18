@@ -2333,6 +2333,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   int res = MPI_Comm_size(MPI_COMM_WORLD, &s->nr_ranks);
   if (res != MPI_SUCCESS)
     mpi_error(res, "Failed to determine number of MPI ranks");
+
+  /* Maximum send locks, sends are potentially slow so we need this. */
+  for (int k = 0; k < scheduler_rdma_max_sends; k++) {
+    lock_init(&s->send_lock[k]);
+  }
 #endif
 }
 
@@ -2624,18 +2629,19 @@ void scheduler_rdma_init(struct scheduler *s) {
  * @brief Set up the RDMA communications.
  *
  * @param s the #scheduler
+ * @param verbose output messages.
  */
-void scheduler_rdma_init_communications(struct scheduler *s) {
+void scheduler_rdma_init_communications(struct scheduler *s, int verbose) {
 #ifdef WITH_MPI
 
-  /* First apply the caches to the tasks, so we get the window sizes and task
-   * offsets. */
+  /* First apply the caches setup during maketasks to the tasks, so we get the
+   * window sizes and task offsets. */
   mpicache_apply(s->send_mpicache, s->nr_ranks, "send");
   mpicache_apply(s->recv_mpicache, s->nr_ranks, "recv");
 
   /* Now we open up communications between the nodes. */
   infinity_open_communications(s->nr_ranks, s->recv_mpicache->window_sizes,
-                               &s->recv_handle, &s->send_handle);
+                               &s->recv_handle, &s->send_handle, verbose);
   
 #endif
 }

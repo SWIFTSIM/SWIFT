@@ -84,6 +84,13 @@ struct qps_data {
 #endif
 };
 
+/* Forward declarations. */
+static void *create_servers(struct mpi_servers *servers, int nr_servers,
+                            size_t *sizes, int myrank, int verbose);
+static void *connect_clients(struct mpi_servers *servers, int nr_servers,
+                             int myrank, int verbose);
+
+
 struct server_data {
   struct mpi_servers *servers;
   int nr_servers;
@@ -100,7 +107,7 @@ struct server_data {
  *
  * @result the IP address, note copy away to keep.
  */
-static char *infinity_toipaddr(char *hostname) {
+static char *toipaddr(char *hostname) {
 
   struct hostent *hostent = gethostbyname(hostname);
   if (hostent == NULL) {
@@ -113,28 +120,28 @@ static char *infinity_toipaddr(char *hostname) {
 /**
  * @brief Send side thread to connect RDMA clients.
  */
-static void *infinity_send_thread(void *arg) {
+static void *send_thread(void *arg) {
 
   /* Connect QPs to the remote servers. */
   struct server_data *data = (struct server_data *)arg;
-  data->handle = infinity_connect_clients(data->servers,
-                                          data->nr_servers,
-                                          data->myrank,
-                                          data->verbose);
+  data->handle = connect_clients(data->servers,
+                                 data->nr_servers,
+                                 data->myrank,
+                                 data->verbose);
   return NULL;
 }
 
 /**
  * @brief recv thread, listens for remote sends from another rank.
  */
-static void *infinity_recv_thread(void *arg) {
+static void *recv_thread(void *arg) {
 
   struct server_data *data = (struct server_data *)arg;
-  data->handle = infinity_create_servers(data->servers,
-                                         data->nr_servers,
-                                         data->sizes,
-                                         data->myrank,
-                                         data->verbose);
+  data->handle = create_servers(data->servers,
+                                data->nr_servers,
+                                data->sizes,
+                                data->myrank,
+                                data->verbose);
   return NULL;
 }
 
@@ -146,9 +153,11 @@ static void *infinity_recv_thread(void *arg) {
  * @param sizes the size needed to receive messages.
  * @param recv_handle handle for the recv QPs.
  * @param send_handle handle for the send QPs.
+ * @param verbose output noise.
  */
 void infinity_open_communications(int nr_servers, size_t *sizes,
-                                  void **recv_handle, void **send_handle) {
+                                  void **recv_handle, void **send_handle,
+                                  int verbose) {
 
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
 
@@ -161,7 +170,7 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
   int namelen = 0;
   MPI_Get_processor_name(name, &namelen);
   char ip[infinity_max_server_ip];
-  strncpy(ip, infinity_toipaddr(name), infinity_max_server_ip);
+  strncpy(ip, toipaddr(name), infinity_max_server_ip);
 
   /* And distribute, so we all know everyone's IPs. */
   struct mpi_servers servers;
@@ -169,7 +178,7 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
   MPI_Allgather(ip, infinity_max_server_ip, MPI_BYTE, servers.ip,
                 infinity_max_server_ip, MPI_BYTE, MPI_COMM_WORLD);
 
-  if (engine_rank == 0) {
+  if (engine_rank == 0 && verbose) {
     message("RDMA servers will listen on:");
     for (int j = 0; j < nr_servers; j++) {
       for (int k = 0; k < nr_servers; k++) {
@@ -188,22 +197,22 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
   recv_data.nr_servers = nr_servers;
   recv_data.sizes = sizes;
   recv_data.myrank = engine_rank;
-  recv_data.verbose = 1;
+  recv_data.verbose = verbose;
   recv_data.handle = NULL;
 
   pthread_t recvthread;
-  if (pthread_create(&recvthread, NULL, &infinity_recv_thread, &recv_data) != 0)
+  if (pthread_create(&recvthread, NULL, &recv_thread, &recv_data) != 0)
     error("Failed to create recv thread to start RDMA servers.");
 
   struct server_data send_data;
   send_data.servers = &servers;
   send_data.nr_servers = nr_servers;
   send_data.myrank = engine_rank;
-  send_data.verbose = 1;
+  send_data.verbose = verbose;
   send_data.handle = NULL;
 
   pthread_t sendthread;
-  if (pthread_create(&sendthread, NULL, &infinity_send_thread, &send_data) != 0)
+  if (pthread_create(&sendthread, NULL, &send_thread, &send_data) != 0)
     error("Failed to create send thread to connect RDMA clients.");
 
   /* Wait until the threads complete. */
@@ -221,8 +230,8 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
 /**
  * @brief Create a QPs to connect a group of clients to a group of servers.
  *
- * Requires that infinity_create_servers is also running, otherwise we
- * block waiting for the connections.
+ * Requires that create_servers is also running, otherwise we block waiting
+ * for the connections.
  *
  * @param servers a #mpi_servers struct with the server details.
  * @param nr_servers the number of servers expected to connect.
@@ -231,8 +240,8 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
  *
  * @return handle for the QPs and related data.
  */
-void *infinity_connect_clients(struct mpi_servers *servers, int nr_servers,
-                               int myrank, int verbose) {
+static void *connect_clients(struct mpi_servers *servers, int nr_servers,
+                             int myrank, int verbose) {
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
 
   /* Struct to hold all the persistent data. */
@@ -298,7 +307,7 @@ void *infinity_connect_clients(struct mpi_servers *servers, int nr_servers,
 /**
  * @brief Send a buffer to a server listening on a QP.
  *
- * @param qphandle the handle from infinity_connect_clients.
+ * @param qphandle the send handle from infinity_open_communications.
  * @param index index of the server to send to.
  * @param buffer the buffer to send, should be block aligned.
  * @param size the size of the buffer in bytes.
@@ -345,7 +354,7 @@ void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
 
 /* @brief Free the resource associated with handle.
  *
- * @param qphandle the handle from infinity_connect_clients.
+ * @param qphandle a handle from infinity_connect_clients.
  */
 void infinity_free_handle(void *qphandle) {
 
@@ -376,8 +385,8 @@ void infinity_free_handle(void *qphandle) {
 /**
  * @brief Create QPs for server to receive data from our clients.
  *
- * Requires that infinity_connect_clients is also ran, otherwise we
- * block waiting for the connections.
+ * Requires that connect_clients is also ran, otherwise we block waiting for
+ * the connections.
  *
  * @param servers a #mpi_servers struct with the server details.
  * @param nr_servers the number of servers we will create.
@@ -388,8 +397,8 @@ void infinity_free_handle(void *qphandle) {
  *
  * @return handle for the QPs and related data.
  */
-void *infinity_create_servers(struct mpi_servers *servers, int nr_servers,
-                              size_t *sizes, int myrank, int verbose) {
+static void *create_servers(struct mpi_servers *servers, int nr_servers,
+                                     size_t *sizes, int myrank, int verbose) {
 
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
   /* Struct to hold all the persistent data. */
@@ -450,7 +459,7 @@ void *infinity_create_servers(struct mpi_servers *servers, int nr_servers,
 /**
  * @brief Check if data is ready, that is has arrived.
  *
- * @param qphandle the handle from infinity_create_servers.
+ * @param qphandle the recv handle from infinity_open_communications.
  * @param index index of the client we are checking.
  * @param offset the offset of this data in the RDMA buffer,
  *               note in blocks not bytes.

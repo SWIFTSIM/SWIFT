@@ -636,42 +636,55 @@ int task_lock(struct scheduler *s, struct task *t) {
     case task_type_send:
 #ifdef WITH_MPI
     {
-      /* Data has the actual data and room for the header.
-       * XXX horrible extra data copy, can we separate headers? */
-      scheduler_rdma_blocktype datasize =
+      /* Try to grab one of the locks. */
+      if (lock_trylock(&s->send_lock[cj->nodeID % scheduler_rdma_max_sends]) == 0) {
+
+        /* Data has the actual data and room for the header.
+         * XXX horrible extra data copy, can we separate headers? */
+        scheduler_rdma_blocktype datasize =
           scheduler_rdma_toblocks(t->size) + scheduler_rdma_header_size;
-      scheduler_rdma_blocktype *dataptr =
+        scheduler_rdma_blocktype *dataptr =
           calloc(datasize, scheduler_rdma_bytesinblock);
 
-      /* First element is marked as LOCKED, so only we can update. */
-      dataptr[0] = scheduler_rdma_locked;
-      dataptr[1] = t->size;
-      dataptr[2] = t->flags;
-      dataptr[3] = engine_rank;
-      memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->size);
+        /* First element is marked as LOCKED, so only we can update. */
+        dataptr[0] = scheduler_rdma_locked;
+        dataptr[1] = t->size;
+        dataptr[2] = t->flags;
+        dataptr[3] = engine_rank;
+        memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->size);
 
-      if (s->space->e->verbose)
-        message(
-            "Sending message to %d from %d subtype %d tag %zu size %zu"
-            " (cf %lld %zu) offset %zu",
-            cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
-            t->size, t->offset);
+        if (s->space->e->verbose)
+          message(
+                  "Sending message to %d from %d subtype %d tag %zu size %zu"
+                  " (cf %lld %zu) offset %zu",
+                  cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
+                  t->size, t->offset);
 
-      infinity_send_data(s->send_handle, cj->nodeID, dataptr, scheduler_rdma_tobytes(datasize),
-                         scheduler_rdma_tobytes(t->offset));
-      if (s->space->e->verbose) {
-        message(
-            "Sent message to %d subtype %d tag %zu size %zu offset %zu"
-            " (cf %lld %zu)",
-            cj->nodeID, subtype, dataptr[2], dataptr[1], t->offset, t->flags,
-            t->size);
+        infinity_send_data(s->send_handle, cj->nodeID, dataptr, scheduler_rdma_tobytes(datasize),
+                           scheduler_rdma_tobytes(t->offset));
+        if (s->space->e->verbose) {
+          message(
+                  "Sent message to %d subtype %d tag %zu size %zu offset %zu"
+                  " (cf %lld %zu)",
+                  cj->nodeID, subtype, dataptr[2], dataptr[1], t->offset, t->flags,
+                  t->size);
+        }
+        free(dataptr);
+
+        /* May start next send now. Do nothing with the data after this
+         * point. */
+        if (lock_unlock(&s->send_lock[cj->nodeID % scheduler_rdma_max_sends]) != 0) {
+          error("Unlocking the MPI send lock failed.\n");
+        }
+
+        /* And log deactivation, if logging enabled. */
+        mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
+
+        return 1;
       }
-      free(dataptr);
 
-      /* And log deactivation, if logging enabled. */
-      mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
-
-      return 1;
+      /* No lock available so pass on. */
+      return 0;
     }
 
 #endif
@@ -704,7 +717,7 @@ int task_lock(struct scheduler *s, struct task *t) {
                  t->size);
 
           /* Back to locked. */
-          dataptr[0] = 0;
+          dataptr[0] = scheduler_rdma_locked;
 
           return 1;
         } else {

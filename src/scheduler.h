@@ -57,7 +57,6 @@
 
 /* Constants for one-sided RDMA work. Flags for controlling access. */
 #define scheduler_rdma_locked -2
-#define scheduler_rdma_unlocked -3
 
 /* Size of a block of memory. Need to send RDMA messages aligned to this size. */
 #define scheduler_rdma_blocktype size_t
@@ -70,7 +69,7 @@
 #define scheduler_rdma_header_size 4
 
 /* Number of threads we can use for sending. */
-#define scheduler_rdma_max_sends 1
+#define scheduler_rdma_max_sends 8
 
 /* Convert a byte count into a number of blocks, rounds up. */
 #define scheduler_rdma_toblocks(nr_bytes)           \
@@ -151,6 +150,9 @@ struct scheduler {
   /* Handles for the RDMA queue pair connections. */
   void *recv_handle;
   void *send_handle;
+
+  /* Locks for sending messages, keep these limited as potentially slow. */
+  swift_lock_type send_lock[scheduler_rdma_max_sends];
 #endif
 };
 
@@ -269,6 +271,6 @@ void scheduler_report_task_times(const struct scheduler *s,
                                  const int nr_threads);
 
 void scheduler_rdma_init(struct scheduler *s);
-void scheduler_rdma_init_communications(struct scheduler *s);
+void scheduler_rdma_init_communications(struct scheduler *s, int verbose);
 void scheduler_rdma_free(struct scheduler *s);
 #endif /* SWIFT_SCHEDULER_H */

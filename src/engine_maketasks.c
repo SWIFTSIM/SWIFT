@@ -3808,7 +3808,7 @@ void engine_maketasks(struct engine *e) {
 
 #ifdef WITH_MPI
   /* Initialise RDMA connections to the other ranks. */
-  scheduler_rdma_init_communications(sched);
+  scheduler_rdma_init_communications(sched, e->verbose);
 #endif
 
   if (e->verbose)
