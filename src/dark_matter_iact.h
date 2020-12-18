@@ -590,7 +590,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
     
-    pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;
+    pi->sidm_probability += mass_j * sigma * vij * gij / normed_gij;
+    /*pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;*/
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
@@ -656,8 +657,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
     float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
     
-    pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;
-    pj->sidm_probability += mass_i * sigma * vij * gji * dtj / normed_gji;
+    /*pi->sidm_probability += mass_j * sigma * vij * gij * dti / normed_gij;
+    pj->sidm_probability += mass_i * sigma * vij * gji * dtj / normed_gji;*/
+    pi->sidm_probability += mass_j * sigma * vij * gij / normed_gij;
+    pj->sidm_probability += mass_i * sigma * vij * gji / normed_gji;
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
