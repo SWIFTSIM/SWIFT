@@ -350,7 +350,6 @@ void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
 void infinity_free_handle(void *qphandle) {
 
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
-#if 0
   struct qps_data *cqps = (struct qps_data *)qphandle;
   if (cqps == NULL) return;
   if (cqps->qps != NULL) {
@@ -367,10 +366,9 @@ void infinity_free_handle(void *qphandle) {
     for (int k = 0; k < cqps->nr_qps; k++) delete cqps->token_buffers[k];
     free(cqps->token_buffers);
   }
+  delete cqps->factory;
+  delete cqps->context;
   free(cqps);
-  //delete cqps->factory;// use after free.
-  //delete cqps->context;
-#endif
 #endif
   return;
 }
