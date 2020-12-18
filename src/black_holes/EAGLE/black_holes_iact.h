@@ -21,6 +21,8 @@
 
 /* Local includes */
 #include "black_holes_parameters.h"
+#include "entropy_floor.h"
+#include "equation_of_state.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "random.h"
@@ -28,8 +30,6 @@
 #include "space.h"
 #include "timestep_sync_part.h"
 #include "tracers.h"
-#include "equation_of_state.h"
-#include "entropy_floor.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -56,8 +56,7 @@ runner_iact_nonsym_bh_gas_density(
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
     const struct entropy_floor_properties *floor_props,
-    const integertime_t ti_current,
-    const double time) {
+    const integertime_t ti_current, const double time) {
 
   float wi, wi_dx;
 
@@ -92,8 +91,8 @@ runner_iact_nonsym_bh_gas_density(
 
     /* Check whether we are close to the entropy floor. If we are, we
      * re-calculate the sound speed using the fixed internal energy */
-    const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props)
-        * bh_props->temp_to_u_factor;
+    const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
+                        bh_props->temp_to_u_factor;
     if (pj->u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
         pj->u > bh_props->fixed_u_for_soundspeed) {
       /*const float cj_old = cj; */
