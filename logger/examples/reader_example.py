@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Read a logger file by using an index file.
-Example: ./reader_example.py ../../examples/SedovBlast_3D/index 0.1
+Example: ./reader_example.py -t 0.1 ../../examples/SedovBlast_3D/index_*dump
 """
 import sys
 import numpy as np
