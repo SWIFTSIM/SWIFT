@@ -71,6 +71,7 @@
 #include "hydro.h"
 #include "line_of_sight.h"
 #include "logger.h"
+#include "logger_io.h"
 #include "map.h"
 #include "memuse.h"
 #include "minmax.h"

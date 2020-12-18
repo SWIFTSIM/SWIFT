@@ -62,8 +62,8 @@ include_HEADERS += black_holes.h black_holes_io.h black_holes_properties.h black
 include_HEADERS += feedback.h feedback_struct.h feedback_properties.h 
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
-include_HEADERS += logger_history.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
+include_HEADERS += logger_history.h chemistry_logger.h star_formation_particle_logger.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =
@@ -102,6 +102,48 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedbac
 	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
+# source files for the logger (chemistry)
+CHEMISTRY_LOGGER =
+if HAVE_CHEMISTRY_NONE
+CHEMISTRY_LOGGER += chemistry/none/chemistry_logger.c
+endif
+if HAVE_CHEMISTRY_GEAR
+CHEMISTRY_LOGGER += chemistry/GEAR/chemistry_logger.c
+endif
+
+# source files for the logger (hydro)
+HYDRO_LOGGER =
+if HAVE_GADGET2
+HYDRO_LOGGER += hydro/Gadget2/hydro_logger.c
+endif
+if HAVE_SPHENIX
+HYDRO_LOGGER += hydro/SPHENIX/hydro_logger.c
+endif
+
+# source files for the logger (stars)
+STARS_LOGGER =
+if HAVE_STARS_DEFAULT
+STARS_LOGGER += stars/Default/stars_logger.c
+endif
+if HAVE_STARS_GEAR
+STARS_LOGGER += stars/GEAR/stars_logger.c
+endif
+
+# source files for the logger (stars)
+STAR_FORMATION_LOGGER =
+if HAVE_STAR_FORMATION_DEFAULT
+STAR_FORMATION_LOGGER += star_formation/none/star_formation_particle_logger.c
+endif
+if HAVE_STAR_FORMATION_GEAR
+STAR_FORMATION_LOGGER += star_formation/GEAR/star_formation_particle_logger.c
+endif
+
+# source files for the logger (gravity)
+GRAVITY_LOGGER =
+if HAVE_GRAVITY_MULTISOFTENING
+GRAVITY_LOGGER += gravity/MultiSoftening/gravity_logger.c
+endif
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
@@ -133,6 +175,8 @@ AM_SOURCES += $(QLA_COOLING_SOURCES)
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
 AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
+AM_SOURCES += $(CHEMISTRY_LOGGER) $(HYDRO_LOGGER) $(STARS_LOGGER) $(GRAVITY_LOGGER)
+AM_SOURCES += $(STAR_FORMATION_LOGGER)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
@@ -241,7 +285,7 @@ nobase_noinst_HEADERS += stars/Default/stars_debug.h stars/Default/stars_part.h 
 nobase_noinst_HEADERS += stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h 
 nobase_noinst_HEADERS += stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h 
 nobase_noinst_HEADERS += stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h 
-nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_part.h 
+nobase_noinst_HEADERS += stars/GEAR/stars_debug.h stars/GEAR/stars_logger.h stars/GEAR/stars_part.h
 nobase_noinst_HEADERS += potential/none/potential.h potential/point_mass/potential.h 
 nobase_noinst_HEADERS += potential/isothermal/potential.h potential/disc_patch/potential.h 
 nobase_noinst_HEADERS += potential/sine_wave/potential.h potential/constant/potential.h 
@@ -249,13 +293,15 @@ nobase_noinst_HEADERS += potential/hernquist/potential.h potential/nfw/potential
 nobase_noinst_HEADERS += potential/nfw_mn/potential.h potential/point_mass_softened/potential.h 
 nobase_noinst_HEADERS += potential/point_mass_ring/potential.h 
 nobase_noinst_HEADERS += star_formation/none/star_formation.h star_formation/none/star_formation_struct.h 
-nobase_noinst_HEADERS += star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h 
+nobase_noinst_HEADERS += star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h
+nobase_noinst_HEADERS += star_formation/none/star_formation_particle_logger.h
 nobase_noinst_HEADERS += star_formation/QLA/star_formation.h star_formation/QLA/star_formation_struct.h 
 nobase_noinst_HEADERS += star_formation/QLA/star_formation_io.h star_formation/QLA/star_formation_iact.h 
 nobase_noinst_HEADERS += star_formation/EAGLE/star_formation.h star_formation/EAGLE/star_formation_struct.h 
 nobase_noinst_HEADERS += star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h 
 nobase_noinst_HEADERS += star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h 
 nobase_noinst_HEADERS += star_formation/GEAR/star_formation_io.h star_formation/GEAR/star_formation_iact.h 
+nobase_noinst_HEADERS += star_formation/GEAR/star_formation_particle_logger.h
 nobase_noinst_HEADERS += star_formation/EAGLE/star_formation_logger.h star_formation/EAGLE/star_formation_logger_struct.h 
 nobase_noinst_HEADERS += star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h 
 nobase_noinst_HEADERS += star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h 
@@ -279,10 +325,12 @@ nobase_noinst_HEADERS += cooling/COLIBRE/cooling_tables.h cooling/COLIBRE/coolin
 nobase_noinst_HEADERS += cooling/COLIBRE/cooling_properties.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/none/chemistry_logger.h
 nobase_noinst_HEADERS += chemistry/none/chemistry_struct.h 
 nobase_noinst_HEADERS += chemistry/none/chemistry_iact.h 
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry.h 
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry_io.h 
+nobase_noinst_HEADERS += chemistry/GEAR/chemistry_logger.h
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry_struct.h 
 nobase_noinst_HEADERS += chemistry/GEAR/chemistry_iact.h 
 nobase_noinst_HEADERS += chemistry/GEAR_DIFFUSION/chemistry.h
