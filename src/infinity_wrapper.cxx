@@ -117,10 +117,11 @@ static void *infinity_send_thread(void *arg) {
 
   /* Connect QPs to the remote servers. */
   struct server_data *data = (struct server_data *)arg;
-  data->handle = infinity_connect_clients(data->servers, 
+  data->handle = infinity_connect_clients(data->servers,
                                           data->nr_servers,
                                           data->myrank,
                                           data->verbose);
+  return NULL;
 }
 
 /**
@@ -129,11 +130,12 @@ static void *infinity_send_thread(void *arg) {
 static void *infinity_recv_thread(void *arg) {
 
   struct server_data *data = (struct server_data *)arg;
-  data->handle = infinity_create_servers(data->servers, 
+  data->handle = infinity_create_servers(data->servers,
                                          data->nr_servers,
                                          data->sizes,
-                                         data->myrank, 
+                                         data->myrank,
                                          data->verbose);
+  return NULL;
 }
 
 /**
@@ -152,7 +154,7 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
 
   /* Increment base port for next time. XXX to avoid collisions, must do
    * better. */
-  infinity_base_port += nr_servers;
+  infinity_base_port += nr_servers + 10;
 
   /* Get the IPs of all the ranks. */
   char name[MPI_MAX_PROCESSOR_NAME];
@@ -333,7 +335,7 @@ void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
                           BYTESINBLOCK,                // sizeInBytes
                           infinity::queues::OperationFlags(),
                           &requestToken);
-  requestToken.waitUntilCompleted();  // Since we reuse the sendBuffer.
+  requestToken.waitUntilCompleted();
 
   delete sendBuffer;
 
@@ -348,6 +350,7 @@ void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
 void infinity_free_handle(void *qphandle) {
 
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
+#if 0
   struct qps_data *cqps = (struct qps_data *)qphandle;
   if (cqps == NULL) return;
   if (cqps->qps != NULL) {
@@ -365,8 +368,9 @@ void infinity_free_handle(void *qphandle) {
     free(cqps->token_buffers);
   }
   free(cqps);
-  delete cqps->factory;
-  delete cqps->context;
+  //delete cqps->factory;// use after free.
+  //delete cqps->context;
+#endif
 #endif
   return;
 }
@@ -459,14 +463,13 @@ void *infinity_check_ready(void *qphandle, int index, size_t offset) {
 
   void *result = NULL;
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
-  struct qps_data *cqps = (struct qps_data *)qphandle;
+  volatile struct qps_data *cqps = (struct qps_data *)qphandle;
 
   /* Get the data location. */
-  BLOCKTYPE *dataptr = &((BLOCKTYPE *)cqps->readwrite_buffers[index]->getData())[offset];
+  volatile BLOCKTYPE *dataptr = &((BLOCKTYPE *)cqps->readwrite_buffers[index]->getData())[offset];
 
   /* Check if this has been unlocked. */
-  BLOCKTYPE volatile lock = dataptr[0];
-  if (lock == UNLOCKED) result = (void *)dataptr;
+  if (dataptr[0] == UNLOCKED) result = (void *)dataptr;
 
 #endif
   return result;
