@@ -1071,6 +1071,17 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_bpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
+  /* do a quick check that the box size has valid values */
+#if defined HYDRO_DIMENSION_1D
+  if (dim[0] <= 0.) error("Invalid box size: [%f]", dim[0]);
+#elif defined HYDRO_DIMENSION_2D
+  if (dim[0] <= 0. || dim[1] <= 0.)
+    error("Invalid box size: [%f, %f]", dim[0], dim[1]);
+#else
+  if (dim[0] <= 0. || dim[1] <= 0. || dim[2] <= 0.)
+    error("Invalid box size: [%f, %f, %f]", dim[0], dim[1], dim[2]);
+#endif
+
   /* Initiate some basic randomness */
   srand(42);
 

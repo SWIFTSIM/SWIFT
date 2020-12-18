@@ -96,6 +96,11 @@ struct spart {
   /*! Splitting structure */
   struct particle_splitting_data split_data;
 
+#ifdef WITH_LOGGER
+  /* Additional data for the particle logger */
+  struct logger_part_data logger_data;
+#endif
+
   /*! Radiative Transfer data */
   struct rt_spart_data rt_data;
 

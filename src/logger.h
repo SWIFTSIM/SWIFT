@@ -39,8 +39,8 @@ struct gpart;
 struct part;
 struct engine;
 
-#define logger_major_version 0
-#define logger_minor_version 5
+#define logger_major_version 1
+#define logger_minor_version 0
 /* Size of the strings. */
 #define logger_string_length 200
 
@@ -151,11 +151,20 @@ struct logger_writer {
     /* pointer for the hydro */
     struct mask_data *hydro;
 
+    /* pointer for the chemistry */
+    struct mask_data *chemistry_part;
+
+    /* pointer for the chemistry */
+    struct mask_data *chemistry_spart;
+
     /* pointer for the gravity */
     struct mask_data *gravity;
 
     /* pointer for the stars */
     struct mask_data *stars;
+
+    /* pointer for the star formation */
+    struct mask_data *star_formation;
   } mask_data_pointers;
 
   /* Number of elements in logger_mask_data. */

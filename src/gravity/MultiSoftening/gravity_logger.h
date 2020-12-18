@@ -38,9 +38,7 @@ enum gravity_logger_fields {
 };
 
 /* Name of each possible mask. */
-static const char *gravity_logger_field_names[gravity_logger_field_count] = {
-    "Coordinates", "Velocities", "Accelerations", "Masses", "ParticleIDs",
-};
+extern const char *gravity_logger_field_names[gravity_logger_field_count];
 
 /**
  * @brief Initialize the logger.
