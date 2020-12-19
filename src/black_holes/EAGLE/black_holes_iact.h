@@ -21,6 +21,8 @@
 
 /* Local includes */
 #include "black_holes_parameters.h"
+#include "entropy_floor.h"
+#include "equation_of_state.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "random.h"
@@ -52,8 +54,9 @@ runner_iact_nonsym_bh_gas_density(
     struct bpart *bi, const struct part *pj, const struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct black_holes_props *bh_props, const integertime_t ti_current,
-    const double time) {
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 
   float wi, wi_dx;
 
@@ -83,7 +86,19 @@ runner_iact_nonsym_bh_gas_density(
   bi->ngb_mass += mj;
 
   /* Contribution to the smoothed sound speed */
-  const float cj = hydro_get_comoving_soundspeed(pj);
+  float cj = hydro_get_comoving_soundspeed(pj);
+  if (bh_props->with_fixed_T_near_EoS) {
+
+    /* Check whether we are close to the entropy floor. If we are, we
+     * re-calculate the sound speed using the fixed internal energy */
+    const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
+                        bh_props->temp_to_u_factor;
+    if (pj->u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
+        pj->u > bh_props->fixed_u_for_soundspeed) {
+      cj = gas_soundspeed_from_internal_energy(
+          pj->rho, bh_props->fixed_u_for_soundspeed);
+    }
+  }
   bi->sound_speed_gas += mj * wi * cj;
 
   /* Neighbour internal energy */
@@ -255,15 +270,14 @@ runner_iact_nonsym_bh_gas_density(
  * @param time Current physical time in the simulation.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  struct bpart *bi, struct part *pj,
-                                  struct xpart *xpj, const int with_cosmology,
-                                  const struct cosmology *cosmo,
-                                  const struct gravity_props *grav_props,
-                                  const struct black_holes_props *bh_props,
-                                  const integertime_t ti_current,
-                                  const double time) {
+runner_iact_nonsym_bh_gas_swallow(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *bi, struct part *pj, struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 
   float wi;
 
@@ -629,15 +643,14 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
-                                   const float hi, const float hj,
-                                   const struct bpart *bi, struct part *pj,
-                                   struct xpart *xpj, const int with_cosmology,
-                                   const struct cosmology *cosmo,
-                                   const struct gravity_props *grav_props,
-                                   const struct black_holes_props *bh_props,
-                                   const integertime_t ti_current,
-                                   const double time) {
+runner_iact_nonsym_bh_gas_feedback(
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct bpart *bi, struct part *pj, struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 
   /* Number of energy injections per BH per time-step */
   const int num_energy_injections_per_BH =
