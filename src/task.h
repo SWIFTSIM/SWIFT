@@ -166,6 +166,7 @@ enum task_actions {
 enum task_categories {
   task_category_drift,
   task_category_sort,
+  task_category_resort,
   task_category_hydro,
   task_category_gravity,
   task_category_feedback,
@@ -173,6 +174,7 @@ enum task_categories {
   task_category_cooling,
   task_category_star_formation,
   task_category_limiter,
+  task_category_sync,
   task_category_time_integration,
   task_category_mpi,
   task_category_fof,

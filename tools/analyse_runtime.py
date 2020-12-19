@@ -145,6 +145,7 @@ tasks = [
     "dead time",
     "drift",
     "sort",
+    "resort",
     "hydro",
     "gravity",
     "feedback",
@@ -152,10 +153,12 @@ tasks = [
     "cooling",
     "star formation",
     "limiter",
+    "sync",
     "time integration",
     "mpi",
     "fof",
     "others",
+    "sink",
     "total",
 ]
 
