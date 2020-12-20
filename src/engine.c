@@ -1294,6 +1294,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   }
 
   space_check_sort_flags(e->s);
+
+  /* Check whether all the unskip recursion flags are not set */
+  space_check_unskip_flags(e->s);
 #endif
 
   /* Run through the tasks and mark as skip or not. */
@@ -2298,6 +2301,9 @@ void engine_step(struct engine *e) {
   space_check_limiter(e->s);
   space_check_sort_flags(e->s);
   space_check_swallow(e->s);
+
+  /* Verify that all the unskip flags for the gravity have been cleaned */
+  space_check_unskip_flags(e->s);
 #endif
 
   /* Collect information about the next time-step */
