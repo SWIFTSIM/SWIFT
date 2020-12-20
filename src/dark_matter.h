@@ -303,17 +303,21 @@ __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
         double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0], dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1], dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};
         
         /* Get full dt step from half the step */
-        double dt_grav = 2.f * dt_kick_grav;
+        /*double dt_grav = 2.f * dt_kick_grav;*/
         
         /* Calculate acceleration due to collision */
-        dmp->sidm_data.a_sidm[0] += delta_v[0] / dt_grav;
+        /*dmp->sidm_data.a_sidm[0] += delta_v[0] / dt_grav;
         dmp->sidm_data.a_sidm[1] += delta_v[1] / dt_grav;
-        dmp->sidm_data.a_sidm[2] += delta_v[2] / dt_grav;
+        dmp->sidm_data.a_sidm[2] += delta_v[2] / dt_grav;*/
         
         /* Add acceleration due to collision */
-        dmp->v_full[0] += dmp->sidm_data.a_sidm[0] * dt_kick_grav;
+        /*dmp->v_full[0] += dmp->sidm_data.a_sidm[0] * dt_kick_grav;
         dmp->v_full[1] += dmp->sidm_data.a_sidm[1] * dt_kick_grav;
-        dmp->v_full[2] += dmp->sidm_data.a_sidm[2] * dt_kick_grav;
+        dmp->v_full[2] += dmp->sidm_data.a_sidm[2] * dt_kick_grav;*/
+        
+        dmp->v_full[0] += delta_v[0];
+        dmp->v_full[1] += delta_v[1];
+        dmp->v_full[2] += delta_v[2];
         
         /* Get its gravity friend */
         struct gpart *gp = dmp->gpart;
@@ -325,7 +329,7 @@ __attribute__((always_inline)) INLINE static void do_sidm_kick_to_dmpart(
     }
     
     /* Reset particle SIDM variables */
-    /*sidm_reset(dmp);*/
+    sidm_reset(dmp);
 }
 
 /**

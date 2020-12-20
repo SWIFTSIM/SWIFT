@@ -227,7 +227,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           struct dmpart *restrict dmp = &dmparts[k];
           
           /* Get velocities at beginning of step */
-          sidm_init_velocities(dmp);
+          /*sidm_init_velocities(dmp);*/
 
           /* If the DM particle has no counterpart and needs to be kicked */
           if (dmpart_is_starting(dmp, e)) {
@@ -261,20 +261,20 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
               
         }
           
-        const integertime_t ti_step_dmp = get_integer_timestep(dmp->time_bin);
-        const integertime_t ti_begin_dmp = get_integer_time_begin(ti_current + 1, dmp->time_bin);
+        /*const integertime_t ti_step_dmp = get_integer_timestep(dmp->time_bin);
+        const integertime_t ti_begin_dmp = get_integer_time_begin(ti_current + 1, dmp->time_bin);*/
           
         /* Time interval for this half-kick */
-        double dt_kick_grav_dmp;
+        /*double dt_kick_grav_dmp;
         if (with_cosmology) {
             dt_kick_grav_dmp = cosmology_get_grav_kick_factor(cosmo, ti_begin_dmp,
                                                         ti_begin_dmp + ti_step_dmp / 2);
         } else {
             dt_kick_grav_dmp = (ti_step_dmp / 2) * time_base;
-        }
+        }*/
           
         /* Add half sidm kick regardless part active/inactive */
-        add_half_sidm_kick_to_dmpart(dmp, dt_kick_grav_dmp);
+        /*add_half_sidm_kick_to_dmpart(dmp, dt_kick_grav_dmp);*/
 
       }
 

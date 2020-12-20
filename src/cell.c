@@ -5980,6 +5980,9 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             /* All dmparts get ready for a SIDM calculation */
             sidm_init_dmpart(dmp);
             
+            /* Get i+1/2 velocities */
+            sidm_init_velocities(dmp);
+            
             /* Now drift... */
             drift_dmpart(dmp, dt_drift, ti_old_dmpart, ti_current);
 
