@@ -34,6 +34,27 @@
 #include "timers.h"
 
 /**
+ * @brief Clear the unskip flags of this cell.
+ *
+ * For inactive or foreign cells, we additionally need to recurse.
+ *
+ * @brief c The #cell of interest.
+ * @brief e The #engine (to check whether active or not).
+ */
+static INLINE void runner_clear_grav_flags(struct cell *c,
+                                           const struct engine *e) {
+
+  if ((!cell_is_active_gravity(c, e) || c->nodeID != e->nodeID) && c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) runner_clear_grav_flags(c->progeny[k], e);
+  }
+
+  /* Remove the unskip flags. */
+  cell_clear_flag(c, cell_flag_unskip_self_grav_processed |
+                         cell_flag_unskip_pair_grav_processed);
+}
+
+/**
  * @brief Recursively propagate the multipoles down the tree by applying the
  * L2L and L2P kernels.
  *
@@ -1980,6 +2001,12 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
                                      struct cell *restrict ci,
                                      struct cell *restrict cj) {
 
+  const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+  runner_clear_grav_flags(cj, e);
+
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
     if (ci->progeny[i] != NULL) {
@@ -2001,8 +2028,13 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
 
 void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
                                      const struct cell *cj) {
-  /* Some constants */
+
   const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+
+  /* Some constants */
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
@@ -2109,8 +2141,13 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
                                   struct cell *cj, const int gettimer) {
 
-  /* Some constants */
   const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+  runner_clear_grav_flags(cj, e);
+
+  /* Some constants */
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
@@ -2284,6 +2321,9 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 
   /* Some constants */
   const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(c, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Early abort? */

@@ -1120,20 +1120,30 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
+ *
+ * @return 1 if the cell and its progeny have fully been treated.
  */
-void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
-                                      struct scheduler *s) {
+int cell_activate_subcell_grav_tasks(struct cell *restrict ci,
+                                     struct cell *restrict cj,
+                                     struct scheduler *s) {
+
   /* Some constants */
   const struct space *sp = s->space;
   const struct engine *e = sp->e;
+  const int nodeID = e->nodeID;
 
   /* Self interaction? */
   if (cj == NULL) {
+
     /* Do anything? */
-    if (ci->grav.count == 0 || !cell_is_active_gravity(ci, e)) return;
+    if (ci->grav.count == 0 || !cell_is_active_gravity(ci, e)) return 1;
+
+    /* Has it already been processed? */
+    if (cell_get_flag(ci, cell_flag_unskip_self_grav_processed)) return 1;
 
     /* Recurse? */
     if (ci->split) {
+
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
@@ -1145,17 +1155,33 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
         }
       }
     } else {
+
       /* We have reached the bottom of the tree: activate gpart drift */
       cell_activate_drift_gpart(ci, s);
     }
+
+    /* Flag the cell has having been treated */
+    cell_set_flag(ci, cell_flag_unskip_self_grav_processed);
+
+    /* And also return that information */
+    return 1;
   }
 
   /* Pair interaction */
   else {
-    /* Anything to do here? */
-    if (!cell_is_active_gravity(ci, e) && !cell_is_active_gravity(cj, e))
-      return;
-    if (ci->grav.count == 0 || cj->grav.count == 0) return;
+
+    /* Has it already been processed? */
+    if (cell_get_flag(ci, cell_flag_unskip_pair_grav_processed) &&
+        cell_get_flag(cj, cell_flag_unskip_pair_grav_processed))
+      return 1;
+
+    /* Anything to do here?
+     * Note that Here we return 0 as another pair direction for either of
+     * the two cells could pass the tests. */
+    const int do_ci = cell_is_active_gravity(ci, e) && ci->nodeID == nodeID;
+    const int do_cj = cell_is_active_gravity(cj, e) && cj->nodeID == nodeID;
+    if (!do_ci && !do_cj) return 0;
+    if (ci->grav.count == 0 || cj->grav.count == 0) return 0;
 
     /* Atomically drift the multipole in ci */
     lock_lock(&ci->grav.mlock);
@@ -1172,63 +1198,149 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                              /*is_tree_walk=*/1)) {
 
       /* Ok, no need to drift anything */
-      return;
+      return 0;
     }
-    /* Otherwise, activate the gpart drifts if we are at the bottom. */
+
+    /* Otherwise, if we are at the bottom, activate the gpart drifts. */
     else if (!ci->split && !cj->split) {
+
       /* Activate the drifts if the cells are local. */
       if (cell_is_active_gravity(ci, e) || cell_is_active_gravity(cj, e)) {
-        if (ci->nodeID == engine_rank) cell_activate_drift_gpart(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_gpart(cj, s);
+
+        cell_set_flag(ci, cell_flag_unskip_pair_grav_processed);
+        cell_set_flag(cj, cell_flag_unskip_pair_grav_processed);
+
+        if (ci->nodeID == nodeID) cell_activate_drift_gpart(ci, s);
+        if (cj->nodeID == nodeID) cell_activate_drift_gpart(cj, s);
       }
+
+      /* And return that information */
+      return 1;
+
     }
-    /* Ok, we can still recurse */
+
+    /* Ok, we can still recurse at least on one side. */
     else {
+
       /* Recover the multipole information */
       const struct gravity_tensors *const multi_i = ci->grav.multipole;
       const struct gravity_tensors *const multi_j = cj->grav.multipole;
       const double ri_max = multi_i->r_max;
       const double rj_max = multi_j->r_max;
 
+      int ci_number_children = 0, cj_number_children = 0;
+      int progenies_all_processed = 0;
+
+      /* Let's open up the largest of the two cells,
+       * provided it is split into smaller cells. */
+
       if (ri_max > rj_max) {
+
         if (ci->split) {
-          /* Loop over ci's children */
+
+          /* Loop over ci's children, activate what is needed and
+           * collect the number of cells that have been fully processed */
           for (int k = 0; k < 8; k++) {
-            if (ci->progeny[k] != NULL)
-              cell_activate_subcell_grav_tasks(ci->progeny[k], cj, s);
+            if (ci->progeny[k] != NULL) {
+              ci_number_children++;
+              progenies_all_processed +=
+                  cell_activate_subcell_grav_tasks(ci->progeny[k], cj, s);
+            }
           }
+
+          const int cell_done = (progenies_all_processed == ci_number_children);
+
+          /* Flag the cells as being fully processed. */
+          if (cell_done) {
+            cell_set_flag(ci, cell_flag_unskip_pair_grav_processed);
+          }
+
+          return cell_done;
 
         } else if (cj->split) {
-          /* Loop over cj's children */
+
+          /* Loop over cj's children, activate what is needed and
+           * collect the number of cells that have been fully processed */
           for (int k = 0; k < 8; k++) {
-            if (cj->progeny[k] != NULL)
-              cell_activate_subcell_grav_tasks(ci, cj->progeny[k], s);
+            if (cj->progeny[k] != NULL) {
+              cj_number_children++;
+              progenies_all_processed +=
+                  cell_activate_subcell_grav_tasks(ci, cj->progeny[k], s);
+            }
           }
 
-        } else {
-          error("Fundamental error in the logic");
-        }
-      } else if (rj_max >= ri_max) {
-        if (cj->split) {
-          /* Loop over cj's children */
-          for (int k = 0; k < 8; k++) {
-            if (cj->progeny[k] != NULL)
-              cell_activate_subcell_grav_tasks(ci, cj->progeny[k], s);
+          const int cell_done = (progenies_all_processed == cj_number_children);
+
+          /* Flag the cells as being fully processed. */
+          if (cell_done) {
+            cell_set_flag(cj, cell_flag_unskip_pair_grav_processed);
           }
+
+          return cell_done;
+
+        } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Fundamental error in the logic");
+#endif
+        }
+
+      } else if (rj_max >= ri_max) {
+
+        if (cj->split) {
+
+          /* Loop over cj's children, activate what is needed and
+           * collect the number of cells that have been fully processed */
+          for (int k = 0; k < 8; k++) {
+            if (cj->progeny[k] != NULL) {
+              cj_number_children++;
+              progenies_all_processed +=
+                  cell_activate_subcell_grav_tasks(ci, cj->progeny[k], s);
+            }
+          }
+
+          const int cell_done = (progenies_all_processed == cj_number_children);
+
+          /* Flag the cells as being fully processed. */
+          if (cell_done) {
+            cell_set_flag(cj, cell_flag_unskip_pair_grav_processed);
+          }
+
+          return cell_done;
 
         } else if (ci->split) {
-          /* Loop over ci's children */
+
+          /* Loop over ci's children, activate what is needed and
+           * collect the number of cells that have been fully processed */
           for (int k = 0; k < 8; k++) {
-            if (ci->progeny[k] != NULL)
-              cell_activate_subcell_grav_tasks(ci->progeny[k], cj, s);
+            if (ci->progeny[k] != NULL) {
+              ci_number_children++;
+              progenies_all_processed +=
+                  cell_activate_subcell_grav_tasks(ci->progeny[k], cj, s);
+            }
           }
 
+          const int cell_done = (progenies_all_processed == ci_number_children);
+
+          /* Flag the cells as being done. */
+          if (cell_done) {
+            cell_set_flag(ci, cell_flag_unskip_pair_grav_processed);
+          }
+
+          return cell_done;
+
         } else {
+#ifdef SWIFT_DEBUG_CHECKS
           error("Fundamental error in the logic");
+#endif
         }
       }
     }
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Fundamental error in the logic");
+#endif
+  return -1;
 }
 
 /**
