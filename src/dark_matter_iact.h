@@ -478,17 +478,17 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     
     /* Direction of kick is randomly chosen */
     
-    /* Draw a random number */
-    const float rand_theta = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
+    /* Draw a random number between (0,1] */
+    const float u = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
     
-    /* Transform to random number in [0, pi] */
-    const float theta = M_PI * rand_theta;
+    /* Calculate theta from prob. distribution */
+    const float theta = acos(1.f - 2.f*u);
     
     /* Random number for other angle */
     const float rand_phi = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
     
-    /* Transform to random number in [-pi, pi] range */
-    const float phi = 2.f * M_PI * rand_phi - M_PI;
+    /* Transform to random number in [0, 2 pi] range */
+    const float phi = 2.f * M_PI * rand_phi;
     
     /* Randomly oriented unit vector */
     float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
@@ -573,7 +573,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
-    const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
+    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
@@ -633,7 +633,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     struct sidm_history* sidm_history) {
     
     /* Velocities of interacting particles */
-    const double dv[3] = {pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0], pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1], pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2]};
+    const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     double vij = sqrt(v2);
     
