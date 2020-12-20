@@ -337,7 +337,9 @@ enum cell_flags {
   cell_flag_do_stars_resort = (1UL << 15),
   cell_flag_has_tasks = (1UL << 16),
   cell_flag_do_hydro_sync = (1UL << 17),
-  cell_flag_do_hydro_sub_sync = (1UL << 18)
+  cell_flag_do_hydro_sub_sync = (1UL << 18),
+  cell_flag_unskip_self_grav_processed = (1UL << 19),
+  cell_flag_unskip_pair_grav_processed = (1UL << 20)
 };
 
 /**
@@ -568,8 +570,8 @@ void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s);
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_limiter);
-void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
-                                      struct scheduler *s);
+int cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
+                                     struct scheduler *s);
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_star_formation,
@@ -1252,21 +1254,27 @@ cell_get_stars_sorts(const struct cell *c, const int sid) {
   return &c->stars.sort[j * (c->stars.count + 1)];
 }
 
-/** Set the given flag for the given cell. */
-__attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
-                                                                uint32_t flag) {
+/**
+ * @brief Set the given flag for the given cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_set_flag(
+    struct cell *c, const uint32_t flag) {
   atomic_or(&c->flags, flag);
 }
 
-/** Clear the given flag for the given cell. */
+/**
+ * @brief Clear the given flag for the given cell.
+ */
 __attribute__((always_inline)) INLINE static void cell_clear_flag(
-    struct cell *c, uint32_t flag) {
+    struct cell *c, const uint32_t flag) {
   atomic_and(&c->flags, ~flag);
 }
 
-/** Get the given flag for the given cell. */
+/**
+ * @brief  Get the given flag for the given cell.
+ */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
-    const struct cell *c, uint32_t flag) {
+    const struct cell *c, const uint32_t flag) {
   return (c->flags & flag) > 0;
 }
 
