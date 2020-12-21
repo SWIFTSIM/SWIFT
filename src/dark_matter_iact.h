@@ -482,7 +482,8 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     const float u = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
     
     /* Calculate theta from prob. distribution */
-    const float theta = acos(1.f - 2.f*u);
+    /*const float theta = acos(1.f - 2.f*u);*/
+    const float theta = M_PI * u;
     
     /* Random number for other angle */
     const float rand_phi = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
