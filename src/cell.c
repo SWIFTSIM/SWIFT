@@ -5975,7 +5975,15 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             if (dmpart_is_inhibited(dmp, e)) continue;
             
             /* Get ready for a density calculation */
-            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
+            if (dmpart_is_active(dmp, e)) {
+                
+                dark_matter_init_dmpart(dmp);
+                
+            } else {
+
+                /* Otherwise get drifted velocities for possible SIDM kicks */
+                dark_matter_get_drifted_velocities(dmp, dt_drift);
+            }
             
             /* All dmparts get ready for a SIDM calculation */
             sidm_init_dmpart(dmp);
