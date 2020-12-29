@@ -335,7 +335,7 @@ __attribute__((always_inline)) INLINE static void add_half_sidm_kick_in_kick2(
  * @param dmp #dmpart
  *
  */
-__attribute__((always_inline)) INLINE static void add_half_sidm_kick(struct dmpart *restrict dmp, double dt_grav) {
+__attribute__((always_inline)) INLINE static void add_half_sidm_kick(struct dmpart *restrict dmp, double dt_kick_grav) {
     
     if (dmp->sidm_data.kicked_while_inactive > 0) {
         
