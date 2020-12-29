@@ -301,7 +301,7 @@ __attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *rest
 __attribute__((always_inline)) INLINE static void add_half_sidm_kick_in_kick2(
           struct dmpart *restrict dmp, double dt_kick_grav) {
     
-    if (dmp->sidm_data.kicked_while_inactive > 0) {
+    if (dmp->sidm_data.sidm_flag > 0) {
         
         /* Delta velocity: final - initial */
         double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0], dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1], dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};
@@ -315,9 +315,9 @@ __attribute__((always_inline)) INLINE static void add_half_sidm_kick_in_kick2(
         dmp->sidm_data.a_sidm[2] += delta_v[2] / dt_grav;
         
         /* Add acceleration due to collision */
-        dmp->v_full[0] += dmp->sidm_data.a_sidm[0] * dt_kick_grav;
-        dmp->v_full[1] += dmp->sidm_data.a_sidm[1] * dt_kick_grav;
-        dmp->v_full[2] += dmp->sidm_data.a_sidm[2] * dt_kick_grav;
+        dmp->v_full[0] += delta_v[0] / 2.f;
+        dmp->v_full[1] += delta_v[1] / 2.f;
+        dmp->v_full[2] += delta_v[2] / 2.f;
         
         /* Get its gravity friend */
         struct gpart *gp = dmp->gpart;
@@ -335,9 +335,47 @@ __attribute__((always_inline)) INLINE static void add_half_sidm_kick_in_kick2(
  * @param dmp #dmpart
  *
  */
-__attribute__((always_inline)) INLINE static void add_half_sidm_kick_in_kick1(struct dmpart *restrict dmp, double dt_grav) {
+__attribute__((always_inline)) INLINE static void add_half_sidm_kick(struct dmpart *restrict dmp, double dt_grav) {
     
     if (dmp->sidm_data.kicked_while_inactive > 0) {
+        
+        /* Delta velocity: final - initial */
+        double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0], dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1], dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};
+        
+        /* Get full dt step from half the step */
+        double dt_grav = 2.f * dt_kick_grav;
+        
+        /* Calculate acceleration due to collision */
+        dmp->sidm_data.a_sidm[0] += delta_v[0] / dt_grav;
+        dmp->sidm_data.a_sidm[1] += delta_v[1] / dt_grav;
+        dmp->sidm_data.a_sidm[2] += delta_v[2] / dt_grav;
+        
+        /* Add acceleration due to collision */
+        dmp->v_full[0] += delta_v[0] / 2.f;
+        dmp->v_full[1] += delta_v[1] / 2.f;
+        dmp->v_full[2] += delta_v[2] / 2.f;
+        
+        /* Get its gravity friend */
+        struct gpart *gp = dmp->gpart;
+        
+        /* Synchronize particle's velocities */
+        gp->v_full[0] = dmp->v_full[0];
+        gp->v_full[1] = dmp->v_full[1];
+        gp->v_full[2] = dmp->v_full[2];
+        
+    }
+}
+
+
+/**
+ * @brief Updates #dmparts velocities
+ *
+ * @param dmp #dmpart
+ *
+ */
+__attribute__((always_inline)) INLINE static void add_half_sidm_kick_in_kick1(struct dmpart *restrict dmp, double dt_grav) {
+    
+    if (dmp->sidm_data.kicked_while_inactive > 0 || dmp->sidm_data.sidm_flag > 0) {
         
         /* Add half acceleration due to previous DM collision */
         dmp->v_full[0] += dmp->sidm_data.a_sidm[0] * dt_grav;
