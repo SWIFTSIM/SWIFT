@@ -5968,6 +5968,7 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
         /* Loop over all the star particles in the cell */
         const size_t nr_dmparts = c->dark_matter.count;
         for (size_t k = 0; k < nr_dmparts; k++) {
+            
             /* Get a handle on the spart. */
             struct dmpart *const dmp = &dmparts[k];
             
@@ -5975,17 +5976,12 @@ void cell_drift_dmpart(struct cell *c, const struct engine *e, int force) {
             if (dmpart_is_inhibited(dmp, e)) continue;
             
             /* Get ready for a density calculation */
-            if (dmpart_is_active(dmp, e)) {
+            if (dmpart_is_active(dmp, e)) dark_matter_init_dmpart(dmp);
                 
-                dark_matter_init_dmpart(dmp);
-                
-            } else {
-
-                /* Otherwise get drifted velocities for possible SIDM kicks */
-                dark_matter_get_drifted_velocities(dmp, dt_drift);
-            }
-            
-            /* All dmparts get ready for a SIDM calculation */
+            /* Otherwise get drifted velocities for possible SIDM kicks */
+            /*dark_matter_get_drifted_velocities(dmp, dt_drift);*/
+        
+            /* All dmparts get ready for SIDM calculation */
             sidm_init_dmpart(dmp);
                         
             /* Now drift... */

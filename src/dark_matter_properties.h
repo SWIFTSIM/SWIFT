@@ -113,8 +113,11 @@ struct sidm_dmpart_data {
     /*! Acceleration due to DM self-interactions. */
     float a_sidm[3];
     
-    /*! flag indicating if particle in given time-step has been scattered*/
+    /*! Flag indicating if particle in given time-step has been scattered */
     float sidm_flag;
+    
+    /*! Another flag indicating if particle in given time-step has been scattered */
+    float kicked_while_inactive;
     
     /*! Particle search radius */
     float h_sidm;

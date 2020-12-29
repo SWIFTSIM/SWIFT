@@ -117,38 +117,38 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             /* Anything to do here? (i.e. does this particle need updating?) */
             if (dmpart_is_active(dmp, e)) {
                                 
-                /* do the sidm kick */
-                /*do_sidm_kick_to_dmpart(dmp);*/
+            /* do the sidm kick */
+            /*do_sidm_kick_to_dmpart(dmp);*/
+            
+            /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
+            if (!periodic) {
                 
-                /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
-                if (!periodic) {
+                /* Did the particle leave the box?  */
+                if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
+                    (dmp->x[1] > dim[1]) || (dmp->x[1] < 0.) ||  // y
+                    (dmp->x[2] > dim[2]) || (dmp->x[2] < 0.)) {  // z
                     
-                    /* Did the particle leave the box?  */
-                    if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
-                        (dmp->x[1] > dim[1]) || (dmp->x[1] < 0.) ||  // y
-                        (dmp->x[2] > dim[2]) || (dmp->x[2] < 0.)) {  // z
-                        
-                        lock_lock(&e->s->lock);
-                        
-                        if (lock_unlock(&e->s->lock) != 0)
-                            error("Failed to unlock the space!");
-                        
-                        continue;
-                    }
+                    lock_lock(&e->s->lock);
+                    
+                    if (lock_unlock(&e->s->lock) != 0)
+                        error("Failed to unlock the space!");
+                    
+                    continue;
                 }
-                
-                /* Limit h to within the allowed range */
-                dmp->h = min(dmp->h, dark_matter_h_max);
-                dmp->h = max(dmp->h, dark_matter_h_min);
-                
-                /* Compute (square of) motion since last cell construction */
-                const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] +
-                dmp->x_diff[1] * dmp->x_diff[1] +
-                dmp->x_diff[2] * dmp->x_diff[2];
-                dx2_max = max(dx2_max, dx2);
-                
-                /* Maximal smoothing length */
-                cell_h_max = max(cell_h_max, dmp->h);
+            }
+            
+            /* Limit h to within the allowed range */
+            dmp->h = min(dmp->h, dark_matter_h_max);
+            dmp->h = max(dmp->h, dark_matter_h_min);
+            
+            /* Compute (square of) motion since last cell construction */
+            const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] +
+            dmp->x_diff[1] * dmp->x_diff[1] +
+            dmp->x_diff[2] * dmp->x_diff[2];
+            dx2_max = max(dx2_max, dx2);
+            
+            /* Maximal smoothing length */
+            cell_h_max = max(cell_h_max, dmp->h);
             }
         }
         
