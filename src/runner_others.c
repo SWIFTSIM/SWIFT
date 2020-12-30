@@ -74,12 +74,12 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
     const struct engine *e = r->e;
     /*const int periodic = e->s->periodic;
     const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};*/
-    const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = (e->policy & engine_policy_cosmology);
+    /*const struct cosmology *cosmo = e->cosmology;
+    const int with_cosmology = (e->policy & engine_policy_cosmology);*/
     /*const float dark_matter_h_max = e->sidm_properties->h_max;
     const float dark_matter_h_min = e->sidm_properties->h_min;*/
-    const integertime_t ti_current = e->ti_current;
-    const double time_base = e->time_base;
+    /*const integertime_t ti_current = e->ti_current;
+    const double time_base = e->time_base;*/
 
     /*float dx_max = 0.f, dx2_max = 0.f;
     float cell_h_max = 0.f;*/
@@ -117,17 +117,17 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             
             if (!dmpart_is_active(dmp, e)) {
                 
-                const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
-                const integertime_t ti_begin = get_integer_time_begin(ti_current, dmp->time_bin);
+                /*const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
+                const integertime_t ti_begin = get_integer_time_begin(ti_current, dmp->time_bin);*/
                 
                 /* Time interval for this half-kick */
-                double dt_kick_grav;
+                /*double dt_kick_grav;
                 if (with_cosmology) {
                     dt_kick_grav = cosmology_get_grav_kick_factor(
                                                                   cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
                 } else {
                     dt_kick_grav = (ti_step / 2) * time_base;
-                }
+                }*/
             
                 /* Add half kick extra from SIDM */
                 /*add_half_sidm_kick(dmp, dt_kick_grav);*/
