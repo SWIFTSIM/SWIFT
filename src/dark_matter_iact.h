@@ -604,8 +604,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     if (Probability_SIDM_i > rand) {
         
         /* Part j is not within the timestep, let's wake it up for the SIDM kick */
-        /*timestep_sync_dmpart(pj);*/
-        /* Then let's remember it got kicked while inactive */
+        timestep_sync_dmpart(pj);
+        
+        /* Also let's remember it got kicked while inactive */
         pj->sidm_data.kicked_while_inactive = 1.f;
         
         /* Log the kick */

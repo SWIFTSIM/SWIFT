@@ -114,7 +114,10 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   kick_dmpart(p, dt_kick_grav, new_ti_beg, new_ti_beg + new_dti);
       
   /* Did this particle had a SIDM kick? if so, resolve */
-  /*do_sidm_kick_to_dmpart(p, dt_kick_grav / 2.f);*/
+  sidm_kick_to_dmpart(p, dt_kick_grav);
+    
+  /* Prepare velocities for next kick calculation */
+  sidm_init_velocities(p);
 
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */

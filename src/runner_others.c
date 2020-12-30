@@ -130,10 +130,10 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
                 }
             
                 /* Add half kick extra from SIDM */
-                add_half_sidm_kick(dmp, dt_kick_grav);
+                /*add_half_sidm_kick(dmp, dt_kick_grav);*/
                 
                 /* Prepare velocities for next kicks calculation */
-                sidm_init_velocities(dmp);
+                /*sidm_init_velocities(dmp);*/
             }
             
             /* Anything to do here? (i.e. does this particle need updating?) */

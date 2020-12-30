@@ -260,7 +260,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
               kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
               
               /* Add half sidm kick, if thre's any, then reset acceleration */
-              add_half_sidm_kick_in_kick1(dmp, dt_kick_grav);
+              /*add_half_sidm_kick_in_kick1(dmp, dt_kick_grav);*/
               
         }
           
@@ -544,7 +544,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
                          ti_begin + ti_step);
               
               /* Add half kick extra from SIDM */
-              add_half_sidm_kick_in_kick2(dmp, dt_kick_grav);
+              sidm_kick_in_kick2(dmp, dt_kick_grav);
               
 #ifdef SWIFT_DEBUG_CHECKS
               /* Check that kick and the drift are synchronized */
@@ -555,7 +555,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               /* Prepare the values to be drifted */
               dark_matter_reset_predicted_values(dmp);
               
-              /* Prepare velocities for kicks calculation */
+              /* Prepare velocities for next kick calculation */
               sidm_init_velocities(dmp);
           }
       }
