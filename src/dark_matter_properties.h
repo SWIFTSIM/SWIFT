@@ -124,6 +124,8 @@ struct sidm_dmpart_data {
     
     /*! Number of DM-DM collisions */
     float num_sidm;
+    
+    float dt_drift;
 };
 
 void sidm_props_init(struct sidm_props* sidm_props,

@@ -72,17 +72,17 @@
 void runner_do_sidm_kick(struct runner *r, struct cell *c) {
 
     const struct engine *e = r->e;
-    /*const int periodic = e->s->periodic;
-    const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};*/
+    const int periodic = e->s->periodic;
+    const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
     /*const struct cosmology *cosmo = e->cosmology;
     const int with_cosmology = (e->policy & engine_policy_cosmology);*/
-    /*const float dark_matter_h_max = e->sidm_properties->h_max;
-    const float dark_matter_h_min = e->sidm_properties->h_min;*/
+    const float dark_matter_h_max = e->sidm_properties->h_max;
+    const float dark_matter_h_min = e->sidm_properties->h_min;
     /*const integertime_t ti_current = e->ti_current;
     const double time_base = e->time_base;*/
 
-    /*float dx_max = 0.f, dx2_max = 0.f;
-    float cell_h_max = 0.f;*/
+    float dx_max = 0.f, dx2_max = 0.f;
+    float cell_h_max = 0.f;
 
     /* Anything to do here? */
     if (c->dark_matter.count == 0) return;
@@ -94,6 +94,7 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
     if (c->split) {
         for (int k = 0; k < 8; k++) {
             if (c->progeny[k] != NULL) {
+                
                 /* Load the child cell */
                 struct cell *restrict cp = c->progeny[k];
                 runner_do_sidm_kick(r, cp);
@@ -104,8 +105,6 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
         }
     } else {
         
-
-
         struct dmpart *restrict dmparts = c->dark_matter.parts;
         const int count = c->dark_matter.count;
         
@@ -115,38 +114,14 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             /* Get a handle on the part. */
             struct dmpart *restrict dmp = &dmparts[k];
             
-            if (!dmpart_is_active(dmp, e)) {
-                
-                /*const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
-                const integertime_t ti_begin = get_integer_time_begin(ti_current, dmp->time_bin);*/
-                
-                /* Time interval for this half-kick */
-                /*double dt_kick_grav;
-                if (with_cosmology) {
-                    dt_kick_grav = cosmology_get_grav_kick_factor(
-                                                                  cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
-                } else {
-                    dt_kick_grav = (ti_step / 2) * time_base;
-                }*/
-            
-                /* Add half kick extra from SIDM */
-                /*add_half_sidm_kick(dmp, dt_kick_grav);*/
-                
-                /* Prepare velocities for next kicks calculation */
-                /*sidm_init_velocities(dmp);*/
-            }
-            
-            /* Anything to do here? (i.e. does this particle need updating?) */
-            /*if (dmpart_is_active(dmp, e)) {*/
-                                
-            /* do the sidm kick */
-            /*do_sidm_kick_to_dmpart(dmp);*/
+            /* Do the SIDM kick */
+            sidm_kick_to_dmpart(dmp);
             
             /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
-            /*if (!periodic) {*/
+            if (!periodic) {
                 
                 /* Did the particle leave the box?  */
-                /*if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
+                if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
                     (dmp->x[1] > dim[1]) || (dmp->x[1] < 0.) ||  // y
                     (dmp->x[2] > dim[2]) || (dmp->x[2] < 0.)) {  // z
                     
@@ -157,29 +132,26 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
                     
                     continue;
                 }
-            }*/
+            }
             
             /* Limit h to within the allowed range */
-            /*dmp->h = min(dmp->h, dark_matter_h_max);
-            dmp->h = max(dmp->h, dark_matter_h_min);*/
+            dmp->h = min(dmp->h, dark_matter_h_max);
+            dmp->h = max(dmp->h, dark_matter_h_min);
             
             /* Compute (square of) motion since last cell construction */
-            /*const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] +
-            dmp->x_diff[1] * dmp->x_diff[1] +
-            dmp->x_diff[2] * dmp->x_diff[2];
-            dx2_max = max(dx2_max, dx2);*/
+            const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] + dmp->x_diff[1] * dmp->x_diff[1] + dmp->x_diff[2] * dmp->x_diff[2];
+            dx2_max = max(dx2_max, dx2);
             
             /* Maximal smoothing length */
-            /*cell_h_max = max(cell_h_max, dmp->h);
-            }*/
+            cell_h_max = max(cell_h_max, dmp->h);
         }
         
         /* Now, get the maximal particle motion from its square */
-        /*dx_max = sqrtf(dx2_max);*/
+        dx_max = sqrtf(dx2_max);
         
         /* Store the values */
-        /*c->dark_matter.h_max = cell_h_max;
-        c->dark_matter.dx_max_part = dx_max;*/
+        c->dark_matter.h_max = cell_h_max;
+        c->dark_matter.dx_max_part = dx_max;
     
     }
 }

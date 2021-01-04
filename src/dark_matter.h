@@ -57,11 +57,17 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
  * @param dt_kick_grav The time (for gravity accelerations) since the last kick.
  * @param v (return) The velocities at the current time.
  */
-__attribute__((always_inline)) INLINE static void dark_matter_get_drifted_velocities(struct dmpart *restrict dmp, float dt_kick_grav) {
+__attribute__((always_inline)) INLINE static void dark_matter_get_drifted_velocities(struct dmpart *restrict dmp, float dt_drift) {
     
-    dmp->sidm_data.v_full[0] += dmp->gpart->a_grav[0] * dt_kick_grav;
-    dmp->sidm_data.v_full[1] += dmp->gpart->a_grav[1] * dt_kick_grav;
-    dmp->sidm_data.v_full[2] += dmp->gpart->a_grav[2] * dt_kick_grav;
+    /* No SIDM flag */
+    dmp->sidm_data.sidm_flag = 0.0f;
+    
+    /* Drift time */
+    dmp->sidm_data.dt_drift = dt_drift;
+    
+    dmp->sidm_data.v_full[0] += dmp->gpart->a_grav[0] * dt_drift / 2.f;
+    dmp->sidm_data.v_full[1] += dmp->gpart->a_grav[1] * dt_drift / 2.f;
+    dmp->sidm_data.v_full[2] += dmp->gpart->a_grav[2] * dt_drift / 2.f;
     
     dmp->sidm_data.vi_full[0] = dmp->sidm_data.v_full[0];
     dmp->sidm_data.vi_full[1] = dmp->sidm_data.v_full[1];
@@ -74,10 +80,13 @@ __attribute__((always_inline)) INLINE static void dark_matter_get_drifted_veloci
  *
  * @param gp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dmpart* gp) {
+__attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dmpart* gp, float dt_drift) {
     
     /* No SIDM flag */
     gp->sidm_data.sidm_flag = 0.0f;
+    
+    /* Drift time */
+    gp->sidm_data.dt_drift = dt_drift;
     
     /* Set copy of particle velocity */
     gp->sidm_data.v_full[0] = gp->v_full[0];
@@ -142,6 +151,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->sidm_data.a_sidm[0] = 0.0f;
     dmp->sidm_data.a_sidm[1] = 0.0f;
     dmp->sidm_data.a_sidm[2] = 0.0f;
+    dmp->sidm_data.dt_drift = 0.0f;
 
     dmp->time_bin = 0;
 
@@ -335,36 +345,43 @@ __attribute__((always_inline)) INLINE static void sidm_kick_in_kick2(
  * @param dmp #dmpart
  *
  */
-__attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmpart *restrict dmp, double dt_kick_grav) {
+__attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmpart *restrict dmp) {
     
-    if (dmp->sidm_data.kicked_while_inactive > 0) {
+    if (dmp->sidm_data.kicked_while_inactive > 0 || dmp->sidm_data.sidm_flag > 0) {
         
         /* Delta velocity: final - initial */
         double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0], dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1], dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};
         
-        /* Get full dt step from half the step */
-        /*double dt_grav = 2.f * dt_kick_grav;*/
-        
-        /* Calculate acceleration due to collision */
-        /*dmp->sidm_data.a_sidm[0] += delta_v[0] / dt_grav;
-        dmp->sidm_data.a_sidm[1] += delta_v[1] / dt_grav;
-        dmp->sidm_data.a_sidm[2] += delta_v[2] / dt_grav;*/
-        
-        /* Add acceleration due to collision */
+        /* Reverse half drift */
+        dmp->x[0] -= dmp->v_full[0] * dmp->sidm_data.dt_drift / 2.f;
+        dmp->x[1] -= dmp->v_full[1] * dmp->sidm_data.dt_drift / 2.f;
+        dmp->x[2] -= dmp->v_full[2] * dmp->sidm_data.dt_drift / 2.f;
+
+        /* Add vel. kick due to collision */
         dmp->v_full[0] += delta_v[0];
         dmp->v_full[1] += delta_v[1];
         dmp->v_full[2] += delta_v[2];
         
+        /* Now add half drift with new velocity */
+        dmp->x[0] += dmp->v_full[0] * dmp->sidm_data.dt_drift / 2.f;
+        dmp->x[1] += dmp->v_full[1] * dmp->sidm_data.dt_drift / 2.f;
+        dmp->x[2] += dmp->v_full[2] * dmp->sidm_data.dt_drift / 2.f;
+
         /* Get its gravity friend */
         struct gpart *gp = dmp->gpart;
         
-        /* Synchronize particle's velocities */
+        /* Synchronize particle's velocities and positions */
         gp->v_full[0] = dmp->v_full[0];
         gp->v_full[1] = dmp->v_full[1];
         gp->v_full[2] = dmp->v_full[2];
-        
+
+        gp->x[0] = dmp->x[0];
+        gp->x[1] = dmp->x[1];
+        gp->x[2] = dmp->x[2];
+
         /* Remove flag */
         dmp->sidm_data.kicked_while_inactive = 0.f;
+        dmp->sidm_data.sidm_flag = 0.f;
         
     }
 }
