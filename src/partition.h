@@ -66,6 +66,10 @@ struct repartition {
   /* The partition as a cell-list. */
   int ncelllist;
   int *celllist;
+
+  /* And the active ranks. */
+  int nusedranks;
+  int *usedranks;
 };
 
 /* Simple descriptions of types for reports. */

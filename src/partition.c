@@ -77,7 +77,7 @@ const char *repartition_name[] = {
     "vertex task costs and edge delta timebin weights"};
 
 /* Local functions, if needed. */
-static int check_complete(struct space *s, int verbose, int nregions);
+static int *check_complete(struct space *s, int verbose, int nregions);
 
 /*
  * Repartition fixed costs per type/subtype. These are determined from the
@@ -1930,7 +1930,9 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
     /* The grid technique can fail, so check for this before proceeding. */
-    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+    int *present = check_complete(s, (nodeID == 0), nr_nodes);
+    if (present != NULL) {
+      free(present);
       if (nodeID == 0)
         message("Grid initial partition failed, using a vectorised partition");
       initial_partition->type = INITPART_VECTORIZE;
@@ -1993,7 +1995,9 @@ void partition_initial_partition(struct partition *initial_partition,
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
-    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+    int *present = check_complete(s, (nodeID == 0), nr_nodes);
+    if (present != NULL) {
+      free(present);
       if (nodeID == 0)
         message("METIS initial partition failed, using a vectorised partition");
       initial_partition->type = INITPART_VECTORIZE;
@@ -2247,9 +2251,10 @@ static int repart_init_fixed_costs(void) {
  * @param s the space containing the cells to check.
  * @param nregions number of regions expected.
  * @param verbose if true report the missing regions.
- * @return true if all regions have been found, false otherwise.
+ * @return indexed list of nodes found in partition, size nregions, will be
+ * NULL if all nodes are present. When not-NULL you need to free() this.
  */
-static int check_complete(struct space *s, int verbose, int nregions) {
+static int *check_complete(struct space *s, int verbose, int nregions) {
 
   int *present = NULL;
   if ((present = (int *)malloc(sizeof(int) * nregions)) == NULL)
@@ -2270,8 +2275,11 @@ static int check_complete(struct space *s, int verbose, int nregions) {
       if (verbose) message("Region %d is not present in partition", i);
     }
   }
-  free(present);
-  return (!failed);
+  if (!failed) {
+    free(present);
+    present = NULL;
+  }
+  return present;
 }
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
@@ -2507,7 +2515,12 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
   }
 
   /* Check we have all nodeIDs present in the resample. */
-  return check_complete(s, 1, s->e->nr_nodes);
+  int *present = check_complete(s, 1, s->e->nr_nodes);
+  if (present != NULL) {
+    free(present);
+    return 0;
+  }
+  return 1;
 }
 
 /**
@@ -2530,6 +2543,25 @@ void partition_store_celllist(struct space *s, struct repartition *reparttype) {
   for (int i = 0; i < s->nr_cells; i++) {
     reparttype->celllist[i] = s->cells_top[i].nodeID;
   }
+
+  /* Also store the list of used nodes, these may be incomplete by intent. */
+  if (reparttype->usedranks == NULL) {
+    if ((reparttype->usedranks = (int *)malloc(sizeof(int) * s->e->nr_nodes)) == NULL)
+      error("Failed to allocate usedranks");
+    reparttype->nusedranks = s->e->nr_nodes;
+  }
+  int *present = check_complete(s, 1, s->e->nr_nodes);
+  if (present != NULL) {
+
+    /* Incomplete list, copy that. */
+    memcpy(reparttype->usedranks, present, s->e->nr_nodes * sizeof(int));
+  } else {
+
+    /* All present. */
+    for (int i = 0; i < s->e->nr_nodes; i++) {
+      reparttype->usedranks[i] = 1;
+    }
+  }
 }
 
 /**
@@ -2547,9 +2579,34 @@ void partition_restore_celllist(struct space *s,
       for (int i = 0; i < s->nr_cells; i++) {
         s->cells_top[i].nodeID = reparttype->celllist[i];
       }
-      if (!check_complete(s, 1, s->e->nr_nodes)) {
-        error("Not all ranks are present in the restored partition");
+
+      if (reparttype->nusedranks != s->e->nr_nodes)
+        error("Mismatched no. of ranks in restored partition");
+
+      int *present = check_complete(s, 1, reparttype->nusedranks);
+      int mismatch = 0;
+      if (present != NULL) {
+
+        /* Should match the stored nodes. */
+        for (int i = 0; i < reparttype->nusedranks; i++) {
+          if (reparttype->usedranks[i] != present[i]) {
+            mismatch = 1;
+            break;
+          }
+        }
+        free(present);
+      } else {
+
+        /* Should be all present. */
+        for (int i = 0; i < reparttype->nusedranks; i++) {
+          if (reparttype->usedranks[i] != 1) {
+            mismatch = 1;
+            break;
+          }
+        }
       }
+      if (mismatch) error("Mismatch of active ranks in the restored partition");
+
     } else {
       error(
           "Cannot apply the saved partition celllist as the "
@@ -2571,10 +2628,14 @@ void partition_struct_dump(struct repartition *reparttype, FILE *stream) {
                        "repartition", "repartition params");
 
   /* Also save the celllist, if we have one. */
-  if (reparttype->ncelllist > 0)
+  if (reparttype->ncelllist > 0) {
     restart_write_blocks(reparttype->celllist,
                          sizeof(int) * reparttype->ncelllist, 1, stream,
                          "celllist", "repartition celllist");
+    restart_write_blocks(reparttype->usedranks,
+                         sizeof(int) * reparttype->nusedranks, 1, stream,
+                         "usedranks", "repartition usedranks");
+  }
 }
 
 /**
@@ -2596,5 +2657,12 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
     restart_read_blocks(reparttype->celllist,
                         sizeof(int) * reparttype->ncelllist, 1, stream, NULL,
                         "repartition celllist");
+
+    if ((reparttype->usedranks =
+         (int *)malloc(sizeof(int) * reparttype->nusedranks)) == NULL)
+      error("Failed to allocate celllist");
+    restart_read_blocks(reparttype->usedranks,
+                        sizeof(int) * reparttype->nusedranks, 1, stream, NULL,
+                        "repartition usedranks");
   }
 }
