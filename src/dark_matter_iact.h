@@ -466,8 +466,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
  * @param ti_current Current integer time (for random numbers).
  *
  */
-__attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict pj,
-                                                               struct dmpart *restrict pi, const integertime_t ti_current,
+__attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict pi,
+                                                               struct dmpart *restrict pj, const integertime_t ti_current,
                                                                struct sidm_history* sidm_history) {
     
     /* Center of Mass Velocity of interacting particles */
@@ -499,14 +499,14 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
 
     double energy_prev_j = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
 
-    pj->sidm_data.v_full[0] = VCM[0] + dv * e[0];
-    pj->sidm_data.v_full[1] = VCM[1] + dv * e[1];
-    pj->sidm_data.v_full[2] = VCM[2] + dv * e[2];
-    
     pi->sidm_data.v_full[0] = VCM[0] - dv * e[0];
     pi->sidm_data.v_full[1] = VCM[1] - dv * e[1];
     pi->sidm_data.v_full[2] = VCM[2] - dv * e[2];
 
+    pj->sidm_data.v_full[0] = VCM[0] + dv * e[0];
+    pj->sidm_data.v_full[1] = VCM[1] + dv * e[1];
+    pj->sidm_data.v_full[2] = VCM[2] + dv * e[2];
+    
     /* Communicating this kick to logger */
     if (pi->sidm_data.sidm_flag > 0) {
         energy_before = 0.;
