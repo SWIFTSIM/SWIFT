@@ -347,7 +347,7 @@ __attribute__((always_inline)) INLINE static void sidm_kick_in_kick2(
  */
 __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmpart *restrict dmp) {
     
-    if (dmp->sidm_data.kicked_while_inactive > 0 || dmp->sidm_data.sidm_flag > 0) {
+    if (dmp->sidm_data.kicked_while_inactive || dmp->sidm_data.sidm_flag > 0) {
         
         /* Delta velocity: final - initial */
         double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0], dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1], dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};

@@ -44,11 +44,11 @@
 INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct engine *e,
                                               const struct cosmology *cosmo) {
 
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const integertime_t ti_current = e->ti_current;
+  /*const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const integertime_t ti_current = e->ti_current;*/
   const timebin_t min_active_bin = e->min_active_bin;
   const timebin_t max_active_bin = e->max_active_bin;
-  const double time_base = e->time_base;
+  /*const double time_base = e->time_base;*/
     
   /* This particle is already active. Nothing to do here... */
   if (p->time_bin <= max_active_bin) {
@@ -58,41 +58,24 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   /* We want to make the particle finish it's time-step now. */
 
   /* Start by recovering the start and end point of the particle's time-step. */
-  const integertime_t old_ti_beg =
+  /*const integertime_t old_ti_beg =
       get_integer_time_begin(ti_current, p->time_bin);
   const integertime_t old_ti_end =
-      get_integer_time_end(ti_current, p->time_bin);
+      get_integer_time_end(ti_current, p->time_bin);*/
 
   /* Old time-step length on the time-line */
-  const integertime_t old_dti = old_ti_end - old_ti_beg;
+  /*const integertime_t old_dti = old_ti_end - old_ti_beg;*/
 
   /* The actual time-step size this particle will use */
-  const integertime_t new_ti_beg = old_ti_beg;
+  /*const integertime_t new_ti_beg = old_ti_beg;
   const integertime_t new_ti_end = ti_current;
   const integertime_t new_dti = new_ti_end - new_ti_beg;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Some basic safety checks */
-  if (old_ti_beg >= ti_current)
-    error(
-        "Incorrect value for old time-step beginning ti_current=%lld, "
-        "old_ti_beg=%lld",
-        ti_current, old_ti_beg);
 
-  if (old_ti_end <= ti_current)
-    error(
-        "Incorrect value for old time-step end ti_current=%lld, "
-        "old_ti_end=%lld",
-        ti_current, old_ti_end);
-
-  if (new_ti_end > old_ti_end) error("New end of time-step after the old one");
-
-  if (new_dti > old_dti) error("New time-step larger than old one");
-#endif
-
-  double dt_kick_grav = 0.;
+  double dt_kick_grav = 0.;*/
 
   /* Now we need to reverse the kick1... (the dt are negative here) */
+  /* CC. Why do we need to reverse?
   if (with_cosmology) {
     dt_kick_grav = -cosmology_get_grav_kick_factor(cosmo, old_ti_beg,
                                                    old_ti_beg + old_dti / 2);
@@ -100,10 +83,15 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
     dt_kick_grav = -(old_dti / 2) * time_base;
   }
 
-  kick_dmpart(p, dt_kick_grav, old_ti_beg + old_dti / 2, old_ti_beg);
+  kick_dmpart(p, dt_kick_grav, old_ti_beg + old_dti / 2, old_ti_beg);*/
 
   /* We can now produce a kick to the current point */
-  if (with_cosmology) {
+  /* CC. Let's do the SIDM kick and complete kick2 */
+    
+  /* Did this particle had a SIDM kick? if so, resolve */
+  sidm_kick_to_dmpart(p);
+
+  /*if (with_cosmology) {
     dt_kick_grav =
         cosmology_get_grav_kick_factor(cosmo, old_ti_beg, new_ti_beg + new_dti);
       
@@ -111,10 +99,8 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
     dt_kick_grav = (new_dti) * time_base;
   }
 
-  kick_dmpart(p, dt_kick_grav, new_ti_beg, new_ti_beg + new_dti);
-      
-  /* Did this particle had a SIDM kick? if so, resolve */
-  sidm_kick_to_dmpart(p);
+  kick_dmpart(p, dt_kick_grav, new_ti_beg, new_ti_beg + new_dti);*/
+    
     
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */

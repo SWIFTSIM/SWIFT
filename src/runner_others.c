@@ -114,36 +114,40 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
             /* Get a handle on the part. */
             struct dmpart *restrict dmp = &dmparts[k];
             
-            /* Do the SIDM kick */
-            sidm_kick_to_dmpart(dmp);
+            /* Is this part within the time step? */
+            if (dmpart_is_active(dmp, e)) {
             
-            /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
-            if (!periodic) {
+                /* Do the SIDM kick */
+                sidm_kick_to_dmpart(dmp);
                 
-                /* Did the particle leave the box?  */
-                if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
-                    (dmp->x[1] > dim[1]) || (dmp->x[1] < 0.) ||  // y
-                    (dmp->x[2] > dim[2]) || (dmp->x[2] < 0.)) {  // z
+                /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
+                if (!periodic) {
                     
-                    lock_lock(&e->s->lock);
-                    
-                    if (lock_unlock(&e->s->lock) != 0)
-                        error("Failed to unlock the space!");
-                    
-                    continue;
+                    /* Did the particle leave the box?  */
+                    if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
+                        (dmp->x[1] > dim[1]) || (dmp->x[1] < 0.) ||  // y
+                        (dmp->x[2] > dim[2]) || (dmp->x[2] < 0.)) {  // z
+                        
+                        lock_lock(&e->s->lock);
+                        
+                        if (lock_unlock(&e->s->lock) != 0)
+                            error("Failed to unlock the space!");
+                        
+                        continue;
+                    }
                 }
+                
+                /* Limit h to within the allowed range */
+                dmp->h = min(dmp->h, dark_matter_h_max);
+                dmp->h = max(dmp->h, dark_matter_h_min);
+                
+                /* Compute (square of) motion since last cell construction */
+                const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] + dmp->x_diff[1] * dmp->x_diff[1] + dmp->x_diff[2] * dmp->x_diff[2];
+                dx2_max = max(dx2_max, dx2);
+                
+                /* Maximal smoothing length */
+                cell_h_max = max(cell_h_max, dmp->h);
             }
-            
-            /* Limit h to within the allowed range */
-            dmp->h = min(dmp->h, dark_matter_h_max);
-            dmp->h = max(dmp->h, dark_matter_h_min);
-            
-            /* Compute (square of) motion since last cell construction */
-            const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] + dmp->x_diff[1] * dmp->x_diff[1] + dmp->x_diff[2] * dmp->x_diff[2];
-            dx2_max = max(dx2_max, dx2);
-            
-            /* Maximal smoothing length */
-            cell_h_max = max(cell_h_max, dmp->h);
         }
         
         /* Now, get the maximal particle motion from its square */
