@@ -374,31 +374,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
     pj->density.wcount += wj;
     pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
-    
-    /* Delta velocities :
-     * (Note we don't include a Hubble term since we are interested in the
-     * velocity contribution at the location of the particle) */
-    const double dv[3] = {pj->v_full[0] - pi->v_full[0], pj->v_full[1] - pi->v_full[1], pj->v_full[2] - pi->v_full[2]};
-    const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    
-    pj->avg_pair_v += sqrt(v2);
-    pi->avg_pair_v += sqrt(v2);
-    
-    /* Contribution to the smoothed velocity */
-    pi->velocity_ngb[0] += mj * dv[0] * wi;
-    pi->velocity_ngb[1] += mj * dv[1] * wi;
-    pi->velocity_ngb[2] += mj * dv[2] * wi;
-
-    const double dvi[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
-    pj->velocity_ngb[0] += mi * dvi[0] * wj;
-    pj->velocity_ngb[1] += mi * dvi[1] * wj;
-    pj->velocity_ngb[2] += mi * dvi[2] * wj;
-
-    /* Contribution to the smoothed squared relative velocity (for dispersion)
-     * We will convert this to actual dispersion later. */
-    pi->velocity_dispersion += mj * wi * v2;
-    pj->velocity_dispersion += mi * wj * v2;
-    
+        
     /* Increasing counters */
     ++pi->num_neighbours;
     ++pj->num_neighbours;
@@ -438,22 +414,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     pi->density.wcount += wi;
     pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
     
-    /* Neighbour's velocity in the frame of the dark matter particle
-     * (we don't include a Hubble term since we are interested in the
-     * velocity contribution at the location of the particle) */
-    const double dv[3] = {pj->v_full[0] - pi->v_full[0], pj->v_full[1] - pi->v_full[1], pj->v_full[2] - pi->v_full[2]};
-    const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    pi->avg_pair_v += sqrt(v2);
-    
-    /* Contribution to the smoothed velocity */
-    pi->velocity_ngb[0] += mj * dv[0] * wi;
-    pi->velocity_ngb[1] += mj * dv[1] * wi;
-    pi->velocity_ngb[2] += mj * dv[2] * wi;
-
-    /* Contribution to the smoothed squared relative velocity (for dispersion)
-     * We will convert this to actual dispersion later. */
-    pi->velocity_dispersion += mj * wi * v2;
-
     /* Increasing counter */
     ++pi->num_neighbours;
 }
@@ -548,8 +508,13 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     pi->sidm_data.sidm_flag = 1;
     
     /* Add counter of DM-DM collisions of individual particles */
-    pj->sidm_data.num_sidm += 1.f;
-    pi->sidm_data.num_sidm += 1.f;
+    pj->sidm_data.number_of_sidm_events += 1.f;
+    pi->sidm_data.number_of_sidm_events += 1.f;
+    
+    pi->sidm_data.sidm_events_per_timestep += 1.f;
+    pj->sidm_data.sidm_events_per_timestep += 1.f;
+    
+    if (pi->sidm_data.max_sidm_events_per_timestep > 1 || pj->sidm_data.max_sidm_events_per_timestep > 1) message("Particle has had more than 1 collision per timestep");
     
 }
 
@@ -605,9 +570,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
         
         /* Part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
-        
-        /* Also let's remember it got kicked while inactive */
-        pj->sidm_data.kicked_while_inactive = 1.f;
         
         /* Log the kick */
         dark_matter_log_num_events(sidm_history, 1);

@@ -156,7 +156,6 @@ void runner_do_sidm_kick(struct runner *r, struct cell *c) {
         /* Store the values */
         c->dark_matter.h_max = cell_h_max;
         c->dark_matter.dx_max_part = dx_max;
-    
     }
 }
 

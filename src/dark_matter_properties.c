@@ -85,9 +85,6 @@ void sidm_props_init(struct sidm_props* sidm_props,
     sidm_props->h_max = parser_get_opt_param_float(params, "SIDM:h_max",
                                           sidm_props_default_h_max);
     
-    sidm_props->h_search_radius = parser_get_opt_param_float(params, "SIDM:h_sidm",
-                                                   sidm_props_default_h_sidm);
-    
     /* Minimal smoothing length ratio to softening */
     sidm_props->h_min_ratio = parser_get_opt_param_float(params, "SIDM:h_min_ratio",
                                                 sidm_props_default_h_min_ratio);
@@ -110,9 +107,6 @@ void sidm_props_init(struct sidm_props* sidm_props,
     
     /* ------ Time integration parameters ------------ */
     
-    /* Time integration properties */
-    sidm_props->CFL_condition = parser_get_param_float(params, "SIDM:CFL_condition");
-    
     const float max_volume_change = parser_get_opt_param_float(params, "SPH:max_volume_change", sidm_props_default_volume_change);
     
     sidm_props->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
@@ -125,7 +119,6 @@ void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p) {
     
     io_write_attribute_f(h_grpsph, "SIDM cross section [cgs units]", p->sigma_cgs);
     io_write_attribute_f(h_grpsph, "SIDM cross section [internal units]", p->sigma);
-    io_write_attribute_f(h_grpsph, "SIDM search radius [internal units]", p->h_search_radius);
     
 }
 #endif

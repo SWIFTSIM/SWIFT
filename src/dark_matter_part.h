@@ -53,12 +53,6 @@ struct dmpart {
   /* Particle cutoff radius. */
   float h;
     
-  /* Velocity dispersion at the particle's location */
-  float velocity_dispersion;
-  
-  /* Neighbours velocity */
-  float velocity_ngb[3];
-
   /*! Particle time bin */
   timebin_t time_bin;
     
@@ -72,16 +66,14 @@ struct dmpart {
     
 #endif
     
-    /*! Average probability of scattering with another DM part */
-    float sidm_probability;
-    
-    /*! Average relative velocity wrt to neighbours */
-    float avg_pair_v;
-    
-    float time_step_size;
-    
-    float num_neighbours;
+  /*! Average probability of scattering with another DM part */
+  float sidm_probability;
 
+  /* Time step size */
+  float time_step_size;
+  
+  /* Counter of number of neighbours */
+  float num_neighbours;
 
   struct {
 

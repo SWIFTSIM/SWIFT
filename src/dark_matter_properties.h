@@ -63,9 +63,6 @@ struct sidm_props {
     /*! Minimal smoothing length (internal units) */
     float h_min;
     
-    /*! SIDM collisions search radius */
-    float h_search_radius;
-    
     /*! Smoothing length tolerance */
     float h_tolerance;
     
@@ -91,9 +88,6 @@ struct sidm_props {
     
     /* ------ Time integration parameters ------------ */
     
-    /*! Time integration properties */
-    float CFL_condition;
-    
     /*! Maximal change of h over one time-step */
     float log_max_h_change;
 
@@ -106,25 +100,20 @@ struct sidm_dmpart_data {
 
     /*! Velocity changed due to DM-DM collisions. */
     float v_full[3];
-
-    /*! Velocity *before* DM-DM collisions. */
-    float vi_full[3];
-
-    /*! Acceleration due to DM self-interactions. */
-    float a_sidm[3];
     
     /*! Flag indicating if particle in given time-step has been scattered */
     float sidm_flag;
     
-    /*! Another flag indicating if particle in given time-step has been scattered */
-    float kicked_while_inactive;
+    /*! Cumulative number of DM-DM collisions */
+    float number_of_sidm_events;
     
-    /*! Particle search radius */
-    float h_sidm;
+    /* Maximum number of SIDM events per timestep */
+    float max_sidm_events_per_timestep;
     
-    /*! Number of DM-DM collisions */
-    float num_sidm;
-    
+    /* Counter of SIDM events per timestep */
+    float sidm_events_per_timestep;
+
+    /*! Time step size of particle's drift */
     float dt_drift;
 };
 

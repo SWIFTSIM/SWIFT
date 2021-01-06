@@ -226,9 +226,6 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           /* Get a handle on the part. */
           struct dmpart *restrict dmp = &dmparts[k];
           
-          /* Get velocities at beginning of step */
-          /*sidm_init_velocities(dmp);*/
-
           /* If the DM particle has no counterpart and needs to be kicked */
           if (dmpart_is_starting(dmp, e)) {
               
@@ -259,26 +256,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
               /* do the kick */
               kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
               
-              /* Add half sidm kick, if thre's any, then reset acceleration */
-              /*add_half_sidm_kick_in_kick1(dmp, dt_kick_grav);*/
-              
         }
-          
-        /*const integertime_t ti_step_dmp = get_integer_timestep(dmp->time_bin);
-        const integertime_t ti_begin_dmp = get_integer_time_begin(ti_current + 1, dmp->time_bin);
-        */
-        /* Time interval for this half-kick */
-        /*double dt_kick_grav_dmp;
-        if (with_cosmology) {
-            dt_kick_grav_dmp = cosmology_get_grav_kick_factor(cosmo, ti_begin_dmp,
-                                                        ti_begin_dmp + ti_step_dmp / 2);
-        } else {
-            dt_kick_grav_dmp = (ti_step_dmp / 2) * time_base;
-        }
-        */
-        /* Add half sidm kick regardless part active/inactive */
-        /*add_half_sidm_kick_to_dmpart(dmp, dt_kick_grav_dmp);*/
-
       }
 
     /* Loop over the stars particles in this cell. */
@@ -543,9 +521,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               kick_dmpart(dmp, dt_kick_grav, ti_begin + ti_step / 2,
                          ti_begin + ti_step);
               
-              /* Add half kick extra from SIDM */
-              /*sidm_kick_in_kick2(dmp, dt_kick_grav);*/
-              
 #ifdef SWIFT_DEBUG_CHECKS
               /* Check that kick and the drift are synchronized */
               if (dmp->ti_drift != dmp->ti_kick)
@@ -555,8 +530,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
               /* Prepare the values to be drifted */
               dark_matter_reset_predicted_values(dmp);
               
-              /* Prepare velocities for next kick calculation */
-              /*sidm_init_velocities(dmp);*/
           }
       }
 

@@ -21,50 +21,6 @@
 
 #include "io_properties.h"
 
-INLINE static void convert_dmpart_pos(const struct engine* e, const struct dmpart* gp, double* ret) {
-    
-    const struct space* s = e->s;
-    if (s->periodic) {
-        ret[0] = box_wrap(gp->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
-        ret[1] = box_wrap(gp->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
-        ret[2] = box_wrap(gp->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
-    } else {
-        ret[0] = gp->x[0];
-        ret[1] = gp->x[1];
-        ret[2] = gp->x[2];
-    }
-}
-
-INLINE static void convert_dmpart_vel(const struct engine* e, const struct dmpart* gp, float* ret) {
-    
-    const int with_cosmology = (e->policy & engine_policy_cosmology);
-    const struct cosmology* cosmo = e->cosmology;
-    const integertime_t ti_current = e->ti_current;
-    const double time_base = e->time_base;
-    
-    const integertime_t ti_beg = get_integer_time_begin(ti_current, gp->time_bin);
-    const integertime_t ti_end = get_integer_time_end(ti_current, gp->time_bin);
-    
-    /* Get time-step since the last kick */
-    float dt_kick_grav;
-    if (with_cosmology) {
-        dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
-        dt_kick_grav -=
-        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-    } else {
-        dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-    }
-    
-    /* Extrapolate the velocites to the current time */
-    ret[0] = gp->v_full[0] + gp->gpart->a_grav[0] * dt_kick_grav;
-    ret[1] = gp->v_full[1] + gp->gpart->a_grav[1] * dt_kick_grav;
-    ret[2] = gp->v_full[2] + gp->gpart->a_grav[2] * dt_kick_grav;
-    
-    /* Conversion from internal units to peculiar velocities */
-    ret[0] *= cosmo->a_inv;
-    ret[1] *= cosmo->a_inv;
-    ret[2] *= cosmo->a_inv;
-}
 
 
 /**
@@ -109,31 +65,32 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     
     
     /* List what we want to write */
-    list[0] = io_make_output_field("SIDMevents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                                   dmparts, sidm_data.num_sidm, "Number of DM-DM collisions the particle has had");
+    list[0] = io_make_output_field("SIDM_events", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                   dmparts, sidm_data.number_of_sidm_events, "Total number of DM-DM collisions the particle has had");
     
     list[1] = io_make_output_field("SIDM_search_radius", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, dmparts, h,
                                    "Co-moving smoothing lengths (FWHM of the kernel) of the DM particles");
     
-    list[2] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, dmparts, rho,
-                                   "Co-moving mass densities of the particles");
+    /*list[2] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, dmparts, rho,
+                                   "Co-moving mass densities of the particles");*/
 
-    list[3] = io_make_output_field("DMParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+    list[2] = io_make_output_field("DM_ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
                                    id_or_neg_offset, "Unique ID of the particles");
     
-    list[4] = io_make_output_field("SIDM_probability", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+    list[3] = io_make_output_field("SIDM_probability", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
                                    sidm_probability, "Average probability of particle scattering with another (internal units)");
     
-    list[5] = io_make_output_field("Number_of_neighbours", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
+    list[4] = io_make_output_field("Number_of_neighbours", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
                                    num_neighbours, "Number of neighbours");
     
-    list[6] = io_make_output_field("Time_step_size", FLOAT, 1, UNIT_CONV_TIME, 1.f, dmparts,
+    list[5] = io_make_output_field("Time_step_size", FLOAT, 1, UNIT_CONV_TIME, 1.f, dmparts,
                                    time_step_size, "Average probability of particle scattering with another (internal units)");
+    
+    list[6] = io_make_output_field("Max_SIDM_events_per_timestep", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                   dmparts, sidm_data.max_sidm_events_per_timestep, "Maximum number of DM-DM collisions the particle has had in a single timestep");
 
-    list[7] = io_make_output_field("Velocity_dispersion", FLOAT, 1, UNIT_CONV_SPEED, 0.f, dmparts,
-                                   velocity_dispersion, "Local velocity dispersion");
 
-    return 8;
+    return 7;
     
 }
 

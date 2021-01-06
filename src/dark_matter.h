@@ -37,41 +37,9 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
     gp->rho = 0.f;
     gp->density.rho_dh = 0.f;
     
-    gp->avg_pair_v = 0.f;
     gp->sidm_probability = 0.f;
     gp->time_step_size = 0.f;
     gp->num_neighbours = 0.f;
-    gp->velocity_dispersion = 0.f;
-    gp->velocity_ngb[0] = 0.f;
-    gp->velocity_ngb[1] = 0.f;
-    gp->velocity_ngb[2] = 0.f;
-
-}
-
-/**
- * @brief Returns the velocities drifted to the current time of a particle.
- *
- * @param p The particle of interest
- * @param xp The extended data of the particle.
- * @param dt_kick_hydro The time (for hydro accelerations) since the last kick.
- * @param dt_kick_grav The time (for gravity accelerations) since the last kick.
- * @param v (return) The velocities at the current time.
- */
-__attribute__((always_inline)) INLINE static void dark_matter_get_drifted_velocities(struct dmpart *restrict dmp, float dt_drift) {
-    
-    /* No SIDM flag */
-    dmp->sidm_data.sidm_flag = 0.0f;
-    
-    /* Drift time */
-    dmp->sidm_data.dt_drift = dt_drift;
-    
-    dmp->sidm_data.v_full[0] += dmp->gpart->a_grav[0] * dt_drift / 2.f;
-    dmp->sidm_data.v_full[1] += dmp->gpart->a_grav[1] * dt_drift / 2.f;
-    dmp->sidm_data.v_full[2] += dmp->gpart->a_grav[2] * dt_drift / 2.f;
-    
-    dmp->sidm_data.vi_full[0] = dmp->sidm_data.v_full[0];
-    dmp->sidm_data.vi_full[1] = dmp->sidm_data.v_full[1];
-    dmp->sidm_data.vi_full[2] = dmp->sidm_data.v_full[2];
 }
 
 
@@ -82,39 +50,21 @@ __attribute__((always_inline)) INLINE static void dark_matter_get_drifted_veloci
  */
 __attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dmpart* gp, float dt_drift) {
     
-    /* No SIDM flag */
+    /* No SIDM flag at the beginning */
     gp->sidm_data.sidm_flag = 0.0f;
     
+    /* Reset counter */
+    gp->sidm_data.sidm_events_per_timestep = 0.0f;
+
     /* Drift time */
     gp->sidm_data.dt_drift = dt_drift;
     
-    /* Set copy of particle velocity */
+    /* Make a copy of particle velocity */
     gp->sidm_data.v_full[0] = gp->v_full[0];
     gp->sidm_data.v_full[1] = gp->v_full[1];
     gp->sidm_data.v_full[2] = gp->v_full[2];
 
-    gp->sidm_data.vi_full[0] = gp->v_full[0];
-    gp->sidm_data.vi_full[1] = gp->v_full[1];
-    gp->sidm_data.vi_full[2] = gp->v_full[2];
-
 }
-
-/**
- * @brief Prepares a dm-particle for its SIDM interactions
- *
- * @param gp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void sidm_init_dmpart(struct dmpart* dmp) {
-    
-    /* No SIDM flag */
-    dmp->sidm_data.sidm_flag = 0.0f;
-    
-    /* And no acceleration at the beginning of the step */
-    /*dmp->sidm_data.a_sidm[0] = 0.0f;
-    dmp->sidm_data.a_sidm[1] = 0.0f;
-    dmp->sidm_data.a_sidm[2] = 0.0f;*/
-}
-
 
 
 /**
@@ -131,26 +81,17 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     
     /*! Flags to indicate if the particle has been scattered yes(1)/no(0) */
     dmp->sidm_data.sidm_flag = 0.0f;
-    dmp->sidm_data.kicked_while_inactive = 0.0f;
-
-    /*! Particle search radius */
-    dmp->sidm_data.h_sidm = sidm_props->h_search_radius;
     
     /*! Number of DM-DM particle collisions */
-    dmp->sidm_data.num_sidm = 0.0f;
-    
+    dmp->sidm_data.number_of_sidm_events = 0.0f;
+    dmp->sidm_data.sidm_events_per_timestep = 0.0f;
+    dmp->sidm_data.max_sidm_events_per_timestep = 0.0f;
+
     /* Particle velocity */
     dmp->sidm_data.v_full[0] = dmp->v_full[0];
     dmp->sidm_data.v_full[1] = dmp->v_full[1];
     dmp->sidm_data.v_full[2] = dmp->v_full[2];
 
-    dmp->sidm_data.vi_full[0] = dmp->v_full[0];
-    dmp->sidm_data.vi_full[1] = dmp->v_full[1];
-    dmp->sidm_data.vi_full[2] = dmp->v_full[2];
-
-    dmp->sidm_data.a_sidm[0] = 0.0f;
-    dmp->sidm_data.a_sidm[1] = 0.0f;
-    dmp->sidm_data.a_sidm[2] = 0.0f;
     dmp->sidm_data.dt_drift = 0.0f;
 
     dmp->time_bin = 0;
@@ -165,29 +106,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
-               struct dmpart* restrict dmp, float dt_drift) {
-    
-    const float h = dmp->h;
-    const float h_inv = 1.0f / h;
-    
-    /* Predict smoothing length */
-    const float w1 = h_inv * dt_drift;
-    if (fabsf(w1) < 0.2f) {
-        dmp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-    } else {
-        dmp->h *= expf(w1);
-    }
-    
-    /* Predict density */
-    const float w2 = -hydro_dimension * w1;
-    if (fabsf(w2) < 0.2f) {
-        dmp->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-    } else {
-        dmp->rho *= expf(w2);
-    }
-    
-    
-}
+               struct dmpart* restrict dmp, float dt_drift) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -227,25 +146,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     gp->density.wcount *= h_inv_dim;
     gp->density.wcount_dh *= h_inv_dim_plus_one;
     
-    /* Finish the average calculation by diving by num. of neighbours */
-    gp->avg_pair_v /= gp->num_neighbours;
-    
-    /* Calculate the velocity dispersion */
-    const float rho_inv = 1.f / gp->rho;
-    gp->velocity_dispersion *= h_inv_dim * rho_inv;
-    gp->velocity_ngb[0] *= h_inv_dim * rho_inv;
-    gp->velocity_ngb[1] *= h_inv_dim * rho_inv;
-    gp->velocity_ngb[2] *= h_inv_dim * rho_inv;
-    
     gp->time_step_size = dt;
-    
-    /* Calculate (actual) velocity dispersion. Currently, the variable
-     * 'velocity_ngb' holds <v^2> instead. */
-    const double vel2 = gp->velocity_ngb[0] * gp->velocity_ngb[0] + gp->velocity_ngb[1] * gp->velocity_ngb[1] + gp->velocity_ngb[2] * gp->velocity_ngb[2];
-    
-    gp->velocity_dispersion -= vel2;
-    gp->velocity_dispersion /= 3.;
-    gp->velocity_dispersion = sqrt(gp->velocity_dispersion);
 }
 
 /**
@@ -268,76 +169,11 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     gp->density.wcount = dm_kernel_root * h_inv_dim;
     gp->density.rho_dh = 0.f;
     gp->density.wcount_dh = 0.f;
-    gp->avg_pair_v = 0.f;
     gp->num_neighbours = 0.f;
     gp->sidm_probability = 0.f;
-    
-    gp->velocity_dispersion = FLT_MAX;
-    gp->velocity_ngb[0] = FLT_MAX;
-    gp->velocity_ngb[1] = FLT_MAX;
-    gp->velocity_ngb[2] = FLT_MAX;
-
 }
 
 
-/**
- * @brief Resets the SIDM properties of the g-particles
- *
- * @param gp Pointer to the gparticle data.
- */
-__attribute__((always_inline)) INLINE static void sidm_reset(struct dmpart *restrict gp) {
-    
-    /* Remove SIDM flag */
-    gp->sidm_data.sidm_flag = 0.0f;
-    
-    /* Particle velocity */
-    gp->sidm_data.v_full[0] = 0.0f;
-    gp->sidm_data.v_full[1] = 0.0f;
-    gp->sidm_data.v_full[2] = 0.0f;
-
-    gp->sidm_data.vi_full[0] = 0.0f;
-    gp->sidm_data.vi_full[1] = 0.0f;
-    gp->sidm_data.vi_full[2] = 0.0f;
-
-}
-
-
-/**
- * @brief Updates #dmparts velocities
- *
- * @param dmp #dmpart
- *
- */
-__attribute__((always_inline)) INLINE static void sidm_kick_in_kick2(
-          struct dmpart *restrict dmp, double dt_kick_grav) {
-    
-    if (dmp->sidm_data.sidm_flag > 0) {
-        
-        /* Delta velocity: final - initial */
-        double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0], dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1], dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};
-        
-        /* Get full dt step from half the step */
-        /*double dt_grav = 2.f * dt_kick_grav;*/
-        
-        /* Calculate acceleration due to collision */
-        /*dmp->sidm_data.a_sidm[0] += delta_v[0] / dt_grav;
-        dmp->sidm_data.a_sidm[1] += delta_v[1] / dt_grav;
-        dmp->sidm_data.a_sidm[2] += delta_v[2] / dt_grav;*/
-        
-        /* Add acceleration due to collision */
-        dmp->v_full[0] += delta_v[0];
-        dmp->v_full[1] += delta_v[1];
-        dmp->v_full[2] += delta_v[2];
-        
-        /* Get its gravity friend */
-        struct gpart *gp = dmp->gpart;
-
-        /* Synchronize particle's velocities */
-        gp->v_full[0] = dmp->v_full[0];
-        gp->v_full[1] = dmp->v_full[1];
-        gp->v_full[2] = dmp->v_full[2];
-    }
-}
 
 /**
  * @brief Updates #dmparts velocities
@@ -347,20 +183,17 @@ __attribute__((always_inline)) INLINE static void sidm_kick_in_kick2(
  */
 __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmpart *restrict dmp) {
     
-    if (dmp->sidm_data.kicked_while_inactive || dmp->sidm_data.sidm_flag > 0) {
+    if (dmp->sidm_data.sidm_flag > 0) {
         
-        /* Delta velocity: final - initial */
-        double delta_v[3] = {dmp->sidm_data.v_full[0] - dmp->sidm_data.vi_full[0], dmp->sidm_data.v_full[1] - dmp->sidm_data.vi_full[1], dmp->sidm_data.v_full[2] - dmp->sidm_data.vi_full[2]};
-        
-        /* Reverse half drift */
+        /* Reverse recent half drift */
         dmp->x[0] -= dmp->v_full[0] * dmp->sidm_data.dt_drift / 2.f;
         dmp->x[1] -= dmp->v_full[1] * dmp->sidm_data.dt_drift / 2.f;
         dmp->x[2] -= dmp->v_full[2] * dmp->sidm_data.dt_drift / 2.f;
 
-        /* Add vel. kick due to collision */
-        dmp->v_full[0] += delta_v[0];
-        dmp->v_full[1] += delta_v[1];
-        dmp->v_full[2] += delta_v[2];
+        /* Update velocity due to collision */
+        dmp->v_full[0] = dmp->sidm_data.v_full[0];
+        dmp->v_full[1] = dmp->sidm_data.v_full[1];
+        dmp->v_full[2] = dmp->sidm_data.v_full[2];
         
         /* Now add half drift with new velocity */
         dmp->x[0] += dmp->v_full[0] * dmp->sidm_data.dt_drift / 2.f;
@@ -380,46 +213,15 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
         gp->x[2] = dmp->x[2];
 
         /* Remove flag */
-        dmp->sidm_data.kicked_while_inactive = 0.f;
         dmp->sidm_data.sidm_flag = 0.f;
         
+        /* Update counters */
+        if (dmp->sidm_data.max_sidm_events_per_timestep < dmp->sidm_data.sidm_events_per_timestep)
+            dmp->sidm_data.max_sidm_events_per_timestep = dmp->sidm_data.sidm_events_per_timestep;
+        
     }
 }
 
-
-/**
- * @brief Updates #dmparts velocities
- *
- * @param dmp #dmpart
- *
- */
-__attribute__((always_inline)) INLINE static void add_half_sidm_kick_in_kick1(struct dmpart *restrict dmp, double dt_grav) {
-    
-    if (dmp->sidm_data.kicked_while_inactive > 0 || dmp->sidm_data.sidm_flag > 0) {
-        
-        /* Add half acceleration due to previous DM collision */
-        dmp->v_full[0] += dmp->sidm_data.a_sidm[0] * dt_grav;
-        dmp->v_full[1] += dmp->sidm_data.a_sidm[1] * dt_grav;
-        dmp->v_full[2] += dmp->sidm_data.a_sidm[2] * dt_grav;
-        
-        /* Get its gravity friend */
-        struct gpart *gp = dmp->gpart;
-        
-        /* Synchronize particle's velocities */
-        gp->v_full[0] = dmp->v_full[0];
-        gp->v_full[1] = dmp->v_full[1];
-        gp->v_full[2] = dmp->v_full[2];
-        
-        /* Reset acceleration */
-        dmp->sidm_data.a_sidm[0] = 0.f;
-        dmp->sidm_data.a_sidm[1] = 0.f;
-        dmp->sidm_data.a_sidm[2] = 0.f;
-        
-        /* Remove flag */
-        dmp->sidm_data.kicked_while_inactive = 0.f;
-
-    }
-}
 
 /**
  * @brief Computes the dark matter time-step of a given particle
@@ -436,11 +238,7 @@ __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     /* Constant to limit probability from being too large? */
     const float kappa = 1e-2;
     
-    /* Scattering cross section per unit mass (in internal units) */
-    /*const double sigma = sidm_props->sigma;*/
-
     /* Timestep limiter (internal units) */
-    /*const float dm_timestep = kappa / (dmp->rho * sigma * dmp->velocity_dispersion * 4. /sqrt(M_PI));*/
     const float dm_timestep = kappa / dmp->sidm_probability;
     
     return dm_timestep;
