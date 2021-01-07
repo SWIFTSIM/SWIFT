@@ -720,6 +720,10 @@ struct cell {
         /*! Pointer to the #dmpart data at rebuild time. */
         struct dmpart *parts_rebuild;
         
+        /*! Super cell, i.e. the highest-level parent cell that has a grav pair/self
+         * tasks */
+        struct cell *super;
+        
         /*! Pointer for the sorted indices. */
         struct sort_entry *sort;
 

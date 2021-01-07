@@ -293,6 +293,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->super = c;
     c->hydro.super = c;
     c->grav.super = c;
+    c->dark_matter.super = c;
     c->hydro.parts = NULL;
     c->hydro.xparts = NULL;
     c->grav.parts = NULL;
@@ -695,6 +696,7 @@ void space_regrid(struct space *s, int verbose) {
           c->super = c;
           c->hydro.super = c;
           c->grav.super = c;
+          c->dark_matter.super = c;
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
           c->stars.ti_old_part = ti_current;
@@ -4527,6 +4529,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->super = NULL;
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
+      cp->dark_matter.super = NULL;
       cp->flags = 0;
       star_formation_logger_init(&cp->stars.sfh);
       dark_matter_logger_init(&c->dark_matter.sh);

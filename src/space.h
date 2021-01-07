@@ -193,8 +193,8 @@ struct space {
   /*! The total number of #bpart in the space. */
   size_t nr_bparts;
 
-    /*! The total number of #dmpart in the space. */
-    size_t nr_dmparts;
+  /*! The total number of #dmpart in the space. */
+  size_t nr_dmparts;
 
   /*! The total number of #sink in the space. */
   size_t nr_sinks;
@@ -211,8 +211,8 @@ struct space {
   /*! The total number of #bpart we allocated memory for */
   size_t size_bparts;
 
-    /*! The total number of #dmpart we allocated memory for */
-    size_t size_dmparts;
+  /*! The total number of #dmpart we allocated memory for */
+  size_t size_dmparts;
 
   /*! The total number of #sink we allocated memory for. */
   size_t size_sinks;
@@ -229,8 +229,8 @@ struct space {
   /*! Number of inhibted black hole particles in the space */
   size_t nr_inhibited_bparts;
 
-    /*! Number of inhibted dark matter particles in the space */
-    size_t nr_inhibited_dmparts;
+  /*! Number of inhibted dark matter particles in the space */
+  size_t nr_inhibited_dmparts;
 
   /*! Number of inhibted sinks in the space */
   size_t nr_inhibited_sinks;
@@ -268,8 +268,8 @@ struct space {
   /*! The b-particle data (cells have pointers to this). */
   struct bpart *bparts;
 
-    /*! The DM-particle data (cells have pointers to this). */
-    struct dmpart *dmparts;
+  /*! The DM-particle data (cells have pointers to this). */
+  struct dmpart *dmparts;
 
   /*! The sink particle data (cells have pointers to this). */
   struct sink *sinks;
@@ -286,8 +286,8 @@ struct space {
   /*! Minimal mass of all the #bpart */
   float min_bpart_mass;
 
-    /*! Minimal mass of all the #dmpart */
-    float min_dmpart_mass;
+  /*! Minimal mass of all the #dmpart */
+  float min_dmpart_mass;
 
   /*! Sum of the norm of the velocity of all the #part */
   float sum_part_vel_norm;

@@ -3341,7 +3341,7 @@ void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s) {
             /* Mark this cell for drifting */
             cell_set_flag(parent, cell_flag_do_dark_matter_sub_sync);
             
-            if (parent == c->grav.super) {
+            if (parent == c->dark_matter.super) {
 #ifdef SWIFT_DEBUG_CHECKS
                 if (parent->dark_matter.timestep_sync == NULL)
                     error("Trying to activate un-existing parent->timestep_sync");
@@ -3408,7 +3408,7 @@ void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s) {
     
     /* Set the do_stars_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
-    if (c == c->grav.super) {
+    if (c == c->dark_matter.super) {
         scheduler_activate(s, c->dark_matter.drift);
     } else {
         for (struct cell *parent = c->parent;
@@ -3417,7 +3417,7 @@ void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s) {
             /* Mark this cell for drifting */
             cell_set_flag(parent, cell_flag_do_dark_matter_sub_drift);
             
-            if (parent == c->grav.super) {
+            if (parent == c->dark_matter.super) {
                 scheduler_activate(s, parent->dark_matter.drift);
                 break;
             }
@@ -3552,7 +3552,7 @@ void cell_activate_dm_limiter(struct cell *c, struct scheduler *s) {
     
     /* Set the do_sub_limiter all the way up and activate the super limiter
      if this has not yet been done. */
-    if (c == c->grav.super) {
+    if (c == c->dark_matter.super) {
         scheduler_activate(s, c->dark_matter.timestep_limiter);
         scheduler_activate(s, c->kick1);
     } else {
@@ -3562,7 +3562,7 @@ void cell_activate_dm_limiter(struct cell *c, struct scheduler *s) {
             /* Mark this cell for limiting */
             cell_set_flag(parent, cell_flag_do_dark_matter_sub_limiter);
             
-            if (parent == c->grav.super) {
+            if (parent == c->dark_matter.super) {
                 scheduler_activate(s, parent->dark_matter.timestep_limiter);
                 scheduler_activate(s, parent->kick1);
                 break;
