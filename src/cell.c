@@ -3327,7 +3327,7 @@ void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s) {
     
     /* Set the do_sub_sync all the way up and activate the super sync
      if this has not yet been done. */
-    if (c == c->grav.super) {
+    if (c == c->dark_matter.super) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (c->dark_matter.timestep_sync == NULL)
             error("Trying to activate un-existing c->timestep_sync");
@@ -5423,18 +5423,18 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
  * @param super_hydro Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
-void cell_set_super_dark_matter(struct cell *c, struct cell *super_grav) {
+void cell_set_super_dark_matter(struct cell *c, struct cell *super_dark_matter) {
     /* Are we in a cell with some kind of self/pair task ? */
-    if (super_grav == NULL && c->dark_matter.density != NULL) super_grav = c;
+    if (super_dark_matter == NULL && c->dark_matter.density != NULL) super_dark_matter = c;
     
     /* Set the super-cell */
-    c->grav.super = super_grav;
+    c->dark_matter.super = super_dark_matter;
     
     /* Recurse */
     if (c->split)
         for (int k = 0; k < 8; k++)
             if (c->progeny[k] != NULL)
-                cell_set_super_dark_matter(c->progeny[k], super_grav);
+                cell_set_super_dark_matter(c->progeny[k], super_dark_matter);
 }
 
 /**
