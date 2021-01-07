@@ -513,9 +513,6 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     
     pi->sidm_data.sidm_events_per_timestep += 1.f;
     pj->sidm_data.sidm_events_per_timestep += 1.f;
-    
-    if (pi->sidm_data.max_sidm_events_per_timestep > 1 || pj->sidm_data.max_sidm_events_per_timestep > 1) message("Particle has had more than 1 collision per timestep");
-    
 }
 
 /**
@@ -536,12 +533,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
-    struct sidm_history* sidm_history) {
+    struct sidm_history* sidm_history, const struct cosmology* cosmo) {
     
     /* Velocities of interacting particles */
     const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2);
+    double vij = sqrt(v2) * cosmo->a_inv;
     
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
@@ -551,7 +548,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     /*float gij = integrate_kernels(r2, hi, hj);
     float normed_gij = norm_for_kernels_integral(hi, hj);*/
-    float gij = integrate_kernels_analytical(r2, hi, hj);
+    float gij = integrate_kernels_analytical(r2, hi, hj) * cosmo->a3_inv;
     float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
@@ -596,12 +593,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     struct dmpart* pj, float a, float H, const double dti, const double dtj,
     const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
-    struct sidm_history* sidm_history) {
+    struct sidm_history* sidm_history, const struct cosmology* cosmo) {
     
     /* Velocities of interacting particles */
     const double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2);
+    double vij = sqrt(v2) * cosmo->a_inv;
     
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
@@ -615,10 +612,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float normed_gij = norm_for_kernels_integral(hi, hj);
     float gji = integrate_kernels(r2, hj, hi);
     float normed_gji = norm_for_kernels_integral(hj, hi);*/
-    float gij = integrate_kernels_analytical(r2, hi, hj);
+    float gij = integrate_kernels_analytical(r2, hi, hj) * cosmo->a3_inv;
     float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
-    float gji = integrate_kernels_analytical(r2, hj, hi);
-    float normed_gji = norm_for_kernels_analytical_integral (hj, hi);
+    float gji = integrate_kernels_analytical(r2, hj, hi) * cosmo->a3_inv;
+    float normed_gji = norm_for_kernels_analytical_integral(hj, hi);
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
     float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
