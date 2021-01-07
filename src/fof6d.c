@@ -102,30 +102,51 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
   }
   
   for (int i = 0; i < num_groups; i++) {
-    const double one_over_mass = 1.0 / group_mass[i];
+    const double one_over_mass = 1.1;// / group_mass[i];
 
     v_mean[0][i] *= one_over_mass; 
     v_mean[1][i] *= one_over_mass; 
     v_mean[2][i] *= one_over_mass;
   }
 
-  /* Calculate the velocity dispersion for each group. */
-  for (size_t i = 0; i < num_parts_in_groups; i++) {
-    
-    const size_t index = part_index[i];
-    const size_t group_id = gparts[index].fof_data.group_id - 1;
+  double vx = 0, vy = 0, vz = 0;
+  for (size_t i = 0; i < nr_gparts; i++) {
 
-    const double v_diff[3] = {gparts[index].v_full[0] - v_mean[0][group_id],
-                              gparts[index].v_full[1] - v_mean[1][group_id],
-                              gparts[index].v_full[2] - v_mean[2][group_id]};
+    size_t group_id = gparts[i].fof_data.group_id;
 
-    v_disp[group_id] += (v_diff[0] * v_diff[0] + 
-                         v_diff[1] * v_diff[1] + 
-                         v_diff[2] * v_diff[2]) * gparts[index].mass;
+    if(group_id != fof_props_default_group_id) {
+      group_id--;
+
+      //const double v_diff[3] = {gparts[i].v_full[0] - v_mean[0][group_id],
+      //                          gparts[i].v_full[1] - v_mean[1][group_id],
+      //                          gparts[i].v_full[2] - v_mean[2][group_id]};
+
+      //v_disp[group_id] += (v_diff[0] * v_diff[0] + 
+      //                     v_diff[1] * v_diff[1] + 
+      //                     v_diff[2] * v_diff[2]) * gparts[i].mass;
+    }
   }
+ 
+  /* Calculate the velocity dispersion for each group. */
+  //for (size_t i = 0; i < num_parts_in_groups; i++) {
+  //  
+  //  const size_t index = part_index[i];
+  //  const size_t group_id = gparts[index].fof_data.group_id - 1;
+
+  //  const double v_diff[3] = {gparts[index].v_full[0] - v_mean[0][group_id],
+  //                            gparts[index].v_full[1] - v_mean[1][group_id],
+  //                            gparts[index].v_full[2] - v_mean[2][group_id]};
+
+  //  v_disp[group_id] += (v_diff[0] * v_diff[0] + 
+  //                       v_diff[1] * v_diff[1] + 
+  //                       v_diff[2] * v_diff[2]) * gparts[index].mass;
+  //}
+
+  FILE *file = fopen("fof3d_vdisp.dat", "w");
 
   for (int i = 0; i < num_groups; i++) {
-    v_disp[i] /= group_mass[i];
+    //v_disp[i] /= group_mass[i];
+    fprintf(file, "%8lf  %8lf, %8lf, %8lf %8lf\n", v_disp[i], v_mean[0][i], v_mean[1][i], v_mean[2][i], group_mass[i]); 
     //message("v_disp[%d]: %lf, v_mean: [%lf, %lf, %lf], group_mass: %lf", i, v_disp[i], v_mean[0][i], v_mean[1][i], v_mean[2][i], group_mass[i]);
   }
 
@@ -139,7 +160,7 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
 
 }
 
-void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_groups, const size_t num_parts_in_groups, const double *v_disp, size_t *group_index, const size_t *group_size, const double l_x2) {
+void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_groups, const size_t num_parts_in_groups, const double *v_disp, size_t *group_index, const size_t *group_size, const double l_x2, struct fof_props *props) {
 
   double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   size_t offset = 0;
@@ -147,17 +168,22 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
   /* Perform a neighbour search over each group. */ 
   for (int i = 0; i < num_groups; i++) {
   
-    //const double l_v2 = v_disp[i];
-    //const double l_xv2 = l_x2 * l_v2;
+    const double l_v2 = v_disp[0] * 1.25;
+    const double l_xv2 = l_x2 * l_v2;
     const size_t num_parts = group_size[i];
 
     message("Performing N^2 neighbour search over group %d which has %zu particles.", i, group_size[i]);
 
+    double v_mean[3] = {0.0,0.0,0.0}; 
     for (size_t j = 0; j < num_parts; j++) {
-    
+       
       struct gpart *pi = groups[i].gparts[j];
       const double pix = pi->x[0], piy = pi->x[1], piz = pi->x[2];
       const double vix = pi->v_full[0], viy = pi->v_full[1], viz = pi->v_full[2];
+    
+      v_mean[0] += pi->mass * vix; 
+      v_mean[1] += pi->mass * viy; 
+      v_mean[2] += pi->mass * viz; 
     
       /* Find the root of pi. */
       size_t *const group_offset = group_index + (ptrdiff_t)(pi - s->gparts);
@@ -189,9 +215,9 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
         for (int l = 0; l < 3; l++) dv2 += dv[l] * dv[l];
 
         /* Hit or miss? */
-        //if ((dx2 * l_v2 + dv2 * l_x2) < l_xv2) {
+        if ((dx2 * l_v2 + dv2 * l_x2) < l_xv2) {
         
-        if (dx2 < l_x2) {
+        //if (dx2 < l_x2) {
           //message("dx2: %f, dv2: %f, l_x2: %lf, l_v2: %lf, l_x2 * l_v2: %lf", dx2, dv2, l_x2, l_v2, l_xv2);
 
           /* Merge the groups */
@@ -199,7 +225,7 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
         }
       }
     }
-
+    message("v_mean: [%8lf, %8lf, %8lf]. mass: %lf, size: %zu", v_mean[0], v_mean[1], v_mean[2], props->group_mass[i], num_parts);
     offset += num_parts;
   }
 
@@ -265,23 +291,7 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
     group_part_ctr[group_id]++;
   }
 
-  fof6d_n2_search(groups, s, num_groups, num_parts_in_groups, v_disp, group_index, group_size, l_x2);
-
-  /* Find the no. of 6D FoF groups */
-  int num_6d_groups = 0;
-  for (size_t i = 0; i < num_parts_in_groups; i++) {
-    if(group_index[part_index[i]] == part_index[i]) num_6d_groups++;
-  }
-
-  /* Calculate the 6D FoF group sizes */
-  struct group_length *high_group_sizes = NULL;
-  int group_count = 0;
-
-  if (swift_memalign("fof6d_high_group_sizes", (void **)&high_group_sizes, SWIFT_STRUCT_ALIGNMENT,
-                     num_6d_groups * sizeof(struct group_length)) != 0)
-    error("Failed to allocate list of large groups.");
-
-  bzero(high_group_sizes, num_6d_groups * sizeof(struct group_length));
+  fof6d_n2_search(groups, s, num_groups, num_parts_in_groups, v_disp, group_index, group_size, l_x2, props);
 
   group_size = props->group_size;
 
@@ -307,7 +317,23 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
     }
   }
   message("Found %zu roots.", ctr);
-    
+ 
+  /* Find the no. of 6D FoF groups */
+  int num_6d_groups = 0;
+  for (size_t i = 0; i < num_parts_in_groups; i++) {
+    if(group_index[part_index[i]] == part_index[i] && group_size[part_index[i]] >= props->min_group_size) num_6d_groups++;
+  }
+
+  /* Calculate the 6D FoF group sizes */
+  struct group_length *high_group_sizes = NULL;
+  int group_count = 0;
+
+  if (swift_memalign("fof6d_high_group_sizes", (void **)&high_group_sizes, SWIFT_STRUCT_ALIGNMENT,
+                     num_6d_groups * sizeof(struct group_length)) != 0)
+    error("Failed to allocate list of large groups.");
+
+  bzero(high_group_sizes, num_6d_groups * sizeof(struct group_length));
+   
   /* Store the groups larger than min_group_size and assign new group IDs. */
   for (size_t i = 0; i < num_parts_in_groups; i++) {
     
@@ -321,7 +347,7 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
     size_t root = fof_find(group_offset[0], group_index);
 
     //message("root: %zu, group_offset[0]: %zu, i: %zu", root, group_offset[0], i);
-    if(root == part_index[i] && group_size[root] > 1) {
+    if(root == part_index[i] && group_size[root] >= props->min_group_size) {
 
       gparts[part_index[i]].fof_data.group_id = props->group_id_offset + group_count;
 
