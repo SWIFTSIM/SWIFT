@@ -148,6 +148,10 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
                                 struct bpart* restrict bparts_written,
                                 const size_t Nbparts,
                                 const size_t Nbparts_written);
+void io_collect_dmparts_to_write(const struct dmpart* restrict dmparts,
+                                struct dmpart* restrict dmparts_written,
+                                const size_t Ndmparts,
+                                const size_t Ndmparts_written);
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
                                 const struct velociraptor_gpart_data* vr_data,
                                 struct gpart* restrict gparts_written,

@@ -536,12 +536,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     struct sidm_history* sidm_history, const struct cosmology* cosmo) {
     
     /* Velocities of interacting particles */
-    double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
-    dv[0] += cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);
-    dv[1] += cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);
-    dv[2] += cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);
+    double dv[3];
+    dv[0] = pi->v_full[0] - pj->v_full[0] + cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);
+    dv[1] = pi->v_full[1] - pj->v_full[1] + cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);
+    dv[2] = pi->v_full[2] - pj->v_full[2] + cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2) * cosmo->a_inv;
+    const double vij = sqrt(v2) * cosmo->a_inv;
     
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;
@@ -599,12 +599,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     struct sidm_history* sidm_history, const struct cosmology* cosmo) {
     
     /* Velocities of interacting particles */
-    double dv[3] = {pi->v_full[0] - pj->v_full[0], pi->v_full[1] - pj->v_full[1], pi->v_full[2] - pj->v_full[2]};
-    dv[0] += cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);
-    dv[1] += cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);
-    dv[2] += cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);
+    double dv[3];
+    dv[0] = pi->v_full[0] - pj->v_full[0] + cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);
+    dv[1] = pi->v_full[1] - pj->v_full[1] + cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);
+    dv[2] = pi->v_full[2] - pj->v_full[2] + cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    double vij = sqrt(v2) * cosmo->a_inv;
+    const double vij = sqrt(v2) * cosmo->a_inv;
     
     /* Scattering cross section per unit mass (in internal units) */
     const double sigma = sidm_props->sigma;

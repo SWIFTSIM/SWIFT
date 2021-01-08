@@ -2643,6 +2643,42 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
           count, Nbparts_written);
 }
 
+
+/**
+ * @brief Copy every non-inhibited #bpart into the bparts_written array.
+ *
+ * @param bparts The array of #bpart containing all particles.
+ * @param bparts_written The array of #bpart to fill with particles we want to
+ * write.
+ * @param Nbparts The total number of #part.
+ * @param Nbparts_written The total number of #part to write.
+ */
+void io_collect_dmparts_to_write(const struct dmpart* restrict dmparts,
+                                struct dmpart* restrict dmparts_written,
+                                const size_t Ndmparts,
+                                const size_t Ndmparts_written) {
+    
+    size_t count = 0;
+    
+    /* Loop over all parts */
+    for (size_t i = 0; i < Ndmparts; ++i) {
+        
+        /* And collect the ones that have not been removed */
+        if (dmparts[i].time_bin != time_bin_inhibited &&
+            dmparts[i].time_bin != time_bin_not_created) {
+            
+            dmparts_written[count] = dmparts[i];
+            count++;
+        }
+    }
+    
+    /* Check that everything is fine */
+    if (count != Ndmparts_written)
+        error("Collected the wrong number of dmparticles (%zu vs. %zu expected)",
+              count, Ndmparts_written);
+}
+
+
 /**
  * @brief Copy every non-inhibited regulat DM #gpart into the gparts_written
  * array.

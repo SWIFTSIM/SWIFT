@@ -252,8 +252,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (ci_active_dark_matter) {
                 scheduler_activate(s, t);
                 cell_activate_drift_dmpart(ci, s);
-                if (with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-                if (with_timestep_sync) cell_activate_sync_dmpart(ci, s);
+                /*if (with_timestep_limiter) cell_activate_dm_limiter(ci, s);*/
+                cell_activate_sync_dmpart(ci, s);
             }
         }
         
@@ -261,8 +261,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else if (t_type == task_type_sub_self && t_subtype == task_subtype_dark_matter_density) {
             if (ci_active_dark_matter) {
                 scheduler_activate(s, t);
-                cell_activate_subcell_dark_matter_tasks(ci, NULL, s, with_timestep_sync, with_timestep_limiter);
-                if (with_timestep_limiter) cell_activate_dm_limiter(ci, s);
+                cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
+                /*if (with_timestep_limiter) cell_activate_dm_limiter(ci, s);*/
             }
         }
         
@@ -274,13 +274,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (ci_active_dark_matter) scheduler_activate(s, t);
         }
         
-        else if (t->type == task_type_self && t->subtype == task_subtype_dark_matter_limiter) {
+        /*else if (t->type == task_type_self && t->subtype == task_subtype_dark_matter_limiter) {
             if (ci_active_dark_matter) scheduler_activate(s, t);
-        }
+        }*/
         
-        else if (t->type == task_type_sub_self && t->subtype == task_subtype_dark_matter_limiter) {
+        /*else if (t->type == task_type_sub_self && t->subtype == task_subtype_dark_matter_limiter) {
             if (ci_active_dark_matter) scheduler_activate(s, t);
-        }
+        }*/
         
       /* Activate the gravity drift */
       else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
@@ -494,8 +494,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         
         /* Only activate tasks that involve a local active cell. */
      else if ((t_subtype == task_subtype_dark_matter_density ||
-               t_subtype == task_subtype_sidm ||
-               t_subtype == task_subtype_dark_matter_limiter) &&
+               t_subtype == task_subtype_sidm) &&
+               /*t_subtype == task_subtype_dark_matter_limiter) &&*/
              ((ci_active_dark_matter && ci_nodeID == nodeID) ||
               (cj_active_dark_matter && cj_nodeID == nodeID))) {
                 
@@ -507,23 +507,21 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                     /* Activate the DM drift tasks. */
                     if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                     /* And the limiter */
-                    if (ci_nodeID == nodeID && with_timestep_limiter)
-                        cell_activate_dm_limiter(ci, s);
+                    /*if (ci_nodeID == nodeID && with_timestep_limiter)
+                        cell_activate_dm_limiter(ci, s);*/
                     /* And the sync */
-                    if (ci_nodeID == nodeID && with_timestep_sync)
-                        cell_activate_sync_dmpart(ci, s);
+                    if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
                     
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-                    if (cj_nodeID == nodeID && with_timestep_limiter)
-                        cell_activate_dm_limiter(cj, s);
-                    if (cj_nodeID == nodeID && with_timestep_sync)
-                        cell_activate_sync_dmpart(cj, s);
+                    /*if (cj_nodeID == nodeID && with_timestep_limiter)
+                        cell_activate_dm_limiter(cj, s);*/
+                    if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
                 }
                 
                 /* Store current values of dx_max and h_max. */
                 else if (t_type == task_type_sub_pair &&
                          t_subtype == task_subtype_dark_matter_density) {
-                    cell_activate_subcell_dark_matter_tasks(t->ci, t->cj, s, with_timestep_sync, with_timestep_limiter);
+                    cell_activate_subcell_dark_matter_tasks(t->ci, t->cj, s);
                 }
             }
 

@@ -796,6 +796,8 @@ void write_output_single(struct engine* e,
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
+  const size_t Ndm = e->s->nr_dmparts;
+
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
@@ -1075,28 +1077,26 @@ void write_output_single(struct engine* e,
           N = Ndm_written;
 
           /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
-                             gpart_align,
-                             Ndm_written * sizeof(struct gpart)) != 0)
-            error("Error while allocating temporary memory for gparts");
-
+          if (swift_memalign("dmparts_written", (void**)&dmparts_written,
+                             dmpart_align, Ndm_written * sizeof(struct dmpart)) != 0)
+            error("Error while allocating temporary memory for dmparts");
+            
           if (with_stf) {
             if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
-                    gpart_align,
+                    "dmpart_group_written", (void**)&gpart_group_data_written,
+                    dmpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
-                  "Error while allocating temporary memory for gparts STF "
+                  "Error while allocating temporary memory for dmparts STF "
                   "data");
           }
 
           /* Collect the non-inhibited DM particles from gpart */
-          io_collect_gparts_to_write(gparts, e->s->gpart_group_data,
-                                     gparts_written, gpart_group_data_written,
-                                     Ntot, Ndm_written, with_stf);
-
+          io_collect_dmparts_to_write(dmparts, dmparts_written, Ndm,
+                                        Ndm_written);
+            
           /* Select the fields to write */
-          darkmatter_write_particles(gparts_written, list, &num_fields);
+          darkmatter_write_dmparts(dmparts_written, list, &num_fields);
           num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_gparts(gparts_written, list + num_fields);

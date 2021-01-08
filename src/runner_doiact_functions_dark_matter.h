@@ -947,13 +947,13 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
                 
                 runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                 
             } else if (doi) {
                 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                 
             } else if (doj) {
                 
@@ -963,7 +963,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
                 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);
+                /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
                 
             }
         } /* loop over the parts in cj. */
@@ -1070,7 +1070,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                     
                     runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
                     
-                    runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);
+                    /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
                 }
             } /* loop over all other particles. */
         }
@@ -1119,13 +1119,13 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                         
                         runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                         
-                        runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                        /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                         
                     } else {
                         
                         runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                         
-                        runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                        /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                     }
                 }
             } /* loop over all other particles. */
@@ -1224,13 +1224,13 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
                 
                 runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                 
             } else if (doi) {
                 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                 
             } else if (doj) {
                 
@@ -1240,7 +1240,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);
+                /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1379,13 +1379,13 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
                 runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
 
             } else if (doi) {
                 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);
+                /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                 
             } else if (doj) {
                 
@@ -1395,7 +1395,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
                 
-                runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);
+                /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */

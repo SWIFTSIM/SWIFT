@@ -4027,9 +4027,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
  * @param s The task #scheduler.
  */
 void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
-                                             struct scheduler *s,
-                                             const int with_timestep_sync,
-                                             const int with_timestep_limiter) {
+                                             struct scheduler *s) {
     const struct engine *e = s->space->e;
     
     /* Store the current dx_max and h_max values. */
@@ -4051,17 +4049,17 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             /* Loop over all progenies and pairs of progenies */
             for (int j = 0; j < 8; j++) {
                 if (ci->progeny[j] != NULL) {
-                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s, with_timestep_sync, with_timestep_limiter);
+                    cell_activate_subcell_dark_matter_tasks(ci->progeny[j], NULL, s);
                     for (int k = j + 1; k < 8; k++)
                         if (ci->progeny[k] != NULL)
-                            cell_activate_subcell_dark_matter_tasks(ci->progeny[j], ci->progeny[k], s, with_timestep_sync, with_timestep_limiter);
+                            cell_activate_subcell_dark_matter_tasks(ci->progeny[j], ci->progeny[k], s);
                 }
             }
         } else {
             /* We have reached the bottom of the tree: activate drift */
             cell_activate_drift_dmpart(ci, s);
-            if (with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-            if (with_timestep_sync) cell_activate_sync_dmpart(ci, s);
+            /*if (with_timestep_limiter) cell_activate_dm_limiter(ci, s);*/
+            cell_activate_sync_dmpart(ci, s);
         }
     }
     
@@ -4083,7 +4081,7 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
                 const int pid = csp->pairs[k].pid;
                 const int pjd = csp->pairs[k].pjd;
                 if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-                    cell_activate_subcell_dark_matter_tasks(ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync, with_timestep_limiter);
+                    cell_activate_subcell_dark_matter_tasks(ci->progeny[pid], cj->progeny[pjd], s);
             }
         }
         
@@ -4095,13 +4093,11 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
 
             /* Also activate the time-step limiter */
-            if (ci->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-            if (cj->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(cj, s);
+            /*if (ci->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
+            if (cj->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
 
-            if (cj->nodeID == engine_rank && with_timestep_sync)
-                cell_activate_sync_dmpart(cj, s);
-            if (ci->nodeID == engine_rank && with_timestep_sync)
-                cell_activate_sync_dmpart(ci, s);
+            if (cj->nodeID == engine_rank) cell_activate_sync_dmpart(cj, s);
+            if (ci->nodeID == engine_rank) cell_activate_sync_dmpart(ci, s);
         }
     } /* Otherwise, pair interation */
 }
@@ -5265,8 +5261,7 @@ void cell_activate_dark_matter_ghost(struct cell *c, struct scheduler *s,
 int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
     
     struct engine *e = s->space->e;
-    const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
-    const int with_timestep_limiter = (e->policy & engine_policy_timestep_limiter);
+    /*const int with_timestep_limiter = (e->policy & engine_policy_timestep_limiter);*/
     const int nodeID = e->nodeID;
     int rebuild = 0;
     
@@ -5293,8 +5288,8 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             /* Activate dark matter drift */
             if (t->type == task_type_self) {
                 if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-                if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
+                /*if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);*/
+                if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
 
             }
 
@@ -5306,21 +5301,21 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
                 
                     /* Activate the limiter tasks. */
-                    if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-                    if (cj_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(cj, s);
+                    /*if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
+                    if (cj_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
 
-                    if (cj_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(cj, s);
-                    if (ci_nodeID == nodeID && with_timestep_sync) cell_activate_sync_dmpart(ci, s);
+                    if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
+                    if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
             }
             
             /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_self) {
-                cell_activate_subcell_dark_matter_tasks(ci, NULL, s, with_timestep_sync, with_timestep_limiter);
+                cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
             }
             
             /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_pair) {
-                cell_activate_subcell_dark_matter_tasks(ci, cj, s, with_timestep_sync, with_timestep_limiter);
+                cell_activate_subcell_dark_matter_tasks(ci, cj, s);
             }
         }
         
@@ -5380,7 +5375,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         if (c->dark_matter.ghost != NULL) cell_activate_dark_matter_ghost(c, s, e);
         if (c->dark_matter.sidm_kick != NULL) scheduler_activate(s, c->dark_matter.sidm_kick);
         if (c->dark_matter.timestep_sync != NULL) scheduler_activate(s, c->dark_matter.timestep_sync);
-        if (c->dark_matter.timestep_limiter != NULL) scheduler_activate(s, c->dark_matter.timestep_limiter);
+        /*if (c->dark_matter.timestep_limiter != NULL) scheduler_activate(s, c->dark_matter.timestep_limiter);*/
         if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
         if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
         if (c->timestep != NULL) scheduler_activate(s, c->timestep);
