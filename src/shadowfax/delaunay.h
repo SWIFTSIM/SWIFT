@@ -28,14 +28,14 @@
 #ifndef SWIFT_DELAUNAY_H
 #define SWIFT_DELAUNAY_H
 
+#include "geometry.h"
+#include "hydro_space.h"
+#include "triangle.h"
+
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "geometry.h"
-#include "hydro_space.h"
-#include "triangle.h"
 
 /*! @brief Activate extensive log output. */
 /*#define DELAUNAY_LOG_OUTPUT*/

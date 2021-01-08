@@ -693,6 +693,42 @@ AC_SUBST([GSL_LIBS])
 AC_SUBST([GSL_INCS])
 AM_CONDITIONAL([HAVEGSL],[test -n "$GSL_LIBS"])
 
+# Check for GMP. We test for this in the standard directories by default,
+# and only disable if using --with-gmp=no or --without-gmp. When a value
+# is given GMP must be found.
+have_gmp="no"
+AC_ARG_WITH([gmp],
+    [AS_HELP_STRING([--with-gmp=PATH],
+       [root directory where GMP is installed @<:@yes/no@:>@]
+    )],
+    [with_gmp="$withval"],
+    [with_gmp="test"]
+)
+if test "x$with_gmp" != "xno"; then
+   if test "x$with_gmp" != "xyes" -a "x$with_gmp" != "xtest" -a "x$with_gmp" != "x"; then
+      GMP_LIBS="-L$with_gmp/lib -lgsl -lgslcblas"
+   else
+      GMP_LIBS="-lgmp"
+   fi
+   #  GMP is not specified, so just check if we have it.
+   if test "x$with_gmp" = "xtest"; then
+      AC_CHECK_LIB([gmp],[__gmpz_inits],[have_gmp="yes"],[have_gmp="no"],$GMP_LIBS)
+      if test "x$have_gmp" != "xno"; then
+         AC_DEFINE([HAVE_LIBGMP],1,[The GMP library appears to be present.])
+      fi
+   else
+      AC_CHECK_LIB([gmp],[__gmpz_inits],
+         AC_DEFINE([HAVE_LIBGMP],1,[The GMP library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the GMP library!), $GMP_LIBS)
+      have_gmp="yes"
+   fi
+   if test "$have_gmp" = "no"; then
+      GMP_LIBS=""
+   fi
+fi
+AC_SUBST([GMP_LIBS])
+AM_CONDITIONAL([HAVEGMP],[test -n "$GMP_LIBS"])
+
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     CC="$PTHREAD_CC" LDFLAGS="$LDFLAGS $PTHREAD_LIBS $LIBS"],
@@ -2456,6 +2492,7 @@ AC_MSG_RESULT([
    METIS/ParMETIS       : $have_metis / $have_parmetis
    FFTW3 enabled        : $have_fftw
    GSL enabled          : $have_gsl
+   GMP enabled          : $have_gmp
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
    Special allocators   : $have_special_allocator

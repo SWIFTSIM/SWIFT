@@ -36,6 +36,10 @@
 #include "star_formation.h"
 #include "tracers.h"
 
+#ifdef SHADOWFAX_SPH
+#include "shadowfax/cell_shadowfax.h"
+#endif
+
 /**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *
@@ -235,6 +239,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         rt_reset_part(p);
       }
     }
+
+#ifdef SHADOWFAX_SPH
+    cell_malloc_delaunay_tesselation(c, &e->s->hs);
+#endif
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);

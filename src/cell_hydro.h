@@ -43,7 +43,7 @@ struct cell_hydro {
 
   /*! Pointer to the #xpart data. */
   struct xpart *xparts;
-  
+
 #ifdef SHADOWFAX_SPH
   /*! Delaunay tessellation. */
   struct delaunay deltess;

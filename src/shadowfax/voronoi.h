@@ -28,9 +28,9 @@
 #ifndef SWIFT_VORONOI_H
 #define SWIFT_VORONOI_H
 
-#include <string.h>
-
 #include "voronoi.h"
+
+#include <string.h>
 
 /**
  * @brief Voronoi grid.
