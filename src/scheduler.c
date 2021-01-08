@@ -2003,7 +2003,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
                               t->ci->nodeID, t->flags);
 
-        qid = 1 % s->nr_queues;
+        qid = -1;
       }
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -2086,14 +2086,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
                               t->cj->nodeID, t->flags);
 
-        qid = 0;
+        qid = -1; //1 % s->nr_queues;
       }
 #else
         error("SWIFT was not compiled with MPI support.");
 #endif
       break;
       default:
-        qid = -1;
+        qid = -1;;
     }
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
@@ -2248,7 +2248,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
-    if (res == NULL && qid > 1)
+    if (res == NULL && qid > 4)
 #else
     if (res == NULL)
 #endif

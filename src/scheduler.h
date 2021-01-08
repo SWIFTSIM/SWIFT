@@ -69,7 +69,7 @@
 #define scheduler_rdma_header_size 4
 
 /* Number of threads we can use for sending. */
-#define scheduler_rdma_max_sends 8
+#define scheduler_rdma_max_sends 16
 
 /* Convert a byte count into a number of blocks, rounds up. */
 #define scheduler_rdma_toblocks(nr_bytes)           \

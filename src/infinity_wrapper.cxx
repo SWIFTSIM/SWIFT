@@ -81,6 +81,8 @@ struct qps_data {
   infinity::memory::RegionToken **remote_buffers;
   infinity::memory::Buffer **readwrite_buffers;
   infinity::memory::RegionToken **token_buffers;
+  infinity::memory::Buffer **send_buffers;
+  size_t *send_buffers_size;
 #endif
 };
 
@@ -260,6 +262,11 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
   cqps->remote_buffers = (infinity::memory::RegionToken **)
     calloc(nr_servers, sizeof(infinity::memory::RegionToken *));
 
+  /* And pointers to the pinned memory used for sending. */
+  cqps->send_buffers = (infinity::memory::Buffer **)
+    calloc(nr_servers, sizeof(infinity::memory::Buffer *));
+  cqps->send_buffers_size = (size_t *) calloc(nr_servers, sizeof(size_t));
+
   /* We need to listen for messages from the other rank servers that we can
    * connect to them as they need to be up first. */
   int buf[1];
@@ -305,27 +312,49 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
 }
 
 /**
- * @brief Send a buffer to a server listening on a QP.
+ * @brief Return the send buffer associated with a handle for an server.
+ *
+ * The buffer is large enough for the required size.
  *
  * @param qphandle the send handle from infinity_open_communications.
  * @param index index of the server to send to.
- * @param buffer the buffer to send, should be block aligned.
  * @param size the size of the buffer in bytes.
- * @param offset the offset into the remote buffer, note in bytes not blocks.
  */
-void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
-                        size_t offset) {
+void *infinity_get_send_buffer(void *qphandle, int index, size_t size) {
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
   struct qps_data *cqps = (struct qps_data *)qphandle;
 
-  /* Need to assign to a buffer to register memory. XXX make this as big as
-   * necessary per server and reuse. */
-  auto *sendBuffer =
-    new infinity::memory::Buffer(cqps->context, buffer, size);
+  /* Create or resize the registered memory used to send data. */
+  if (cqps->send_buffers_size[index] < size) {
+    if (cqps->send_buffers[index] != NULL) delete cqps->send_buffers[index];
+    cqps->send_buffers[index] = new infinity::memory::Buffer(cqps->context, size);
+    cqps->send_buffers_size[index] = size;
+  }
 
-  /* And send. */
+  /* And give access. */
+  return cqps->send_buffers[index]->getData();
+#else
+  return NULL;
+#endif
+}
+
+/**
+ * @brief Send local buffer to an offset in a window on a remote server.
+ *
+ * The buffer should be accessed using infinity_get_send_buffer() and
+ * the data copied into it before calling this function.
+ *
+ * @param qphandle the send handle from infinity_open_communications.
+ * @param index index of the server to send to.
+ * @param size the number of bytes to send from the local buffer.
+ * @param offset the offset into the remote buffer, note in bytes not blocks.
+ */
+void infinity_send_data(void *qphandle, int index, size_t size, size_t offset) {
+#if defined(HAVE_INFINITY) && defined(WITH_MPI)
+  struct qps_data *cqps = (struct qps_data *)qphandle;
+
   infinity::requests::RequestToken requestToken(cqps->context);
-  cqps->qps[index]->write(sendBuffer,
+  cqps->qps[index]->write(cqps->send_buffers[index],
                           0,                           // localOffset
                           cqps->remote_buffers[index], // destination
                           offset,                      // remoteOffset
@@ -336,8 +365,8 @@ void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
   requestToken.reset();
 
   /* Now we update the unlock field. */
-  ((BLOCKTYPE *)sendBuffer->getData())[0] = UNLOCKED;
-  cqps->qps[index]->write(sendBuffer,
+  ((BLOCKTYPE *)cqps->send_buffers[index]->getData())[0] = UNLOCKED;
+  cqps->qps[index]->write(cqps->send_buffers[index],
                           0,                           // localOffset
                           cqps->remote_buffers[index], // destination
                           offset,                      // remoteOffset
@@ -345,8 +374,6 @@ void infinity_send_data(void *qphandle, int index, void *buffer, size_t size,
                           infinity::queues::OperationFlags(),
                           &requestToken);
   requestToken.waitUntilCompleted();
-
-  delete sendBuffer;
 
 #endif
   return;
@@ -374,6 +401,11 @@ void infinity_free_handle(void *qphandle) {
   if (cqps->token_buffers != NULL) {
     for (int k = 0; k < cqps->nr_qps; k++) delete cqps->token_buffers[k];
     free(cqps->token_buffers);
+  }
+  if (cqps->send_buffers != NULL) {
+    for (int k = 0; k < cqps->nr_qps; k++) delete cqps->send_buffers[k];
+    free(cqps->send_buffers);
+    free(cqps->send_buffers_size);
   }
   delete cqps->factory;
   delete cqps->context;
