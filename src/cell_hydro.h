@@ -28,6 +28,11 @@
 #include "lock.h"
 #include "timeline.h"
 
+#ifdef SHADOWFAX_SPH
+#include "shadowfax/delaunay.h"
+#include "shadowfax/voronoi.h"
+#endif
+
 /**
  * @brief Hydro-related cell variables.
  */
@@ -38,6 +43,13 @@ struct cell_hydro {
 
   /*! Pointer to the #xpart data. */
   struct xpart *xparts;
+  
+#ifdef SHADOWFAX_SPH
+  /*! Delaunay tessellation. */
+  struct delaunay deltess;
+  /*! Voronoi tessellation. */
+  struct voronoi vortess;
+#endif
 
   /*! Pointer for the sorted indices. */
   struct sort_entry *sort;
