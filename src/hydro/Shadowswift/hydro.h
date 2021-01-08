@@ -889,9 +889,8 @@ hydro_set_drifted_physical_internal_energy(struct part* p,
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_physical_internal_energy(const struct part* p,
                                            const struct cosmology* cosmo) {
-  error("Need implementing");
 
-  return 0;
+  return hydro_get_physical_internal_energy(p, /*xp=*/NULL, cosmo);
 }
 
 /**
@@ -905,9 +904,10 @@ hydro_get_drifted_physical_internal_energy(const struct part* p,
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_physical_entropy(const struct part* p,
                                    const struct cosmology* cosmo) {
-  error("Need implementing");
 
-  return 0;
+  /* Note: no cosmological conversion required here with our choice of
+   * coordinates. */
+  return hydro_get_comoving_entropy(p);
 }
 
 /**
