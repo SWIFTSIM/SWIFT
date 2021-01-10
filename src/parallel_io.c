@@ -1414,8 +1414,8 @@ void write_output_parallel(struct engine* e,
   }
 
   /* Number of particles that we will write */
-  const size_t Ntot_written =
-      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  /*const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;*/
   const size_t Ngas_written =
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
   const size_t Nsinks_written =
@@ -1424,8 +1424,8 @@ void write_output_parallel(struct engine* e,
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
+  /*const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;*/
   const size_t Ndm_written = e->s->nr_dmparts - e->s->nr_inhibited_dmparts - e->s->nr_extra_dmparts;
 
   /* Compute offset in the file and total number of particles */
