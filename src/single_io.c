@@ -1062,7 +1062,7 @@ void write_output_single(struct engine* e,
 
           /* This is a DM-only run without background or inhibited particles */
           N = Ntot;
-          darkmatter_write_particles(gparts, list, &num_fields);
+          darkmatter_write_dmparts(dmparts, list, &num_fields);
           num_fields += sidm_write_dmparts(dmparts, list + num_fields);
           if (with_fof) {
             num_fields += fof_write_gparts(gparts, list + num_fields);
