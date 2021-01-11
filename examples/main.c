@@ -579,10 +579,6 @@ int main(int argc, char *argv[]) {
         "chosen\n");
   }
 
-#ifndef GADGET2_SPH
-  /* Temporary, this dependency will be removed later */
-  error("Error: Cannot use radiative transfer without gadget2-sph for now\n");
-#endif
 #ifndef STARS_GEAR
   /* Temporary, this dependency will be removed later */
   error(

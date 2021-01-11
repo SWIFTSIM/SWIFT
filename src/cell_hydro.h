@@ -100,14 +100,26 @@ struct cell_hydro {
   /*! Radiative transfer ghost in task */
   struct task *rt_in;
 
-  /*! Radiative transfer ghost out task */
-  struct task *rt_out;
+  /*! Task for self/pair injection step of radiative transfer */
+  struct link *rt_inject;
 
   /*! Radiative transfer ghost1 task (finishes up injection) */
   struct task *rt_ghost1;
 
-  /*! Task for self/pair injection step of radiative transfer */
-  struct link *rt_inject;
+  /*! Task for self/pair gradient step of radiative transfer */
+  struct link *rt_gradient;
+
+  /*! Radiative transfer gradient out task */
+  struct task *rt_gradient_out;
+
+  /*! Task for self/pair transport step of radiative transfer */
+  struct link *rt_transport;
+
+  /*! Radiative transfer transport out task */
+  struct task *rt_transport_out;
+
+  /*! Radiative transfer ghost out task */
+  struct task *rt_out;
 
   /*! Last (integer) time the cell's part were drifted forward in time. */
   integertime_t ti_old_part;

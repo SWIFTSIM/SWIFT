@@ -130,6 +130,14 @@ enum {
   timer_dosub_self_rt_inject,
   timer_dosub_pair_rt_inject,
   timer_do_rt_ghost1,
+  timer_doself_rt_gradient,
+  timer_dopair_rt_gradient,
+  timer_dosub_self_rt_gradient,
+  timer_dosub_pair_rt_gradient,
+  timer_doself_rt_transport,
+  timer_dopair_rt_transport,
+  timer_dosub_self_rt_transport,
+  timer_dosub_pair_rt_transport,
   timer_count,
 };
 

@@ -28,6 +28,7 @@
 #include "chemistry.h"
 #include "engine.h"
 #include "pressure_floor_iact.h"
+#include "rt.h"
 #include "runner.h"
 #include "runner_doiact_hydro_vec.h"
 #include "space_getsid.h"
@@ -54,6 +55,20 @@
 /* Import the force loop functions. */
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+#include "runner_doiact_functions_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Import the RT gradient loop functions */
+#define FUNCTION rt_gradient
+#define FUNCTION_TASK_LOOP TASK_LOOP_RT
+#include "runner_doiact_functions_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Import the RT transport (force) loop functions. */
+#define FUNCTION rt_transport
+#define FUNCTION_TASK_LOOP TASK_LOOP_RT
 #include "runner_doiact_functions_hydro.h"
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP

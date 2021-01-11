@@ -569,6 +569,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
   c->hydro.rt_inject = NULL;
+  c->hydro.rt_gradient = NULL;
+  c->hydro.rt_transport = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
   c->stars.density = NULL;

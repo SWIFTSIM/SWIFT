@@ -38,8 +38,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
 
   p->rt_data.calls_per_step = 0;
   p->rt_data.iact_stars_inject = 0;
-  p->rt_data.calls_self_inject = 0;
-  p->rt_data.calls_pair_inject = 0;
+  p->rt_data.calls_iact_gradient = 0;
+  p->rt_data.calls_iact_transport = 0;
   p->rt_data.photon_number_updated = 0;
 }
 
@@ -69,8 +69,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
   /* reset everything */
   sp->rt_data.calls_per_step = 0;
   sp->rt_data.iact_hydro_inject = 0;
-  sp->rt_data.calls_self_inject = 0;
-  sp->rt_data.calls_pair_inject = 0;
   sp->rt_data.emission_rate_set = 0;
 }
 
@@ -114,10 +112,13 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
 
   /* first reset old values */
   rt_reset_spart(sp);
+  sp->rt_data.calls_tot += 1;
+  sp->rt_data.calls_per_step += 1;
 
   if (time == 0.) {
     /* if this is the zeroth step, time is still at zero.
      * Do some bogus stuff for now. */
+    /* TODO: check that this covers every possible case */
     star_age += 2 * dt;
   }
   if (star_age - dt >= 0.) {

@@ -109,6 +109,8 @@ const char *taskID_names[task_type_count] = {
     "rt_out",
     "sink_formation",
     "rt_ghost1",
+    "rt_gradient_out",
+    "rt_transport_out",
 };
 
 /* Sub-task type names. */
@@ -146,6 +148,8 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink",
     "rt_inject",
     "sink_compute_formation",
+    "rt_gradient",
+    "rt_transport",
 };
 
 const char *task_category_names[task_category_count] = {
@@ -986,6 +990,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_rt_inject:
       strcpy(cluster, "RTinject");
+      break;
+    case task_subtype_rt_gradient:
+      strcpy(cluster, "RTgradient");
+      break;
+    case task_subtype_rt_transport:
+      strcpy(cluster, "RTtransport");
       break;
     case task_subtype_sink_compute_formation:
       strcpy(cluster, "SinkFormation");

@@ -35,6 +35,8 @@ struct rt_part_data {
   int iact_stars_inject;     /* how many stars this particle interacted with */
   int calls_self_inject;     /* calls from self inject tasks */
   int calls_pair_inject;     /* calls from pair inject tasks */
+  int calls_iact_gradient;   /* calls from gradient interaction loop */
+  int calls_iact_transport;  /* calls from transport interaction loop */
   int photon_number_updated; /* calls from ghost1 tasks */
 };
 
