@@ -210,7 +210,7 @@ def task_is_hydro(name):
         return True
     if "rho" in name and "bpart" not in name:
         return True
-    if "gradient" in name:
+    if "gradient" in name and "rt_gradient" not in name:
         return True
     if "force" in name and "grav" not in name:
         return True
@@ -605,11 +605,12 @@ def write_dependencies(f, data):
     N = len(data)
     written = []
     max_rank = data["number_rank"].max()
-    for i in range(N):
+    #  for i in range(N):
+    for i, l in data.iterrows():
         # get data
-        ta = data["task_in"][i]
-        tb = data["task_out"][i]
-        number_link = data["number_link"][i]
+        ta = l["task_in"]
+        tb = l["task_out"]
+        number_link = l["number_link"]
 
         # check if already done
         name = "%s_%s" % (ta, tb)
@@ -619,12 +620,12 @@ def write_dependencies(f, data):
         written.append(name)
 
         # write relation
-        arrow = ",color=%s" % data["task_colour"][i]
-        if data["number_rank"][i] != max_rank:
+        arrow = ",color=%s" % l["task_colour"]
+        if l["number_rank"] != max_rank:
             arrow += ",style=dashed"
         f.write(
             "\t %s->%s[label=%i%s,fontcolor=%s]\n"
-            % (ta, tb, number_link, arrow, data["task_colour"][i])
+            % (ta, tb, number_link, arrow, l["task_colour"])
         )
 
 

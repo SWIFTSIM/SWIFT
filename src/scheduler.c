@@ -1553,9 +1553,13 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_force ||
                  t->subtype == task_subtype_limiter)
           cost = 1.f * (wscale * count_i) * count_i;
-        else if (t->subtype == task_subtype_rt_inject) {
+        else if (t->subtype == task_subtype_rt_inject)
           cost = 1.f * wscale * scount_i * count_i;
-        } else
+        else if (t->subtype == task_subtype_rt_gradient)
+          cost = 1.f * wscale * count_i * count_i;
+        else if (t->subtype == task_subtype_rt_transport)
+          cost = 1.f * wscale * count_i * count_i;
+        else
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
         break;
@@ -1615,6 +1619,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
         } else if (t->subtype == task_subtype_rt_inject) {
           cost = 1.f * wscale * scount_i * count_j;
+        } else if (t->subtype == task_subtype_rt_gradient) {
+          cost = 1.f * wscale * count_i * count_j;
+        } else if (t->subtype == task_subtype_rt_transport) {
+          cost = 1.f * wscale * count_i * count_j;
         } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -1677,6 +1685,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           }
         } else if (t->subtype == task_subtype_rt_inject) {
           cost = 1.f * wscale * scount_i * count_j;
+        } else if (t->subtype == task_subtype_rt_gradient) {
+          cost = 1.f * wscale * count_i * count_j;
+        } else if (t->subtype == task_subtype_rt_transport) {
+          cost = 1.f * wscale * count_i * count_j;
         } else {
           error("Untreated sub-type for sub-pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -1703,6 +1715,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
         } else if (t->subtype == task_subtype_rt_inject) {
+          cost = 1.f * wscale * scount_i * count_i;
+        } else if (t->subtype == task_subtype_rt_gradient) {
+          cost = 1.f * wscale * scount_i * count_i;
+        } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * scount_i * count_i;
         } else {
           error("Untreated sub-type for sub-selfs: %s",

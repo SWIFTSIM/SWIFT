@@ -129,6 +129,14 @@ const char* timers_names[timer_count] = {
     "dosub_self_rt_inject",
     "dosub_pair_rt_inject",
     "rt_ghost1",
+    "doself_rt_gradient",
+    "dopair_rt_gradient",
+    "dosub_self_rt_gradient",
+    "dosub_pair_rt_gradient",
+    "doself_rt_transport",
+    "dopair_rt_transport",
+    "dosub_self_rt_transport",
+    "dosub_pair_rt_transport",
 };
 
 /* File to store the timers */

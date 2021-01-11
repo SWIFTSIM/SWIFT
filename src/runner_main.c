@@ -109,6 +109,20 @@
 #include "runner_doiact_rt.h"
 #undef FUNCTION
 
+/* Import the RT gradient loop functions */
+#define FUNCTION rt_gradient
+#define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
+#include "runner_doiact_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Import the RT transport (force) loop functions. */
+#define FUNCTION rt_transport
+#define FUNCTION_TASK_LOOP TASK_LOOP_RT_TRANSPORT
+#include "runner_doiact_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
 /* Import the sink compute formation loop functions. */
 #define FUNCTION compute_formation
 #define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
@@ -215,6 +229,10 @@ void *runner_main(void *data) {
             runner_doself_branch_bh_feedback(r, ci);
           else if (t->subtype == task_subtype_rt_inject)
             runner_doself_branch_rt_inject(r, ci, 1);
+          else if (t->subtype == task_subtype_rt_gradient)
+            runner_doself1_branch_rt_gradient(r, ci);
+          else if (t->subtype == task_subtype_rt_transport)
+            runner_doself2_branch_rt_transport(r, ci);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_doself_branch_sinks_compute_formation(r, ci);
           else
@@ -251,6 +269,10 @@ void *runner_main(void *data) {
             runner_dopair_branch_bh_feedback(r, ci, cj);
           else if (t->subtype == task_subtype_rt_inject)
             runner_dopair_branch_rt_inject(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_rt_gradient)
+            runner_dopair1_branch_rt_gradient(r, ci, cj);
+          else if (t->subtype == task_subtype_rt_transport)
+            runner_dopair2_branch_rt_transport(r, ci, cj);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dopair_branch_sinks_compute_formation(r, ci, cj);
           else
@@ -285,6 +307,10 @@ void *runner_main(void *data) {
             runner_dosub_self_bh_feedback(r, ci, 1);
           else if (t->subtype == task_subtype_rt_inject)
             runner_dosub_self_rt_inject(r, ci, 1);
+          else if (t->subtype == task_subtype_rt_gradient)
+            runner_dosub_self1_rt_gradient(r, ci, 1);
+          else if (t->subtype == task_subtype_rt_transport)
+            runner_dosub_self2_rt_transport(r, ci, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_self_sinks_compute_formation(r, ci, 1);
           else
@@ -319,6 +345,10 @@ void *runner_main(void *data) {
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_inject)
             runner_dosub_pair_rt_inject(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_rt_gradient)
+            runner_dosub_pair1_rt_gradient(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_rt_transport)
+            runner_dosub_pair2_rt_transport(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_pair_sinks_compute_formation(r, ci, cj, 1);
           else
