@@ -20,6 +20,18 @@
 #define SWIFT_DARK_MATTER_IO_H
 
 #include "io_properties.h"
+#include "kernel_gravity.h"
+
+/**
+ * @brief Returns the current co-moving softening of a particle
+ *
+ * @param gp The particle of interest
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static float get_softening(const struct dmpart* dmp, const struct gravity_props* restrict grav_props) {
+    return dmp->gpart->epsilon;
+}
+
 
 INLINE static void convert_dmpart_pos(const struct engine* e,
                                      const struct dmpart* gp, double* ret) {
@@ -66,6 +78,13 @@ INLINE static void convert_dmpart_vel(const struct engine* e,
     ret[0] *= cosmo->a_inv;
     ret[1] *= cosmo->a_inv;
     ret[2] *= cosmo->a_inv;
+}
+
+INLINE static void convert_dmpart_soft(const struct engine* e,
+                                      const struct dmpart* dmp, float* ret) {
+    
+    ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
+    get_softening(dmp, e->gravity_properties);
 }
 
 /**
@@ -128,6 +147,11 @@ INLINE static void darkmatter_write_dmparts(const struct dmpart* dmparts,
     list[3] = io_make_output_field(
                                    "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
                                    id_or_neg_offset, "Unique ID of the particles");
+    
+    list[4] = io_make_output_field_convert_dmpart(
+                                                 "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, dmparts, convert_dmpart_soft,
+                                                 "Co-moving Plummer-equivalent softening lengths of the particles.");
+
 }
 
 /**
@@ -150,9 +174,6 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     
     list[2] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, dmparts, rho,
                                    "Co-moving mass densities of the particles");
-
-    /*list[3] = io_make_output_field("DM_ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
-                                   id_or_neg_offset, "Unique ID of the particles");*/
     
     list[3] = io_make_output_field("SIDM_probability", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts,
                                    sidm_probability, "Average probability of particle scattering with another (internal units)");
