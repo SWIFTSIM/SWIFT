@@ -182,6 +182,8 @@ TASKTYPES = [
     "rt_out",
     "sink_formation",
     "rt_ghost1",
+    "rt_gradient_out",
+    "rt_transport_out", 
     "count",
 ]
 
@@ -218,6 +220,8 @@ SUBTYPES = [
     "sink",
     "rt_inject",
     "sink_compute_formation",
+    "rt_gradient",
+    "rt_transport", 
     "count",
 ]
 

@@ -27,6 +27,7 @@
 #include "chemistry_struct.h"
 #include "feedback_struct.h"
 #include "particle_splitting_struct.h"
+#include "rt_struct.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
 
@@ -116,6 +117,9 @@ struct spart {
 
   /*! Splitting structure */
   struct particle_splitting_data split_data;
+
+  /*! Radiative Transfer data */
+  struct rt_spart_data rt_data;
 
   /*! Particle time bin */
   timebin_t time_bin;
