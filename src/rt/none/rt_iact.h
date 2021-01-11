@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_IACT_NONE_H
 #define SWIFT_RT_IACT_NONE_H
 
+#include "rt_gradients.h"
+
 /**
  * @file src/rt/none/rt_iact.h
  * @brief Main header file for no radiative transfer scheme particle
@@ -33,10 +35,124 @@
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param si Star particle.
- * @param xpj Hydro particle extra data.
+ * @param pj Hydro particle.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    const float r2, float* dx, const float hi, const float hj,
-    struct spart* restrict si, struct part* restrict pj) {}
+    const float r2, float *dx, const float hi, const float hj,
+    struct spart *restrict si, struct part *restrict pj) {}
+
+/**
+ * @brief Flux calculation between particle i and particle j
+ *
+ * This method calls runner_iact_rt_fluxes_common with mode 1.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param mode 0 if non-symmetric interaction, 1 if symmetric
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H, int mode) {}
+
+/**
+ * @brief Flux calculation between particle i and particle j
+ *
+ * This method calls runner_iact_rt_fluxes_common with mode 1.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 1);
+}
+
+/**
+ * @brief Flux calculation between particle i and particle j: non-symmetric
+ * version
+ *
+ * This method calls runner_iact_rt_fluxes_common with mode 0.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
+                                struct part *restrict pi,
+                                struct part *restrict pj, float a, float H) {
+
+  runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 0);
+}
+
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j
+ *
+ * This method wraps around rt_gradients_collect, which can be an empty
+ * method, in which case no gradients are used.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  rt_gradients_collect(r2, dx, hi, hj, pi, pj);
+}
+
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j:
+ * non-symmetric version
+ *
+ * This method wraps around rt_gradients_nonsym_collect, which can be an
+ * empty method, in which case no gradients are used.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
+                               struct part *restrict pi,
+                               struct part *restrict pj, float a, float H) {
+
+  rt_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
+}
 
 #endif /* SWIFT_RT_IACT_NONE_H */

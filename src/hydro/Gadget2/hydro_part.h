@@ -172,7 +172,7 @@ struct part {
   /*! Additional data used by the pressure floor */
   struct pressure_floor_part_data pressure_floor_data;
 
-  /* Additional Radiative Transfer Data */
+  /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 
   /*! Time-step length */

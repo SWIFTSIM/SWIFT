@@ -40,6 +40,7 @@
 #include "feedback_struct.h"
 #include "logger.h"
 #include "particle_splitting_struct.h"
+#include "rt_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -198,6 +199,9 @@ struct part {
 
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;
+
+  /*! Additional Radiative Transfer Data */
+  struct rt_part_data rt_data;
 
   /*! Time-step length */
   timebin_t time_bin;

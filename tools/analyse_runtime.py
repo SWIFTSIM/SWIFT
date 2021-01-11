@@ -44,7 +44,6 @@ params = {
     "figure.subplot.hspace": 0.0,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
     "hatch.linewidth": 4,
 }
 rcParams.update(params)

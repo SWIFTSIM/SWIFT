@@ -405,7 +405,8 @@ void engine_unskip(struct engine *e) {
         (with_feedback && cell_is_active_stars(c, e)) ||
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
-        (with_black_holes && cell_is_active_black_holes(c, e))) {
+        (with_black_holes && cell_is_active_black_holes(c, e)) ||
+        (with_rt && cell_is_active_hydro(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));

@@ -1089,9 +1089,12 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   }
 #endif
   if (e->policy & engine_policy_rt) {
-    /* inject: 1 self + (3^3-1)/2 = 26/2 = 13 pairs  |  14
-     * ghosts: in + out, ghost1,                     | + 3 */
-    n1 += 17;
+    /* inject: 1 self + (3^3-1)/2 = 26/2 = 13 pairs  |   14
+     * gradient: 1 self + 13 pairs                   | + 14
+     * transport: 1 self + 13 pairs                  | + 14
+     * implicits: in + out, gradient, transport      | +  4
+     * others: ghost1                                | +  1 */
+    n1 += 47;
   }
 
 #ifdef WITH_MPI
@@ -1567,7 +1570,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_bpart ||
         t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_sf_counts ||
-        t->subtype == task_subtype_rt_inject)
+        t->subtype == task_subtype_rt_inject ||
+        t->subtype == task_subtype_rt_gradient ||
+        t->subtype == task_subtype_rt_transport)
       t->skip = 1;
   }
 
