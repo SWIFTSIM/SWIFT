@@ -136,7 +136,6 @@ void compute_time(struct spart* sp, const int with_cosmology,
                                                     time, dt_star);
 
   *star_age_beg_of_step = star_age_end_of_step - *dt_enrichment;
-
 }
 
 /**
