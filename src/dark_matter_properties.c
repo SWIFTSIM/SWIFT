@@ -31,6 +31,10 @@
 #include "units.h"
 #include "error.h"
 #include "restart.h"
+#include "kernel_dark_matter.h"
+#include "gravity_properties.h"
+
+
 
 #define sidm_props_default_max_iterations 30
 #define sidm_props_default_h_max FLT_MAX
@@ -48,7 +52,7 @@
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.
  * @param params The parsed parameters.
- * @param hydro_props The already read-in properties of the hydro scheme.
+ * @param sidm_props The already read-in properties of the SIDM scheme.
  * @param cosmo The cosmological model.
  */
 void sidm_props_init(struct sidm_props* sidm_props,
@@ -110,9 +114,49 @@ void sidm_props_init(struct sidm_props* sidm_props,
     const float max_volume_change = parser_get_opt_param_float(params, "SPH:max_volume_change", sidm_props_default_volume_change);
     
     sidm_props->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
-
-    
 }
+
+/**
+ * @brief Print the global properties of the SIDM scheme.
+ *
+ * @param sidm_props The #sidm_props.
+ */
+void sidm_props_print(struct sidm_props *sidm_props) {
+    
+    /* Now SPH */
+    message("SIDM scheme: Isotropic with constant cross section");
+    
+    message("SIDM kernel: %s with eta=%f (%.2f neighbours).", dm_kernel_name,
+            sidm_props->eta_neighbours, sidm_props->target_neighbours);
+    
+    if (sidm_props->use_mass_weighted_num_ngb)
+    message("Neighbour number definition: Mass-weighted.");
+    else
+    message("Neighbour number definition: Unweighted.");
+    
+    if (sidm_props->h_max != sidm_props_default_h_max)
+    message("Maximal smoothing length allowed: %.4f", sidm_props->h_max);
+}
+
+/**
+ * @brief Update the global properties of the hydro scheme for that time-step.
+ *
+ * @param p The properties to update.
+ * @param gp The properties of the gravity scheme.
+ * @param cosmo The cosmological model.
+ */
+void sidm_props_update(struct sidm_props *sidm_props, const struct gravity_props *gp,
+                        const struct cosmology *cosmo) {
+    
+    /* Update the minimal allowed smoothing length
+     *
+     * We follow Gadget here and demand that the kernel support (h * gamma)
+     * is a fixed fraction of the radius at which the softened forces
+     * recover a Newtonian behaviour (i.e. 2.8 * Plummer equivalent softening
+     * in the case of a cubic spline kernel). */
+    sidm_props->h_min = sidm_props->h_min_ratio * gp->epsilon_DM_cur / dm_kernel_gamma;
+}
+
 
 #if defined(HAVE_HDF5)
 void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p) {

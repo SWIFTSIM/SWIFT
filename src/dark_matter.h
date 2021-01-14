@@ -170,7 +170,6 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     gp->density.rho_dh = 0.f;
     gp->density.wcount_dh = 0.f;
     gp->num_neighbours = 0.f;
-    gp->sidm_probability = 0.f;
 }
 
 

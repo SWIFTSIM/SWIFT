@@ -36,6 +36,7 @@ struct phys_const;
 struct unit_system;
 struct swift_params;
 struct cosmology;
+struct gravity_props;
 
 /**
  * @brief Properties of the Self-interacting dark matter model.
@@ -117,11 +118,18 @@ struct sidm_dmpart_data {
     float dt_drift;
 };
 
+void sidm_props_print(struct sidm_props* sidm_props);
+
 void sidm_props_init(struct sidm_props* sidm_props,
                      const struct phys_const* phys_const,
                      const struct unit_system* us,
                      struct swift_params* params,
                      const struct cosmology* cosmo);
+
+void sidm_props_update(struct sidm_props* sidm_props,
+                    const struct gravity_props *gp,
+                    const struct cosmology *cosmo);
+
 
 #if defined(HAVE_HDF5)
 void sidm_props_print_snapshot(hid_t h_grpsph, const struct sidm_props *p);

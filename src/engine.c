@@ -2351,6 +2351,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
+  sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
+
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
   engine_first_init_particles(e);
@@ -2735,6 +2737,8 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
 
   if (e->verbose)
     message("Updating general quantities took %.3f %s",
@@ -4563,6 +4567,8 @@ void engine_config(int restart, int fof, struct engine *e,
   engine_print_policy(e);
 
   if (!fof) {
+      
+    if (e->nodeID == 0) sidm_props_print(e->sidm_properties);
 
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
