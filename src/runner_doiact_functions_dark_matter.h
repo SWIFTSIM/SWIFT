@@ -902,8 +902,8 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
         }
         
         const int pi_active = dmpart_is_active(pi, e);
-        const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hi = pi->h_sidm;
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
             (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
@@ -929,8 +929,8 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             }
             
             const int pj_active = dmpart_is_active(pj, e);
-            const float hj = pj->h;
-            const float hjg2 = hj * hj * dm_kernel_gamma2;
+            const float hj = pj->h_sidm;
+            const float hjg2 = hj * hj;
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -1033,8 +1033,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Get the particle position and radius. */
         double pix[3];
         for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
-        const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hi = pi->h_sidm;
+        const float hig2 = hi * hi;
         
         /* Is the ith particle not active? */
         if (!dmpart_is_active(pi, e)) {
@@ -1044,7 +1044,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 
                 /* Get a pointer to the jth particle. */
                 struct dmpart *restrict pj = &dmparts[indt[pjd]];
-                const float hj = pj->h;
+                const float hj = pj->h_sidm;
                 
                 /* Get j particle time-step */
                 const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -1066,7 +1066,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 }
                 
                 /* Hit or miss? */
-                if (r2 < hig2 || r2 < hj * hj * dm_kernel_gamma2) {
+                if (r2 < hig2 || r2 < hj * hj) {
                     
                     runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
                     
@@ -1090,7 +1090,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 /* Skip inhibited particles. */
                 if (dmpart_is_inhibited(pj, e)) continue;
                 
-                const float hj = pj->h;
+                const float hj = pj->h_sidm;
                 
                 /* Get j particle time-step */
                 const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
@@ -1112,7 +1112,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 }
                 
                 /* Hit or miss? */
-                if (r2 < hig2 || r2 < hj * hj * dm_kernel_gamma2) {
+                if (r2 < hig2 || r2 < hj * hj) {
                     
                     /* Does pj need to be updated too? */
                     if (dmpart_is_active(pj, e)) {
@@ -1182,8 +1182,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         }
         
         const int pi_active = dmpart_is_active(pi, e);
-        const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hi = pi->h_sidm;
+        const float hig2 = hi * hi;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
             (float)(pi->x[1] - c->loc[1]),
             (float)(pi->x[2] - c->loc[2])};
@@ -1194,8 +1194,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             /* Get a pointer to the jth particle. */
             struct dmpart *restrict pj = &dmparts[pjd];
             
-            const float hj = pj->h;
-            const float hjg2 = hj * hj * dm_kernel_gamma2;
+            const float hj = pj->h_sidm;
+            const float hjg2 = hj * hj;
             const int pj_active = dmpart_is_active(pj, e);
 
             /* Get j particle time-step */
@@ -1335,8 +1335,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             dti = get_timestep(pi->time_bin, e->time_base);
         }
         
-        const float hi = pi->h;
-        const float hig2 = hi * hi * dm_kernel_gamma2;
+        const float hi = pi->h_sidm;
+        const float hig2 = hi * hi;
 
         const int pi_active = dmpart_is_active(pi, e);
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -1350,8 +1350,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             struct dmpart *restrict pj = &dmparts_j[pjd];
             
             const int pj_active = dmpart_is_active(pj, e);
-            const float hj = pj->h;
-            const float hjg2 = hj * hj * dm_kernel_gamma2;
+            const float hj = pj->h_sidm;
+            const float hjg2 = hj * hj;
             
             /* Get j particle time-step */
             const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);

@@ -53,6 +53,9 @@ struct dmpart {
   /* Particle cutoff radius. */
   float h;
     
+  /* Particle fixed cutoff radius. */
+  float h_sidm;
+    
   /*! Particle time bin */
   timebin_t time_bin;
     
