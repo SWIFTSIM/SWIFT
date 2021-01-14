@@ -76,6 +76,7 @@ struct logger_index {
   uint64_t nparts_removed[swift_type_count];
 };
 
+int logger_index_contains_time_array(struct logger_index *index);
 void logger_index_write_sorted(struct logger_index *index);
 void logger_index_init(struct logger_index *index,
                        struct logger_reader *reader);

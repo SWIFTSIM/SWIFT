@@ -57,6 +57,7 @@ print("time: %g" % args.time)
 # read the logger
 positions = np.empty((0, 3))
 entropies = np.empty(0)
+gas_type = 0
 for f in args.files:
     if f.endswith(".dump"):
         filename = f[:-5]
