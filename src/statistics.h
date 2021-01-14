@@ -77,6 +77,9 @@ struct statistics {
   /*! Total BH mass (internal units)*/
   double bh_mass;
 
+  /*! Total BH subgrid mass (internal units)*/
+  double bh_subgrid_mass;
+
   /*! Total metal mass in gas (internal units)*/
   double gas_Z_mass;
 

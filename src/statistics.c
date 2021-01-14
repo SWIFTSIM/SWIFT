@@ -78,6 +78,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->sink_mass += b->sink_mass;
   a->star_mass += b->star_mass;
   a->bh_mass += b->bh_mass;
+  a->bh_subgrid_mass += b->bh_subgrid_mass;
   a->gas_Z_mass += b->gas_Z_mass;
   a->star_Z_mass += b->star_Z_mass;
   a->bh_Z_mass += b->bh_Z_mass;
@@ -435,6 +436,9 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
     /* Collect mass */
     stats.bh_mass += m;
 
+    /* Collect subgrid mass */
+    stats.bh_subgrid_mass += black_holes_get_subgrid_mass(bp);
+
     /* Collect metal mass */
     stats.bh_Z_mass += chemistry_get_bh_total_metal_mass_for_stats(bp);
 
@@ -756,28 +760,31 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           "current BHs). \n");
   fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file, "# (29)  Total black hole subgrid mass in the simulation. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
 
   fprintf(file, "#\n");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s\n",
+      "%14s %14s\n",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
       "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
-      "(28)");
+      "(28)", "(29)");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s\n",
+      "%14s %14s\n",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
       "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
-      "BH acc. mass");
+      "BH acc. mass", "BH sub. mass");
 
   fflush(file);
 }
@@ -800,14 +807,15 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e %14e\n",
+      "%14e %14e %14e\n",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
       stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int,
       stats->E_pot, stats->E_rad, stats->entropy, stats->centre_of_mass[0],
       stats->centre_of_mass[1], stats->centre_of_mass[2], stats->mom[0],
       stats->mom[1], stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
-      stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass);
+      stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
+      stats->bh_subgrid_mass);
 
   fflush(file);
 }
