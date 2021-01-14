@@ -347,6 +347,16 @@ black_holes_get_accreted_mass(const struct bpart* bp) {
 }
 
 /**
+ * @brief Return the subgrid mass of this BH.
+ *
+ * @param bp the #bpart.
+ */
+__attribute__((always_inline)) INLINE static double
+black_holes_get_subgrid_mass(const struct bpart* bp) {
+  return bp->subgrid_mass;
+}
+
+/**
  * @brief Update the properties of a black hole particles by swallowing
  * a gas particle.
  *
