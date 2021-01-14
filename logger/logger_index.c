@@ -204,6 +204,27 @@ struct index_data *logger_index_get_removed_history(struct logger_index *index,
 }
 
 /**
+ * @brief Check if a time array is written at the end.
+ *
+ * @param index The #logger_index.
+ */
+int logger_index_contains_time_array(struct logger_index *index) {
+  /* Only the first index file should have a time array */
+  if (index->time != 0.) {
+    error_python("Only the first index file can have a time array.");
+  }
+
+  /* Get the file size */
+  const size_t file_size = index->index.mmap_size;
+
+  /* Get the position after the previous array. */
+  char *ret = (char *)logger_index_get_removed_history(index, swift_type_count);
+  const size_t before_time_array = ret - (char *)index->index.map;
+
+  return file_size != before_time_array;
+}
+
+/**
  * @brief Map the file and if required sort it.
  *
  * @param index The #logger_index.
