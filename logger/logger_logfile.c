@@ -39,7 +39,7 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
   if (&reader->log != log) error_python("Wrong link to the reader.");
 
   /* Set pointers to zero. */
-  time_array_init(&log->times);
+  time_array_init(&log->times, LOGGER_TIME_INIT_SIZE);
 
   /* Open file, map it and get its size. */
   if (reader->verbose > 1) message("Mapping the log file.");
