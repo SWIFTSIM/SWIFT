@@ -74,7 +74,7 @@ void time_array_append(struct time_array *t, const integertime_t int_time,
 size_t time_read(integertime_t *int_time, double *time,
                  const struct logger_reader *reader, size_t offset);
 
-void time_array_init(struct time_array *t);
+void time_array_init(struct time_array *t, size_t initial_size);
 void time_array_populate(struct time_array *t, struct logger_logfile *log);
 
 integertime_t time_array_get_integertime(struct time_array *t,

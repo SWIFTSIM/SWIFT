@@ -146,15 +146,66 @@ size_t time_offset_first_record(const struct header *h) {
  *
  * @param t #time_array to initialize.
  */
-void time_array_init(struct time_array *t) {
+void time_array_init(struct time_array *t, size_t initial_size) {
   /* Allocate the arrays */
-  t->records = malloc(sizeof(struct time_record) * LOGGER_TIME_INIT_SIZE);
+  t->records = malloc(sizeof(struct time_record) * initial_size);
   if (t->records == NULL)
     error_python("Failed to initialize the time records.");
 
   /* Initialize the sizes */
   t->size = 0;
-  t->capacity = LOGGER_TIME_INIT_SIZE;
+  t->capacity = initial_size;
+}
+
+/**
+ * @brief Save the array into a file.
+ *
+ * @param t The #time_array.
+ * @param filename The filename of the index file.
+ */
+void time_array_save(struct time_array *t, const char *filename) {
+  /* Open the file */
+  FILE *f = fopen(filename, "ab");
+  if (f == NULL) {
+    error("Failed to open the file %s", filename);
+  }
+
+  /* Dump the array */
+  uint64_t size = t->size;
+  fwrite(&size, sizeof(uint64_t), 1, f);
+  fwrite(t->records, sizeof(struct time_record), t->size, f);
+
+  /* Close the file */
+  int failed = fclose(f);
+  if (failed) {
+    error("Failed to close the file %s", filename);
+  }
+}
+
+/**
+ * @brief Load the array from a file
+ *
+ * @param t The #time_array.
+ * @param index The #logger_index that contains the time array.
+ */
+void time_array_load(struct time_array *t, struct logger_index *index) {
+  /* Ensure that the array is empty */
+  if (t->capacity != 0) time_array_free(t);
+
+  /* Get the position of the time array. */
+  char *map = (char *)logger_index_get_removed_history(index, swift_type_count);
+
+  /* Read the array */
+  uint64_t size = 0;
+  map = logger_loader_io_read_data(map, sizeof(uint64_t), &size);
+
+  /* Allocate the array */
+  time_array_init(t, size);
+  t->size = size;
+
+  /* Read the elements */
+  logger_loader_io_read_data(map, t->size * sizeof(struct time_record),
+                             t->records);
 }
 
 /**
@@ -164,6 +215,36 @@ void time_array_init(struct time_array *t) {
  * @param log The #logger_logfile.
  */
 void time_array_populate(struct time_array *t, struct logger_logfile *log) {
+  int verbose = log->reader->verbose;
+  struct logger_reader *reader = log->reader;
+
+  /* Get the filename of the saved file. */
+  char filename[STRING_SIZE + 50];
+  sprintf(filename, "%s_0000.index", reader->basename);
+
+  /* Check if the file exists. */
+  if (access(filename, F_OK) != 0) error("Cannot find the first index file");
+
+  /* Initialize the index file that might contain the time array */
+  struct logger_index index;
+  logger_index_init(&index, reader);
+  logger_index_read_header(&index, filename);
+  logger_index_map_file(&index, filename, /* sorted */ 1);
+
+  /* Check if the index file contains the time array */
+  if (logger_index_contains_time_array(&index)) {
+    if (verbose > 0) {
+      message("Restoring the time array from %s", filename);
+    }
+
+    /* Load the time array */
+    time_array_load(t, &index);
+    logger_index_free(&index);
+    return;
+  }
+
+  /* Free the memory. */
+  logger_index_free(&index);
 
   /* Initialize a few variables. */
   integertime_t int_time = 0;
@@ -185,6 +266,12 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
                                      log->log.mmap_size);
     if (test == -1) break;
   }
+
+  /* Be nice and save everything */
+  if (verbose > 0) {
+    message("Saving the time array in %s", filename);
+  }
+  time_array_save(t, filename);
 }
 
 /**
