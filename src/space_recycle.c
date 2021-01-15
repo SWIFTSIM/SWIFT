@@ -193,9 +193,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.rt_inject = NULL;
     c->hydro.rt_ghost1 = NULL;
     c->hydro.rt_gradient = NULL;
-    c->hydro.rt_gradient_out = NULL;
+    c->hydro.rt_ghost2 = NULL;
     c->hydro.rt_transport = NULL;
     c->hydro.rt_transport_out = NULL;
+    c->hydro.rt_tchem = NULL;
     c->hydro.rt_out = NULL;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)

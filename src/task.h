@@ -102,8 +102,9 @@ enum task_types {
   task_type_rt_out,   /* Implicit */
   task_type_sink_formation,
   task_type_rt_ghost1,
-  task_type_rt_gradient_out,  /* Implicit */
+  task_type_rt_ghost2,
   task_type_rt_transport_out, /* Implicit */
+  task_type_rt_tchem,
   task_type_count
 } __attribute__((packed));
 

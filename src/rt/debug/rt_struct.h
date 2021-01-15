@@ -33,11 +33,13 @@ struct rt_part_data {
   /* data to store during one time step */
   int calls_per_step;        /* calls per time step to this particle */
   int iact_stars_inject;     /* how many stars this particle interacted with */
-  int calls_self_inject;     /* calls from self inject tasks */
-  int calls_pair_inject;     /* calls from pair inject tasks */
   int calls_iact_gradient;   /* calls from gradient interaction loop */
   int calls_iact_transport;  /* calls from transport interaction loop */
   int photon_number_updated; /* calls from ghost1 tasks */
+
+  int gradients_done;  /* finalised computing gradients? */
+  int transport_done;  /* transport step done? */
+  int thermochem_done; /* thermochemistry done? */
 };
 
 /* Additional RT data in star particle struct */
@@ -50,8 +52,6 @@ struct rt_spart_data {
   int calls_per_step;    /* calls per time step to this particle */
   int iact_hydro_inject; /* how many hydro particles this particle interacted
                             with */
-  int calls_self_inject; /* calls from self inject tasks */
-  int calls_pair_inject; /* calls from pair inject tasks */
   int emission_rate_set; /* stellar photon emisison rate has been computed */
 };
 

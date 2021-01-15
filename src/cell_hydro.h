@@ -109,14 +109,17 @@ struct cell_hydro {
   /*! Task for self/pair gradient step of radiative transfer */
   struct link *rt_gradient;
 
-  /*! Radiative transfer gradient out task */
-  struct task *rt_gradient_out;
+  /*! Radiative transfer ghost2 task */
+  struct task *rt_ghost2;
 
   /*! Task for self/pair transport step of radiative transfer */
   struct link *rt_transport;
 
   /*! Radiative transfer transport out task */
   struct task *rt_transport_out;
+
+  /*! Radiative transfer thermochemistry task */
+  struct task *rt_tchem;
 
   /*! Radiative transfer ghost out task */
   struct task *rt_out;
