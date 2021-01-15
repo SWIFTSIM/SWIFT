@@ -1454,3 +1454,37 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_do_rt_ghost1);
 }
+
+/**
+ * @brief Intermediate task after the gradient computation to finish
+ *        up the gradients and prepare for the transport step
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
+  /* const struct engine *e = r->e; */
+  int count = c->hydro.count;
+
+  /* Anything to do here? */
+  if (count == 0) return;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_rt_ghost2(r, c->progeny[k], 0);
+      }
+    }
+  }
+
+  for (int pid = 0; pid < count; pid++) {
+    struct part *restrict p = &(c->hydro.parts[pid]);
+    rt_finalise_gradient(p);
+  }
+
+  if (timer) TIMER_TOC(timer_do_rt_ghost2);
+}
