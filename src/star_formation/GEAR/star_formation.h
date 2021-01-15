@@ -235,7 +235,7 @@ INLINE static void star_formation_separate_particles(const struct engine* e,
   /* Move a bit the particle in order to avoid
      division by 0.
   */
-  const float max_displacement = 0.2;
+  const float max_displacement = 0.1;
   const double delta_x =
       2.f * random_unit_interval(p->id, e->ti_current,
                                  (enum random_number_type)0) -
@@ -271,7 +271,7 @@ INLINE static void star_formation_separate_particles(const struct engine* e,
   /* Compute offsets since last cell construction */
   xp->x_diff[0] += dx[0];
   xp->x_diff[1] += dx[1];
-  xp->x_diff[1] += dx[2];
+  xp->x_diff[2] += dx[2];
   xp->x_diff_sort[0] += dx[0];
   xp->x_diff_sort[1] += dx[1];
   xp->x_diff_sort[2] += dx[2];
