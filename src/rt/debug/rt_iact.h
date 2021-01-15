@@ -72,6 +72,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
+  if (!pi->rt_data.gradients_done)
+    error(
+        "Trying to compute fluxes for particle where "
+        "gradients aren't finished");
+  if (!pj->rt_data.gradients_done)
+    error(
+        "Trying to compute fluxes for particle where "
+        "gradients aren't finished");
+
   if (mode == 1) {
     pi->rt_data.calls_tot += 1;
     pi->rt_data.calls_per_step += 1;

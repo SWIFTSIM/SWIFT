@@ -1092,9 +1092,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* inject: 1 self + (3^3-1)/2 = 26/2 = 13 pairs  |   14
      * gradient: 1 self + 13 pairs                   | + 14
      * transport: 1 self + 13 pairs                  | + 14
-     * implicits: in + out, gradient, transport      | +  4
-     * others: ghost1                                | +  1 */
-    n1 += 47;
+     * implicits: in + out, transport_out            | +  3
+     * others: ghost1, ghost2, thermochemistry       | +  3 */
+    n1 += 48;
   }
 
 #ifdef WITH_MPI
@@ -1550,6 +1550,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
         t->type == task_type_bh_out || t->type == task_type_rt_ghost1 ||
+        t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||

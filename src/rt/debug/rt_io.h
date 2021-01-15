@@ -47,30 +47,30 @@ INLINE static int rt_write_particles(const struct part* parts,
                                  "number of calls "
                                  "to this particle during one time step");
   list[3] =
-      io_make_output_field("RTCallsSelfInjection", INT, 1, UNIT_CONV_NO_UNITS,
-                           0, parts, rt_data.calls_self_inject,
-                           "number of calls to this particle during one time "
-                           "step in injection self task");
-  list[4] =
-      io_make_output_field("RTCallsPairInjection", INT, 1, UNIT_CONV_NO_UNITS,
-                           0, parts, rt_data.calls_pair_inject,
-                           "number of calls to this particle during one time "
-                           "step in injection pair task");
-  list[5] =
       io_make_output_field("RTPhotonsUpdated", INT, 1, UNIT_CONV_NO_UNITS, 0,
                            parts, rt_data.photon_number_updated,
                            "=1 if photon number has been updated in this step");
-  list[6] =
+  list[4] =
       io_make_output_field("RTCallsIactGradient", INT, 1, UNIT_CONV_NO_UNITS, 0,
                            parts, rt_data.calls_iact_gradient,
                            "number of calls to this particle during the"
                            "gradient interaction loop");
-  list[7] =
+  list[5] =
       io_make_output_field("RTCallsIactTransport", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.calls_iact_transport,
                            "number of calls to this particle during the"
                            "transport interaction loop");
-  return 8;
+  list[6] = io_make_output_field(
+      "RTGradientsDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
+      rt_data.gradients_done, "How many times finalise_gradients was called");
+  list[7] = io_make_output_field(
+      "RTTransportDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
+      rt_data.transport_done, "How many times finalise_transport was called");
+  list[8] = io_make_output_field(
+      "RTThermochemistryDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
+      rt_data.thermochem_done, "How many times rt_tchem was called");
+
+  return 9;
 }
 
 /**
@@ -93,21 +93,11 @@ INLINE static int rt_write_stars(const struct spart* sparts,
                                  "number of calls to "
                                  "this particle during one time step");
   list[3] =
-      io_make_output_field("RTCallsSelfInjection", INT, 1, UNIT_CONV_NO_UNITS,
-                           0, sparts, rt_data.calls_self_inject,
-                           "number of calls to this particle during one time "
-                           "step in injection self task");
-  list[4] =
-      io_make_output_field("RTCallsPairInjection", INT, 1, UNIT_CONV_NO_UNITS,
-                           0, sparts, rt_data.calls_pair_inject,
-                           "number of calls to this particle during one time "
-                           "step in injection pair task");
-  list[5] =
       io_make_output_field("RTEmissionRateSet", INT, 1, UNIT_CONV_NO_UNITS, 0,
                            sparts, rt_data.emission_rate_set,
                            "Stellar photon "
                            "emission rates set?");
 
-  return 6;
+  return 4;
 }
 #endif /* SWIFT_RT_IO_DEBUG_H */

@@ -51,6 +51,7 @@
 #include "logger.h"
 #include "logger_io.h"
 #include "pressure_floor.h"
+#include "rt.h"
 #include "space.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -878,4 +879,49 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
 #else
   error("SWIFT was not compiled with FOF enabled!");
 #endif
+}
+
+/**
+ * @brief Finish up the transport step and do the thermochemistry
+ *        for radiative transfer
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_rt_tchem(r, c->progeny[k], 0);
+  } else {
+
+    /* const struct cosmology *cosmo = e->cosmology; */
+    const int count = c->hydro.count;
+    struct part *restrict parts = c->hydro.parts;
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+
+      if (part_is_active(p, e)) {
+
+        /* Finish the force loop */
+        rt_finalise_transport(p);
+        rt_tchem(p);
+      }
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_end_rt_tchem);
 }
