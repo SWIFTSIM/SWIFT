@@ -190,7 +190,7 @@ full_step = data[0, :]
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 13:
+if full_step.size == 15:
     print("# MPI mode")
     mpimode = True
     nranks = int(max(data[:, 0])) + 1
@@ -201,6 +201,8 @@ if full_step.size == 13:
     subtaskcol = 3
     ticcol = 5
     toccol = 6
+    qticcol = 13
+    nunlockscol = 14
     updates = int(full_step[7])
     g_updates = int(full_step[8])
     s_updates = int(full_step[9])
@@ -214,6 +216,8 @@ else:
     subtaskcol = 2
     ticcol = 4
     toccol = 5
+    qticcol = 11
+    nunlockscol = 12
     updates = int(full_step[6])
     g_updates = int(full_step[7])
     s_updates = int(full_step[8])
@@ -271,6 +275,7 @@ for rank in ranks:
     start_t = float(tic_step)
     data[:, ticcol] -= start_t
     data[:, toccol] -= start_t
+    data[:, qticcol] -= start_t
     end_t = (toc_step - start_t) / CPU_CLOCK
 
     tasks = {}
@@ -284,11 +289,13 @@ for rank in ranks:
         thread = int(data[line, threadscol])
         tic = int(data[line, ticcol]) / CPU_CLOCK
         toc = int(data[line, toccol]) / CPU_CLOCK
+        qtic = int(data[line, qticcol]) / CPU_CLOCK
+        nunlocks = int(data[line, nunlockscol])
         tasktype = int(data[line, taskcol])
         subtype = int(data[line, subtaskcol])
         sid = int(data[line, -1])
 
-        tasks[thread].append([tic, toc, tasktype, subtype, sid])
+        tasks[thread].append([tic, toc, tasktype, subtype, sid, qtic, nunlocks])
 
     #  Sort by tic and gather used threads.
     threadids = []
@@ -302,25 +309,50 @@ for rank in ranks:
     print("# Task times:")
     print("# -----------")
     print(
-        "# {0:<17s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s}".format(
-            "type/subtype", "count", "minimum", "maximum", "sum", "mean", "percent"
+        "# {0:<22s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s} {7:>9s} {8:>9s} {9:>9s} {10:>9s}  {11:>14s} {12:>14s} {13:>14s} {14:>14s} ".format(
+            "type/subtype", "count", "min", "max", "sum", "mean",
+            "percent",
+            "qmin", "qmax", "qsum", "qmean", 
+            "unlocks_min", "unlocks_max", "unlocks_sum", "unlocks_mean", 
         )
     )
 
     alltasktimes = {}
+    alltaskqtimes = {}
+    alltaskunlocks = {}
     sidtimes = {}
     for i in threadids:
         tasktimes = {}
+        taskqtimes = {}
+        taskunlocks = {}
         for task in tasks[i]:
             key = TASKTYPES[task[2]] + "/" + SUBTYPES[task[3]]
             dt = task[1] - task[0]
+            dtq = task[0] - task[5]
+
             if not key in tasktimes:
                 tasktimes[key] = []
             tasktimes[key].append(dt)
 
+            if not key in taskqtimes:
+                taskqtimes[key] = []
+            taskqtimes[key].append(dtq)
+
+            if not key in taskunlocks:
+                taskunlocks[key] = []
+            taskunlocks[key].append(task[6])
+
             if not key in alltasktimes:
                 alltasktimes[key] = []
             alltasktimes[key].append(dt)
+
+            if not key in alltaskqtimes:
+                alltaskqtimes[key] = []
+            alltaskqtimes[key].append(dtq)
+
+            if not key in alltaskunlocks:
+                alltaskunlocks[key] = []
+            alltaskunlocks[key].append(task[6])
 
             my_sid = task[4]
             if my_sid > -1:
@@ -335,8 +367,14 @@ for rank in ranks:
             taskmin = min(tasktimes[key])
             taskmax = max(tasktimes[key])
             tasksum = sum(tasktimes[key])
+            taskqmin = min(taskqtimes[key])
+            taskqmax = max(taskqtimes[key])
+            taskqsum = sum(taskqtimes[key])
+            taskunlockmin = min(taskunlocks[key])
+            taskunlockmax = max(taskunlocks[key])
+            taskunlocksum = sum(taskunlocks[key])
             print(
-                "{0:24s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}".format(
+                "{0:24s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f} {7:9.4f} {8:9.4f} {9:9.4f} {10:9.4f} {11:14.4f} {12:14.4f} {13:14.4f} {14:14.4f} ".format(
                     key,
                     len(tasktimes[key]),
                     taskmin,
@@ -344,6 +382,14 @@ for rank in ranks:
                     tasksum,
                     tasksum / len(tasktimes[key]),
                     tasksum / total_t * 100.0,
+                    taskqmin,
+                    taskqmax,
+                    taskqsum,
+                    taskqsum / len(tasktimes[key]),
+                    taskunlockmin,
+                    taskunlockmax,
+                    taskunlocksum,
+                    taskunlocksum / len(tasktimes[key]),
                 )
             )
         print()
@@ -352,20 +398,34 @@ for rank in ranks:
         print('<div id="all"></div>')
     print("# All threads : ")
     for key in sorted(alltasktimes.keys()):
-        taskmin = min(alltasktimes[key])
-        taskmax = max(alltasktimes[key])
-        tasksum = sum(alltasktimes[key])
-        print(
-            "{0:23s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}".format(
-                key,
-                len(alltasktimes[key]),
-                taskmin,
-                taskmax,
-                tasksum,
-                tasksum / len(alltasktimes[key]),
-                tasksum / (len(threadids) * total_t) * 100.0,
+            taskmin = min(alltasktimes[key])
+            taskmax = max(alltasktimes[key])
+            tasksum = sum(alltasktimes[key])
+            taskqmin = min(alltaskqtimes[key])
+            taskqmax = max(alltaskqtimes[key])
+            taskqsum = sum(alltaskqtimes[key])
+            taskunlockmin = min(alltaskunlocks[key])
+            taskunlockmax = max(alltaskunlocks[key])
+            taskunlocksum = sum(alltaskunlocks[key])
+            print(
+                "{0:24s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f} {7:9.4f} {8:9.4f} {9:9.4f} {10:9.4f} {11:14.4f} {12:14.4f} {13:14.4f} {14:14.4f} ".format(
+                    key,
+                    len(alltasktimes[key]),
+                    taskmin,
+                    taskmax,
+                    tasksum,
+                    tasksum / len(alltasktimes[key]),
+                    tasksum / total_t * 100.0,
+                    taskqmin,
+                    taskqmax,
+                    taskqsum,
+                    taskqsum / len(alltasktimes[key]),
+                    taskunlockmin,
+                    taskunlockmax,
+                    taskunlocksum,
+                    taskunlocksum / len(alltasktimes[key]),
+                )
             )
-        )
     print()
 
     # For pairs, show stuff sorted by SID
