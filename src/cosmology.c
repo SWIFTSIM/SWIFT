@@ -395,6 +395,8 @@ double neutrino_density_integrand_transformed(double w, void *param) {
   return neutrino_density_integrand(1. / w, param) / (w * w);
 }
 
+#ifdef HAVE_LIBGSL
+
 /**
  * @brief Performs the neutrino density momentum integral
  * \f$ \int_0^\infty x^2 \sqrt{x^2 + y^2} / (1+e^x) dx \f$, where
@@ -425,16 +427,16 @@ double neutrino_density_integrate(gsl_integration_workspace *space, double y) {
   return result;
 }
 
+#endif
+
 /**
  * @brief Find a time when all neutrinos are still relativistic. Store the
  * starting, mid, and end points of the neutrino interpolation tables in c.
  *
  * @param c The cosmology structure
  * @param tol Tolerance in density integral
- * @param space The GSL working space
  */
-void neutrino_find_relativistic_redshift(struct cosmology *c, double tol,
-                                         gsl_integration_workspace *space) {
+void neutrino_find_relativistic_redshift(struct cosmology *c, double tol) {
 
   /* Find the largest neutrino mass */
   double M_max_eV = c->M_nu_eV[0];
@@ -485,7 +487,7 @@ void cosmology_init_neutrino_tables(struct cosmology *c) {
       gsl_integration_workspace_alloc(GSL_workspace_size);
 
   /* Find a safe redshift to start the neutrino density interpolation table */
-  neutrino_find_relativistic_redshift(c, 1e-7, space);
+  neutrino_find_relativistic_redshift(c, 1e-7);
 
   const double pre_factor = 15. * pow(c->T_nu_0 * M_1_PI / c->T_CMB_0, 4);
   const double early_delta_a =
@@ -1232,6 +1234,7 @@ double cosmology_get_timebase(struct cosmology *c,
 
 #else
   error("Code not compiled with GSL. Can't compute cosmology integrals.");
+  return 0.;
 #endif
 }
 
