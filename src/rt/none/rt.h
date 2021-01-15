@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_NONE_H
 #define SWIFT_RT_NONE_H
 
+#include "rt_thermochemistry.h"
+
 /**
  * @file src/rt/none/rt.h
  * @brief Main header file for no radiative transfer scheme.
@@ -81,5 +83,32 @@ rt_injection_update_photon_density(struct part* restrict p) {}
 __attribute__((always_inline)) INLINE static void
 rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
                                  double star_age, double dt) {}
+
+/**
+ * @brief finishes up the gradient computation
+ *
+ * @param p particle to work on
+ */
+__attribute__((always_inline)) INLINE static void rt_finalise_gradient(
+    struct part* restrict p) {}
+
+/**
+ * @brief finishes up the transport step by actually doing the time integration
+ *
+ * @param p particle to work on
+ */
+__attribute__((always_inline)) INLINE static void rt_finalise_transport(
+    struct part* restrict p) {}
+
+/**
+ * @brief Wraps around rt_do_thermochemistry function
+ *
+ * @param p particle to work on
+ */
+__attribute__((always_inline)) INLINE static void rt_tchem(
+    struct part* restrict p) {
+
+  rt_do_thermochemistry(p);
+}
 
 #endif /* SWIFT_RT_NONE_H */
