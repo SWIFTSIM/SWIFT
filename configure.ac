@@ -1662,6 +1662,9 @@ AC_ARG_WITH([hydro],
 )
 
 case "$with_hydro" in
+   none)
+      AC_DEFINE([NONE_SPH], [1], [No hydro])
+   ;;
    gadget2)
       AC_DEFINE([GADGET2_SPH], [1], [Gadget-2 SPH])
    ;;
