@@ -1311,7 +1311,7 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
       /* print warning only once */
       if (last_cell_id == 1) {
         message(
-            "Warning: Got %d x %d x %d top level cells."
+            "Warning: Got %d x %d x %d top level cells. "
             "Cell IDs are only guaranteed to be unique if count is < 32^3",
             cdim[0], cdim[1], cdim[2]);
       }

@@ -39,8 +39,7 @@ struct cell_black_holes {
   /*! The drift task for bparts */
   struct task *drift;
 
-  /*! Implicit tasks marking the entry of the BH physics block of tasks
-   */
+  /*! Implicit tasks marking the entry of the BH physics block of tasks */
   struct task *black_holes_in;
 
   /*! Implicit tasks marking the exit of the BH physics block of tasks */
@@ -71,8 +70,24 @@ struct cell_black_holes {
   /*! Last (integer) time the cell's bpart were drifted forward in time. */
   integertime_t ti_old_part;
 
+  /*! Minimum end of (integer) time step in this cell for black tasks. */
+  integertime_t ti_end_min;
+
+  /*! Maximum end of (integer) time step in this cell for black hole tasks. */
+  integertime_t ti_end_max;
+
+  /*! Maximum beginning of (integer) time step in this cell for black hole
+   * tasks. */
+  integertime_t ti_beg_max;
+
   /*! Spin lock for various uses (#bpart case). */
   swift_lock_type lock;
+
+  /*! Number of #bpart updated in this cell. */
+  int updated;
+
+  /*! Is the #bpart data of this cell being used in a sub-cell? */
+  int hold;
 
   /*! Nr of #bpart in this cell. */
   int count;
@@ -91,23 +106,6 @@ struct cell_black_holes {
 
   /*! Values of dx_max before the drifts, used for sub-cell tasks. */
   float dx_max_part_old;
-
-  /*! Maximum end of (integer) time step in this cell for black tasks. */
-  integertime_t ti_end_min;
-
-  /*! Maximum end of (integer) time step in this cell for black hole tasks. */
-  integertime_t ti_end_max;
-
-  /*! Maximum beginning of (integer) time step in this cell for black hole
-   * tasks.
-   */
-  integertime_t ti_beg_max;
-
-  /*! Number of #bpart updated in this cell. */
-  int updated;
-
-  /*! Is the #bpart data of this cell being used in a sub-cell? */
-  int hold;
 };
 
 #endif /* SWIFT_CELL_BLACK_HOLES_H */
