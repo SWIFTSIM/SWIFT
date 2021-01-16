@@ -40,7 +40,9 @@
 #include "space.h"
 
 /* Import the right hydro definition */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro_debug.h"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_debug.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_debug.h"
