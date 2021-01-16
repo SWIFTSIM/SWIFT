@@ -60,6 +60,9 @@ void runner_do_init_grav(struct runner *r, struct cell *c, const int timer) {
   /* Anything to do here? */
   if (!cell_is_active_gravity(c, e)) return;
 
+  /* Does the multipole need drifting? */
+  if (c->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(c, e);
+
   /* Reset the gravity acceleration tensors */
   gravity_field_tensors_init(&c->grav.multipole->pot, e->ti_current);
 
