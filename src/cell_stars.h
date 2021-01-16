@@ -62,8 +62,21 @@ struct cell_stars {
   /*! Implicit tasks marking the exit of the stellar physics block of tasks */
   struct task *stars_out;
 
+  /*! Pointer for the sorted indices. */
+  struct sort_entry *sort;
+
   /*! Last (integer) time the cell's spart were drifted forward in time. */
   integertime_t ti_old_part;
+
+  /*! Minimum end of (integer) time step in this cell for star tasks. */
+  integertime_t ti_end_min;
+
+  /*! Maximum end of (integer) time step in this cell for star tasks. */
+  integertime_t ti_end_max;
+
+  /*! Maximum beginning of (integer) time step in this cell for star tasks.
+   */
+  integertime_t ti_beg_max;
 
   /*! Spin lock for various uses (#spart case). */
   swift_lock_type lock;
@@ -76,6 +89,12 @@ struct cell_stars {
 
   /*! Nr of #spart this cell can hold after addition of new #spart. */
   int count_total;
+
+  /*! Number of #spart updated in this cell. */
+  int updated;
+
+  /*! Is the #spart data of this cell being used in a sub-cell? */
+  int hold;
 
   /*! Max smoothing length in this cell. */
   float h_max;
@@ -95,9 +114,6 @@ struct cell_stars {
   /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
   float dx_max_sort_old;
 
-  /*! Pointer for the sorted indices. */
-  struct sort_entry *sort;
-
   /*! Bit mask of sort directions that will be needed in the next timestep. */
   uint16_t requires_sorts;
 
@@ -109,22 +125,6 @@ struct cell_stars {
 
   /*! Bit mask of sorts that need to be computed for this cell. */
   uint16_t do_sort;
-
-  /*! Maximum end of (integer) time step in this cell for star tasks. */
-  integertime_t ti_end_min;
-
-  /*! Maximum end of (integer) time step in this cell for star tasks. */
-  integertime_t ti_end_max;
-
-  /*! Maximum beginning of (integer) time step in this cell for star tasks.
-   */
-  integertime_t ti_beg_max;
-
-  /*! Number of #spart updated in this cell. */
-  int updated;
-
-  /*! Is the #spart data of this cell being used in a sub-cell? */
-  int hold;
 
   /*! Star formation history struct */
   struct star_formation_history sfh;

@@ -39,35 +39,14 @@ struct cell_sinks {
   /*! Linked list of the tasks computing this cell's sink formation checks. */
   struct link *compute_formation;
 
-  /*! Nr of #sink in this cell. */
-  int count;
+  /*! The drift task for sinks */
+  struct task *drift;
 
-  /*! Nr of #sink this cell can hold after addition of new one. */
-  int count_total;
+  /*! Implicit tasks marking the entry of the sink block of tasks */
+  struct task *sink_in;
 
-  /*! Max cut off radius in this cell. */
-  float r_cut_max;
-
-  /*! Values of r_cut_max before the drifts, used for sub-cell tasks. */
-  float r_cut_max_old;
-
-  /*! Number of #sink updated in this cell. */
-  int updated;
-
-  /*! Is the #sink data of this cell being used in a sub-cell? */
-  int hold;
-
-  /*! Spin lock for various uses (#sink case). */
-  swift_lock_type lock;
-
-  /*! Spin lock for sink formation use. */
-  swift_lock_type sink_formation_lock;
-
-  /*! Maximum part movement in this cell since last construction. */
-  float dx_max_part;
-
-  /*! Values of dx_max before the drifts, used for sub-cell tasks. */
-  float dx_max_part_old;
+  /*! Implicit tasks marking the exit of the sink block of tasks */
+  struct task *sink_out;
 
   /*! Last (integer) time the cell's sink were drifted forward in time. */
   integertime_t ti_old_part;
@@ -79,19 +58,38 @@ struct cell_sinks {
   integertime_t ti_end_max;
 
   /*! Maximum beginning of (integer) time step in this cell for sink
-   * tasks.
-   */
+   * tasks. */
   integertime_t ti_beg_max;
 
-  /*! The drift task for sinks */
-  struct task *drift;
+  /*! Spin lock for various uses (#sink case). */
+  swift_lock_type lock;
 
-  /*! Implicit tasks marking the entry of the sink block of tasks
-   */
-  struct task *sink_in;
+  /*! Spin lock for sink formation use. */
+  swift_lock_type sink_formation_lock;
 
-  /*! Implicit tasks marking the exit of the sink block of tasks */
-  struct task *sink_out;
+  /*! Nr of #sink in this cell. */
+  int count;
+
+  /*! Nr of #sink this cell can hold after addition of new one. */
+  int count_total;
+
+  /*! Number of #sink updated in this cell. */
+  int updated;
+
+  /*! Is the #sink data of this cell being used in a sub-cell? */
+  int hold;
+
+  /*! Max cut off radius in this cell. */
+  float r_cut_max;
+
+  /*! Values of r_cut_max before the drifts, used for sub-cell tasks. */
+  float r_cut_max_old;
+
+  /*! Maximum part movement in this cell since last construction. */
+  float dx_max_part;
+
+  /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+  float dx_max_part_old;
 };
 
 #endif /* SWIFT_CELL_SINKS_H */
