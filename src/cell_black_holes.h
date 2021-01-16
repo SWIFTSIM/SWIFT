@@ -45,11 +45,13 @@ struct cell_black_holes {
   /*! Implicit tasks marking the exit of the BH physics block of tasks */
   struct task *black_holes_out;
 
-  /*! The star ghost task itself */
+  /*! The black hole ghost task itself */
   struct task *density_ghost;
 
-  /*! The star ghost task itself */
-  struct task *swallow_ghost[3];
+  /*! The ghost tasks related to BH swallowing */
+  struct task *swallow_ghost_0;
+  struct task *swallow_ghost_1;
+  struct task *swallow_ghost_2;
 
   /*! Linked list of the tasks computing this cell's BH density. */
   struct link *density;
