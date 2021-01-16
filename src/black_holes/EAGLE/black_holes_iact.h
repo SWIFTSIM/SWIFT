@@ -93,8 +93,9 @@ runner_iact_nonsym_bh_gas_density(
      * re-calculate the sound speed using the fixed internal energy */
     const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
                         bh_props->temp_to_u_factor;
-    if (pj->u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
-        pj->u > bh_props->fixed_u_for_soundspeed) {
+    const float u = hydro_get_drifted_comoving_internal_energy(pj);
+    if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
+        u > bh_props->fixed_u_for_soundspeed) {
       cj = gas_soundspeed_from_internal_energy(
           pj->rho, bh_props->fixed_u_for_soundspeed);
     }
