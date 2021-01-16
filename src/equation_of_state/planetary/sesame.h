@@ -82,19 +82,19 @@ INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
                                         enum eos_planetary_material_id mat_id) {
   // Stewart et al. (2019)
   mat->mat_id = mat_id;
-  mat->date = 20201003;
+  mat->date = 20201104;
 }
 INLINE static void set_ANEOS_iron(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
-  mat->date = 20201003;
+  mat->date = 20201104;
 }
 INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
                                       enum eos_planetary_material_id mat_id) {
   // Stewart (2020)
   mat->mat_id = mat_id;
-  mat->date = 20201003;
+  mat->date = 20201104;
 }
 
 // Read the tables from file
