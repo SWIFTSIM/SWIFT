@@ -1063,6 +1063,37 @@ void engine_add_hydro_ghosts(struct scheduler *s, struct cell *c,
 }
 
 /**
+ * @brief Recursively add non-implicit star ghost tasks to a cell hierarchy.
+ */
+void engine_add_stars_ghosts(struct scheduler *s, struct cell *c,
+                             struct task *restrict ghost_in,
+                             struct task *restrict ghost_out,
+                             const int with_star_formation) {
+
+  /* Abort as there are no hydro particles here? */
+  const int count = c->stars.count_total > 0 ||
+                    (with_star_formation && c->hydro.count_total > 0);
+  if (!count) return;
+
+  /* If we have reached the leaf OR have to few particles to play with*/
+  if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) {
+
+    /* Add the ghost task and its dependencies */
+    c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
+                                       task_subtype_none, 0, 0, c, NULL);
+    scheduler_addunlock(s, ghost_in, c->stars.ghost);
+    scheduler_addunlock(s, c->stars.ghost, ghost_out);
+
+  } else {
+    /* Keep recursing */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_add_stars_ghosts(s, c->progeny[k], ghost_in, ghost_out,
+                                with_star_formation);
+  }
+}
+
+/**
  * @brief Recursively add non-implicit cooling tasks to a cell hierarchy.
  */
 void engine_add_cooling(struct scheduler *s, struct cell *c,
@@ -1232,8 +1263,15 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_stars_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
-                                           task_subtype_none, 0, 0, c, NULL);
+        /* Generate the ghost tasks. */
+        c->stars.ghost_in =
+            scheduler_addtask(s, task_type_stars_ghost_in, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+        c->stars.ghost_out = scheduler_addtask(s, task_type_stars_ghost_out,
+                                               task_subtype_none, 0,
+                                               /* implicit = */ 1, c, NULL);
+        engine_add_stars_ghosts(s, c, c->stars.ghost_in, c->stars.ghost_out,
+                                with_star_formation);
 
 #ifdef WITH_LOGGER
         if (with_logger) {
