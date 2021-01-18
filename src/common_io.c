@@ -1121,10 +1121,10 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     if (h_space < 0) error("Error while creating data space for cell centres");
     hid_t h_err = H5Sset_extent_simple(h_space, 2, shape, shape);
     if (h_err < 0)
-      error("Error while changing shape of gas offsets data space.");
+      error("Error while changing shape of cell centres data space.");
     hid_t h_data = H5Dcreate(h_grp, "Centres", io_hdf5_type(DOUBLE), h_space,
                              H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for gas offsets.");
+    if (h_data < 0) error("Error while creating centres.");
     h_err = H5Dwrite(h_data, io_hdf5_type(DOUBLE), h_space, H5S_ALL,
                      H5P_DEFAULT, centres);
     if (h_err < 0) error("Error while writing centres.");
@@ -1137,7 +1137,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     if (h_grp_offsets < 0) error("Error while creating offsets sub-group");
     hid_t h_grp_files =
         H5Gcreate(h_grp, "Files", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_grp_files < 0) error("Error while creating filess sub-group");
+    if (h_grp_files < 0) error("Error while creating files sub-group");
     hid_t h_grp_counts =
         H5Gcreate(h_grp, "Counts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp_counts < 0) error("Error while creating counts sub-group");
