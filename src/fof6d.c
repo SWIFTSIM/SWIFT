@@ -87,52 +87,34 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
   }
   
   for (int i = 0; i < num_groups; i++) {
-    const double one_over_mass = 1.1;// / group_mass[i];
+    const double one_over_mass = 1.0 / group_mass[i];
 
     v_mean[0][i] *= one_over_mass; 
     v_mean[1][i] *= one_over_mass; 
     v_mean[2][i] *= one_over_mass;
   }
 
-  double vx = 0, vy = 0, vz = 0;
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-    size_t group_id = gparts[i].fof_data.group_id;
-
-    if(group_id != fof_props_default_group_id) {
-      group_id--;
-
-      //const double v_diff[3] = {gparts[i].v_full[0] - v_mean[0][group_id],
-      //                          gparts[i].v_full[1] - v_mean[1][group_id],
-      //                          gparts[i].v_full[2] - v_mean[2][group_id]};
-
-      //v_disp[group_id] += (v_diff[0] * v_diff[0] + 
-      //                     v_diff[1] * v_diff[1] + 
-      //                     v_diff[2] * v_diff[2]) * gparts[i].mass;
-    }
-  }
- 
   /* Calculate the velocity dispersion for each group. */
-  //for (size_t i = 0; i < num_parts_in_groups; i++) {
-  //  
-  //  const size_t index = part_index[i];
-  //  const size_t group_id = gparts[index].fof_data.group_id - 1;
+  for (size_t i = 0; i < num_parts_in_groups; i++) {
+    
+    const size_t index = part_index[i];
+    const size_t group_id = gparts[index].fof_data.group_id - 1;
 
-  //  const double v_diff[3] = {gparts[index].v_full[0] - v_mean[0][group_id],
-  //                            gparts[index].v_full[1] - v_mean[1][group_id],
-  //                            gparts[index].v_full[2] - v_mean[2][group_id]};
+    const double v_diff[3] = {gparts[index].v_full[0] - v_mean[0][group_id],
+                              gparts[index].v_full[1] - v_mean[1][group_id],
+                              gparts[index].v_full[2] - v_mean[2][group_id]};
 
-  //  v_disp[group_id] += (v_diff[0] * v_diff[0] + 
-  //                       v_diff[1] * v_diff[1] + 
-  //                       v_diff[2] * v_diff[2]) * gparts[index].mass;
-  //}
+    v_disp[group_id] += (v_diff[0] * v_diff[0] + 
+                         v_diff[1] * v_diff[1] + 
+                         v_diff[2] * v_diff[2]) * gparts[index].mass;
+  }
 
   FILE *file = fopen("fof3d_vdisp.dat", "w");
 
   for (int i = 0; i < num_groups; i++) {
-    //v_disp[i] /= group_mass[i];
+    v_disp[i] /= group_mass[i];
+    v_disp[i] *= 1.5625;
     fprintf(file, "%8lf  %8lf, %8lf, %8lf %8lf\n", v_disp[i], v_mean[0][i], v_mean[1][i], v_mean[2][i], group_mass[i]); 
-    //message("v_disp[%d]: %lf, v_mean: [%lf, %lf, %lf], group_mass: %lf", i, v_disp[i], v_mean[0][i], v_mean[1][i], v_mean[2][i], group_mass[i]);
   }
 
   fof6d_split_groups(props, s, num_parts_in_groups, v_disp, part_index);
@@ -149,22 +131,17 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
   /* Perform a neighbour search over each group. */ 
   for (int i = 0; i < num_groups; i++) {
   
-    const double l_v2 = v_disp[0] * 1.25;
+    const double l_v2 = v_disp[i];
     const double l_xv2 = l_x2 * l_v2;
     const size_t num_parts = group_size[i];
 
     message("Performing N^2 neighbour search over group %d which has %zu particles.", i, group_size[i]);
 
-    double v_mean[3] = {0.0,0.0,0.0}; 
     for (size_t j = 0; j < num_parts; j++) {
        
       struct gpart *pi = groups[i].gparts[j];
       const double pix = pi->x[0], piy = pi->x[1], piz = pi->x[2];
       const double vix = pi->v_full[0], viy = pi->v_full[1], viz = pi->v_full[2];
-    
-      v_mean[0] += pi->mass * vix; 
-      v_mean[1] += pi->mass * viy; 
-      v_mean[2] += pi->mass * viz; 
     
       /* Find the root of pi. */
       size_t *const group_offset = group_index + (ptrdiff_t)(pi - s->gparts);
@@ -206,7 +183,6 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
         }
       }
     }
-    message("v_mean: [%8lf, %8lf, %8lf]. mass: %lf, size: %zu", v_mean[0], v_mean[1], v_mean[2], props->group_mass[i], num_parts);
     offset += num_parts;
   }
 
