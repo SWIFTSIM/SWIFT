@@ -1062,7 +1062,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Star ghost tasks ? */
-    else if (t_type == task_type_stars_ghost) {
+    else if (t_type == task_type_stars_ghost ||
+             t_type == task_type_stars_ghost_in ||
+             t_type == task_type_stars_ghost_out) {
       if (cell_is_active_stars(t->ci, e) ||
           (with_star_formation && cell_is_active_hydro(t->ci, e)))
         scheduler_activate(s, t);
