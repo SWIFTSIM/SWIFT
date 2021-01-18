@@ -222,6 +222,8 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
             dmp->sidm_data.max_sidm_events_per_timestep = dmp->sidm_data.sidm_events_per_timestep;
         
     }
+    /* Remove flag */
+    dmp->sidm_data.sidm_flag = 0.f;
 }
 
 
