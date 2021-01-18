@@ -102,6 +102,12 @@ struct fof_props {
 
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
+  
+  /*! Mean velocity of the group a given gpart belongs to. */
+  double *group_vmean[3];
+  
+  /*! Mean velocity dispersion of the group a given gpart belongs to. */
+  double *group_vdisp;
 
   /*! Index of the part with the maximal density of each group. */
   long long *max_part_density_index;

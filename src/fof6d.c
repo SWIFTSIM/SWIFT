@@ -58,30 +58,15 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
   size_t *part_index = NULL;
 
   /* Allocate and initialise a velocity dispersion array. */
-  if (swift_memalign("fof6d_v_disp", (void **)&v_disp, SWIFT_STRUCT_ALIGNMENT,
-                     num_groups * sizeof(double)) != 0)
-    error("Failed to allocate list of group velocity dispersions for 6DFOF search.");
-
-  if (swift_memalign("fof6d_v_mean[0]", (void **)&v_mean[0], SWIFT_STRUCT_ALIGNMENT,
-                     num_groups * sizeof(double)) != 0)
-    error("Failed to allocate list of mean velocity for 6DFOF search.");
-
-  if (swift_memalign("fof6d_v_mean[1]", (void **)&v_mean[1], SWIFT_STRUCT_ALIGNMENT,
-                     num_groups * sizeof(double)) != 0)
-    error("Failed to allocate list of mean velocity for 6DFOF search.");
-
-  if (swift_memalign("fof6d_v_mean[2]", (void **)&v_mean[2], SWIFT_STRUCT_ALIGNMENT,
-                     num_groups * sizeof(double)) != 0)
-    error("Failed to allocate list of mean velocity for 6DFOF search.");
-
   if (swift_memalign("fof6d_part_index", (void **)&part_index, SWIFT_STRUCT_ALIGNMENT,
                      num_parts_in_groups * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle indices in groups for 6DFOF search.");
 
-  bzero(v_disp, num_groups * sizeof(double));
-  bzero(v_mean[0], num_groups * sizeof(double));
-  bzero(v_mean[1], num_groups * sizeof(double));
-  bzero(v_mean[2], num_groups * sizeof(double));
+  v_disp = props->group_vdisp;
+  v_mean[0] = props->group_vmean[0];
+  v_mean[1] = props->group_vmean[1];
+  v_mean[2] = props->group_vmean[2];
+
   bzero(part_index, num_parts_in_groups * sizeof(size_t));
   
   size_t part_ctr = 0;
@@ -152,10 +137,6 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
 
   fof6d_split_groups(props, s, num_parts_in_groups, v_disp, part_index);
 
-  swift_free("fof6d_v_disp", v_disp);
-  swift_free("fof6d_v_mean[0]", v_mean[0]);
-  swift_free("fof6d_v_mean[1]", v_mean[1]);
-  swift_free("fof6d_v_mean[2]", v_mean[2]);
   swift_free("fof6d_part_index", part_index);
 
 }

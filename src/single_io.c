@@ -62,6 +62,8 @@
 #include "units.h"
 #include "velociraptor_io.h"
 #include "xmf.h"
+#include "fof.h"
+#include "common_io.h"
 
 /**
  * @brief Reads a data array from a given HDF5 group.
@@ -946,6 +948,50 @@ void write_output_single(struct engine* e,
                         e->s->cells_top, e->s->nr_cells, e->s->width, e->nodeID,
                         /*distributed=*/0, N_total, global_offsets, numFields,
                         internal_units, snapshot_units);
+
+  h_grp = H5Gcreate(h_file, "/FOFGroups", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating FOF group.\n");
+  const int nr_groups = e->fof_properties->num_groups;
+  io_write_attribute(h_grp, "nr_groups", INT, &nr_groups, 1);
+  
+  io_write_array(h_grp, e->fof_properties->num_groups, e->fof_properties->group_size, LONGLONG, "Sizes", "FOF group sizes");
+  io_write_array(h_grp, e->fof_properties->num_groups, e->fof_properties->group_mass, DOUBLE, "Masses", "FOF group masses");
+  
+  hid_t h_err;
+  
+  if( e->fof_properties->run_6d_fof) {
+
+    io_write_array(h_grp, e->fof_properties->num_groups, e->fof_properties->group_vdisp, DOUBLE, "VelocityDispersion",
+        "FOF group velocity dispersions");
+
+    /* Temporary memory for the cell-by-cell information */
+    double* vmean = NULL;
+    vmean = (double*)malloc(3 * nr_groups * sizeof(double));
+
+    for(int i=0; i<nr_groups; i++) {
+      vmean[3*i + 0] = e->fof_properties->group_vmean[0][i];
+      vmean[3*i + 1] = e->fof_properties->group_vmean[1][i];
+      vmean[3*i + 2] = e->fof_properties->group_vmean[2][i];
+    }
+
+    /* Write the centres to the group */
+    hsize_t shape[2] = {(hsize_t)nr_groups, 3};
+    hid_t h_space = H5Screate(H5S_SIMPLE);
+    if (h_space < 0) error("Error while creating data space for mean velocities");
+    h_err = H5Sset_extent_simple(h_space, 2, shape, shape);
+    if (h_err < 0)
+      error("Error while changing shape of mean velocity data space.");
+    hid_t h_data = H5Dcreate(h_grp, "VelocityMean", io_hdf5_type(DOUBLE), h_space,
+                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_data < 0) error("Error while creating mean velocities.");
+    h_err = H5Dwrite(h_data, io_hdf5_type(DOUBLE), h_space, H5S_ALL,
+                     H5P_DEFAULT, vmean);
+    if (h_err < 0) error("Error while writing mean velocities.");
+    H5Dclose(h_data);
+    H5Sclose(h_space);
+  }
+
   H5Gclose(h_grp);
 
   /* Loop over all particle types */
@@ -971,7 +1017,7 @@ void write_output_single(struct engine* e,
     char aliasName[PARTICLE_GROUP_BUFFER_SIZE];
     snprintf(aliasName, PARTICLE_GROUP_BUFFER_SIZE, "/%sParticles",
              part_type_names[ptype]);
-    hid_t h_err = H5Lcreate_soft(partTypeGroupName, h_grp, aliasName,
+    h_err = H5Lcreate_soft(partTypeGroupName, h_grp, aliasName,
                                  H5P_DEFAULT, H5P_DEFAULT);
     if (h_err < 0) error("Error while creating alias for particle group.\n");
 

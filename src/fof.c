@@ -2978,6 +2978,28 @@ void fof_search_tree(struct fof_props *props,
 
   if(props->run_6d_fof) {
     
+    /* Allocate and initialise the mean velocity and velocity dispersion arrays. */
+    if (swift_memalign("fof6d_v_disp", (void **)&props->group_vdisp, SWIFT_STRUCT_ALIGNMENT,
+                     num_groups * sizeof(double)) != 0)
+        error("Failed to allocate list of group velocity dispersions for 6DFOF search.");
+
+    if (swift_memalign("fof6d_v_mean[0]", (void **)&props->group_vmean[0], SWIFT_STRUCT_ALIGNMENT,
+                       num_groups * sizeof(double)) != 0)
+      error("Failed to allocate list of mean velocity for 6DFOF search.");
+
+    if (swift_memalign("fof6d_v_mean[1]", (void **)&props->group_vmean[1], SWIFT_STRUCT_ALIGNMENT,
+                       num_groups * sizeof(double)) != 0)
+      error("Failed to allocate list of mean velocity for 6DFOF search.");
+
+    if (swift_memalign("fof6d_v_mean[2]", (void **)&props->group_vmean[2], SWIFT_STRUCT_ALIGNMENT,
+                       num_groups * sizeof(double)) != 0)
+      error("Failed to allocate list of mean velocity for 6DFOF search.");
+
+    bzero(props->group_vdisp, num_groups * sizeof(double));
+    bzero(props->group_vmean[0], num_groups * sizeof(double));
+    bzero(props->group_vmean[1], num_groups * sizeof(double));
+    bzero(props->group_vmean[2], num_groups * sizeof(double));
+
     message("Running 6D FoF on 3D groups.");
 
     /* Find 6DFOF groups. */
@@ -2985,16 +3007,20 @@ void fof_search_tree(struct fof_props *props,
   }
 
   /* Free the left-overs */
-  swift_free("fof_high_group_sizes", high_group_sizes);
+  //swift_free("fof_high_group_sizes", high_group_sizes);
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
+
+  for(int i=0; i<num_groups; i++)
+    group_size[i] = high_group_sizes[i].size;
+
   swift_free("fof_group_index", props->group_index);
-  swift_free("fof_group_size", props->group_size);
-  swift_free("fof_group_mass", props->group_mass);
+  //swift_free("fof_group_size", props->group_size);
+  //swift_free("fof_group_mass", props->group_mass);
   swift_free("fof_max_part_density_index", props->max_part_density_index);
   swift_free("fof_max_part_density", props->max_part_density);
   props->group_index = NULL;
-  props->group_size = NULL;
-  props->group_mass = NULL;
+  //props->group_size = NULL;
+  //props->group_mass = NULL;
   props->max_part_density_index = NULL;
   props->max_part_density = NULL;
 
