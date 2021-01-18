@@ -34,14 +34,14 @@
 #define number_parts 100
 
 /**
- * This function test the logger in the VR mode.
+ * This function test the logger in the Virtual Reality mode.
  * The idea is to simply read a snapshot at a given time and
  * then simply advance in time the particles.
  */
 int main(int argc, char *argv[]) {
   /* Create required structures. */
   struct swift_params params;
-  char filename[200] = "testVR.yml";
+  char filename[200] = "testVirtualReality.yml";
 
   /* Read parameters. */
   parser_read_file(filename, &params);
@@ -76,11 +76,23 @@ int main(int argc, char *argv[]) {
   message("Time begin: %f end: %f", begin, end);
   logger_reader_set_time(&reader, begin);
 
+  /* Create the variables for the number of particles */
+  const int n_type = swift_type_count;
+  uint64_t *n_parts = (uint64_t *)malloc(n_type * sizeof(uint64_t));
+  int *read_types = (int *)malloc(n_type * sizeof(int));
+  if (read_types == NULL || n_parts == NULL) {
+    error("Failed to allocate arrays.");
+  }
+
+  /* Set the flags in order to read everything */
+  for (int i = 0; i < n_type; i++) {
+    read_types[i] = 1;
+  }
+
   /* Get the number of particles */
-  int n_type = 0;
+  logger_reader_get_number_particles(&reader, n_parts, read_types);
+
   uint64_t n_tot = 0;
-  const uint64_t *n_parts =
-      logger_reader_get_number_particles(&reader, &n_type);
   for (int i = 0; i < n_type; i++) {
     n_tot += n_parts[i];
   }

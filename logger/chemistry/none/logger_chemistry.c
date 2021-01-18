@@ -18,18 +18,19 @@
  ******************************************************************************/
 
 /* Include this object's header */
-#include "logger_stars.h"
+#include "logger_chemistry.h"
 
 /* Local headers  */
 #include "logger_tools.h"
 
-const int stars_logger_field_size[stars_logger_field_count] = {
-    member_size(struct spart, x),       // coordinates
-    member_size(struct spart, v),       // velocities
-    member_size(struct gpart, a_grav),  // accelerations -> stored inside gparts
-    member_size(struct spart, mass),    // massses
-    member_size(struct spart, h),       // Smoothing Length
-    member_size(struct spart, id),      // IDs
-};
+/* Hydro part */
+const int chemistry_logger_field_size_part[chemistry_logger_field_part_count] =
+    {};
 
-int stars_logger_local_to_global[stars_logger_field_count];
+int chemistry_logger_local_to_global_part[chemistry_logger_field_part_count];
+
+/* Stellar part */
+const int
+    chemistry_logger_field_size_spart[chemistry_logger_field_spart_count] = {};
+
+int chemistry_logger_local_to_global_spart[chemistry_logger_field_spart_count];

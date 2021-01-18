@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,20 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_LOGGER_STARA_FORMATION_H
+#define SWIFT_LOGGER_STAR_FORMATION_H
 
-/* Include this object's header */
-#include "logger_stars.h"
+/* Config parameters. */
+#include "../config.h"
 
-/* Local headers  */
-#include "logger_tools.h"
+/* Import the right functions */
+#if defined(STAR_FORMATION_NONE)
+#include "./star_formation/none/logger_star_formation.h"
+#elif defined(STAR_FORMATION_QLA)
+#error TODO
+#elif defined(STAR_FORMATION_EAGLE)
+#error TODO
+#elif defined(STAR_FORMATION_GEAR)
+#include "./star_formation/GEAR/logger_star_formation.h"
+#else
+#error "Invalid choice of star formation law"
+#endif
 
-const int stars_logger_field_size[stars_logger_field_count] = {
-    member_size(struct spart, x),       // coordinates
-    member_size(struct spart, v),       // velocities
-    member_size(struct gpart, a_grav),  // accelerations -> stored inside gparts
-    member_size(struct spart, mass),    // massses
-    member_size(struct spart, h),       // Smoothing Length
-    member_size(struct spart, id),      // IDs
-};
-
-int stars_logger_local_to_global[stars_logger_field_count];
+#endif /* SWIFT_STAR_FORMATION_H */

@@ -54,9 +54,15 @@ void check_data(struct logger_reader *reader, struct part *parts,
   struct header *h = &reader->log.header;
 
   /* Create a particle */
-  void **output = malloc(hydro_logger_field_count * sizeof(void *));
-  for (int i = 0; i < hydro_logger_field_count; i++) {
-    output[i] = malloc(h->masks[hydro_logger_local_to_global[i]].size);
+  const int all_fields_count = tools_get_number_fields(swift_type_gas);
+  struct field_information *all_fields = (struct field_information *)malloc(
+      all_fields_count * sizeof(struct field_information));
+  tools_get_list_fields(all_fields, swift_type_gas, h);
+
+  void **output = malloc(all_fields_count * sizeof(void *));
+  for (int i = 0; i < all_fields_count; i++) {
+    const int global = all_fields[i].global_index;
+    output[i] = malloc(h->masks[global].size);
   }
 
   /* Define a few variables */
@@ -170,7 +176,7 @@ void check_data(struct logger_reader *reader, struct part *parts,
   }
 
   /* Cleanup */
-  for (int i = 0; i < hydro_logger_field_count; i++) {
+  for (int i = 0; i < all_fields_count; i++) {
     free(output[i]);
   }
   free(output);
