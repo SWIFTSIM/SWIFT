@@ -18,18 +18,16 @@
  ******************************************************************************/
 
 /* Include this object's header */
-#include "logger_stars.h"
+#include "logger_star_formation.h"
 
 /* Local headers  */
 #include "logger_tools.h"
 
-const int stars_logger_field_size[stars_logger_field_count] = {
-    member_size(struct spart, x),       // coordinates
-    member_size(struct spart, v),       // velocities
-    member_size(struct gpart, a_grav),  // accelerations -> stored inside gparts
-    member_size(struct spart, mass),    // massses
-    member_size(struct spart, h),       // Smoothing Length
-    member_size(struct spart, id),      // IDs
+const int star_formation_logger_field_size[star_formation_logger_field_count] =
+    {
+        member_size(struct spart, sf_data.birth_density) +
+            member_size(struct spart, sf_data.birth_mass) +
+            member_size(struct spart, sf_data.progenitor_id),
 };
 
-int stars_logger_local_to_global[stars_logger_field_count];
+int star_formation_logger_local_to_global[star_formation_logger_field_count];

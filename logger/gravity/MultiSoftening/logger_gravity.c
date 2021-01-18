@@ -17,10 +17,11 @@
  *
  ******************************************************************************/
 
+/* Include this object's header */
 #include "logger_gravity.h"
 
-/* Define the size of all the fields. */
-#define member_size(type, member) sizeof(((type *)0)->member)
+/* Local headers  */
+#include "logger_tools.h"
 
 const int gravity_logger_field_size[gravity_logger_field_count] = {
     member_size(struct gpart, x),                 // coordinates

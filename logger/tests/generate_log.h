@@ -52,6 +52,7 @@ void generate_particles(struct part *parts, struct xpart *xparts,
     hydro_first_init_part(&parts[i], &xparts[i]);
     hydro_init_part(&parts[i], &hs);
     logger_part_data_init(&xparts[i].logger_data);
+    parts[i].gpart = NULL;
 
     for (int j = 0; j < 3; j++) {
       parts[i].x[j] = 0;
@@ -122,13 +123,20 @@ void write_particles(struct logger_writer *log, struct engine *e) {
       // TODO write only a few masks at the time
 
       logger_log_part(log, &parts[j], &xparts[j], e, /* log_all */ 0,
-                      /* special flags */ 0);
+                      /* flag */ 0, /* flag_data */ 0);
     }
   }
 }
 
 void generate_log(struct swift_params *params, struct part *parts,
                   struct xpart *xparts, size_t nparts) {
+
+#ifdef HAVE_PYTHON
+  message(
+      "WARNING: error messages might crash as python is enabled but not "
+      "initialized. If you obtain a segmentation fault, please recompile "
+      "without python");
+#endif
   /* Initialize the particles */
   generate_particles(parts, xparts, nparts);
 
@@ -154,14 +162,17 @@ void generate_log(struct swift_params *params, struct part *parts,
   s.nr_gparts = 0;
   s.nr_sparts = 0;
   s.nr_bparts = 0;
+  s.nr_sinks = 0;
   s.nr_inhibited_parts = 0;
   s.nr_inhibited_gparts = 0;
   s.nr_inhibited_sparts = 0;
   s.nr_inhibited_bparts = 0;
+  s.nr_inhibited_sinks = 0;
   s.nr_extra_gparts = 0;
   s.nr_extra_parts = 0;
   s.nr_extra_sparts = 0;
   s.nr_extra_bparts = 0;
+  s.nr_extra_sinks = 0;
   struct logger_writer log;
   e.logger = &log;
 
@@ -194,6 +205,7 @@ void generate_log(struct swift_params *params, struct part *parts,
   /* Write a sentinel timestamp */
   logger_log_timestamp(e.logger, e.ti_current, e.time,
                        &e.logger->timestamp_offset);
+  engine_dump_index(&e);
 
   /* Cleanup the memory */
   logger_free(&log);

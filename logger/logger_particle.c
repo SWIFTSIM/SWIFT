@@ -34,11 +34,9 @@
  * @param reader The #logger_reader.
  * @param offset offset of the record to read.
  * @param output Buffer for the requested field..
- * @param local_to_global The list converting local to global id for the fields
- * (e.g. gravity_logger_local_to_global)
- * @param local_count The number of element in logger_mask_id (e.g.
- * gravity_logger_field_count)
- * @param field The request field (in local indexing).
+ * @param all_fields The list of fields for the particle type.
+ * @param all_fields_count The number of element in all_fields.
+ * @param global_wanted The global index of the requested field.
  * @param mask (out) The mask of the record.
  * @param h_offset (out) Difference of offset with the next record.
  *
@@ -46,8 +44,8 @@
  */
 __attribute__((always_inline)) INLINE size_t logger_particle_read_field(
     const struct logger_reader *reader, size_t offset, void *output,
-    const int *local_to_global, const int local_count, int field, size_t *mask,
-    size_t *h_offset) {
+    const struct field_information *all_fields, const int all_fields_count,
+    const int global_wanted, size_t *mask, size_t *h_offset) {
 
   /* Get a few pointers. */
   const struct header *h = &reader->log.header;
@@ -75,15 +73,15 @@ __attribute__((always_inline)) INLINE size_t logger_particle_read_field(
   }
 
   /* Read the record and copy it to a particle. */
-  for (int local = 0; local < local_count; local++) {
-    const int global = local_to_global[local];
+  for (int i = 0; i < all_fields_count; i++) {
+    const int global = all_fields[i].global_index;
 
     /* Is the mask present? */
     if (!(*mask & h->masks[global].mask)) {
       continue;
     }
 
-    if (field == local) {
+    if (global_wanted == global) {
       /* Read the data. */
       map = logger_loader_io_read_data(map, h->masks[global].size, output);
     } else {
@@ -137,4 +135,83 @@ logger_particle_read_special_flag(const struct logger_reader *reader,
       map, h->masks[logger_index_special_flags].size, &packed_data);
 
   return logger_unpack_flags_and_data(packed_data, data);
+}
+
+/**
+ * @brief Interpolate a field of the particle at the given time.
+ *
+ * @param before Pointer to the #logger_field at a time < t.
+ * @param after Pointer to the #logger_field at a time > t.
+ * @param otuput Pointer to the output value.
+ * @param time_before Time of field_before (< t).
+ * @param time_after Time of field_after (> t).
+ * @param time Requested time.
+ * @param field The field to reconstruct.
+ */
+void logger_particle_interpolate_field(
+    const double time_before, const struct logger_field *restrict before,
+    const double time_after, const struct logger_field *restrict after,
+    void *restrict output, const double time,
+    const struct field_information *field, enum part_type type) {
+
+  /* Select the correct interpolation */
+  switch (type) {
+
+    /* Hydro */
+    case swift_type_gas:
+      switch (field->module) {
+        case field_module_default:
+          hydro_logger_interpolate_field(time_before, before, time_after, after,
+                                         output, time, field->local_index);
+          break;
+
+        case field_module_chemistry:
+          chemistry_logger_interpolate_field_part(time_before, before,
+                                                  time_after, after, output,
+                                                  time, field->local_index);
+          break;
+
+        default:
+          error("Module not implemented");
+      }
+      break;
+
+    /* Dark matter */
+    case swift_type_dark_matter:
+    case swift_type_dark_matter_background:
+      if (field->module != field_module_default)
+        error("Module not implemented");
+      gravity_logger_interpolate_field(time_before, before, time_after, after,
+                                       output, time, field->local_index);
+      break;
+
+    /* Stars */
+    case swift_type_stars:
+      switch (field->module) {
+        case field_module_default:
+          stars_logger_interpolate_field(time_before, before, time_after, after,
+                                         output, time, field->local_index);
+          break;
+
+        case field_module_chemistry:
+          chemistry_logger_interpolate_field_spart(time_before, before,
+                                                   time_after, after, output,
+                                                   time, field->local_index);
+          break;
+
+        case field_module_star_formation:
+          star_formation_logger_interpolate_field(time_before, before,
+                                                  time_after, after, output,
+                                                  time, field->local_index);
+          break;
+
+        default:
+          error("Module not implemented");
+      }
+      break;
+
+      /* Default */
+    default:
+      error_python("Particle type not implemented");
+  }
 }

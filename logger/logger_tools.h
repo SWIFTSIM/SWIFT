@@ -44,6 +44,9 @@
 
 #define STRING_SIZE 200
 
+/* Define the size of all the fields. */
+#define member_size(type, member) sizeof(((type *)0)->member)
+
 struct header;
 struct logger_reader;
 
@@ -60,6 +63,51 @@ struct logger_field {
   /* Value of its second derivative (NULL if not existing). */
   void *second_deriv;
 };
+
+/**
+ * @brief Defines a type of modules (e.g. gravity, stars,
+ * chemistry, star_formation, ...)
+ */
+enum module_field {
+  field_module_default = 0,
+  field_module_chemistry,
+  field_module_star_formation,
+};
+
+/**
+ * @brief Structure containing all the information
+ * of a field.
+ */
+struct field_information {
+
+  /* Module containing the field */
+  enum module_field module;
+
+  /* Name of the field */
+  const char *name;
+
+  /* Index of the field in the local array. */
+  int local_index;
+
+  /* Index of the field in the global array. */
+  int global_index;
+
+  /* Index of the first derivative in the local array. */
+  int local_index_first;
+
+  /* Index of the first derivative in the global array. */
+  int global_index_first;
+
+  /* Index of the second derivative in the local array. */
+  int local_index_second;
+
+  /* Index of the second derivative in the global array. */
+  int global_index_second;
+};
+
+int tools_get_number_fields(enum part_type type);
+void tools_get_list_fields(struct field_information *fields,
+                           enum part_type type, const struct header *h);
 
 int tools_get_next_record(const struct header *h, void *map, size_t *offset,
                           size_t file_size);
