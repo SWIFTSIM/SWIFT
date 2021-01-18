@@ -1038,8 +1038,9 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 /**
  * @brief Recursively add non-implicit ghost tasks to a cell hierarchy.
  */
-void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
-                       struct task *ghost_out) {
+void engine_add_hydro_ghosts(struct scheduler *s, struct cell *c,
+                             struct task *restrict ghost_in,
+                             struct task *restrict ghost_out) {
 
   /* Abort as there are no hydro particles here? */
   if (c->hydro.count_total == 0) return;
@@ -1048,7 +1049,6 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
   if (!c->split || c->hydro.count_total < engine_max_parts_per_ghost) {
 
     /* Add the ghost task and its dependencies */
-    struct scheduler *s = &e->sched;
     c->hydro.ghost =
         scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0, c, NULL);
     scheduler_addunlock(s, ghost_in, c->hydro.ghost);
@@ -1058,15 +1058,16 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
     /* Keep recursing */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_add_ghosts(e, c->progeny[k], ghost_in, ghost_out);
+        engine_add_hydro_ghosts(s, c->progeny[k], ghost_in, ghost_out);
   }
 }
 
 /**
  * @brief Recursively add non-implicit cooling tasks to a cell hierarchy.
  */
-void engine_add_cooling(struct engine *e, struct cell *c,
-                        struct task *cooling_in, struct task *cooling_out) {
+void engine_add_cooling(struct scheduler *s, struct cell *c,
+                        struct task *restrict cooling_in,
+                        struct task *restrict cooling_out) {
 
   /* Abort as there are no hydro particles here? */
   if (c->hydro.count_total == 0) return;
@@ -1075,7 +1076,6 @@ void engine_add_cooling(struct engine *e, struct cell *c,
   if (!c->split || c->hydro.count_total < engine_max_parts_per_cooling) {
 
     /* Add the cooling task and its dependencies */
-    struct scheduler *s = &e->sched;
     c->hydro.cooling = scheduler_addtask(s, task_type_cooling,
                                          task_subtype_none, 0, 0, c, NULL);
     scheduler_addunlock(s, cooling_in, c->hydro.cooling);
@@ -1085,7 +1085,7 @@ void engine_add_cooling(struct engine *e, struct cell *c,
     /* Keep recursing */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_add_cooling(e, c->progeny[k], cooling_in, cooling_out);
+        engine_add_cooling(s, c->progeny[k], cooling_in, cooling_out);
   }
 }
 
@@ -1173,7 +1173,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.ghost_out =
           scheduler_addtask(s, task_type_ghost_out, task_subtype_none, 0,
                             /* implicit = */ 1, c, NULL);
-      engine_add_ghosts(e, c, c->hydro.ghost_in, c->hydro.ghost_out);
+      engine_add_hydro_ghosts(s, c, c->hydro.ghost_in, c->hydro.ghost_out);
 
       /* Generate the extra ghost task. */
 #ifdef EXTRA_HYDRO_LOOP
@@ -1212,7 +1212,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_cooling_out, task_subtype_none, 0,
                               /*implicit=*/1, c, NULL);
 
-        engine_add_cooling(e, c, c->hydro.cooling_in, c->hydro.cooling_out);
+        engine_add_cooling(s, c, c->hydro.cooling_in, c->hydro.cooling_out);
 
         scheduler_addunlock(s, c->hydro.end_force, c->hydro.cooling_in);
         scheduler_addunlock(s, c->hydro.cooling_out, c->super->kick2);
