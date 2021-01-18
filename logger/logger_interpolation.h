@@ -264,6 +264,36 @@ __attribute__((always_inline)) INLINE static void interpolate_linear_float_ND(
 }
 
 /**
+ * @brief Interpolates a field in N dimension.
+ *
+ * The field is in double.
+ *
+ * @param before Pointer to the #logger_field at a time < t.
+ * @param after Pointer to the #logger_field at a time > t.
+ * @param otuput Pointer to the output value.
+ * @param t_before Time of field_before (< t).
+ * @param t_after Time of field_after (> t).
+ * @param t Requested time.
+ */
+__attribute__((always_inline)) INLINE static void interpolate_linear_double_ND(
+    const double t_before, const struct logger_field *restrict before,
+    const double t_after, const struct logger_field *restrict after,
+    void *restrict output, const double t, const int dimension) {
+
+  /* Compute the interpolation scaling. */
+  const double wa = (t - t_before) / (t_after - t_before);
+  const double wb = 1. - wa;
+
+  /* interpolate vectors. */
+  for (int i = 0; i < dimension; i++) {
+    double *a = (double *)output;
+    const double *a_bef = (double *)before->field;
+    const double *a_aft = (double *)after->field;
+    a[i] = wa * a_aft[i] + wb * a_bef[i];
+  }
+}
+
+/**
  * @brief Interpolates a field stored as a float.
  *
  * @param before Pointer to the #logger_field at a time < t.
