@@ -4,6 +4,8 @@ import h5py as h5
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 
+default_group_id = 2147483647
+
 in_file = sys.argv[1]
 
 if len(sys.argv) < 3:
@@ -19,7 +21,7 @@ group_ids = f["/PartType1/FOFGroupIDs"][:]
 pos = f["/PartType1/Coordinates"][:, :]
 
 if plot_id == -1:
-    mask_groups = np.where(group_ids != 2147483647)
+    mask_groups = np.where(group_ids != default_group_id)
 else:
     print("\nOnly plotting group: {}".format(plot_id))
     mask_groups = np.where(group_ids == plot_id)
@@ -35,12 +37,12 @@ group_y = group_pos[:, 1]
 group_z = group_pos[:, 2]
 
 plt.figure(figsize=(20,12))
-plt.subplot(121)
-plt.plot(pos_x, pos_y, ',')
+ax1 = plt.subplot(121)
+plt.scatter(pos_x, pos_y, s=1, edgecolors='none', marker=',')
 plt.xlim(0, np.max(pos_x))
 plt.ylim(0, np.max(pos_y))
 
-plt.subplot(122)
+plt.subplot(122, sharex=ax1, sharey=ax1)
 plt.scatter(group_x, group_y, c=big_group_ids, s=1, edgecolors='none', marker=',')
 #plt.scatter(group_x, group_y, c=big_group_ids, s=20, marker='o')
 plt.xlim(0, np.max(pos_x))
