@@ -18,6 +18,10 @@
  ******************************************************************************/
 #include "logger_time.h"
 
+/* System includes */
+#include <unistd.h>
+
+/* Local includes */
 #include "logger_loader_io.h"
 #include "logger_logfile.h"
 #include "logger_reader.h"
