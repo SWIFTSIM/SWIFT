@@ -17,14 +17,13 @@
  *
  ******************************************************************************/
 
+/* Include this object's header */
 #include "logger_hydro.h"
 
-#include "config.h"
+/* Local headers  */
+#include "logger_tools.h"
 
 int hydro_logger_local_to_global[hydro_logger_field_count];
-
-/* Define the size of all the fields. */
-#define member_size(type, member) sizeof(((type *)0)->member)
 
 const int hydro_logger_field_size[hydro_logger_field_count] = {
     member_size(struct part, x),        // coordinates

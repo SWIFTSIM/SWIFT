@@ -98,6 +98,48 @@ void header_change_offset_direction(struct header *h,
 }
 
 /**
+ * @brief Set the links between the local (module) and global (header) indexes.
+ */
+#define set_links_local_global_internal(MODULE, PART)                       \
+  for (int j = 0; j < MODULE##_logger_field##PART##_count; j++) {           \
+    MODULE##_logger_local_to_global##PART[j] = -1;                          \
+    for (int i = 0; i < h->masks_count; i++) {                              \
+      if (strcmp(h->masks[i].name, MODULE##_logger_field_names##PART[j]) == \
+          0) {                                                              \
+        MODULE##_logger_local_to_global##PART[j] = i;                       \
+        break;                                                              \
+      }                                                                     \
+    }                                                                       \
+                                                                            \
+    /* Check if everything is fine. */                                      \
+    const int index = MODULE##_logger_local_to_global##PART[j];             \
+    if (index == -1) {                                                      \
+      error("Field %s in " #MODULE "is not set",                            \
+            MODULE##_logger_field_names##PART[j]);                          \
+    }                                                                       \
+    if (h->masks[index].size != MODULE##_logger_field_size##PART[j]) {      \
+      error("Field %s in " #MODULE " does not have the correct size",       \
+            MODULE##_logger_field_names##PART[j]);                          \
+    }                                                                       \
+  }                                                                         \
+                                                                            \
+  MODULE##_logger_reader_link_derivatives##PART(h);
+
+/**
+ * Same function as set_links_local_global_internal before but with a single
+ * argument.
+ */
+#define set_links_local_global_single_particle_type(MODULE) \
+  set_links_local_global_internal(MODULE, )
+
+/**
+ * Same function as set_links_local_global_internal before but with a cleaner
+ * argument.
+ */
+#define set_links_local_global(MODULE, PART) \
+  set_links_local_global_internal(MODULE, _##PART)
+
+/**
  * @brief read the logger header.
  *
  * @param h out: The #header.
@@ -210,76 +252,13 @@ void header_read(struct header *h, struct logger_logfile *log) {
     h->masks[i].reader.second_deriv = -1;
   }
 
-  /* Hydro */
   /* Set the link between local and global */
-  for (int j = 0; j < hydro_logger_field_count; j++) {
-    hydro_logger_local_to_global[j] = -1;
-    for (int i = 0; i < h->masks_count; i++) {
-      if (strcmp(h->masks[i].name, hydro_logger_field_names[j]) == 0) {
-        hydro_logger_local_to_global[j] = i;
-        break;
-      }
-    }
-
-    /* Check if everything is fine. */
-    const int index = hydro_logger_local_to_global[j];
-    if (index == -1) {
-      error("Field %s in hydro is not set", hydro_logger_field_names[j]);
-    }
-    if (h->masks[index].size != hydro_logger_field_size[j]) {
-      error("Field %s in hydro does not have the correct size",
-            hydro_logger_field_names[j]);
-    }
-  }
-
-  hydro_logger_reader_link_derivatives(h);
-
-  /* Gravity */
-  /* Set the link between local and global */
-  for (int j = 0; j < gravity_logger_field_count; j++) {
-    gravity_logger_local_to_global[j] = -1;
-    for (int i = 0; i < h->masks_count; i++) {
-      if (strcmp(h->masks[i].name, gravity_logger_field_names[j]) == 0) {
-        gravity_logger_local_to_global[j] = i;
-        break;
-      }
-    }
-
-    /* Check if everything is fine. */
-    const int index = gravity_logger_local_to_global[j];
-    if (index == -1) {
-      error("Field %s in gravity is not set", gravity_logger_field_names[j]);
-    }
-    if (h->masks[index].size != gravity_logger_field_size[j]) {
-      error("Field %s in gravity does not have the correct size",
-            gravity_logger_field_names[j]);
-    }
-  }
-
-  gravity_logger_reader_link_derivatives(h);
-
-  /* Stars */
-  /* Set the link between local and global */
-  for (int j = 0; j < stars_logger_field_count; j++) {
-    stars_logger_local_to_global[j] = -1;
-    for (int i = 0; i < h->masks_count; i++) {
-      if (strcmp(h->masks[i].name, stars_logger_field_names[j]) == 0) {
-        stars_logger_local_to_global[j] = i;
-        break;
-      }
-    }
-
-    /* Check if everything is fine. */
-    const int index = stars_logger_local_to_global[j];
-    if (index == -1) {
-      error("Field %s in stars is not set", stars_logger_field_names[j]);
-    }
-    if (h->masks[index].size != stars_logger_field_size[j]) {
-      error("Field %s in stars does not have the correct size.",
-            stars_logger_field_names[j]);
-    }
-  }
-  stars_logger_reader_link_derivatives(h);
+  set_links_local_global_single_particle_type(hydro);
+  set_links_local_global_single_particle_type(gravity);
+  set_links_local_global_single_particle_type(stars);
+  set_links_local_global(chemistry, part);
+  set_links_local_global(chemistry, spart);
+  set_links_local_global_single_particle_type(star_formation);
 };
 
 /**

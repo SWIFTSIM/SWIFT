@@ -30,6 +30,7 @@ const int stars_logger_field_size[stars_logger_field_count] = {
     member_size(struct spart, mass),    // massses
     member_size(struct spart, h),       // Smoothing Length
     member_size(struct spart, id),      // IDs
+    member_size(struct spart, birth_scale_factor),  // birth scale factor
 };
 
 int stars_logger_local_to_global[stars_logger_field_count];

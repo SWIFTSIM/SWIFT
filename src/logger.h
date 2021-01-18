@@ -40,7 +40,7 @@ struct part;
 struct engine;
 
 #define logger_major_version 1
-#define logger_minor_version 0
+#define logger_minor_version 1
 /* Size of the strings. */
 #define logger_string_length 200
 
