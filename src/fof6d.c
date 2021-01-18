@@ -303,7 +303,6 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
     size_t *const group_offset = group_index + (ptrdiff_t)(&gparts[part_index[i]] - s->gparts);
     size_t root = fof_find(group_offset[0], group_index);
 
-    //message("root: %zu, group_offset[0]: %zu, i: %zu", root, group_offset[0], i);
     if(root == part_index[i] && group_size[root] >= props->min_group_size) {
 
       gparts[part_index[i]].fof_data.group_id = props->group_id_offset + group_count;
@@ -326,6 +325,21 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
 
   }
   
+  /* Set root particles with group IDs based upon group size. */
+  for (int i = 0; i < num_6d_groups; i++) {
+    gparts[part_index[high_group_sizes[i].index]].fof_data.group_id = props->group_id_offset + i;
+  }
+
+  /* Assign the remaing particles in each group to the correct group ID. */
+  for (size_t i = 0; i < num_parts_in_groups; i++) {
+    
+    size_t *const group_offset = group_index + (ptrdiff_t)(&gparts[part_index[i]] - s->gparts);
+    size_t root = fof_find(group_offset[0], group_index);
+
+    gparts[part_index[i]].fof_data.group_id = gparts[root].fof_data.group_id;
+    
+  }
+
   FILE *file = fopen("fof6d_output.dat", "w");
 
   fprintf(file, "# %8s %12s %12s %18s\n", "Group ID",
