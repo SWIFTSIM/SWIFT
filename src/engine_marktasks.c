@@ -50,7 +50,6 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
-#include "proxy.h"
 #include "timers.h"
 
 /**
