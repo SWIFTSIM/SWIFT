@@ -30,9 +30,7 @@
 #include "timeline.h"
 
 /* Load the correct star type */
-#if defined(FEEDBACK_CONST)
-#error TODO
-#elif defined(STARS_NONE)
+#if defined(STARS_NONE)
 #include "./stars/Default/stars_logger.h"
 #elif defined(STARS_EAGLE)
 #error TODO

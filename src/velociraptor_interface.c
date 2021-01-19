@@ -748,12 +748,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   const int nr_cells = s->nr_cells;
   const struct cell *cells_top = s->cells_top;
 
-  /* Start by freeing some of the unnecessary memory to give VR some breathing
-     space */
-#ifdef WITH_MPI
-  space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
-#endif
-
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that  when OpenMP threads are spawned
    * they can run on any core on the processor. */
@@ -1116,12 +1110,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Record we have ran stf this timestep */
   e->stf_this_timestep = 1;
-
-  /* Reallocate the memory that was freed earlier */
-#ifdef WITH_MPI
-
-  engine_allocate_foreign_particles(e);
-#endif
 
 #else
   error("SWIFT not configured to run with VELOCIraptor.");
