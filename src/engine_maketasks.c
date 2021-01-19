@@ -67,8 +67,8 @@ extern int engine_max_parts_per_cooling;
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
-                                  struct cell *cj, struct task *t_grav,
-                                  struct task *t_ti) {
+                                  struct cell *cj, struct task *restrict t_grav,
+                                  struct task *restrict t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -139,9 +139,11 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  * @param with_sync Are we running with time-step synchronization?
  */
 void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
-                                struct cell *cj, struct task *t_xv,
-                                struct task *t_rho, struct task *t_gradient,
-                                struct task *t_ti, struct task *t_limiter,
+                                struct cell *cj, struct task *restrict t_xv,
+                                struct task *restrict t_rho,
+                                struct task *restrict t_gradient,
+                                struct task *restrict t_ti,
+                                struct task *restrict t_limiter,
                                 const int with_limiter, const int with_sync) {
 
 #ifdef WITH_MPI
@@ -257,8 +259,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param with_star_formation Are we running with star formation on?
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
-                                struct cell *cj, struct task *t_feedback,
-                                struct task *t_sf_counts, struct task *t_ti,
+                                struct cell *cj,
+                                struct task *restrict t_feedback,
+                                struct task *restrict t_sf_counts,
+                                struct task *restrict t_ti,
                                 const int with_star_formation) {
 
 #ifdef WITH_MPI
@@ -350,10 +354,10 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
  */
 void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
                                       struct cell *cj, struct task *t_rho,
-                                      struct task *t_bh_merger,
-                                      struct task *t_gas_swallow,
-                                      struct task *t_feedback,
-                                      struct task *t_ti) {
+                                      struct task *restrict t_bh_merger,
+                                      struct task *restrict t_gas_swallow,
+                                      struct task *restrict t_feedback,
+                                      struct task *restrict t_ti) {
 
 #ifdef WITH_MPI
 
@@ -456,10 +460,12 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
  * @param with_sync Are we running with time-step synchronization?
  */
 void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
-                                struct task *t_xv, struct task *t_rho,
-                                struct task *t_gradient, struct task *t_ti,
-                                struct task *t_limiter, const int with_limiter,
-                                const int with_sync) {
+                                struct task *restrict t_xv,
+                                struct task *restrict t_rho,
+                                struct task *restrict t_gradient,
+                                struct task *restrict t_ti,
+                                struct task *restrict t_limiter,
+                                const int with_limiter, const int with_sync) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -572,8 +578,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param with_star_formation Are we running with star formation on?
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
-                                struct task *t_feedback,
-                                struct task *t_sf_counts, struct task *t_ti,
+                                struct task *restrict t_feedback,
+                                struct task *restrict t_sf_counts,
+                                struct task *restrict t_ti,
                                 const int with_star_formation) {
 
 #ifdef WITH_MPI
@@ -664,11 +671,11 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
-                                      struct task *t_rho,
-                                      struct task *t_bh_merger,
-                                      struct task *t_gas_swallow,
-                                      struct task *t_feedback,
-                                      struct task *t_ti) {
+                                      struct task *restrict t_rho,
+                                      struct task *restrict t_bh_merger,
+                                      struct task *restrict t_gas_swallow,
+                                      struct task *restrict t_feedback,
+                                      struct task *restrict t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -761,7 +768,8 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
-                                  struct task *t_grav, struct task *t_ti) {
+                                  struct task *restrict t_grav,
+                                  struct task *restrict t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
