@@ -1053,7 +1053,7 @@ void engine_add_hydro_ghosts(struct scheduler *s, struct cell *c,
   /* Abort as there are no hydro particles here? */
   if (c->hydro.count_total == 0) return;
 
-  /* If we have reached the leaf OR have to few particles to play with*/
+  /* If we have reached the leaf OR have to few particles to play with */
   if (!c->split || c->hydro.count_total < engine_max_parts_per_ghost) {
 
     /* Add the ghost task and its dependencies */
@@ -1078,12 +1078,12 @@ void engine_add_stars_ghosts(struct scheduler *s, struct cell *c,
                              struct task *restrict ghost_out,
                              const int with_star_formation) {
 
-  /* Abort as there are no hydro particles here? */
+  /* Abort as there are no star particles here? */
   const int count = c->stars.count_total > 0 ||
                     (with_star_formation && c->hydro.count_total > 0);
   if (!count) return;
 
-  /* If we have reached the leaf OR have to few particles to play with*/
+  /* If we have reached the leaf OR have to few particles to play with */
   if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) {
 
     /* Add the ghost task and its dependencies */
