@@ -40,7 +40,7 @@ matplotlib.use('TkAgg')
 import numpy as np
 import matplotlib.backends.backend_tkagg as tkagg
 from matplotlib.figure import Figure
-import Tkinter as tk
+import tkinter as tk
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
 import pylab as pl
@@ -361,7 +361,7 @@ data = pl.loadtxt(infile)
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 13:
+if full_step.size == 15:
     print("# MPI mode")
     mpimode = True
     ranks = list(range(int(max(data[:, 0])) + 1))
@@ -372,6 +372,8 @@ if full_step.size == 13:
     subtaskcol = 3
     ticcol = 5
     toccol = 6
+    qticcol = 13
+    unlockscol = 14
 else:
     print("# non MPI mode")
     mpimode = False
@@ -381,6 +383,8 @@ else:
     subtaskcol = 2
     ticcol = 4
     toccol = 5
+    qticcol = 11
+    unlockscol = 12
 
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
@@ -425,6 +429,7 @@ if data.size == 0:
 start_t = float(tic_step)
 data[:, ticcol] -= start_t
 data[:, toccol] -= start_t
+data[:, qticcol] -= start_t
 end_t = (toc_step - start_t) / CPU_CLOCK
 
 tasks = {}
@@ -443,8 +448,12 @@ for line in range(num_lines):
     tasks[thread][-1]["subtype"] = subtype
     tic = int(data[line, ticcol]) / CPU_CLOCK
     toc = int(data[line, toccol]) / CPU_CLOCK
+    qtic = int(data[line, qticcol]) / CPU_CLOCK
+    unlocks = int(data[line, unlockscol])
     tasks[thread][-1]["tic"] = tic
     tasks[thread][-1]["toc"] = toc
+    tasks[thread][-1]["qtic"] = qtic
+    tasks[thread][-1]["unlocks"] = unlocks
     if "fof" in tasktype:
         tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
     elif ("self" in tasktype) or ("pair" in tasktype) or ("recv" in tasktype) or ("send" in tasktype):
@@ -463,27 +472,37 @@ ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
 ax.set_ylim(0.5, nthread + 1.0)
 
 ltics = []
+lqtics = []
 ltocs = []
 llabels = []
+lunlocks = []
 for i in range(nthread):
 
     #  Collect ranges and colours into arrays. Also indexed lists for lookup tables.
     tictocs = []
+    qtictocs = []
     colours = []
     tics = []
     tocs = []
+    qtics = []
+    unlocks = []
     labels = []
     for task in tasks[i]:
         tictocs.append((task["tic"], task["toc"] - task["tic"]))
+        qtictocs.append((task["qtic"], task["tic"] - task["qtic"]))
         colours.append(task["colour"])
 
         tics.append(task["tic"])
         tocs.append(task["toc"])
+        qtics.append(task["qtic"])
+        unlocks.append(task["unlocks"])
         labels.append(task["type"] + "/" + task["subtype"])
 
     #  Add to look up tables.
     ltics.append(tics)
     ltocs.append(tocs)
+    lqtics.append(qtics)
+    lunlocks.append(unlocks)
     llabels.append(labels)
 
     #  Now plot.
@@ -502,7 +521,8 @@ ax.yaxis.set_major_locator(loc)
 ax.grid(True, which="major", axis="y", linestyle="-")
 
 class Container:
-    def __init__(self,  window, figure, motion, nthread, ltics, ltocs, llabels):
+    def __init__(self,  window, figure, motion, nthread, ltics, ltocs,
+                 llabels, lqtics, lunlocks):
         self.window = window
         self.figure = figure
         self.motion = motion
@@ -510,6 +530,8 @@ class Container:
         self.ltics = ltics
         self.ltocs = ltocs
         self.llabels = llabels
+        self.lqtics = lqtics
+        self.lunlocks = lunlocks
 
     def plot(self):
         canvas = tkagg.FigureCanvasTkAgg(self.figure, master=self.window)
@@ -517,7 +539,7 @@ class Container:
         wcanvas.config(width=1000, height=300)
         wcanvas.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
-        toolbar = tkagg.NavigationToolbar2TkAgg(canvas, self.window)
+        toolbar = tkagg.NavigationToolbar2Tk(canvas, self.window)
         toolbar.update()
         self.output = tk.StringVar()
         label = tk.Label(self.window, textvariable=self.output, bg="white", fg="red", bd=2)
@@ -540,15 +562,20 @@ class Container:
                 tics = self.ltics[thread]
                 tocs = self.ltocs[thread]
                 labels = self.llabels[thread]
+                qtics = self.lqtics[thread]
+                unlocks = self.lunlocks[thread]
                 for i in range(len(tics)):
                     if event.xdata > tics[i] and event.xdata < tocs[i]:
                         tic = "{0:.3f}".format(tics[i])
                         toc = "{0:.3f}".format(tocs[i])
-                        outstr = "task =  " + labels[i] + ",  tic/toc =  " + tic + " / " + toc
+                        qtic = "{0:.3f}".format(qtics[i])
+                        unlock = "{0:d}".format(unlocks[i])
+                        outstr = "task =  " + labels[i] + ",  tic/toc =  " + tic + " / " + toc + " qtic = " + qtic + " unlocks = " + unlock
                         self.output.set(outstr)
                         break
         except TypeError:
             #  Ignore out of bounds.
+            print("out of bounds")
             pass
 
     def quit(self):
@@ -556,6 +583,7 @@ class Container:
 
 window = tk.Tk()
 window.protocol("WM_DELETE_WINDOW", window.quit)
-container = Container(window, fig, args.motion, nthread, ltics, ltocs, llabels)
+container = Container(window, fig, args.motion, nthread, ltics, ltocs,
+                      llabels, lqtics, lunlocks)
 container.plot()
 window.mainloop()

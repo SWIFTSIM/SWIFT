@@ -270,6 +270,14 @@ struct task {
   /* Total time spent running this task */
   ticks total_ticks;
 
+#ifdef SWIFT_DEBUG_TASKS
+  /*! Time task was queued. */
+  ticks queued_tic;
+
+  /*! Number of time the task was rejected by locks. */
+  size_t nr_task_locks;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
   integertime_t ti_run;

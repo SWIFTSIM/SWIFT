@@ -181,6 +181,11 @@ void queue_insert(struct queue *q, struct task *t) {
 
   /* Increase the incoming count. */
   atomic_inc(&q->count_incoming);
+
+#ifdef SWIFT_DEBUG_TASKS
+  /* Start timing how long we are in the queue. */
+  t->queued_tic = getticks();
+#endif
 }
 
 /**
@@ -268,6 +273,11 @@ struct task *queue_gettask(struct scheduler *s, struct queue *q,
       /* Send it down the binary heap. */
       if (queue_sift_down(q, ind) != ind) ind -= 1;
     }
+
+#ifdef SWIFT_DEBUG_TASKS
+    /* One more miss. */
+    qtasks[entries[ind].tid].nr_task_locks++;
+#endif
   }
 
   /* Did we get a task? */

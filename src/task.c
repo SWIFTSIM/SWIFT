@@ -1159,7 +1159,7 @@ void task_dump_all(struct engine *e, int step) {
 
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
-      fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n",
+      fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 0 0 %lld\n",
               engine_rank, (long long int)e->tic_step,
               (long long int)e->toc_step, e->updates, e->g_updates,
               e->s_updates, cpufreq);
@@ -1168,7 +1168,8 @@ void task_dump_all(struct engine *e, int step) {
         if (!e->sched.tasks[l].implicit &&
             e->sched.tasks[l].tic > e->tic_step) {
           fprintf(
-              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+              file_thread,
+              " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i %lli %zu\n",
               engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
               e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
               (long long int)e->sched.tasks[l].tic,
@@ -1181,7 +1182,8 @@ void task_dump_all(struct engine *e, int step) {
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
                                              : 0,
-              e->sched.tasks[l].flags, e->sched.tasks[l].sid);
+              e->sched.tasks[l].flags, e->sched.tasks[l].sid,
+              e->sched.tasks[l].queued_tic, e->sched.tasks[l].nr_task_locks);
         }
         count++;
       }
@@ -1201,14 +1203,14 @@ void task_dump_all(struct engine *e, int step) {
 
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
-  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
+  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld 0 0 0  %lld\n", -2,
           -1, -1, 1, (unsigned long long)e->tic_step,
           (unsigned long long)e->toc_step, e->updates, e->g_updates,
-          e->s_updates, 0, cpufreq);
+          e->s_updates, cpufreq);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       fprintf(
-          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
+          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i %lli %zu\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
           e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
           (unsigned long long)e->sched.tasks[l].tic,
@@ -1219,7 +1221,8 @@ void task_dump_all(struct engine *e, int step) {
                                          : e->sched.tasks[l].cj->hydro.count,
           (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
           (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->grav.count,
-          e->sched.tasks[l].sid);
+          e->sched.tasks[l].sid, e->sched.tasks[l].queued_tic,
+          e->sched.tasks[l].nr_task_locks);
     }
   }
   fclose(file_thread);
