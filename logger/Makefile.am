@@ -43,37 +43,37 @@ lib_LTLIBRARIES = liblogger.la
 # lib_LTLIBRARIES += liblogger_mpi.la
 # endif
 
-GRAVITY_SRC = gravity/MultiSoftening/logger_gravity.c ../src/gravity/MultiSoftening/gravity_logger.c
+GRAVITY_SRC = gravity/MultiSoftening/logger_gravity.c
 # Include the stars modules
 if HAVE_STARS_DEFAULT
-STARS_SRC = stars/Default/logger_stars.c  ../src/stars/Default/stars_logger.c
+STARS_SRC = stars/Default/logger_stars.c
 endif
 if HAVE_STARS_GEAR
-STARS_SRC = stars/GEAR/logger_stars.c ../src/stars/GEAR/stars_logger.c
+STARS_SRC = stars/GEAR/logger_stars.c
 endif
 
 # Include the hydro modules
 if HAVE_SPHENIX
-HYDRO_SRC = hydro/SPHENIX/logger_hydro.c ../src/hydro/SPHENIX/hydro_logger.c
+HYDRO_SRC = hydro/SPHENIX/logger_hydro.c
 endif
 if HAVE_GADGET2
-HYDRO_SRC = hydro/Gadget2/logger_hydro.c ../src/hydro/Gadget2/hydro_logger.c
+HYDRO_SRC = hydro/Gadget2/logger_hydro.c
 endif
 
 # Include the chemistry modules
 if HAVE_CHEMISTRY_NONE
-CHEMISTRY_SRC = chemistry/none/logger_chemistry.c ../src/chemistry/none/chemistry_logger.c
+CHEMISTRY_SRC = chemistry/none/logger_chemistry.c
 endif
 if HAVE_CHEMISTRY_GEAR
-CHEMISTRY_SRC = chemistry/GEAR/logger_chemistry.c ../src/chemistry/GEAR/chemistry_logger.c
+CHEMISTRY_SRC = chemistry/GEAR/logger_chemistry.c
 endif
 
 # Include the star formation modules
 if HAVE_STAR_FORMATION_DEFAULT
-STAR_FORMATION_SRC = star_formation/none/logger_star_formation.c ../src/star_formation/none/star_formation_particle_logger.c
+STAR_FORMATION_SRC = star_formation/none/logger_star_formation.c
 endif
 if HAVE_STAR_FORMATION_GEAR
-STAR_FORMATION_SRC = star_formation/GEAR/logger_star_formation.c ../src/star_formation/GEAR/star_formation_particle_logger.c
+STAR_FORMATION_SRC = star_formation/GEAR/logger_star_formation.c
 endif
 
 # subdirectories
