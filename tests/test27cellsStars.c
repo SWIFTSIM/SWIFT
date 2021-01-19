@@ -163,6 +163,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->hydro.h_max = h_max;
   cell->hydro.count = count;
   cell->stars.h_max = stars_h_max;
+  cell->stars.h_max_active = stars_h_max;
   cell->stars.count = scount;
   cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
