@@ -947,7 +947,19 @@ int main(int argc, char *argv[]) {
 
     if (with_hydro) {
 #ifdef NONE_SPH
-      error("Can't run with hydro when compiled without hydro model!");
+      error("Can't run with hydro when compiled without a hydro model!");
+#endif
+    }
+    if (with_stars) {
+#ifdef STARS_NONE
+      error("Can't run with stars when compiled without a stellar model!");
+#endif
+    }
+    if (with_black_holes) {
+#ifdef BLACK_HOLES_NONE
+      error(
+          "Can't run with black holes when compiled without a black hole "
+          "model!");
 #endif
     }
 

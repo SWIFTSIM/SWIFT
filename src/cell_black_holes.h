@@ -33,50 +33,75 @@
  */
 struct cell_black_holes {
 
-  /*! Pointer to the #bpart data. */
-  struct bpart *parts;
+  /* If we are not using BHs, compact as much of the unecessary variables
+     into an anonymous union to save memory in the cell structure. */
+#ifdef BLACK_HOLES_NONE
+  union {
+#endif
 
-  /*! The drift task for bparts */
-  struct task *drift;
+    /*! Pointer to the #bpart data. */
+    struct bpart *parts;
 
-  /*! Implicit tasks marking the entry of the BH physics block of tasks */
-  struct task *black_holes_in;
+    /*! The drift task for bparts */
+    struct task *drift;
 
-  /*! Implicit tasks marking the exit of the BH physics block of tasks */
-  struct task *black_holes_out;
+    /*! Implicit tasks marking the entry of the BH physics block of tasks */
+    struct task *black_holes_in;
 
-  /*! The black hole ghost task itself */
-  struct task *density_ghost;
+    /*! Implicit tasks marking the exit of the BH physics block of tasks */
+    struct task *black_holes_out;
 
-  /*! The ghost tasks related to BH swallowing */
-  struct task *swallow_ghost_0;
-  struct task *swallow_ghost_1;
-  struct task *swallow_ghost_2;
+    /*! The black hole ghost task itself */
+    struct task *density_ghost;
 
-  /*! Linked list of the tasks computing this cell's BH density. */
-  struct link *density;
+    /*! The ghost tasks related to BH swallowing */
+    struct task *swallow_ghost_0;
+    struct task *swallow_ghost_1;
+    struct task *swallow_ghost_2;
 
-  /*! Linked list of the tasks computing this cell's BH swallowing and
-   * merging. */
-  struct link *swallow;
+    /*! Linked list of the tasks computing this cell's BH density. */
+    struct link *density;
 
-  /*! Linked list of the tasks processing the particles to swallow */
-  struct link *do_gas_swallow;
+    /*! Linked list of the tasks computing this cell's BH swallowing and
+     * merging. */
+    struct link *swallow;
 
-  /*! Linked list of the tasks processing the particles to swallow */
-  struct link *do_bh_swallow;
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_gas_swallow;
 
-  /*! Linked list of the tasks computing this cell's BH feedback. */
-  struct link *feedback;
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_bh_swallow;
 
-  /*! Last (integer) time the cell's bpart were drifted forward in time. */
-  integertime_t ti_old_part;
+    /*! Linked list of the tasks computing this cell's BH feedback. */
+    struct link *feedback;
 
-  /*! Minimum end of (integer) time step in this cell for black tasks. */
+    /*! Last (integer) time the cell's bpart were drifted forward in time. */
+    integertime_t ti_old_part;
+
+    /*! Maximum end of (integer) time step in this cell for black hole tasks. */
+    integertime_t ti_end_max;
+
+    /*! Nr of #bpart this cell can hold after addition of new #bpart. */
+    int count_total;
+
+    /*! Max smoothing length of active particles in this cell. */
+    float h_max_active;
+
+    /*! Values of h_max before the drifts, used for sub-cell tasks. */
+    float h_max_old;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+    /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+    float dx_max_part_old;
+
+#ifdef BLACK_HOLES_NONE
+  };
+#endif
+
+  /*! Maximum end of (integer) time step in this cell for black tasks. */
   integertime_t ti_end_min;
-
-  /*! Maximum end of (integer) time step in this cell for black hole tasks. */
-  integertime_t ti_end_max;
 
   /*! Maximum beginning of (integer) time step in this cell for black hole
    * tasks. */
@@ -85,29 +110,17 @@ struct cell_black_holes {
   /*! Spin lock for various uses (#bpart case). */
   swift_lock_type lock;
 
-  /*! Number of #bpart updated in this cell. */
-  int updated;
+  /*! Max smoothing length in this cell. */
+  float h_max;
 
   /*! Is the #bpart data of this cell being used in a sub-cell? */
   int hold;
 
+  /*! Number of #bpart updated in this cell. */
+  int updated;
+
   /*! Nr of #bpart in this cell. */
   int count;
-
-  /*! Nr of #bpart this cell can hold after addition of new #bpart. */
-  int count_total;
-
-  /*! Max smoothing length in this cell. */
-  float h_max;
-
-  /*! Values of h_max before the drifts, used for sub-cell tasks. */
-  float h_max_old;
-
-  /*! Maximum part movement in this cell since last construction. */
-  float dx_max_part;
-
-  /*! Values of dx_max before the drifts, used for sub-cell tasks. */
-  float dx_max_part_old;
 };
 
 #endif /* SWIFT_CELL_BLACK_HOLES_H */

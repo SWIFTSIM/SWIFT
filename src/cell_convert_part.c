@@ -860,7 +860,7 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
 #endif
 
   /* Set a smoothing length */
-  sp->h = max(c->stars.h_max, c->hydro.h_max);
+  sp->h = p->h;
 
   /* Here comes the Sun! */
   return sp;

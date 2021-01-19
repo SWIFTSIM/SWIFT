@@ -342,6 +342,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   /* Cell properties */
   cell->split = 0;
   cell->hydro.h_max = h_max;
+  cell->hydro.h_max_active = h_max;
   cell->hydro.count = count;
   cell->grav.count = 0;
   cell->hydro.dx_max_part = 0.;

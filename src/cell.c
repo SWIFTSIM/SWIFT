@@ -515,7 +515,9 @@ void cell_sanitize(struct cell *c, int treated) {
   struct part *parts = c->hydro.parts;
   struct spart *sparts = c->stars.parts;
   float h_max = 0.f;
+  float h_max_active = 0.f;
   float stars_h_max = 0.f;
+  float stars_h_max_active = 0.f;
 
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
@@ -542,19 +544,28 @@ void cell_sanitize(struct cell *c, int treated) {
 
         /* And collect */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
+        stars_h_max_active =
+            max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
       }
     }
   } else {
-    /* Get the new value of h_max */
+    /* Get the new value of h_max (note all particles are active) */
     for (int i = 0; i < count; ++i) h_max = max(h_max, parts[i].h);
+    for (int i = 0; i < count; ++i)
+      h_max_active = max(h_max_active, parts[i].h);
     for (int i = 0; i < scount; ++i)
       stars_h_max = max(stars_h_max, sparts[i].h);
+    for (int i = 0; i < scount; ++i)
+      stars_h_max_active = max(stars_h_max_active, sparts[i].h);
   }
 
   /* Record the change */
   c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
   c->stars.h_max = stars_h_max;
+  c->stars.h_max_active = stars_h_max_active;
 }
 
 /**

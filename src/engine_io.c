@@ -378,10 +378,20 @@ void engine_check_for_dumps(struct engine *e) {
         e->force_checks_snapshot_flag = 1;
 #endif
 
+        /* Free the mesh memory to get some breathing space */
+        if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+          pm_mesh_free(e->mesh);
+
         /* Do we want FoF group IDs in the snapshot? */
         if (with_fof && e->snapshot_invoke_fof) {
           engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
         }
+
+        /* Free the foreign particles to get more breathing space.
+         * This cannot be done before FOF as comms are used in there. */
+#ifdef WITH_MPI
+        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
+#endif
 
         /* Do we want a corresponding VELOCIraptor output? */
         if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
@@ -407,6 +417,13 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
+        /* Reallocate freed memory */
+        if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+          pm_mesh_allocate(e->mesh);
+#ifdef WITH_MPI
+        engine_allocate_foreign_particles(e);
+#endif
+
         /* ... and find the next output time */
         engine_compute_next_snapshot_time(e);
         break;
@@ -423,12 +440,26 @@ void engine_check_for_dumps(struct engine *e) {
 
       case output_stf:
 
+        /* Free the mesh memory to get some breathing space */
+        if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+          pm_mesh_free(e->mesh);
+#ifdef WITH_MPI
+        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
+#endif
+
 #ifdef HAVE_VELOCIRAPTOR
         /* Unleash the raptor! */
         if (!e->stf_this_timestep) {
           velociraptor_invoke(e, /*linked_with_snap=*/0);
           e->step_props |= engine_step_prop_stf;
         }
+
+        /* Reallocate freed memory */
+        if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+          pm_mesh_allocate(e->mesh);
+#ifdef WITH_MPI
+        engine_allocate_foreign_particles(e);
+#endif
 
         /* ... and find the next output time */
         engine_compute_next_stf_time(e);
