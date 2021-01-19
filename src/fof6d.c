@@ -109,8 +109,6 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
                          v_diff[2] * v_diff[2]) * gparts[index].mass;
   }
 
-  FILE *file = fopen("fof3d_vdisp.dat", "w");
-
   for (int i = 0; i < num_groups; i++) {
     v_disp[i] /= group_mass[i];
   }
@@ -141,7 +139,7 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
       const double pix = pi->x[0], piy = pi->x[1], piz = pi->x[2];
       const double vix = pi->v_full[0], viy = pi->v_full[1], viz = pi->v_full[2];
     
-      /* Find the root of pi. */
+      /* Find the root of pi using the global offset of the particle. */
       size_t *const group_offset = group_index + (ptrdiff_t)(pi - s->gparts);
       size_t root_i = fof_find(group_offset[0], group_index);
       
@@ -157,12 +155,12 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
 
         /* Compute pairwise distance, remembering to account for boundary
          * conditions. */
-        float dx[3] = {nearest(pix - pjx, dim[0]), 
-                       nearest(piy - pjy, dim[1]), 
-                       nearest(piz - pjz, dim[2])};
+        const float dx[3] = {nearest(pix - pjx, dim[0]), 
+                             nearest(piy - pjy, dim[1]), 
+                             nearest(piz - pjz, dim[2])};
 
         /* Compute pairwise velocity difference. */
-        float dv[3] = {vix - vjx, viy - vjy, viz - vjz};
+        const float dv[3] = {vix - vjx, viy - vjy, viz - vjz};
         
         float dx2 = 0.f;
         for (int l = 0; l < 3; l++) dx2 += dx[l] * dx[l];
@@ -173,26 +171,20 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
         /* Hit or miss? */
         if ((dx2 * l_v2 + dv2 * l_x2) < l_xv2) {
         
-        //if (dx2 < l_x2) {
-          //message("dx2: %f, dv2: %f, l_x2: %lf, l_v2: %lf, l_x2 * l_v2: %lf", dx2, dv2, l_x2, l_v2, l_xv2);
-
           /* Merge the groups */
           fof_union(&root_i, root_j, group_index);
         }
       }
     }
-    offset += num_parts;
   }
-
 }
 
 void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t num_parts_in_groups, const double *v_disp, const size_t *part_index) {
 
   const int num_groups = props->num_groups;
   struct gpart *gparts = s->gparts;
-  //const size_t nr_gparts = s->nr_gparts;
+  const size_t nr_gparts = s->nr_gparts;
   size_t *group_index = props->group_index;
-  //size_t *group_size = props->group_size;
   size_t *group_size = NULL;
   //double *group_mass = props->group_mass;
   struct fof_6d groups[num_groups];
@@ -228,7 +220,7 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
 
   /* Set initial group index */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
-                 group_index, s->nr_gparts, sizeof(size_t),
+                 group_index, nr_gparts, sizeof(size_t),
                  threadpool_auto_chunk_size, group_index);
 
   /* Get ptrs to particles in groups */
@@ -248,31 +240,20 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
 
   fof6d_n2_search(groups, s, num_groups, num_parts_in_groups, v_disp, group_index, group_size, l_x2, props);
 
+  /* Re-use ptr as global group size array. */
+  swift_free("fof6d_group_size", group_size);
   group_size = props->group_size;
 
-  for (size_t i = 0; i < s->nr_gparts; i++) {
+  for (size_t i = 0; i < nr_gparts; i++) {
     group_size[i] = 0;
   }
-
-  FILE *file_id = fopen("fof6d_group_index.dat", "w");
 
   for (size_t i = 0; i < num_parts_in_groups; i++) {
 
     size_t root = fof_find(group_index[part_index[i]], group_index);
     group_size[root]++;
-    fprintf(file_id, "%8zu\n", root); 
   }
 
-  size_t ctr = 0;
-  for (size_t i = 0; i < num_parts_in_groups; i++) {
-    size_t root = fof_find(group_index[part_index[i]], group_index);
-    if(root == part_index[i]) {
-      //message("Root at: %zu, i: %zu", root, i);
-      ctr++;
-    }
-  }
-  message("Found %zu roots.", ctr);
- 
   /* Find the no. of 6D FoF groups */
   int num_6d_groups = 0;
   for (size_t i = 0; i < num_parts_in_groups; i++) {

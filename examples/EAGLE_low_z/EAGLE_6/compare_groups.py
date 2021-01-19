@@ -56,13 +56,10 @@ for i, gid in enumerate(groups):
         vr_pids = np.concatenate((vr_pids_global[vr_offset[gid - 1]:vr_offset[gid]], 
                                 vr_pids_ub[vr_offset_ub[gid - 1]:vr_offset_ub[gid]]))
     
-    print("SWIFT group size: {}".format(len(sw_pids)))
-    print("VELOCIraptor group size: {}".format(len(vr_pids)))
-    
     id_list = set(sw_pids).symmetric_difference(set(vr_pids))
     
     if len(id_list) == 0:
-        print("Particles in group {} match in both SWIFT and VELOCIraptor!".format(gid))
+        print("Particles in group {} match! SWIFT group size: {}, VELOCIraptor group size: {}".format(gid, len(sw_pids), len(vr_pids)))
     else:
         print("Particles in group {} don't match! SWIFT group size: {}, VELOCIraptor group size: {}".format(gid, len(sw_pids), len(vr_pids)))
         print("There are {} differences.".format(len(id_list)))
