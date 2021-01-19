@@ -113,8 +113,6 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
 
   for (int i = 0; i < num_groups; i++) {
     v_disp[i] /= group_mass[i];
-    v_disp[i] *= 1.5625;
-    fprintf(file, "%8lf  %8lf, %8lf, %8lf %8lf\n", v_disp[i], v_mean[0][i], v_mean[1][i], v_mean[2][i], group_mass[i]); 
   }
 
   fof6d_split_groups(props, s, num_parts_in_groups, v_disp, part_index);
@@ -125,13 +123,13 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
 
 void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_groups, const size_t num_parts_in_groups, const double *v_disp, size_t *group_index, const size_t *group_size, const double l_x2, struct fof_props *props) {
 
-  double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  size_t offset = 0;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double l_v_ratio2 = props->l_v_ratio * props->l_v_ratio;
 
   /* Perform a neighbour search over each group. */ 
   for (int i = 0; i < num_groups; i++) {
   
-    const double l_v2 = v_disp[i];
+    const double l_v2 = v_disp[i] * l_v_ratio2;
     const double l_xv2 = l_x2 * l_v2;
     const size_t num_parts = group_size[i];
 

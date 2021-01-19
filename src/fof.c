@@ -142,6 +142,13 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   props->run_6d_fof =
       parser_get_opt_param_int(params, "FOF:run_6d_fof", 0);
 
+  /* Read the velocity linking length ratio. */
+  props->l_v_ratio =
+      parser_get_opt_param_double(params, "FOF:linking_length_ratio_velocity", 1.25);
+  
+  if (props->l_v_ratio <= 0.)
+    error("The 6DFOF velocity linking length ratio can't be negative!");
+
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
     message(

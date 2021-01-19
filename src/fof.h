@@ -84,6 +84,13 @@ struct fof_props {
 
   /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
+  
+  /*! 6DFOF flag*/
+  int run_6d_fof;
+
+  /*! The velocity linking length ratio. How much the velocity dispersion is 
+   * scaled by to give the velocity linking length. */
+  double l_v_ratio;
 
   /* ------------  Group properties ----------------- */
 
@@ -114,9 +121,6 @@ struct fof_props {
 
   /*! Maximal density of all parts of each group. */
   float *max_part_density;
-
-  /*! 6DFOF flag*/
-  int run_6d_fof;
 
   /* ------------ MPI-related arrays --------------- */
 
