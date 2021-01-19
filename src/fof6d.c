@@ -243,10 +243,8 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
   /* Re-use ptr as global group size array. */
   swift_free("fof6d_group_size", group_size);
   group_size = props->group_size;
-
-  for (size_t i = 0; i < nr_gparts; i++) {
-    group_size[i] = 0;
-  }
+    
+  bzero(group_size, nr_gparts * sizeof(size_t));
 
   for (size_t i = 0; i < num_parts_in_groups; i++) {
 
@@ -330,9 +328,9 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
 
   for (int i = 0; i < num_6d_groups; i++) {
 
-    //const size_t group_offset = group_sizes[i].index;
+    const size_t root_offset = part_index[high_group_sizes[i].index];
     fprintf(file, "  %8zu %12zu %12e %18d\n",
-            gparts[part_index[high_group_sizes[i].index]].fof_data.group_id, high_group_sizes[i].size, 0.0, 0);
+            gparts[root_offset].fof_data.group_id, high_group_sizes[i].size, 0.0, 0);
   }
   
   fclose(file);
@@ -340,6 +338,7 @@ void fof6d_split_groups(struct fof_props *props, struct space *s, const size_t n
   message("No. of 3D FoF groups: %d", num_groups);
   message("No. of 6D FoF groups: %d", num_6d_groups);
 
+  swift_free("fof6d_high_group_sizes", high_group_sizes);
   for (int i = 0; i < num_groups; i++) {
     free(groups[i].gparts);
   }
