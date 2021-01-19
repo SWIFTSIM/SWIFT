@@ -1256,9 +1256,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   if (clean_smoothing_length_values) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure, top-level and neighbouring
- * multipoles. */
+ * multipoles. To achieve this, free the foreign particle buffers first. */
 #ifdef WITH_MPI
   if (e->policy & engine_policy_self_gravity) engine_exchange_top_multipoles(e);
+
+  space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 
   engine_exchange_cells(e);
 #endif
