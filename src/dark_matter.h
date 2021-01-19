@@ -182,7 +182,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
  */
 __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmpart *restrict dmp) {
     
-    if (dmp->sidm_data.sidm_flag > 0) {
+    if (dmp->sidm_data.sidm_flag > 5) {
         
         /* Reverse recent half drift */
         dmp->x[0] -= dmp->v_full[0] * dmp->sidm_data.dt_drift / 2.f;
@@ -219,6 +219,8 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
             dmp->sidm_data.max_sidm_events_per_timestep = dmp->sidm_data.sidm_events_per_timestep;
         
     }
+    /* Remove flag */
+    dmp->sidm_data.sidm_flag = 0.f;
 }
 
 
