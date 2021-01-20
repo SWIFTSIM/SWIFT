@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Coypright (c) 2020 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,30 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_LOGGER_H
-#define SWIFT_STARS_LOGGER_H
+#ifndef SWIFT_NONE_STARS_DEBUG_H
+#define SWIFT_NONE_STARS_DEBUG_H
 
-/* Include config */
-#include "../config.h"
+__attribute__((always_inline)) INLINE static void stars_debug_particle(
+    const struct spart* p) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->mass, p->ti_begin, p->ti_end);
+}
 
-/* Local includes */
-#include "./const.h"
-#include "align.h"
-#include "logger.h"
-#include "part_type.h"
-#include "timeline.h"
-
-/* Load the correct star type */
-#if defined(STARS_NONE)
-#error TODO
-#elif defined(STARS_BASIC)
-#include "./stars/Basic/stars_logger.h"
-#elif defined(STARS_EAGLE)
-#error TODO
-#elif defined(STARS_GEAR)
-#include "./stars/GEAR/stars_logger.h"
-#else
-#error "Invalid choice of star model"
-#endif
-
-#endif /* SWIFT_STARS_LOGGER_H */
+#endif /* SWIFT_NONE_STARS_DEBUG_H */
