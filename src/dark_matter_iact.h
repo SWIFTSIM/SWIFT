@@ -475,7 +475,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
 
     /* I'm doing the kicks here by updating the particle velocities.
      * Note that v_full = a^2 * dx/dt, with x the comoving coordinate.
-     * At this point v_full is in physical units */
+     * At this point sidm->v_full is in physical units */
     pi->sidm_data.v_full[0] = VCM[0] - dv * e[0];
     pi->sidm_data.v_full[1] = VCM[1] - dv * e[1];
     pi->sidm_data.v_full[2] = VCM[2] - dv * e[2];
@@ -484,7 +484,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     pj->sidm_data.v_full[1] = VCM[1] + dv * e[1];
     pj->sidm_data.v_full[2] = VCM[2] + dv * e[2];
     
-    /* Therefore, the code velocity kick needs to go back to comoving velocity */
+    /* Therefore, the code velocity kick needs to go back to comoving.. */
     pi->sidm_data.v_full[0] = cosmo->a * pi->sidm_data.v_full[0] - cosmo->a * cosmo->a * cosmo->H * pi->x[0];
     pi->sidm_data.v_full[1] = cosmo->a * pi->sidm_data.v_full[1] - cosmo->a * cosmo->a * cosmo->H * pi->x[1];
     pi->sidm_data.v_full[2] = cosmo->a * pi->sidm_data.v_full[2] - cosmo->a * cosmo->a * cosmo->H * pi->x[2];
@@ -516,7 +516,6 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         energy_after = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
         
         energy_after -= energy_prev_j;
-
         dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after);
    
     } else {
@@ -569,8 +568,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
     
-    /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    /* Scattering cross section per unit mass (in internal units converting them to physical) */
+    const double sigma = sidm_props->sigma * cosmo->a_inv * cosmo->a_inv;
     
     /* DM particle mass */
     const double mass_j = pj->mass;
@@ -632,8 +631,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
     
-    /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    /* Scattering cross section per unit mass (in internal units converting them to physical) */
+    const double sigma = sidm_props->sigma * cosmo->a_inv * cosmo->a_inv;
     
     /* DM particle mass */
     const double mass_i = pi->mass;
