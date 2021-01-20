@@ -2051,14 +2051,14 @@ esac
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
-      [Stellar model to use @<:@none, EAGLE, GEAR, debug default: none@:>@]
+      [Stellar model to use @<:@none, basic, EAGLE, GEAR, default: basic@:>@]
    )],
    [with_stars="$withval"],
-   [with_stars="none"]
+   [with_stars="basic"]
 )
 
 if test "$with_subgrid" != "none"; then
-   if test "$with_stars" != "none"; then
+   if test "$with_stars" != "basic"; then
       AC_MSG_ERROR([Cannot provide with-subgrid and with-stars together])
    else
       with_stars="$with_subgrid_stars"
@@ -2072,10 +2072,12 @@ case "$with_stars" in
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
    ;;
-   none)
-      AC_DEFINE([STARS_NONE], [1], [Basic stellar model])
+   basic)
+      AC_DEFINE([STARS_BASIC], [1], [Basic stellar model])
    ;;
-
+   none)
+      AC_DEFINE([STARS_NONE], [1], [No stellar model])
+   ;;
    *)
       AC_MSG_ERROR([Unknown stellar model: $with_stars])
    ;;
@@ -2396,7 +2398,7 @@ AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "${with_chemistry:0:5}" = "GEAR_"])
 
 # check if using default stars
-AM_CONDITIONAL([HAVE_STARS_DEFAULT], [test "$with_stars" = "none"])
+AM_CONDITIONAL([HAVE_STARS_BASIC], [test "$with_stars" = "basic"])
 
 # check if using GEAR stars
 AM_CONDITIONAL([HAVE_STARS_GEAR], [test "$with_stars" = "GEAR"])

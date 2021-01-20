@@ -45,8 +45,8 @@ lib_LTLIBRARIES = liblogger.la
 
 GRAVITY_SRC = gravity/MultiSoftening/logger_gravity.c
 # Include the stars modules
-if HAVE_STARS_DEFAULT
-STARS_SRC = stars/Default/logger_stars.c
+if HAVE_STARS_BASIC
+STARS_SRC = stars/Basic/logger_stars.c
 endif
 if HAVE_STARS_GEAR
 STARS_SRC = stars/GEAR/logger_stars.c
@@ -100,7 +100,7 @@ endif
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = logger_hydro.h hydro/Gadget2/logger_hydro.h hydro/SPHENIX/logger_hydro.h
-nobase_noinst_HEADERS += logger_stars.h  stars/Default/logger_stars.h stars/GEAR/logger_stars.h
+nobase_noinst_HEADERS += logger_stars.h  stars/Basic/logger_stars.h stars/GEAR/logger_stars.h
 nobase_noinst_HEADERS += logger_gravity.h gravity/MultiSoftening/logger_gravity.h
 nobase_noinst_HEADERS += logger_chemistry.h chemistry/none/logger_chemistry.h chemistry/GEAR/logger_chemistry.h
 nobase_noinst_HEADERS += logger_star_formation.h star_formation/none/logger_star_formation.h

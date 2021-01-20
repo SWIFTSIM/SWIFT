@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_LOGGER_STARS_H
-#define SWIFT_DEFAULT_LOGGER_STARS_H
+#ifndef SWIFT_BASIC_LOGGER_STARS_H
+#define SWIFT_BASIC_LOGGER_STARS_H
 
 #include "../config.h"
 
@@ -136,4 +136,4 @@ __attribute__((always_inline)) INLINE static void stars_logger_generate_python(
 
 #endif  // HAVE_PYTHON
 
-#endif  // SWIFT_DEFAULT_LOGGER_STARS_H
+#endif /* SWIFT_BASIC_LOGGER_STARS_H */

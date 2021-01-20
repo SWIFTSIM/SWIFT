@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STARS_H
-#define SWIFT_DEFAULT_STARS_H
+#ifndef SWIFT_BASIC_STARS_H
+#define SWIFT_BASIC_STARS_H
 
 #include "minmax.h"
 
@@ -183,4 +183,4 @@ __attribute__((always_inline)) INLINE static void stars_reset_feedback(
 inline static void stars_evolve_init(struct swift_params* params,
                                      struct stars_props* restrict stars) {}
 
-#endif /* SWIFT_DEFAULT_STARS_H */
+#endif /* SWIFT_BASIC_STARS_H */

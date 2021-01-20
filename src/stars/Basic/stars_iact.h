@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STARS_IACT_H
-#define SWIFT_DEFAULT_STARS_IACT_H
+#ifndef SWIFT_BASIC_STARS_IACT_H
+#define SWIFT_BASIC_STARS_IACT_H
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -92,4 +92,4 @@ runner_iact_nonsym_stars_feedback(const float r2, const float *dx,
 #endif
 }
 
-#endif
+#endif /* SWIFT_BASIC_STARS_IACT_H */
