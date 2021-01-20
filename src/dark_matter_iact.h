@@ -433,19 +433,19 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     /* Center of Mass Velocity of interacting particles */
     double VCM[3];
     VCM[0] = cosmo->a_inv * (pi->sidm_data.v_full[0] + pj->sidm_data.v_full[0])/2.0;
-    VCM[0] += cosmo->a * cosmo->H * (pi->x[0] + pj->x[0])/2.0;
+    /*VCM[0] += cosmo->a * cosmo->H * (pi->x[0] + pj->x[0])/2.0;*/
     VCM[1] = cosmo->a_inv * (pi->sidm_data.v_full[1] + pj->sidm_data.v_full[1])/2.0;
-    VCM[1] += cosmo->a * cosmo->H * (pi->x[1] + pj->x[1])/2.0;
+    /*VCM[1] += cosmo->a * cosmo->H * (pi->x[1] + pj->x[1])/2.0;*/
     VCM[2] = cosmo->a_inv * (pi->sidm_data.v_full[2] + pj->sidm_data.v_full[2])/2.0;
-    VCM[2] += cosmo->a * cosmo->H * (pi->x[2] + pj->x[2])/2.0;
+    /*VCM[2] += cosmo->a * cosmo->H * (pi->x[2] + pj->x[2])/2.0;*/
 
     double dw[3];
     dw[0] = pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0];
-    dw[0] += cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);
+    /*dw[0] += cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);*/
     dw[1] = pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1];
-    dw[1] += cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);
+    /*dw[1] += cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);*/
     dw[2] = pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2];
-    dw[2] += cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);
+    /*dw[2] += cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);*/
 
     double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
     double dv = cosmo->a_inv * sqrt(dv2) / 2.0;
@@ -485,13 +485,19 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     pj->sidm_data.v_full[2] = VCM[2] + dv * e[2];
     
     /* Therefore, the code velocity kick needs to go back to comoving.. */
-    pi->sidm_data.v_full[0] = cosmo->a * pi->sidm_data.v_full[0] - cosmo->a * cosmo->a * cosmo->H * pi->x[0];
-    pi->sidm_data.v_full[1] = cosmo->a * pi->sidm_data.v_full[1] - cosmo->a * cosmo->a * cosmo->H * pi->x[1];
-    pi->sidm_data.v_full[2] = cosmo->a * pi->sidm_data.v_full[2] - cosmo->a * cosmo->a * cosmo->H * pi->x[2];
+    pi->sidm_data.v_full[0] = cosmo->a * pi->sidm_data.v_full[0];
+    /*- cosmo->a * cosmo->a * cosmo->H * pi->x[0];*/
+    pi->sidm_data.v_full[1] = cosmo->a * pi->sidm_data.v_full[1];
+    /*- cosmo->a * cosmo->a * cosmo->H * pi->x[1];*/
+    pi->sidm_data.v_full[2] = cosmo->a * pi->sidm_data.v_full[2];
+    /*- cosmo->a * cosmo->a * cosmo->H * pi->x[2];*/
     
-    pj->sidm_data.v_full[0] = cosmo->a * pj->sidm_data.v_full[0] - cosmo->a * cosmo->a * cosmo->H * pj->x[0];
-    pj->sidm_data.v_full[1] = cosmo->a * pj->sidm_data.v_full[1] - cosmo->a * cosmo->a * cosmo->H * pj->x[1];
-    pj->sidm_data.v_full[2] = cosmo->a * pj->sidm_data.v_full[2] - cosmo->a * cosmo->a * cosmo->H * pj->x[2];
+    pj->sidm_data.v_full[0] = cosmo->a * pj->sidm_data.v_full[0];
+    /*- cosmo->a * cosmo->a * cosmo->H * pj->x[0];*/
+    pj->sidm_data.v_full[1] = cosmo->a * pj->sidm_data.v_full[1]
+    /*- cosmo->a * cosmo->a * cosmo->H * pj->x[1];*/
+    pj->sidm_data.v_full[2] = cosmo->a * pj->sidm_data.v_full[2]
+    /*- cosmo->a * cosmo->a * cosmo->H * pj->x[2];*/
 
     /* Communicating this kick to logger */
     if (pi->sidm_data.sidm_flag > 0) {
@@ -568,8 +574,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
     
-    /* Scattering cross section per unit mass (in internal units converting them to physical) */
-    const double sigma = sidm_props->sigma * cosmo->a_inv * cosmo->a_inv;
+    /* Scattering cross section per unit mass (in internal units) */
+    const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
     const double mass_j = pj->mass;
@@ -631,8 +637,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
     
-    /* Scattering cross section per unit mass (in internal units converting them to physical) */
-    const double sigma = sidm_props->sigma * cosmo->a_inv * cosmo->a_inv;
+    /* Scattering cross section per unit mass (in internal units) */
+    const double sigma = sidm_props->sigma;
     
     /* DM particle mass */
     const double mass_i = pi->mass;
