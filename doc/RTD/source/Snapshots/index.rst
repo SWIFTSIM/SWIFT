@@ -299,7 +299,7 @@ Note that we can only track 64 splitting events for a given particle, and after
 this the binary tree is meaningless. In practice, however, such a high number
 of splitting events is extremely unlikely to occur.
 
-An example is provided in ``examples/SubgridTests/ParticleSplitting`, with
+An example is provided in ``examples/SubgridTests/ParticleSplitting``, with
 a figure showing how one particle is split (eventually) into 16 descendants
 that makes use of this metadata.
    
