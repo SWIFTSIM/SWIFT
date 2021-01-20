@@ -435,9 +435,9 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     VCM[0] = cosmo->a_inv * (pi->sidm_data.v_full[0] + pj->sidm_data.v_full[0])/2.0;
     VCM[0] += cosmo->a * cosmo->H * (pi->x[0] + pj->x[0])/2.0;
     VCM[1] = cosmo->a_inv * (pi->sidm_data.v_full[1] + pj->sidm_data.v_full[1])/2.0;
-    VCM[0] += cosmo->a * cosmo->H * (pi->x[1] + pj->x[1])/2.0;
+    VCM[1] += cosmo->a * cosmo->H * (pi->x[1] + pj->x[1])/2.0;
     VCM[2] = cosmo->a_inv * (pi->sidm_data.v_full[2] + pj->sidm_data.v_full[2])/2.0;
-    VCM[0] += cosmo->a * cosmo->H * (pi->x[2] + pj->x[2])/2.0;
+    VCM[2] += cosmo->a * cosmo->H * (pi->x[2] + pj->x[2])/2.0;
 
     double dw[3];
     dw[0] = pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0];
