@@ -494,9 +494,9 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     
     pj->sidm_data.v_full[0] = cosmo->a * pj->sidm_data.v_full[0];
     /*- cosmo->a * cosmo->a * cosmo->H * pj->x[0];*/
-    pj->sidm_data.v_full[1] = cosmo->a * pj->sidm_data.v_full[1]
+    pj->sidm_data.v_full[1] = cosmo->a * pj->sidm_data.v_full[1];
     /*- cosmo->a * cosmo->a * cosmo->H * pj->x[1];*/
-    pj->sidm_data.v_full[2] = cosmo->a * pj->sidm_data.v_full[2]
+    pj->sidm_data.v_full[2] = cosmo->a * pj->sidm_data.v_full[2];
     /*- cosmo->a * cosmo->a * cosmo->H * pj->x[2];*/
 
     /* Communicating this kick to logger */
