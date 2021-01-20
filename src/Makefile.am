@@ -122,8 +122,8 @@ endif
 
 # source files for the logger (stars)
 STARS_LOGGER =
-if HAVE_STARS_DEFAULT
-STARS_LOGGER += stars/Default/stars_logger.c
+if HAVE_STARS_BASIC
+STARS_LOGGER += stars/Basic/stars_logger.c
 endif
 if HAVE_STARS_GEAR
 STARS_LOGGER += stars/GEAR/stars_logger.c
@@ -289,8 +289,8 @@ nobase_noinst_HEADERS += rt/M1closure/rt_io.h
 nobase_noinst_HEADERS += rt/M1closure/rt_struct.h
 nobase_noinst_HEADERS += rt/M1closure/rt_thermochemistry.h
 nobase_noinst_HEADERS += stars.h stars_io.h stars_logger.h 
-nobase_noinst_HEADERS += stars/Default/stars.h stars/Default/stars_iact.h stars/Default/stars_io.h 
-nobase_noinst_HEADERS += stars/Default/stars_debug.h stars/Default/stars_part.h stars/Default/stars_logger.h  
+nobase_noinst_HEADERS += stars/Basic/stars.h stars/Basic/stars_iact.h stars/Basic/stars_io.h 
+nobase_noinst_HEADERS += stars/Basic/stars_debug.h stars/Basic/stars_part.h stars/Basic/stars_logger.h  
 nobase_noinst_HEADERS += stars/EAGLE/stars.h stars/EAGLE/stars_iact.h stars/EAGLE/stars_io.h 
 nobase_noinst_HEADERS += stars/EAGLE/stars_debug.h stars/EAGLE/stars_part.h 
 nobase_noinst_HEADERS += stars/GEAR/stars.h stars/GEAR/stars_iact.h stars/GEAR/stars_io.h 

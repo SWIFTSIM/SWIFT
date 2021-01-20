@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STARS_LOGGER_H
-#define SWIFT_DEFAULT_STARS_LOGGER_H
+#ifndef SWIFT_BASIC_STARS_LOGGER_H
+#define SWIFT_BASIC_STARS_LOGGER_H
 
 #ifdef WITH_LOGGER
 
@@ -183,5 +183,5 @@ INLINE static char *stars_logger_write_particle(
   return buff;
 }
 
-#endif  // WITH_LOGGER
-#endif  // SWIFT_DEFAULT_STARS_LOGGER_H
+#endif /* WITH_LOGGER */
+#endif /* SWIFT_BASIC_STARS_LOGGER_H */

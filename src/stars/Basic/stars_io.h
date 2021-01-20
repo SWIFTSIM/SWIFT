@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STARS_IO_H
-#define SWIFT_DEFAULT_STARS_IO_H
+#ifndef SWIFT_BASIC_STARS_IO_H
+#define SWIFT_BASIC_STARS_IO_H
 
 #include "io_properties.h"
 #include "stars_part.h"
@@ -265,4 +265,4 @@ INLINE static void stars_props_struct_restore(const struct stars_props *p,
   restart_read_blocks((void *)p, sizeof(struct stars_props), 1, stream, NULL,
                       "stars props");
 }
-#endif /* SWIFT_DEFAULT_STAR_IO_H */
+#endif /* SWIFT_BASIC_STAR_IO_H */

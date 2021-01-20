@@ -31,7 +31,9 @@
 
 /* Load the correct star type */
 #if defined(STARS_NONE)
-#include "./stars/Default/stars_logger.h"
+#include "./stars/None/stars_logger.h"
+#elif defined(STARS_BASIC)
+#include "./stars/Basic/stars_logger.h"
 #elif defined(STARS_EAGLE)
 #error TODO
 #elif defined(STARS_GEAR)

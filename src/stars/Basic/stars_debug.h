@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STARS_DEBUG_H
-#define SWIFT_DEFAULT_STARS_DEBUG_H
+#ifndef SWIFT_BASIC_STARS_DEBUG_H
+#define SWIFT_BASIC_STARS_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void stars_debug_particle(
     const struct spart* p) {
@@ -28,4 +28,4 @@ __attribute__((always_inline)) INLINE static void stars_debug_particle(
       p->mass, p->ti_begin, p->ti_end);
 }
 
-#endif /* SWIFT_DEFAULT_STARS_DEBUG_H */
+#endif /* SWIFT_BASIC_STARS_DEBUG_H */

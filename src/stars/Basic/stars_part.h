@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_STAR_PART_H
-#define SWIFT_DEFAULT_STAR_PART_H
+#ifndef SWIFT_BASIC_STAR_PART_H
+#define SWIFT_BASIC_STAR_PART_H
 
 /* Some standard headers. */
 #include <stdlib.h>
@@ -154,4 +154,4 @@ struct stars_props {
   float log_max_h_change;
 };
 
-#endif /* SWIFT_DEFAULT_STAR_PART_H */
+#endif /* SWIFT_BASIC_STAR_PART_H */
