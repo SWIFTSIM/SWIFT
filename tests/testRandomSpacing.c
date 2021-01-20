@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
   message("SWIFT random seed = %d", SWIFT_RANDOM_SEED_XOR);
 
   /* Time-step size */
-  const int time_bin = 30;
+  const int time_bin = 27;
 
   const double boundary[6] = {1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10};
   int count[6] = {0};
