@@ -143,7 +143,7 @@ cols = [
 tasks = [
     "dead time",
     "drift",
-    "sort",
+    "sorts",
     "resort",
     "hydro",
     "gravity",
