@@ -165,6 +165,7 @@ AM_SOURCES += output_options.c line_of_sight.c restart.c parser.c xmf.c
 AM_SOURCES += kernel_hydro.c tools.c map.c part.c partition.c clocks.c  
 AM_SOURCES += physical_constants.c units.c potential.c hydro_properties.c 
 AM_SOURCES += threadpool.c cooling.c star_formation.c 
+AM_SOURCES += hydro.c
 AM_SOURCES += statistics.c profiler.c dump.c logger.c part_type.c 
 AM_SOURCES += gravity_properties.c gravity.c multipole.c 
 AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c 
