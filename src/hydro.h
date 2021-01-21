@@ -84,4 +84,20 @@
 #error "Invalid choice of SPH variant"
 #endif
 
+/* Check whether this scheme implements the density checks */
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+#if !defined(SPHENIX_SPH)
+#error \
+    "Can only use the hydro brute-force density checks with the SPHENIX hydro scheme."
+#endif
+#endif
+
+struct engine;
+struct space;
+
+void hydro_exact_density_compute(struct space *s, const struct engine *e,
+                                 const int check_force);
+void hydro_exact_density_check(struct space *s, const struct engine *e,
+                               const float rel_tol, const int check_force);
+
 #endif /* SWIFT_HYDRO_H */
