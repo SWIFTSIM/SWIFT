@@ -25,22 +25,9 @@
 
 /* Local includes. */
 #include "error.h"
+#include "io_properties.h"
+#include "output_options.h"
 #include "units.h"
-
-/* I/O functions of each sub-module */
-#include "black_holes_io.h"
-#include "chemistry_io.h"
-#include "cooling_io.h"
-#include "fof_io.h"
-#include "gravity_io.h"
-#include "hydro_io.h"
-#include "particle_splitting.h"
-#include "rt_io.h"
-#include "sink_io.h"
-#include "star_formation_io.h"
-#include "stars_io.h"
-#include "tracers_io.h"
-#include "velociraptor_io.h"
 
 /* Some standard headers. */
 #include <string.h>
@@ -91,64 +78,35 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
   switch (ptype) {
 
     case swift_type_gas:
-      hydro_write_particles(NULL, NULL, list, &num_fields);
-      num_fields += particle_splitting_write_particles(
-          NULL, NULL, list + num_fields, with_cosmology);
-      num_fields += chemistry_write_particles(NULL, NULL, list + num_fields,
-                                              with_cosmology);
-      num_fields +=
-          cooling_write_particles(NULL, NULL, list + num_fields, NULL);
-      num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
-                                            with_cosmology);
-      num_fields +=
-          star_formation_write_particles(NULL, NULL, list + num_fields);
-      if (with_fof)
-        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
-      num_fields += rt_write_particles(NULL, list + num_fields);
+      io_select_hydro_fields(NULL, NULL, with_cosmology, /*with_cooling=*/1,
+                             /*with_temperature=*/1, with_fof, with_stf,
+                             /*with_rt=*/1, /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_dark_matter:
-      darkmatter_write_particles(NULL, list, &num_fields);
-      if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+      io_select_dm_fields(NULL, with_fof, with_stf, /*e=*/NULL, &num_fields,
+                          list);
       break;
 
     case swift_type_dark_matter_background:
-      darkmatter_write_particles(NULL, list, &num_fields);
-      if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+      io_select_dm_fields(NULL, with_fof, with_stf, /*e=*/NULL, &num_fields,
+                          list);
       break;
 
     case swift_type_stars:
-      stars_write_particles(NULL, list, &num_fields, with_cosmology);
-      num_fields +=
-          particle_splitting_write_sparticles(NULL, list + num_fields);
-      num_fields += chemistry_write_sparticles(NULL, list + num_fields);
-      num_fields +=
-          tracers_write_sparticles(NULL, list + num_fields, with_cosmology);
-      num_fields += star_formation_write_sparticles(NULL, list + num_fields);
-      if (with_fof) num_fields += fof_write_sparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
-      num_fields += rt_write_stars(NULL, list + num_fields);
+      io_select_star_fields(NULL, with_cosmology, with_fof, with_stf,
+                            /*with_rt=*/1,
+                            /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_sink:
-      sink_write_particles(NULL, list, &num_fields, with_cosmology);
+      io_select_sink_fields(NULL, with_cosmology, with_fof, with_stf,
+                            /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_black_hole:
-      black_holes_write_particles(NULL, list, &num_fields, with_cosmology);
-      num_fields +=
-          particle_splitting_write_bparticles(NULL, list + num_fields);
-      num_fields += chemistry_write_bparticles(NULL, list + num_fields);
-      if (with_fof) num_fields += fof_write_bparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
+      io_select_bh_fields(NULL, with_cosmology, with_fof, with_stf, /*e=*/NULL,
+                          &num_fields, list);
       break;
 
     default:
@@ -245,6 +203,8 @@ void io_prepare_output_fields(struct output_options* output_options,
        * 'Standard' parameter */
       if (strstr(param_name, section_name) == NULL) continue;
       if (strstr(param_name, ":Standard_") != NULL) continue;
+      if (strstr(param_name, ":basename") != NULL) continue;
+      if (strstr(param_name, ":subdir") != NULL) continue;
 
       /* Get the particle type for current parameter
        * (raises an error if it could not determine it) */

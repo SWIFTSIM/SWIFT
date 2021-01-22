@@ -62,6 +62,9 @@ struct output_list {
    * pointers because of restarts. */
   int *select_output_indices;
 
+  /* List of snapshot labels if not using the defaults */
+  int *snapshot_labels;
+
   /* Total number of currently used select output names */
   int select_output_number_of_names;
 
@@ -73,6 +76,9 @@ struct output_list {
 
   /* Was the Select Output option used? */
   int select_output_on;
+
+  /* Are we using individual labels for the runs? */
+  int alternative_labels_on;
 
   /* Is this output list activated? */
   int output_list_on;
@@ -88,7 +94,7 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
 void output_list_get_current_select_output(struct output_list *t,
                                            char *select_output_name);
 void output_list_init(struct output_list **list, const struct engine *e,
-                      const char *name, double *delta_time, double *time_first);
+                      const char *name, double *const delta_time);
 void output_list_print(const struct output_list *output_list);
 void output_list_clean(struct output_list **output_list);
 void output_list_struct_dump(struct output_list *list, FILE *stream);

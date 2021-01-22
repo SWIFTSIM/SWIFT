@@ -1480,5 +1480,6 @@ void feedback_struct_restore(struct feedback_props* feedback, FILE* stream) {
   restart_read_blocks((void*)feedback, sizeof(struct feedback_props), 1, stream,
                       NULL, "feedback function");
 
-  feedback_restore_tables(feedback);
+  if (strlen(feedback->yield_table_path) != 0)
+    feedback_restore_tables(feedback);
 }
