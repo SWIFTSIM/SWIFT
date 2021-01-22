@@ -1933,17 +1933,30 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 #endif
 }
 
+/**
+ * @brief Seed black holes from gas particles in the haloes on the local MPI
+ * rank that passed the criteria.
+ *
+ * @param props The properties of the FOF scheme.
+ * @param bh_props The properties of the black hole scheme.
+ * @param constants The physical constants.
+ * @param cosmo The cosmological model.
+ * @param s The @space we act on.
+ * @param num_groups_local The number of groups on the current MPI rank.
+ * @param group_sizes List of groups sorted in size order.
+ */
 void fof_seed_black_holes(const struct fof_props *props,
                           const struct black_holes_props *bh_props,
                           const struct phys_const *constants,
                           const struct cosmology *cosmo, struct space *s,
-                          int num_groups, struct group_length *group_sizes) {
+                          const int num_groups_local,
+                          struct group_length *group_sizes) {
 
   const long long *max_part_density_index = props->max_part_density_index;
 
   /* Count the number of black holes to seed */
   int num_seed_black_holes = 0;
-  for (int i = 0; i < num_groups + props->extra_bh_seed_count; i++) {
+  for (int i = 0; i < num_groups_local + props->extra_bh_seed_count; i++) {
     if (max_part_density_index[i] >= 0) ++num_seed_black_holes;
   }
 
@@ -1981,7 +1994,7 @@ void fof_seed_black_holes(const struct fof_props *props,
   int k = s->nr_bparts;
 
   /* Loop over the local groups */
-  for (int i = 0; i < num_groups + props->extra_bh_seed_count; i++) {
+  for (int i = 0; i < num_groups_local + props->extra_bh_seed_count; i++) {
 
     const long long part_index = max_part_density_index[i];
 
@@ -2608,9 +2621,9 @@ void fof_search_tree(struct fof_props *props,
 #endif
   struct gpart *gparts = s->gparts;
   size_t *group_index, *group_size;
-  int num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
-  int verbose = s->e->verbose;
-  ticks tic_total = getticks();
+  long long num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
+  const int verbose = s->e->verbose;
+  const ticks tic_total = getticks();
 
   char output_file_name[PARSER_MAX_LINE_SIZE];
   snprintf(output_file_name, PARSER_MAX_LINE_SIZE, "%s", props->base_name);
@@ -2631,7 +2644,7 @@ void fof_search_tree(struct fof_props *props,
   long long nr_gparts_cumulative;
   long long nr_gparts_local = s->nr_gparts;
 
-  ticks comms_tic = getticks();
+  const ticks comms_tic = getticks();
 
   MPI_Scan(&nr_gparts_local, &nr_gparts_cumulative, 1, MPI_LONG_LONG, MPI_SUM,
            MPI_COMM_WORLD);
@@ -2653,7 +2666,7 @@ void fof_search_tree(struct fof_props *props,
   group_index = props->group_index;
   group_size = props->group_size;
 
-  ticks tic_calc_group_size = getticks();
+  const ticks tic_calc_group_size = getticks();
 
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
@@ -2666,7 +2679,7 @@ void fof_search_tree(struct fof_props *props,
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
 
-    ticks tic_mpi = getticks();
+    const ticks tic_mpi = getticks();
 
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(props, s);
@@ -2677,8 +2690,7 @@ void fof_search_tree(struct fof_props *props,
 
       message(
           "fof_search_foreign_cells() + calc_group_size took (FOF SCALING): "
-          "%.3f "
-          "%s.",
+          "%.3f %s.",
           clocks_from_ticks(getticks() - tic_total), clocks_getunit());
     }
   }
@@ -2690,7 +2702,7 @@ void fof_search_tree(struct fof_props *props,
   size_t max_group_size_local = 0;
 #endif
 
-  ticks tic_num_groups_calc = getticks();
+  const ticks tic_num_groups_calc = getticks();
 
   for (size_t i = 0; i < nr_gparts; i++) {
 
@@ -2752,7 +2764,7 @@ void fof_search_tree(struct fof_props *props,
 
   /* Find global properties. */
 #ifdef WITH_MPI
-  MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM,
+  MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_LONG_LONG_INT, MPI_SUM,
                 MPI_COMM_WORLD);
 
   if (verbose)
@@ -2761,10 +2773,10 @@ void fof_search_tree(struct fof_props *props,
             clocks_getunit());
 
 #ifndef WITHOUT_GROUP_PROPS
-  MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT,
-             MPI_SUM, 0, MPI_COMM_WORLD);
-  MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0,
-             MPI_COMM_WORLD);
+  MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1,
+             MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_LONG_LONG_INT,
+             MPI_MAX, 0, MPI_COMM_WORLD);
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 #else
   num_groups = num_groups_local;
@@ -2948,7 +2960,7 @@ void fof_search_tree(struct fof_props *props,
 
   bzero(props->group_mass, num_groups_local * sizeof(double));
 
-  ticks tic_seeding = getticks();
+  const ticks tic_seeding = getticks();
 
   double *group_mass = props->group_mass;
 #ifdef WITH_MPI
@@ -2961,7 +2973,7 @@ void fof_search_tree(struct fof_props *props,
 #endif
 
   if (verbose)
-    message("Black hole seeding took: %.3f %s.",
+    message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
   /* Dump group data. */
@@ -2992,12 +3004,12 @@ void fof_search_tree(struct fof_props *props,
 
   if (engine_rank == 0) {
     message(
-        "No. of groups: %d. No. of particles in groups: %d. No. of particles "
-        "not in groups: %lld.",
+        "No. of groups: %lld. No. of particles in groups: %lld. No. of "
+        "particles not in groups: %lld.",
         num_groups, num_parts_in_groups,
         s->e->total_nr_gparts - num_parts_in_groups);
 
-    message("Largest group by size: %d", max_group_size);
+    message("Largest group by size: %lld", max_group_size);
   }
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),

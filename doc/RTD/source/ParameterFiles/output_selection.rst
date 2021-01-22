@@ -43,6 +43,12 @@ straight after having read the ICs. Similarly, SWIFT will also *not*
 write a snapshot at the end of a simulation unless a snapshot at the
 final time is specified in the list.
 
+Note that if a simulation is restarted using check-point files, the
+list of outputs will be re-read. This means that it must be found on
+the disk at the same place as it was when the simulation was first
+started. It also implies that the content of the file can be altered
+if the need for additional snapshots suddenly arises.
+
 .. _Output_selection_label:
 
 Output Selection
@@ -54,7 +60,7 @@ available for a given configuration of SWIFT by running
 output.yml``. The file generated contains the list of fields that a
 simulation running with this config would output in each snapshot. It
 also lists the description string of each field and the unit
-conversion string to go from internal comoving units to physical
+conversion string to go from internal co-moving units to physical
 CGS. Entries in the file look like:
 
 .. code:: YAML
@@ -130,6 +136,26 @@ field for each particle type:
      Standard_BH: on  # Not strictly necessary, on is already the default
 
 
+Additionally, users can use the different sections to specify an alternative
+base name and sub-directory for the snapshots corresponding to a given
+selection:
+
+.. code:: YAML
+
+   BlackHolesOnly:
+     basename: bh
+     subdir: snip
+
+This will put the outputs corresponding to the ``BlackHolesOnly`` selection into
+a sub-directory called ``snip`` and have the files themselves called
+``bh_0000.hdf5`` where the number corresponds to the global number of
+snapshots. The counter is global and not reset for each type of selection.
+If the basename or sub-directory keywords are omitted then the code will use the
+default values specified in the ``Snapshots`` section of the main parameter file.
+The sub-directories are created when writing the first snapshot of a given
+category; the onus is hence on the user to ensure correct writing permissions
+ahead of that time.
+
 Combining Output Lists and Output Selection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -179,3 +205,38 @@ This will enable your simulation to perform partial dumps only at the outputs
 labelled as ``Snipshot``. The name of the output selection that corresponds
 to your choice in the output list will be written to the snapshot header as
 ``Header/SelectOutput``.
+
+Note that if a the name used in the ``Select Output`` column does not
+exist as a section in the output selection YAML file, SWIFT will write
+all the available fields. 
+
+Using non-regular snapshot numbers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In some cases it may be helpful to have snapshot numbers that do not
+simply increase by one each time. This could be used to encode the
+simulation time in the filename for instance. To achieve this, a third
+column can be added to the output list giving the snapshot labels to
+use for each output::
+
+   # Redshift, Select Output, Label
+   100.0, Snapshot, 100
+   90.0, Snapshot, 90
+   1.0, Snapshot, 1
+   ...
+
+The label has to be an integer. This will lead to the following
+snapshots being produced:
+
+.. code:: bash
+
+   snap_100.hdf5
+   snap_90.hdf5
+   snap_1.hdf5
+
+Assuming the snapshot basename (either global or set for the
+``Snapshot`` output selection) was set to ``snap``.
+
+Note that to specify labels, the ``Select Output`` column needs to be
+specified (but can simply default to dumping everything).
+

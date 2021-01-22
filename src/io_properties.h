@@ -111,6 +111,9 @@ struct io_props {
   /* Units of the quantity */
   enum unit_conversion_factor units;
 
+  /* Default value to apply for optional fields when not found in the ICs */
+  float default_value;
+
   /* Scale-factor exponent to apply for unit conversion to physical */
   float scale_factor_exponent;
 
@@ -177,10 +180,37 @@ struct io_props {
 
 /**
  * @brief Constructs an #io_props from its parameters
+ *
+ * @param name The name of the field in the ICs.
+ * @param type The data type.
+ * @param dim The dimensionality of the field.
+ * @param importance Is this field compulsory or optional?
+ * @param units The units used for this field.
+ * @param part Pointer to the particle array where to write.
+ * @param field Name of the field in the particle structure to write to.
  */
 #define io_make_input_field(name, type, dim, importance, units, part, field) \
   io_make_input_field_(name, type, dim, importance, units,                   \
-                       (char*)(&(part[0]).field), sizeof(part[0]))
+                       (char*)(&(part[0]).field), sizeof(part[0]), 0.)
+
+/**
+ * @brief Constructs an #io_props from its parameters with a user-defined
+ * default value to use for optional fields.
+ *
+ * @param name The name of the field in the ICs.
+ * @param type The data type.
+ * @param dim The dimensionality of the field.
+ * @param importance Is this field compulsory or optional?
+ * @param units The units used for this field.
+ * @param part Pointer to the particle array where to write.
+ * @param field Name of the field in the particle structure to write to.
+ * @param def The value to use as a default if the field is optional and not
+ * found in the ICs.
+ */
+#define io_make_input_field_default(name, type, dim, importance, units, part, \
+                                    field, def)                               \
+  io_make_input_field_(name, type, dim, importance, units,                    \
+                       (char*)(&(part[0]).field), sizeof(part[0]), def)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -198,8 +228,10 @@ struct io_props {
 INLINE static struct io_props io_make_input_field_(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum DATA_IMPORTANCE importance, enum unit_conversion_factor units,
-    char* field, size_t partSize) {
+    char* field, size_t partSize, const float default_value) {
   struct io_props r;
+  bzero(&r, sizeof(struct io_props));
+
   strcpy(r.name, name);
   r.type = type;
   r.dimension = dimension;
@@ -207,27 +239,13 @@ INLINE static struct io_props io_make_input_field_(
   r.units = units;
   r.field = field;
   r.partSize = partSize;
-  r.parts = NULL;
-  r.xparts = NULL;
-  r.gparts = NULL;
-  r.sparts = NULL;
-  r.bparts = NULL;
-  r.conversion = 0;
-  r.convert_part_f = NULL;
-  r.convert_part_d = NULL;
-  r.convert_part_l = NULL;
-  r.convert_gpart_f = NULL;
-  r.convert_gpart_d = NULL;
-  r.convert_gpart_l = NULL;
-  r.convert_spart_f = NULL;
-  r.convert_spart_d = NULL;
-  r.convert_spart_l = NULL;
-  r.convert_bpart_f = NULL;
-  r.convert_bpart_d = NULL;
-  r.convert_bpart_l = NULL;
-  r.convert_sink_f = NULL;
-  r.convert_sink_d = NULL;
-  r.convert_sink_l = NULL;
+  r.default_value = default_value;
+
+  if (default_value != 0.f && importance != OPTIONAL)
+    error("Cannot set a non-zero default value for a compulsory field!");
+  if (default_value != 0.f && type != FLOAT)
+    error(
+        "Can only set non-zero default value for a field using a FLOAT type!");
 
   return r;
 }

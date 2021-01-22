@@ -87,7 +87,7 @@ struct fof_props {
   /* ------------  Group properties ----------------- */
 
   /*! Number of groups */
-  int num_groups;
+  long long num_groups;
 
   /*! Number of local black holes that belong to groups whose roots are on a
    * different node. */

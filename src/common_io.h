@@ -44,6 +44,7 @@ struct sink;
 struct io_props;
 struct engine;
 struct threadpool;
+struct output_list;
 struct output_options;
 struct unit_system;
 
@@ -102,6 +103,7 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
 
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
+void io_write_part_type_names(hid_t h_grp);
 
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
@@ -189,11 +191,41 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology);
 void io_make_snapshot_subdir(const char* dirname);
 
 void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
-                              const int use_time_label,
-                              const int snapshots_invoke_stf, const double time,
+                              const struct output_list* output_list,
+                              const int snapshots_invoke_stf,
                               const int stf_count, const int snap_count,
-                              const char* subdir, const char* basename);
+                              const char* default_subdir, const char* subdir,
+                              const char* default_basename,
+                              const char* basename);
 
 void io_set_ids_to_one(struct gpart* gparts, const size_t Ngparts);
+
+void io_select_hydro_fields(const struct part* const parts,
+                            const struct xpart* const xparts,
+                            const int with_cosmology, const int with_cooling,
+                            const int with_temperature, const int with_fof,
+                            const int with_stf, const int with_rt,
+                            const struct engine* const e, int* const num_fields,
+                            struct io_props* const list);
+
+void io_select_dm_fields(const struct gpart* const gparts, const int with_fof,
+                         const int with_stf, const struct engine* const e,
+                         int* const num_fields, struct io_props* const list);
+
+void io_select_sink_fields(const struct sink* const sinks,
+                           const int with_cosmology, const int with_fof,
+                           const int with_stf, const struct engine* const e,
+                           int* const num_fields, struct io_props* const list);
+
+void io_select_star_fields(const struct spart* const sparts,
+                           const int with_cosmology, const int with_fof,
+                           const int with_stf, const int with_rt,
+                           const struct engine* const e, int* const num_fields,
+                           struct io_props* const list);
+
+void io_select_bh_fields(const struct bpart* const bparts,
+                         const int with_cosmology, const int with_fof,
+                         const int with_stf, const struct engine* const e,
+                         int* const num_fields, struct io_props* const list);
 
 #endif /* SWIFT_COMMON_IO_H */
