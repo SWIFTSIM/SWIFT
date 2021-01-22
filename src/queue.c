@@ -231,7 +231,7 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param blocking Block until access to the queue is granted.
  */
 struct task *queue_gettask(struct scheduler *s, struct queue *q,
-                           const struct task *prev, int blocking) {
+                           const struct task *prev, int blocking, int rid) {
 
   swift_lock_type *qlock = &q->lock;
   struct task *res = NULL;
@@ -262,7 +262,7 @@ struct task *queue_gettask(struct scheduler *s, struct queue *q,
   for (ind = 0; ind < old_qcount; ind++) {
 
     /* Try to lock the next task. */
-    if (task_lock(s, &qtasks[entries[ind].tid])) break;
+    if (task_lock(s, &qtasks[entries[ind].tid], rid)) break;
 
     /* Should we de-prioritize this task? */
     if ((1ULL << qtasks[entries[ind].tid].type) &

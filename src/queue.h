@@ -25,7 +25,6 @@
 #include "task.h"
 
 /* Some constants. */
-#define queue_maxsuper 50
 #define queue_sizeinit 100
 #define queue_sizegrow 2
 #define queue_search_window 8
@@ -34,9 +33,22 @@
 
 /* Constants dealing with task de-priorization. */
 #define queue_lock_fail_reweight_factor 0.5
-/* #define queue_lock_fail_reweight_mask \
-  ((1ULL << task_type_send) | (1ULL << task_type_recv)) */
+
+// All tasks.
 #define queue_lock_fail_reweight_mask ((1ULL << task_type_count) - 1)
+
+// All except drifts.
+//#define queue_lock_fail_reweight_mask (((1ULL << task_type_count) - 1) & ~((1ULL << task_type_drift_part) | (1ULL << task_type_drift_gpart)))
+
+// All except send and recv.
+//#define queue_lock_fail_reweight_mask (((1ULL << task_type_count) - 1) & ~((1ULL << task_type_send) | (1ULL << task_type_recv)))
+
+// All except send.
+//#define queue_lock_fail_reweight_mask (((1ULL << task_type_count) - 1) & ~(1ULL << task_type_send))
+
+// All except recv.
+//#define queue_lock_fail_reweight_mask (((1ULL << task_type_count) - 1) & ~(1ULL << task_type_recv))
+
 
 /* Counters. */
 enum {
@@ -79,7 +91,7 @@ struct queue {
 
 /* Function prototypes. */
 struct task *queue_gettask(struct scheduler *s, struct queue *q,
-                           const struct task *prev, int blocking);
+                           const struct task *prev, int blocking, int rid);
 void queue_init(struct queue *q, struct task *tasks);
 void queue_insert(struct queue *q, struct task *t);
 void queue_clean(struct queue *q);

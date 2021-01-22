@@ -267,6 +267,11 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
     calloc(nr_servers, sizeof(infinity::memory::Buffer *));
   cqps->send_buffers_size = (size_t *) calloc(nr_servers, sizeof(size_t));
 
+  //  XXX hack alert... Pre-allocate buffers.
+  for (int k = 0; k < nr_servers; k++) {
+    infinity_get_send_buffer(cqps, k, 300000000);
+  }
+
   /* We need to listen for messages from the other rank servers that we can
    * connect to them as they need to be up first. */
   int buf[1];
@@ -312,7 +317,7 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
 }
 
 /**
- * @brief Return the send buffer associated with a handle for an server.
+ * @brief Return the send buffer associated with a handle for a server.
  *
  * The buffer is large enough for the required size.
  *
@@ -353,6 +358,9 @@ void infinity_send_data(void *qphandle, int index, size_t size, size_t offset) {
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
   struct qps_data *cqps = (struct qps_data *)qphandle;
 
+
+  // XXX need to support local offsets other than 0 to connect more than once
+  // to the same server at the same time...
   infinity::requests::RequestToken requestToken(cqps->context);
   cqps->qps[index]->write(cqps->send_buffers[index],
                           0,                           // localOffset

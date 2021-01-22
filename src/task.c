@@ -624,7 +624,7 @@ void task_unlock(struct task *t) {
  *
  * @param t the #task.
  */
-int task_lock(struct scheduler *s, struct task *t) {
+int task_lock(struct scheduler *s, struct task *t, int rid) {
 
   const enum task_types type = t->type;
   const enum task_subtypes subtype = t->subtype;
@@ -634,108 +634,78 @@ int task_lock(struct scheduler *s, struct task *t) {
 
     /* Communication task? */
     case task_type_send:
+      {
 #ifdef WITH_MPI
-    {
-      /* Try to grab one of the locks. */
-      if (lock_trylock(&s->send_lock[cj->nodeID % scheduler_rdma_max_sends]) == 0) {
-
-        /* Need space for the data and the headers. */
-        scheduler_rdma_blocktype datasize =
-          scheduler_rdma_toblocks(t->size) + scheduler_rdma_header_size;
-
-        /* Access the registered memory for transferring this data. */
-        scheduler_rdma_blocktype *dataptr = 
-          infinity_get_send_buffer(s->send_handle, cj->nodeID,
-                                   scheduler_rdma_tobytes(datasize));
-
-        /* First element is marked as LOCKED, so only we can update. */
-        dataptr[0] = scheduler_rdma_locked;
-        dataptr[1] = t->size;
-        dataptr[2] = t->flags;
-        dataptr[3] = engine_rank;
-        memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->size);
-
-        if (s->space->e->verbose)
-          message(
-                  "Sending message to %d from %d subtype %d tag %zu size %zu"
-                  " (cf %lld %zu) offset %zu",
-                  cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
-                  t->size, t->offset);
-
-        infinity_send_data(s->send_handle, cj->nodeID,
-                           scheduler_rdma_tobytes(datasize),
-                           scheduler_rdma_tobytes(t->offset));
-        if (s->space->e->verbose) {
-          message(
-                  "Sent message to %d subtype %d tag %zu size %zu offset %zu"
-                  " (cf %lld %zu)",
-                  cj->nodeID, subtype, dataptr[2], dataptr[1], t->offset, t->flags,
-                  t->size);
-        }
-
-        /* May start next send now. Do nothing with the data after this
-         * point. */
-        if (lock_unlock(&s->send_lock[cj->nodeID % scheduler_rdma_max_sends]) != 0) {
-          error("Unlocking the MPI send lock failed.\n");
-        }
-
-        /* And log deactivation, if logging enabled. */
-        mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
-
+        /* Try to grab one of the locks. For any destination rank... */
+        if (lock_trylock(&s->send_lock[cj->nodeID % scheduler_rdma_max_sends]) != 0) return 0;
         return 1;
-        ;}
-
-      /* No lock available so pass on. */
-      return 0;
-    }
-
-#endif
-    break;
-
-    case task_type_recv:
-#ifdef WITH_MPI
-    {
-
-      volatile scheduler_rdma_blocktype *dataptr =
-        infinity_check_ready(s->recv_handle, ci->nodeID, t->offset);
-      if (dataptr != NULL) {
-
-        /* Message from our remote and subtype waiting, does it match our tag
-         * and size? */
-        if (t->flags == (int)dataptr[2] && t->size == dataptr[1] &&
-            ci->nodeID == (int)dataptr[3]) {
-
-          if (s->space->e->verbose)
-            message(
-                "Accepted from %d subtype %d tag %lld size %zu"
-                " offset %zu",
-                ci->nodeID, subtype, t->flags, t->size, t->offset);
-
-          /* And log deactivation, if logging enabled. */
-          mpiuse_log_allocation(type, subtype, &t->buff, 0, 0, 0, 0);
-
-          /* Ready to process. So copy to local buffers. */
-          memcpy(t->buff, (void *)&dataptr[scheduler_rdma_header_size],
-                 t->size);
-
-          /* Back to locked. */
-          dataptr[0] = scheduler_rdma_locked;
-
-          return 1;
-        } else {
-          message(
-                  "missed recv at our offset %zu from %d "
-                  "subtype %d tag %lld size %zu "
-                  "see tag %zu size %zu from %zu",
-                  t->offset, ci->nodeID, subtype,
-                  t->flags, t->size, dataptr[2], dataptr[1], dataptr[3]);
-        }
-      }
-      return 0;
-    }
+        //for (int k = 0; k < scheduler_rdma_max_sends; k++) {
+        //  if (lock_trylock(&s->send_lock[k]) == 0) {
+        //    message("locked send using %d", k);
+        //    if (t->rdmalockind != -1) error("RDMA write lock corrupted");
+        //    t->rdmalockind = k;
+        //    return 1;
+        //  }
+        //}
 #else
       error("SWIFT was not compiled with MPI support.");
 #endif
+      return 0;
+      }
+    break;
+
+    case task_type_recv:
+      {
+#ifdef WITH_MPI
+        /* Try to grab one of the locks.*/
+        //if (lock_trylock(&s->recv_lock[ci->nodeID % scheduler_rdma_max_recvs]) == 0) {
+        volatile scheduler_rdma_blocktype *dataptr =
+          infinity_check_ready(s->recv_handle, ci->nodeID, t->offset);
+        if (dataptr != NULL) {
+          /* Message from our remote and subtype waiting, does it match our tag
+           * and size? */
+          if (t->flags == (int)dataptr[2] && t->size == dataptr[1] &&
+              ci->nodeID == (int)dataptr[3]) {
+            
+#ifdef SWIFT_DEBUG_CHECKS
+            if (s->space->e->verbose) {
+              message(
+                      "Accepted from %d subtype %d tag %lld size %zu"
+                      " offset %zu",
+                      ci->nodeID, subtype, t->flags, t->size, t->offset);
+            }
+#endif
+            /* Ready to process. So prepare for copy to task buffer which
+             * happens in the runner. */
+            t->rdmabuff = (void *)&dataptr[scheduler_rdma_header_size];
+            
+            /* Back to locked. */
+            dataptr[0] = scheduler_rdma_locked;
+            return 1; // XXX note we hold the lock until end of task.
+            
+#ifdef SWIFT_DEBUG_CHECKS
+          } else {
+            message(
+                    "missed recv at our offset %zu from %d "
+                    "subtype %d tag %lld size %zu "
+                    "see tag %zu size %zu from %zu",
+                    t->offset, ci->nodeID, subtype,
+                    t->flags, t->size, dataptr[2], dataptr[1], dataptr[3]);
+#endif
+          }
+        }
+        
+        /* Remember to unlock... */
+        //if (lock_unlock(&s->recv_lock[ci->nodeID % scheduler_rdma_max_recvs]) != 0) {
+        //  error("Unlocking the MPI recv lock failed.\n");
+        //}
+        //}
+        return 0;
+#else
+        error("SWIFT was not compiled with MPI support.");
+#endif
+      }
+
     break;
 
     case task_type_kick1:

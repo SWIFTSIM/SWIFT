@@ -1261,6 +1261,10 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->weight = 0;
   t->rank = 0;
   t->nr_unlock_tasks = 0;
+#ifdef WITH_MPI
+  t->rdmabuff = NULL;
+  //t->rdmalockind = -1;
+#endif
 #ifdef SWIFT_DEBUG_TASKS
   t->rid = -1;
 #endif
@@ -1724,19 +1728,19 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_drift_part:
-        cost = wscale * count_i;
+        cost = 100.f * wscale * count_i * count_i;
         break;
       case task_type_drift_gpart:
-        cost = wscale * gcount_i;
+        cost = 100.f * wscale * gcount_i * gcount_i;
         break;
       case task_type_drift_spart:
-        cost = wscale * scount_i;
+        cost = 100.f * wscale * scount_i * scount_i;
         break;
       case task_type_drift_sink:
-        cost = wscale * sink_count_i;
+        cost = 100.f * wscale * sink_count_i * sink_count_i;
         break;
       case task_type_drift_bpart:
-        cost = wscale * bcount_i;
+        cost = 100.f * wscale * bcount_i * bcount_i;
         break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
@@ -1786,18 +1790,39 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_timestep_sync:
         cost = wscale * count_i;
         break;
-      case task_type_send:
-        if (count_i < 1e5)
-          cost = 10.f * (wscale * count_i) * count_i;
-        else
-          cost = 2e9;
-        break;
-      case task_type_recv:
-        if (count_i < 1e5)
-          cost = 5.f * (wscale * count_i) * count_i;
-        else
-          cost = 1e9;
-        break;
+     /*  More than equivalent drift, which starts chain usually. */
+     case task_type_recv:
+       if (t->subtype == task_subtype_xv ||t->subtype == task_subtype_rho) {
+         cost = 100.f * wscale * count_i * count_i;
+       } else if (t->subtype == task_subtype_gpart) {
+         cost = 100.f * wscale * gcount_i * gcount_i;
+       } else if (t->subtype == task_subtype_spart) {
+         cost = 100.f * wscale * scount_i * scount_i;
+       } else if (t->subtype == task_subtype_bpart_rho) {
+         cost = 100.f * wscale * bcount_i * bcount_i;
+       } else if (t->subtype == task_subtype_sink) {
+         cost = 100.f * wscale * sink_count_i * sink_count_i;
+       } else {
+         cost = 100.f * wscale * (count_i + gcount_i + scount_i +
+                                  sink_count_i + bcount_i);
+       }
+       break;
+     case task_type_send:
+       if (t->subtype == task_subtype_xv ||t->subtype == task_subtype_rho) {
+         cost = 400.f * wscale * count_i * count_i;
+       } else if (t->subtype == task_subtype_gpart) {
+         cost = 400.f * wscale * gcount_i * gcount_i;
+       } else if (t->subtype == task_subtype_spart) {
+         cost = 400.f * wscale * scount_i * scount_i;
+       } else if (t->subtype == task_subtype_bpart_rho) {
+         cost = 400.f * wscale * bcount_i * bcount_i;
+       } else if (t->subtype == task_subtype_sink) {
+         cost = 400.f * wscale * sink_count_i * sink_count_i;
+       } else {
+         cost = 400.f * wscale * (count_i + gcount_i + scount_i +
+                                  sink_count_i + bcount_i);
+       }
+       break;
       default:
         cost = 0;
         break;
@@ -1889,7 +1914,7 @@ void scheduler_start(struct scheduler *s) {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
-  // scheduler_dump_queues(s->space->e);
+  scheduler_dump_queues(s->space->e);
 
   /* Clear the list of active tasks. */
   s->active_count = 0;
@@ -2005,7 +2030,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         /* And log, if logging enabled. */
         mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
-                              t->ci->nodeID, t->flags);
+                              t->ci->nodeID, t->flags, -1);
 
         qid = -1;
       }
@@ -2087,8 +2112,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
-                              t->cj->nodeID, t->flags);
+        //mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
+        //                      t->cj->nodeID, t->flags, -1);
 
         qid = -1; //1 % s->nr_queues;
       }
@@ -2103,7 +2128,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
     /* If no previous owner, pick a random queue. */
-    /* Note that getticks() is random enough */
+    /* Note that getticks() is random enough XXX steal only for 1 and 2.*/
     if (qid < 0) qid = getticks() % s->nr_queues;
 
     /* Increase the waiting counter. */
@@ -2126,6 +2151,26 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
+
+#ifdef WITH_MPI
+  /* Unlock sends and recvs, need scheduler so no in task_unlock. */
+  if (t->type == task_type_send) {
+    if (lock_unlock(&s->send_lock[t->cj->nodeID % scheduler_rdma_max_sends]) != 0) {
+      error("Unlocking the MPI send lock failed.\n");
+    }
+
+    //if (t->rdmalockind < 0) error("RDMA send buffer index corruption");
+    //if (lock_unlock(&s->send_lock[t->rdmalockind]) != 0) {
+    //  error("Unlocking the MPI send lock failed.\n");
+    //}
+    //t->rdmalockind = -1;
+  }
+  //if (t->type == task_type_recv) {
+  //  if (lock_unlock(&s->recv_lock[t->ci->nodeID % scheduler_rdma_max_recvs]) != 0) {
+  //    error("Unlocking the MPI recv lock failed.\n");
+  //  }
+  //}
+#endif
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
@@ -2203,11 +2248,12 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  *
  * @param s The #scheduler.
  * @param qid The ID of the preferred #queue.
+ * @param rid The ID of the current #runner.
  * @param prev the previous task that was run.
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
-struct task *scheduler_gettask(struct scheduler *s, int qid,
+struct task *scheduler_gettask(struct scheduler *s, int qid, int rid,
                                const struct task *prev) {
   struct task *res = NULL;
   const int nr_queues = s->nr_queues;
@@ -2224,7 +2270,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       /* Try to get a task from the suggested queue. */
       if (s->queues[qid].count > 0 || s->queues[qid].count_incoming > 0) {
         TIMER_TIC
-        res = queue_gettask(s, &s->queues[qid], prev, 0);
+        res = queue_gettask(s, &s->queues[qid], prev, 0, rid);
         TIMER_TOC(timer_qget);
         if (res != NULL) break;
       }
@@ -2239,7 +2285,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
-          res = queue_gettask(s, &s->queues[qids[ind]], prev, 0);
+          res = queue_gettask(s, &s->queues[qids[ind]], prev, 0, rid);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
@@ -2250,15 +2296,16 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
     }
 
-/* If we failed, take a short nap. */
+/* If we failed, consider taking a short nap unless we have MPI
+ * sends and recvs to process. XXX old fashioned loads... */
 #ifdef WITH_MPI
-    if (res == NULL && qid > 4)
+    if (res == NULL && qid > scheduler_rdma_max_sends)
 #else
     if (res == NULL)
 #endif
     {
       pthread_mutex_lock(&s->sleep_mutex);
-      res = queue_gettask(s, &s->queues[qid], prev, 1);
+      res = queue_gettask(s, &s->queues[qid], prev, 1, rid);
       if (res == NULL && s->waiting > 0) {
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
@@ -2338,9 +2385,12 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   if (res != MPI_SUCCESS)
     mpi_error(res, "Failed to determine number of MPI ranks");
 
-  /* Maximum send locks, sends are potentially slow so we need this. */
+  /* Maximum send/recv locks, sends are blocking so we need this. */
   for (int k = 0; k < scheduler_rdma_max_sends; k++) {
     lock_init(&s->send_lock[k]);
+  }
+  for (int k = 0; k < scheduler_rdma_max_recvs; k++) {
+    lock_init(&s->recv_lock[k]);
   }
 #endif
 }

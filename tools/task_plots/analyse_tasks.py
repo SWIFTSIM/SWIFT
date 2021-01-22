@@ -451,6 +451,10 @@ for rank in ranks:
             sidsum = 0.0
             sidcount = 0
             sidmean = 0.0
+        if (len(threadids) * total_t) == 0.0:
+           percent = 0.0
+        else:
+           percent = sidsum / (len(threadids) * total_t) * 100.0
         print(
             "{0:3d} {1:15s}: {2:7d} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.4f} {7:9.2f}".format(
                 sid,
@@ -460,7 +464,7 @@ for rank in ranks:
                 sidmax,
                 sidsum,
                 sidmean,
-                sidsum / (len(threadids) * total_t) * 100.0,
+                percent,
             )
         )
     print()

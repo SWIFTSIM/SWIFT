@@ -32,6 +32,8 @@
 
 /* Local headers. */
 #include "engine.h"
+#include "infinity_wrapper.h"
+#include "mpiuse.h"
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
@@ -149,7 +151,7 @@ void *runner_main(void *data) {
 
         /* Get the task. */
         TIMER_TIC
-        t = scheduler_gettask(sched, r->qid, prev);
+        t = scheduler_gettask(sched, r->qid, r->cpuid, prev);
         TIMER_TOC(timer_gettask);
 
         /* Did I get anything? */
@@ -402,6 +404,49 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
+          {
+            // XXX log actual time used in call, not how long we are queued.
+            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
+                                  cj->nodeID, t->flags, r->cpuid);
+
+            /* Need space for the data and the headers. */
+            scheduler_rdma_blocktype datasize =
+              scheduler_rdma_toblocks(t->size) + scheduler_rdma_header_size;
+
+            /* Access the registered memory for transferring this data. */
+            scheduler_rdma_blocktype *dataptr =
+              infinity_get_send_buffer(sched->send_handle, cj->nodeID,
+                                       scheduler_rdma_tobytes(datasize));
+
+            /* First element is marked as LOCKED, so only we can update. */
+            dataptr[0] = scheduler_rdma_locked;
+            dataptr[1] = t->size;
+            dataptr[2] = t->flags;
+            dataptr[3] = engine_rank;
+            memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->size);
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (e->verbose)
+              message(
+                      "Sending message to %d from %d subtype %d tag %zu size %zu"
+                      " (cf %lld %zu) offset %zu",
+                      cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
+                      t->size, t->offset);
+#endif
+            infinity_send_data(sched->send_handle, cj->nodeID,
+                               scheduler_rdma_tobytes(datasize),
+                               scheduler_rdma_tobytes(t->offset));
+#ifdef SWIFT_DEBUG_CHECKS
+            if (e->verbose) {
+              message(
+                      "Sent message to %d subtype %d tag %zu size %zu offset %zu"
+                      " (cf %lld %zu)",
+                      cj->nodeID, subtype, dataptr[2], dataptr[1], t->offset, t->flags,
+                      t->size);
+            }
+#endif
+          }
+
           if (t->subtype == task_subtype_tend_part) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_gpart) {
@@ -417,8 +462,18 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_bpart_merger) {
             free(t->buff);
           }
+
+          /* And log deactivation, if logging enabled. */
+          mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+
           break;
+
         case task_type_recv:
+          /* Ready to process. So copy to local buffers. XXX could be avoided
+           * for some types below. */
+          if (t->rdmabuff == NULL) error("No RDMA data yet!");
+          memcpy(t->buff, t->rdmabuff, t->size);
+
           if (t->subtype == task_subtype_tend_part) {
             cell_unpack_end_step_hydro(ci, (struct pcell_step_hydro *)t->buff);
             free(t->buff);
@@ -468,6 +523,10 @@ void *runner_main(void *data) {
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
+
+          /* And log deactivation, if logging enabled. */
+          mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+
           break;
 #endif
         case task_type_grav_down:

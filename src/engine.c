@@ -1613,7 +1613,7 @@ void engine_launch(struct engine *e, const char *call) {
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
-
+ 
   /* Cry havoc and let loose the dogs of war. */
   swift_barrier_wait(&e->run_barrier);
 

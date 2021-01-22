@@ -71,6 +71,9 @@
 /* Number of threads we can use for sending. */
 #define scheduler_rdma_max_sends 16
 
+/* Number of locks we can use for receiving. Keep these in the box? */
+#define scheduler_rdma_max_recvs 16
+
 /* Convert a byte count into a number of blocks, rounds up. */
 #define scheduler_rdma_toblocks(nr_bytes)           \
   ((nr_bytes + (scheduler_rdma_bytesinblock - 1)) / \
@@ -153,6 +156,7 @@ struct scheduler {
 
   /* Locks for sending messages, keep these limited as potentially slow. */
   swift_lock_type send_lock[scheduler_rdma_max_sends];
+  swift_lock_type recv_lock[scheduler_rdma_max_recvs];
 #endif
 };
 
@@ -244,7 +248,7 @@ void scheduler_clear_active(struct scheduler *s);
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp);
-struct task *scheduler_gettask(struct scheduler *s, int qid,
+struct task *scheduler_gettask(struct scheduler *s, int qid, int rid,
                                const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
 void scheduler_start(struct scheduler *s);

@@ -60,6 +60,9 @@ struct mpiuse_log_entry {
   int type;
   int subtype;
 
+  /* Thread id of task. */
+  int rid;
+
   /* Step of action. */
   int step;
 
@@ -149,9 +152,10 @@ static void mpiuse_log_reallocate(size_t ind) {
  *             0 for a deactivation.
  * @param otherrank other rank associated with the transfer.
  * @param tag the MPI tag.
+ * @param rid the runner id, i.e. thread used.
  */
 void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
-                           size_t size, int otherrank, int tag) {
+                           size_t size, int otherrank, int tag, int rid) {
 
   size_t ind = atomic_inc(&mpiuse_log_count);
 
@@ -174,6 +178,7 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
   mpiuse_log[ind].tic = getticks();
   mpiuse_log[ind].acttic = 0;
   mpiuse_log[ind].active = 1;
+  mpiuse_log[ind].rid = rid;
   atomic_inc(&mpiuse_log_done);
 }
 
@@ -210,7 +215,7 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
   /* Write a header. */
   fprintf(fd,
           "# stic etic dtic step rank otherrank type itype subtype isubtype "
-          "activation tag size sum\n");
+          "rid activation tag size sum\n");
 
   size_t mpiuse_current = 0;
   size_t mpiuse_max = 0;
@@ -301,14 +306,14 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
     }
 
     /* And output. */
-    fprintf(fd, "%lld %lld %lld %d %d %d %s %d %s %d %d %d %zd %zd\n",
+    fprintf(fd, "%lld %lld %lld %d %d %d %s %d %s %d %d %d %d %zd %zd\n",
             mpiuse_log[k].tic - stepticks,
             mpiuse_log[k].tic - clocks_start_ticks, mpiuse_log[k].acttic,
             mpiuse_log[k].step, engine_rank, mpiuse_log[k].otherrank,
             taskID_names[mpiuse_log[k].type], mpiuse_log[k].type,
             subtaskID_names[mpiuse_log[k].subtype], mpiuse_log[k].subtype,
-            mpiuse_log[k].activation, mpiuse_log[k].tag, mpiuse_log[k].size,
-            mpiuse_current);
+            mpiuse_log[k].rid, mpiuse_log[k].activation, mpiuse_log[k].tag,
+            mpiuse_log[k].size, mpiuse_current);
   }
 
 #ifdef MEMUSE_RNODE_DUMP

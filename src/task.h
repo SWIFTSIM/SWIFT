@@ -223,6 +223,8 @@ struct task {
 
   /*! Buffer for this task's communications */
   void *buff;
+  void *rdmabuff;
+  //int rdmalockind;
 
   /*! Size of the buffer. */
   size_t size;
@@ -288,7 +290,7 @@ struct task {
 /* Function prototypes. */
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
-int task_lock(struct scheduler *s, struct task *t);
+int task_lock(struct scheduler *s, struct task *t, int rid);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
 void task_dump_all(struct engine *e, int step);
