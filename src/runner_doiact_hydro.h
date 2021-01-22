@@ -125,11 +125,17 @@
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
-void DOSELF1_BRANCH(struct runner *r, struct cell *c);
-void DOSELF2_BRANCH(struct runner *r, struct cell *c);
+void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h);
+void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h);
 
-void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj);
-void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj);
+void DOPAIR1_BRANCH(struct runner *r, const struct cell *restrict ci,
+                    const struct cell *restrict cj, const int limit_min_h,
+                    const int limit_max_h);
+void DOPAIR2_BRANCH(struct runner *r, const struct cell *restrict ci,
+                    const struct cell *restrict cj, const int limit_min_h,
+                    const int limit_max_h);
 
 void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer);
 void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer);

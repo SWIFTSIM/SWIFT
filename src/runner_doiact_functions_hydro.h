@@ -34,9 +34,12 @@
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
-                   struct cell *restrict cj) {
+void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
+                   const struct cell *restrict cj, const int limit_min_h,
+                   const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -51,14 +54,22 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
 
-  /* Cosmological terms */
-  const float a = cosmo->a;
-  const float H = cosmo->H;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+#endif
+
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -122,8 +133,11 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
+      const int doi = pi_active && (r2 < hig2) && (hi >= h_min) && (hi < h_max);
+      const int doj = pj_active && (r2 < hjg2) && (hj >= h_min) && (hj < h_max);
+
       /* Hit or miss? */
-      if (r2 < hig2 && pi_active) {
+      if (doi) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -137,7 +151,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology);
 #endif
       }
-      if (r2 < hjg2 && pj_active) {
+      if (doj) {
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -169,9 +183,12 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
-                   struct cell *restrict cj) {
+void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
+                   const struct cell *restrict cj, const int limit_min_h,
+                   const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -186,14 +203,18 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
 
-  /* Cosmological terms */
-  const float a = cosmo->a;
-  const float H = cosmo->H;
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -257,53 +278,43 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
+      const int doi = pi_active && (hi >= h_min) && (hi < h_max) &&
+                      ((r2 < hig2) || (r2 < hjg2));
+      const int doj = pj_active && (hj >= h_min) && (hj < h_max) &&
+                      ((r2 < hjg2) || (r2 < hig2));
+
       /* Hit or miss? */
-      if (r2 < hig2 || r2 < hjg2) {
+      if (doi) {
 
-        if (pi_active && pj_active) {
-
-          IACT(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
-          runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                t_current, cosmo, with_cosmology);
+        runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                     t_current, cosmo, with_cosmology);
 #endif
-        } else if (pi_active) {
+      }
+      if (doj) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        dx[0] = -dx[0];
+        dx[1] = -dx[1];
+        dx[2] = -dx[2];
+
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
-          runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
+        runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                     t_current, cosmo, with_cosmology);
 #endif
-        } else if (pj_active) {
-
-          dx[0] = -dx[0];
-          dx[1] = -dx[1];
-          dx[2] = -dx[2];
-
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
-#endif
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
-          runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
-                                       t_current, cosmo, with_cosmology);
-#endif
-        }
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -318,8 +329,11 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
  *
  * @param r The #runner.
  * @param c The #cell.
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
+void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
+                   const int limit_min_h, const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -339,7 +353,11 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   const float H = cosmo->H;
 
   const int count = c->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
+  struct part *parts = c->hydro.parts;
+
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -382,8 +400,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi = pi_active && (r2 < hig2);
-      const int doj = pj_active && (r2 < hjg2);
+      const int doi = pi_active && (r2 < hig2) && (hi >= h_min) && (hi < h_max);
+      const int doj = pj_active && (r2 < hjg2) && (hj >= h_min) && (hj < h_max);
 
 #if defined(SWIFT_RT_DEBUG_CHECKS) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
@@ -400,6 +418,11 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (doi && doj) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi * kernel_gamma > c->dmin) error("h_i too large for this cell!");
+        if (hj * kernel_gamma > c->dmin) error("h_j too large for this cell!");
+#endif
+
         IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -413,6 +436,10 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
       } else if (doi) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi * kernel_gamma > c->dmin) error("h_i too large for this cell!");
+#endif
+
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -425,6 +452,10 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
                                      t_current, cosmo, with_cosmology);
 #endif
       } else if (doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hj * kernel_gamma > c->dmin) error("h_j too large for this cell!");
+#endif
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -455,8 +486,11 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
  *
  * @param r The #runner.
  * @param c The #cell.
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
+void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
+                   const int limit_min_h, const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -476,7 +510,11 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   const float H = cosmo->H;
 
   const int count = c->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
+  struct part *parts = c->hydro.parts;
+
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -519,8 +557,10 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi = pi_active && ((r2 < hig2) || (r2 < hjg2));
-      const int doj = pj_active && ((r2 < hig2) || (r2 < hjg2));
+      const int doi = pi_active && (hi >= h_min) && (hi < h_max) &&
+                      ((r2 < hig2) || (r2 < hjg2));
+      const int doj = pj_active && (hj >= h_min) && (hj < h_max) &&
+                      ((r2 < hig2) || (r2 < hjg2));
 
 #if defined(SWIFT_RT_DEBUG_CHECKS) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
@@ -1299,9 +1339,12 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
  * @param r #runner
  * @param ci #cell ci
  * @param cj #cell cj
- *
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_BRANCH(struct runner *r, const struct cell *restrict ci,
+                    const struct cell *restrict cj, const int limit_min_h,
+                    const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -1315,65 +1358,12 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
     error("Interacting undrifted cells.");
 
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
-
-  /* Have the cells been sorted? */
-  if (!(ci->hydro.sorted & (1 << sid)) ||
-      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
-    error("Interacting unsorted cells.");
-  if (!(cj->hydro.sorted & (1 << sid)) ||
-      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
-
-  /* Check that the dx_max_sort values in the cell are indeed an upper
-     bound on particle movement. */
-  for (int pid = 0; pid < ci->hydro.count; pid++) {
-    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
-    if (part_is_inhibited(p, e)) continue;
-
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
-            ci->width[0] * 1.0e-10)
-      error(
-          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
-          "ci->hydro.dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
-          ci->hydro.dx_max_sort_old);
-  }
-  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
-    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
-    if (part_is_inhibited(p, e)) continue;
-
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if ((fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
-            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
-        (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort) >
-            cj->width[0] * 1.0e-10)
-      error(
-          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
-          "cj->hydro.dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
-          cj->hydro.dx_max_sort_old);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
+    /* Get the sort ID. */
+    /* double shift[3] = {0.0, 0.0, 0.0}; */
+    /* const int sid = space_getsid(e->s, &ci, &cj, shift); */
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-  DOPAIR1_NAIVE(r, ci, cj);
+  DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   if (!sort_is_corner(sid))
@@ -1936,9 +1926,12 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
  * @param r #runner
  * @param ci #cell ci
  * @param cj #cell cj
- *
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR2_BRANCH(struct runner *r, const struct cell *restrict ci,
+                    const struct cell *restrict cj, const int limit_min_h,
+                    const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -1952,65 +1945,12 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
     error("Interacting undrifted cells.");
 
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
-
-  /* Have the cells been sorted? */
-  if (!(ci->hydro.sorted & (1 << sid)) ||
-      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
-    error("Interacting unsorted cells.");
-  if (!(cj->hydro.sorted & (1 << sid)) ||
-      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Pick-out the sorted lists. */
-  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
-  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
-
-  /* Check that the dx_max_sort values in the cell are indeed an upper
-     bound on particle movement. */
-  for (int pid = 0; pid < ci->hydro.count; pid++) {
-    const struct part *p = &ci->hydro.parts[sort_i[pid].i];
-    if (part_is_inhibited(p, e)) continue;
-
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
-            1.0e-4 * max(fabsf(d), ci->hydro.dx_max_sort_old) &&
-        fabsf(d - sort_i[pid].d) - ci->hydro.dx_max_sort >
-            ci->width[0] * 1.0e-10)
-      error(
-          "particle shift diff exceeds dx_max_sort in cell ci. ci->nodeID=%d "
-          "cj->nodeID=%d d=%e sort_i[pid].d=%e ci->hydro.dx_max_sort=%e "
-          "ci->hydro.dx_max_sort_old=%e",
-          ci->nodeID, cj->nodeID, d, sort_i[pid].d, ci->hydro.dx_max_sort,
-          ci->hydro.dx_max_sort_old);
-  }
-  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
-    const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
-    if (part_is_inhibited(p, e)) continue;
-
-    const float d = p->x[0] * runner_shift[sid][0] +
-                    p->x[1] * runner_shift[sid][1] +
-                    p->x[2] * runner_shift[sid][2];
-    if (fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort >
-            1.0e-4 * max(fabsf(d), cj->hydro.dx_max_sort_old) &&
-        fabsf(d - sort_j[pjd].d) - cj->hydro.dx_max_sort >
-            cj->width[0] * 1.0e-10)
-      error(
-          "particle shift diff exceeds dx_max_sort in cell cj. cj->nodeID=%d "
-          "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->hydro.dx_max_sort=%e "
-          "cj->hydro.dx_max_sort_old=%e",
-          cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->hydro.dx_max_sort,
-          cj->hydro.dx_max_sort_old);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
+    /* Get the sort ID. */
+    /* double shift[3] = {0.0, 0.0, 0.0}; */
+    /* const int sid = space_getsid(e->s, &ci, &cj, shift); */
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS
-  DOPAIR2_NAIVE(r, ci, cj);
+  DOPAIR2_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
   if (!sort_is_corner(sid))
@@ -2233,9 +2173,11 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
  *
  * @param r #runner
  * @param c #cell c
- *
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -2253,7 +2195,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-  DOSELF1_NAIVE(r, c);
+  DOSELF1_NAIVE(r, c, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   runner_doself1_density_vec(r, c);
@@ -2450,9 +2392,11 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
  *
  * @param r #runner
  * @param c #cell c
- *
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
+void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -2470,7 +2414,7 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
-  DOSELF2_NAIVE(r, c);
+  DOSELF2_NAIVE(r, c, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
   runner_doself2_force_vec(r, c);
