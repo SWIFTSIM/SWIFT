@@ -155,7 +155,6 @@ Snapshots:
   invoke_fof: 0           # (Optional) Call FOF every time a snapshot is written
   compression: 0          # (Optional) Set the level of GZIP compression of the HDF5 datasets [0-9]. 0 does no compression. The lossless compression is applied to *all* the fields.
   distributed: 0          # (Optional) When running over MPI, should each rank write a partial snapshot or do we want a single file? 1 implies one file per MPI rank.
-  int_time_label_on:   0  # (Optional) Enable to label the snapshots using the time rounded to an integer (in internal units)
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)

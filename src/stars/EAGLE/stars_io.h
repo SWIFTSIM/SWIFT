@@ -50,8 +50,9 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 sparts, mass_init);
-  list[6] = io_make_input_field("StellarFormationTime", FLOAT, 1, OPTIONAL,
-                                UNIT_CONV_NO_UNITS, sparts, birth_time);
+  list[6] =
+      io_make_input_field_default("StellarFormationTime", FLOAT, 1, OPTIONAL,
+                                  UNIT_CONV_NO_UNITS, sparts, birth_time, -1.);
   list[7] = io_make_input_field("BirthDensities", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, sparts, birth_density);
   list[8] =

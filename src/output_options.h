@@ -72,4 +72,11 @@ int output_options_get_num_fields_to_write(
     const struct output_options* output_options, const char* selection_name,
     const int ptype);
 
+void output_options_get_basename(const struct output_options* output_options,
+                                 const char* selection_name,
+                                 const char* default_subdirname,
+                                 const char* default_basename,
+                                 char subdir_name[FILENAME_BUFFER_SIZE],
+                                 char snap_basename[FILENAME_BUFFER_SIZE]);
+
 #endif

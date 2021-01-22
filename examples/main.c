@@ -895,6 +895,31 @@ int main(int argc, char *argv[]) {
     /* Now read it. */
     restart_read(&e, restart_file);
 
+#ifdef WITH_MPI
+    integertime_t min_ti_current = e.ti_current;
+    integertime_t max_ti_current = e.ti_current;
+
+    /* Verify that everyone agrees on the current time */
+    MPI_Allreduce(&e.ti_current, &min_ti_current, 1, MPI_LONG_LONG_INT, MPI_MIN,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(&e.ti_current, &max_ti_current, 1, MPI_LONG_LONG_INT, MPI_MAX,
+                  MPI_COMM_WORLD);
+
+    if (min_ti_current != max_ti_current) {
+      if (myrank == 0)
+        message("The restart files don't all contain the same ti_current!");
+
+      for (int i = 0; i < myrank; ++i) {
+        if (myrank == i)
+          message("MPI rank %d reading file '%s' found an integer time= %lld",
+                  myrank, restart_file, e.ti_current);
+        MPI_Barrier(MPI_COMM_WORLD);
+      }
+
+      if (myrank == 0) error("Aborting");
+    }
+#endif
+
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
