@@ -897,7 +897,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
         if (with_cosmology) {
             /*dti = cosmology_get_delta_time(e->cosmology, ti_begin,
                                            ti_begin + ti_step);*/
-            dti = cosmology_get_corr_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
+            dti = cosmology_get_grav_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
         }
@@ -924,7 +924,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             double dtj;
             if (with_cosmology) {
                 /*dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);*/
-                dtj = cosmology_get_corr_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
+                dtj = cosmology_get_grav_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
             } else {
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
@@ -1027,7 +1027,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         if (with_cosmology) {
             /*dti = cosmology_get_delta_time(e->cosmology, ti_begin,
                                            ti_begin + ti_step);*/
-            dti = cosmology_get_corr_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
+            dti = cosmology_get_grav_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
         }
@@ -1055,7 +1055,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 if (with_cosmology) {
                     /*dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
                                                    ti_begin_j + ti_step_j);*/
-                    dtj = cosmology_get_corr_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
+                    dtj = cosmology_get_grav_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
                 } else {
                     dtj = get_timestep(pj->time_bin, e->time_base);
                 }
@@ -1102,7 +1102,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 if (with_cosmology) {
                     /*dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
                                                    ti_begin_j + ti_step_j);*/
-                    dtj = cosmology_get_corr_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
+                    dtj = cosmology_get_grav_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
                 } else {
                     dtj = get_timestep(pj->time_bin, e->time_base);
                 }
@@ -1181,7 +1181,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         if (with_cosmology) {
             /*dti = cosmology_get_delta_time(e->cosmology, ti_begin,
                                            ti_begin + ti_step);*/
-            dti = cosmology_get_corr_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
+            dti = cosmology_get_grav_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
         }
@@ -1210,7 +1210,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             if (with_cosmology) {
                 /*dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
                                                ti_begin_j + ti_step_j);*/
-                dtj = cosmology_get_corr_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
+                dtj = cosmology_get_grav_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
             } else {
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
@@ -1337,7 +1337,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         if (with_cosmology) {
             /*dti = cosmology_get_delta_time(e->cosmology, ti_begin,
                                            ti_begin + ti_step);*/
-            dti = cosmology_get_corr_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
+            dti = cosmology_get_grav_kick_factor(e->cosmology, ti_begin, ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
         }
@@ -1367,7 +1367,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             if (with_cosmology) {
                 /*dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
                                                ti_begin_j + ti_step_j);*/
-                dtj = cosmology_get_corr_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
+                dtj = cosmology_get_grav_kick_factor(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
             } else {
                 dtj = get_timestep(pj->time_bin, e->time_base);
             }
