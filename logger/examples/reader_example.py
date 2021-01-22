@@ -66,9 +66,9 @@ for f in args.files:
     with logger.Reader(filename, verbose=0) as reader:
         t = reader.get_time_limits()
         out = reader.get_particle_data(
-            ["Coordinates", "Entropies"], args.time)
+            fields=["Coordinates", "Entropies"], time=args.time)
 
-        fields = reader.get_list_fields(gas_type)
+        fields = reader.get_list_fields(part_type=gas_type)
         if ("Coordinates" not in fields or
             "Entropies" not in fields):
             raise Exception("Field not found in the logfile")
