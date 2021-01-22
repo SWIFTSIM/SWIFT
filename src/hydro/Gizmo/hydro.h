@@ -33,6 +33,8 @@
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_lloyd.h"
+#include "hydro_parameters.h"
+#include "hydro_properties.h"
 #include "hydro_setters.h"
 #include "hydro_space.h"
 #include "hydro_velocities.h"
