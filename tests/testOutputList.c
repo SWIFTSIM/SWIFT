@@ -43,7 +43,7 @@ const double a_values[Ntest] = {
 void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
   message("Testing output time for %s without cosmology", name);
 
-  struct output_list *list;
+  struct output_list *list = NULL;
   double delta_time = 0;
   double output_time = 0;
 
@@ -59,7 +59,7 @@ void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
   output_list_print(list);
 
   output_time = list->times[0];
-  
+
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
@@ -83,7 +83,7 @@ void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
 void test_cosmo(struct engine *e, const char *name, const int with_assert) {
   message("Testing output time for %s with cosmology", name);
 
-  struct output_list *list;
+  struct output_list *list = NULL;
   double delta_time = 0;
   double output_time = 0;
 
@@ -97,7 +97,7 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
   output_list_print(list);
 
   output_time = list->times[0];
-  
+
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
@@ -119,6 +119,11 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
 };
 
 int main(int argc, char *argv[]) {
+
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
   /* Create a structure to read file into. */
   struct swift_params params;
 
