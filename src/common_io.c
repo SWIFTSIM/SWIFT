@@ -1492,8 +1492,7 @@ void io_select_hydro_fields(const struct part* const parts,
   *num_fields += chemistry_write_particles(parts, xparts, list + *num_fields,
                                            with_cosmology);
   if (with_cooling || with_temperature) {
-    *num_fields += cooling_write_particles(parts, xparts, list + *num_fields,
-                                           e->cooling_func);
+    *num_fields += cooling_write_particles(parts, xparts, list + *num_fields);
   }
   if (with_fof) {
     *num_fields += fof_write_parts(parts, xparts, list + *num_fields);

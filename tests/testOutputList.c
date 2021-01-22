@@ -55,9 +55,11 @@ void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
   e->policy = 0;
 
   /* initialize output_list */
-  output_list_init(&list, e, name, &delta_time, &output_time);
+  output_list_init(&list, e, name, &delta_time);
   output_list_print(list);
 
+  output_time = list->times[0];
+  
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
@@ -91,9 +93,11 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
   e->policy = engine_policy_cosmology;
 
   /* initialize output_list */
-  output_list_init(&list, e, name, &delta_time, &output_time);
+  output_list_init(&list, e, name, &delta_time);
   output_list_print(list);
 
+  output_time = list->times[0];
+  
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
