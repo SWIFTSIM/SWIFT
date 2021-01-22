@@ -95,7 +95,7 @@ endif
 if HAVEPYTHON
 # The main python structure is dependent on the version, thus we need to
 # remove this one in order to be safe.
-PYTHON_EXTRA_COMPILER_FLAG = -Wno-missing-field-initializers
+PYTHON_EXTRA_COMPILER_FLAG = -Wno-missing-field-initializers -Wno-cast-function-type
 endif
 
 # Include files for distribution, not installation.
