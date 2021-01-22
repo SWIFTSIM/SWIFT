@@ -427,6 +427,7 @@ void engine_config(int restart, int fof, struct engine *e,
     if (e->policy & engine_policy_self_gravity)
       if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
+    /* Print information about the stellar scheme */
     if (e->policy & engine_policy_stars)
       if (e->nodeID == 0) stars_props_print(e->stars_properties);
 
@@ -436,10 +437,6 @@ void engine_config(int restart, int fof, struct engine *e,
           "Final simulation time (t_end = %e) must be larger than the start "
           "time (t_beg = %e)",
           e->time_end, e->time_begin);
-
-    /* Check we don't have inappropriate time labels */
-    if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
-      error("Snapshot integer time labels enabled but end time <= 1");
 
     /* Check we have sensible time-step values */
     if (e->dt_min > e->dt_max)
@@ -474,7 +471,10 @@ void engine_config(int restart, int fof, struct engine *e,
         error("Maximal time-step size larger than the simulation run time t=%e",
               e->time_end - e->time_begin);
 
-    /* Deal with outputs */
+    /* Read (or re-read the list of outputs */
+    engine_init_output_lists(e, params);
+
+    /* Check whether output quantities make sense */
     if (e->policy & engine_policy_cosmology) {
 
       if (e->delta_time_snapshot <= 1.)
@@ -560,9 +560,6 @@ void engine_config(int restart, int fof, struct engine *e,
       }
     }
 
-    /* Try to ensure the snapshot directory exists */
-    if (e->nodeID == 0) io_make_snapshot_subdir(e->snapshot_subdir);
-
     /* Get the total mass */
     e->total_mass = 0.;
     for (size_t i = 0; i < e->s->nr_gparts; ++i)
@@ -602,12 +599,6 @@ void engine_config(int restart, int fof, struct engine *e,
         e->fof_properties->seed_black_holes_enabled) {
       engine_compute_next_fof_time(e);
     }
-
-    /* Check that the snapshot naming policy is valid */
-    if (e->snapshot_invoke_stf && e->snapshot_int_time_label_on)
-      error(
-          "Cannot use snapshot time labels and VELOCIraptor invocations "
-          "together!");
 
     /* Check that we are invoking VELOCIraptor only if we have it */
     if (e->snapshot_invoke_stf &&

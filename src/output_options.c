@@ -281,3 +281,34 @@ int output_options_get_num_fields_to_write(
 
   return output_options->num_fields_to_write[selection_id][ptype];
 }
+
+/**
+ * @brief Return the sub-directory and snapshot basename for the current output
+ * selection.
+ *
+ * @param output_options The #output_options structure
+ * @param selection_name The current output selection name.
+ * @param default_subdirname The default general sub-directory name.
+ * @param default_basename The default general snapshot base name.
+ * @param subdir_name (return) The sub-directory name to use for this dump.
+ * @param basename (return) The snapshot base name to use for this dump,
+ */
+void output_options_get_basename(const struct output_options* output_options,
+                                 const char* selection_name,
+                                 const char* default_subdirname,
+                                 const char* default_basename,
+                                 char subdir_name[FILENAME_BUFFER_SIZE],
+                                 char basename[FILENAME_BUFFER_SIZE]) {
+
+  /* Full name for the default path */
+  char field[PARSER_MAX_LINE_SIZE];
+  sprintf(field, "%.*s:basename", FIELD_BUFFER_SIZE, selection_name);
+
+  parser_get_opt_param_string(output_options->select_output, field, basename,
+                              default_basename);
+
+  sprintf(field, "%.*s:subdir", FIELD_BUFFER_SIZE, selection_name);
+
+  parser_get_opt_param_string(output_options->select_output, field, subdir_name,
+                              default_subdirname);
+}

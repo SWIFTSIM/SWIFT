@@ -27,20 +27,12 @@
 #endif
 
 #include "atomic.h"
-#include "chemistry_io.h"
-#include "cooling_io.h"
 #include "engine.h"
-#include "fof_io.h"
 #include "hydro_io.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
-#include "particle_splitting.h"
 #include "periodic.h"
-#include "rt_io.h"
-#include "star_formation_io.h"
-#include "tracers_io.h"
-#include "velociraptor_io.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -440,28 +432,9 @@ void write_los_hdf5_datasets(hid_t grp, const int j, const size_t N,
   struct io_props list[100];
 
   /* Find all the gas output fields */
-  hydro_write_particles(parts, xparts, list, &num_fields);
-  num_fields += particle_splitting_write_particles(
-      parts, xparts, list + num_fields, with_cosmology);
-  num_fields += chemistry_write_particles(parts, xparts, list + num_fields,
-                                          with_cosmology);
-  if (with_cooling || with_temperature) {
-    num_fields += cooling_write_particles(parts, xparts, list + num_fields,
-                                          e->cooling_func);
-  }
-  if (with_fof) {
-    num_fields += fof_write_parts(parts, xparts, list + num_fields);
-  }
-  if (with_stf) {
-    num_fields += velociraptor_write_parts(parts, xparts, list + num_fields);
-  }
-  num_fields +=
-      tracers_write_particles(parts, xparts, list + num_fields, with_cosmology);
-  num_fields +=
-      star_formation_write_particles(parts, xparts, list + num_fields);
-  if (with_rt) {
-    num_fields += rt_write_particles(parts, list + num_fields);
-  }
+  io_select_hydro_fields(parts, xparts, with_cosmology, with_cooling,
+                         with_temperature, with_fof, with_stf, with_rt, e,
+                         &num_fields, list);
 
   /* Loop over each output field */
   for (int i = 0; i < num_fields; i++) {
@@ -510,6 +483,9 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_d(h_grp, "Scale-factor", e->cosmology->a);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+
+  /* Write out the particle types */
+  io_write_part_type_names(h_grp);
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);

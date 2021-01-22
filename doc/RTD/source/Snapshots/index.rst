@@ -26,12 +26,16 @@ format described below.
 
 The most important quantity of the header is the array ``NumPart_Total`` which
 contains the number of particles of each type in this snapshot. This is an array
-of 6 numbers; one for each of the supported types. The field
-``NumPart_ThisFile`` contains the number of particles in this sub-snapshot file
-when the user asked for distributed snapshots (see :ref:`Parameters_snapshots`);
-otherwise it contains the same information as ``NumPart_Total``. The field
-``NumFilesPerSnapshot`` specifies the number of sub-snapshot files (always 1
-unless a distributed snapshot was asked).
+of 6 numbers; one for each of the supported types. Following the Gadget-2
+convention, if that number is larger than 2^31, SWIFT will use the
+``NumPart_HighWord`` field to store the high-word bits of the total number of
+particles. The field ``NumPart_ThisFile`` contains the number of particles in
+this sub-snapshot file when the user asked for distributed snapshots (see
+:ref:`Parameters_snapshots`); otherwise it contains the same information as
+``NumPart_Total``. Note however, that there is no high-word for this field. We
+store it as a 64-bits integer [#f1]_. The field ``NumFilesPerSnapshot`` specifies the
+number of sub-snapshot files (always 1 unless a distributed snapshot was asked
+for). 
 
 The field ``InitialMassTable`` contains the *mean* initial mass of each of the
 particle types present in the initial conditions. This can be used as estimator
@@ -159,10 +163,10 @@ Structure of the particle arrays
 
 There are several groups that contain 'auxiliary' information, such as
 ``Header``.  Particle data is placed in separate groups depending of the type of
-the particles. The type use the naming convention of Gadget-2 (with
-the OWLS and EAGLE extensions). A more intuitive naming convention is
-given in the form of aliases within the file. The aliases are shown in
-the third column of the table.
+the particles. There are currently 6 particle types available. The type use the
+naming convention of Gadget-2 (with the OWLS and EAGLE extensions). A more
+intuitive naming convention is given in the form of aliases within the file. The
+aliases are shown in the third column of the table.
 
 +---------------------+------------------------+-----------------------------+----------------------------------------+
 | HDF5 Group Name     | Physical Particle Type | HDF5 alias                  | In code ``enum part_type``             |
@@ -173,6 +177,8 @@ the third column of the table.
 +---------------------+------------------------+-----------------------------+----------------------------------------+
 | ``/PartType2/``     | Background Dark Matter | ``/DMBackgroundParticles/`` | ``swift_type_dark_matter_background``  |
 +---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType3/``     | Sinks                  | ``/SinkParticles/``         | ``swift_type_sink``                    |
++---------------------+------------------------+-----------------------------+----------------------------------------+
 | ``/PartType4/``     | Stars                  | ``/StarsParticles/``        | ``swift_type_star``                    |
 +---------------------+------------------------+-----------------------------+----------------------------------------+
 | ``/PartType5/``     | Black Holes            | ``/BHParticles/``           | ``swift_type_black_hole``              |
@@ -180,6 +186,10 @@ the third column of the table.
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
+
+For completeness, the list of particle type names is stored in the snapshot
+header in the array ``/Header/PartTypeNames``. The number of types (aka. the
+length of this array) is stored as the attribute ``/Header/NumPartTypes``.
 
 Each group contains a series of arrays corresponding to each field of the
 particles stored in the snapshots. The exact list of fields depends on what
@@ -204,7 +214,7 @@ Each particle field contains meta-data about the units and how to
 convert it to CGS in physical or co-moving frames. The meta-data is in
 part designed for users to directly read and in part for machine
 reading of the information. Each field contains the exponent of the
-scale-factor, reduced Hubble constant [#f1]_ and each of the 5 base units
+scale-factor, reduced Hubble constant [#f2]_ and each of the 5 base units
 that is required to convert the field values to physical CGS
 units. These fields are:
 
@@ -402,9 +412,16 @@ from the disk.
 Note that this is all automated in the ``swiftsimio`` python library
 and we highly encourage its use.
 
-.. [#f1] Note that all quantities in SWIFT are always "h-free" in the
-	 sense that they are expressed in units withouy any h
-	 terms. This implies that the ``h-scale exponent`` field value
-	 is always 0. SWIFT nevertheless includes this field to be
-	 comprehensive and to prevent confusion with other software
-         packages that express their quantities with h-full units.
+.. [#f1] In the rare case where an output
+	 selection (see :ref:`Output_selection_label`) disabling a given particle type in
+	 its entirety was used, the corresponding entry in ``NumPart_ThisFile`` will be 0
+	 whilst the ``NumPart_Total`` field will still contain the number of
+	 particles present in the run.
+
+
+.. [#f2] Note that all quantities in SWIFT are always "h-free" in the sense that
+	 they are expressed in units withouy any h terms. This implies that the
+	 ``h-scale exponent`` field value is always 0. SWIFT nevertheless
+	 includes this field to be comprehensive and to prevent confusion with
+	 other software packages that express their quantities with h-full
+	 units.

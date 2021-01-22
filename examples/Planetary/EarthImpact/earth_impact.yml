@@ -23,7 +23,6 @@ Snapshots:
     basename:           earth_impact    # Common part of the name of output files
     time_first:         0               # Time of the first output (in internal units)
     delta_time:         1000            # Time difference between consecutive outputs (in internal units)
-    int_time_label_on:  1               # Enable to label the snapshots using the time rounded to an integer (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:

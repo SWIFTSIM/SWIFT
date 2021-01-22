@@ -315,7 +315,6 @@ struct engine {
   int snapshot_run_on_dump;
   int snapshot_distributed;
   int snapshot_compression;
-  int snapshot_int_time_label_on;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
   struct unit_system *snapshot_units;
