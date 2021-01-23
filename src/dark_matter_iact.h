@@ -647,13 +647,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
     float Probability_SIDM_j = Rate_SIDM_j * dtj;
-    float Probability = 0.5 * (Probability_SIDM_i + Probability_SIDM_j);
+    /*float Probability = 0.5 * (Probability_SIDM_i + Probability_SIDM_j);*/
 
     /* Draw a random number */
-    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
+    const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
+    const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability > rand) {
+    if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
 
         /* Doing SIDM kick */
         sidm_do_kick(pi, pj, ti_current, sidm_history);
