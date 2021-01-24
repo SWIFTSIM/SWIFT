@@ -269,11 +269,11 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_doself_branch_bh_feedback(r, ci);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_doself_branch_rt_inject(r, ci, 1);
+            ;  // runner_doself_branch_rt_inject(r, ci, 1);
           else if (t->subtype == task_subtype_rt_gradient)
-            runner_doself1_branch_rt_gradient(r, ci, 0, 0);
+            ;  // runner_doself1_branch_rt_gradient(r, ci, 0, 0);
           else if (t->subtype == task_subtype_rt_transport)
-            runner_doself2_branch_rt_transport(r, ci, 0, 0);
+            ;  // runner_doself2_branch_rt_transport(r, ci, 0, 0);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_doself_branch_sinks_compute_formation(r, ci);
           else if (t->subtype == task_subtype_sink_accretion)
@@ -319,11 +319,11 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_dopair_branch_rt_inject(r, ci, cj, 1);
+            ;  // runner_dopair_branch_rt_inject(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_gradient)
-            runner_dopair1_branch_rt_gradient(r, ci, cj, 0, 0);
+            ;  // runner_dopair1_branch_rt_gradient(r, ci, cj, 0, 0);
           else if (t->subtype == task_subtype_rt_transport)
-            runner_dopair2_branch_rt_transport(r, ci, cj, 0, 0);
+            ;  // runner_dopair2_branch_rt_transport(r, ci, cj, 0, 0);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dopair_branch_sinks_compute_formation(r, ci, cj);
           else if (t->subtype == task_subtype_sink_accretion)
@@ -337,13 +337,13 @@ void *runner_main(void *data) {
 
         case task_type_sub_self:
           if (t->subtype == task_subtype_density)
-            runner_dosub_self1_density(r, ci, 1);
+            runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dosub_self1_gradient(r, ci, 1);
+            runner_dosub_self1_gradient(r, ci, /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_force)
-            runner_dosub_self2_force(r, ci, 1);
+            runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -367,11 +367,11 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_self_rt_inject(r, ci, 1);
+            ;  // runner_dosub_self_rt_inject(r, ci, 1);
           else if (t->subtype == task_subtype_rt_gradient)
-            runner_dosub_self1_rt_gradient(r, ci, 1);
+            ;  // runner_dosub_self1_rt_gradient(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_rt_transport)
-            runner_dosub_self2_rt_transport(r, ci, 1);
+            ;  // runner_dosub_self2_rt_transport(r, ci, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_self_sinks_compute_formation(r, ci, 1);
           else if (t->subtype == task_subtype_sink_accretion)
@@ -385,13 +385,13 @@ void *runner_main(void *data) {
 
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)
-            runner_dosub_pair1_density(r, ci, cj, 1);
+            runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dosub_pair1_gradient(r, ci, cj, 1);
+            runner_dosub_pair1_gradient(r, ci, cj, /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_force)
-            runner_dosub_pair2_force(r, ci, cj, 1);
+            runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -415,11 +415,12 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_pair_rt_inject(r, ci, cj, 1);
+            ;  // runner_dosub_pair_rt_inject(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_gradient)
-            runner_dosub_pair1_rt_gradient(r, ci, cj, 1);
+            ;  // runner_dosub_pair1_rt_gradient(r, ci, cj, /*below_h_max=*/0,
+               // 1);
           else if (t->subtype == task_subtype_rt_transport)
-            runner_dosub_pair2_rt_transport(r, ci, cj, 1);
+            ;  // runner_dosub_pair2_rt_transport(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_pair_sinks_compute_formation(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_accretion)

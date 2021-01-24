@@ -1346,7 +1346,7 @@ void DOPAIR1_BRANCH(struct runner *r, const struct cell *restrict ci,
                     const struct cell *restrict cj, const int limit_min_h,
                     const int limit_max_h) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine *e = r->e;
 
   /* Anything to do here? */
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
@@ -1933,7 +1933,7 @@ void DOPAIR2_BRANCH(struct runner *r, const struct cell *restrict ci,
                     const struct cell *restrict cj, const int limit_min_h,
                     const int limit_max_h) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine *e = r->e;
 
   /* Anything to do here? */
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
@@ -2179,7 +2179,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
                     const int limit_min_h, const int limit_max_h) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine *e = r->e;
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -2187,9 +2187,18 @@ void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
-    error("Cell smaller than smoothing length");
+    if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
+      error("Cell smaller than smoothing length");
+
+  /* Did we mess up the recursion? */
+  if (limit_min_h && !limit_max_h)
+    error("Fundamental error in the recursion logic");
+
+#endif
 
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
@@ -2398,7 +2407,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
                     const int limit_min_h, const int limit_max_h) {
 
-  const struct engine *restrict e = r->e;
+  const struct engine *e = r->e;
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
@@ -2406,12 +2415,18 @@ void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
-    error("Cell smaller than smoothing length");
+    if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
+      error("Cell smaller than smoothing length");
 
-  /* Check that cells are drifted. */
-  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
+  /* Did we mess up the recursion? */
+  if (limit_min_h && !limit_max_h)
+    error("Fundamental error in the recursion logic");
+
+#endif
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF2_NAIVE(r, c, limit_min_h, limit_max_h);
@@ -2429,13 +2444,12 @@ void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
+ * @param recurse_below_h_max Are we currently recursing at a level where we
+ * violated the h < cell size condition.
  * @param gettimer Do we have a timer ?
- *
- * @todo Hard-code the sid on the recursive calls to avoid the
- * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
-                 int gettimer) {
+                 int recurse_below_h_max, const int gettimer) {
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
@@ -2450,41 +2464,73 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+  /* We reached a leaf OR a cell small enough to be processed quickly */
+  if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
+      !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
+
+    /* Do any of the cells need to be sorted first?
+     * Since h_max might have changed, we may not have sorted at this level */
+    if (!(ci->hydro.sorted & (1 << sid)) ||
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+      runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+    }
+    if (!(cj->hydro.sorted & (1 << sid)) ||
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+      runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+    }
+
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOPAIR1_BRANCH(r, ci, cj, /*limit_h_min=*/0,
+                   /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Both ci and cj are split */
+
+    /* Should we change the recursion regime because we encountered a large
+       particle? */
+    if (!recurse_below_h_max && (!cell_can_recurse_in_subpair_hydro_task(ci) ||
+                                 !cell_can_recurse_in_subpair_hydro_task(cj))) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* Do any of the cells need to be sorted first?
+       * Since h_max might have changed, we may not have sorted at this level */
+      if (!(ci->hydro.sorted & (1 << sid)) ||
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+      }
+      if (!(cj->hydro.sorted & (1 << sid)) ||
+          cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+      }
+
+      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
+       */
+      /* 	      cj->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOPAIR1_BRANCH(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    const struct cell_split_pair *const csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
-      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1(r, ci->progeny[pid], cj->progeny[pjd], 0);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
+        DOSUB_PAIR1(r, ci->progeny[pid], cj->progeny[pjd], recurse_below_h_max,
+                    /*gettimer=*/0);
+      }
     }
-  }
-
-  /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
-
-    /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
-      error("Interacting undrifted cells.");
-
-    /* Do any of the cells need to be sorted first? */
-    if (!(ci->hydro.sorted & (1 << sid)) ||
-        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
-          "ci->sorted=%d sid=%d",
-          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
-    if (!(cj->hydro.sorted & (1 << sid)) ||
-        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
-          "cj->sorted=%d sid=%d",
-          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
-
-    /* Compute the interactions. */
-    DOPAIR1_BRANCH(r, ci, cj);
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
@@ -2494,36 +2540,60 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
  * @brief Compute grouped sub-cell interactions for self tasks
  *
  * @param r The #runner.
- * @param ci The first #cell.
+ * @param c The #cell.
+ * @param recurse_below_h_max Are we currently recursing at a level where we
+ * violated the h < cell size condition.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
+                 const int gettimer) {
 
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (c->hydro.count == 0 || !cell_is_active_hydro(c, r->e)) return;
 
-  /* Recurse? */
-  if (cell_can_recurse_in_self_hydro_task(ci)) {
+  /* We reached a leaf OR a cell small enough to process quickly */
+  if (!c->split || c->hydro.count < space_recurse_size_self_hydro) {
 
-    /* Loop over all progeny. */
-    for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL) {
-        DOSUB_SELF1(r, ci->progeny[k], 0);
-        for (int j = k + 1; j < 8; j++)
-          if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1(r, ci->progeny[k], ci->progeny[j], 0);
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOSELF1_BRANCH(r, c, /*limit_h_min=*/0,
+                   /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Should we change the recursion regime because we encountered a large
+       particle at this level? */
+    if (!recurse_below_h_max && !cell_can_recurse_in_subself_hydro_task(c)) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOSELF1_BRANCH(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        DOSUB_SELF1(r, c->progeny[k], recurse_below_h_max, /*gettimer=*/0);
+        for (int j = k + 1; j < 8; j++) {
+          if (c->progeny[j] != NULL) {
+            DOSUB_PAIR1(r, c->progeny[k], c->progeny[j], recurse_below_h_max,
+                        /*gettimer=*/0);
+          }
+        }
       }
-  }
-
-  /* Otherwise, compute self-interaction. */
-  else {
-
-    /* Drift the cell to the current timestep if needed. */
-    if (!cell_are_part_drifted(ci, r->e)) error("Interacting undrifted cell.");
-
-    DOSELF1_BRANCH(r, ci);
+    }
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
@@ -2541,56 +2611,86 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
  * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
-                 int gettimer) {
+                 int recurse_below_h_max, const int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
 
   TIMER_TIC;
 
-  /* Should we even bother? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  /* Anything to do here? */
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+  /* We reached a leaf OR a cell small enough to be processed quickly */
+  if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
+      !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
+
+    /* Do any of the cells need to be sorted first?
+     * Since h_max might have changed, we may not have sorted at this level */
+    if (!(ci->hydro.sorted & (1 << sid)) ||
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+      runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+    }
+    if (!(cj->hydro.sorted & (1 << sid)) ||
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+      runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+    }
+
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOPAIR2_BRANCH(r, ci, cj, /*limit_h_min=*/0,
+                   /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Should we change the recursion regime because we encountered a large
+       particle? */
+    if (!recurse_below_h_max && (!cell_can_recurse_in_subpair_hydro_task(ci) ||
+                                 !cell_can_recurse_in_subpair_hydro_task(cj))) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* Do any of the cells need to be sorted first?
+       * Since h_max might have changed, we may not have sorted at this level */
+      if (!(ci->hydro.sorted & (1 << sid)) ||
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+      }
+      if (!(cj->hydro.sorted & (1 << sid)) ||
+          cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+      }
+
+      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
+       */
+      /* 	      cj->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOPAIR2_BRANCH(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    const struct cell_split_pair *const csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
-      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR2(r, ci->progeny[pid], cj->progeny[pjd], 0);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
+        DOSUB_PAIR2(r, ci->progeny[pid], cj->progeny[pjd], recurse_below_h_max,
+                    /*gettimer=*/0);
+      }
     }
-  }
-
-  /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
-
-    /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
-      error("Interacting undrifted cells.");
-
-    /* Do any of the cells need to be sorted first? */
-    if (!(ci->hydro.sorted & (1 << sid)) ||
-        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
-          "ci->sorted=%d sid=%d",
-          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
-    if (!(cj->hydro.sorted & (1 << sid)) ||
-        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
-          "cj->sorted=%d sid=%d",
-          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
-
-    /* Compute the interactions. */
-    DOPAIR2_BRANCH(r, ci, cj);
   }
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
@@ -2603,31 +2703,57 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
+                 const int gettimer) {
 
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (c->hydro.count == 0 || !cell_is_active_hydro(c, r->e)) return;
 
-  /* Recurse? */
-  if (cell_can_recurse_in_self_hydro_task(ci)) {
+  /* We reached a leaf OR a cell small enough to process quickly */
+  if (!c->split || c->hydro.count < space_recurse_size_self_hydro) {
 
-    /* Loop over all progeny. */
-    for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL) {
-        DOSUB_SELF2(r, ci->progeny[k], 0);
-        for (int j = k + 1; j < 8; j++)
-          if (ci->progeny[j] != NULL)
-            DOSUB_PAIR2(r, ci->progeny[k], ci->progeny[j], 0);
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOSELF2_BRANCH(r, c, /*limit_h_min=*/0,
+                   /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Should we change the recursion regime because we encountered a large
+       particle at this level? */
+    if (!recurse_below_h_max && !cell_can_recurse_in_subself_hydro_task(c)) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOSELF2_BRANCH(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        DOSUB_SELF2(r, c->progeny[k], recurse_below_h_max, /*gettimer=*/0);
+        for (int j = k + 1; j < 8; j++) {
+          if (c->progeny[j] != NULL) {
+            DOSUB_PAIR2(r, c->progeny[k], c->progeny[j], recurse_below_h_max,
+                        /*gettimer=*/0);
+          }
+        }
       }
-
+    }
   }
 
-  /* Otherwise, compute self-interaction. */
-  else {
-    DOSELF2_BRANCH(r, ci);
-  }
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
 }
 
