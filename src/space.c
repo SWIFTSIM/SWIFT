@@ -70,6 +70,18 @@ int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 
+/* Recursion sizes */
+int space_recurse_size_self_hydro = space_recurse_size_self_hydro_default;
+int space_recurse_size_pair_hydro = space_recurse_size_pair_hydro_default;
+int space_recurse_size_self_stars = space_recurse_size_self_stars_default;
+int space_recurse_size_pair_stars = space_recurse_size_pair_stars_default;
+int space_recurse_size_self_black_holes =
+    space_recurse_size_self_black_holes_default;
+int space_recurse_size_pair_black_holes =
+    space_recurse_size_pair_black_holes_default;
+int space_recurse_size_self_sinks = space_recurse_size_self_sinks_default;
+int space_recurse_size_pair_sinks = space_recurse_size_pair_sinks_default;
+
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
 
@@ -1246,6 +1258,32 @@ void space_init(struct space *s, struct swift_params *params,
   space_subdepth_diff_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                space_subdepth_diff_grav_default);
+
+  space_recurse_size_self_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_hydro",
+                               space_recurse_size_self_hydro_default);
+  space_recurse_size_pair_hydro =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_hydro",
+                               space_recurse_size_pair_hydro_default);
+  space_recurse_size_self_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_stars",
+                               space_recurse_size_self_stars_default);
+  space_recurse_size_pair_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_stars",
+                               space_recurse_size_pair_stars_default);
+  space_recurse_size_self_black_holes = parser_get_opt_param_int(
+      params, "Scheduler:cell_recurse_size_self_black_holes",
+      space_recurse_size_self_black_holes_default);
+  space_recurse_size_pair_black_holes = parser_get_opt_param_int(
+      params, "Scheduler:cell_recurse_size_pair_black_holes",
+      space_recurse_size_pair_black_holes_default);
+  space_recurse_size_self_sinks =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_self_sinks",
+                               space_recurse_size_self_sinks_default);
+  space_recurse_size_pair_sinks =
+      parser_get_opt_param_int(params, "Scheduler:cell_recurse_size_pair_sinks",
+                               space_recurse_size_pair_sinks_default);
+
   space_extra_parts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_parts", space_extra_parts_default);
   space_extra_sparts = parser_get_opt_param_int(
@@ -2400,6 +2438,30 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
+                       "space_recurse_size_self_hydro",
+                       "space_recurse_size_self_hydro");
+  restart_write_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_hydro",
+                       "space_recurse_size_pair_hydro");
+  restart_write_blocks(&space_recurse_size_self_stars, sizeof(int), 1, stream,
+                       "space_recurse_size_self_stars",
+                       "space_recurse_size_self_stars");
+  restart_write_blocks(&space_recurse_size_pair_stars, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_stars",
+                       "space_recurse_size_pair_stars");
+  restart_write_blocks(&space_recurse_size_self_black_holes, sizeof(int), 1,
+                       stream, "space_recurse_size_self_black_holes",
+                       "space_recurse_size_self_black_holes");
+  restart_write_blocks(&space_recurse_size_pair_black_holes, sizeof(int), 1,
+                       stream, "space_recurse_size_pair_black_holes",
+                       "space_recurse_size_pair_black_holes");
+  restart_write_blocks(&space_recurse_size_self_sinks, sizeof(int), 1, stream,
+                       "space_recurse_size_self_sinks",
+                       "space_recurse_size_self_sinks");
+  restart_write_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
+                       "space_recurse_size_pair_sinks",
+                       "space_recurse_size_pair_sinks");
   restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                        "space_expected_max_nr_strays",
                        "space_expected_max_nr_strays");
@@ -2469,6 +2531,22 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_subsize_self_grav");
   restart_read_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream, NULL,
                       "space_subdepth_diff_grav");
+  restart_read_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_hydro");
+  restart_read_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_hydro");
+  restart_read_blocks(&space_recurse_size_self_stars, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_stars");
+  restart_read_blocks(&space_recurse_size_pair_stars, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_stars");
+  restart_read_blocks(&space_recurse_size_self_black_holes, sizeof(int), 1,
+                      stream, NULL, "space_recurse_size_self_black_holes");
+  restart_read_blocks(&space_recurse_size_pair_black_holes, sizeof(int), 1,
+                      stream, NULL, "space_recurse_size_pair_black_holes");
+  restart_read_blocks(&space_recurse_size_self_sinks, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_self_sinks");
+  restart_read_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
+                      NULL, "space_recurse_size_pair_sinks");
   restart_read_blocks(&space_extra_parts, sizeof(int), 1, stream, NULL,
                       "space_extra_parts");
   restart_read_blocks(&space_extra_gparts, sizeof(int), 1, stream, NULL,
