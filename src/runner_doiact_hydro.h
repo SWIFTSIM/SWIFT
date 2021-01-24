@@ -130,12 +130,10 @@ void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
 void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
                     const int limit_min_h, const int limit_max_h);
 
-void DOPAIR1_BRANCH(struct runner *r, const struct cell *restrict ci,
-                    const struct cell *restrict cj, const int limit_min_h,
-                    const int limit_max_h);
-void DOPAIR2_BRANCH(struct runner *r, const struct cell *restrict ci,
-                    const struct cell *restrict cj, const int limit_min_h,
-                    const int limit_max_h);
+void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
+                    const int limit_min_h, const int limit_max_h);
+void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
+                    const int limit_min_h, const int limit_max_h);
 
 void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
                  const int gettimer);
