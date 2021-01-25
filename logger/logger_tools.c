@@ -351,3 +351,47 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
 
   return offset_ret;
 }
+
+/**
+ * @brief Remove the previous text and print the progress of current task.
+ *
+ * @param percentage The current progress.
+ * @param remaining_time The remaining time of the process (in seconds)
+ * @param message The message to display before the progress message.
+ */
+void tools_print_progress(float percentage, int remaining_time,
+                          const char *message) {
+
+  /* Compute the time */
+  int hour = remaining_time / (60 * 60);
+  remaining_time -= hour * 60 * 60;
+  int min = remaining_time / 60;
+  int sec = remaining_time - min * 60;
+
+  /* Allocate the output string */
+  char output[300];
+
+  /* Write the message */
+  char *current =
+      output + sprintf(output, "%s: %2.1f%% done, Remaining time: ", message,
+                       percentage);
+
+  /* Write the hour */
+  if (hour == 0)
+    current += sprintf(current, "    ");
+  else
+    current += sprintf(current, "%.2ih ", hour);
+
+  /* Write the minutes */
+  if (hour == 0 && min == 0)
+    current += sprintf(current, "      ");
+  else
+    current += sprintf(current, "%.2imin ", min);
+
+  /* Write the seconds */
+  current += sprintf(current, "%.2is", sec);
+
+  /* Print the string */
+  printf("\r%s", output);
+  fflush(stdout);
+}
