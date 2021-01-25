@@ -93,6 +93,68 @@ void logger_logfile_free(struct logger_logfile *log) {
 }
 
 /**
+ * @brief debugging function checking the offset and the mask of a record.
+ *
+ * Compare the mask with the one pointed by the header.
+ * if the record is a particle, check the id too.
+ *
+ * @param reader The #logger_reader.
+ * @param offset position of the record.
+ *
+ * @return position after the record.
+ */
+void logger_logfile_check_record_consistency(struct logger_logfile *log) {
+#ifdef SWIFT_DEBUG_CHECKS
+  struct header *header = &log->header;
+  const struct logger_reader *reader = log->reader;
+
+  if (reader->verbose > 0) {
+    message("Check record's headers...");
+  }
+
+  /* Prepare the progress bar. */
+  float next_percentage = 0.;
+  const float delta_percentage = 0.5;
+  printf("\n");
+  const int init_time =
+      clocks_diff_ticks(getticks(), clocks_start_ticks) / 1000.0;
+
+  /* check that the record offset points to another record. */
+  for (size_t offset_debug = header->offset_first_record;
+       offset_debug < log->log.mmap_size;
+       offset_debug = tools_check_record_consistency(reader, offset_debug)) {
+
+    /* Check if we should update the progress bar. */
+    float current = 100 * ((float)offset_debug) / log->log.mmap_size;
+    if (current > next_percentage) {
+
+      /* Compute the remaining time */
+      const int current_time =
+          clocks_diff_ticks(getticks(), clocks_start_ticks) / 1000.0;
+      const int remaining_time =
+          (current_time - init_time) * (100. - current) / current;
+
+      /* Print the bar */
+      tools_print_progress(current, remaining_time, "Reversing the offsets");
+
+      /* Compute the next update of the progress bar */
+      next_percentage += delta_percentage;
+    }
+  }
+
+  /* Close the progress bar */
+  printf("\n");
+
+  if (reader->verbose > 0) {
+    message("Record's headers are correct.");
+  }
+
+#else
+  error("This function should not be called outside of the debugging checks");
+#endif
+}
+
+/**
  * @brief Reverse offset in log file
  *
  * @param log The #logger_logfile
@@ -116,19 +178,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (reader->verbose > 0) {
-    message("Check record's headers...");
-  }
-
-  /* check that the record offset points to another record. */
-  for (size_t offset_debug = header->offset_first_record;
-       offset_debug < log->log.mmap_size;
-       offset_debug = tools_check_record_consistency(reader, offset_debug)) {
-  }
-
-  if (reader->verbose > 0) {
-    message("Record's headers are correct.");
-  }
+  logger_logfile_check_record_consistency(log);
 #endif
 
   message("WARNING: Modifying the logfile, do not kill the job!");
@@ -140,10 +190,36 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
     message("Reversing offsets...");
   }
 
+  /* Prepare the progress message. */
+  float next_percentage = 0.;
+  const float delta_percentage = 0.2;
+  printf("\n");
+  const int init_time =
+      clocks_diff_ticks(getticks(), clocks_start_ticks) / 1000.0;
+
   /* reverse the record's offset. */
   for (size_t offset = header->offset_first_record; offset < log->log.mmap_size;
        offset = tools_reverse_offset(header, log->log.map, offset)) {
+    /* Check if we should update the progress. */
+    float current = 100 * ((float)offset) / log->log.mmap_size;
+    if (current > next_percentage) {
+
+      /* Compute the remaining time */
+      const int current_time =
+          clocks_diff_ticks(getticks(), clocks_start_ticks) / 1000.0;
+      const int remaining_time =
+          (current_time - init_time) * (100. - current) / current;
+
+      /* Print the remaining time */
+      tools_print_progress(current, remaining_time, "Checking the offsets");
+
+      /* Compute the next update of the progress */
+      next_percentage += delta_percentage;
+    }
   }
+
+  /* Close the progress */
+  printf("\n");
 
   if (reader->verbose > 0) {
     message("Reversing done.");
@@ -156,19 +232,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   message("WARNING: Modification done, you can now safely kill the job.");
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (reader->verbose > 0) {
-    message("Check record's headers...");
-  }
-
-  /* check that the record offset points to another record. */
-  for (size_t offset_debug = header->offset_first_record;
-       offset_debug < log->log.mmap_size;
-       offset_debug = tools_check_record_consistency(reader, offset_debug)) {
-  }
-
-  if (reader->verbose > 0) {
-    message("Record's headers are correct.");
-  }
+  logger_logfile_check_record_consistency(log);
 #endif
 
   /* Close and reopen the file in read mode. */
