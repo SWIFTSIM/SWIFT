@@ -2526,22 +2526,18 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
           /* Update both pi and pj */
 
-          /* #ifdef SWIFT_DEBUG_CHECKS */
-          /*           if (hi * kernel_gamma > c->dmin) */
-          /*             error( */
-          /*                 "h_i too large for this cell! depth=%d limit
-           * min/max=%d%d H=%e " */
-          /*                 "dmin=%e", */
-          /*                 c->depth, limit_min_h, limit_max_h, hi *
-           * kernel_gamma, c->dmin); */
-          /*           if (hj * kernel_gamma > c->dmin) */
-          /*             error( */
-          /*                 "h_j too large for this cell! depth=%d limit
-           * min/max=%d%d H=%e " */
-          /*                 "dmin=%e", */
-          /*                 c->depth, limit_min_h, limit_max_h, hj *
-           * kernel_gamma, c->dmin); */
-          /* #endif */
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi * kernel_gamma > c->dmin)
+            error(
+                "h_i too large for this cell! depth=%d limit min / max = % d % "
+                "d H = % e dmin=%e",
+                c->depth, limit_min_h, limit_max_h, hi * kernel_gamma, c->dmin);
+          if (hj * kernel_gamma > c->dmin)
+            error(
+                "h_j too large for this cell! depth=%d limit min / max = % d % "
+                "d H = % e dmin=%e",
+                c->depth, limit_min_h, limit_max_h, hj * kernel_gamma, c->dmin);
+#endif
 
           IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2558,15 +2554,13 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
           /* Update only pi */
 
-          /* #ifdef SWIFT_DEBUG_CHECKS */
-          /*           if (hi * kernel_gamma > c->dmin) */
-          /*             error( */
-          /*                 "h_i too large for this cell! depth=%d limit
-           * min/max=%d%d H=%e " */
-          /*                 "dmin=%e", */
-          /*                 c->depth, limit_min_h, limit_max_h, hi *
-           * kernel_gamma, c->dmin); */
-          /* #endif */
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi * kernel_gamma > c->dmin)
+            error(
+                "h_i too large for this cell! depth=%d limit min / max = % d % "
+                "d H = % e dmin=%e",
+                c->depth, limit_min_h, limit_max_h, hi * kernel_gamma, c->dmin);
+#endif
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2855,8 +2849,9 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
 
     /* Should we change the recursion regime because we encountered a large
        particle? */
-    if (!recurse_below_h_max && (!cell_can_recurse_in_pair_hydro_task(ci) ||
-                                 !cell_can_recurse_in_pair_hydro_task(cj))) {
+    if (!recurse_below_h_max &&
+        (!cell_can_recurse_in_subpair2_hydro_task(ci) ||
+         !cell_can_recurse_in_subpair2_hydro_task(cj))) {
       recurse_below_h_max = 1;
     }
 
@@ -2928,7 +2923,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
 
     /* Should we change the recursion regime because we encountered a large
        particle at this level? */
-    if (!recurse_below_h_max && !cell_can_recurse_in_self_hydro_task(c)) {
+    if (!recurse_below_h_max && !cell_can_recurse_in_subself2_hydro_task(c)) {
       recurse_below_h_max = 1;
     }
 
