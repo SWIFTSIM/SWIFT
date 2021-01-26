@@ -121,7 +121,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
-	  cell_activate_drift_part(ci, s);
+          cell_activate_drift_part(ci, s);
           if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
@@ -458,7 +458,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
                                             with_timestep_limiter);
 
-	  /* Activate the hydro drift tasks. */
+          /* Activate the hydro drift tasks. */
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
