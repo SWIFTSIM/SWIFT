@@ -2265,8 +2265,10 @@ void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
 
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
-    if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
-      error("Cell smaller than smoothing length");
+    error("Cell smaller than smoothing length");
+
+  if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
+    error("Cell smaller than smoothing length");
 
   /* Did we mess up the recursion? */
   if (limit_min_h && !limit_max_h)
