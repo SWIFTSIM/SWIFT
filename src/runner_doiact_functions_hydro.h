@@ -418,11 +418,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
       /* Hit or miss? */
       if (doi && doj) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-        if (hi * kernel_gamma > c->dmin) error("h_i too large for this cell!");
-        if (hj * kernel_gamma > c->dmin) error("h_j too large for this cell!");
-#endif
-
         IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -436,10 +431,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
 #endif
       } else if (doi) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-        if (hi * kernel_gamma > c->dmin) error("h_i too large for this cell!");
-#endif
-
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -452,10 +443,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology);
 #endif
       } else if (doj) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (hj * kernel_gamma > c->dmin) error("h_j too large for this cell!");
-#endif
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -1229,15 +1216,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-          if (hi * kernel_gamma > ci->dmin)
-            error(
-                "h_i too large for this cell! depth=%d limit min/max=%d%d H=%e "
-                "dmin=%e",
-                ci->depth, limit_min_h, limit_max_h, hi * kernel_gamma,
-                ci->dmin);
-#endif
-
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1350,15 +1328,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-          if (hj * kernel_gamma > cj->dmin)
-            error(
-                "h_j too large for this cell! depth=%d limit min/max=%d%d H=%e "
-                "dmin=%e",
-                cj->depth, limit_min_h, limit_max_h, hj * kernel_gamma,
-                cj->dmin);
-#endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2218,19 +2187,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 
           /* Update both pi and pj */
 
-#ifdef SWIFT_DEBUG_CHECKS
-          if (hi * kernel_gamma > c->dmin)
-            error(
-                "h_i too large for this cell! depth=%d limit min/max=%d%d H=%e "
-                "dmin=%e",
-                c->depth, limit_min_h, limit_max_h, hi * kernel_gamma, c->dmin);
-          if (hj * kernel_gamma > c->dmin)
-            error(
-                "h_j too large for this cell! depth=%d limit min/max=%d%d H=%e "
-                "dmin=%e",
-                c->depth, limit_min_h, limit_max_h, hj * kernel_gamma, c->dmin);
-#endif
-
           IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2246,14 +2202,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 
           /* Update only pi */
 
-#ifdef SWIFT_DEBUG_CHECKS
-          if (hi * kernel_gamma > c->dmin)
-            error(
-                "h_i too large for this cell! depth=%d limit min/max=%d%d H=%e "
-                "dmin=%e",
-                c->depth, limit_min_h, limit_max_h, hi * kernel_gamma, c->dmin);
-#endif
-
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2268,14 +2216,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
         } else if (doj) {
 
           /* Update only pj */
-
-#ifdef SWIFT_DEBUG_CHECKS
-          if (hj * kernel_gamma > c->dmin)
-            error(
-                "h_j too large for this cell! depth=%d limit min/max=%d%d H=%e "
-                "dmin=%e",
-                c->depth, limit_min_h, limit_max_h, hj * kernel_gamma, c->dmin);
-#endif
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
@@ -2526,19 +2466,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
           /* Update both pi and pj */
 
-#ifdef SWIFT_DEBUG_CHECKS
-          if (hi * kernel_gamma > c->dmin)
-            error(
-                "h_i too large for this cell! depth=%d limit min / max = % d % "
-                "d H = % e dmin=%e",
-                c->depth, limit_min_h, limit_max_h, hi * kernel_gamma, c->dmin);
-          if (hj * kernel_gamma > c->dmin)
-            error(
-                "h_j too large for this cell! depth=%d limit min / max = % d % "
-                "d H = % e dmin=%e",
-                c->depth, limit_min_h, limit_max_h, hj * kernel_gamma, c->dmin);
-#endif
-
           IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2553,14 +2480,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
         } else if (doi) {
 
           /* Update only pi */
-
-#ifdef SWIFT_DEBUG_CHECKS
-          if (hi * kernel_gamma > c->dmin)
-            error(
-                "h_i too large for this cell! depth=%d limit min / max = % d % "
-                "d H = % e dmin=%e",
-                c->depth, limit_min_h, limit_max_h, hi * kernel_gamma, c->dmin);
-#endif
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
