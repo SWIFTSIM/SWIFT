@@ -415,6 +415,13 @@ struct cell {
     /*! Linked list of the tasks computing this cell's limiter. */
     struct link *limiter;
 
+    /*! The task to limit the time-step of inactive particles */
+    struct task *timestep_limiter;
+      
+    /*! The task to synchronize the time-step of inactive particles hit by
+    * feedback */
+    struct task *timestep_sync;
+      
     /*! Dependency implicit task for the ghost  (in->ghost->out)*/
     struct task *ghost_in;
 

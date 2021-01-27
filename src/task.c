@@ -174,6 +174,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_none;
       break;
 
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
     case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
@@ -263,8 +265,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_fof_self:
     case task_type_fof_pair:
     case task_type_timestep:
-    case task_type_timestep_limiter:
-    case task_type_timestep_sync:
+/*    case task_type_timestep_limiter:
+    case task_type_timestep_sync:*/
     case task_type_send:
     case task_type_recv:
       if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
@@ -493,15 +495,10 @@ void task_unlock(struct task *t) {
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
+    case task_type_timestep_sync:
       cell_unlocktree(ci);
       break;
           
-    case task_type_timestep_sync:
-      cell_unlocktree(ci);
-      cell_dmunlocktree(ci);
-      break;
-
-
     case task_type_drift_gpart:
     case task_type_end_grav_force:
       cell_gunlocktree(ci);
@@ -686,15 +683,6 @@ int task_lock(struct task *t) {
       }
       break;
 
-    case task_type_timestep_sync:
-      if (ci->hydro.hold || ci->dark_matter.hold) return 0;
-      if (cell_locktree(ci) != 0) return 0;
-      if (cell_dmlocktree(ci) != 0) {
-          cell_unlocktree(ci);
-          return 0;
-      }
-      break;
-
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
@@ -710,6 +698,7 @@ int task_lock(struct task *t) {
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
+    case task_type_timestep_sync:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;

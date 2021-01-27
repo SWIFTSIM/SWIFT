@@ -2583,7 +2583,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->black_holes.feedback = NULL;
   c->dark_matter.density = NULL;
   c->dark_matter.sidm = NULL;
-  c->dark_matter.limiter = NULL;
+  /*c->dark_matter.limiter = NULL;*/
 }
 
 /**
@@ -3512,12 +3512,12 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 
   /* Set the do_sub_limiter all the way up and activate the super limiter
      if this has not yet been done. */
-  if (c == c->super) {
+  if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->timestep_limiter == NULL)
+    if (c->hydro.timestep_limiter == NULL)
       error("Trying to activate un-existing c->timestep_limiter");
 #endif
-    scheduler_activate(s, c->timestep_limiter);
+    scheduler_activate(s, c->hydro.timestep_limiter);
     scheduler_activate(s, c->kick1);
   } else {
     for (struct cell *parent = c->parent;
@@ -3527,12 +3527,12 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
       /* Mark this cell for limiting */
       cell_set_flag(parent, cell_flag_do_hydro_sub_limiter);
 
-      if (parent == c->super) {
+      if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->timestep_limiter == NULL)
+        if (parent->hydro.timestep_limiter == NULL)
           error("Trying to activate un-existing parent->timestep_limiter");
 #endif
-        scheduler_activate(s, parent->timestep_limiter);
+        scheduler_activate(s, parent->hydro.timestep_limiter);
         scheduler_activate(s, parent->kick1);
         break;
       }
@@ -5371,7 +5371,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
     /* Unskip all the other task types. */
     if (c->nodeID == nodeID && cell_is_active_dark_matter(c, e)) {
         for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) scheduler_activate(s, l->t);
-        for (struct link *l = c->dark_matter.limiter; l != NULL; l = l->next) scheduler_activate(s, l->t);
+        /*for (struct link *l = c->dark_matter.limiter; l != NULL; l = l->next) scheduler_activate(s, l->t);*/
         if (c->dark_matter.ghost != NULL) cell_activate_dark_matter_ghost(c, s, e);
         if (c->dark_matter.sidm_kick != NULL) scheduler_activate(s, c->dark_matter.sidm_kick);
         if (c->dark_matter.timestep_sync != NULL) scheduler_activate(s, c->dark_matter.timestep_sync);
@@ -5397,7 +5397,8 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
 void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
                     const int with_grav) {
   /* Are we in a cell which is either the hydro or gravity super? */
-  if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
+  if (super == NULL && ((c->dark_matter.super != NULL) ||
+                        (with_hydro && c->hydro.super != NULL) ||
                         (with_grav && c->grav.super != NULL)))
     super = c;
 
