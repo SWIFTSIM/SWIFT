@@ -286,9 +286,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
-                        const struct cell *restrict cj,
-                        const int limit_min_h, const int limit_max_h,
-                        const int sid, const double shift[3]) {
+                        const struct cell *restrict cj, const int limit_min_h,
+                        const int limit_max_h, const int sid,
+                        const double shift[3]) {
 
   TIMER_TIC;
 
