@@ -1878,6 +1878,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_exact_density_check(e->s, e, /*rel_tol=*/1e-3, /*check_force=*/1);
 #endif
 
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_stars) stars_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the stars calculation */
+  if (e->policy & engine_policy_stars)
+    stars_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -2311,6 +2320,15 @@ void engine_step(struct engine *e) {
   /* Check the accuracy of the hydro calculation */
   if (e->policy & engine_policy_hydro)
     hydro_exact_density_check(e->s, e, /*rel_tol=*/1e-3, /*check_force=*/1);
+#endif
+
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  /* Run the brute-force stars calculation for some parts */
+  if (e->policy & engine_policy_stars) stars_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the stars calculation */
+  if (e->policy & engine_policy_stars)
+    stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
