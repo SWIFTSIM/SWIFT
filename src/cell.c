@@ -3291,13 +3291,13 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
 
   /* Set the do_sub_sync all the way up and activate the super sync
      if this has not yet been done. */
-  if (c == c->super) {
+  if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->timestep_sync == NULL)
+    if (c->hydro.timestep_sync == NULL)
       error("Trying to activate un-existing c->timestep_sync");
 #endif
-    scheduler_activate(s, c->timestep_sync);
-    scheduler_activate(s, c->kick1);
+    scheduler_activate(s, c->hydro.timestep_sync);
+    scheduler_activate(s, c->super->kick1);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sync);
@@ -3305,13 +3305,13 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
       /* Mark this cell for drifting */
       cell_set_flag(parent, cell_flag_do_hydro_sub_sync);
 
-      if (parent == c->super) {
+      if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->timestep_sync == NULL)
+        if (parent->hydro.timestep_sync == NULL)
           error("Trying to activate un-existing parent->timestep_sync");
 #endif
-        scheduler_activate(s, parent->timestep_sync);
-        scheduler_activate(s, parent->kick1);
+        scheduler_activate(s, parent->hydro.timestep_sync);
+        scheduler_activate(s, c->super->kick1);
         break;
       }
     }
@@ -3333,7 +3333,8 @@ void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s) {
             error("Trying to activate un-existing c->timestep_sync");
 #endif
         scheduler_activate(s, c->dark_matter.timestep_sync);
-        scheduler_activate(s, c->kick1);
+        scheduler_activate(s, c->super->kick1);
+        
     } else {
         for (struct cell *parent = c->parent;
              parent != NULL && !cell_get_flag(parent, cell_flag_do_dark_matter_sub_sync);
@@ -3347,7 +3348,7 @@ void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s) {
                     error("Trying to activate un-existing parent->timestep_sync");
 #endif
                 scheduler_activate(s, parent->dark_matter.timestep_sync);
-                scheduler_activate(s, parent->kick1);
+                scheduler_activate(s, c->super->kick1);
                 break;
             }
         }
@@ -3409,6 +3410,10 @@ void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s) {
     /* Set the do_stars_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
     if (c == c->dark_matter.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (c->dark_matter.drift == NULL)
+            error("Trying to activate un-existing c->dark_matter.drift");
+#endif
         scheduler_activate(s, c->dark_matter.drift);
     } else {
         for (struct cell *parent = c->parent;
@@ -3418,6 +3423,10 @@ void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s) {
             cell_set_flag(parent, cell_flag_do_dark_matter_sub_drift);
             
             if (parent == c->dark_matter.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+                if (parent->dark_matter.drift == NULL)
+                    error("Trying to activate un-existing parent->dark_matter.drift");
+#endif
                 scheduler_activate(s, parent->dark_matter.drift);
                 break;
             }
@@ -3518,7 +3527,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->timestep_limiter");
 #endif
     scheduler_activate(s, c->hydro.timestep_limiter);
-    scheduler_activate(s, c->kick1);
+    scheduler_activate(s, c->super->kick1);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL &&
@@ -3533,7 +3542,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->timestep_limiter");
 #endif
         scheduler_activate(s, parent->hydro.timestep_limiter);
-        scheduler_activate(s, parent->kick1);
+        scheduler_activate(s, c->super->kick1);
         break;
       }
     }
@@ -3553,8 +3562,8 @@ void cell_activate_dm_limiter(struct cell *c, struct scheduler *s) {
     /* Set the do_sub_limiter all the way up and activate the super limiter
      if this has not yet been done. */
     if (c == c->dark_matter.super) {
-        scheduler_activate(s, c->dark_matter.timestep_limiter);
-        scheduler_activate(s, c->kick1);
+        /*scheduler_activate(s, c->dark_matter.timestep_limiter);*/
+        scheduler_activate(s, c->super->kick1);
     } else {
         for (struct cell *parent = c->parent;
              parent != NULL && !cell_get_flag(parent, cell_flag_do_dark_matter_sub_limiter);
@@ -3563,8 +3572,8 @@ void cell_activate_dm_limiter(struct cell *c, struct scheduler *s) {
             cell_set_flag(parent, cell_flag_do_dark_matter_sub_limiter);
             
             if (parent == c->dark_matter.super) {
-                scheduler_activate(s, parent->dark_matter.timestep_limiter);
-                scheduler_activate(s, parent->kick1);
+                /*scheduler_activate(s, parent->dark_matter.timestep_limiter);*/
+                scheduler_activate(s, c->super->kick1);
                 break;
             }
         }
@@ -4090,14 +4099,15 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
             
             /* Activate the drifts if the cells are local. */
             if (cj->nodeID == engine_rank) cell_activate_drift_dmpart(cj, s);
-            if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
+            if (cj->nodeID == engine_rank) cell_activate_sync_dmpart(cj, s);
 
+            if (ci->nodeID == engine_rank) cell_activate_drift_dmpart(ci, s);
+            if (ci->nodeID == engine_rank) cell_activate_sync_dmpart(ci, s);
+    
             /* Also activate the time-step limiter */
             /*if (ci->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
             if (cj->nodeID == engine_rank && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
 
-            if (cj->nodeID == engine_rank) cell_activate_sync_dmpart(cj, s);
-            if (ci->nodeID == engine_rank) cell_activate_sync_dmpart(ci, s);
         }
     } /* Otherwise, pair interation */
 }
@@ -4501,6 +4511,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.extra_ghost != NULL)
       scheduler_activate(s, c->hydro.extra_ghost);
     if (c->hydro.ghost_in != NULL) cell_activate_hydro_ghosts(c, s, e);
+      
+    if (c->hydro.timestep_sync != NULL) scheduler_activate(s, c->hydro.timestep_sync);
+    if (c->hydro.timestep_limiter != NULL) scheduler_activate(s, c->hydro.timestep_limiter);
+
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
@@ -5294,18 +5308,16 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             }
 
             else if (t->type == task_type_pair) {
-
-                
                     /* Activate the drift tasks. */
                     if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                    if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
+                
                     if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+                    if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
                 
                     /* Activate the limiter tasks. */
                     /*if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
                     if (cj_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
-
-                    if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
-                    if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
             }
             
             /* Store current values of dx_max and h_max. */

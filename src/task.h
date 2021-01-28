@@ -68,7 +68,7 @@ enum task_types {
   task_type_kick2,
   task_type_timestep,
   task_type_timestep_limiter,
-  task_type_timestep_dark_matter_limiter,
+  /*task_type_timestep_dark_matter_limiter,*/
   task_type_timestep_sync,
   task_type_timestep_dark_matter_sync,
   task_type_send,
@@ -115,7 +115,7 @@ enum task_subtypes {
   task_subtype_gradient,
   task_subtype_force,
   task_subtype_limiter,
-  task_subtype_dark_matter_limiter,
+  /*task_subtype_dark_matter_limiter,*/
   task_subtype_grav,
   task_subtype_external_grav,
   task_subtype_tend_part,

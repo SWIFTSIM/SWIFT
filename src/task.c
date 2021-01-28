@@ -74,7 +74,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "kick2",
                                              "timestep",
                                              "timestep_limiter",
-                                             "timestep_dark_matter_limiter",
+                                             /*"timestep_dark_matter_limiter",*/
                                              "timestep_sync",
                                              "timestep_dark_matter_sync",
                                              "send",
@@ -111,7 +111,7 @@ const char *taskID_names[task_type_count] = {"none",
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
     "none",       "density",      "DM_density",   "sidm", "gradient",   "force",
-    "limiter",    "DM_limiter",   "grav",         "external_grav",  "tend_part",
+    "limiter",    "grav",         "external_grav",  "tend_part",
     "tend_gpart", "tend_spart",   "tend_bpart",   "tend_dmpart",  "xv",
     "rho",        "part_swallow", "bpart_merger", "gpart",
     "multipole",  "spart",        "dmpart",       "stars_density",  "stars_feedback",
@@ -201,10 +201,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_bpart;
       break;
 
+    /*case task_type_timestep_dark_matter_limiter:*/
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
-    case task_type_timestep_dark_matter_limiter:
     case task_type_timestep_dark_matter_sync:
       return task_action_dmpart;
       break;
@@ -238,9 +238,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_bpart;
           break;
 
+        /*case task_subtype_dark_matter_limiter:*/
         case task_subtype_dark_matter_density:
         case task_subtype_sidm:
-        case task_subtype_dark_matter_limiter:
           return task_action_dmpart;
           break;
               
@@ -265,8 +265,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_fof_self:
     case task_type_fof_pair:
     case task_type_timestep:
-/*    case task_type_timestep_limiter:
-    case task_type_timestep_sync:*/
     case task_type_send:
     case task_type_recv:
       if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
@@ -481,10 +479,10 @@ void task_unlock(struct task *t) {
       cell_gunlocktree(ci);
       break;
 
+    /*case task_type_timestep_dark_matter_limiter:*/
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
-    case task_type_timestep_dark_matter_limiter:
     case task_type_timestep_dark_matter_sync:
       cell_dmunlocktree(ci);
       break;
@@ -522,8 +520,7 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
           
       } else if ((subtype == task_subtype_dark_matter_density) ||
-                 (subtype == task_subtype_sidm) ||
-                 (subtype == task_subtype_dark_matter_limiter)) {
+                 (subtype == task_subtype_sidm)) {
         cell_dmunlocktree(ci);
 
       } else if ((subtype == task_subtype_bh_density) ||
@@ -555,8 +552,7 @@ void task_unlock(struct task *t) {
         cell_munlocktree(cj);
 #endif
       } else if ((subtype == task_subtype_dark_matter_density) ||
-                 (subtype == task_subtype_sidm) ||
-                 (subtype == task_subtype_dark_matter_limiter)) {
+                 (subtype == task_subtype_sidm)) {
           cell_dmunlocktree(ci);
           cell_dmunlocktree(cj);
           
@@ -683,10 +679,10 @@ int task_lock(struct task *t) {
       }
       break;
 
+    /*case task_type_timestep_dark_matter_limiter:*/
     case task_type_drift_dmpart:
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
-    case task_type_timestep_dark_matter_limiter:
     case task_type_timestep_dark_matter_sync:
       if (ci->dark_matter.hold) return 0;
       if (cell_dmlocktree(ci) != 0) return 0;
@@ -739,8 +735,7 @@ int task_lock(struct task *t) {
         }
     
       } else if ((subtype == task_subtype_dark_matter_density) ||
-                 (subtype == task_subtype_sidm) ||
-                 (subtype == task_subtype_dark_matter_limiter)) {
+                 (subtype == task_subtype_sidm)) {
           if (ci->dark_matter.hold) return 0;
           if (cell_dmlocktree(ci) != 0) return 0;
           
@@ -814,8 +809,7 @@ int task_lock(struct task *t) {
         
       
         } else if ((subtype == task_subtype_dark_matter_density) ||
-                   (subtype == task_subtype_sidm) ||
-                   (subtype == task_subtype_dark_matter_limiter)) {
+                   (subtype == task_subtype_sidm)) {
           /* Lock the DM particles in both cells */
           if (ci->dark_matter.hold || cj->dark_matter.hold) return 0;
           if (cell_dmlocktree(ci) != 0) return 0;
@@ -1475,9 +1469,9 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_recv:
       return task_category_mpi;
 
+    /*case task_type_timestep_dark_matter_limiter:*/
     case task_type_dark_matter_ghost:
     case task_type_sidm_kick:
-    case task_type_timestep_dark_matter_limiter:
     case task_type_timestep_dark_matter_sync:
       return task_category_dark_matter;
           
@@ -1530,7 +1524,7 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_dark_matter_density:
         case task_subtype_sidm:
-        case task_subtype_dark_matter_limiter:
+        /*case task_subtype_dark_matter_limiter:*/
           return task_category_dark_matter;
 
         case task_subtype_grav:
@@ -1557,3 +1551,4 @@ enum task_categories task_get_category(const struct task *t) {
       return task_category_others;
   }
 }
+

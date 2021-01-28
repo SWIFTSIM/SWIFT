@@ -264,7 +264,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->dark_matter.sidm_kick = NULL;
     c->dark_matter.drift = NULL;
     /*c->dark_matter.limiter = NULL;*/
-    c->dark_matter.timestep_limiter = NULL;
+    /*c->dark_matter.timestep_limiter = NULL;*/
     c->dark_matter.timestep_sync = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;

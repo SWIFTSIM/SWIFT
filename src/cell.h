@@ -750,13 +750,13 @@ struct cell {
         struct link *density;
         
         /*! Linked list of the tasks computing this cell's limiter. */
-        struct link *limiter;
+        /*struct link *limiter;*/
         
         /*! kick due to DM-DM interactions */
         struct task *sidm_kick;
         
         /*! The task to limit the time-step of inactive particles */
-        struct task *timestep_limiter;
+        /*struct task *timestep_limiter;*/
         
         /*! The task to synchronize the time-step of inactive particles hit by
          * feedback */
@@ -977,11 +977,11 @@ struct cell {
   struct task *timestep;
 
   /*! The task to limit the time-step of inactive particles */
-  struct task *timestep_limiter;
+  /*struct task *timestep_limiter;*/
 
   /*! The task to synchronize the time-step of inactive particles hit by
    * feedback */
-  struct task *timestep_sync;
+  /*struct task *timestep_sync;*/
 
 #ifdef WITH_LOGGER
   /*! The logger task */

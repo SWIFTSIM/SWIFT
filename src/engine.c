@@ -1581,8 +1581,6 @@ void engine_print_task_counts(const struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
     
-    message("in engine print task");
-
   /* Global tasks and cells when using MPI. */
 #ifdef WITH_MPI
   if (e->nodeID == 0 && e->total_nr_tasks > 0)
@@ -2182,7 +2180,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync ||
-        t->type == task_type_timestep_dark_matter_limiter ||
+        /*t->type == task_type_timestep_dark_matter_limiter ||*/
         t->type == task_type_timestep_dark_matter_sync ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
@@ -2196,7 +2194,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
         t->type == task_type_bh_out || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
-        t->subtype == task_subtype_dark_matter_limiter ||
+        /*t->subtype == task_subtype_dark_matter_limiter ||*/
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_sidm ||
         t->subtype == task_subtype_stars_feedback ||
