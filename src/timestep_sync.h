@@ -51,9 +51,17 @@ INLINE static void timestep_process_sync_dmpart(struct dmpart *p, const struct e
   if (p->time_bin <= max_active_bin) {
       return;
   }
-
+    
   /* Did this particle had a SIDM kick? if so, resolve and skip kick2 */
   sidm_kick_to_dmpart(p);
+    
+#ifdef SWIFT_DEBUG_CHECKS
+  /* With SIDM kick particle has been kicked to current time */
+  const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_end = ti_current;
+  p->ti_kick = ti_end;
+#endif
+
     
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */

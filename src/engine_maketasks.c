@@ -1843,7 +1843,6 @@ void engine_link_gravity_tasks(struct engine *e) {
       /* init  --/    */
       scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
       scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-      /*scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sidm_kick, t);*/
       scheduler_addunlock(sched, t, ci_parent->grav.down_in);
     }
 
@@ -1868,7 +1867,6 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* init  --/    */
         scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-        /*scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sidm_kick, t);*/
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
       if (cj_nodeID == nodeID) {
@@ -1878,7 +1876,6 @@ void engine_link_gravity_tasks(struct engine *e) {
         if (ci_parent != cj_parent) { /* Avoid double unlock */
           scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          /*scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.sidm_kick, t);*/
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
       }
@@ -1894,7 +1891,6 @@ void engine_link_gravity_tasks(struct engine *e) {
       /* init  --/    */
       scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
       scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-      /*scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sidm_kick, t);*/
       scheduler_addunlock(sched, t, ci_parent->grav.down_in);
     }
 
@@ -1920,7 +1916,6 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* init  --/    */
         scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-        /*scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sidm_kick, t);*/
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
       if (cj_nodeID == nodeID) {
@@ -1931,7 +1926,6 @@ void engine_link_gravity_tasks(struct engine *e) {
             
           scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          /*scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.sidm_kick, t);*/
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
       }
@@ -1944,7 +1938,6 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         /* init -----> gravity --> grav_down */
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-        /*scheduler_addunlock(sched, ci->dark_matter.super->dark_matter.sidm_kick, t);*/
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
       if (cj_nodeID == nodeID) {
@@ -1952,7 +1945,6 @@ void engine_link_gravity_tasks(struct engine *e) {
         /* init -----> gravity --> grav_down */
         if (ci_parent != cj_parent) { /* Avoid double unlock */
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          /*scheduler_addunlock(sched, cj->dark_matter.super->dark_matter.sidm_kick, t);*/
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
       }

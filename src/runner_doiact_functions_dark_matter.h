@@ -71,10 +71,12 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
             
 #ifdef SWIFT_DEBUG_CHECKS
             /* Check that particles have been drifted to the current time */
+            if (pi->ti_drift != e->ti_current)
+                error("Particle pi not drifted to current time");
             if (pj->ti_drift != e->ti_current)
-                error("DM Particle pj not drifted to current time");
+                error("Particle pj not drifted to current time");
 #endif
-            
+
             /* Compute the pairwise distance. */
             float r2 = 0.0f;
             float dx[3];
@@ -264,6 +266,13 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
+#ifdef SWIFT_DEBUG_CHECKS
+            /* Check that particles have been drifted to the current time */
+            if (pi->ti_drift != e->ti_current)
+                error("Particle pi not drifted to current time");
+            if (pj->ti_drift != e->ti_current)
+                error("Particle pj not drifted to current time");
+#endif
             /* Hit or miss? */
             if (r2 > 0.f && r2 < hig2) {
                 
@@ -335,10 +344,12 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
                 
 #ifdef SWIFT_DEBUG_CHECKS
                 /* Check that particles have been drifted to the current time */
+                if (pi->ti_drift != e->ti_current)
+                    error("Particle pi not drifted to current time");
                 if (pj->ti_drift != e->ti_current)
                     error("Particle pj not drifted to current time");
 #endif
-                
+
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
                 float dx[3];
@@ -381,6 +392,14 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
                 }
                 const int doj = (dmpart_is_active(pj, e)) && (r2 < hj * hj * dm_kernel_gamma2);
                 const int doi = (r2 < hig2);
+                
+#ifdef SWIFT_DEBUG_CHECKS
+                /* Check that particles have been drifted to the current time */
+                if (pi->ti_drift != e->ti_current)
+                    error("Particle pi not drifted to current time");
+                if (pj->ti_drift != e->ti_current)
+                    error("Particle pj not drifted to current time");
+#endif
                 
                 /* Hit or miss? */
                 if (doi || doj) {
@@ -468,10 +487,12 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
             
 #ifdef SWIFT_DEBUG_CHECKS
             /* Check that particles have been drifted to the current time */
+            if (pi->ti_drift != e->ti_current)
+                error("Particle pi not drifted to current time");
             if (pj->ti_drift != e->ti_current)
-                error("DM Particle pj not drifted to current time");
+                error("Particle pj not drifted to current time");
 #endif
-            
+
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                 (float)(pj->x[1] - c->loc[1]),
@@ -605,6 +626,14 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
+#ifdef SWIFT_DEBUG_CHECKS
+            /* Check that particles have been drifted to the current time */
+            if (pi->ti_drift != e->ti_current)
+                error("Particle pi not drifted to current time");
+            if (pj->ti_drift != e->ti_current)
+                error("Particle pj not drifted to current time");
+#endif
+
             /* Hit or miss? */
             if (r2 < hig2 && pi_active) {
                 
@@ -701,6 +730,14 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
+#ifdef SWIFT_DEBUG_CHECKS
+            /* Check that particles have been drifted to the current time */
+            if (pi->ti_drift != e->ti_current)
+                error("Particle pi not drifted to current time");
+            if (pj->ti_drift != e->ti_current)
+                error("Particle pj not drifted to current time");
+#endif
+
             /* Hit or miss? */
             if (r2 < hig2 && pi_active) {
                 
