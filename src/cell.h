@@ -1325,12 +1325,12 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
       }
       c->cellID = -last_cell_id;
       atomic_inc(&last_cell_id);
+    } else {
+      int i = (int)(c->loc[0] / width[0]);
+      int j = (int)(c->loc[1] / width[1]);
+      int k = (int)(c->loc[2] / width[2]);
+      c->cellID = -(long long)(cell_getid(cdim, i, j, k) + 1);
     }
-
-    int i = (int)(c->loc[0] / width[0]);
-    int j = (int)(c->loc[1] / width[1]);
-    int k = (int)(c->loc[2] / width[2]);
-    c->cellID = -(long long)(cell_getid(cdim, i, j, k) + 1);
   }
 #endif
 }
