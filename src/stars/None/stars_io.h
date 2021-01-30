@@ -25,11 +25,17 @@
 INLINE static void convert_spart_pos(const struct engine *e,
                                      const struct spart *sp, double *ret) {
   error("Empty implementation!");
+  ret[0] = 0.;
+  ret[1] = 0.;
+  ret[2] = 0.;
 }
 
 INLINE static void convert_spart_vel(const struct engine *e,
                                      const struct spart *sp, float *ret) {
   error("Empty implementation!");
+  ret[0] = 0.f;
+  ret[1] = 0.f;
+  ret[2] = 0.f;
 }
 
 /**
