@@ -860,18 +860,18 @@ void space_allocate_extras(struct space *s, int verbose) {
   const size_t expected_num_extra_dmparts = nr_local_cells * space_extra_dmparts;
 
   if (verbose) {
-    message("Currently have %zd/%zd/%zd/%zd/%zd real particles.",
+    message("Currently have %zd/%zd/%zd/%zd/%zd/%zd real particles.",
             nr_actual_parts, nr_actual_gparts, nr_actual_sinks,
-            nr_actual_sparts, nr_actual_bparts);
-    message("Currently have %zd/%zd/%zd/%zd/%zd spaces for extra particles.",
+            nr_actual_sparts, nr_actual_bparts, nr_actual_dmparts);
+    message("Currently have %zd/%zd/%zd/%zd/%zd/%zd spaces for extra particles.",
             s->nr_extra_parts, s->nr_extra_gparts, s->nr_extra_sinks,
-            s->nr_extra_sparts, s->nr_extra_bparts);
+            s->nr_extra_sparts, s->nr_extra_bparts, s->nr_extra_dmparts);
     message(
-        "Requesting space for future %zd/%zd/%zd/%zd/%zd "
-        "part/gpart/sinks/sparts/bparts.",
+        "Requesting space for future %zd/%zd/%zd/%zd/%zd/%zd "
+        "part/gpart/sinks/sparts/bparts/dmparts.",
         expected_num_extra_parts, expected_num_extra_gparts,
         expected_num_extra_sinks, expected_num_extra_sparts,
-        expected_num_extra_bparts);
+        expected_num_extra_bparts, expected_num_extra_dmparts);
   }
 
   if (expected_num_extra_parts < s->nr_extra_parts)
@@ -1709,6 +1709,24 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     }
   }
     
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that all bparts are in the correct place. */
+    size_t check_count_inhibited_bpart = 0;
+    for (size_t k = 0; k < nr_bparts; k++) {
+        if (b_index[k] == -1 || cells_top[b_index[k]].nodeID != local_nodeID) {
+            error("Failed to move all non-local bparts to send list");
+        }
+    }
+    for (size_t k = nr_bparts; k < s->nr_bparts; k++) {
+        if (b_index[k] != -1 && cells_top[b_index[k]].nodeID == local_nodeID) {
+            error("Failed to remove local bparts from send list");
+        }
+        if (b_index[k] == -1) ++check_count_inhibited_bpart;
+    }
+    if (check_count_inhibited_bpart != count_inhibited_bparts)
+        error("Counts of inhibited b-particles do not match!");
+#endif /* SWIFT_DEBUG_CHECKS */
+    
     /* Move non-local dmparts and inhibited dmparts to the end of the list. */
     if ((with_dithering || !repartitioned) &&
         (s->e->nr_nodes > 1 || count_inhibited_dmparts > 0)) {
@@ -1744,20 +1762,20 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all bparts are in the correct place. */
-  size_t check_count_inhibited_bpart = 0;
-  for (size_t k = 0; k < nr_bparts; k++) {
-    if (b_index[k] == -1 || cells_top[b_index[k]].nodeID != local_nodeID) {
-      error("Failed to move all non-local bparts to send list");
+  size_t check_count_inhibited_dmpart = 0;
+  for (size_t k = 0; k < nr_dmparts; k++) {
+    if (dm_index[k] == -1 || cells_top[dm_index[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local dmparts to send list");
     }
   }
-  for (size_t k = nr_bparts; k < s->nr_bparts; k++) {
-    if (b_index[k] != -1 && cells_top[b_index[k]].nodeID == local_nodeID) {
+  for (size_t k = nr_dmparts; k < s->nr_dmparts; k++) {
+    if (dm_index[k] != -1 && cells_top[dm_index[k]].nodeID == local_nodeID) {
       error("Failed to remove local bparts from send list");
     }
-    if (b_index[k] == -1) ++check_count_inhibited_bpart;
+    if (dm_index[k] == -1) ++check_count_inhibited_dmpart;
   }
-  if (check_count_inhibited_bpart != count_inhibited_bparts)
-    error("Counts of inhibited b-particles do not match!");
+  if (check_count_inhibited_dmpart != count_inhibited_dmparts)
+    error("Counts of inhibited dm-particles do not match!");
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sinks and inhibited sinks to the end of the list. */
@@ -2535,6 +2553,19 @@ void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
   }
 }
 
+void space_reorder_extra_dmparts_mapper(void *map_data, int num_cells,
+                                       void *extra_data) {
+    
+    int *local_cells = (int *)map_data;
+    struct space *s = (struct space *)extra_data;
+    struct cell *cells_top = s->cells_top;
+    
+    for (int ind = 0; ind < num_cells; ind++) {
+        struct cell *c = &cells_top[local_cells[ind]];
+        cell_reorder_extra_dmparts(c, c->dark_matter.parts - s->dmparts);
+    }
+}
+
 /**
  * @brief Re-orders the particles in each cell such that the extra particles
  * for on-the-fly creation are located at the end of their respective cells.
@@ -2565,13 +2596,15 @@ void space_reorder_extras(struct space *s, int verbose) {
                    s->local_cells_top, s->nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
+  /* Re-order the dark matter particles */
+  if (space_extra_dmparts)
+    threadpool_map(&s->e->threadpool, space_reorder_extra_dmparts_mapper,
+                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   threadpool_auto_chunk_size, s);
+
   /* Re-order the black hole particles */
   if (space_extra_bparts)
     error("Missing implementation of BH extra reordering");
-
-    /* Re-order the dark matter particles */
-    if (space_extra_dmparts)
-        error("Missing implementation of dark matter extra reordering");
 
   /* Re-order the sink particles */
   if (space_extra_sinks)
@@ -6398,6 +6431,8 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_parts", space_extra_parts_default);
   space_extra_sparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+  space_extra_dmparts = parser_get_opt_param_int(
+      params, "Scheduler:cell_extra_dmparts", space_extra_dmparts_default);
   space_extra_gparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
   space_extra_bparts = parser_get_opt_param_int(

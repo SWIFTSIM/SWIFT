@@ -448,7 +448,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 sp = cell_convert_part_to_spart(e, c, p, xp);
               }
             } else {
-              cell_convert_part_to_gpart(e, c, p, xp);
+              /*cell_convert_part_to_gpart(e, c, p, xp);*/
+              cell_convert_part_to_dmpart(e, c, p, xp);
             }
 
             /* Did we get a star? (Or did we run out of spare ones?) */

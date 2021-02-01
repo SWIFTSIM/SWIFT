@@ -1837,24 +1837,26 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Report the number of particles and memory */
   if (e->verbose)
     message(
-        "Space has memory for %zd/%zd/%zd/%zd part/gpart/spart/bpart "
-        "(%zd/%zd/%zd/%zd MB)",
+        "Space has memory for %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/dmpart "
+        "(%zd/%zd/%zd/%zd/%zd MB)",
         e->s->size_parts, e->s->size_gparts, e->s->size_sparts,
-        e->s->size_bparts,
+        e->s->size_bparts, e->s->size_dmparts,
         e->s->size_parts * sizeof(struct part) / (1024 * 1024),
         e->s->size_gparts * sizeof(struct gpart) / (1024 * 1024),
         e->s->size_sparts * sizeof(struct spart) / (1024 * 1024),
-        e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024));
+        e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024),
+        e->s->size_dmparts * sizeof(struct dmpart) / (1024 * 1024));
 
   if (e->verbose)
     message(
-        "Space holds %zd/%zd/%zd/%zd part/gpart/spart/bpart (fracs: "
-        "%f/%f/%f/%f)",
-        e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts, e->s->nr_bparts,
+        "Space holds %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/dmpart (fracs: "
+        "%f/%f/%f/%f/%f)",
+        e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts, e->s->nr_bparts, e->s->nr_dmparts,
         e->s->nr_parts ? e->s->nr_parts / ((double)e->s->size_parts) : 0.,
         e->s->nr_gparts ? e->s->nr_gparts / ((double)e->s->size_gparts) : 0.,
         e->s->nr_sparts ? e->s->nr_sparts / ((double)e->s->size_sparts) : 0.,
-        e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.);
+        e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.,
+        e->s->nr_dmparts ? e->s->nr_dmparts / ((double)e->s->size_dmparts) : 0.);
 
   const ticks tic2 = getticks();
 
@@ -1919,7 +1921,6 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Let's check that what we received makes sense */
   if (e->policy & engine_policy_self_gravity) {
     long long counter = 0;

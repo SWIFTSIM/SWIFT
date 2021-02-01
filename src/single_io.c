@@ -808,8 +808,8 @@ void write_output_single(struct engine* e,
 
   /* Number of particles that we will write
    * Recall that background particles are never inhibited and have no extras */
-  const size_t Ntot_written =
-      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  /*const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;*/
   const size_t Ngas_written =
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
   const size_t Nstars_written =
@@ -818,10 +818,12 @@ void write_output_single(struct engine* e,
       e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
+  /*const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;*/
   const size_t Ndm_written =
-      Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
+      e->s->nr_dmparts - e->s->nr_inhibited_dmparts - e->s->nr_extra_dmparts;
+  /*const size_t Ndm_written =
+      Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;*/
 
   /* Format things in a Gadget-friendly array */
   long long N_total[swift_type_count] = {
