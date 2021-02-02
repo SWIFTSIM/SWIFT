@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
  * @param time The current time (in internal units).
  * @param with_cosmology Are we running with cosmological integration?
  */
-__attribute__((always_inline)) INLINE static float stars_compute_age(
+__attribute__((always_inline)) INLINE static double stars_compute_age(
     const struct spart* sp, const struct cosmology* cosmo, double time,
     const int with_cosmology) {
 
