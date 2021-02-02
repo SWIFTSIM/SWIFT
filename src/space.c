@@ -2518,6 +2518,16 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_subsize_self_grav");
   restart_read_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream, NULL,
                       "space_subdepth_diff_grav");
+  restart_read_blocks(&space_extra_parts, sizeof(int), 1, stream, NULL,
+                      "space_extra_parts");
+  restart_read_blocks(&space_extra_gparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_gparts");
+  restart_read_blocks(&space_extra_sinks, sizeof(int), 1, stream, NULL,
+                      "space_extra_sinks");
+  restart_read_blocks(&space_extra_sparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_sparts");
+  restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_bparts");
   restart_read_blocks(&space_recurse_size_self_hydro, sizeof(int), 1, stream,
                       NULL, "space_recurse_size_self_hydro");
   restart_read_blocks(&space_recurse_size_pair_hydro, sizeof(int), 1, stream,
@@ -2534,16 +2544,6 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       NULL, "space_recurse_size_self_sinks");
   restart_read_blocks(&space_recurse_size_pair_sinks, sizeof(int), 1, stream,
                       NULL, "space_recurse_size_pair_sinks");
-  restart_read_blocks(&space_extra_parts, sizeof(int), 1, stream, NULL,
-                      "space_extra_parts");
-  restart_read_blocks(&space_extra_gparts, sizeof(int), 1, stream, NULL,
-                      "space_extra_gparts");
-  restart_read_blocks(&space_extra_sinks, sizeof(int), 1, stream, NULL,
-                      "space_extra_sinks");
-  restart_read_blocks(&space_extra_sparts, sizeof(int), 1, stream, NULL,
-                      "space_extra_sparts");
-  restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
-                      "space_extra_bparts");
   restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                       NULL, "space_expected_max_nr_strays");
   restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
