@@ -174,7 +174,17 @@ void make_healpix_map(struct engine *e) {
     /* Write the data */
     H5Dwrite(dset_id, H5T_NATIVE_DOUBLE, space_id, space_id, H5P_DEFAULT, map); 
     
+    /* Record resolution used */
+    hid_t attr_space_id = H5Screate(H5S_SCALAR); 
+    hid_t attr_id = H5Acreate2(dset_id, "NSIDE", H5T_NATIVE_INT, attr_space_id, 
+			       H5P_DEFAULT, H5P_DEFAULT);
+    if(attr_id<0)error("Unable to create attribute for healpix map");
+    int nside = NSIDE;
+    H5Awrite(attr_id, H5T_NATIVE_INT, &nside); 
+    
     /* Tidy up */
+    H5Aclose(attr_id);
+    H5Sclose(attr_space_id);
     H5Dclose(dset_id);
     H5Sclose(space_id);
     H5Fclose(file_id);
