@@ -38,6 +38,7 @@
 #include "parallel_io.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "healpix_map.h"
 
 #include <stdio.h>
 
@@ -406,6 +407,10 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
+#ifdef HAVE_CHEALPIX
+	/* Make a HEALPix map at each snapshot time */
+	make_healpix_map(e);
+#endif
         /* Dump... */
         engine_dump_snapshot(e);
 
