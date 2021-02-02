@@ -316,7 +316,7 @@ void space_regrid(struct space *s, int verbose) {
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-          cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->width);
+          cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
 #endif
         }
 
