@@ -102,7 +102,7 @@ INLINE static double feedback_get_enrichment_timestep(
     return cosmology_get_delta_time_from_scale_factors(
         cosmo, (double)sp->last_enrichment_time, cosmo->a);
   } else {
-    return time - sp->last_enrichment_time;
+    return time - (double)sp->last_enrichment_time;
   }
 }
 
