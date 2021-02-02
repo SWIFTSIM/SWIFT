@@ -97,7 +97,8 @@ int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
 
 /*! Counter for cell IDs (when debugging + max vals for unique IDs exceeded) */
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-long long last_cell_id;
+unsigned long long last_cell_id;
+unsigned long long last_leaf_cell_id;
 #endif
 
 /**
@@ -1343,7 +1344,8 @@ void space_init(struct space *s, struct swift_params *params,
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-  last_cell_id = 1;
+  last_cell_id = 1ULL;
+  last_leaf_cell_id = 1ULL;
 #endif
 
   /* Do we want any spare particles for on the fly creation? */
