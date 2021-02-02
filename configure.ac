@@ -733,47 +733,8 @@ AC_SUBST([GSL_LIBS])
 AC_SUBST([GSL_INCS])
 AM_CONDITIONAL([HAVEGSL],[test -n "$GSL_LIBS"])
 
-
-# Check for HEALPIX. We test for this in the standard directories by default,
-# and only disable if using --with-healpix=no or --without-healpix. When a value
-# is given HEALPIX must be found.
-have_chealpix="no"
-AC_ARG_WITH([chealpix],
-    [AS_HELP_STRING([--with-chealpix=PATH],
-       [root directory where HEALPix C library is installed @<:@yes/no@:>@]
-    )],
-    [with_chealpix="$withval"],
-    [with_chealpix="test"]
-)
-if test "x$with_chealpix" != "xno"; then
-   if test "x$with_chealpix" != "xyes" -a "x$with_chealpix" != "xtest" -a "x$with_chealpix" != "x"; then
-      CHEALPIX_LIBS="-L$with_chealpix/lib -lchealpix"
-      CHEALPIX_INCS="-I$with_chealpix/include"
-   else
-      CHEALPIX_LIBS="-lchealpix"
-      CHEALPIX_INCS=""
-   fi
-   #  HEALPIX is not specified, so just check if we have it.
-   if test "x$with_chealpix" = "xtest"; then
-      AC_CHECK_LIB([chealpix],[ang2vec],[have_chealpix="yes"],[have_chealpix="no"],$CHEALPIX_LIBS)
-      if test "x$have_chealpix" != "xno"; then
-         AC_DEFINE([HAVE_LIBCHEALPIX],1,[The HEALPIX C library appears to be present.])
-      fi
-   else
-      AC_CHECK_LIB([chealpix],[ang2vec],
-         AC_DEFINE([HAVE_LIBCHEALPIX],1,[The HEALPIX C library appears to be present.]),
-         AC_MSG_ERROR(something is wrong with the HEALPIX library!), $CHEALPIX_LIBS)
-      have_chealpix="yes"
-   fi
-   if test "$have_chealpix" = "no"; then
-      CHEALPIX_LIBS=""
-      CHEALPIX_INCS=""
-   fi
-fi
-AC_SUBST([CHEALPIX_LIBS])
-AC_SUBST([CHEALPIX_INCS])
-AM_CONDITIONAL([HAVECHEALPIX],[test -n "$CHEALPIX_LIBS"])
-
+# Check for HEALPix. AC_SUBSTs CHEALPIX_LIBS and CHEALPIX_CFLAGS and #defines HAVE_CHEALPIX
+GV_FIND_LIBRARY([chealpix], [CHEALPIX], [chealpix], [chealpix], [ang2vec])
 
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
