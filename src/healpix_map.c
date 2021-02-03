@@ -156,7 +156,7 @@ void make_healpix_map(struct engine *e) {
     /* Determine name of the output file */
     const int snapnum = e->snapshot_output_count;
     char fname[100];
-    sprintf(fname, "mass_map_%04d.fits", snapnum);
+    sprintf(fname, "mass_map_%04d.hdf5", snapnum);
 
     /* Create the file */
     hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
