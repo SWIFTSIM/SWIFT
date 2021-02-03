@@ -310,8 +310,8 @@ struct space {
   /*! Initial value of the smoothing length read from the parameter file */
   float initial_bpart_h;
     
-    /*! Initial value of the smoothing length read from the parameter file */
-    float initial_dmpart_h;
+  /*! Initial value of the smoothing length read from the parameter file */
+  float initial_dmpart_h;
 
   /*! General-purpose lock for this space. */
   swift_lock_type lock;

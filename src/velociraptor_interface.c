@@ -239,6 +239,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
   const struct xpart *xparts = s->xparts;
   const struct spart *sparts = s->sparts;
   const struct bpart *bparts = s->bparts;
+  const struct dmpart *dmparts = s->dmparts;
 
   /* Handle on the physics modules */
   const struct cosmology *cosmo = e->cosmology;
@@ -325,7 +326,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
 
       case swift_type_dark_matter:
 
-        swift_parts[i].id = gparts[i].id_or_neg_offset;
+        swift_parts[i].id = dmparts[-dmparts[i].id_or_neg_offset].id_or_neg_offset;
         swift_parts[i].u = 0.f;
         swift_parts[i].T = 0.f;
         break;
@@ -448,6 +449,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_dmparts = s->nr_dmparts;
   const int nr_cells = s->nr_cells;
   const struct cell *cells_top = s->cells_top;
 

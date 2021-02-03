@@ -1067,11 +1067,10 @@ void write_output_single(struct engine* e,
           darkmatter_write_dmparts(dmparts, list, &num_fields);
           num_fields += sidm_write_dmparts(dmparts, list + num_fields);
           if (with_fof) {
-            num_fields += fof_write_gparts(gparts, list + num_fields);
+            num_fields += fof_write_dmparts(dmparts, list + num_fields);
           }
           if (with_stf) {
-            num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
-                                                    list + num_fields);
+            num_fields += velociraptor_write_dmparts(dmparts, list + num_fields);
           }
         } else {
 
@@ -1084,28 +1083,23 @@ void write_output_single(struct engine* e,
             error("Error while allocating temporary memory for dmparts");
             
           if (with_stf) {
-            if (swift_memalign(
-                    "dmpart_group_written", (void**)&gpart_group_data_written,
-                    dmpart_align,
-                    Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
-              error(
-                  "Error while allocating temporary memory for dmparts STF "
+            if (swift_memalign("dmparts_written", (void**)&dmparts_written,
+                    dmpart_align, Ndm_written * sizeof(struct dmpart)) != 0)
+              error("Error while allocating temporary memory for dmparts STF "
                   "data");
           }
 
           /* Collect the non-inhibited DM particles from gpart */
-          io_collect_dmparts_to_write(dmparts, dmparts_written, Ndm,
-                                        Ndm_written);
+          io_collect_dmparts_to_write(dmparts, dmparts_written, Ndm, Ndm_written);
             
           /* Select the fields to write */
           darkmatter_write_dmparts(dmparts_written, list, &num_fields);
           num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);
           if (with_fof) {
-            num_fields += fof_write_gparts(gparts_written, list + num_fields);
+            num_fields += fof_write_dmparts(dmparts_written, list + num_fields);
           }
           if (with_stf) {
-            num_fields += velociraptor_write_gparts(gpart_group_data_written,
-                                                    list + num_fields);
+            num_fields += velociraptor_write_dmparts(dmparts_written, list + num_fields);
           }
         }
       } break;
@@ -1138,7 +1132,6 @@ void write_output_single(struct engine* e,
 
         /* Select the fields to write */
         darkmatter_write_particles(gparts_written, list, &num_fields);
-        /*num_fields += sidm_write_dmparts(dmparts_written, list + num_fields);*/
         if (with_fof) {
           num_fields += fof_write_gparts(gparts_written, list + num_fields);
         }
@@ -1304,12 +1297,11 @@ void write_output_single(struct engine* e,
     if (parts_written) swift_free("parts_written", parts_written);
     if (xparts_written) swift_free("xparts_written", xparts_written);
     if (gparts_written) swift_free("gparts_written", gparts_written);
-    if (gpart_group_data_written)
-      swift_free("gpart_group_written", gpart_group_data_written);
+    if (gpart_group_data_written) swift_free("gpart_group_written", gpart_group_data_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
     if (sinks_written) swift_free("sinks_written", sinks_written);
-    if (dmparts_written) swift_free("dmparts_written", bparts_written);
+    if (dmparts_written) swift_free("dmparts_written", dmparts_written);
 
     /* Close particle group */
     H5Gclose(h_grp);
