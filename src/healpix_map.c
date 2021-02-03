@@ -118,7 +118,7 @@ void make_healpix_map(struct engine *e) {
     /* Find radius */
     double r2 = 0.0;
     for(int j=0; j<3; j+=1)
-      r2 += (pos[j]-centre[j])*(pos[j]-centre[j]);
+      r2 += pos[j]*pos[j];
 
     /* Check particle is in shell */
     if(r2 > rmin2 && r2 < rmax2) {
