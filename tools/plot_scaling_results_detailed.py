@@ -17,24 +17,7 @@ import matplotlib.pyplot as plt
 
 from timed_functions import labels
 
-params = {
-    "axes.labelsize": 14,
-    "axes.titlesize": 18,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 14,
-    "ytick.labelsize": 14,
-    "text.usetex": True,
-    "figure.subplot.left": 0.055,
-    "figure.subplot.right": 0.98,
-    "figure.subplot.bottom": 0.05,
-    "figure.subplot.top": 0.95,
-    "figure.subplot.wspace": 0.14,
-    "figure.subplot.hspace": 0.12,
-    "lines.markersize": 6,
-    "lines.linewidth": 2.0,
-}
-plt.rcParams.update(params)
+min_fraction = 2e-2
 
 legendTitle = " "
 
@@ -65,13 +48,6 @@ colors = [
     hexcols[7],
 ]
 
-linestyle = [
-    "-",
-    "--",
-    "-.",
-    ":"
-]
-
 # Work out how many data series there are
 if len(sys.argv) == 1:
     print("Please specify an input file in the arguments.")
@@ -91,15 +67,16 @@ def parse_files():
 
     for i, filename in enumerate(filenames):  # Loop over each file
         print("Files read %.1f%%\r" % (100 * i / n_files), end="")
-        # Open stdout file
         with open(filename, "r") as f:
 
             # Search the different phrases
             for line in f:
 
                 # Extract the number of threads
-                if re.search("threads / rank and", line):
+                if "threads / rank and" in line:
                     all_numbers = re.findall(r"[+-]?((\d+\.?\d*)|(\.\d+))", line)
+                    if len(all_numbers) != 12:
+                        raise Exception("Failed to read the following line", line)
                     rank = int(all_numbers[5][0])
                     thread = int(all_numbers[6][0])
                     threads[i] = rank * thread
@@ -119,6 +96,13 @@ def parse_files():
                         r"^\[[0-9]*[.][0-9]+\][ ]", line):
                     lastline = line
 
+    return threads, total_time
+
+
+def cleanup_data(threads, total_time):
+    n_labels = len(labels)
+    n_files = len(filenames)
+
     # Remove the functions not found
     time = np.sum(total_time, axis=1)
     ind = time == 0.
@@ -127,6 +111,29 @@ def parse_files():
         if ind[i]:
             del labels[i]
     n_labels = len(labels)
+
+    # Get the elements representing a large fraction of the time
+    frac = total_time / np.sum(total_time, axis=0)
+    ind = np.sum(frac > min_fraction, axis=1)
+    ind = ind > 0
+    print("Grouping: ", np.array(labels)[~ind, 0])
+
+    # Group the previous elements together
+    remaining = np.zeros((1, n_files))
+    for i in range(n_labels)[::-1]:
+        if not ind[i]:
+            remaining += total_time[i, :]
+            del labels[i]
+
+    remaining_frac = remaining / np.sum(total_time, axis=0)
+    total_time = np.delete(total_time, ~ind, axis=0)
+    n_labels = len(labels)
+
+    # Add the other group if required
+    if np.sum(remaining_frac > 0.5 * min_fraction) > 0:
+        labels.append(("Others", -1))
+        total_time = np.append(total_time, remaining, axis=0)
+        n_labels = len(labels)
 
     # Sort according to the threads number
     ind = np.argsort(threads)
@@ -146,6 +153,7 @@ def parse_files():
     return threads, total_time, speed_up, parallel_eff
 
 
+
 def plot_results(threads, total_time, speed_up, parallel_eff):
     n_files = len(filenames)
     n_labels = len(labels)
@@ -159,45 +167,42 @@ def plot_results(threads, total_time, speed_up, parallel_eff):
     # Plot speed up
     speed_up_plot.plot(threads, threads, linestyle="--", lw=1.5, color="0.2")
     for i in range(n_labels):
-        i_line = i % len(linestyle)
         i_color = i % len(colors)
-        speed_up_plot.plot(threads, speed_up[i, :], c=colors[i_color],
-                           linestyle=linestyle[i_line])
+        speed_up_plot.plot(threads, speed_up[i, :], c=colors[i_color])
 
-    speed_up_plot.set_ylabel("${\\rm Speed\\textendash up}$", labelpad=0.0)
-    speed_up_plot.set_xlabel("${\\rm Threads}$", labelpad=0.0)
+    speed_up_plot.set_ylabel("Speed up", labelpad=0.0)
+    speed_up_plot.set_xlabel("Threads", labelpad=0.0)
     speed_up_plot.set_xlim([0.7, threads.max() + 1])
     speed_up_plot.set_ylim([0.7, threads.max() + 1])
 
     # Plot parallel efficiency
     for i in range(n_labels):
-        i_line = i % len(linestyle)
         i_color = i % len(colors)
-        parallel_eff_plot.plot(threads, parallel_eff[i, :], c=colors[i_color],
-                               linestyle=linestyle[i_line])
+        parallel_eff_plot.plot(threads, parallel_eff[i, :], c=colors[i_color])
 
     parallel_eff_plot.set_xscale("log")
-    parallel_eff_plot.set_ylabel("${\\rm Parallel~efficiency}$", labelpad=0.0)
-    parallel_eff_plot.set_xlabel("${\\rm Threads}$", labelpad=0.0)
+    parallel_eff_plot.set_ylabel("Parallel efficiency", labelpad=0.0)
+    parallel_eff_plot.set_xlabel("Threads", labelpad=0.0)
     parallel_eff_plot.set_ylim([0, 1.1])
     parallel_eff_plot.set_xlim([0.9, 10 ** (np.floor(np.log10(threads.max())) + 0.5)])
 
     # Plot time to solution
     pts = np.array([1, 10 ** np.floor(np.log10(threads.max()) + 1)])
-    total_time_plot.loglog(pts, 1. / pts, "k--", lw=1.0, color="0.2")
     for i in range(n_labels):
-        i_line = i % len(linestyle)
         i_color = i % len(colors)
-        label = labels[i][0].replace("_", "\_")
+        label = labels[i][0]
+        # Data
         total_time_plot.loglog(
-            threads, total_time[i, :], c=colors[i_color],
-            linestyle=linestyle[i_line], label=label)
+            threads, total_time[i, :], c=colors[i_color], label=label)
+        # Perfect scaling
+        total_time_plot.loglog(pts, total_time[i, 0] / pts, "--", c=colors[i_color],
+                               lw=1.0)
 
     y_min = 10 ** np.floor(np.log10(total_time.min() * 0.6))
     y_max = 1.0 * 10 ** np.floor(np.log10(total_time.max() * 1.5) + 1)
     total_time_plot.set_xscale("log")
-    total_time_plot.set_xlabel("${\\rm Threads}$", labelpad=0.0)
-    total_time_plot.set_ylabel("${\\rm Time~to~solution}$", labelpad=0.0)
+    total_time_plot.set_xlabel("Threads", labelpad=0.0)
+    total_time_plot.set_ylabel("Time to solution", labelpad=0.0)
     total_time_plot.set_xlim([0.9, 10 ** (np.floor(np.log10(threads.max())) + 0.5)])
     total_time_plot.set_ylim(y_min, y_max)
 
@@ -211,7 +216,7 @@ def plot_results(threads, total_time, speed_up, parallel_eff):
     empty_plot.axis("off")
 
     fig.suptitle(
-        "${\\rm Speed\\textendash up,~parallel~efficiency~and~time~to~solution}$",
+        "Speed up, parallel efficiency and time to solution",
         fontsize=16,
     )
 
@@ -219,7 +224,8 @@ def plot_results(threads, total_time, speed_up, parallel_eff):
 
 
 # Calculate results
-threads, total_time, speed_up, parallel_eff = parse_files()
+threads, total_time = parse_files()
+threads, total_time, speed_up, parallel_eff = cleanup_data(threads, total_time)
 
 print("Functions found: ", [l[0] for l in labels])
 
