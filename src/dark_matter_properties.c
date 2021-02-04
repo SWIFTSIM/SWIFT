@@ -42,8 +42,9 @@
 #define sidm_props_default_h_sidm FLT_MAX
 #define sidm_props_default_h_tolerance 1e-4
 #define sidm_props_default_volume_change 1.4f
-
-
+#define sidm_props_default_sigma 1.f
+#define sidm_props_default_mx 0.f
+#define sidm_props_default_mphi 0.f
 
 /**
  * @brief Initialize the global properties of the self-interacting dark matter scheme.
@@ -61,13 +62,28 @@ void sidm_props_init(struct sidm_props* sidm_props,
                      struct swift_params* params,
                      const struct cosmology* cosmo) {
     
-    /* Scattering cross section in physical units */
-    sidm_props->sigma_cgs = parser_get_param_double(params, "SIDM:sigma_cm2_g");
+    /* ------ SIDM scattering parameters ---------- */
     
+    sidm_props->with_constant_sigma = parser_get_param_int(params, "SIDM:with_constant_cross_section");
+
+    sidm_props->with_velocity_dependent_sigma = parser_get_param_int(params, "SIDM:with_velocity_dependent_cross_section");
+    
+    sidm_props->mx = parser_get_opt_param_double(params, "SIDM:mx_MeV", sidm_props_default_mx);
+    
+    sidm_props->mphi = parser_get_opt_param_double(params, "SIDM:mphi_MeV", sidm_props_default_mphi);
+
+    /* Scattering cross section in physical units */
+    sidm_props->sigma_cgs = parser_get_opt_param_double(params, "SIDM:sigma_cm2_g", sidm_props_default_sigma);
+
     /* Scattering cross section in internal units */
     sidm_props->sigma = sidm_props->sigma_cgs * units_cgs_conversion_factor(us, UNIT_CONV_MASS);
     sidm_props->sigma /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
     sidm_props->sigma /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+    
+    sidm_props->with_isotropic_scattering = parser_get_param_int(params, "SIDM:with_isotropic_scattering");
+
+    sidm_props->with_anisotropic_scattering = parser_get_param_int(params, "SIDM:with_anisotropic_scattering");
+
 
     /* ------ Smoothing lengths parameters ---------- */
     
@@ -106,8 +122,7 @@ void sidm_props_init(struct sidm_props* sidm_props,
     /* ------ Neighbour number definition ------------ */
     
     /* Non-conventional neighbour number definition */
-    sidm_props->use_mass_weighted_num_ngb =
-    parser_get_opt_param_int(params, "SIDM:use_mass_weighted_num_ngb", 0);
+    sidm_props->use_mass_weighted_num_ngb = parser_get_opt_param_int(params, "SIDM:use_mass_weighted_num_ngb", 0);
     
     /* ------ Time integration parameters ------------ */
     
@@ -123,9 +138,12 @@ void sidm_props_init(struct sidm_props* sidm_props,
  */
 void sidm_props_print(struct sidm_props *sidm_props) {
     
-    /* Now SPH */
-    message("SIDM scheme: Isotropic with constant cross section");
-    
+    /* Now describe SIDM model */
+    if (sidm_props->with_constant_sigma) message("Running SIDM scheme with constant cross section");
+    if (sidm_props->with_velocity_dependent_sigma)  message("Running SIDM scheme with velocity-dependent cross section");
+    if (sidm_props->with_isotropic_scattering) message("and isotropic scattering.");
+    if (sidm_props->with_anisotropic_scattering) message("and anisotropic scattering.");
+
     message("SIDM kernel: %s with eta=%f (%.2f neighbours).", dm_kernel_name,
             sidm_props->eta_neighbours, sidm_props->target_neighbours);
     

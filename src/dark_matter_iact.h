@@ -28,6 +28,7 @@
 #include "kernel_dark_matter.h"
 #include "dark_matter_logger.h"
 #include "timestep_sync_part.h"
+#include "units.h"
 
 /**
  * @brief Integrate the kernels using the trapezoidal rule.
@@ -428,45 +429,58 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
  */
 __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict pi,
                                                                struct dmpart *restrict pj, const integertime_t ti_current,
-                                                               struct sidm_history* sidm_history, const struct cosmology* cosmo) {
+                                                               struct sidm_history* sidm_history, const struct cosmology* cosmo, const struct sidm_props* sidm_props) {
     
     /* Center of Mass Velocity of interacting particles */
     double VCM[3];
     VCM[0] = cosmo->a_inv * (pi->sidm_data.v_full[0] + pj->sidm_data.v_full[0])/2.0;
-    /*VCM[0] += cosmo->a * cosmo->H * (pi->x[0] + pj->x[0])/2.0;*/
     VCM[1] = cosmo->a_inv * (pi->sidm_data.v_full[1] + pj->sidm_data.v_full[1])/2.0;
-    /*VCM[1] += cosmo->a * cosmo->H * (pi->x[1] + pj->x[1])/2.0;*/
     VCM[2] = cosmo->a_inv * (pi->sidm_data.v_full[2] + pj->sidm_data.v_full[2])/2.0;
-    /*VCM[2] += cosmo->a * cosmo->H * (pi->x[2] + pj->x[2])/2.0;*/
 
     double dw[3];
     dw[0] = pi->sidm_data.v_full[0] - pj->sidm_data.v_full[0];
-    /*dw[0] += cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);*/
     dw[1] = pi->sidm_data.v_full[1] - pj->sidm_data.v_full[1];
-    /*dw[1] += cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);*/
     dw[2] = pi->sidm_data.v_full[2] - pj->sidm_data.v_full[2];
-    /*dw[2] += cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);*/
 
     double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
     double dv = cosmo->a_inv * sqrt(dv2) / 2.0;
     
-    /* Direction of kick is randomly chosen */
+    /* Direction of kick is randomly chosen or not, depends on scattering model */
+    if (sidm_props->with_isotropic_scattering) {
+        
+        /* Draw a random number between (0,1] */
+        const float u = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
+        
+        /* Calculate theta from prob. distribution */
+        const float theta = acos(1.f - 2.f*u);
+        
+        /* Random number for other angle */
+        const float rand_phi = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
+        
+        /* Transform to random number in [0, 2 pi] range */
+        const float phi = 2.f * M_PI * rand_phi;
+        
+        /* Randomly oriented unit vector */
+        float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
+    }
     
-    /* Draw a random number between (0,1] */
-    const float u = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
-    
-    /* Calculate theta from prob. distribution */
-    const float theta = acos(1.f - 2.f*u);
-    /*const float theta = M_PI * u;*/
-    
-    /* Random number for other angle */
-    const float rand_phi = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
-    
-    /* Transform to random number in [0, 2 pi] range */
-    const float phi = 2.f * M_PI * rand_phi;
-    
-    /* Randomly oriented unit vector */
-    float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
+    if (sidm_props->with_anisotropic_scattering) {
+        
+        /* Draw a random number between (0,1] */
+        const float u = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
+        
+        /* Calculate theta from prob. distribution */
+        const float theta = acos(1.f - 2.f*u);
+        
+        /* Random number for other angle */
+        const float rand_phi = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
+        
+        /* Transform to random number in [0, 2 pi] range */
+        const float phi = 2.f * M_PI * rand_phi;
+        
+        /* Not so randomly oriented unit vector */
+        float e[3] = {sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)};
+    }
     
     double energy_before, energy_after;
     double energy_prev_i = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
@@ -486,18 +500,12 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     
     /* Therefore, the code velocity kick needs to go back to comoving.. */
     pi->sidm_data.v_full[0] = cosmo->a * pi->sidm_data.v_full[0];
-    /*- cosmo->a * cosmo->a * cosmo->H * pi->x[0];*/
     pi->sidm_data.v_full[1] = cosmo->a * pi->sidm_data.v_full[1];
-    /*- cosmo->a * cosmo->a * cosmo->H * pi->x[1];*/
     pi->sidm_data.v_full[2] = cosmo->a * pi->sidm_data.v_full[2];
-    /*- cosmo->a * cosmo->a * cosmo->H * pi->x[2];*/
     
     pj->sidm_data.v_full[0] = cosmo->a * pj->sidm_data.v_full[0];
-    /*- cosmo->a * cosmo->a * cosmo->H * pj->x[0];*/
     pj->sidm_data.v_full[1] = cosmo->a * pj->sidm_data.v_full[1];
-    /*- cosmo->a * cosmo->a * cosmo->H * pj->x[1];*/
     pj->sidm_data.v_full[2] = cosmo->a * pj->sidm_data.v_full[2];
-    /*- cosmo->a * cosmo->a * cosmo->H * pj->x[2];*/
 
     /* Communicating this kick to logger */
     if (pi->sidm_data.sidm_flag > 0) {
@@ -547,6 +555,30 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
 }
 
 /**
+ * @brief Calculate velocity-dependent cross section.
+ * following the Yukawa Potential.
+ */
+INLINE static double velocity_dependent_sigma_model(float v, const struct sidm_props* sidm_props, const struct unit_system* us) {
+    
+    float alpha_x = 0.01;
+    float mx2 = sidm_props->mx * sidm_props->mx;
+    float mphi2 = sidm_props->mphi * sidm_props->mphi;
+    float mphi4 = mphi2 * mphi2;
+    float sigma0 = 4. * M_PI * alpha_x * alpha_x * mx2 / mphi4;
+    float w2 = mphi2 / mx2;
+    
+    /* Scattering cross section in physical units */
+    double sigma = sigma0 / (1. + v * v / w2);
+    
+    /* Scattering cross section in internal units */
+    sigma *= units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+    sigma /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+    sigma /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+    
+    return sigma;
+
+}
+/**
  * @brief Interaction between two dark matter particles during force loop
  * It calculates the probability of DM particles i & j of scattering within the next time step
  *
@@ -568,9 +600,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     /* Velocities of interacting particles */
     double dv[3];
-    /*dv[0] = pi->v_full[0] - pj->v_full[0] + cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);
-    dv[1] = pi->v_full[1] - pj->v_full[1] + cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);
-    dv[2] = pi->v_full[2] - pj->v_full[2] + cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);*/
     dv[0] = pi->v_full[0] - pj->v_full[0];
     dv[1] = pi->v_full[1] - pj->v_full[1];
     dv[2] = pi->v_full[2] - pj->v_full[2];
@@ -578,8 +607,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double vij = sqrt(v2) * cosmo->a_inv;
     
     /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    if (sidm_props->with_constant_sigma)
+        const double sigma = sidm_props->sigma;
     
+    if (sidm_props->with_velocity_dependent_sigma)
+        const double sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
+
     /* DM particle mass */
     const double mass_j = pj->mass;
     
@@ -608,7 +641,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
         dark_matter_log_num_events(sidm_history, 1);
         
         /* Doing SIDM kick */
-        sidm_do_kick(pi, pj, ti_current, sidm_history, cosmo);
+        sidm_do_kick(pi, pj, ti_current, sidm_history, cosmo, sidm_props);
     }
 }
 
@@ -633,9 +666,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     /* Velocities of interacting particles */
     double dv[3];
-    /*dv[0] = pi->v_full[0] - pj->v_full[0] + cosmo->a * cosmo->a * cosmo->H * (pi->x[0] - pj->x[0]);
-    dv[1] = pi->v_full[1] - pj->v_full[1] + cosmo->a * cosmo->a * cosmo->H * (pi->x[1] - pj->x[1]);
-    dv[2] = pi->v_full[2] - pj->v_full[2] + cosmo->a * cosmo->a * cosmo->H * (pi->x[2] - pj->x[2]);*/
     dv[0] = pi->v_full[0] - pj->v_full[0];
     dv[1] = pi->v_full[1] - pj->v_full[1];
     dv[2] = pi->v_full[2] - pj->v_full[2];
@@ -643,7 +673,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double vij = sqrt(v2) * cosmo->a_inv;
     
     /* Scattering cross section per unit mass (in internal units) */
-    const double sigma = sidm_props->sigma;
+    if (sidm_props->with_with_constant_sigma)
+        const double sigma = sidm_props->sigma;
+    
+    if (sidm_props->with_velocity_dependent_sigma)
+        const double sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
     
     /* DM particle mass */
     const double mass_i = pi->mass;
@@ -677,7 +711,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
 
         /* Doing SIDM kick */
-        sidm_do_kick(pi, pj, ti_current, sidm_history, cosmo);
+        sidm_do_kick(pi, pj, ti_current, sidm_history, cosmo, sidm_props);
         
         /* Log the kick */
         dark_matter_log_num_events(sidm_history, 1);

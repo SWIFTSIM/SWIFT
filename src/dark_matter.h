@@ -63,7 +63,6 @@ __attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dm
     gp->sidm_data.v_full[0] = gp->v_full[0];
     gp->sidm_data.v_full[1] = gp->v_full[1];
     gp->sidm_data.v_full[2] = gp->v_full[2];
-
 }
 
 
