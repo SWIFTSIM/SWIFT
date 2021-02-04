@@ -45,6 +45,7 @@
 #define sidm_props_default_sigma 1.f
 #define sidm_props_default_mx 0.f
 #define sidm_props_default_mphi 0.f
+#define sidm_props_default_alphax 0.01
 
 /**
  * @brief Initialize the global properties of the self-interacting dark matter scheme.
@@ -64,13 +65,17 @@ void sidm_props_init(struct sidm_props* sidm_props,
     
     /* ------ SIDM scattering parameters ---------- */
     
-    sidm_props->with_constant_sigma = parser_get_param_int(params, "SIDM:with_constant_cross_section");
+    sidm_props->with_constant_sigma = parser_get_param_int(params, "SIDM:use_constant_cross_section");
 
-    sidm_props->with_velocity_dependent_sigma = parser_get_param_int(params, "SIDM:with_velocity_dependent_cross_section");
+    sidm_props->with_velocity_dependent_sigma = parser_get_param_int(params, "SIDM:use_velocity_dependent_cross_section");
     
-    sidm_props->mx = parser_get_opt_param_double(params, "SIDM:mx_MeV", sidm_props_default_mx);
+    sidm_props->with_momentum_transfer_sigma = parser_get_param_int(params, "SIDM:use_momentum_transfer_cross_section");
+    
+    sidm_props->mx = parser_get_opt_param_double(params, "SIDM:mx_GeV", sidm_props_default_mx);
     
     sidm_props->mphi = parser_get_opt_param_double(params, "SIDM:mphi_MeV", sidm_props_default_mphi);
+
+    sidm_props->alphax = parser_get_opt_param_double(params, "SIDM:alphax", sidm_props_default_alphax);
 
     /* Scattering cross section in physical units */
     sidm_props->sigma_cgs = parser_get_opt_param_double(params, "SIDM:sigma_cm2_g", sidm_props_default_sigma);

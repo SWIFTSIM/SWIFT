@@ -47,13 +47,15 @@ struct sidm_props {
     
     /*! Are we using velocity-dependent scattering? */
     int with_velocity_dependent_sigma;
+    int with_momentum_transfer_sigma;
     
     /* If using velocity-dependent scattering, give values */
     /* for dark matter particle mass and mediator mass */
     /* (in physical units: MeV) */
     double mx;
     double mphi;
-    
+    double alphax;
+
     /*! Are we using constant scattering? */
     int with_constant_sigma;
     
