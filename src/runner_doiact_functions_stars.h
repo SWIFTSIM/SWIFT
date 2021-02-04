@@ -68,6 +68,9 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts[sid];
 
+    /* Skip inhibited particles */
+    if (spart_is_inhibited(si, e)) continue;
+
     /* Skip inactive particles */
     if (!spart_is_active(si, e)) continue;
 
@@ -175,6 +178,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
+
+    /* Skip inhibited particles */
+    if (spart_is_inhibited(si, e)) continue;
 
     /* Skip inactive particles */
     if (!spart_is_active(si, e)) continue;
@@ -309,6 +315,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       struct spart *restrict spi = &sparts_i[sort_i[pid].i];
       const float hi = spi->h;
 
+      /* Skip inhibited particles */
+      if (spart_is_inhibited(spi, e)) continue;
+
       /* Skip inactive particles */
       if (!spart_is_active(spi, e)) continue;
 
@@ -438,6 +447,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Get a hold of the jth part in cj. */
       struct spart *spj = &sparts_j[sort_j[pjd].i];
       const float hj = spj->h;
+
+      /* Skip inhibited particles */
+      if (spart_is_inhibited(spj, e)) continue;
 
       /* Skip inactive particles */
       if (!spart_is_active(spj, e)) continue;
