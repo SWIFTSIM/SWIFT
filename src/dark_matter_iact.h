@@ -447,7 +447,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
 
     double dv2 = dw[0] * dw[0] + dw[1] * dw[1] + dw[2] * dw[2];
     double dv = cosmo->a_inv * sqrt(dv2) / 2.0;
-    float e[3];
+    float e[3] = {0.f,0.f,0.f};
     
     /* Direction of kick is randomly chosen or not, depends on scattering model */
     if (sidm_props->with_isotropic_scattering) {
@@ -663,7 +663,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
     
-    double sigma;
+    double sigma = 0.;
     /* Scattering cross section per unit mass (in internal units) */
     if (sidm_props->with_constant_sigma)
         sigma = sidm_props->sigma;
@@ -733,7 +733,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
     
-    double sigma;
+    double sigma = 0.;
     /* Scattering cross section per unit mass (in internal units) */
     if (sidm_props->with_constant_sigma)
         sigma = sidm_props->sigma;
