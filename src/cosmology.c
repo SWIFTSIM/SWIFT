@@ -1230,6 +1230,9 @@ double cosmology_get_timebase(struct cosmology *c,
 
   result /= (1LL << num_bins);
 
+  /* Free the workspace */
+  gsl_integration_workspace_free(space);
+
   return result;
 
 #else
