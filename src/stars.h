@@ -44,6 +44,6 @@ struct space;
 
 void stars_exact_density_compute(struct space *s, const struct engine *e);
 void stars_exact_density_check(struct space *s, const struct engine *e,
-                               const float rel_tol);
+                               const double rel_tol);
 
 #endif /* SWIFT_STARS_H */
