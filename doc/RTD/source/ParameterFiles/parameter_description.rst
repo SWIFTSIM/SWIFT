@@ -909,15 +909,10 @@ The ``EoS`` section contains options for the equations of state.
 Multiple EoS can be used for :ref:`planetary`,
 see :ref:`planetary_eos` for more information. 
 
-To enable one or multiple of these EoS, the corresponding ``planetary_use_*:``
+To enable one or multiple EoS, the corresponding ``planetary_use_*:``
 flag(s) must be set to ``1`` in the parameter file for a simulation,
-along with the path to any table files, which are provided with the 
+along with the path to any table files, which are set by the 
 ``planetary_*_table_file:`` parameters.
-This currently means that all EoS within each base type are prepared at once, 
-which we intend to simplify in the future.
-
-The data files for the tabulated EoS can be downloaded using 
-the ``examples/EoSTables/get_eos_tables.sh`` script.
 
 For the (non-planetary) isothermal EoS, the ``isothermal_internal_energy:``
 parameter sets the thermal energy per unit mass.
