@@ -57,10 +57,10 @@ Di_mat_colour = {
 Di_id_colour = {Di_mat_id[mat]: colour for mat, colour in Di_mat_colour.items()}
 
 
-def load_snapshot(snapshot_time, ax_lim):
+def load_snapshot(snapshot_id, ax_lim):
     """ Select and load the particles to plot. """
     # Snapshot to load
-    snapshot = "earth_impact_%06d.hdf5" % snapshot_time
+    snapshot = "earth_impact_%04d.hdf5" % snapshot_id
 
     # Only load data with the axis limits and below z=0
     ax_lim = 0.1
@@ -131,15 +131,15 @@ if __name__ == "__main__":
     ax_lim = 3.4
 
     # Plot each snapshot
-    for snapshot_time in range(0, 36000 + 1, 1000):
+    for snapshot_id in range(37):
         # Load the data
-        pos, mat_id = load_snapshot(snapshot_time, ax_lim)
+        pos, mat_id = load_snapshot(snapshot_id, ax_lim)
 
         # Plot the data
         plot_snapshot(pos, mat_id, ax_lim)
 
         # Save the figure
-        save = "earth_impact_%06d.png" % snapshot_time
+        save = "earth_impact_%04d.png" % snapshot_id
         plt.savefig(save, dpi=100)
 
         print("\rSaved %s" % save)
