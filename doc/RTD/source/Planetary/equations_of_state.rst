@@ -5,7 +5,7 @@
 
 Planetary Equations of State
 ============================
-   
+
 Configuring SWIFT with the ``--with-equation-of-state=planetary`` and 
 ``--with-hydro=planetary`` options enables the use of multiple 
 equations of state (EoS).
@@ -29,6 +29,7 @@ The material's ID is set by a somewhat arbitrary base type ID
     + Iron: ``100``
     + Granite: ``101``
     + Water: ``102``
+    + Basalt: ``103``
 + Hubbard \& MacFarlane (1980): ``2``
     + Hydrogen-helium atmosphere: ``200``
     + Ice H20-CH4-NH3 mix: ``201``
@@ -48,18 +49,19 @@ the ``examples/Planetary/EoSTables/get_eos_tables.sh`` script.
 
 To enable one or multiple EoS, the corresponding ``planetary_use_*:``
 flag(s) must be set to ``1`` in the parameter file for a simulation,
-along with the path to any table files, which are provided with the 
+along with the path to any table files, which are set by the 
 ``planetary_*_table_file:`` parameters,
 as detailed in :ref:`Parameters_eos` and ``examples/parameter_example.yml``.
-This currently means that all EoS within each base type are prepared at once, 
-which we intend to simplify in the future.
+
+The data files for the tabulated EoS can be downloaded using 
+the ``examples/EoSTables/get_eos_tables.sh`` script.
 
 Unlike the EoS for an ideal or isothermal gas, these more complicated materials 
 do not always include transformations between the internal energy, 
 temperature, and entropy. At the moment, we have implemented 
 \\(P(\\rho, u)\\) and \\(c_s(\\rho, u)\\), 
 which is sufficient for the :ref:`planetary_sph` hydro scheme, 
-but makes most materials currently incompatible with entropy-based schemes.
+but makes most materials currently incompatible with e.g. entropy-based schemes.
 
 The Tillotson sound speed was derived using 
 \\(c_s^2 = \\left. ( \\partial P / \\partial \\rho ) \\right|_S \\)
