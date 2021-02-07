@@ -1161,7 +1161,10 @@ void parser_write_params_to_file(const struct swift_params *params,
   /* Start of file identifier in YAML. */
   fprintf(file, "%s\n\n", PARSER_START_OF_FILE);
 
-  fprintf(file, "# SWIFT used parameter file\n");
+  if (write_used)
+    fprintf(file, "# SWIFT used parameter file\n");
+  else
+    fprintf(file, "# SWIFT unused parameter file\n");
   fprintf(file, "# Code version: %s\n", package_version());
   fprintf(file, "# git revision: %s\n", git_revision());
   fprintf(file, "# git branch: %s\n", git_branch());
