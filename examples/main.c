@@ -361,7 +361,8 @@ int main(int argc, char *argv[]) {
 
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
-    io_write_output_field_parameter(output_parameters_filename, with_cosmology);
+    io_write_output_field_parameter(output_parameters_filename, with_cosmology,
+                                    with_fof, with_structure_finding);
     printf("End of run.\n");
     return 0;
   }
