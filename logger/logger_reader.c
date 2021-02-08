@@ -310,7 +310,7 @@ size_t logger_reader_count_number_removed_particles(
 void logger_reader_get_number_particles(struct logger_reader *reader,
                                         uint64_t *n_parts,
                                         const int *read_types) {
-  for (int i = 0; i < swift_type_count; i++) {
+  for (enum part_type i = (enum part_type)0; i < swift_type_count; i++) {
     /* Should we skip this type of particles? */
     if (read_types[i] == 0) {
       n_parts[i] = 0;
@@ -670,7 +670,7 @@ void logger_reader_read_all_particles_single_type(
       for (int field = 0; field < n_fields_wanted; field++) {
         const int global = fields_wanted[field].global_index;
         void *output_single =
-            output[field] + (i + prev_npart) * h->masks[global].size;
+            (char *)output[field] + (i + prev_npart) * h->masks[global].size;
 
         /* Read the field. */
         particle_removed = logger_reader_read_field(
@@ -799,13 +799,13 @@ size_t logger_reader_read_record(struct logger_reader *reader, void **output,
 
   /* Get a few pointers. */
   const struct header *h = &reader->log.header;
-  void *map = reader->log.log.map;
+  char *map = reader->log.log.map;
 
   size_t mask = 0;
   size_t h_offset = 0;
 
   /* Read the record's mask. */
-  map = logger_loader_io_read_mask(h, (char *)map + offset, &mask, &h_offset);
+  map = logger_loader_io_read_mask(h, map + offset, &mask, &h_offset);
 
   *is_particle = !(mask & h->timestamp_mask);
   /* The record is a particle. */

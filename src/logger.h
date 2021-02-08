@@ -92,6 +92,7 @@ struct engine;
  */
 
 enum logger_special_flags {
+  logger_flag_none = 0,        /* No flag */
   logger_flag_change_type = 1, /* Flag for a change of particle type */
   logger_flag_mpi_enter, /* Flag for a particle received from another  MPI rank
                           */

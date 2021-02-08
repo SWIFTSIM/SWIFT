@@ -66,19 +66,18 @@ void logger_index_read_header(struct logger_index *index,
   logger_index_map_file(index, filename, 0);
 
   /* Read times */
-  memcpy(&index->time, (char *)index->index.map + logger_index_time_offset,
+  memcpy(&index->time, index->index.map + logger_index_time_offset,
          logger_index_time_size);
   memcpy(&index->integer_time,
-         (char *)index->index.map + logger_index_integer_time_offset,
+         index->index.map + logger_index_integer_time_offset,
          logger_index_integer_time_size);
 
   /* Read the number of particles. */
-  memcpy(index->nparts, (char *)index->index.map + logger_index_npart_offset,
+  memcpy(index->nparts, index->index.map + logger_index_npart_offset,
          logger_index_npart_size);
 
   /* Read whether the file is sorted. */
-  memcpy(&index->is_sorted,
-         (char *)index->index.map + logger_index_is_sorted_offset,
+  memcpy(&index->is_sorted, index->index.map + logger_index_is_sorted_offset,
          logger_index_is_sorted_size);
 
   /* Compute the position of the history of new particles. */
@@ -90,7 +89,7 @@ void logger_index_read_header(struct logger_index *index,
 
   /* Read the number of new particles. */
   memcpy(&index->nparts_created,
-         (char *)index->index.map + logger_index_data_offset + count,
+         index->index.map + logger_index_data_offset + count,
          logger_index_npart_size);
 
   /* Compute the position of the history of particles removed. */
@@ -102,7 +101,7 @@ void logger_index_read_header(struct logger_index *index,
 
   /* Read the number of particles removed. */
   memcpy(&index->nparts_removed,
-         (char *)index->index.map + logger_index_data_offset + count +
+         index->index.map + logger_index_data_offset + count +
              logger_index_npart_size + count_new,
          logger_index_npart_size);
 
@@ -122,7 +121,7 @@ void logger_index_write_sorted(struct logger_index *index) {
   const char is_sorted = 1;
 
   /* Write the value */
-  memcpy((char *)index->index.map + logger_index_is_sorted_offset, &is_sorted,
+  memcpy(index->index.map + logger_index_is_sorted_offset, &is_sorted,
          logger_index_is_sorted_size);
 }
 
@@ -144,8 +143,7 @@ struct index_data *logger_index_get_data(struct logger_index *index, int type) {
   }
   const size_t type_offset = count * sizeof(struct index_data);
 
-  const char *ret =
-      (char *)index->index.map + logger_index_data_offset + type_offset;
+  const char *ret = index->index.map + logger_index_data_offset + type_offset;
   return (struct index_data *)ret;
 }
 
@@ -219,7 +217,7 @@ int logger_index_contains_time_array(struct logger_index *index) {
 
   /* Get the position after the previous array. */
   char *ret = (char *)logger_index_get_removed_history(index, swift_type_count);
-  const size_t before_time_array = ret - (char *)index->index.map;
+  const size_t before_time_array = ret - index->index.map;
 
   return file_size != before_time_array;
 }

@@ -93,8 +93,8 @@ void header_change_offset_direction(struct header *h,
   /* Skip file format and version numbers. */
   size_t offset = LOGGER_VERSION_SIZE + 2 * sizeof(int);
 
-  logger_loader_io_write_data((char *)h->log->log.map + offset,
-                              sizeof(unsigned int), &new_value);
+  logger_loader_io_write_data(h->log->log.map + offset, sizeof(unsigned int),
+                              &new_value);
 }
 
 /**
@@ -146,7 +146,7 @@ void header_change_offset_direction(struct header *h,
  * @param log The #logger_logfile.
  */
 void header_read(struct header *h, struct logger_logfile *log) {
-  void *map = log->log.map;
+  char *map = log->log.map;
 
   /* Set pointer to log. */
   h->log = log;
@@ -240,8 +240,8 @@ void header_read(struct header *h, struct logger_logfile *log) {
   }
 
   /* Check the logfile header's size. */
-  if (map != (char *)log->log.map + h->offset_first_record) {
-    size_t offset = (char *)map - (char *)log->log.map;
+  if (map != log->log.map + h->offset_first_record) {
+    size_t offset = map - log->log.map;
     error_python("Wrong header size (in header %zi, current %zi).",
                  h->offset_first_record, offset);
   }
