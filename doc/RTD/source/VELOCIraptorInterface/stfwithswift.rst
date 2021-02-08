@@ -61,14 +61,15 @@ downloaded SWIFT from the GitLab repository. This can be done by running
 .. code:: bash
   
   ./autogen.sh 
-  ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/src 
+  ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/build/src
   make 
 
 In which ``./autogen.sh`` only needs to be run once after the code is cloned
 from the GitLab_, and ``/path/to/`` is the path to the ``VELOCIraptor-STF``
-directory on your machine. In general ``./configure`` can be run with other
-options as desired. After this we can run SWIFT with VELOCIraptor, but for this
-we first need to add several lines to the yaml file of our simulation
+directory on your machine. Note that this path must be absolute (i.e. relative
+to ``/``. In general ``./configure`` can be run with other options as desired.
+After this we can run SWIFT with VELOCIraptor, but for this we first need to
+add several lines to the yaml file of our simulation
 
     
 .. code:: YAML

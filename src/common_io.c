@@ -1519,9 +1519,11 @@ void io_select_hydro_fields(const struct part* const parts,
  * @param num_fields (return) The number of fields to write.
  * @param list (return) The list of fields to write.
  */
-void io_select_dm_fields(const struct gpart* const gparts, const int with_fof,
-                         const int with_stf, const struct engine* const e,
-                         int* const num_fields, struct io_props* const list) {
+void io_select_dm_fields(const struct gpart* const gparts,
+                         const struct velociraptor_gpart_data* gpart_group_data,
+                         const int with_fof, const int with_stf,
+                         const struct engine* const e, int* const num_fields,
+                         struct io_props* const list) {
 
   darkmatter_write_particles(gparts, list, num_fields);
   if (with_fof) {
@@ -1529,7 +1531,7 @@ void io_select_dm_fields(const struct gpart* const gparts, const int with_fof,
   }
   if (with_stf) {
     *num_fields +=
-        velociraptor_write_gparts(e->s->gpart_group_data, list + *num_fields);
+        velociraptor_write_gparts(gpart_group_data, list + *num_fields);
   }
 }
 

@@ -186,7 +186,8 @@ void io_prepare_output_fields(struct output_options* output_options,
                               const int with_cosmology, const int with_fof,
                               const int with_stf, int verbose);
 
-void io_write_output_field_parameter(const char* filename, int with_cosmology);
+void io_write_output_field_parameter(const char* filename, int with_cosmology,
+                                     int with_fof, int with_stf);
 
 void io_make_snapshot_subdir(const char* dirname);
 
@@ -208,9 +209,11 @@ void io_select_hydro_fields(const struct part* const parts,
                             const struct engine* const e, int* const num_fields,
                             struct io_props* const list);
 
-void io_select_dm_fields(const struct gpart* const gparts, const int with_fof,
-                         const int with_stf, const struct engine* const e,
-                         int* const num_fields, struct io_props* const list);
+void io_select_dm_fields(const struct gpart* const gparts,
+                         const struct velociraptor_gpart_data* gpart_group_data,
+                         const int with_fof, const int with_stf,
+                         const struct engine* const e, int* const num_fields,
+                         struct io_props* const list);
 
 void io_select_sink_fields(const struct sink* const sinks,
                            const int with_cosmology, const int with_fof,
