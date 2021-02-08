@@ -602,7 +602,8 @@ void write_output_distributed(struct engine* e,
           Nparticles = Ntot;
 
           /* Select the fields to write */
-          io_select_dm_fields(gparts, with_fof, with_stf, e, &num_fields, list);
+          io_select_dm_fields(gparts, e->s->gpart_group_data, with_fof,
+                              with_stf, e, &num_fields, list);
 
         } else {
 
@@ -631,8 +632,8 @@ void write_output_distributed(struct engine* e,
                                      Ntot, Ndm_written, with_stf);
 
           /* Select the fields to write */
-          io_select_dm_fields(gparts_written, with_fof, with_stf, e,
-                              &num_fields, list);
+          io_select_dm_fields(gparts_written, gpart_group_data_written,
+                              with_fof, with_stf, e, &num_fields, list);
         }
       } break;
 
@@ -663,8 +664,8 @@ void write_output_distributed(struct engine* e,
             gpart_group_data_written, Ntot, Ndm_background, with_stf);
 
         /* Select the fields to write */
-        io_select_dm_fields(gparts_written, with_fof, with_stf, e, &num_fields,
-                            list);
+        io_select_dm_fields(gparts_written, gpart_group_data_written, with_fof,
+                            with_stf, e, &num_fields, list);
       } break;
 
       case swift_type_sink: {
