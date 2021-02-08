@@ -89,7 +89,7 @@ size_t time_read(integertime_t *int_time, double *time,
 
   /* Initialize variables. */
   const struct header *h = &reader->log.header;
-  void *map = h->log->log.map;
+  char *map = h->log->log.map;
 
   size_t mask = 0;
   size_t prev_offset = 0;
@@ -97,8 +97,7 @@ size_t time_read(integertime_t *int_time, double *time,
   *time = 0;
 
   /* read record header. */
-  map =
-      logger_loader_io_read_mask(h, (char *)map + offset, &mask, &prev_offset);
+  map = logger_loader_io_read_mask(h, map + offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -115,7 +114,7 @@ size_t time_read(integertime_t *int_time, double *time,
       logger_loader_io_read_data(map, sizeof(unsigned long long int), int_time);
   map = logger_loader_io_read_data(map, sizeof(double), time);
 
-  return (char *)map - (char *)h->log->log.map;
+  return map - h->log->log.map;
 }
 
 /**
@@ -129,7 +128,7 @@ size_t time_offset_first_record(const struct header *h) {
 
   /* Initialize a few variables. */
   size_t offset = h->offset_first_record;
-  void *map = h->log->log.map;
+  char *map = h->log->log.map;
 
   /* Check that the first record is really a time record. */
   int i = header_get_field_index(h, "Timestamp");
@@ -137,7 +136,7 @@ size_t time_offset_first_record(const struct header *h) {
   if (i == -1) error_python("Time mask not present in the log file header.");
 
   size_t mask = 0;
-  logger_loader_io_read_mask(h, (char *)map + offset, &mask, NULL);
+  logger_loader_io_read_mask(h, map + offset, &mask, NULL);
 
   if (mask != h->masks[i].mask)
     error_python("Log file should begin by timestep.");
