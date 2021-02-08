@@ -149,7 +149,7 @@ void logger_log_all_particles(struct logger_writer *log,
     struct xpart *xp = &s->xparts[i];
     if (!part_is_inhibited(p, e) && p->time_bin != time_bin_not_created) {
       logger_log_part(log, p, xp, e,
-                      /* log_all_fields */ 1, /* Special flags */ 0,
+                      /* log_all_fields */ 1, logger_flag_none,
                       /* data */ 0);
     }
   }
@@ -161,7 +161,7 @@ void logger_log_all_particles(struct logger_writer *log,
         (gp->type == swift_type_dark_matter ||
          gp->type == swift_type_dark_matter_background)) {
       logger_log_gpart(log, gp, e,
-                       /* log_all_fields */ 1, /* Special flags */ 0,
+                       /* log_all_fields */ 1, logger_flag_none,
                        /* data */ 0);
     }
   }
@@ -171,7 +171,7 @@ void logger_log_all_particles(struct logger_writer *log,
     struct spart *sp = &s->sparts[i];
     if (!spart_is_inhibited(sp, e) && sp->time_bin != time_bin_not_created) {
       logger_log_spart(log, sp, e,
-                       /* log_all_fields */ 1, /* Special flags */ 0,
+                       /* log_all_fields */ 1, logger_flag_none,
                        /* data */ 0);
     }
   }

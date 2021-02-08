@@ -109,13 +109,13 @@ int tools_get_number_fields(enum part_type type);
 void tools_get_list_fields(struct field_information *fields,
                            enum part_type type, const struct header *h);
 
-int tools_get_next_record(const struct header *h, void *map, size_t *offset,
+int tools_get_next_record(const struct header *h, char *map, size_t *offset,
                           size_t file_size);
-int _tools_get_next_record_backward(const struct header *h, void *map,
+int _tools_get_next_record_backward(const struct header *h, char *map,
                                     size_t *offset, size_t file_size);
-int _tools_get_next_record_forward(const struct header *h, void *map,
+int _tools_get_next_record_forward(const struct header *h, char *map,
                                    size_t *offset);
-size_t tools_reverse_offset(const struct header *h, void *map, size_t offset);
+size_t tools_reverse_offset(const struct header *h, char *map, size_t offset);
 size_t tools_check_record_consistency(const struct logger_reader *reader,
                                       size_t offset);
 
