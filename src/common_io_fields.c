@@ -84,13 +84,13 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
       break;
 
     case swift_type_dark_matter:
-      io_select_dm_fields(NULL, with_fof, with_stf, /*e=*/NULL, &num_fields,
-                          list);
+      io_select_dm_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
+                          &num_fields, list);
       break;
 
     case swift_type_dark_matter_background:
-      io_select_dm_fields(NULL, with_fof, with_stf, /*e=*/NULL, &num_fields,
-                          list);
+      io_select_dm_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
+                          &num_fields, list);
       break;
 
     case swift_type_stars:
@@ -298,8 +298,11 @@ void io_prepare_output_fields(struct output_options* output_options,
  *
  * @param filename The file to write.
  * @param with_cosmology Use cosmological name variant?
+ * @param with_fof Use fof?
+ * @param with_stf Using Velociraptor STF?
  */
-void io_write_output_field_parameter(const char* filename, int with_cosmology) {
+void io_write_output_field_parameter(const char* filename, int with_cosmology,
+                                     int with_fof, int with_stf) {
 
   FILE* file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
@@ -313,8 +316,8 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology) {
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
     struct io_props list[100];
-    int num_fields = io_get_ptype_fields(ptype, list, with_cosmology,
-                                         /*with_fof=*/1, /*with_stf=*/1);
+    int num_fields =
+        io_get_ptype_fields(ptype, list, with_cosmology, with_fof, with_stf);
 
     if (num_fields == 0) continue;
 
