@@ -133,7 +133,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
                                            const struct engine* e) {
 
-  io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
+  io_write_attribute_s(h_grp, "Chemistry model", "GEAR");
   io_write_attribute_d(h_grp, "Chemistry element count",
                        GEAR_CHEMISTRY_ELEMENT_COUNT);
 #ifdef FEEDBACK_GEAR
@@ -144,16 +144,33 @@ INLINE static void chemistry_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   hid_t type = H5Tcopy(H5T_C_S1);
   H5Tset_size(type, GEAR_LABELS_SIZE);
   hid_t space = H5Screate_simple(1, dims, NULL);
-  hid_t dset = H5Dcreate(h_grp_columns, "ElementAbundances", type, space,
+  hid_t dset = H5Dcreate(h_grp_columns, "MetalMassFractions", type, space,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, element_names);
   H5Dclose(dset);
-  dset = H5Dcreate(h_grp_columns, "SmoothedElementAbundances", type, space,
+  dset = H5Dcreate(h_grp_columns, "SmoothedMetalMassFractions", type, space,
                    H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, element_names);
   H5Dclose(dset);
 
   H5Tclose(type);
+
+  /* Write the solar abundances and the elements */
+  /* Create the group */
+  hid_t h_sol_ab = H5Gcreate(h_grp, "SolarAbundances", H5P_DEFAULT, H5P_DEFAULT,
+                             H5P_DEFAULT);
+  if (h_sol_ab < 0) error("Error while creating the SolarAbundances group\n");
+
+  /* Write all the elements as attributes */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    const char* name = stellar_evolution_get_element_name(
+        &e->feedback_props->stellar_model, i);
+    io_write_attribute_f(h_sol_ab, name, e->chemistry->solar_abundances[i]);
+  }
+
+  /* Close group */
+  H5Gclose(h_sol_ab);
+
 #endif
 }
 #endif
