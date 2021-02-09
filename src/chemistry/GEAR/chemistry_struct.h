@@ -26,6 +26,9 @@ struct chemistry_global_data {
 
   /* Initial mass fraction */
   double initial_metallicities[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /* Solar mass abundances read from the chemistry table */
+  float solar_abundances[GEAR_CHEMISTRY_ELEMENT_COUNT];
 };
 
 /**
