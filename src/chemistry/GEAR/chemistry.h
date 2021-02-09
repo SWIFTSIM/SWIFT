@@ -81,7 +81,34 @@ static INLINE void chemistry_print_backend(
  */
 static INLINE void chemistry_scale_initial_metallicities(
     struct swift_params* parameter_file, struct chemistry_global_data* data) {
-#ifdef HAVE_HDF5
+
+#ifndef HAVE_HDF5
+  error("Cannot scale the solar abundances without HDF5");
+#endif
+  /* Scale the initial metallicities */
+  char txt[DESCRIPTION_BUFFER_SIZE] = "Scaling initial metallicities by:";
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    data->initial_metallicities[i] *= data->solar_abundances[i];
+    char tmp[10];
+    sprintf(tmp, " %.2g", data->solar_abundances[i]);
+    strcat(txt, tmp);
+  }
+
+  if (engine_rank == 0) {
+    message("%s", txt);
+  }
+}
+
+/**
+ * @brief Read the solar abundances and scale with them the initial
+ * metallicities.
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param data The properties to initialise.
+ */
+static INLINE void chemistry_read_solar_abundances(
+    struct swift_params* parameter_file, struct chemistry_global_data* data) {
+#if defined(HAVE_HDF5)
 
   /* Get the yields table */
   char filename[DESCRIPTION_BUFFER_SIZE];
@@ -97,9 +124,8 @@ static INLINE void chemistry_scale_initial_metallicities(
   if (group_id < 0) error("unable to open group Data.\n");
 
   /* Read the data */
-  float* sol_ab = (float*)malloc(sizeof(float) * GEAR_CHEMISTRY_ELEMENT_COUNT);
-  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT, sol_ab,
-                          GEAR_CHEMISTRY_ELEMENT_COUNT);
+  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT,
+                          data->solar_abundances, GEAR_CHEMISTRY_ELEMENT_COUNT);
 
   /* Close group */
   hid_t status = H5Gclose(group_id);
@@ -109,20 +135,8 @@ static INLINE void chemistry_scale_initial_metallicities(
   status = H5Fclose(file_id);
   if (status < 0) error("error closing file.");
 
-  /* Scale the initial metallicities */
-  char txt[DESCRIPTION_BUFFER_SIZE] = "Scaling initial metallicities by:";
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    data->initial_metallicities[i] *= sol_ab[i];
-    char tmp[10];
-    sprintf(tmp, " %.2g", sol_ab[i]);
-    strcat(txt, tmp);
-  }
-
-  if (engine_rank == 0) {
-    message("%s", txt);
-  }
 #else
-  error("Cannot scale the solar abundances without HDF5");
+  message("Cannot read the solar abundances without HDF5");
 #endif
 }
 
@@ -162,8 +176,18 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 
   /* Scale the metallicities if required */
   if (scale_metallicity) {
+    /* Read the solar abundances */
+    chemistry_read_solar_abundances(parameter_file, data);
+
+    /* Scale the solar abundances */
     chemistry_scale_initial_metallicities(parameter_file, data);
   }
+  /* We do not care about the solar abundances without feedback */
+#ifdef FEEDBACK_GEAR
+  else {
+    chemistry_read_solar_abundances(parameter_file, data);
+  }
+#endif
 }
 
 /**
