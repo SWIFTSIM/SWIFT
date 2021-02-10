@@ -1664,6 +1664,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
         "hydrodynamics. Need to run with -s and the corresponding "
         "hydrodynamics parameters in the YAML file.");
 
+  if (hydro_properties->initial_internal_energy == 0.)
+    error(
+        "Cannot generate gas from ICs if the initial temperature is set to 0. "
+        "Need to set 'SPH:initial_temperature' to a sensible value.");
+
   if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
