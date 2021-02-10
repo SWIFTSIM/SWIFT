@@ -117,6 +117,9 @@ struct sidm_dmpart_data {
     /*! Flag indicating if particle in given time-step has been scattered */
     float sidm_flag;
     
+    /* Cross section */
+    double sigma;
+    
     /*! Cumulative number of DM-DM collisions */
     float number_of_sidm_events;
     

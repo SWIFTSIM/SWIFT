@@ -129,7 +129,7 @@ INLINE static void darkmatter_write_dmparts(const struct dmpart* dmparts,
                                               int* num_fields) {
     
     /* Say how much we want to write */
-    *num_fields = 4;
+    *num_fields = 5;
     
     /* List what we want to write */
     list[0] = io_make_output_field_convert_dmpart(
@@ -187,8 +187,9 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     list[6] = io_make_output_field("Max_SIDM_events_per_timestep", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
                                    dmparts, sidm_data.max_sidm_events_per_timestep, "Maximum number of DM-DM collisions the particle has had in a single timestep");
 
-
-    return 7;
+    list[7] = io_make_output_field("Cross_section", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, dmparts, sidm_data.sigma,"DM particle cross section [internal units]");
+                                   
+    return 8;
     
 }
 

@@ -40,6 +40,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
     gp->sidm_probability = 0.f;
     gp->time_step_size = 0.f;
     gp->num_neighbours = 0.f;
+    gp->sidm_data.sigma = 0.;
 }
 
 
@@ -63,6 +64,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dm
     gp->sidm_data.v_full[0] = gp->v_full[0];
     gp->sidm_data.v_full[1] = gp->v_full[1];
     gp->sidm_data.v_full[2] = gp->v_full[2];
+    
 }
 
 
@@ -96,6 +98,9 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->time_bin = 0;
 
     dark_matter_init_dmpart(dmp);
+    
+    dmp->sidm_data.sigma = 0.;
+
 }
 
 /**
@@ -169,6 +174,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     gp->density.rho_dh = 0.f;
     gp->density.wcount_dh = 0.f;
     gp->num_neighbours = 0.f;
+    gp->sidm_data.sigma = 0.f;
 }
 
 
@@ -220,6 +226,9 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
     }
     /* Remove flag */
     dmp->sidm_data.sidm_flag = 0.f;
+    
+    /* Calculate mean cross section for this particle */
+    dmp->sidm_data.sigma /= dmp->num_neighbours;
 }
 
 

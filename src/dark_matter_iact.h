@@ -614,18 +614,18 @@ INLINE static double velocity_dependent_sigma_model(float v, const struct sidm_p
     
     float alpha_x = sidm_props->alphax / 0.01;
     float alpha_x2 = alpha_x * alpha_x;
-    float mx = sidm_props->mx / 10.;
-    float mphi = sidm_props->mphi / 10.;
-    float mphi_inv2 = (1./ mphi) * (1./ mphi);
+    float mx = sidm_props->mx / 10.f;
+    float mphi = sidm_props->mphi / 10.f;
+    float mphi_inv2 = (1.0f/ mphi) * (1.0f/ mphi);
     float mphi_inv4 = mphi_inv2 * mphi_inv2;
     float sigma0 = 274.868 * alpha_x2 * mx * mphi_inv4; /* physical units cm2/g */
-    float w = 300. * 1e5 * mphi / mx; /* physical units cm/s */
+    float w = 300.0f * 1e5 * mphi / mx; /* physical units cm/s */
     w /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
     w *= units_cgs_conversion_factor(us, UNIT_CONV_TIME); /* physical but internal units now */
     float w2 = w * w;
     
     /* Scattering cross section in physical units */
-    double sigma = sigma0 / (1. + v * v / w2);
+    double sigma = sigma0 / (1.0 + v * v / w2);
     
     /* Scattering cross section in internal units */
     sigma *= units_cgs_conversion_factor(us, UNIT_CONV_MASS);
@@ -673,6 +673,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     if (sidm_props->with_momentum_transfer_sigma)
         sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
+    
+    pi->sidm_data.sigma += sigma;
 
     /* DM particle mass */
     const double mass_j = pj->mass;
@@ -744,6 +746,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     if (sidm_props->with_momentum_transfer_sigma)
         sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
     
+    pi->sidm_data.sigma += sigma;
+    pj->sidm_data.sigma += sigma;
+
     /* DM particle mass */
     const double mass_i = pi->mass;
     const double mass_j = pj->mass;
