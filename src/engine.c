@@ -3192,6 +3192,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_list_clean(&e->output_list_snapshots);
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
+  output_list_clean(&e->output_list_los);
 
   output_options_clean(e->output_options);
 
@@ -3314,10 +3315,6 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   los_struct_dump(e->los_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
-  if (e->output_list_snapshots) output_list_clean(&e->output_list_snapshots);
-  if (e->output_list_stats) output_list_clean(&e->output_list_stats);
-  if (e->output_list_stf) output_list_clean(&e->output_list_stf);
-  if (e->output_list_los) output_list_clean(&e->output_list_los);
 
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
