@@ -282,6 +282,32 @@ double gravity_kick_integrand(double a, void *param) {
 }
 
 /**
+ * @brief Computes \f$ c dt / a \f$ for the current cosmology.
+ *
+ * @param a The scale-factor of interest.
+ * @param param The current #cosmology.
+ */
+double comoving_distance_integrand(double a, void *param) {
+
+  const struct cosmology *c = (const struct cosmology *)param;
+  const double Omega_nu = cosmology_get_neutrino_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu;
+  const double Omega_m = c->Omega_m;
+  const double Omega_k = c->Omega_k;
+  const double Omega_l = c->Omega_lambda;
+  const double w_0 = c->w_0;
+  const double w_a = c->w_a;
+  const double H0 = c->H0;
+  const double const_speed_light_c = c->const_speed_light_c;
+
+  const double a_inv = 1. / a;
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
+  const double H = H0 * E_z;
+
+  return (const_speed_light_c / H) * a_inv * a_inv;
+}
+
+/**
  * @brief Computes \f$ dt / a^{3(\gamma - 1) + 1} \f$ for the current cosmology.
  *
  * @param a The scale-factor of interest.
@@ -546,6 +572,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Retrieve some constants */
   const double a_begin = c->a_begin;
+  const double a_end = c->a_end;
 
   /* Allocate memory for the interpolation tables */
   if (swift_memalign("cosmo.table", (void **)&c->drift_fac_interp_table,
@@ -569,6 +596,10 @@ void cosmology_init_tables(struct cosmology *c) {
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
   if (swift_memalign("cosmo.table", (void **)&c->scale_factor_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->comoving_distance_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
@@ -646,6 +677,22 @@ void cosmology_init_tables(struct cosmology *c) {
   gsl_integration_qag(&F, 0., 1, 0, 1.0e-13, GSL_workspace_size,
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->universe_age_at_present_day = result;
+
+  /* Integrate the comoving distance \int_{a_table[i]}^{a_end} c dt/a */
+  F.function = &comoving_distance_integrand;
+  for (int i = 0; i < cosmology_table_length; i++) {
+    gsl_integration_qag(&F, a_table[i], a_end, 0, 1.0e-10, GSL_workspace_size,
+                        GSL_INTEG_GAUSS61, space, &result, &abserr);
+
+    /* Store result */
+    c->comoving_distance_interp_table[i] = result;
+  }
+
+  /* Integrate the comoving distance \int_{a_end}^{1.0} c dt/a */
+  F.function = &comoving_distance_integrand;
+  gsl_integration_qag(&F, a_end, 1.0, 0, 1.0e-10, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+  c->comoving_distance_interp_table_offset = result;
 
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
@@ -780,6 +827,9 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   const double cc = phys_const->const_speed_light_c;
   const double rho_c3_on_4sigma = c->critical_density_0 * cc * cc * cc /
                                   (4. * phys_const->const_stefan_boltzmann);
+
+  /* Store speed of light in internal units */
+  c->const_speed_light_c = phys_const->const_speed_light_c;
 
   /* Handle neutrinos only if present */
   if (c->N_ur == 0. && c->N_nu == 0) {
@@ -1134,6 +1184,32 @@ double cosmology_get_delta_time(const struct cosmology *c,
 
   return t2 - t1;
 }
+
+
+/**
+ * @brief Compute the comoving distance to the specified scale factor
+ *
+ * @param c The current #cosmology.
+ * @param a The scale factor
+ */
+double cosmology_get_comoving_distance(const struct cosmology *c,
+                                       const double a) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a < a_start) error("a must be >= a_start");
+  if (a > a_end) error("a must be <= a_end");
+#endif
+
+  const double log_a = log(a);
+
+  /* Distance from a to a_end */
+  const double dist = interp_table(c->comoving_distance_interp_table, log_a,
+                                   c->log_a_begin, c->log_a_end);
+
+  /* Add distance from a_end to a=1 */
+  return dist+c->comoving_distance_interp_table_offset;
+}
+
 
 /**
  * @brief Compute neutrino density parameter Omega_nu at the given scale-factor
