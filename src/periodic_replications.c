@@ -35,29 +35,29 @@
  *        of particles.
  * @param replication_list Pointer to the struct to initialise.
  */
-void replication_list_init(double boxsize,
+void replication_list_init(struct replication_list *replication_list,
+                           double boxsize,
                            double observer_position[3],
                            double lightcone_rmin, double lightcone_rmax,
-                           double lightcone_boundary,
-                           struct replication_list *replication_list) {
+                           double lightcone_boundary) {
   
   /* Find range of replications to examine in each dimension */
   int rep_min[3];
   int rep_max[3];
-  for(i=0; i<3; i+=1) {
+  for(int i=0; i<3; i+=1) {
     rep_min[i] = (int) floor((observer_position[i] - lightcone_rmax) / boxsize);
-    rep_min[i] = (int) floor((observer_position[i] + lightcone_rmax) / boxsize);
+    rep_max[i] = (int) floor((observer_position[i] + lightcone_rmax) / boxsize);
   }
 
   /* On first pass just count replications */
-  for(ipass=0; ipass<2; ipass+=1) {
+  for(int ipass=0; ipass<2; ipass+=1) {
 
     replication_list->nrep = 0;
 
     /* Loop over periodic replications */
-    for(i=rep_min[0]; i<=rep_max[0]; i+=1) {
-      for(j=rep_min[1]; j<=rep_max[1]; j+=1) {
-        for(k=rep_min[2]; k<=rep_max[2]; k+=1) {
+    for(int i=rep_min[0]; i<=rep_max[0]; i+=1) {
+      for(int j=rep_min[1]; j<=rep_max[1]; j+=1) {
+        for(int k=rep_min[2]; k<=rep_max[2]; k+=1) {
           
           /* Find centre of this replication */
           double cx = boxsize*i + 0.5*boxsize;
@@ -65,18 +65,19 @@ void replication_list_init(double boxsize,
           double cz = boxsize*k + 0.5*boxsize;
 
           /* Find distance to closest point in this replication  */
-          double dx = abs(observer_position[0] - cx) - 0.5*boxsize;
+          double dx, dy, dz;
+          dx = abs(observer_position[0] - cx) - 0.5*boxsize;
           if(dx < 0) dx = 0;
-          double dy = abs(observer_position[1] - cy) - 0.5*boxsize;
+          dy = abs(observer_position[1] - cy) - 0.5*boxsize;
           if(dy < 0) dy = 0;
-          double dz = abs(observer_position[2] - cz) - 0.5*boxsize;
+          dz = abs(observer_position[2] - cz) - 0.5*boxsize;
           if(dz < 0) dz = 0;
           double rep_rmin = sqrt(dx*dx+dy*dy+dz*dz);
 
           /* Find distance to most distant point in this replication  */
-          double dx = abs(observer_position[0] - cx) + 0.5*boxsize;
-          double dy = abs(observer_position[1] - cy) + 0.5*boxsize;
-          double dz = abs(observer_position[2] - cz) + 0.5*boxsize;
+          dx = abs(observer_position[0] - cx) + 0.5*boxsize;
+          dy = abs(observer_position[1] - cy) + 0.5*boxsize;
+          dz = abs(observer_position[2] - cz) + 0.5*boxsize;
           double rep_rmax = sqrt(dx*dx+dy*dy+dz*dz);
 
           /* Check if any point in this replication could be in the lightcone,
@@ -91,11 +92,11 @@ void replication_list_init(double boxsize,
               const int nrep = replication_list->nrep;
               struct replication *rep = replication_list->replication+nrep;
               /* Store info about this replication */
-              rep.rmin = rep_rmin;
-              rep.rmax = rep_rmax;
-              rep.coord[0] = i;
-              rep.coord[1] = j;
-              rep.coord[2] = k;
+              rep->rmin = rep_rmin;
+              rep->rmax = rep_rmax;
+              rep->coord[0] = i;
+              rep->coord[1] = j;
+              rep->coord[2] = k;
             }
             replication_list->nrep += 1;
             
@@ -107,7 +108,7 @@ void replication_list_init(double boxsize,
     /* Allocate storage after first pass */
     if(ipass==0) {
       const int nrep = replication_list->nrep;
-      replication_list->replication = malloc(sizeof(struct replication)*(*nrep)); 
+      replication_list->replication = malloc(sizeof(struct replication)*nrep); 
     }
   } /* Next pass */
 }
@@ -123,23 +124,3 @@ void replication_list_clean(struct replication_list *replication_list) {
   replication_list->replication = NULL;
   replication_list->nrep = 0;
 }
-
-
-/* int main(int argc, char *argv[]) { */
-
-/*   double boxsize = 100.0; */
-/*   double observer_position = {50.0, 50.0, 50.0}; */
-/*   double lightcone_rmin = 250.0; */
-/*   double lightcone_rmax = 500.0; */
-/*   double lightcone_boundary = 0.0; */
-/*   int nrep; */
-/*   struct replication *replication; */
-
-/*   make_replication_list(boxsize, observer_position, */
-/*                         lightcone_rmin, lightcone_rmax, */
-/*                            double lightcone_boundary, */
-/*                            int *nrep, struct replication *replication) */
-  
-  
-/*   return 0; */
-/* } */
