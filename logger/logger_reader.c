@@ -156,6 +156,11 @@ void logger_reader_set_time(struct logger_reader *reader, double time) {
     }
   }
 
+  /* Deal with the final time */
+  if (left == (unsigned int) reader->index.n_files - 1) {
+    left -= 1;
+  }
+
   /* Generate the filename */
   char filename_prev[STRING_SIZE + 50];
   sprintf(filename_prev, "%s_%04u.index", reader->basename, left);
