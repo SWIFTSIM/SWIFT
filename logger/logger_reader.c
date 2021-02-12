@@ -157,7 +157,7 @@ void logger_reader_set_time(struct logger_reader *reader, double time) {
   }
 
   /* Deal with the final time */
-  if (left == (unsigned int) reader->index.n_files - 1) {
+  if (left == (unsigned int)reader->index.n_files - 1) {
     left -= 1;
   }
 
