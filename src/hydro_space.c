@@ -19,6 +19,7 @@
 
 #include "hydro_space.h"
 
+#include "error.h"
 #include "space.h"
 
 /**
@@ -46,6 +47,11 @@ __attribute__((always_inline)) INLINE void hydro_space_init(
     hs->side[1] = s->dim[1];
     hs->side[2] = s->dim[2];
   }
+
+  message(
+      "Initialised hydro space with anchor [%g, %g, %g] and side [%g, %g, %g].",
+      hs->anchor[0], hs->anchor[1], hs->anchor[2], hs->side[0], hs->side[1],
+      hs->side[2]);
 }
 #else
 void hydro_space_init(struct hydro_space *hs, const struct space *s) {}

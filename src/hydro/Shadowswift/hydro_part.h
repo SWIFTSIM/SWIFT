@@ -217,6 +217,14 @@ struct part {
   /* Voronoi cell. */
   struct voronoi_cell cell;
 
+  /* New Voronoi cell. */
+  struct {
+    /* Flag that keeps track of where this particle was added to the Delaunay
+       tessellation. */
+    int flag;
+
+  } voronoi;
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_PART_H */

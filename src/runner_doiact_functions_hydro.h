@@ -26,6 +26,10 @@
 
 #include "runner_doiact_hydro.h"
 
+#ifdef SHADOWFAX_SPH
+#include "shadowfax/cell_shadowfax.h"
+#endif
+
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric case).
  *
@@ -68,6 +72,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
       shift[k] = -e->s->dim[k];
   }
+
+#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_pair1_naive(e, ci, cj, -1, shift);
+#endif
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count_i; pid++) {
@@ -194,6 +202,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
       shift[k] = -e->s->dim[k];
   }
+
+#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_pair2_naive(e, ci, cj, -1, shift);
+#endif
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count_i; pid++) {
@@ -585,6 +597,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
+#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_pair_subset_naive(e, ci, cj, -1, shift);
+#endif
+
   /* Loop over the parts_i. */
   for (int pid = 0; pid < count; pid++) {
 
@@ -685,6 +701,11 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   /* Pick-out the sorted lists. */
   const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
   const float dxj = cj->hydro.dx_max_sort;
+
+#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_pair_subset(e, ci, parts_i, ind, count, cj, sid, flipped,
+                                shift);
+#endif
 
   /* Parts are on the left? */
   if (!flipped) {
@@ -1043,6 +1064,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
+
+#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_pair1(e, ci, cj, sid, shift);
+#endif
 
   if (cell_is_active_hydro(ci, e)) {
 
@@ -1436,6 +1461,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       }
     }
   }
+
+#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_pair2(e, ci, cj, sid, shift);
+#endif
 
   /* Loop over *all* the parts in ci starting from the centre until
      we are out of range of anything in cj (using the maximal hi). */
@@ -1956,6 +1985,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 
   TIMER_TIC;
+
+#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_self1(e, c);
+#endif
 
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;

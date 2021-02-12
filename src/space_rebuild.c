@@ -30,6 +30,10 @@
 #include "engine.h"
 #include "memswap.h"
 
+#ifdef SHADOWFAX_SPH
+#include "shadowfax/cell_shadowfax.h"
+#endif
+
 /*! Expected maximal number of strays received at a rebuild */
 extern int space_expected_max_nr_strays;
 
@@ -955,6 +959,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
     }
+
+#ifdef SHADOWFAX_SPH
+    cell_malloc_delaunay_tessellation(c, &s->hs);
+#endif
   }
   if (verbose) {
     message("Have %d local top-level cells with particles (total=%d)",

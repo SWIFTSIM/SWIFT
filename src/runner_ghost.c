@@ -41,6 +41,10 @@
 #include "timestep_limiter.h"
 #include "tracers.h"
 
+#ifdef SHADOWFAX_SPH
+#include "shadowfax/cell_shadowfax.h"
+#endif
+
 /* Import the density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
@@ -1062,6 +1066,20 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         struct part *p = &parts[pid[i]];
         struct xpart *xp = &xparts[pid[i]];
 
+#ifdef SHADOWFAX_SPH
+        float hnew = delaunay_get_search_radius(
+            &c->hydro.deltess, pid[i] + c->hydro.deltess.vertex_start);
+        if (hnew >= p->h) {
+          p->h *= 1.5f;
+          pid[redo] = pid[i];
+          h_0[redo] = h_0[i];
+          left[redo] = left[i];
+          right[redo] = right[i];
+          redo += 1;
+        }
+        continue;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
         if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
@@ -1409,6 +1427,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Update h_max */
   c->hydro.h_max = h_max;
+
+#ifdef SHADOWFAX_SPH
+  cell_shadowfax_end_density(c);
+#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */

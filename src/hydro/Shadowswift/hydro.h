@@ -213,6 +213,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     p->density.wcount_dh = p->h / (1.1f * hnew - p->h);
     return;
   }
+  p->density.wcount = 1.0f;
   volume = p->cell.volume;
 
 #ifdef SWIFT_DEBUG_CHECKS

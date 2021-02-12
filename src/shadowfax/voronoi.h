@@ -364,6 +364,36 @@ static inline void voronoi_check_grid(const struct voronoi *restrict v) {
   printf("Total volume: %g\n", V);
 }
 
+static inline void voronoi_write_grid(const struct voronoi *restrict v,
+                                      FILE *file, size_t *offset) {
+
+  for (int i = 0; i < v->number_of_cells; ++i) {
+    fprintf(file, "G\t%g\t%g\n", v->generators[2 * i],
+            v->generators[2 * i + 1]);
+    fprintf(file, "M\t%g\t%g\n", v->cell_centroid[2 * i],
+            v->cell_centroid[2 * i + 1]);
+    for (int j = 1; j < v->vertex_number[i]; ++j) {
+      int cjm1 = v->vertex_offset[i] + j - 1;
+      int cj = v->vertex_offset[i] + j;
+      fprintf(file, "C\t%lu\t%lu\n", *offset + v->connections[cjm1],
+              *offset + v->connections[cj]);
+      fprintf(file, "F\t%g\t%g\n", v->face_midpoints[2 * cj],
+              v->face_midpoints[2 * cj + 1]);
+    }
+    fprintf(
+        file, "C\t%lu\t%lu\n",
+        *offset + v->connections[v->vertex_offset[i] + v->vertex_number[i] - 1],
+        *offset + v->connections[v->vertex_offset[i]]);
+    fprintf(file, "F\t%g\t%g\n", v->face_midpoints[2 * v->vertex_offset[i]],
+            v->face_midpoints[2 * v->vertex_offset[i] + 1]);
+  }
+  for (int i = 0; i < v->vertex_index; ++i) {
+    fprintf(file, "V\t%g\t%g\n", v->vertices[2 * i], v->vertices[2 * i + 1]);
+  }
+
+  *offset += v->vertex_index;
+}
+
 /**
  * @brief Print the Voronoi grid to a file with the given name.
  *
@@ -385,27 +415,8 @@ static inline void voronoi_print_grid(const struct voronoi *restrict v,
 
   FILE *file = fopen(file_name, "w");
 
-  for (int i = 0; i < v->number_of_cells; ++i) {
-    fprintf(file, "G\t%g\t%g\n", v->generators[2 * i],
-            v->generators[2 * i + 1]);
-    fprintf(file, "M\t%g\t%g\n", v->cell_centroid[2 * i],
-            v->cell_centroid[2 * i + 1]);
-    for (int j = 1; j < v->vertex_number[i]; ++j) {
-      int cjm1 = v->vertex_offset[i] + j - 1;
-      int cj = v->vertex_offset[i] + j;
-      fprintf(file, "C\t%i\t%i\n", v->connections[cjm1], v->connections[cj]);
-      fprintf(file, "F\t%g\t%g\n", v->face_midpoints[2 * cj],
-              v->face_midpoints[2 * cj + 1]);
-    }
-    fprintf(file, "C\t%i\t%i\n",
-            v->connections[v->vertex_offset[i] + v->vertex_number[i] - 1],
-            v->connections[v->vertex_offset[i]]);
-    fprintf(file, "F\t%g\t%g\n", v->face_midpoints[2 * v->vertex_offset[i]],
-            v->face_midpoints[2 * v->vertex_offset[i] + 1]);
-  }
-  for (int i = 0; i < v->vertex_index; ++i) {
-    fprintf(file, "V\t%g\t%g\n", v->vertices[2 * i], v->vertices[2 * i + 1]);
-  }
+  size_t offset = 0;
+  voronoi_write_grid(v, file, &offset);
 
   fclose(file);
 }
