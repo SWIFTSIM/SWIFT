@@ -62,11 +62,11 @@ void lightcone_init(struct lightcone_props *props, struct swift_params *params) 
   props->enabled = 1;
 
   /* Redshift range for the lightcone */
-  props->z_min = parser_get_param_double(params, "z_min");
-  props->z_max = parser_get_param_double(params, "z_max");
+  props->z_min = parser_get_param_double(params, "Lightcone:z_min");
+  props->z_max = parser_get_param_double(params, "Lightcone:z_max");
 
   /* Coordinates of the observer in the simulation box */
-  parser_get_param_double_array(params, "observer_position", 3, props->observer_position);
+  parser_get_param_double_array(params, "Lightcone:observer_position", 3, props->observer_position);
 
   /* Initially have no list of periodic replications to check */
   props->replication_list = NULL;
