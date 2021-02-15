@@ -61,6 +61,7 @@ SPH:
   minimal_temperature:   10.      # Kelvin
   h_min_ratio:           0.2       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
   h_max:                 100     # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  initial_temperature: 172.48    # Given in the output of music
 
 # Parameters related to the initial conditions
 InitialConditions:
