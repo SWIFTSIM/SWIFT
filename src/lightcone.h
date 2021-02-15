@@ -25,6 +25,7 @@
 
 /* Local headers */
 #include "parser.h"
+#include "periodic_replications.h"
 
 /**
  * @brief Lightcone data
@@ -35,13 +36,20 @@ struct lightcone_props {
   int enabled;
 
   /*! Position of the observer in the simulation box */
-  double observer_pos[3];
+  double observer_position[3];
 
   /*! Redshift range the lightcone covers */
   double z_min, z_max;
 
+  /*! List of periodic replications to check on this timestep */
+  struct replication_list *replication_list;
+
 };
 
 void lightcone_init(struct lightcone_props *props, struct swift_params *params);
+
+void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
+
+void lightcone_struct_restore(struct lightcone_props *props, FILE *stream);
 
 #endif /* SWIFT_LIGHTCONE_H */

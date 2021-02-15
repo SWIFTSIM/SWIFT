@@ -69,6 +69,7 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "lightcone.h"
 #include "line_of_sight.h"
 #include "logger.h"
 #include "logger_io.h"
@@ -2747,6 +2748,7 @@ void engine_unpin(void) {
  * @param chemistry The chemistry information.
  * @param fof_properties The #fof_props of this run.
  * @param los_properties the #los_props of this run.
+ * @param lightcone_properties the #lightcone_props of this run.
  */
 void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
@@ -2764,7 +2766,8 @@ void engine_init(
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
-    struct fof_props *fof_properties, struct los_props *los_properties) {
+    struct fof_props *fof_properties, struct los_props *los_properties,
+    struct lightcone_props *lightcone_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -2860,6 +2863,7 @@ void engine_init(
   e->output_options = output_options;
   e->stf_this_timestep = 0;
   e->los_properties = los_properties;
+  e->lightcone_properties = lightcone_properties;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
   e->systime_last_step = 0.0;
@@ -3280,6 +3284,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->fof_properties);
 #endif
     free((void *)e->los_properties);
+    free((void *)e->lightcone_properties);
 #ifdef WITH_MPI
     free((void *)e->reparttype);
 #endif
@@ -3337,6 +3342,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+  lightcone_struct_dump(e->lightcone_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
 
@@ -3473,6 +3479,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct los_props *)malloc(sizeof(struct los_props));
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
+
+  struct lightcone_props *lightcone_properties =
+      (struct lightcone_props *)malloc(sizeof(struct lightcone_props));
+  lightcone_struct_restore(lightcone_properties, stream);
+  e->lightcone_properties = lightcone_properties;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
