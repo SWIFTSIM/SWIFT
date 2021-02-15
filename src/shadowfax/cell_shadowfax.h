@@ -20,11 +20,12 @@ __attribute__((always_inline)) INLINE static void
 cell_malloc_delaunay_tessellation(struct cell *c,
                                   const struct hydro_space *hs) {
 
-  /*  if(c->hydro.shadowfax_enabled){*/
-  delaunay_destroy(&c->hydro.deltess);
-  /*  }*/
-  delaunay_init(&c->hydro.deltess, c->loc, c->width, c->hydro.count,
-                10 * c->hydro.count);
+  if (c->hydro.shadowfax_enabled == 1) {
+    delaunay_reset(&c->hydro.deltess, c->hydro.count);
+  } else {
+    delaunay_init(&c->hydro.deltess, c->loc, c->width, c->hydro.count,
+                  10 * c->hydro.count);
+  }
 
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -35,7 +36,7 @@ cell_malloc_delaunay_tessellation(struct cell *c,
     p->voronoi.flag = 0;
   }
 
-  /*  c->hydro.shadowfax_enabled = 1;*/
+  c->hydro.shadowfax_enabled = 1;
 }
 
 __attribute__((always_inline)) INLINE static void cell_shadowfax_do_self1(
@@ -86,7 +87,7 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair_naive(
 
     if (!shadowfax_particle_was_added(pi, 1 + sid)) {
       delaunay_add_new_vertex(&cj->hydro.deltess, pi->x[0] - shift[0],
-                              pi->x[1] - shift[1]);
+                              pi->x[1] - shift[1], 1 + sid, pid);
       shadowfax_flag_particle_added(pi, 1 + sid);
     }
   }
@@ -99,7 +100,7 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair_naive(
 
     if (!shadowfax_particle_was_added(pj, 13 + sid)) {
       delaunay_add_new_vertex(&ci->hydro.deltess, pj->x[0] + shift[0],
-                              pj->x[1] + shift[1]);
+                              pj->x[1] + shift[1], 13 + sid, pjd);
       shadowfax_flag_particle_added(pj, 13 + sid);
     }
   }
@@ -188,7 +189,8 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair_subset(
         if (r2 < hig2) {
           if (!shadowfax_particle_was_added(pj, 1 + sid)) {
             delaunay_add_new_vertex(&ci->hydro.deltess, pj->x[0] + shift[0],
-                                    pj->x[1] + shift[1]);
+                                    pj->x[1] + shift[1], 1 + sid,
+                                    sort_j[pjd].i);
             /*            shadowfax_flag_particle_added(pj, 1+sid);*/
           }
         }
@@ -234,7 +236,8 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair_subset(
         if (r2 < hig2) {
           if (!shadowfax_particle_was_added(pj, 13 + sid)) {
             delaunay_add_new_vertex(&ci->hydro.deltess, pj->x[0] + shift[0],
-                                    pj->x[1] + shift[1]);
+                                    pj->x[1] + shift[1], 13 + sid,
+                                    sort_j[pjd].i);
             /*            shadowfax_flag_particle_added(pj, 13+sid);*/
           }
         }
@@ -316,7 +319,8 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair1(
 
           if (!shadowfax_particle_was_added(pj, 13 + sid)) {
             delaunay_add_new_vertex(&ci->hydro.deltess, pj->x[0] + shift[0],
-                                    pj->x[1] + shift[1]);
+                                    pj->x[1] + shift[1], 13 + sid,
+                                    sort_j[pjd].i);
             shadowfax_flag_particle_added(pj, 13 + sid);
           }
         }
@@ -369,7 +373,8 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair1(
 
           if (!shadowfax_particle_was_added(pi, 1 + sid)) {
             delaunay_add_new_vertex(&cj->hydro.deltess, pi->x[0] - shift[0],
-                                    pi->x[1] - shift[1]);
+                                    pi->x[1] - shift[1], 1 + sid,
+                                    sort_i[pid].i);
             shadowfax_flag_particle_added(pi, 1 + sid);
           }
         }

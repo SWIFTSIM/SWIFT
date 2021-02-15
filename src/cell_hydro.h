@@ -46,7 +46,7 @@ struct cell_hydro {
 
 #ifdef SHADOWFAX_SPH
   /*! Was Shadowfax functionality enabled for this cell? */
-  /*  int shadowfax_enabled;*/
+  int shadowfax_enabled;
   /*! Delaunay tessellation. */
   struct delaunay deltess;
   /*! Voronoi tessellation. */
