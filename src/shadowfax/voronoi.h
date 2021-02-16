@@ -33,6 +33,36 @@
 #include <string.h>
 
 /**
+ * @brief Voronoi interface.
+ *
+ * An interface is a connection between two neighbouring Voronoi cells. It is
+ * completely defined by the indices of the generators that generate the two
+ * neighbouring cells, a surface area and a midpoint position.
+ */
+struct voronoi_pair {
+  /*! Index of the generator on the left of the interface (always a particle
+   *  within the local cell). */
+  int left;
+
+  /*! Index of the generator on the right of the interface (can be a local
+   *  particle, but also a particle in a neighbouring cell). */
+  int right;
+
+  /*! Surface area of the interface. */
+  double surface_area;
+
+  /*! Midpoint of the interface. */
+  double midpoint[2];
+
+#ifdef VORONOI_STORE_CONNECTIONS
+  /*! First vertex of the interface. */
+  double a[2];
+  /*! Second vertex of the interface. */
+  double b[2];
+#endif
+};
+
+/**
  * @brief Voronoi grid.
  *
  * The grid stores a copy of the coordinates of the grid generators, the
@@ -85,6 +115,10 @@ struct voronoi {
   /*! @brief Length of each edge connection. */
   double *face_areas;
 
+  struct voronoi_pair *pairs[27];
+  int pair_index[27];
+  int pair_size[27];
+
   /*! @brief Number of connections. */
   int connection_index;
 
@@ -93,6 +127,69 @@ struct voronoi {
    *  connections. */
   int connection_size;
 };
+
+/**
+ * @brief Compute the midpoint and surface area of the face with the given
+ * vertices.
+ *
+ * @param ax, ay, bx, by Face vertices.
+ * @param result Midpoint of the face.
+ * @return Surface area of the face.
+ */
+static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
+                                                        double bx, double by,
+                                                        double *result) {
+
+  result[0] = 0.5 * (ax + bx);
+  result[1] = 0.5 * (ay + by);
+
+  double sx = bx - ax;
+  double sy = by - ay;
+
+  return sqrt(sx * sx + sy * sy);
+}
+
+/**
+ * @brief Add a two particle pair to the grid.
+ *
+ * The grid connectivity is stored per cell sid: sid=0 corresponds to particle
+ * pairs encountered during a self task (both particles are within the local
+ * cell), while sid=1-26 correspond to particle interactions for which the right
+ * neighbour is part of one of the 26 neighbouring cells.
+ *
+ * For each pair, we compute and store all the quantities required to compute
+ * fluxes between the Voronoi cells: the surface area and midpoint of the
+ * interface.
+ *
+ * @param v Voronoi grid.
+ * @param sid Index of the cell list in which the pair is stored.
+ * @param lid Index of the left particle within its cell (the cell linked to
+ * this grid).
+ * @param rid Index of the right particle within cell sid.
+ * @param ax,ay,bx,by Vertices of the interface.
+ */
+static inline void voronoi_add_pair(struct voronoi *restrict v, int sid,
+                                    int lid, int rid, double ax, double ay,
+                                    double bx, double by) {
+
+  if (v->pair_index[sid] == v->pair_size[sid]) {
+    v->pair_size[sid] <<= 1;
+    v->pairs[sid] = (struct voronoi_pair *)realloc(
+        v->pairs[sid], v->pair_size[sid] * sizeof(struct voronoi_pair));
+  }
+  struct voronoi_pair *this_pair = &v->pairs[sid][v->pair_index[sid]];
+  this_pair->left = lid;
+  this_pair->right = rid;
+  this_pair->surface_area =
+      voronoi_compute_midpoint_area_face(ax, ay, bx, by, this_pair->midpoint);
+#ifdef VORONOI_STORE_CONNECTIONS
+  this_pair->a[0] = ax;
+  this_pair->a[1] = ay;
+  this_pair->b[0] = bx;
+  this_pair->b[1] = by;
+#endif
+  ++v->pair_index[sid];
+}
 
 /**
  * @brief Add a new edge connection to the grid.
@@ -140,27 +237,6 @@ static inline double voronoi_compute_centroid_volume_triangle(
   double s20y = cy - ay;
 
   return 0.5 * fabs(s10x * s20y - s20x * s10y);
-}
-
-/**
- * @brief Compute the midpoint and surface area of the face with the given
- * vertices.
- *
- * @param ax, ay, bx, by Face vertices.
- * @param result Midpoint of the face.
- * @return Surface area of the face.
- */
-static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
-                                                        double bx, double by,
-                                                        double *result) {
-
-  result[0] = 0.5 * (ax + bx);
-  result[1] = 0.5 * (ay + by);
-
-  double sx = bx - ax;
-  double sy = by - ay;
-
-  return sqrt(sx * sx + sy * sy);
 }
 
 /**
@@ -241,6 +317,12 @@ static inline void voronoi_init(struct voronoi *restrict v,
   v->connections = (int *)malloc(v->number_of_cells * sizeof(int));
   v->face_midpoints = (double *)malloc(2 * v->number_of_cells * sizeof(double));
   v->face_areas = (double *)malloc(v->number_of_cells * sizeof(double));
+  for (int i = 0; i < 27; ++i) {
+    v->pairs[i] =
+        (struct voronoi_pair *)malloc(10 * sizeof(struct voronoi_pair));
+    v->pair_index[i] = 0;
+    v->pair_size[i] = 10;
+  }
   v->connection_index = 0;
   v->connection_size = v->number_of_cells;
   /* loop over all cell generators, and hence over all non-ghost, non-dummy
@@ -253,6 +335,7 @@ static inline void voronoi_init(struct voronoi *restrict v,
     v->cell_centroid[2 * i] = 0.;
     v->cell_centroid[2 * i + 1] = 0.;
     double centroid[2];
+    double face_midpoint[2];
 
     /* get the generator position, we use it during centroid/volume
        calculations */
@@ -278,6 +361,9 @@ static inline void voronoi_init(struct voronoi *restrict v,
        next neighbouring triangle that has this generator as vertex, in the
        counterclockwise direction */
     int vi0p1 = (vi0 + 1) % 3;
+
+    int first_vertex = d->triangles[t0].vertices[vi0p1];
+
     int t1 = d->triangles[t0].neighbours[vi0p1];
     int vi1 = d->triangles[t0].index_in_neighbour[vi0p1];
     /* loop around until we arrive back at the original triangle */
@@ -303,10 +389,29 @@ static inline void voronoi_init(struct voronoi *restrict v,
       v->cell_centroid[2 * i] += V * centroid[0];
       v->cell_centroid[2 * i + 1] += V * centroid[1];
 
-      v->face_areas[c1] = voronoi_compute_midpoint_area_face(
-          bx, by, cx, cy, v->face_midpoints + 2 * c1);
+      double face_area =
+          voronoi_compute_midpoint_area_face(bx, by, cx, cy, face_midpoint);
+      v->face_areas[c1] = face_area;
+      v->face_midpoints[2 * c1] = face_midpoint[0];
+      v->face_midpoints[2 * c1 + 1] = face_midpoint[1];
 
       int vi1p2 = (vi1 + 2) % 3;
+
+      /* the neighbour corresponding to the face is the same vertex that
+         determines the next triangle */
+      int other_vertex = d->triangles[t0].vertices[vi1p2];
+      if (other_vertex < d->ngb_offset) {
+        if (other_vertex > i) {
+          /* only store pairs once */
+          voronoi_add_pair(v, 0, i, other_vertex, bx, by, cx, cy);
+        }
+      } else {
+        /* no check on other_vertex > i required, since this is always true */
+        int sid = d->ngb_cells[other_vertex - d->ngb_offset];
+        int pid = d->ngb_indices[other_vertex - d->ngb_offset];
+        voronoi_add_pair(v, sid, i, pid, bx, by, cx, cy);
+      }
+
       vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
       t1 = d->triangles[t1].neighbours[vi1p2];
     }
@@ -323,8 +428,23 @@ static inline void voronoi_init(struct voronoi *restrict v,
     v->cell_centroid[2 * i] += V * centroid[0];
     v->cell_centroid[2 * i + 1] += V * centroid[1];
 
-    v->face_areas[c0] = voronoi_compute_midpoint_area_face(
-        bx, by, cx, cy, v->face_midpoints + 2 * c0);
+    double face_area =
+        voronoi_compute_midpoint_area_face(bx, by, cx, cy, face_midpoint);
+    v->face_areas[c0] = face_area;
+    v->face_midpoints[2 * c0] = face_midpoint[0];
+    v->face_midpoints[2 * c0 + 1] = face_midpoint[1];
+
+    if (first_vertex < d->ngb_offset) {
+      if (first_vertex > i) {
+        /* only store pairs once */
+        voronoi_add_pair(v, 0, i, first_vertex, bx, by, cx, cy);
+      }
+    } else {
+      /* no check on other_vertex > i required, since this is always true */
+      int sid = d->ngb_cells[first_vertex - d->ngb_offset];
+      int pid = d->ngb_indices[first_vertex - d->ngb_offset];
+      voronoi_add_pair(v, sid, i, pid, bx, by, cx, cy);
+    }
 
     /* now compute the actual centroid by dividing the volume-weighted
        accumulators by the cell volume */
