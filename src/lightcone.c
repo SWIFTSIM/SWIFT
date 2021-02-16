@@ -35,37 +35,6 @@
 #include "cosmology.h"
 
 
-static void lightcone_init_replication_list(struct lightcone_props *props,
-                                            struct cosmology *cosmo,
-                                            struct space *s,) {
-
-  /* 
-     For now, we'll check all periodic replications between z_min and z_max.
-     
-     TODO: on each timestep, get limits on times particles can be drifted between
-     and regenerate the list of replications.
-  */
-
-  /* Get the size of the simulation box */
-  double boxsize = s->dim[0];
-  if(s->dim[1] != s->dim[0] || s->dim[2] != s->dim[0])
-    error("Lightcones require a cubic simulation box.");
-
-  /* Convert redshift range to a distance range */
-  double lightcone_rmin = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_max));
-  double lightcone_rmax = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_min));;
-  double lightcone_boundary = 0.5*boxsize;
-  if(lightcone_rmin > lightcone_rmax)
-    error("Lightcone has rmin > rmax - check z_min and z_max parameters?");
-
-  /* Determine periodic copies we need to search */
-  replication_list_init(&props->replication_list, boxsize,
-                        props->observer_position[3],
-                        lightcone_rmin, lightcone_rmax,
-                        lightcone_boundary);
-}
-
-
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
 
   restart_write_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
@@ -101,3 +70,32 @@ void lightcone_init(struct lightcone_props *props, struct swift_params *params) 
 
 }
 
+
+void lightcone_init_replication_list(struct lightcone_props *props,
+                                     struct cosmology *cosmo,
+                                     struct space *s) {
+  /* 
+     For now, we'll check all periodic replications between z_min and z_max.
+     
+     TODO: on each timestep, get limits on times particles can be drifted between
+     and regenerate the list of replications.
+  */
+
+  /* Get the size of the simulation box */
+  double boxsize = s->dim[0];
+  if(s->dim[1] != s->dim[0] || s->dim[2] != s->dim[0])
+    error("Lightcones require a cubic simulation box.");
+
+  /* Convert redshift range to a distance range */
+  double lightcone_rmin = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_max));
+  double lightcone_rmax = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_min));;
+  double lightcone_boundary = 0.5*boxsize;
+  if(lightcone_rmin > lightcone_rmax)
+    error("Lightcone has rmin > rmax - check z_min and z_max parameters?");
+
+  /* Determine periodic copies we need to search */
+  replication_list_init(&props->replication_list, boxsize,
+                        props->observer_position,
+                        lightcone_rmin, lightcone_rmax,
+                        lightcone_boundary);
+}

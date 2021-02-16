@@ -24,8 +24,10 @@
 #include "../config.h"
 
 /* Local headers */
+#include "cosmology.h"
 #include "parser.h"
 #include "periodic_replications.h"
+#include "space.h"
 
 /**
  * @brief Lightcone data
@@ -51,5 +53,9 @@ void lightcone_init(struct lightcone_props *props, struct swift_params *params);
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
 
 void lightcone_struct_restore(struct lightcone_props *props, FILE *stream);
+
+void lightcone_init_replication_list(struct lightcone_props *props,
+                                     struct cosmology *cosmo,
+                                     struct space *s);
 
 #endif /* SWIFT_LIGHTCONE_H */

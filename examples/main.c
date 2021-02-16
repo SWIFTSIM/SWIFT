@@ -1132,12 +1132,6 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    /* Initialise the lightcone properties */
-    bzero(&lightcone_properties, sizeof(struct lightcone_props));
-#ifdef WITH_LIGHTCONE
-    if (with_lightcone) lightcone_init(&lightcone_properties, params);
-#endif
-
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
@@ -1283,6 +1277,15 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
+
+    /* Initialise the lightcone properties */
+    bzero(&lightcone_properties, sizeof(struct lightcone_props));
+#ifdef WITH_LIGHTCONE
+    if (with_lightcone) {
+      lightcone_init(&lightcone_properties, params);
+      lightcone_init_replication_list(&lightcone_properties, &cosmo, &s);
+    }
+#endif
 
     if (myrank == 0) {
       clocks_gettime(&toc);
