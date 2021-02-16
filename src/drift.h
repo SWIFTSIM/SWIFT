@@ -31,6 +31,7 @@
 #include "entropy_floor.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "lightcone.h"
 #include "part.h"
 #include "sink.h"
 #include "stars.h"
@@ -82,6 +83,10 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
     gp->v_full[1] = 0.f;
     gp->v_full[2] = 0.f;
   }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  lightcone_check_gpart_crosses(e, gp, dt_drift, ti_old);
 #endif
 
   /* Drift... */

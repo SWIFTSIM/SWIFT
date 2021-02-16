@@ -28,13 +28,21 @@
 #include "lightcone.h"
 
 /* Local headers */
-#include "parser.h"
-#include "restart.h"
+#include "engine.h"
 #include "error.h"
-#include "periodic_replications.h"
 #include "cosmology.h"
+#include "parser.h"
+#include "periodic_replications.h"
+#include "restart.h"
+#include "space.h"
 
 
+/**
+ * @brief Dump lightcone_props struct to the output stream.
+ *
+ * @param props the #lightcone_props structure
+ * @param stream The stream to write to.
+ */
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
 
   restart_write_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
@@ -42,6 +50,12 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
 }
 
 
+/**
+ * @brief Restore lightcone_props struct from the output stream.
+ *
+ * @param props the #lightcone_props structure
+ * @param stream The stream to read from.
+ */
 void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 
   restart_read_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
@@ -71,6 +85,14 @@ void lightcone_init(struct lightcone_props *props, struct swift_params *params) 
 }
 
 
+/**
+ * @brief Determine periodic copies of the simulation box which could
+ * contribute to the lightcone.
+ *
+ * @param props the #lightcone_props structure
+ * @param props the #cosmology structure
+ * @param props the #space structure
+ */
 void lightcone_init_replication_list(struct lightcone_props *props,
                                      struct cosmology *cosmo,
                                      struct space *s) {
@@ -98,4 +120,61 @@ void lightcone_init_replication_list(struct lightcone_props *props,
                         props->observer_position,
                         lightcone_rmin, lightcone_rmax,
                         lightcone_boundary);
+}
+
+
+/**
+ * @brief Check if a gpart crosses the lightcone.
+ *
+ * @param e The #engine structure.
+ * @param gp The #gpart to check.
+ */
+void lightcone_check_gpart_crosses(const struct engine *e, struct gpart *gp,
+                                   const double dt_drift, integertime_t ti_old) {
+
+  /* Unpack some variables we need */
+  const struct lightcone_props *props = e->lightcone_properties;
+  const double boxsize = props->boxsize;
+  const double *observer_position = props->observer_position;
+  const int nreps = e->lightcone_properties->replication_list->nrep;
+  const struct replication_list *rep = e->lightcone_properties->replication_list->replications;
+
+  /* Determine expansion factor at start and end of the drift */
+  const double a_start = c->a_begin * exp(ti_old * c->time_base);
+  const double a_end   = c->a_begin * exp(ti_old * c->time_base + dt_drift);
+
+  /* Find comoving distance to these expansion factors */
+  const double comoving_dist_start = cosmology_get_comoving_distance(c, a_start);
+  const double comoving_dist_end   = cosmology_get_comoving_distance(c, a_end);
+
+  /* Loop over periodic copies of the volume */
+  for(int i=0; i<nreps; i+=1) {
+    
+    /* Get the coordinates of this periodic copy of the gpart relative to the observer */
+    const double x_start[3] = {
+      gp->x[0] + rep[i].coord[0]*boxsize - observer_position[0],
+      gp->x[1] + rep[i].coord[1]*boxsize - observer_position[1],
+      gp->x[2] + rep[i].coord[2]*boxsize - observer_position[2],
+    }
+    const double r2_start = 
+      x_start[0]*x_start[0]+
+      x_start[1]*x_start[1]+
+      x_start[2]*x_start[2];
+
+    /* Get position of this periodic copy at the end of the drift */
+    const double x_end[3] = {
+      x_start[0] + dt_drift * gp->v_full[0],
+      x_start[1] + dt_drift * gp->v_full[1],
+      x_start[2] + dt_drift * gp->v_full[2],
+    }
+    const double r2_end = 
+      x_end[0]*x_end[0]+
+      x_end[1]*x_end[1]+
+      x_end[2]*x_end[2];
+    
+    /* Check if it crossed the lightcone during the drift */
+
+
+  }
+
 }

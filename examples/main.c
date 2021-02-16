@@ -524,6 +524,8 @@ int main(int argc, char *argv[]) {
 #ifndef WITH_LIGHTCONE
     error("Running with lightcone output but compiled without it!");
 #endif
+    if(!with_cosmology)
+      error("Error: cannot make lightcones without --cosmology.");
   }
 
   if (!with_stars && with_star_formation) {

@@ -24,10 +24,14 @@
 #include "../config.h"
 
 /* Local headers */
-#include "cosmology.h"
 #include "parser.h"
 #include "periodic_replications.h"
-#include "space.h"
+
+/* Avoid cyclic inclusions */
+struct cosmology;
+struct engine;
+struct gpart;
+struct space;
 
 /**
  * @brief Lightcone data
@@ -57,5 +61,8 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream);
 void lightcone_init_replication_list(struct lightcone_props *props,
                                      struct cosmology *cosmo,
                                      struct space *s);
+
+void lightcone_check_gpart_crosses(const struct engine *e, struct gpart *gp,
+                                   const double dt_drift, const integertime_t);
 
 #endif /* SWIFT_LIGHTCONE_H */
