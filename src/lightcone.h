@@ -42,7 +42,7 @@ struct lightcone_props {
   double z_min, z_max;
 
   /*! List of periodic replications to check on this timestep */
-  struct replication_list *replication_list;
+  struct replication_list replication_list;
 
 };
 
