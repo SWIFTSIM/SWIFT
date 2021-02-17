@@ -695,6 +695,44 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
 }
 
 /**
+ * @brief "Remove" a sink particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param sp The #sink to remove.
+ */
+void cell_remove_sink(const struct engine *e, struct cell *c,
+                      struct sink *sink) {
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (sink->time_bin == time_bin_inhibited) return;
+
+  /* Mark the particle as inhibited and stand-alone */
+  sink->time_bin = time_bin_inhibited;
+  if (sink->gpart) {
+    sink->gpart->time_bin = time_bin_inhibited;
+    sink->gpart->id_or_neg_offset = sink->id;
+    sink->gpart->type = swift_type_dark_matter;
+  }
+
+  /* Update the space-wide counters */
+  const size_t one = 1;
+  atomic_add(&e->s->nr_inhibited_sinks, one);
+  if (sink->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the sink */
+  sink->gpart = NULL;
+}
+
+/**
  * @brief "Remove" a gas particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *

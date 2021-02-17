@@ -891,8 +891,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 #endif
 
             /* Remove the particle entirely */
-            // cell_remove_sink(e, c, bp);
-            error("TODO: loic implement cell_remove_sink");
+            cell_remove_sink(e, c, sink);
           }
 
           if (lock_unlock(&e->s->lock) != 0)

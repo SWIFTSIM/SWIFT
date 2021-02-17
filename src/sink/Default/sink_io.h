@@ -129,7 +129,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
 #ifdef DEBUG_INTERACTIONS_SINKS
 
   list += *num_fields;
-  *num_fields += 2;
+  *num_fields += 4;
 
   list[0] =
       io_make_output_field("Num_ngb_formation", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
@@ -138,6 +138,13 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       io_make_output_field("Ids_ngb_formation", LONGLONG,
                            MAX_NUM_OF_NEIGHBOURS_SINKS, UNIT_CONV_NO_UNITS, 0.f,
                            sinks, ids_ngbs_formation, "IDs of the neighbors");
+
+  list[2] =
+      io_make_output_field("Num_ngb_merger", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           sinks, num_ngb_merger, "Number of merger");
+  list[3] = io_make_output_field(
+      "Ids_ngb_merger", LONGLONG, MAX_NUM_OF_NEIGHBOURS_SINKS,
+      UNIT_CONV_NO_UNITS, 0.f, sinks, ids_ngbs_merger, "IDs of the neighbors");
 #endif
 }
 

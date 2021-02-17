@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,31 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SINK_H
-#define SWIFT_SINK_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/**
- * @brief Defines which sink particle should be removed.
- *
- * In the iact function of the merger, we return this enum in order
- * to define if the none, the first or the second sink particle should be
- * removed (in the order of the arguments)
- */
-enum sink_merger_remove {
-  sink_merger_remove_none,
-  sink_merger_remove_first,
-  sink_merger_remove_second
-};
+/* Local headers. */
+#include "active.h"
+#include "cell.h"
+#include "engine.h"
+#include "feedback.h"
+#include "runner.h"
+#include "sink.h"
+#include "space_getsid.h"
+#include "timers.h"
 
-/* Select the correct sink model */
-#if defined(SINK_NONE)
-#include "./sink/Default/sink.h"
-#include "./sink/Default/sink_iact.h"
-#else
-#error "Invalid choice of sink model"
-#endif
-
-#endif
+/* Import the sink compute formation loop functions. */
+#define FUNCTION merger
+#define FUNCTION_TASK_LOOP TASK_LOOP_MERGER
+#include "runner_doiact_functions_sinks_merger.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
