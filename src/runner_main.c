@@ -130,6 +130,13 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import the sink merger loop functions. */
+#define FUNCTION merger
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_MERGER
+#include "runner_doiact_sinks_merger.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -235,6 +242,8 @@ void *runner_main(void *data) {
             runner_doself2_branch_rt_transport(r, ci);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_doself_branch_sinks_compute_formation(r, ci);
+          else if (t->subtype == task_subtype_sink_merger)
+            runner_doself_sinks_merger(r, ci);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -275,6 +284,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_rt_transport(r, ci, cj);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dopair_branch_sinks_compute_formation(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_merger)
+            runner_do_sym_pair_sinks_merger(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -313,6 +324,8 @@ void *runner_main(void *data) {
             runner_dosub_self2_rt_transport(r, ci, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_self_sinks_compute_formation(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_merger)
+            runner_dosub_self_sinks_merger(r, ci);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -351,6 +364,8 @@ void *runner_main(void *data) {
             runner_dosub_pair2_rt_transport(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_pair_sinks_compute_formation(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_merger)
+            runner_dosub_pair_sinks_merger(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
