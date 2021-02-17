@@ -26,6 +26,7 @@
 /* Local headers */
 #include "parser.h"
 #include "periodic_replications.h"
+#include "timeline.h"
 
 /* Avoid cyclic inclusions */
 struct cosmology;
@@ -47,12 +48,17 @@ struct lightcone_props {
   /*! Redshift range the lightcone covers */
   double z_min, z_max;
 
+  /*! Simulation box size (volume must be a cube) */
+  double boxsize;
+
   /*! List of periodic replications to check on this timestep */
   struct replication_list replication_list;
 
 };
 
-void lightcone_init(struct lightcone_props *props, struct swift_params *params);
+void lightcone_init(struct lightcone_props *props,
+                    const struct space *s,
+                    struct swift_params *params);
 
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
 
@@ -62,7 +68,7 @@ void lightcone_init_replication_list(struct lightcone_props *props,
                                      struct cosmology *cosmo,
                                      struct space *s);
 
-void lightcone_check_gpart_crosses(const struct engine *e, struct gpart *gp,
-                                   const double dt_drift, const integertime_t);
+void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *gp,
+                                   const double dt_drift, const integertime_t ti_old);
 
 #endif /* SWIFT_LIGHTCONE_H */

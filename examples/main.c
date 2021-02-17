@@ -1284,7 +1284,7 @@ int main(int argc, char *argv[]) {
     bzero(&lightcone_properties, sizeof(struct lightcone_props));
 #ifdef WITH_LIGHTCONE
     if (with_lightcone) {
-      lightcone_init(&lightcone_properties, params);
+      lightcone_init(&lightcone_properties, &s, params);
       lightcone_init_replication_list(&lightcone_properties, &cosmo, &s);
     }
 #endif
