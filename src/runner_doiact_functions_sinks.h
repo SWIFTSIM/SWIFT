@@ -44,7 +44,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (c->hydro.count == 0 || c->sinks.count == 0) return;
-  if (!cell_is_active_sinks(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -55,35 +55,37 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
   struct sink *restrict sinks = c->sinks.parts;
   struct part *restrict parts = c->hydro.parts;
 
-  /* Loop over the sinks in ci. */
-  for (int sid = 0; sid < scount; sid++) {
+  /* Loop over the particles in ci. */
+  for (int pjd = 0; pjd < count; pjd++) {
 
-    /* Get a hold of the ith sink in ci. */
-    struct sink *restrict si = &sinks[sid];
+    /* Get a pointer to the jth particle. */
+    struct part *restrict pj = &parts[pjd];
+    const float hj = pj->h;
 
     /* Skip inactive particles */
-    if (!sink_is_active(si, e)) continue;
+    if (!part_is_active(pj, e)) continue;
 
-    const float ri = si->r_cut;
-    const float ri2 = ri * ri;
-    const float six[3] = {(float)(si->x[0] - c->loc[0]),
-                          (float)(si->x[1] - c->loc[1]),
-                          (float)(si->x[2] - c->loc[2])};
+    const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+                          (float)(pj->x[1] - c->loc[1]),
+                          (float)(pj->x[2] - c->loc[2])};
 
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count; pjd++) {
+    /* Loop over the sinks in cj. */
+    for (int sid = 0; sid < scount; sid++) {
 
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts[pjd];
-      const float hj = pj->h;
+      /* Get a hold of the ith sink in ci. */
+      struct sink *restrict si = &sinks[sid];
 
       /* Early abort? */
-      if (part_is_inhibited(pj, e)) continue;
+      if (sink_is_inhibited(si, e)) continue;
+
+      const float ri = si->r_cut;
+      const float ri2 = ri * ri;
+
+      const float six[3] = {(float)(si->x[0] - c->loc[0]),
+                            (float)(si->x[1] - c->loc[1]),
+                            (float)(si->x[2] - c->loc[2])};
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-                            (float)(pj->x[1] - c->loc[1]),
-                            (float)(pj->x[2] - c->loc[2])};
       float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -91,13 +93,16 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
       /* Check that particles have been drifted to the current time */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
+
+      if (si->ti_drift != e->ti_current)
+        error("Particle si not drifted to current time");
 #endif
 
       if (r2 < ri2) {
         IACT_SINK(r2, dx, ri, hj, si, pj, a, H);
       }
-    } /* loop over the parts in ci. */
-  }   /* loop over the sinks in ci. */
+    } /* loop over the sinks in ci. */
+  }   /* loop over the parts in ci. */
 }
 
 /**
@@ -119,7 +124,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
   /* Anything to do here? */
   if (cj->hydro.count == 0 || ci->sinks.count == 0) return;
-  if (!cell_is_active_sinks(ci, e)) return;
+  if (!cell_is_active_hydro(ci, e)) return;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -139,35 +144,37 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-  /* Loop over the sinks in ci. */
-  for (int sid = 0; sid < scount_i; sid++) {
+  /* Loop over the parts in cj. */
+  for (int pjd = 0; pjd < count_j; pjd++) {
 
-    /* Get a hold of the ith sink in ci. */
-    struct sink *restrict si = &sinks_i[sid];
+    /* Get a pointer to the jth particle. */
+    struct part *restrict pj = &parts_j[pjd];
+    const float hj = pj->h;
 
     /* Skip inactive particles */
-    if (!sink_is_active(si, e)) continue;
+    if (!part_is_active(pj, e)) continue;
 
-    const float ri = si->r_cut;
-    const float ri2 = ri * ri;
-    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+    const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+                          (float)(pj->x[1] - cj->loc[1]),
+                          (float)(pj->x[2] - cj->loc[2])};
 
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j; pjd++) {
+    /* Loop over the sinks in ci. */
+    for (int sid = 0; sid < scount_i; sid++) {
 
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
-      const float hj = pj->h;
+      /* Get a hold of the ith sink in ci. */
+      struct sink *restrict si = &sinks_i[sid];
 
       /* Skip inhibited particles. */
-      if (part_is_inhibited(pj, e)) continue;
+      if (sink_is_inhibited(si, e)) continue;
+
+      /* Get the radius */
+      const float ri = si->r_cut;
+      const float ri2 = ri * ri;
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                            (float)(pj->x[1] - cj->loc[1]),
-                            (float)(pj->x[2] - cj->loc[2])};
+      const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
+                            (float)(si->x[1] - (cj->loc[1] + shift[1])),
+                            (float)(si->x[2] - (cj->loc[2] + shift[2]))};
       float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -175,6 +182,9 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Check that particles have been drifted to the current time */
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
+
+      if (si->ti_drift != e->ti_current)
+        error("Particle si not drifted to current time");
 #endif
 
       if (r2 < ri2) {
@@ -208,9 +218,9 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   const int do_ci_sinks = (ci->nodeID == e->nodeID) && (ci->sinks.count != 0) &&
-                          (cj->hydro.count != 0) && cell_is_active_sinks(ci, e);
+                          (cj->hydro.count != 0) && cell_is_active_hydro(ci, e);
   const int do_cj_sinks = (cj->nodeID == e->nodeID) && (cj->sinks.count != 0) &&
-                          (ci->hydro.count != 0) && cell_is_active_sinks(cj, e);
+                          (ci->hydro.count != 0) && cell_is_active_hydro(cj, e);
 
   if (do_ci_sinks) {
 
@@ -245,8 +255,8 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
       struct sink *restrict spi = &sinks_i[i];
       const float ri = spi->r_cut;
 
-      /* Skip inactive particles */
-      if (!sink_is_active(spi, e)) continue;
+      /* Skip inhibited particles */
+      if (sink_is_inhibited(spi, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -269,8 +279,8 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
 
-        /* Skip inhibited particles. */
-        if (part_is_inhibited(pj, e)) continue;
+        /* Skip inactive particles. */
+        if (!part_is_active(pj, e)) continue;
 
         const float hj = pj->h;
         const float pjx = pj->x[0] - cj->loc[0];
@@ -348,15 +358,15 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
     const double di_max = sort_i[count_i - 1].d - rshift;
     const float hydro_dx_max_rshift = ci->hydro.dx_max_sort - rshift;
 
-    /* Loop over the parts in cj. */
+    /* Loop over the sinks in cj. */
     for (int j = 0; j < count_j; j++) {
 
       /* Get a hold of the jth part in cj. */
       struct sink *spj = &sinks_j[j];
       const float rj = spj->r_cut;
 
-      /* Skip inactive particles */
-      if (!sink_is_active(spj, e)) continue;
+      /* Skip inhibited particles */
+      if (sink_is_inhibited(spj, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
@@ -379,8 +389,8 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
 
-        /* Skip inhibited particles. */
-        if (part_is_inhibited(pi, e)) continue;
+        /* Skip inactive particles. */
+        if (!part_is_active(pi, e)) continue;
 
         const float hi = pi->h;
         const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
@@ -462,7 +472,7 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
   if (c->sinks.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_sinks(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
   if (c->sinks.r_cut_max_old > c->dmin)
@@ -489,8 +499,8 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
-  const int ci_active = cell_is_active_sinks(ci, e);
-  const int cj_active = cell_is_active_sinks(cj, e);
+  const int ci_active = cell_is_active_hydro(ci, e);
+  const int cj_active = cell_is_active_hydro(cj, e);
   const int do_ci_sinks = ci->nodeID == e->nodeID;
   const int do_cj_sinks = cj->nodeID == e->nodeID;
   const int do_ci = (ci->sinks.count != 0 && cj->hydro.count != 0 &&
@@ -546,9 +556,9 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Should we even bother? */
   const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
-                           cell_is_active_sinks(ci, e);
+                           cell_is_active_hydro(ci, e);
   const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_sinks(cj, e);
+                           cell_is_active_hydro(cj, e);
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -573,9 +583,9 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
     const int do_ci_sinks = ci->nodeID == e->nodeID;
     const int do_cj_sinks = cj->nodeID == e->nodeID;
     const int do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
-                      cell_is_active_sinks(ci, e) && do_ci_sinks;
+                      cell_is_active_hydro(ci, e) && do_ci_sinks;
     const int do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
-                      cell_is_active_sinks(cj, e) && do_cj_sinks;
+                      cell_is_active_hydro(cj, e) && do_cj_sinks;
 
     if (do_ci) {
 
@@ -628,7 +638,7 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer) {
 
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->sinks.count == 0 ||
-      !cell_is_active_sinks(ci, r->e))
+      !cell_is_active_hydro(ci, r->e))
     return;
 
   /* Recurse? */

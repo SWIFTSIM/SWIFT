@@ -431,7 +431,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         } else if (s->gparts[k].type == swift_type_stars) {
           s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         } else if (s->gparts[k].type == swift_type_sink) {
-          s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+          s->sinks[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         } else if (s->gparts[k].type == swift_type_black_hole) {
           s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         }
@@ -443,7 +443,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
               &s->gparts[nr_gparts];
         } else if (s->gparts[nr_gparts].type == swift_type_sink) {
-          s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+          s->sinks[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
               &s->gparts[nr_gparts];
         } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
           s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
