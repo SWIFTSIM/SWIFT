@@ -32,12 +32,17 @@
 #include "engine.h"
 #include "error.h"
 #include "cosmology.h"
+#include "lock.h"
 #include "parser.h"
 #include "periodic.h"
 #include "periodic_replications.h"
 #include "restart.h"
 #include "space.h"
 #include "timeline.h"
+
+/* Just for testing, so we can dump particles to a text file */
+static swift_lock_type io_lock;
+static FILE *fd;
 
 /**
  * @brief Dump lightcone_props struct to the output stream.
@@ -72,6 +77,7 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
  * @param params the parameter file parser.
  */
 void lightcone_init(struct lightcone_props *props,
+                    const int myrank,
                     const struct space *s,
                     struct swift_params *params) {
   
@@ -90,6 +96,20 @@ void lightcone_init(struct lightcone_props *props,
   props->boxsize = s->dim[0];
   if(s->dim[1] != s->dim[0] || s->dim[2] != s->dim[0])
     error("Lightcones require a cubic simulation box.");
+
+  /* Set up the output file(s) */
+  lock_init(&io_lock);
+  char fname[500];
+  sprintf(fname, "lightcone.%d.txt", myrank);
+  fd = fopen(fname, "w");
+}
+
+
+/**
+ * @brief Flush any remaining lightcone output.
+ */
+void lightcone_flush(void) {
+  fclose(fd);
 }
 
 
@@ -198,11 +218,12 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
     if(r2_start < comoving_dist_2_start && r2_end > comoving_dist_2_end) {
 
       /* This periodic copy of the gpart crossed the lightcone during this drift */
-      
-      
-      
-    }
+      /* For testing: here we write out the initial coordinates to a text file */
+      lock_lock(&io_lock);
+      fprintf(fd, "%16.8e, %16.8e, %16.8e\n", x_start[0], x_start[1], x_start[2]);
+      lock_unlock(&io_lock);
 
-  }
+    } /* If crosses lightcone */
+  } /* Next periodic replication*/
 
 }

@@ -1284,7 +1284,9 @@ int main(int argc, char *argv[]) {
     bzero(&lightcone_properties, sizeof(struct lightcone_props));
 #ifdef WITH_LIGHTCONE
     if (with_lightcone) {
-      lightcone_init(&lightcone_properties, &s, params);
+      /* TODO: determine how to avoid duplicate/missing lightcone particles when restarting */
+      if(restart)error("Restarting lightcone runs is not implemented yet");
+      lightcone_init(&lightcone_properties, myrank, &s, params);
       lightcone_init_replication_list(&lightcone_properties, &cosmo, &s);
     }
 #endif
@@ -1791,6 +1793,7 @@ int main(int argc, char *argv[]) {
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
+  if (with_lightcone) lightcone_flush();
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   free(output_options);

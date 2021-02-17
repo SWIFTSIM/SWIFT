@@ -57,8 +57,11 @@ struct lightcone_props {
 };
 
 void lightcone_init(struct lightcone_props *props,
+                    const int myrank,
                     const struct space *s,
                     struct swift_params *params);
+
+void lightcone_flush(void);
 
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
 
