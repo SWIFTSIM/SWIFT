@@ -600,6 +600,8 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     error("Failed to allocate temporary cell count buffer.");
 
   /* Init the local collectors */
+  float min_mass = FLT_MAX;
+  float sum_vel_norm = 0.f;
   size_t count_inhibited_sink = 0;
   size_t count_extra_sink = 0;
 
@@ -665,6 +667,13 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
       ind[k] = index;
       cell_counts[index]++;
 
+      /* Compute minimal mass */
+      min_mass = min(min_mass, sink->mass);
+
+      /* Compute sum of velocity norm */
+      sum_vel_norm += sink->v[0] * sink->v[0] + sink->v[1] * sink->v[1] +
+                      sink->v[2] * sink->v[2];
+
       /* Update the position */
       sink->x[0] = pos_x;
       sink->x[1] = pos_y;
@@ -681,6 +690,10 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   if (count_inhibited_sink)
     atomic_add(&data->count_inhibited_sink, count_inhibited_sink);
   if (count_extra_sink) atomic_add(&data->count_extra_sink, count_extra_sink);
+
+  /* Write back the minimal part mass and velocity sum */
+  atomic_min_f(&s->min_spart_mass, min_mass);
+  atomic_add_f(&s->sum_spart_vel_norm, sum_vel_norm);
 }
 
 /**

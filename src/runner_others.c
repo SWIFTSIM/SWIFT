@@ -478,6 +478,10 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
           /* Are we forming a sink particle? */
           if (sink_should_convert_to_sink(p, xp, sink_props, e, dt_sink)) {
 
+#ifdef WITH_LOGGER
+            error("TODO");
+#endif
+
             /* Convert the gas particle to a sink particle */
             struct sink *sink = NULL;
 
@@ -666,7 +670,8 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
         if ((e->policy & engine_policy_self_gravity) &&
             !(e->policy & engine_policy_black_holes) &&
-            !(e->policy & engine_policy_star_formation)) {
+            !(e->policy & engine_policy_star_formation) &&
+            !(e->policy & engine_policy_sinks)) {
 
           /* Let's add a self interaction to simplify the count */
           gp->num_interacted++;

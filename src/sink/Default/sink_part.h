@@ -63,6 +63,12 @@ struct sink {
 #endif
 
 #ifdef DEBUG_INTERACTIONS_SINKS
+  /*! Number of interactions in merger SELF and PAIR */
+  int num_ngb_merger;
+
+  /*! List of interacting particles in merger SELF and PAIR */
+  long long ids_ngbs_merger[MAX_NUM_OF_NEIGHBOURS_SINKS];
+
   /*! Number of interactions in compute formation SELF and PAIR */
   int num_ngb_formation;
 

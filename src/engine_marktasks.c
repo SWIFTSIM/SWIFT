@@ -185,6 +185,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_sink(ci, s);
+          cell_activate_sink_formation_tasks(ci->top, s);
           if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
@@ -195,6 +196,21 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_sinks) {
           scheduler_activate(s, t);
           cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
+        }
+      }
+
+      /* Activate the sink merger */
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_sink_merger) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_sink_merger) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
         }
       }
 
@@ -508,14 +524,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Sink formation */
-      else if ((t_subtype == task_subtype_sink_compute_formation) &&
+      else if ((t_subtype == task_subtype_sink_compute_formation ||
+                t_subtype == task_subtype_sink_merger) &&
                (ci_active_sinks || cj_active_sinks) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
         scheduler_activate(s, t);
 
         /* Set the correct sorting flags */
-        if (t_type == task_type_pair) {
+        if (t_type == task_type_pair &&
+            t_subtype == task_subtype_sink_compute_formation) {
+
+          /* Activate the sink drift for the sink merger */
+          if (ci_nodeID == nodeID) {
+            cell_activate_drift_sink(ci, s);
+            cell_activate_sink_formation_tasks(ci->top, s);
+          }
+          if (cj_nodeID == nodeID) {
+            cell_activate_drift_sink(cj, s);
+            if (ci->top != cj->top) {
+              cell_activate_sink_formation_tasks(cj->top, s);
+            }
+          }
 
           /* Do ci */
           if (ci_active_sinks) {
@@ -525,7 +555,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
             /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID) cell_activate_drift_sink(ci, s);
             if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
             if (cj_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(cj, s);
@@ -542,8 +571,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
 
             /* Activate the drift tasks. */
+            /* Activate the sink drift for the merger */
             if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-            if (cj_nodeID == nodeID) cell_activate_drift_sink(cj, s);
             if (ci_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(ci, s);
 
@@ -1011,12 +1040,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
-    /* Sink drift ? */
-    else if (t_type == task_type_drift_sink) {
-
-      if (cell_is_active_sinks(t->ci, e)) cell_activate_drift_sink(t->ci, s);
-    }
-
     /* Hydro ghost tasks ? */
     else if (t_type == task_type_ghost || t_type == task_type_extra_ghost ||
              t_type == task_type_ghost_in || t_type == task_type_ghost_out) {
@@ -1075,7 +1098,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
-    /* Feedback implicit tasks? */
+    /* Sink implicit tasks? */
     else if (t_type == task_type_sink_in || t_type == task_type_sink_out) {
       if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e))
         scheduler_activate(s, t);
