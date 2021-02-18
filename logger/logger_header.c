@@ -114,7 +114,7 @@ void header_change_offset_direction(struct header *h,
     /* Check if everything is fine. */                                      \
     const int index = MODULE##_logger_local_to_global##PART[j];             \
     if (index == -1) {                                                      \
-      error("Field %s in " #MODULE "is not set",                            \
+      error("Field %s in " #MODULE " is not set",                           \
             MODULE##_logger_field_names##PART[j]);                          \
     }                                                                       \
     if (h->masks[index].size != MODULE##_logger_field_size##PART[j]) {      \

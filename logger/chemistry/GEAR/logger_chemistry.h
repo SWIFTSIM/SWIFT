@@ -147,7 +147,16 @@ chemistry_logger_interpolate_field_spart(
 __attribute__((always_inline)) INLINE static void
 chemistry_logger_generate_python_part(struct logger_python_field *fields) {
   fields[chemistry_logger_field_part_all] =
-      logger_loader_python_field(2 * GEAR_CHEMISTRY_ELEMENT_COUNT, NPY_DOUBLE);
+      logger_loader_python_field(/* Dimension */ 2, CUSTOM_NPY_TYPE);
+
+  logger_loader_python_field_add_subfield(
+      &fields[chemistry_logger_field_part_all], "SmoothedMetalMassFractions",
+      /* offset */ 0, GEAR_CHEMISTRY_ELEMENT_COUNT, NPY_DOUBLE);
+
+  logger_loader_python_field_add_subfield(
+      &fields[chemistry_logger_field_part_all], "MetalMassFractions",
+      GEAR_CHEMISTRY_ELEMENT_COUNT * sizeof(double),
+      GEAR_CHEMISTRY_ELEMENT_COUNT, NPY_DOUBLE);
 }
 
 /**

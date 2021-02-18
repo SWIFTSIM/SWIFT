@@ -104,7 +104,6 @@ hydro_logger_interpolate_field(const double t_before,
                                  /* dimension= */ 3);
       break;
     case hydro_logger_field_accelerations:
-    case hydro_logger_field_viscosity_diffusion:
       interpolate_linear_float_ND(t_before, before, t_after, after, output, t,
                                   /* dimension= */ 3);
       break;
@@ -113,8 +112,6 @@ hydro_logger_interpolate_field(const double t_before,
     case hydro_logger_field_smoothing_lengths:
     case hydro_logger_field_internal_energies:
     case hydro_logger_field_densities:
-    case hydro_logger_field_entropies:
-    case hydro_logger_field_pressures:
       interpolate_linear_float(t_before, before, t_after, after, output, t);
       break;
       /* Check the ids */
@@ -122,19 +119,27 @@ hydro_logger_interpolate_field(const double t_before,
       interpolate_ids(t_before, before, t_after, after, output, t);
       break;
 
-    case hydro_logger_field_velocity_divergences: {
+    case hydro_logger_field_secondary_fields: {
       /* Get some variables */
       const float wa = (t - t_before) / (t_after - t_before);
       const float wb = 1. - wa;
       float *x = (float *)output;
-      const float *div_bef = (float *)before->field;
-      const float *div_aft = (float *)after->field;
+      const float *bef = (float *)before->field;
+      const float *aft = (float *)after->field;
 
-      /* Use cubic hermite spline. */
-      x[0] = interpolate_cubic_hermite_spline(
-          t_before, div_bef[0], div_bef[1], t_after, div_aft[0], div_aft[1], t);
-      /* Use the linear interpolation */
-      x[1] = wa * div_aft[1] + wb * div_bef[1];
+      /* Entropy + pressure + Viscosity + Diffusion + Laplacian*/
+      const int n_linear = 5;
+      for (int i = 0; i < n_linear; i++) {
+        x[i] = wa * aft[i] + wb * bef[i];
+      }
+
+      /* Div v */
+      x[n_linear] = interpolate_cubic_hermite_spline(
+          t_before, bef[n_linear], bef[n_linear + 1], t_after, aft[n_linear],
+          aft[n_linear + 1], t);
+
+      /* d Div v / dt */
+      x[n_linear + 1] = wa * aft[n_linear + 1] + wb * bef[n_linear + 1];
       break;
     }
 
@@ -163,14 +168,39 @@ __attribute__((always_inline)) INLINE static void hydro_logger_generate_python(
       logger_loader_python_field(/* Dimension */ 1, NPY_LONGLONG);
   fields[hydro_logger_field_densities] =
       logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
-  fields[hydro_logger_field_entropies] =
-      logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
-  fields[hydro_logger_field_pressures] =
-      logger_loader_python_field(/* Dimension */ 1, NPY_FLOAT32);
-  fields[hydro_logger_field_viscosity_diffusion] =
-      logger_loader_python_field(/* Dimension */ 3, NPY_FLOAT32);
-  fields[hydro_logger_field_velocity_divergences] =
-      logger_loader_python_field(/* Dimension */ 2, NPY_FLOAT32);
+
+  /* Now separate the secondary fields */
+  fields[hydro_logger_field_secondary_fields] =
+      logger_loader_python_field(/* Dimension */ 7, CUSTOM_NPY_TYPE);
+
+  logger_loader_python_field_add_subfield(
+      &fields[hydro_logger_field_secondary_fields], "Entropies", /* offset */ 0,
+      /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[hydro_logger_field_secondary_fields], "Pressures",
+      /* offset */ sizeof(float), /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[hydro_logger_field_secondary_fields], "ViscosityParameters",
+      /* offset */ 2 * sizeof(float), /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[hydro_logger_field_secondary_fields], "DiffusionParameters",
+      /* offset */ 3 * sizeof(float), /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[hydro_logger_field_secondary_fields], "LaplacianInternalEnergies",
+      /* offset */ 4 * sizeof(float), /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[hydro_logger_field_secondary_fields], "VelocityDivergences",
+      /* offset */ 5 * sizeof(float), /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[hydro_logger_field_secondary_fields],
+      "VelocityDivergenceTimeDifferentials", /* offset */ 6 * sizeof(float),
+      /* Dimension */ 1, NPY_FLOAT32);
 }
 
 #endif  // HAVE_PYTHON
