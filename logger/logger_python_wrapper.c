@@ -230,16 +230,74 @@ logger_loader_create_output(void **output, const int *field_indices,
       error_python("Failed to find the required field");
     }
     PyObject *array = NULL;
-    if (current_field->dimension > 1) {
-      npy_intp dims[2] = {n_tot, current_field->dimension};
-      array =
-          PyArray_SimpleNewFromData(2, dims, current_field->typenum, output[i]);
-    } else {
+    /* Simple case where we only have normal type */
+    if (current_field->typenum != CUSTOM_NPY_TYPE) {
+      if (current_field->dimension > 1) {
+        npy_intp dims[2] = {n_tot, current_field->dimension};
+        array = PyArray_SimpleNewFromData(2, dims, current_field->typenum,
+                                          output[i]);
+      } else {
+        npy_intp dims = n_tot;
+        array = PyArray_SimpleNewFromData(1, &dims, current_field->typenum,
+                                          output[i]);
+      }
+    }
+    /* Now the complex types */
+    else {
+      /* Ensure that the field is properly defined */
+      if (current_field->subfields_registred != current_field->dimension) {
+        error_python(
+            "It seems that you forgot to register a field (found %i and "
+            "expecting %i)",
+            current_field->subfields_registred, current_field->dimension);
+      }
+
+      /* Creates the dtype */
+      PyObject *names = PyList_New(current_field->dimension);
+      PyObject *formats = PyList_New(current_field->dimension);
+      PyObject *offsets = PyList_New(current_field->dimension);
+
+      /* Gather the data into the lists */
+      for (int k = 0; k < current_field->dimension; k++) {
+        struct logger_python_subfield *subfield = &current_field->subfields[k];
+
+        /* Transform the information into python */
+        PyObject *name = PyUnicode_FromString(subfield->name);
+        PyObject *offset = PyLong_FromSize_t(subfield->offset);
+        PyObject *format = logger_python_tools_get_format_string(
+            subfield->typenum, subfield->dimension);
+
+        /* Add everything into the lists */
+        PyList_SetItem(names, k, name);
+        PyList_SetItem(formats, k, format);
+        PyList_SetItem(offsets, k, offset);
+      }
+
+      /* Now create the dtype dictionary */
+      PyObject *dtype = PyDict_New();
+      PyDict_SetItemString(dtype, "names", names);
+      PyDict_SetItemString(dtype, "formats", formats);
+      PyDict_SetItemString(dtype, "offsets", offsets);
+
+      /* Cleanup a bit */
+      Py_DECREF(names);
+      Py_DECREF(formats);
+      Py_DECREF(offsets);
+
+      /* Now get the pyarray_descr */
+      PyArray_Descr *descr = NULL;
+      PyArray_DescrConverter(dtype, &descr);
+
+      /* Create the list of flags */
+
+      /* Create the array */
       npy_intp dims = n_tot;
-      array = PyArray_SimpleNewFromData(1, &dims, current_field->typenum,
-                                        output[i]);
+      array = PyArray_NewFromDescr(&PyArray_Type, descr, /* nd */ 1, &dims,
+                                   /* strides */ NULL, output[i],
+                                   NPY_ARRAY_CARRAY, NULL);
     }
 
+    logger_loader_python_field_free(current_field);
     PyList_SetItem(list, i, array);
   }
 
