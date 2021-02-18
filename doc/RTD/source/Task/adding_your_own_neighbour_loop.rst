@@ -517,6 +517,43 @@ The functions ``runner_doself_branch_density``, ``runner_dopair_branch_new_iact`
 found and linked this way. All that's left for you to do is to write the function
 into which ``IACT_NEW`` will expand, in the above case it would be ``runner_iact_new_iact``.
 
+If you intend on using existing neighbour loops with a new different name, or plan
+on including your newly written header files multiple times with slight changes that can
+be dealt with a preprocessing macro, you can define a new macro like this::
+
+
+    /* ... lots of includes and stuff ... */
+
+    /* Import new interaction loop functions. */
+    #define FUNCTION new_iact
+    #define FUNCTION_TASK_LOOP TASK_LOOP_NEW_IACT
+    #include "runner_doiact_my_suff.h"
+    #undef FUNCTION
+    #undef FUNCTION_TASK_LOOP
+
+    /**
+     * @brief The #runner main thread routine.
+     *
+     * @param data A pointer to this thread's data.
+     */
+    void *runner_main(void *data) {
+        /* ... */
+
+    }
+
+However, in that case you will also need to give your ``TASK_LOOP_NEW_IACT`` a unique
+definition in ``src/runner.h``, e.g.::
+
+
+    /* Unique identifier of loop types */
+    #define TASK_LOOP_DENSITY 0
+    #define TASK_LOOP_GRADIENT 1
+    #define TASK_LOOP_FORCE 2
+    #define TASK_LOOP_LIMITER 3
+    #define TASK_LOOP_FEEDBACK 4
+    #define TASK_LOOP_SWALLOW 5
+    #define TASK_LOOP_SINK_FORMATION 6
+    #define TASK_LOOP_NEW_IACT 7
 
 
 
