@@ -63,12 +63,11 @@ runner_iact_nonsym_sinks_compute_formation(const float r2, const float *dx,
  * @param Which particle should be removed?
  * Possible value: (sink_merger_remove_none/first/second)
  */
-__attribute__((always_inline)) INLINE static int runner_iact_sym_sinks_merger(
-    const float r2, const float *dx, const float hi, const float hj,
-    struct sink *restrict si, struct sink *restrict sj, const float a,
-    const float H) {
-
-  return sink_merger_remove_none;
+__attribute__((always_inline)) INLINE static enum sink_merger_remove
+runner_iact_sym_sinks_merger(const float r2, const float *dx, const float hi,
+                             const float hj, struct sink *restrict si,
+                             struct sink *restrict sj, const float a,
+                             const float H) {
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
@@ -78,6 +77,8 @@ __attribute__((always_inline)) INLINE static int runner_iact_sym_sinks_merger(
   /* Update ngb counters */
   ++si->num_ngb_merger;
 #endif
+
+  return sink_merger_remove_none;
 }
 
 #endif
