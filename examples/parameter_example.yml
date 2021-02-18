@@ -337,7 +337,10 @@ NFWPotential:
   position:           [0.0,0.0,0.0] # Location of centre of the NFW potential with respect to centre of the box (internal units) if useabspos=0 otherwise with respect to the 0,0,0, coordinates.
   concentration:      8.            # Concentration of the halo
   M_200:              2.0e+12       # Mass of the halo (M_200 in internal units)
-  critical_density:   127.4         # Critical density (internal units).
+  bulgefraction:      0.04          # (optional) The fraction of the halo mass in the bulge, defaults to 0.0.
+  diskfraction:      0.04           # (optional) The fraction of the halo mass in the galaxy disk, defaults to 0.0.
+  epsilon:            0.8           # The softening used in the NFW potential
+  h:                  0.7           # The reduced Hubble constant
   timestep_mult:      0.01          # Dimensionless pre-factor for the time-step condition, basically determines fraction of orbital time we need to do an integration step
 
 # NFW + Miyamoto-Nagai disk potential
