@@ -95,9 +95,20 @@ star_formation_logger_interpolate_field(
 #ifdef HAVE_PYTHON
 __attribute__((always_inline)) INLINE static void
 star_formation_logger_generate_python(struct logger_python_field *fields) {
-  // TODO split fields
   fields[star_formation_logger_field_all] =
       logger_loader_python_field(/* Dimension */ 2, NPY_FLOAT);
+
+  logger_loader_python_field_add_subfield(
+      &fields[star_formation_logger_field_all], "BirthDensities",
+      /* offset */ 0, /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[star_formation_logger_field_all], "BirthMasses",
+      /* offset */ sizeof(float), /* Dimension */ 1, NPY_FLOAT32);
+
+  logger_loader_python_field_add_subfield(
+      &fields[star_formation_logger_field_all], "ProgenitorIDs",
+      /* offset */ 2 * sizeof(float), /* Dimension */ 1, NPY_LONGLONG);
 }
 
 #endif  // HAVE_PYTHON

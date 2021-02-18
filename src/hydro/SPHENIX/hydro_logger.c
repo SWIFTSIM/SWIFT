@@ -29,10 +29,9 @@
 #include "hydro_logger.h"
 
 const char *hydro_logger_field_names[hydro_logger_field_count] = {
-    "Coordinates", "Velocities",         "Accelerations",
-    "Masses",      "SmoothingLengths",   "InternalEnergies",
-    "ParticleIDs", "Densities",          "Entropies",
-    "Pressures",   "ViscosityDiffusion", "VelocityDivergences",
+    "Coordinates", "Velocities",       "Accelerations",
+    "Masses",      "SmoothingLengths", "InternalEnergies",
+    "ParticleIDs", "Densities",        "SecondaryFields",
 };
 
 #endif  // WITH_LOGGER
