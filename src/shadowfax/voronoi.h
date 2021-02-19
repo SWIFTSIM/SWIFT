@@ -32,6 +32,10 @@
 
 #include <string.h>
 
+/*! @brief Store the edges of faces (so that the actual Voronoi grid can be
+ *  reconstructed). */
+#define VORONOI_STORE_CONNECTIONS
+
 /**
  * @brief Voronoi interface.
  *
@@ -344,8 +348,9 @@ static inline void voronoi_init(struct voronoi *restrict v,
 
     /* Get a triangle containing this generator and the index of the generator
        within that triangle */
-    int t0 = d->vertex_triangles[i + d->vertex_start];
-    int vi0 = d->vertex_triangle_index[i + d->vertex_start];
+    int dverti = i + d->vertex_start;
+    int t0 = d->vertex_triangles[dverti];
+    int vi0 = d->vertex_triangle_index[dverti];
     /* Add the first vertex for this cell: the circumcircle midpoint of this
        triangle */
     v->vertex_number[i] = 1;
@@ -399,17 +404,17 @@ static inline void voronoi_init(struct voronoi *restrict v,
 
       /* the neighbour corresponding to the face is the same vertex that
          determines the next triangle */
-      int other_vertex = d->triangles[t0].vertices[vi1p2];
+      int other_vertex = d->triangles[t1].vertices[vi1p2];
       if (other_vertex < d->ngb_offset) {
-        if (other_vertex > i) {
+        if (other_vertex > dverti) {
           /* only store pairs once */
-          voronoi_add_pair(v, 0, i, other_vertex, bx, by, cx, cy);
+          voronoi_add_pair(v, 0, dverti, other_vertex, bx, by, cx, cy);
         }
       } else {
         /* no check on other_vertex > i required, since this is always true */
         int sid = d->ngb_cells[other_vertex - d->ngb_offset];
         int pid = d->ngb_indices[other_vertex - d->ngb_offset];
-        voronoi_add_pair(v, sid, i, pid, bx, by, cx, cy);
+        voronoi_add_pair(v, sid, dverti, pid, bx, by, cx, cy);
       }
 
       vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
@@ -435,9 +440,9 @@ static inline void voronoi_init(struct voronoi *restrict v,
     v->face_midpoints[2 * c0 + 1] = face_midpoint[1];
 
     if (first_vertex < d->ngb_offset) {
-      if (first_vertex > i) {
+      if (first_vertex > dverti) {
         /* only store pairs once */
-        voronoi_add_pair(v, 0, i, first_vertex, bx, by, cx, cy);
+        voronoi_add_pair(v, 0, dverti, first_vertex, bx, by, cx, cy);
       }
     } else {
       /* no check on other_vertex > i required, since this is always true */
@@ -482,6 +487,29 @@ static inline void voronoi_check_grid(const struct voronoi *restrict v) {
   }
 
   printf("Total volume: %g\n", V);
+}
+
+static inline void voronoi_write_grid_new(const struct voronoi *restrict v,
+                                          const char *file_name) {
+
+  FILE *file = fopen(file_name, "w");
+  for (int i = 0; i < v->number_of_cells; ++i) {
+    fprintf(file, "G\t%g\t%g\n", v->generators[2 * i],
+            v->generators[2 * i + 1]);
+  }
+  for (int i = 0; i < v->pair_index[0]; ++i) {
+    struct voronoi_pair *pair = &v->pairs[0][i];
+    fprintf(file, "F\t%g\t%g\t%g\t%g\t%i\t%i\n", pair->a[0], pair->a[1],
+            pair->b[0], pair->b[1], pair->left, pair->right);
+  }
+  for (int ngb = 1; ngb < 27; ++ngb) {
+    for (int i = 0; i < v->pair_index[ngb]; ++i) {
+      struct voronoi_pair *pair = &v->pairs[ngb][i];
+      fprintf(file, "F\t%g\t%g\t%g\t%g\t%i\t%i\n", pair->a[0], pair->a[1],
+              pair->b[0], pair->b[1], pair->left, -1);
+    }
+  }
+  fclose(file);
 }
 
 static inline void voronoi_write_grid(const struct voronoi *restrict v,

@@ -45,12 +45,6 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_self1(
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
 
-  for (int pd = 0; pd < count; pd++) {
-    /* Get a pointer to the ith particle. */
-    struct part *restrict p = &parts[pd];
-    p->voronoi.flag = 0;
-  }
-
   /* Loop over the parts in c. */
   for (int pd = 0; pd < count; pd++) {
 

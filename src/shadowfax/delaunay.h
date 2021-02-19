@@ -1582,6 +1582,7 @@ inline static void delaunay_add_new_vertex(struct delaunay* restrict d,
       d->ngb_indices = (int*)swift_realloc(
           "delaunay ngb indices", d->ngb_indices, d->ngb_size * sizeof(int));
     }
+    delaunay_assert(d->ngb_index == v - d->ngb_offset);
     d->ngb_cells[d->ngb_index] = cell_index;
     d->ngb_indices[d->ngb_index] = index_in_cell;
     ++d->ngb_index;
