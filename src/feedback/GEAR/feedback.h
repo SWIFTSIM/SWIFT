@@ -29,8 +29,10 @@
 
 #include <strings.h>
 
-void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
-                          const struct engine* restrict e);
+void feedback_update_part(struct part* p, struct xpart* xp,
+                          const struct engine* e);
+
+void feedback_reset_part(struct part* p, struct xpart* xp);
 
 void feedback_will_do_feedback(
     struct spart* sp, const struct feedback_props* feedback_props,

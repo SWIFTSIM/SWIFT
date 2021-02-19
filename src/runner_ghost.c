@@ -504,7 +504,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
-  if (c->stars.ghost) {
+  if (c->stars.density_ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->stars.h_max, h_max);
       atomic_max_f(&tmp->stars.h_max_active, h_max_active);

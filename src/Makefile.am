@@ -85,8 +85,11 @@ endif
 
 # source files for EAGLE feedback
 EAGLE_FEEDBACK_SOURCES =
-if HAVEEAGLEFEEDBACK
-EAGLE_FEEDBACK_SOURCES += feedback/EAGLE/feedback.c
+if HAVEEAGLETHERMALFEEDBACK
+EAGLE_FEEDBACK_SOURCES += feedback/EAGLE_thermal/feedback.c
+endif
+if HAVEEAGLEKINETICFEEDBACK
+EAGLE_FEEDBACK_SOURCES += feedback/EAGLE_kinetic/feedback.c
 endif
 
 # source files for GRACKLE cooling
@@ -367,9 +370,12 @@ nobase_noinst_HEADERS += tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h
 nobase_noinst_HEADERS += tracers/EAGLE/tracers_io.h 
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h 
-nobase_noinst_HEADERS += feedback/EAGLE/feedback.h feedback/EAGLE/feedback_struct.h feedback/EAGLE/feedback_iact.h 
-nobase_noinst_HEADERS += feedback/EAGLE/feedback_properties.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h 
-nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h 
+nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback.h feedback/EAGLE_kinetic/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_properties.h feedback/EAGLE_kinetic/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback.h feedback/EAGLE_thermal/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_properties.h feedback/EAGLE_thermal/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h
+nobase_noinst_HEADERS += feedback/EAGLE/enrichment.h
 nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h 
 nobase_noinst_HEADERS += feedback/GEAR/feedback.h feedback/GEAR/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedback_struct.h 
