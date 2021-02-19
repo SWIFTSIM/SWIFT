@@ -390,7 +390,7 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair2(
 __attribute__((always_inline)) INLINE static void cell_shadowfax_end_density(
     struct cell *restrict c) {
 
-  voronoi_init(&c->hydro.vortess, &c->hydro.deltess);
+  voronoi_init(&c->hydro.vortess, &c->hydro.deltess, c->hydro.parts);
 }
 
 #endif /* SWIFT_CELL_SHADOWFAX_H */
