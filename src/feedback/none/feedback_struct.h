@@ -27,6 +27,11 @@
 struct feedback_part_data {};
 
 /**
+ * @brief Extra feedback fields carried by each hydro particles
+ */
+struct feedback_xpart_data {};
+
+/**
  * @brief Feedback fields carried by each star particles
  *
  * Nothing here since this is a no-feedback model.

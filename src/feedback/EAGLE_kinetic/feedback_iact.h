@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_EAGLE_FEEDBACK_IACT_H
-#define SWIFT_EAGLE_FEEDBACK_IACT_H
+#ifndef SWIFT_EAGLE_FEEDBACK_KINETIC_IACT_H
+#define SWIFT_EAGLE_FEEDBACK_KINETIC_IACT_H
 
 /* Local includes */
 #include "random.h"
@@ -84,88 +84,105 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
   if (rho != 0.f)
     si->feedback_data.to_collect.enrichment_weight_inv += wi / rho;
 
-  /* Choose SNII feedback model */
-  switch (fb_props->feedback_model) {
-    case SNII_isotropic_model: {
+  /* Compute arc lengths in stellar isotropic feedback and collect
+   * relevant data for later use in the feedback_apply loop */
+  for (int i = 0; i < eagle_SNII_feedback_num_of_rays; i++) {
 
-      /* Compute arc lengths in stellar isotropic feedback and collect
-       * relevant data for later use in the feedback_apply loop */
+    /* We generate two random numbers that we use
+     * to randomly select the direction of the ith ray
+     * and the associated mirror ray in SNII feedback */
 
-      /* Loop over rays */
-      for (int i = 0; i < eagle_SNII_feedback_num_of_rays; i++) {
+    /* Two random numbers in [0, 1[ */
+    const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
+        si->id, i, ti_current, random_number_isotropic_SNII_feedback_ray_theta);
+    const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
+        si->id, i, ti_current, random_number_isotropic_SNII_feedback_ray_phi);
 
-        /* We generate two random numbers that we use
-         * to randomly select the direction of the ith ray */
+    /* Compute arclength for the true particle (SNII kinetic feedback) */
+    ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays_true + i,
+                           ray_feedback_kinetic_true, pj->id, rand_theta_SNII,
+                           rand_phi_SNII, mj,
+                           si->feedback_data.SNII_rays_ext_true + i, pj->v);
+    /* Compute arclength for the mirror particle (SNII kinetic feedback) */
+    ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays_mirr + i,
+                           ray_feedback_kinetic_mirr, pj->id, rand_theta_SNII,
+                           rand_phi_SNII, mj,
+                           si->feedback_data.SNII_rays_ext_mirr + i, pj->v);
+  }
+}
 
-        /* Two random numbers in [0, 1[ */
-        const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
-            si->id, i, ti_current,
-            random_number_isotropic_SNII_feedback_ray_theta);
-        const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
-            si->id, i, ti_current,
-            random_number_isotropic_SNII_feedback_ray_phi);
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep1(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  const struct spart *si, struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {
 
-        /* Compute arclength */
-        ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays + i,
-                               /*switch=*/-1, pj->id, rand_theta_SNII,
-                               rand_phi_SNII, pj->mass, /*ray_ext=*/NULL,
-                               /*v=*/NULL);
+  /* Get the the number of SNII kinetic energy injections per stellar
+   * particle at this time-step */
+  const int N_of_SNII_kinetic_events =
+      si->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj;
+
+  /* Loop over the SNII kick events. In each event, two gas
+   * particles are kicked in exactly the opposite directions. */
+  for (int i = 0; i < N_of_SNII_kinetic_events; i++) {
+
+    /* Find the particle that is closest to the ith ray OR the ith mirror ray
+     */
+    if (pj->id == si->feedback_data.SNII_rays_true[i].id_min_length ||
+        pj->id == si->feedback_data.SNII_rays_mirr[i].id_min_length) {
+
+      /* If this spart has the largest id among all sparts that want to kick
+       * this gas particle in this time-step, then the gas particle will save
+       * the id of this spart. */
+      if (pj->feedback_data.SNII_star_largest_id < si->id) {
+        /* Update the largest stellar id carried by the gas particle */
+        pj->feedback_data.SNII_star_largest_id = si->id;
       }
-      break;
     }
-    case SNII_minimum_distance_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this
-       * star), then bi->num_ngbs = 1 and there is nothing to sort. Note that
-       * the maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_SNII_feedback_num_of_rays);
+  }
+}
 
-      /* Minimise separation between the gas particles and the star. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the star. */
-      ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
-      break;
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_prep2(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  struct spart *si, const struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {
+
+  /* Get the the number of SNII kinetic energy injections per stellar
+   * particle at this time-step */
+  const int N_of_SNII_kinetic_events =
+      si->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj;
+
+  for (int i = 0; i < N_of_SNII_kinetic_events; i++) {
+
+    /* Find the particle that is closest to the ith ray */
+    if (pj->id == si->feedback_data.SNII_rays_true[i].id_min_length) {
+
+      /* Does this gas particle want to be kicked by this stellar particle
+       * via ray i? If so, store this information in the ith ray extra struct */
+      if (pj->feedback_data.SNII_star_largest_id == si->id) {
+
+        si->feedback_data.SNII_rays_ext_true[i].status =
+            ray_feedback_kick_allowed;
+
+        /* If we are using maximum_number_of_rays > 1, then for a given spart,
+         * as soon as we have found the first ray that points at this gas part,
+         * we stop. Otherwise, the same spart might kick the same gas part
+         * twice in the same time-step (or even more times). */
+        break;
+      }
     }
-    case SNII_minimum_density_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this
-       * star), then bi->num_ngbs = 1 and there is nothing to sort. Note that
-       * the maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_SNII_feedback_num_of_rays);
-
-      /* Minimise separation between the gas particles and the star. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the star. */
-      ray_minimise_distance(rho, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
-      break;
-    }
-    case SNII_random_ngb_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this
-       * star), then bi->num_ngbs = 1 and there is nothing to sort. Note that
-       * the maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_SNII_feedback_num_of_rays);
-
-      /* To mimic a random draw among all the particles in the kernel, we
-       * draw random distances in [0,1) and then pick the particle(s) with
-       * the smallest of these 'fake' distances */
-      const float dist = random_unit_interval_two_IDs(
-          si->id, pj->id, ti_current, random_number_stellar_feedback_1);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller 'fake' distances to the BH. */
-      ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
-      break;
+    /* Same as above but for the mirror ith ray */
+    else if (pj->id == si->feedback_data.SNII_rays_mirr[i].id_min_length) {
+      if (pj->feedback_data.SNII_star_largest_id == si->id) {
+        si->feedback_data.SNII_rays_ext_mirr[i].status =
+            ray_feedback_kick_allowed;
+        break;
+      }
     }
   }
 }
@@ -323,6 +340,116 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   pj->chemistry_data.metal_mass_fraction_from_AGB =
       new_metal_mass_from_AGB * new_mass_inv;
 
+  /* SNII stochastic kinetic feedback begins.
+   *
+   * To conserve linear momentum, it is done before the particle velocity
+   * is recomputed due to the change in particle mass */
+
+  /* Get the the number of SNII kinetic energy injections from this star
+   * particle at this time-step */
+  const int N_of_SNII_kinetic_events =
+      si->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj;
+
+  double E_kinetic_unused = 0.0;
+
+  /* Are we doing some SNII kinetic feedback? */
+  if (N_of_SNII_kinetic_events > 0) {
+
+    /* Loop over the number of SNII kinetic events. In each event, two
+     * particles are kicked in exactly the opposite directions. */
+    for (int i = 0; i < N_of_SNII_kinetic_events; i++) {
+
+      /* Find whether we are are looking at the particle that is closest to the
+       * ith ray OR the ith mirror ray */
+      if (pj->id == si->feedback_data.SNII_rays_true[i].id_min_length ||
+          pj->id == si->feedback_data.SNII_rays_mirr[i].id_min_length) {
+
+        /* Get the SNII feedback kinetic energy per pair.
+         * We thus divide the  total kinetic energy we have from the star
+         * particle by the number of events (in each event, two particles are
+         * kicked) */
+        const double energy_per_pair =
+            si->feedback_data.to_distribute.SNII_E_kinetic /
+            N_of_SNII_kinetic_events;
+
+        /* Are we kicking or heating? If at least one gas part in the pair does
+         * not want to be kicked by this spart, then we heat */
+        if (si->feedback_data.SNII_rays_ext_true[i].status ==
+                ray_feedback_kick_allowed &&
+            si->feedback_data.SNII_rays_ext_mirr[i].status ==
+                ray_feedback_kick_allowed) {
+
+          /* Which particles have we caught: the original or the mirror one? */
+          const ray_feedback_type ray_type =
+              (pj->id == si->feedback_data.SNII_rays_mirr[i].id_min_length)
+                  ? ray_feedback_kinetic_mirr
+                  : ray_feedback_kinetic_true;
+
+          /* Two random numbers in [0, 1[
+           * Note: this are the same numbers we drew in the density loop! */
+          const double rand_theta = random_unit_interval_part_ID_and_ray_idx(
+              si->id, i, ti_current,
+              random_number_isotropic_SNII_feedback_ray_theta);
+          const double rand_phi = random_unit_interval_part_ID_and_ray_idx(
+              si->id, i, ti_current,
+              random_number_isotropic_SNII_feedback_ray_phi);
+
+          /* Initialise the kick velocity vector and its modulus */
+          float v_kick[3] = {0.f, 0.f, 0.f};
+          float v_kick_abs = 0.f;
+
+          /* Get the mass of the gas particles *before* any enrichment mass
+           * (from this star or another) was added */
+          const double mass_true = si->feedback_data.SNII_rays_true[i].mass;
+          const double mass_mirr = si->feedback_data.SNII_rays_mirr[i].mass;
+
+          if (mass_true > 0.0 && mass_mirr > 0.0 && energy_per_pair > 0.0) {
+
+            /* Mass = 0 means that the ray does not point to any gas particle.
+             * We need to check it for both the original and mirror ray.
+             * We also make sure the energy is positive to avoid the possibility
+             * of division by zero in the function below */
+
+            /* Compute the physical kick velocity in internal units */
+            ray_kinetic_feedback_compute_kick_velocity(
+                v_kick, &v_kick_abs, si->feedback_data.SNII_rays_ext_true + i,
+                si->feedback_data.SNII_rays_ext_mirr + i, ray_type,
+                energy_per_pair, cosmo, current_mass, si->v, rand_theta,
+                rand_phi, mass_true, mass_mirr);
+          }
+
+          /* Do the kicks by updating the particle velocity.
+           *
+           * Note that xpj->v_full = a^2 * dx/dt, with x the comoving
+           * coordinate. Therefore, a physical kick, dv, gets translated into a
+           * code velocity kick, a * dv */
+          xpj->v_full[0] += v_kick[0] * cosmo->a;
+          xpj->v_full[1] += v_kick[1] * cosmo->a;
+          xpj->v_full[2] += v_kick[2] * cosmo->a;
+
+          /* Update the signal velocity of the particle based on the velocity
+           * kick
+           */
+          hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick_abs);
+
+          /* Synchronize the particle on the timeline */
+          timestep_sync_part(pj);
+
+        } else {
+
+          /* In the absence of a kick event, store the unused kinetic energy
+           * for heating */
+          E_kinetic_unused = 0.5 * energy_per_pair;
+        }
+      }
+    }
+  }
+
+  /* Now account in the fully energy and momentum conserving way for the
+   * change in gas particle mass, energy and momentum due to AGB feedback
+   * energy and stellar ejecta (with the mass contributed at this time-step
+   * by all available feedback channels) moving at the star's velocity */
+
   /* Compute the current kinetic energy */
   const double current_v2 = xpj->v_full[0] * xpj->v_full[0] +
                             xpj->v_full[1] * xpj->v_full[1] +
@@ -358,13 +485,15 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       si->feedback_data.to_distribute.energy * Omega_frac;
 
   /* Apply energy conservation to recover the new thermal energy of the gas
+   * which may include extra energy from the failed kinetic injection attempt.
+   *
    * Note: in some specific cases the new_thermal_energy could be lower
    * than the current_thermal_energy, this is mainly the case if the change
    * in mass is relatively small and the velocity vectors between both the
    * gas particle and the star particle have a small angle. */
   const double new_thermal_energy = current_kinetic_energy_gas +
-                                    current_thermal_energy + injected_energy -
-                                    new_kinetic_energy_gas;
+                                    current_thermal_energy + injected_energy +
+                                    E_kinetic_unused - new_kinetic_energy_gas;
 
   /* Convert this to a specific thermal energy */
   const double u_new_enrich = new_thermal_energy * new_mass_inv;
@@ -373,52 +502,11 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
   hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new_enrich);
 
-  /* Finally, SNII stochastic feedback */
-
-  /* Get the total number of SNIa thermal energy injections per stellar
-   * particle at this time-step */
-  const int N_of_SNII_thermal_energy_inj =
-      si->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj;
-
-  /* Are we doing some SNII feedback? */
-  if (N_of_SNII_thermal_energy_inj > 0) {
-
-    int N_of_SNII_energy_inj_received_by_gas = 0;
-
-    /* Find out how many rays this gas particle has received. */
-    for (int i = 0; i < N_of_SNII_thermal_energy_inj; i++) {
-      if (pj->id == si->feedback_data.SNII_rays[i].id_min_length)
-        N_of_SNII_energy_inj_received_by_gas++;
-    }
-
-    /* If the number of SNII energy injections > 0, do SNII feedback */
-    if (N_of_SNII_energy_inj_received_by_gas > 0) {
-
-      /* Compute new energy of this particle */
-      const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
-      const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
-      const double u_new =
-          u_init + delta_u * (float)N_of_SNII_energy_inj_received_by_gas;
-
-      /* Inject energy into the particle */
-      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-
-      /* Impose maximal viscosity */
-      hydro_diffusive_feedback_reset(pj);
-
-      /* Mark this particle has having been heated by supernova feedback */
-      tracers_after_feedback(xpj);
-
-      /* message( */
-      /*     "We did some heating! id %llu star id %llu probability %.5e " */
-      /*     "random_num %.5e du %.5e du/ini %.5e", */
-      /*     pj->id, si->id, 0., 0., delta_u, delta_u / u_init); */
-
-      /* Synchronize the particle on the timeline */
-      timestep_sync_part(pj);
-    }
+  /* Synchronize the particle on the timeline if we've got some extra
+   * thermal energy from the SNII kicks that have not occured */
+  if (E_kinetic_unused) {
+    timestep_sync_part(pj);
   }
 }
 
-#endif /* SWIFT_EAGLE_FEEDBACK_IACT_H */
+#endif /* SWIFT_EAGLE_FEEDBACK_KINETIC_IACT_H */

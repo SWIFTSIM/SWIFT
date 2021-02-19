@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_EAGLE_H
-#define SWIFT_FEEDBACK_EAGLE_H
+#ifndef SWIFT_FEEDBACK_EAGLE_KINETIC_H
+#define SWIFT_FEEDBACK_EAGLE_KINETIC_H
 
 #include "cosmology.h"
 #include "error.h"
@@ -46,8 +46,20 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct engine* restrict e) {}
+    struct part* p, struct xpart* xp, const struct engine* e) {}
+
+/**
+ * @brief Reset the gas particle-carried fields related to feedback at the
+ * start of a step.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+__attribute__((always_inline)) INLINE static void feedback_reset_part(
+    struct part* p, struct xpart* xp) {
+
+  p->feedback_data.SNII_star_largest_id = -1;
+}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -79,7 +91,12 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_Z = 0.f;
 
   /* Reset all ray structs carried by this star particle */
-  ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
+  ray_init(sp->feedback_data.SNII_rays_true, eagle_SNII_feedback_num_of_rays);
+  ray_init(sp->feedback_data.SNII_rays_mirr, eagle_SNII_feedback_num_of_rays);
+  ray_extra_init(sp->feedback_data.SNII_rays_ext_true,
+                 eagle_SNII_feedback_num_of_rays);
+  ray_extra_init(sp->feedback_data.SNII_rays_ext_mirr,
+                 eagle_SNII_feedback_num_of_rays);
 }
 
 /**
@@ -136,10 +153,10 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   sp->feedback_data.to_distribute.energy = 0.f;
 
   /* Zero the SNII feedback energy */
-  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
+  sp->feedback_data.to_distribute.SNII_E_kinetic = 0.f;
 
   /* Zero the SNII feedback properties */
-  sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj = 0;
+  sp->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj = 0;
 }
 
 /**
@@ -309,8 +326,8 @@ void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
 
-  io_write_attribute_s(h_grp, "Feedback Model", "EAGLE");
+  io_write_attribute_s(h_grp, "Feedback Model", "EAGLE (kinetic)");
 }
 #endif  // HAVE_HDF5
 
-#endif /* SWIFT_FEEDBACK_EAGLE_H */
+#endif /* SWIFT_FEEDBACK_EAGLE_KINETIC_H */

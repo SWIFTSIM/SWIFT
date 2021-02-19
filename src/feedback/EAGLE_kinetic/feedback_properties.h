@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
-#define SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
+#ifndef SWIFT_EAGLE_FEEDBACK_KINETIC_PROPERTIES_H
+#define SWIFT_EAGLE_FEEDBACK_KINETIC_PROPERTIES_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -252,8 +252,8 @@ struct feedback_props {
   /*! Wind delay time for SNII when using a fixed delay */
   double SNII_wind_delay;
 
-  /*! Temperature increase induced by SNe feedback */
-  float SNe_deltaT_desired;
+  /*! Kick velocity in SNII feedback in internal units */
+  float SNII_delta_v;
 
   /*! Energy released by one supernova type II in cgs units */
   double E_SNII_cgs;
@@ -307,4 +307,4 @@ void feedback_props_init(struct feedback_props *fp,
                          const struct hydro_props *hydro_props,
                          const struct cosmology *cosmo);
 
-#endif /* SWIFT_EAGLE_FEEDBACK_PROPERTIES_H */
+#endif /* SWIFT_EAGLE_FEEDBACK_KINETIC_PROPERTIES_H */

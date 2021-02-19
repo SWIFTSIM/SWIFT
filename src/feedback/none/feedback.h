@@ -41,6 +41,18 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
     const struct engine* restrict e) {}
 
 /**
+ * @brief Reset the gas particle-carried fields related to feedback at the
+ * start of a step.
+ *
+ * Nothing to do here.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+__attribute__((always_inline)) INLINE static void feedback_reset_part(
+    struct part* p, struct xpart* xp) {}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
