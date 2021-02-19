@@ -16,19 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_STRUCT_EAGLE_H
-#define SWIFT_FEEDBACK_STRUCT_EAGLE_H
+#ifndef SWIFT_FEEDBACK_STRUCT_EAGLE_THERMAL_H
+#define SWIFT_FEEDBACK_STRUCT_EAGLE_THERMAL_H
 
 #include "chemistry_struct.h"
 #include "rays_struct.h"
 
 /*! The total number of rays used in stellar feedback */
-#define eagle_SNII_feedback_num_of_rays 1
+#define eagle_SNII_feedback_num_of_rays FEEDBACK_NR_RAYS_SNII
 
 /**
  * @brief Feedback fields carried by each hydro particles
  */
 struct feedback_part_data {};
+
+/**
+ * @brief Extra feedback fields carried by each hydro particles
+ */
+struct feedback_xpart_data {};
 
 /**
  * @brief Feedback fields carried by each star particles
@@ -120,4 +125,4 @@ struct feedback_spart_data {
   struct ray_data SNII_rays[eagle_SNII_feedback_num_of_rays];
 };
 
-#endif /* SWIFT_FEEDBACK_STRUCT_EAGLE_H */
+#endif /* SWIFT_FEEDBACK_STRUCT_EAGLE_THERMAL_H */

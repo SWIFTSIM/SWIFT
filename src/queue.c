@@ -260,8 +260,13 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
     if (task_lock(&qtasks[entries[ind].tid])) break;
 
     /* Should we de-prioritize this task? */
-    if ((1ULL << qtasks[entries[ind].tid].type) &
-        queue_lock_fail_reweight_mask) {
+
+    // MATTHIEU: We now have more than 64 tasks so the bit-wise
+    // operation here is problematic.
+    // However, the mask was such that this condition is always true anyway.
+    if (1 /* (1ULL << qtasks[entries[ind].tid].type) & */
+        /* queue_lock_fail_reweight_mask */) {
+
       /* Scale the task's weight. */
       entries[ind].weight *= queue_lock_fail_reweight_factor;
 

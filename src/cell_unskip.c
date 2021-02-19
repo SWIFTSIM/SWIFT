@@ -1986,6 +1986,96 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
+  for (struct link *l = c->stars.prepare1; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_is_active_stars(ci, e) ||
+                          (with_star_formation && cell_is_active_hydro(ci, e));
+
+    const int cj_active =
+        (cj != NULL) && (cell_is_active_stars(cj, e) ||
+                         (with_star_formation && cell_is_active_hydro(cj, e)));
+
+    if (t->type == task_type_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_sub_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+      }
+      /* Cells ci and cj are from different MPI domains */
+      else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+        /* In task prepare1, we update gas so sparts must be on foreign node */
+        scheduler_activate(s, t);
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+        /* In task prepare1, we update gas so sparts must be on foreign node */
+        scheduler_activate(s, t);
+      }
+    }
+  }
+
+  for (struct link *l = c->stars.prepare2; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_is_active_stars(ci, e) ||
+                          (with_star_formation && cell_is_active_hydro(ci, e));
+
+    const int cj_active =
+        (cj != NULL) && (cell_is_active_stars(cj, e) ||
+                         (with_star_formation && cell_is_active_hydro(cj, e)));
+
+    if (t->type == task_type_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_sub_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+      }
+      /* Cells ci and cj are from different MPI domains */
+      else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (ci_active)) {
+        /* In task prep2, we update stars so sparts must be on the local node */
+        scheduler_activate(s, t);
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (cj_active)) {
+        /* In task prep2, we update stars so sparts must be on the local node */
+        scheduler_activate(s, t);
+      }
+    }
+  }
+
   /* Un-skip the feedback tasks involved with this cell. */
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2037,7 +2127,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (cell_is_active_stars(c, e) ||
         (with_star_formation && cell_is_active_hydro(c, e))) {
 
-      if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
+      if (c->stars.density_ghost != NULL)
+        scheduler_activate(s, c->stars.density_ghost);
+      if (c->stars.prep1_ghost != NULL)
+        scheduler_activate(s, c->stars.prep1_ghost);
+      if (c->stars.prep2_ghost != NULL)
+        scheduler_activate(s, c->stars.prep2_ghost);
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
       if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);

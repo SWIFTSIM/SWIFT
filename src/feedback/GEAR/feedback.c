@@ -39,8 +39,8 @@
  * @param xp The #xpart to consider.
  * @param e The #engine.
  */
-void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
-                          const struct engine* restrict e) {
+void feedback_update_part(struct part* p, struct xpart* xp,
+                          const struct engine* e) {
 
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;
@@ -85,6 +85,17 @@ void feedback_update_part(struct part* restrict p, struct xpart* restrict xp,
     xp->feedback_data.delta_p[i] = 0;
   }
 }
+
+/**
+ * @brief Reset the gas particle-carried fields related to feedback at the
+ * start of a step.
+ *
+ * Nothing to do here in the GEAR model.
+ *
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ */
+void feedback_reset_part(struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Compute the times for the stellar model.
