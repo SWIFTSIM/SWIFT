@@ -114,6 +114,12 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                             e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
+        runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+        runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           e->feedback_props, ti_current);
@@ -226,6 +232,12 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                             e->feedback_props, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
+        runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+        runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, si, pj, NULL, cosmo,
+                                          ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           e->feedback_props, ti_current);
@@ -402,6 +414,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
                                               cosmo, e->feedback_props,
                                               ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
+          runner_iact_nonsym_feedback_prep1(r2, dx, hi, hj, spi, pj, NULL,
+                                            cosmo, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+          runner_iact_nonsym_feedback_prep2(r2, dx, hi, hj, spi, pj, NULL,
+                                            cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
                                             e->feedback_props, ti_current);
@@ -433,9 +451,11 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     const double hj_max = cj->stars.h_max * kernel_gamma;
     const int count_i = ci->hydro.count;
     const int count_j = cj->stars.count;
-    struct part *restrict parts_i = ci->hydro.parts;
-    struct xpart *restrict xparts_i = ci->hydro.xparts;
     struct spart *restrict sparts_j = cj->stars.parts;
+    struct part *restrict parts_i = ci->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+    struct xpart *restrict xparts_i = ci->hydro.xparts;
+#endif
     const double di_max = sort_i[count_i - 1].d - rshift;
     const float dx_max = (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
     const float hydro_dx_max_rshift = ci->hydro.dx_max_sort - rshift;
@@ -477,7 +497,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         struct xpart *xpi = &xparts_i[sort_i[pid].i];
+#endif
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
@@ -531,9 +553,15 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hj, hi, spj, pi, xpi,
+          runner_iact_nonsym_feedback_density(r2, dx, hj, hi, spj, pi, NULL,
                                               cosmo, e->feedback_props,
                                               ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
+          runner_iact_nonsym_feedback_prep1(r2, dx, hj, hi, spj, pi, NULL,
+                                            cosmo, ti_current);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
+          runner_iact_nonsym_feedback_prep2(r2, dx, hj, hi, spj, pi, NULL,
+                                            cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
                                             e->feedback_props, ti_current);

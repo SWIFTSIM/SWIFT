@@ -20,7 +20,7 @@
 #define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
 /*! The total number of rays used in AGN feedback */
-#define eagle_blackhole_number_of_rays 50
+#define eagle_blackhole_number_of_rays FEEDBACK_NR_RAYS_AGN
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"

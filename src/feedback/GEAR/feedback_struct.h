@@ -24,8 +24,12 @@
 /**
  * @brief Feedback fields carried by each hydro particles
  */
+struct feedback_part_data {};
 
-struct feedback_part_data {
+/**
+ * @brief Extra feedback fields carried by each hydro particles
+ */
+struct feedback_xpart_data {
   /*! mass received from supernovae */
   float delta_mass;
 

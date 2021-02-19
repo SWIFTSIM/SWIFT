@@ -224,6 +224,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Mark the particle has not being swallowed */
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
 
+      /* Reset the gas particle-carried feedback fields */
+      feedback_reset_part(p, xp);
+
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
