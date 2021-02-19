@@ -23,6 +23,26 @@
 
 #include "periodic_replications.h"
 
+
+/**
+ * @brief Comparison function for sorting replications
+ *
+ * a The first replication
+ * b The second replication
+ *
+ */
+static int compare_replication_rmin(const void *a, const void *b) {
+  const struct replication *rep_a = (struct replication *) a;
+  const struct replication *rep_b = (struct replication *) b;
+  if(rep_a->rmin2 < rep_b->rmin2)
+    return -1;
+  else if(rep_a->rmin2 > rep_b->rmin2)
+    return 1;
+  else
+    return 0;
+}
+
+
 /**
  * @brief Make a list of periodic box replications which overlap 
  *        the specified distance range from an observer.
@@ -92,8 +112,8 @@ void replication_list_init(struct replication_list *replication_list,
               const int nrep = replication_list->nrep;
               struct replication *rep = replication_list->replication+nrep;
               /* Store info about this replication */
-              rep->rmin = rep_rmin;
-              rep->rmax = rep_rmax;
+              rep->rmin2 = pow(rep_rmin, 2.0);
+              rep->rmax2 = pow(rep_rmax, 2.0);
               rep->coord[0] = i;
               rep->coord[1] = j;
               rep->coord[2] = k;
@@ -111,6 +131,12 @@ void replication_list_init(struct replication_list *replication_list,
       replication_list->replication = malloc(sizeof(struct replication)*nrep); 
     }
   } /* Next pass */
+
+  /* Now sort replications by minimum distance */
+  qsort(replication_list->replication, 
+        (size_t) replication_list->replication, 
+        sizeof(struct replication),
+        compare_replication_rmin);
 }
 
 

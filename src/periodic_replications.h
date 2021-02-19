@@ -24,11 +24,11 @@
 /* Struct to store information about one periodic replication of the simulation box */
 struct replication {
 
-  /* Minimum distance from the observer to any point in the replication */
-  double rmin;
+  /* Minimum distance squared from the observer to any point in the replication */
+  double rmin2;
 
-  /* Maximum distance from the observer to any point in the replication */
-  double rmax;
+  /* Maximum distance squared from the observer to any point in the replication */
+  double rmax2;
 
   /* Integer coordinates of the replication */
   int coord[3];

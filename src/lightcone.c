@@ -186,8 +186,25 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
                                box_wrap(gp->x[1], 0.0, boxsize),
                                box_wrap(gp->x[2], 0.0, boxsize)};
   
-  /* Loop over periodic copies of the volume */
+  /* Loop over periodic copies of the volume:
+     
+     Here we're looking for cases where a periodic copy of the particle
+     is closer to the observer than the lightcone surface at the start
+     of the drift, and further away than the lightcone surface at the
+     end of the drift.
+   */
   for(int i=0; i<nreps; i+=1) {
+
+    /* If all particles in this periodic replica are beyond the lightcone surface
+       at the earlier time, then they already crossed the lightcone. Since the
+       replications are in ascending order of rmin we don't need to check any
+       more. */
+    if(rep[i].rmin2 > comoving_dist_2_start)break;
+
+    /* If all particles in this periodic replica are still inside the lightcone
+       surface at the later time, then they will cross the lightcone in a later
+       time step. */
+    if(rep[i].rmax2 < comoving_dist_2_end)continue;
 
     /* Get the coordinates of this periodic copy of the gpart relative to the observer */
     const double x_start[3] = {
@@ -202,6 +219,9 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
       x_start[1]*x_start[1]+
       x_start[2]*x_start[2];
 
+    /* If particle is initially beyond the lightcone surface, it can't cross */
+    if(r2_start > comoving_dist_2_start)continue;
+
     /* Get position of this periodic copy at the end of the drift */
     const double x_end[3] = {
       x_start[0] + dt_drift * gp->v_full[0],
@@ -215,15 +235,16 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
       x_end[1]*x_end[1]+
       x_end[2]*x_end[2];
     
-    if(r2_start < comoving_dist_2_start && r2_end > comoving_dist_2_end) {
+    /* If particle is still within the lightcone surface at the end of the drift,
+       it can't cross*/
+    if(r2_end < comoving_dist_2_end)continue;
 
-      /* This periodic copy of the gpart crossed the lightcone during this drift */
-      /* For testing: here we write out the initial coordinates to a text file */
-      lock_lock(&io_lock);
-      fprintf(fd, "%16.8e, %16.8e, %16.8e\n", x_start[0], x_start[1], x_start[2]);
-      lock_unlock(&io_lock);
+    /* This periodic copy of the gpart crossed the lightcone during this drift */
+    /* For testing: here we write out the initial coordinates to a text file */
+    lock_lock(&io_lock);
+    fprintf(fd, "%16.8e, %16.8e, %16.8e\n", x_start[0], x_start[1], x_start[2]);
+    lock_unlock(&io_lock);
 
-    } /* If crosses lightcone */
   } /* Next periodic replication*/
 
 }
