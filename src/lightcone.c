@@ -178,10 +178,11 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
   const double comoving_dist_2_start = pow(cosmology_get_comoving_distance(c, a_start), 2.0);
   const double comoving_dist_2_end   = pow(cosmology_get_comoving_distance(c, a_end), 2.0);
 
-  /* Wrap particle starting coordinates into the box. The particle can
-     still wander out of the box as it is drifted, but we account for 
-     that by including a boundary layer when we decide which periodic
-     copies to search. */
+  /* Thickness of the 'shell' between the lightcone surfaces at start and end of drift.
+     We use this as a limit on how far a particle can drift (i.e. assume v < c).*/
+  const double boundary = comoving_dist_2_start - comoving_dist_2_end;
+
+  /* Wrap particle starting coordinates into the box */
   const double x_wrapped[3] = {box_wrap(gp->x[0], 0.0, boxsize),
                                box_wrap(gp->x[1], 0.0, boxsize),
                                box_wrap(gp->x[2], 0.0, boxsize)};
@@ -203,8 +204,8 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     /* If all particles in this periodic replica are still inside the lightcone
        surface at the later time, then they will cross the lightcone in a later
-       time step. */
-    if(rep[i].rmax2 < comoving_dist_2_end)continue;
+       time step. But they can drift outside the box, so we allow a boundary layer. */
+    if(rep[i].rmax2 + boundary < comoving_dist_2_end)continue;
 
     /* Get the coordinates of this periodic copy of the gpart relative to the observer */
     const double x_start[3] = {

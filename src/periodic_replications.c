@@ -51,15 +51,16 @@ static int compare_replication_rmin(const void *a, const void *b) {
  * @param observer_position Location of the observer.
  * @param lightcone_rmin Minimum distance from the observer.
  * @param lightcone_rmax Maximum distance from the observer.
- * @param lightcone_boundary Size of buffer zone to allow for movement
  *        of particles.
  * @param replication_list Pointer to the struct to initialise.
  */
+
+/* TODO: ensure lightcone_rmin is reduced to allow for drifting */
+
 void replication_list_init(struct replication_list *replication_list,
                            double boxsize,
                            double observer_position[3],
-                           double lightcone_rmin, double lightcone_rmax,
-                           double lightcone_boundary) {
+                           double lightcone_rmin, double lightcone_rmax) {
   
   /* Find range of replications to examine in each dimension */
   int rep_min[3];
@@ -100,11 +101,8 @@ void replication_list_init(struct replication_list *replication_list,
           dz = abs(observer_position[2] - cz) + 0.5*boxsize;
           double rep_rmax = sqrt(dx*dx+dy*dy+dz*dz);
 
-          /* Check if any point in this replication could be in the lightcone,
-             allowing a boundary layer to account for the distance particles 
-             can be drifted */
-          if(rep_rmax > lightcone_rmin-lightcone_boundary &&
-             rep_rmin < lightcone_rmax+lightcone_boundary) {
+          /* Check if any point in this replication could be in the lightcone */
+          if(rep_rmax > lightcone_rmin && rep_rmin < lightcone_rmax) {
     
             /* Store replications on second pass */
             if(ipass==1) {
