@@ -389,6 +389,23 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 }
 
 /**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  error("Empty implementation");
+}
+
+/**
  * @brief Update the value of the viscosity alpha for the scheme.
  *
  * @param p the particle of interest

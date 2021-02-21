@@ -170,6 +170,9 @@ struct part {
   /*! Cooling information */
   struct cooling_part_data cooling_data;
 
+  /*! Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
+
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
