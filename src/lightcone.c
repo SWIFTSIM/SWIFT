@@ -52,7 +52,13 @@ static FILE *fd;
  */
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
 
-  restart_write_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
+  /* Don't dump the replication list - will regenerate it as needed */
+  struct lightcone_props tmp = *props;
+  tmp.replication_list.nrep = 0;
+  tmp.replication_list.replication = NULL;
+  tmp.have_replication_list = 0;
+
+  restart_write_blocks((void *) &tmp, sizeof(struct lightcone_props), 1, stream,
                        "lightcone_props", "lightcone_props");
 }
 
@@ -97,6 +103,9 @@ void lightcone_init(struct lightcone_props *props,
   if(s->dim[1] != s->dim[0] || s->dim[2] != s->dim[0])
     error("Lightcones require a cubic simulation box.");
 
+  /* Initially have no replication list */
+  props->have_replication_list = 0;
+
   /* Set up the output file(s) */
   lock_init(&io_lock);
   char fname[500];
@@ -109,7 +118,7 @@ void lightcone_init(struct lightcone_props *props,
  * @brief Flush any remaining lightcone output.
  */
 void lightcone_flush(void) {
-  fclose(fd);
+  fclose(fd);    
 }
 
 
@@ -135,21 +144,25 @@ void lightcone_init_replication_list(struct lightcone_props *props,
      - sort boxes by distance so we can exit sooner when checking for crossings?
   */
 
+  /* Deallocate the old list, if there is one */
+  if(props->have_replication_list)replication_list_clean(&props->replication_list);
+
   /* Get the size of the simulation box */
   const double boxsize = props->boxsize;
 
   /* Convert redshift range to a distance range */
   double lightcone_rmin = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_max));
   double lightcone_rmax = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_min));;
-  double lightcone_boundary = boxsize; /* Needs to be an upper limit on drift distance */
   if(lightcone_rmin > lightcone_rmax)
     error("Lightcone has rmin > rmax - check z_min and z_max parameters?");
 
   /* Determine periodic copies we need to search */
   replication_list_init(&props->replication_list, boxsize,
                         props->observer_position,
-                        lightcone_rmin, lightcone_rmax,
-                        lightcone_boundary);
+                        lightcone_rmin, lightcone_rmax);
+
+  /* Record that we made the list */
+  props->have_replication_list = 1;
 }
 
 

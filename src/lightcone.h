@@ -51,6 +51,9 @@ struct lightcone_props {
   /*! Simulation box size (volume must be a cube) */
   double boxsize;
 
+  /*! Whether list of replications exists */
+  int have_replication_list;
+
   /*! List of periodic replications to check on this timestep */
   struct replication_list replication_list;
 
