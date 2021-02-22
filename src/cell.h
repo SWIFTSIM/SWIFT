@@ -790,18 +790,14 @@ cell_can_recurse_in_subself2_hydro_task(const struct cell *c) {
  * @param cj The #cell with hydro parts.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_stars_task(const struct cell *ci,
-                                    const struct cell *cj) {
+cell_can_recurse_in_pair_stars_task(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return ci->split && cj->split &&
-         ((kernel_gamma * ci->stars.h_max_old + ci->stars.dx_max_part_old) <
-          0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
-          0.5f * cj->dmin);
+  return c->split && ((kernel_gamma * c->stars.h_max_old +
+                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
 }
 
 /**
@@ -829,8 +825,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
-         (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
 }
 
 /**

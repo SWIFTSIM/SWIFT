@@ -879,8 +879,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
-        cell_can_recurse_in_pair_stars_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_stars_task(ci) &&
+        cell_can_recurse_in_pair_stars_task(cj)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
