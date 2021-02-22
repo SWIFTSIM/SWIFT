@@ -1000,60 +1000,6 @@ void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
   DOSELF1_SUBSET_STARS(r, ci, sparts, ind, scount);
 }
 
-/**
- * @brief Determine which version of DOPAIR1_SUBSET_STARS needs to be called
- * depending on the orientation of the cells or whether DOPAIR1_SUBSET_STARS
- * needs to be called at all.
- *
- * @param r The #runner.
- * @param ci The first #cell.
- * @param sparts_i The #spart to interact with @c cj.
- * @param ind The list of indices of particles in @c ci to interact with.
- * @param scount The number of particles in @c ind.
- * @param cj The second #cell.
- */
-void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
-                                 struct spart *restrict sparts_i,
-                                 int *restrict ind, int scount,
-                                 struct cell *restrict cj) {
-
-  const struct engine *e = r->e;
-
-  /* Anything to do here? */
-  if (cj->hydro.count == 0) return;
-
-  /* Get the relative distance between the pairs, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  for (int k = 0; k < 3; k++) {
-    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-      shift[k] = e->s->dim[k];
-    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-      shift[k] = -e->s->dim[k];
-  }
-
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
-  DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
-#else
-  /* Get the sorting index. */
-  int sid = 0;
-  for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                         ? 0
-                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
-
-  /* Switch the cells around? */
-  const int flipped = runner_flip[sid];
-  sid = sortlistID[sid];
-
-  /* Has the cell cj been sorted? */
-  if (!(cj->hydro.sorted & (1 << sid)) ||
-      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
-
-  DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
-#endif
-}
-
 void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
                         int *ind, int scount, struct cell *cj, int gettimer) {
 
@@ -1465,3 +1411,58 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c,
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF_STARS);
 }
+
+/**
+ * @brief Determine which version of DOPAIR1_SUBSET_STARS needs to be called
+ * depending on the orientation of the cells or whether DOPAIR1_SUBSET_STARS
+ * needs to be called at all.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param sparts_i The #spart to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param scount The number of particles in @c ind.
+ * @param cj The second #cell.
+ */
+void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
+                                 struct spart *restrict sparts_i,
+                                 int *restrict ind, int scount,
+                                 struct cell *restrict cj) {
+
+  const struct engine *e = r->e;
+
+  /* Anything to do here? */
+  if (cj->hydro.count == 0) return;
+
+  /* Get the relative distance between the pairs, wrapping. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  for (int k = 0; k < 3; k++) {
+    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
+      shift[k] = e->s->dim[k];
+    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
+      shift[k] = -e->s->dim[k];
+  }
+
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
+  DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
+#else
+  /* Get the sorting index. */
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
+                         ? 0
+                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+
+  /* Switch the cells around? */
+  const int flipped = runner_flip[sid];
+  sid = sortlistID[sid];
+
+  /* Has the cell cj been sorted? */
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
+
+  DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
+#endif
+}
+
