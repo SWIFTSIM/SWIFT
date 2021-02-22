@@ -335,6 +335,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     const struct part *pi = &parts[i];
     const long long id = pi->id;
     const int found_inhibited = pi->inhibited_exact;
+    const int h_max_limited = pi->h >= e->hydro_properties->h_max;
     if (pi->limited_part) continue;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
@@ -360,8 +361,9 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       if (!found_inhibited && pi->N_density != pi->N_density_exact &&
           (fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol ||
            fabsf(pi->rho_exact / pi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld swift=%e exact=%e N=%d N_exact=%d", id, pi->rho,
-                pi->rho_exact, pi->N_density, pi->N_density_exact);
+        message("RHO: id=%lld swift=%e exact=%e N=%d N_exact=%d h_max=%d", id,
+                pi->rho, pi->rho_exact, pi->N_density, pi->N_density_exact,
+                h_max_limited);
         wrong_rho++;
       }
       if (check_force && !found_inhibited &&
@@ -394,7 +396,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       /*   wrong_limiter++; */
       /* } */
 
-      if (!found_inhibited && (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
+      if (!found_inhibited && !h_max_limited &&
+          (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
 
         message("N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d",
                 id, N_ngb, N_ngb_target, N_ngb_max - N_ngb_target,
@@ -414,7 +417,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   if (wrong_n_ngb)
     error(
         "N_ngb difference larger than the allowed tolerance for %d "
-        "star particles! (out of %d particles)",
+        "gas particles! (out of %d particles)",
         wrong_n_ngb, counter);
   else
     message("Verified %d gas particles", counter);
