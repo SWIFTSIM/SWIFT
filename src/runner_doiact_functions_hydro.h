@@ -2949,7 +2949,7 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   }
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
+  else if (cell_is_active_hydro(ci, e)) {
 
     /* Do any of the cells need to be drifted first? */
     if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
