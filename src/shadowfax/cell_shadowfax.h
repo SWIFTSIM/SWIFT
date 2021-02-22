@@ -4,6 +4,7 @@
 #include "active.h"
 #include "cell.h"
 #include "delaunay.h"
+#include "hydro_shadowfax.h"
 #include "voronoi.h"
 
 __attribute__((always_inline)) INLINE static void shadowfax_flag_particle_added(
@@ -34,13 +35,15 @@ cell_malloc_delaunay_tessellation(struct cell *c,
     /* Get a pointer to the ith particle. */
     struct part *restrict p = &parts[pd];
     p->voronoi.flag = 0;
+    p->voronoi.nface = 0;
   }
 
   c->hydro.shadowfax_enabled = 1;
 }
 
-__attribute__((always_inline)) INLINE static void cell_shadowfax_do_self1(
-    const struct engine *e, struct cell *restrict c) {
+__attribute__((always_inline)) INLINE static void
+cell_shadowfax_do_self1_density(const struct engine *e,
+                                struct cell *restrict c) {
 
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -56,8 +59,19 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_self1(
       shadowfax_flag_particle_added(p, 0);
     }
   }
+}
 
-  /*  delaunay_consolidate(&c->hydro.deltess);*/
+__attribute__((always_inline)) INLINE static void cell_shadowfax_do_self2_force(
+    const struct engine *e, struct cell *restrict c) {
+
+  struct part *restrict parts = c->hydro.parts;
+
+  struct voronoi *vortess = &c->hydro.vortess;
+  for (int i = 0; i < vortess->pair_index[0]; ++i) {
+    struct voronoi_pair *pair = &vortess->pairs[0][i];
+    hydro_shadowfax_flux_exchange(&parts[pair->left], &parts[pair->right],
+                                  pair->midpoint, pair->surface_area);
+  }
 }
 
 __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair_naive(
@@ -240,9 +254,11 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair_subset(
   }
 }
 
-__attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair1(
-    const struct engine *e, struct cell *restrict ci, struct cell *restrict cj,
-    int sid, const double *shift) {
+__attribute__((always_inline)) INLINE static void
+cell_shadowfax_do_pair1_density(const struct engine *e,
+                                struct cell *restrict ci,
+                                struct cell *restrict cj, int sid,
+                                const double *shift) {
 
   if (ci == cj) error("Interacting cell with itself!");
 
@@ -375,6 +391,21 @@ __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair1(
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
   }     /* Cell cj is active */
+}
+
+__attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair2_force(
+    const struct engine *e, struct cell *restrict ci, struct cell *restrict cj,
+    int sid, const double *shift) {
+
+  struct part *restrict parts_i = ci->hydro.parts;
+  struct part *restrict parts_j = cj->hydro.parts;
+
+  struct voronoi *vortess = &ci->hydro.vortess;
+  for (int i = 0; i < vortess->pair_index[1 + sid]; ++i) {
+    struct voronoi_pair *pair = &vortess->pairs[1 + sid][i];
+    hydro_shadowfax_flux_exchange(&parts_i[pair->left], &parts_j[pair->right],
+                                  pair->midpoint, pair->surface_area);
+  }
 }
 
 __attribute__((always_inline)) INLINE static void cell_shadowfax_do_pair2(

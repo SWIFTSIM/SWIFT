@@ -1065,8 +1065,13 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  cell_shadowfax_do_pair1(e, ci, cj, sid, shift);
+#if defined(SHADOWFAX_SPH)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_pair1_density(e, ci, cj, sid, shift);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
+#else
+  error("Using wrong pair function!");
+#endif
 #endif
 
   if (cell_is_active_hydro(ci, e)) {
@@ -1407,6 +1412,15 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
+
+#if defined(SHADOWFAX_SPH)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
+  error("Using wrong pair function!");
+#else
+  cell_shadowfax_do_pair2_force(e, ci, cj, sid, shift);
+#endif
+#endif
 
   /* Maximal displacement since last rebuild */
   const double dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
@@ -1986,8 +2000,13 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   TIMER_TIC;
 
-#if defined(SHADOWFAX_SPH) && (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  cell_shadowfax_do_self1(e, c);
+#if defined(SHADOWFAX_SPH)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  cell_shadowfax_do_self1_density(e, c);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
+#else
+  error("Using wrong self function!");
+#endif
 #endif
 
   struct part *restrict parts = c->hydro.parts;
@@ -2216,6 +2235,15 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
 
   TIMER_TIC;
+
+#if defined(SHADOWFAX_SPH)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT)
+  error("Using wrong self function!");
+#else
+  cell_shadowfax_do_self2_force(e, c);
+#endif
+#endif
 
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;

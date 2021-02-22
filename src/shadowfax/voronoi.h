@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of cVoronoi.
- * Copyright (c) 2020 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2020, 2021 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -68,6 +68,7 @@ struct voronoi_pair {
 #ifdef VORONOI_STORE_CONNECTIONS
   /*! First vertex of the interface. */
   double a[2];
+
   /*! Second vertex of the interface. */
   double b[2];
 #endif
@@ -87,6 +88,7 @@ struct voronoi_cell_new {
   double centroid[2];
 
 #ifdef VORONOI_STORE_GENERATORS
+  /*! Position of the cell generator. */
   double generator[2];
 #endif
 
@@ -109,11 +111,20 @@ struct voronoi {
   /*! @brief Voronoi cells. */
   struct voronoi_cell_new *cells;
 
-  /*! @brief Number of cells (and number of generators). */
+  /*! @brief Number of cells. */
   int number_of_cells;
 
+  /*! @brief Voronoi cell pairs. We store these per (SWIFT) cell, i.e. pairs[0]
+   *  contains all pairs that are completely contained within this cell, while
+   *  pairs[1] corresponds to pairs crossing the boundary between this cell and
+   *  the cell with coordinates that are lower in all coordinate directions (the
+   *  cell to the left, front, bottom, sid=0), and so on. */
   struct voronoi_pair *pairs[27];
+
+  /*! @brief Current number of pairs per cell index. */
   int pair_index[27];
+
+  /*! @brief Allocated number of pairs per cell index. */
   int pair_size[27];
 };
 
@@ -219,6 +230,7 @@ static inline double voronoi_compute_centroid_volume_triangle(
  *
  * @param v Voronoi grid.
  * @param d Delaunay tessellation (read-only).
+ * @param parts Local cell generators (read-only).
  */
 static inline void voronoi_init(struct voronoi *restrict v,
                                 const struct delaunay *restrict d,
@@ -456,41 +468,55 @@ static inline void voronoi_check_grid(const struct voronoi *restrict v) {
   printf("Total volume: %g\n", V);
 }
 
+/**
+ * @brief Write the Voronoi grid information to the given file.
+ *
+ * The output depends on the configuration. The maximal output contains 3
+ * different types of output lines:
+ *  - "G\tgx\tgx: x and y position of a single grid generator (optional).
+ *  - "C\tcx\tcy\tV\tnface": centroid position, volume and (optionally) number
+ *    of faces for a single Voronoi cell.
+ *  - "F\tax\tay\tbx\tby\tleft\tngb\tright\tA\tmx\tmy": edge positions
+ *    (optional), left and right generator index (and ngb cell index), surface
+ *    area and midpoint position for a single two-pair interface.
+ *
+ * @param v Voronoi grid.
+ * @param file File to write to.
+ */
 static inline void voronoi_write_grid(const struct voronoi *restrict v,
                                       FILE *file) {
 
-#ifdef VORONOI_STORE_GENERATORS
+  /* first write the cells (and generators, if those are stored) */
   for (int i = 0; i < v->number_of_cells; ++i) {
     struct voronoi_cell_new *this_cell = &v->cells[i];
+#ifdef VORONOI_STORE_GENERATORS
     fprintf(file, "G\t%g\t%g\n", this_cell->generator[0],
             this_cell->generator[1]);
-  }
 #endif
+    fprintf(file, "C\t%g\t%g\t%g", this_cell->centroid[0],
+            this_cell->centroid[1], this_cell->volume);
+#ifdef VORONOI_STORE_CELL_STATS
+    fprintf(file, "\t%i", this_cell->nface);
+#endif
+    fprintf(file, "\n");
+  }
+  /* now write the pairs */
   for (int ngb = 0; ngb < 27; ++ngb) {
     for (int i = 0; i < v->pair_index[ngb]; ++i) {
       struct voronoi_pair *pair = &v->pairs[ngb][i];
+      fprintf(file, "F\t");
 #ifdef VORONOI_STORE_CONNECTIONS
-      fprintf(file, "F\t%g\t%g\t%g\t%g\t%i\t%i\t%i\n", pair->a[0], pair->a[1],
-              pair->b[0], pair->b[1], pair->left, ngb, pair->right);
-#else
-      fprintf(file, "F\t%i\t%i\t%i\n", pair->left, ngb, pair->right);
+      fprintf(file, "%g\t%g\t%g\t%g\t", pair->a[0], pair->a[1], pair->b[0],
+              pair->b[1]);
 #endif
+      fprintf(file, "%i\t%i\t%i\t%g\t%g\t%g\n", pair->left, ngb, pair->right,
+              pair->surface_area, pair->midpoint[0], pair->midpoint[1]);
     }
   }
 }
 
 /**
  * @brief Print the Voronoi grid to a file with the given name.
- *
- * The grid is output as follows:
- *  1. First, each generator is output, together with all its connections.
- *     The generator is output as "G\tx\ty\n", where x and y are the coordinates
- *     of the generator. The centroid of the corresponding cell is output as
- *     "M\tx\ty\n".
- *     The connections are output as "C\tindex\tindex\n", where the two indices
- *     are the indices of two vertices of the grid, in the order output by 2.
- *     The midpoint of each edge is output as "F\tx\ty\n".
- *  2. Next, all vertices of the grid are output, in the format "V\tx\ty\n".
  *
  * @param v Voronoi grid (read-only).
  * @param file_name Name of the output file.

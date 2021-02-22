@@ -223,6 +223,9 @@ struct part {
        tessellation. */
     int flag;
 
+    /* Number of times this cell interacted with other cells. */
+    int nface;
+
   } voronoi;
 
 } SWIFT_STRUCT_ALIGN;
