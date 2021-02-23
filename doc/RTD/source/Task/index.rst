@@ -21,3 +21,4 @@ Everything is described in :ref:`Analysis_Tools`.
    adding_your_own
    adding_your_own_neighbour_loop
    adding_to_dependency_plotting_tool
+   locks
