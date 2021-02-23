@@ -57,12 +57,25 @@ struct lightcone_props {
   /*! List of periodic replications to check on this timestep */
   struct replication_list replication_list;
 
+  /*! Total number of particles written to the lightcone by this MPI rank */
+  long long tot_num_particles_written;
+
+  /*! Number of particles written to the current file by this MPI rank */
+  long long num_particles_written_to_file;
+
+  /*! Index of the current output file for this MPI rank */
+  int current_file;
+
+  /*! Range of times used to generate the replication list */
+  integertime_t ti_old, ti_current;
+
 };
 
 void lightcone_init(struct lightcone_props *props,
                     const int myrank,
                     const struct space *s,
-                    struct swift_params *params);
+                    struct swift_params *params,
+                    const int restart);
 
 void lightcone_flush(void);
 
@@ -72,9 +85,13 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream);
 
 void lightcone_init_replication_list(struct lightcone_props *props,
                                      struct cosmology *cosmo,
-                                     struct space *s);
+                                     struct space *s,
+                                     const integertime_t ti_old,
+                                     const integertime_t ti_current,
+                                     const double dt_max);
 
 void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *gp,
-                                   const double dt_drift, const integertime_t ti_old);
+                                   const double dt_drift, const integertime_t ti_old,
+                                   const integertime_t ti_current);
 
 #endif /* SWIFT_LIGHTCONE_H */

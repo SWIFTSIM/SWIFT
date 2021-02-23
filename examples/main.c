@@ -1283,12 +1283,10 @@ int main(int argc, char *argv[]) {
     /* Initialise the lightcone properties */
     bzero(&lightcone_properties, sizeof(struct lightcone_props));
 #ifdef WITH_LIGHTCONE
-    if (with_lightcone) {
-      /* TODO: determine how to avoid duplicate/missing lightcone particles when restarting */
-      if(restart)error("Restarting lightcone runs is not implemented yet");
-      lightcone_init(&lightcone_properties, myrank, &s, params);
-      lightcone_init_replication_list(&lightcone_properties, &cosmo, &s);
-    }
+    if (with_lightcone)
+      lightcone_init(&lightcone_properties, myrank, &s, params, restart);
+    else
+      lightcone_properties.enabled = 0;
 #endif
 
     if (myrank == 0) {

@@ -86,7 +86,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 #endif
 
 #ifdef WITH_LIGHTCONE
-  lightcone_check_gpart_crosses(e, gp, dt_drift, ti_old);
+  if(e->lightcone_properties->enabled)
+    lightcone_check_gpart_crosses(e, gp, dt_drift, ti_old, ti_current);
 #endif
 
   /* Drift... */

@@ -64,7 +64,7 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
 
 
 /**
- * @brief Restore lightcone_props struct from the output stream.
+ * @brief Restore lightcone_props struct from the input stream.
  *
  * @param props the #lightcone_props structure
  * @param stream The stream to read from.
@@ -79,13 +79,16 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 /**
  * @brief Initialise the properties of the lightcone code.
  *
+ * If restarting, this is called after lightcone_struct_restore().
+ *
  * @param props the #lightcone_props structure to fill.
  * @param params the parameter file parser.
  */
 void lightcone_init(struct lightcone_props *props,
                     const int myrank,
                     const struct space *s,
-                    struct swift_params *params) {
+                    struct swift_params *params,
+                    const int restart) {
   
   /* Whether we generate lightcone output */
   props->enabled = 1;
@@ -105,12 +108,24 @@ void lightcone_init(struct lightcone_props *props,
 
   /* Initially have no replication list */
   props->have_replication_list = 0;
+  props->ti_old = 0;
+  props->ti_current = 0;
 
+  /* If we're not restarting, initialize various counters */
+  if(!restart) {
+    props->tot_num_particles_written = 0;
+    props->num_particles_written_to_file = 0;
+    props->current_file = 0;
+  }
+  
   /* Set up the output file(s) */
   lock_init(&io_lock);
   char fname[500];
   sprintf(fname, "lightcone.%d.txt", myrank);
-  fd = fopen(fname, "w");
+  if(restart)
+    fd = fopen(fname, "a"); // FIXME: will duplicate particles if we crashed!
+  else
+    fd = fopen(fname, "w");
 }
 
 
@@ -126,23 +141,50 @@ void lightcone_flush(void) {
  * @brief Determine periodic copies of the simulation box which could
  * contribute to the lightcone.
  *
- * @param props the #lightcone_props structure
- * @param props the #cosmology structure
- * @param props the #space structure
+ *                     \
+ *           \          \
+ *            |         |
+ * Obs      A |    B    | C
+ *            |         |
+ *           /          /
+ *          R1         /
+ *                    R0
+ *
+ * Consider a single particle being drifted. Here R0 is the comoving
+ * distance to the time the particle is drifted FROM. R1 is the comoving
+ * distance to the time the particle is drifted TO on this step.
+ *
+ * Particles which are beyond the lightcone surface at the start of
+ * their drift (C) cannot cross the lightcone on this step if v < c.
+ * Particles between the lightcone surfaces at the start and end of
+ * their drift (B) may cross the lightcone (and certainly will if they
+ * have zero velocity).
+ *
+ * Particles just within the lightcone surface at the start of their
+ * drift (A) may be able to cross the lightcone due to their velocity so
+ * we need to allow a boundary layer on the inside edge of the shell.
+ * If we assume v < c, then we can use a layer of thickness R0-R1.
+ *
+ * Here we compute the earliest and latest times particles may be drifted
+ * between, find the corresponding comoving distances R0 and R1, reduce
+ * the inner distance by R0-R1, and find all periodic copies of the 
+ * simulation box which overlap this spherical shell.
+ *
+ * Later we use this list to know which periodic copies to check when
+ * particles are drifted.
+ *
+ * @param props The #lightcone_props structure
+ * @param cosmo The #cosmology structure
+ * @param s The #space structure
+ * @param time_min Start of the time step
+ * @param time_max End of the time step
  */
 void lightcone_init_replication_list(struct lightcone_props *props,
                                      struct cosmology *cosmo,
-                                     struct space *s) {
-  /* 
-     For now, we'll check all periodic replications between z_min and z_max.
-     
-     TODO:
-
-     - on each timestep, get limits on times particles can be drifted between
-       and regenerate the list of replications.
-     - set lightcone_boundary in a more reasonable way
-     - sort boxes by distance so we can exit sooner when checking for crossings?
-  */
+                                     struct space *s,
+                                     const integertime_t ti_old,
+                                     const integertime_t ti_current,
+                                     const double dt_max) {
 
   /* Deallocate the old list, if there is one */
   if(props->have_replication_list)replication_list_clean(&props->replication_list);
@@ -150,11 +192,20 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   /* Get the size of the simulation box */
   const double boxsize = props->boxsize;
 
+  /* Get expansion factor at earliest and latest times particles might be drifted between */
+  double a_current = cosmo->a_begin * exp(ti_current * cosmo->time_base);
+  double a_old = cosmo->a_begin * exp(ti_old * cosmo->time_base - dt_max);
+  if(a_old < cosmo->a_begin)a_old = cosmo->a_begin;
+
   /* Convert redshift range to a distance range */
-  double lightcone_rmin = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_max));
-  double lightcone_rmax = cosmology_get_comoving_distance(cosmo, 1.0/(1.0+props->z_min));;
+  double lightcone_rmin = cosmology_get_comoving_distance(cosmo, a_current);
+  double lightcone_rmax = cosmology_get_comoving_distance(cosmo, a_old);
   if(lightcone_rmin > lightcone_rmax)
     error("Lightcone has rmin > rmax - check z_min and z_max parameters?");
+
+  /* Allow inner boundary layer, assuming all particles have v < c.
+     This is to account for particles moving during the time step. */
+  lightcone_rmin -= (lightcone_rmax-lightcone_rmin);
 
   /* Determine periodic copies we need to search */
   replication_list_init(&props->replication_list, boxsize,
@@ -163,6 +214,11 @@ void lightcone_init_replication_list(struct lightcone_props *props,
 
   /* Record that we made the list */
   props->have_replication_list = 1;
+
+  /* Store times we used to make the list, for consistency check later */
+  props->ti_old = ti_old;
+  props->ti_current = ti_current;
+
 }
 
 
@@ -173,7 +229,8 @@ void lightcone_init_replication_list(struct lightcone_props *props,
  * @param gp The #gpart to check.
  */
 void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *gp,
-                                   const double dt_drift, const integertime_t ti_old) {
+                                   const double dt_drift, const integertime_t ti_old,
+                                   const integertime_t ti_current) {
 
   /* Unpack some variables we need */
   const struct lightcone_props *props = e->lightcone_properties;
@@ -182,6 +239,10 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
   const int nreps = props->replication_list.nrep;
   const struct replication *rep = props->replication_list.replication;
   const struct cosmology *c = e->cosmology;
+
+  /* Consistency check - are our limits on the drift endpoints good? */
+  if(ti_old < props->ti_old || ti_current > props->ti_current)
+    error("Particle drift is outside the range used to make replication list!");
 
   /* Determine expansion factor at start and end of the drift */
   const double a_start = c->a_begin * exp(ti_old * c->time_base);
@@ -205,7 +266,8 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
      Here we're looking for cases where a periodic copy of the particle
      is closer to the observer than the lightcone surface at the start
      of the drift, and further away than the lightcone surface at the
-     end of the drift.
+     end of the drift. I.e. the surface of the lightcone has swept over
+     the particle as it contracts towards the observer.
    */
   for(int i=0; i<nreps; i+=1) {
 
@@ -215,9 +277,10 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
        more. */
     if(rep[i].rmin2 > comoving_dist_2_start)break;
 
-    /* If all particles in this periodic replica are still inside the lightcone
-       surface at the later time, then they will cross the lightcone in a later
-       time step. But they can drift outside the box, so we allow a boundary layer. */
+    /* If all particles in this periodic replica start their drifts inside the
+       lightcone surface, and are sufficiently far inside that their velocity
+       can't cause them to cross the lightcone, then we don't need to consider
+       this replication */
     if(rep[i].rmax2 + boundary < comoving_dist_2_end)continue;
 
     /* Get the coordinates of this periodic copy of the gpart relative to the observer */
@@ -250,7 +313,7 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
       x_end[2]*x_end[2];
     
     /* If particle is still within the lightcone surface at the end of the drift,
-       it can't cross*/
+       it didn't cross*/
     if(r2_end < comoving_dist_2_end)continue;
 
     /* This periodic copy of the gpart crossed the lightcone during this drift */

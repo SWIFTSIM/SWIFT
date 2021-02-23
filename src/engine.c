@@ -2131,6 +2131,14 @@ void engine_step(struct engine *e) {
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
 
+#ifdef WITH_LIGHTCONE
+  /* Determine which periodic replications could contribute to the lightcone
+     during this time step */
+  if(e->lightcone_properties->enabled)
+    lightcone_init_replication_list(e->lightcone_properties, e->cosmology, e->s,
+                                    e->ti_old, e->ti_current, e->dt_max);
+#endif
+
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */
   /*****************************************************/
