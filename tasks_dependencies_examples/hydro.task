@@ -1,0 +1,51 @@
+# Header
+label="Hydro simulation"
+
+# Define the tasks
+drift_part[type=single,level=hydro.super,active=hydro];
+sort[type=single,level=hydro.super,active=hydro,policy=hydro];
+
+density[type=iact,active=hydro,updates=hydro];
+
+ghost_in[type=implicit,level=hydro.super];
+ghost[type=single,level=top,active=hydro];
+ghost_out[type=implicit,level=hydro.super];
+
+force[type=iact,active=hydro,updates=hydro];
+end_hydro_force[type=single,level=hydro.super,active=hydro];
+
+kick2[type=single,level=super,active=all];
+
+limiter[type=iact,active=hydro,updates=hydro];
+timestep[type=single,level=super,active=all];
+timestep_limiter[type=single,level=super,active=all];
+
+kick1[type=single,level=super,active=all];
+
+
+# Define the links
+drift_part->density;
+drift_part->sort;
+
+sort->pair_density;
+
+density->ghost_in;
+
+ghost_in->ghost;
+ghost->ghost_out;
+ghost_out->force;
+
+force->end_hydro_force;
+
+end_hydro_force->kick2;
+
+kick2->limiter;
+kick2->timestep;
+
+limiter->timestep;
+timestep->kick1;
+timestep->timestep_limiter;
+
+limiter->timestep_limiter;
+
+timestep_limiter->kick1;
