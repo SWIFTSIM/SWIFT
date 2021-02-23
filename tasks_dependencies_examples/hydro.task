@@ -2,50 +2,50 @@
 label="Hydro simulation"
 
 # Define the tasks
-drift_part[type=single,level=hydro.super,active=hydro];
-sort[type=single,level=hydro.super,active=hydro,policy=hydro];
+drift_part[type=single,level=hydro.super,active=hydro,updates=hydro,policy=hydro]
+sort[type=single,level=hydro.super,active=hydro,policy=hydro]
 
-density[type=iact,active=hydro,updates=hydro];
+density[type=iact,active=hydro,updates=hydro,updates=hydro,policy=hydro,act_on=hydro]
 
-ghost_in[type=implicit,level=hydro.super];
-ghost[type=single,level=top,active=hydro];
-ghost_out[type=implicit,level=hydro.super];
+ghost_in[type=implicit,level=hydro.super,policy=hydro]
+ghost[type=single,level=top,active=hydro,updates=hydro,policy=hydro]
+ghost_out[type=implicit,level=hydro.super,policy=hydro]
 
-force[type=iact,active=hydro,updates=hydro];
-end_hydro_force[type=single,level=hydro.super,active=hydro];
+force[type=iact,active=hydro,updates=hydro,updates=hydro,policy=hydro,act_on=hydro]
+end_hydro_force[type=single,level=hydro.super,active=hydro,updates=hydro,policy=hydro]
 
-kick2[type=single,level=super,active=all];
+kick2[type=single,level=super,active=all,updates=all]
 
-limiter[type=iact,active=hydro,updates=hydro];
-timestep[type=single,level=super,active=all];
-timestep_limiter[type=single,level=super,active=all];
+limiter[type=iact,active=hydro,updates=hydro,updates=hydro,policy=limiter,act_on=hydro]
+timestep[type=single,level=super,active=all,updates=all]
+timestep_limiter[type=single,level=super,active=all,policy=limiter,updates=hydro]
 
-kick1[type=single,level=super,active=all];
+kick1[type=single,level=super,active=all]
 
 
 # Define the links
-drift_part->density;
-drift_part->sort;
+drift_part->density
+drift_part->sort
 
-sort->pair_density;
+sort->pair_density
 
-density->ghost_in;
+density->ghost_in
 
-ghost_in->ghost;
-ghost->ghost_out;
-ghost_out->force;
+ghost_in->ghost
+ghost->ghost_out
+ghost_out->force
 
-force->end_hydro_force;
+force->end_hydro_force
 
-end_hydro_force->kick2;
+end_hydro_force->kick2
 
-kick2->limiter;
-kick2->timestep;
+kick2->limiter
+kick2->timestep
 
-limiter->timestep;
-timestep->kick1;
-timestep->timestep_limiter;
+limiter->timestep
+timestep->kick1
+timestep->timestep_limiter
 
-limiter->timestep_limiter;
+limiter->timestep_limiter
 
-timestep_limiter->kick1;
+timestep_limiter->kick1
