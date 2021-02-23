@@ -149,11 +149,13 @@ int main(int argc, char *argv[]) {
 
   /* Construct arrays of multipoles to prevent too much optimization */
   struct gravity_tensors *tensors_i = NULL;
-  posix_memalign((void **)&tensors_i, SWIFT_CACHE_ALIGNMENT,
-                 num_M2L_runs * sizeof(struct gravity_tensors));
+  if (posix_memalign((void **)&tensors_i, SWIFT_CACHE_ALIGNMENT,
+                     num_M2L_runs * sizeof(struct gravity_tensors)) != 0)
+    error("Error allocating memory for multipoles array.");
   struct gravity_tensors *tensors_j = NULL;
-  posix_memalign((void **)&tensors_j, SWIFT_CACHE_ALIGNMENT,
-                 num_M2L_runs * sizeof(struct gravity_tensors));
+  if (posix_memalign((void **)&tensors_j, SWIFT_CACHE_ALIGNMENT,
+                     num_M2L_runs * sizeof(struct gravity_tensors)) != 0)
+    error("Error allocating memory for multipoles array.");
   for (int n = 0; n < num_M2L_runs; ++n) {
 
     memcpy(&tensors_i[n], ci.grav.multipole, sizeof(struct gravity_tensors));
