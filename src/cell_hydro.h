@@ -79,6 +79,9 @@ struct cell_hydro {
     /*! The ghost task itself */
     struct task *ghost;
 
+    /*! The hydro ghost task related to kinetic feedback */
+    struct task *prep1_ghost;
+
     /*! The extra ghost task for complex hydro schemes */
     struct task *extra_ghost;
 

@@ -126,6 +126,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
+    c->hydro.prep1_ghost = NULL;
     c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
     c->hydro.stars_resort = NULL;

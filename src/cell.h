@@ -466,10 +466,10 @@ struct cell {
 #ifdef SWIFT_DEBUG_CHECKS
 
   /*! The list of tasks that have been executed on this cell */
-  char tasks_executed[64];
+  char tasks_executed[task_type_count];
 
   /*! The list of sub-tasks that have been executed on this cell */
-  char subtasks_executed[64];
+  char subtasks_executed[task_type_count];
 #endif
 
 } SWIFT_STRUCT_ALIGN;
