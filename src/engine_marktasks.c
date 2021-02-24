@@ -487,15 +487,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           scheduler_activate(s, t);
 
+          /* If there are active sparts in ci, activate hydro ghost in cj */
+          if (ci_active_stars)
+            scheduler_activate(s, cj->hydro.super->hydro.prep1_ghost);
+          /* If there are active sparts in cj, activate hydro ghost in ci */
+          if (cj_active_stars)
+            scheduler_activate(s, ci->hydro.super->hydro.prep1_ghost);
+
         } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
                    (cj_active_stars)) {
 
           scheduler_activate(s, t);
+          /* If there are active sparts in cj, activate hydro ghost in ci */
+          scheduler_activate(s, ci->hydro.super->hydro.prep1_ghost);
 
         } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
                    (ci_active_stars)) {
 
           scheduler_activate(s, t);
+          /* If there are active sparts in ci, activate hydro ghost in cj */
+          scheduler_activate(s, cj->hydro.super->hydro.prep1_ghost);
         }
       }
 
@@ -1155,6 +1166,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Star ghost tasks ? */
     else if (t_type == task_type_stars_ghost ||
              t_type == task_type_stars_prep_ghost1 ||
+             t_type == task_type_hydro_prep_ghost1 ||
              t_type == task_type_stars_prep_ghost2) {
       if (cell_is_active_stars(t->ci, e) ||
           (with_star_formation && cell_is_active_hydro(t->ci, e)))
