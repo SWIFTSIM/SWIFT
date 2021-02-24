@@ -87,6 +87,7 @@ enum task_types {
   task_type_stars_ghost,
   task_type_stars_ghost_out,   /* Implicit */
   task_type_stars_prep_ghost1, /* Implicit */
+  task_type_hydro_prep_ghost1, /* Implicit */
   task_type_stars_prep_ghost2, /* Implicit */
   task_type_stars_sort,
   task_type_stars_resort,
