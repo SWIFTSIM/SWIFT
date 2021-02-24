@@ -67,7 +67,8 @@ class Task:
             self.level, self.link))
 
     def write_if_condition(self, f: typing.TextIO, level: bool = True,
-                           policy: bool = True):
+                           policy: bool = True, task_type: bool = False,
+                           task_subtype: bool = False):
         """
         Write the if condition for this task.
         The conditions can be disabled if needed.
@@ -83,6 +84,12 @@ class Task:
             if_condition += "(c->%s == c) && " % self.level
         if self.policy and policy:
             if_condition += "(e->policy && engine_policy_%s) && " % self.policy
+        if task_type:
+            if_condition += "(t->type == task_type_%s) && " % \
+                ref_tasks[self.name]["type"]
+        if task_subtype:
+            if_condition += "(t->subtype == task_subtype_%s) && " % \
+                ref_tasks[self.name]["subtype"]
 
         if len(if_condition) == 0:
             return False
@@ -123,6 +130,49 @@ class Task:
             code += "};\n"
         f.write(code)
 
+    def write_maketask_single_single(
+            self, f: typing.TextIO, link: str, tasks: dict):
+        # Generate part of the variable name
+        self_level = ""
+        if self.level:
+            self_level = "%s->" % self.level
+
+        # Grab data for the link
+        link = tasks[link]
+        link_level = ""
+        if link.level:
+            link_level = "%s->" % link.level
+
+        # Write the if condition
+        write_policy = self.policy != link.policy
+        if_done2 = link.write_if_condition(
+            f, level=False, policy=write_policy)
+
+        # Generate the scheduler_addunlock
+        unlock = "\t\tscheduler_addunlock(s, ci->{level1}{name1},"
+        unlock += " ci->{level2}{name2});\n"
+        unlock = unlock.format(
+            level1=self_level, name1=ref_tasks[self.name]["variable"],
+            level2=link_level, name2=ref_tasks[link.name]["variable"]
+        )
+
+        # Close parenthesis
+        if if_done2:
+            unlock += "\t};\n"
+        f.write(unlock)
+
+    def write_maketask_iact_iact(
+            self, f: typing.TextIO, link: str, tasks: dict):
+        raise Exception("It should never happens")
+
+    def write_maketask_iact_single(
+            self, f: typing.TextIO, link: str, tasks: dict):
+        return
+
+    def write_maketask_single_iact(
+            self, f: typing.TextIO, link: str, tasks: dict):
+        return
+
     def write_maketask_extra_loop(
             self, f: typing.TextIO, tasks: dict):
         """
@@ -140,19 +190,11 @@ class Task:
         if len(self.link) == 0:
             return
 
-        # Skipping iact_type not implemented
-        is_implicit = self.iact_type == "implicit"
-        if self.iact_type != "single" and not is_implicit:
-            print("Skipping dep", self.name)
-            return
-
         # Write the initial if condition
-        if_done = self.write_if_condition(f, level=False)
+        if_done = self.write_if_condition(
+            f, level=False, task_type=True)
 
-        # Generate part of the variable name
-        self_level = ""
-        if self.level:
-            self_level = "%s->" % self.level
+        iact1 = self.iact_type
 
         # loop over all the links
         for link in self.link:
@@ -160,29 +202,18 @@ class Task:
                 print("Skipping self/pair")
                 continue
 
-            # Grab data for the link
-            link = tasks[link]
-            link_level = ""
-            if link.level:
-                link_level = "%s->" % link.level
+            iact2 = tasks[link].iact_type
 
-            # Write the if condition
-            write_policy = self.policy != link.policy
-            if_done2 = link.write_if_condition(
-                f, level=False, policy=write_policy)
-
-            # Generate the scheduler_addunlock
-            unlock = "\t\tscheduler_addunlock(s, c->{level1}{name1},"
-            unlock += " c->{level2}{name2});\n"
-            unlock = unlock.format(
-                level1=self_level, name1=ref_tasks[self.name]["variable"],
-                level2=link_level, name2=ref_tasks[link.name]["variable"]
-            )
-
-            # Close parenthesis
-            if if_done2:
-                unlock += "\t};\n"
-            f.write(unlock)
+            # Deal with the case where both tasks are not iact
+            if iact1 != "iact" and iact2 != "iact":
+                self.write_maketask_single_single(f, link, tasks)
+            # Deal with the case where both are iact
+            elif iact1 == "iact" and iact2 == "iact":
+                self.write_maketask_iact_iact(f, link, tasks)
+            elif iact1 == "iact":
+                self.write_maketask_iact_single(f, link, tasks)
+            else:
+                self.write_maketask_single_iact(f, link, tasks)
 
         # Close parenthesis
         if if_done:
