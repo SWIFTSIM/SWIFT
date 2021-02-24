@@ -8,15 +8,18 @@
 Task Locks
 =============
 
-Swift doesn't only deal with dependencies, but with data conflicts as well.
-We can't have two independent tasks working on the same data concurrently,
-even if the tasks have no dependencies between them.
-For this reason, each task locks the data it works on when it begins, and
-unlocks the data again once it's finished. By default, it is assumed that
-the task is doing work on hydro particles. If your task requires other
-particle types, you will need to specify that in ``src/task.c``. Suppose 
-you have implemented a task with type ``task_type_new`` that requires 
-both stars and hydro particles: ::
+Swift doesn't only deal with dependencies, but with data conflicts as
+well.  We can't have two independent tasks working on the same data
+concurrently, even if the tasks have no dependencies between them.
+For this reason, each task locks the data it works on when it begins,
+and unlocks the data again once it's finished. Data here refers to the
+particle (gas, gravity, stars,...) content of a cell as well as of the
+hierarchy of cells in the tree at levels closer to the root that.  By
+default, it is assumed that the task is doing work on hydro
+particles. If your task requires other particle types, you will need
+to specify that in ``src/task.c``. Suppose you have implemented a task
+with type ``task_type_new`` that requires both stars and hydro
+particles: ::
 
 
     /**
