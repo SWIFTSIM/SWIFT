@@ -45,7 +45,7 @@ class Task:
             self.name, self.iact_type, self.active,
             self.level, self.link))
 
-    def write_maketask(self, f):
+    def write_maketask_definitions(self, f):
         if_condition = "1"
         if self.level:
             if_condition += "&& (c->%s == c)" % self.level
@@ -53,12 +53,16 @@ class Task:
             if_condition += "&& (e->policy && engine_policy_%s)" % self.policy
 
         creation = None
-        if self.iact_type == "single":
+        is_implicit = self.iact_type == "implicit"
+        if self.iact_type == "single" or is_implicit:
             task_type = tasks[self.name]["type"]
-            creation = "c->{} = scheduler_addtask(s, task_type_{}, task_subtype_none, 0, 0, c, NULL)".format(
-                self.name, task_type)
+            creation = "c->{name} = scheduler_addtask(s, task_type_{task_type},"
+            creation += " task_subtype_none, 0, {implicit}, c, NULL)"
+            creation = creation.format(
+                name=self.name, task_type=task_type, implicit=is_implicit)
 
         if creation is None:
+            print("Skipping", self.name)
             return
 
         code = "if (%s) {\n" % if_condition
@@ -109,12 +113,10 @@ class Reader:
     def write_maketask(self, filename):
         with open(filename, "w") as f:
             for name in self.tasks:
-                self.tasks[name].write_maketask(f)
+                self.tasks[name].write_maketask_definitions(f)
 
 
 if __name__ == "__main__":
     reader = Reader(sys.argv[-1])
-
-    reader.print_reader()
 
     reader.write_maketask("test.c")
