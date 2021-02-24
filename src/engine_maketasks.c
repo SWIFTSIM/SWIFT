@@ -823,6 +823,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c,
                                            int hydro_super, int super) {
 
+  struct scheduler *s = &e->sched;
+
   if (c == c->hydro.super)
     hydro_super = 1;
   if (c == c->super)
@@ -946,7 +948,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c,
 /*         if (c->progeny[k] != NULL) */
 /*           engine_make_hierarchical_tasks_common(e, c->progeny[k]); */
 /*   } */
-}
+/* } */
 
 /**
  * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
@@ -1400,9 +1402,9 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
-  const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
+  //const int with_hydro = (e->policy & engine_policy_hydro);
+  //const int with_self_gravity = (e->policy & engine_policy_self_gravity);
+  //const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1414,7 +1416,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   /*   /\* And the gravity stuff *\/ */
   /*   if (with_self_gravity || with_ext_gravity) */
   /*     engine_make_hierarchical_tasks_gravity(e, c); */
-  /* } */
+  }
 }
 
 /**
@@ -1620,7 +1622,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  struct scheduler *const sched = &e->sched;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &((struct task *)map_data)[ind];
@@ -1630,8 +1631,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-      /* Link self tasks to cells. */
-    } else if (t_type == task_type_self) {
+    /* Link self tasks to cells. */
+    if (t_type == task_type_self) {
       atomic_inc(&ci->nr_tasks);
 
       if (t_subtype == task_subtype_density) {

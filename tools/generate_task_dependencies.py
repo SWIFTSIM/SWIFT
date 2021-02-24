@@ -2,7 +2,7 @@
 import sys
 import re
 import typing
-from task import tasks
+from task import tasks as ref_tasks
 
 
 def get_string_between(s: str, beg: str, end: str):
@@ -98,7 +98,10 @@ class Task:
     def write_maketask_definitions(self, f: typing.TextIO):
         """
         Write the code corresponding to the definition of the task
-        (e.g. scheduler_addtask)
+        (e.g. scheduler_addtask).
+        It creates the tasks acting on a single cell at a time and
+        does not care about dependencies.
+        This will replace the work done in engine_make_hierarchical_tasks.
         """
         is_implicit = int(self.iact_type == "implicit")
         if self.iact_type != "single" and not is_implicit:
@@ -106,11 +109,12 @@ class Task:
             return
 
         # Compute the scheduler_addtask
-        task_type = tasks[self.name]["type"]
+        task_type = ref_tasks[self.name]["type"]
         creation = "c->{name} = scheduler_addtask(s, task_type_{task_type},"
         creation += " task_subtype_none, 0, {implicit}, c, NULL)"
         creation = creation.format(
-            name=self.name, task_type=task_type, implicit=is_implicit)
+            name=ref_tasks[self.name]["variable"], task_type=task_type,
+            implicit=is_implicit)
 
         # Write the code inside a file
         if_done = self.write_if_condition(f)
@@ -119,12 +123,16 @@ class Task:
             code += "};\n"
         f.write(code)
 
-    def write_dependencies(self, f: typing.TextIO, tasks: dict):
+    def write_maketask_extra_loop(
+            self, f: typing.TextIO, tasks: dict):
         """
         Write the code corresponding to the link from this task
-        (e.g. scheduler_addunlock).
+        (e.g. scheduler_addunlock)
+        and defines it if it is a task acting on two cells.
         In order to have enough information for the links,
         a dictionary containing all the tasks is required.
+        This will replace the work done in
+        engine_make_extra_hydroloop_tasks.
         """
 
         # Write header
@@ -132,6 +140,7 @@ class Task:
         if len(self.link) == 0:
             return
 
+        # Skipping iact_type not implemented
         is_implicit = self.iact_type == "implicit"
         if self.iact_type != "single" and not is_implicit:
             print("Skipping dep", self.name)
@@ -166,8 +175,8 @@ class Task:
             unlock = "\t\tscheduler_addunlock(s, c->{level1}{name1},"
             unlock += " c->{level2}{name2});\n"
             unlock = unlock.format(
-                level1=self_level, name1=self.name,
-                level2=link_level, name2=link.name
+                level1=self_level, name1=ref_tasks[self.name]["variable"],
+                level2=link_level, name2=ref_tasks[link.name]["variable"]
             )
 
             # Close parenthesis
@@ -252,7 +261,7 @@ class Reader:
 
             f.write("// Dependencies\n")
             for name in self.tasks:
-                self.tasks[name].write_dependencies(f, self.tasks)
+                self.tasks[name].write_maketask_extra_loop(f, self.tasks)
 
 
 if __name__ == "__main__":

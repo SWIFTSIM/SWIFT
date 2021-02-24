@@ -16,9 +16,9 @@ end_hydro_force[type=single,level=hydro.super,active=hydro,updates=hydro,policy=
 
 kick2[type=single,level=super,active=all,updates=all]
 
-limiter[type=iact,active=hydro,updates=hydro,updates=hydro,policy=limiter,act_on=hydro]
+limiter[type=iact,active=hydro,updates=hydro,updates=hydro,policy=timestep_limiter,act_on=hydro]
 timestep[type=single,level=super,active=all,updates=all]
-timestep_limiter[type=single,level=super,active=all,policy=limiter,updates=hydro]
+timestep_limiter[type=single,level=super,active=all,policy=timestep_limiter,updates=hydro]
 
 kick1[type=single,level=super,active=all]
 
