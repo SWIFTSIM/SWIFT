@@ -1241,6 +1241,10 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_stars_prep_ghost1, task_subtype_none,
                               0, /* implicit = */ 1, c, NULL);
 
+        c->hydro.prep1_ghost =
+            scheduler_addtask(s, task_type_hydro_prep_ghost1, task_subtype_none,
+                              0, /* implicit = */ 1, c, NULL);
+
         c->stars.prep2_ghost =
             scheduler_addtask(s, task_type_stars_prep_ghost2, task_subtype_none,
                               0, /* implicit = */ 1, c, NULL);
@@ -2126,7 +2130,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_star_prep1);
         scheduler_addunlock(sched, t_star_prep1,
                             ci->hydro.super->stars.prep1_ghost);
+        scheduler_addunlock(sched, t_star_prep1,
+                            ci->hydro.super->hydro.prep1_ghost);
         scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
+                            t_star_prep2);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
                             t_star_prep2);
         scheduler_addunlock(sched, t_star_prep2,
                             ci->hydro.super->stars.prep2_ghost);
@@ -2418,7 +2426,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_prep1);
           scheduler_addunlock(sched, t_star_prep1,
                               ci->hydro.super->stars.prep1_ghost);
+          scheduler_addunlock(sched, t_star_prep1,
+                              ci->hydro.super->hydro.prep1_ghost);
           scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
+                              t_star_prep2);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
                               t_star_prep2);
           scheduler_addunlock(sched, t_star_prep2,
                               ci->hydro.super->stars.prep2_ghost);
@@ -2547,7 +2559,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_star_prep1);
             scheduler_addunlock(sched, t_star_prep1,
                                 cj->hydro.super->stars.prep1_ghost);
+            scheduler_addunlock(sched, t_star_prep1,
+                                cj->hydro.super->hydro.prep1_ghost);
             scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
+                                t_star_prep2);
+            scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
                                 t_star_prep2);
             scheduler_addunlock(sched, t_star_prep2,
                                 cj->hydro.super->stars.prep2_ghost);
@@ -2824,7 +2840,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_star_prep1);
         scheduler_addunlock(sched, t_star_prep1,
                             ci->hydro.super->stars.prep1_ghost);
+        scheduler_addunlock(sched, t_star_prep1,
+                            ci->hydro.super->hydro.prep1_ghost);
         scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
+                            t_star_prep2);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
                             t_star_prep2);
         scheduler_addunlock(sched, t_star_prep2,
                             ci->hydro.super->stars.prep2_ghost);
@@ -3129,7 +3149,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_prep1);
           scheduler_addunlock(sched, t_star_prep1,
                               ci->hydro.super->stars.prep1_ghost);
+          scheduler_addunlock(sched, t_star_prep1,
+                              ci->hydro.super->hydro.prep1_ghost);
           scheduler_addunlock(sched, ci->hydro.super->stars.prep1_ghost,
+                              t_star_prep2);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.prep1_ghost,
                               t_star_prep2);
           scheduler_addunlock(sched, t_star_prep2,
                               ci->hydro.super->stars.prep2_ghost);
@@ -3257,7 +3281,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_star_prep1);
             scheduler_addunlock(sched, t_star_prep1,
                                 cj->hydro.super->stars.prep1_ghost);
+            scheduler_addunlock(sched, t_star_prep1,
+                                cj->hydro.super->hydro.prep1_ghost);
             scheduler_addunlock(sched, cj->hydro.super->stars.prep1_ghost,
+                                t_star_prep2);
+            scheduler_addunlock(sched, cj->hydro.super->hydro.prep1_ghost,
                                 t_star_prep2);
             scheduler_addunlock(sched, t_star_prep2,
                                 cj->hydro.super->stars.prep2_ghost);
