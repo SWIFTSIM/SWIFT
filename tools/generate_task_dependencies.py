@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import re
+from task import tasks
 
 
 def get_string_between(s, beg, end):
@@ -44,6 +45,26 @@ class Task:
             self.name, self.iact_type, self.active,
             self.level, self.link))
 
+    def write_maketask(self, f):
+        if_condition = "1"
+        if self.level:
+            if_condition += "&& (c->%s == c)" % self.level
+        if self.policy:
+            if_condition += "&& (e->policy && engine_policy_%s)" % self.policy
+
+        creation = None
+        if self.iact_type == "single":
+            task_type = tasks[self.name]["type"]
+            creation = "c->{} = scheduler_addtask(s, task_type_{}, task_subtype_none, 0, 0, c, NULL)".format(
+                self.name, task_type)
+
+        if creation is None:
+            return
+
+        code = "if (%s) {\n" % if_condition
+        code += "\t %s;\n}\n" % creation
+        f.write(code)
+
 
 class Reader:
     def __init__(self, filename):
@@ -85,9 +106,15 @@ class Reader:
         for t in self.tasks:
             self.tasks[t].print_task()
 
+    def write_maketask(self, filename):
+        with open(filename, "w") as f:
+            for name in self.tasks:
+                self.tasks[name].write_maketask(f)
+
 
 if __name__ == "__main__":
     reader = Reader(sys.argv[-1])
 
     reader.print_reader()
 
+    reader.write_maketask("test.c")
