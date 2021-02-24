@@ -37,6 +37,15 @@ enum SNII_feedback_models {
 };
 
 /**
+ * @brief Form of SNII energy scaling with density and metallicity
+ */
+enum SNII_energy_scalings {
+  SNII_scaling_EAGLE,      /*< Energy scaling as in EAGLE-Ref */
+  SNII_scaling_separable,  /*< Separable Z and n dependence */
+  SNII_scaling_independent /*< Independent Z and n dependence */
+};
+
+/**
  * @brief Stores AGB and SNII yield tables
  */
 struct yield_table {
@@ -261,11 +270,17 @@ struct feedback_props {
   /*! Energy released by one supernova type II in internal units */
   float E_SNII;
 
+  /*! Which model are we using for the SNII energy scaling? */
+  enum SNII_energy_scalings SNII_energy_scaling;
+
   /*! Minimal energy fraction for supernova type II feedback */
   double f_E_min;
 
   /*! Maximal energy fraction for supernova type II feedback */
   double f_E_max;
+
+  /*! Maximum energy increase due to density */
+  double SNII_delta_E_n;
 
   /*! Pivot point for the metallicity dependance of the feedback energy fraction
    * model */
