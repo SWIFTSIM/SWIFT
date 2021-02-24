@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 import sys
 import re
+import typing
 from task import tasks
 
 
-def get_string_between(s, beg, end):
+def get_string_between(s: str, beg: str, end: str):
+    """
+    Match the smallest string contained within
+    the substring beg and end. Returns None if nothing
+    is found
+    """
     regex = beg + ".*?" + end
     m = re.search(regex, s)
 
@@ -16,7 +22,13 @@ def get_string_between(s, beg, end):
 
 
 class Task:
-    def __init__(self, s):
+    """
+    Class representing a single task along with its links.
+    """
+    def __init__(self, s: str):
+        """
+        Initialize the task from a line in the input file.
+        """
 
         self.name = s[:s.find("[")]
         self.iact_type = self.read_attribute("type", s)
@@ -28,7 +40,10 @@ class Task:
         self.act_on = self.read_attribute("act_on", s)
         self.link = []
 
-    def read_attribute(self, attribute_name, s):
+    def read_attribute(self, attribute_name: str, s: str):
+        """
+        Read a single attribute in the definition line.
+        """
         attribute_name += "="
         attr = get_string_between(s, attribute_name, ",")
         if attr is not None:
@@ -37,53 +52,160 @@ class Task:
         attr = get_string_between(s, attribute_name, "]")
         return attr
 
-    def add_link(self, name):
+    def add_link(self, name: str):
+        """
+        Add a link for this task.
+        """
         self.link.append(name)
 
     def print_task(self):
+        """
+        Print the task.
+        """
         print("{}: iact={}, active={}, level={}, link={}".format(
             self.name, self.iact_type, self.active,
             self.level, self.link))
 
-    def write_maketask_definitions(self, f):
-        if_condition = "1"
-        if self.level:
-            if_condition += "&& (c->%s == c)" % self.level
-        if self.policy:
-            if_condition += "&& (e->policy && engine_policy_%s)" % self.policy
+    def write_if_condition(self, f: typing.TextIO, level: bool = True,
+                           policy: bool = True):
+        """
+        Write the if condition for this task.
+        The conditions can be disabled if needed.
 
-        creation = None
-        is_implicit = self.iact_type == "implicit"
-        if self.iact_type == "single" or is_implicit:
-            task_type = tasks[self.name]["type"]
-            creation = "c->{name} = scheduler_addtask(s, task_type_{task_type},"
-            creation += " task_subtype_none, 0, {implicit}, c, NULL)"
-            creation = creation.format(
-                name=self.name, task_type=task_type, implicit=is_implicit)
+        Returns
+        -------
 
-        if creation is None:
+        written: bool
+            Did this function write something (e.g. empty if condition)?
+        """
+        if_condition = ""
+        if self.level and level:
+            if_condition += "(c->%s == c) && " % self.level
+        if self.policy and policy:
+            if_condition += "(e->policy && engine_policy_%s) && " % self.policy
+
+        if len(if_condition) == 0:
+            return False
+
+        # Remove ' &&'
+        if_condition = if_condition[:-4]
+
+        if_condition = "if (%s) {\n" % if_condition
+        f.write(if_condition)
+
+        return True
+
+    def write_maketask_definitions(self, f: typing.TextIO):
+        """
+        Write the code corresponding to the definition of the task
+        (e.g. scheduler_addtask)
+        """
+        is_implicit = int(self.iact_type == "implicit")
+        if self.iact_type != "single" and not is_implicit:
             print("Skipping", self.name)
             return
 
-        code = "if (%s) {\n" % if_condition
-        code += "\t %s;\n}\n" % creation
+        # Compute the scheduler_addtask
+        task_type = tasks[self.name]["type"]
+        creation = "c->{name} = scheduler_addtask(s, task_type_{task_type},"
+        creation += " task_subtype_none, 0, {implicit}, c, NULL)"
+        creation = creation.format(
+            name=self.name, task_type=task_type, implicit=is_implicit)
+
+        # Write the code inside a file
+        if_done = self.write_if_condition(f)
+        code = "\t %s;\n" % creation
+        if if_done:
+            code += "};\n"
         f.write(code)
+
+    def write_dependencies(self, f: typing.TextIO, tasks: dict):
+        """
+        Write the code corresponding to the link from this task
+        (e.g. scheduler_addunlock).
+        In order to have enough information for the links,
+        a dictionary containing all the tasks is required.
+        """
+
+        # Write header
+        f.write("// %s\n" % self.name)
+        if len(self.link) == 0:
+            return
+
+        is_implicit = self.iact_type == "implicit"
+        if self.iact_type != "single" and not is_implicit:
+            print("Skipping dep", self.name)
+            return
+
+        # Write the initial if condition
+        if_done = self.write_if_condition(f, level=False)
+
+        # Generate part of the variable name
+        self_level = ""
+        if self.level:
+            self_level = "%s->" % self.level
+
+        # loop over all the links
+        for link in self.link:
+            if "self" in link or "pair" in link:
+                print("Skipping self/pair")
+                continue
+
+            # Grab data for the link
+            link = tasks[link]
+            link_level = ""
+            if link.level:
+                link_level = "%s->" % link.level
+
+            # Write the if condition
+            write_policy = self.policy != link.policy
+            if_done2 = link.write_if_condition(
+                f, level=False, policy=write_policy)
+
+            # Generate the scheduler_addunlock
+            unlock = "\t\tscheduler_addunlock(s, c->{level1}{name1},"
+            unlock += " c->{level2}{name2});\n"
+            unlock = unlock.format(
+                level1=self_level, name1=self.name,
+                level2=link_level, name2=link.name
+            )
+
+            # Close parenthesis
+            if if_done2:
+                unlock += "\t};\n"
+            f.write(unlock)
+
+        # Close parenthesis
+        if if_done:
+            f.write("};\n")
 
 
 class Reader:
-    def __init__(self, filename):
+    """
+    Class dealing with the task system.
+    """
+    def __init__(self, filename: str):
+        """
+        Initialize the reader from a .task file
+        """
         self.filename = filename
         self.tasks = {}
         self.name = None
         self.read()
 
     def read(self):
+        """
+        Read the .task file
+        """
         with open(self.filename, "r") as f:
             for line in f:
                 line = line.rstrip()
                 self.read_line(line)
 
-    def read_line(self, line):
+    def read_line(self, line: str):
+        """
+        Read a single line in the .task file
+        """
         if "->" in line:
             self.read_link(line)
         elif "[" in line and "]" in line:
@@ -93,7 +215,10 @@ class Reader:
             e = line.rfind('"')
             self.name = line[s+1:e]
 
-    def read_link(self, line):
+    def read_link(self, line: str):
+        """
+        Read a line containing a link
+        """
         names = line.split("->")
         if names[0] not in self.tasks:
             raise Exception(
@@ -101,19 +226,33 @@ class Reader:
                     names[0]))
         self.tasks[names[0]].add_link(names[1])
 
-    def read_definition(self, line):
+    def read_definition(self, line: str):
+        """
+        Read a line containing a definition.
+        """
         t = Task(line)
         self.tasks[t.name] = t
 
     def print_reader(self):
+        """
+        Print the task system
+        """
         print("Simulation type:", self.name)
         for t in self.tasks:
             self.tasks[t].print_task()
 
-    def write_maketask(self, filename):
+    def write_maketask(self, filename: str):
+        """
+        Write the code corresponding to the task system into a file.
+        """
         with open(filename, "w") as f:
+            f.write("// Hierarchical taks\n")
             for name in self.tasks:
                 self.tasks[name].write_maketask_definitions(f)
+
+            f.write("// Dependencies\n")
+            for name in self.tasks:
+                self.tasks[name].write_dependencies(f, self.tasks)
 
 
 if __name__ == "__main__":
