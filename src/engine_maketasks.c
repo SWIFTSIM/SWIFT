@@ -820,109 +820,132 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The #cell.
  */
-void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
+void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c,
+                                           int hydro_super, int super) {
 
-  struct scheduler *s = &e->sched;
-  const int with_sinks = (e->policy & engine_policy_sinks);
-  const int with_star_formation = (e->policy & engine_policy_star_formation);
-  const int with_timestep_limiter =
-      (e->policy & engine_policy_timestep_limiter);
-  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
-#ifdef WITH_LOGGER
-  const int with_logger = e->policy & engine_policy_logger;
-#endif
+  if (c == c->hydro.super)
+    hydro_super = 1;
+  if (c == c->super)
+    super = 1;
 
-  /* Are we at the top-level? */
-  if (c->top == c && c->nodeID == e->nodeID) {
+  /* Copy code below */
 
-    if (with_star_formation && c->hydro.count > 0) {
-      c->hydro.star_formation = scheduler_addtask(
-          s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
-    }
+  /* Copy done */
 
-    if (with_sinks && c->hydro.count > 0) {
-      c->hydro.sink_formation = scheduler_addtask(
-          s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
-    }
-  }
+  /* Can we still go deeper? */
+  if ((hydro_super && super) || !c->split)
+    return;
 
-  /* Are we in a super-cell ? */
-  if (c->super == c) {
+  /* Recurse. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      engine_make_hierarchical_tasks_common(e, c->progeny[k], hydro_super, super);
+}
 
-    /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
+/* void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c, */
+/*                                            int hydro_super, int super) { */
 
-      /* Add the two half kicks */
-      c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
-                                   c, NULL);
+/*   struct scheduler *s = &e->sched; */
+/*   const int with_sinks = (e->policy & engine_policy_sinks); */
+/*   const int with_star_formation = (e->policy & engine_policy_star_formation); */
+/*   const int with_timestep_limiter = */
+/*       (e->policy & engine_policy_timestep_limiter); */
+/*   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync); */
+/* #ifdef WITH_LOGGER */
+/*   const int with_logger = e->policy & engine_policy_logger; */
+/* #endif */
 
-      c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
-                                   c, NULL);
+/*   /\* Are we at the top-level? *\/ */
+/*   if (c->top == c && c->nodeID == e->nodeID) { */
 
-#if defined(WITH_LOGGER)
-      struct task *kick2_or_logger;
-      if (with_logger) {
-        /* Add the hydro logger task. */
-        c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
-                                      0, c, NULL);
+/*     if (with_star_formation && c->hydro.count > 0) { */
+/*       c->hydro.star_formation = scheduler_addtask( */
+/*           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL); */
+/*     } */
 
-        /* Add the kick2 dependency */
-        scheduler_addunlock(s, c->kick2, c->logger);
+/*     if (with_sinks && c->hydro.count > 0) { */
+/*       c->hydro.sink_formation = scheduler_addtask( */
+/*           s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL); */
+/*     } */
+/*   } */
 
-        /* Create a variable in order to avoid to many ifdef */
-        kick2_or_logger = c->logger;
-      } else {
-        kick2_or_logger = c->kick2;
-      }
-#else
-      struct task *kick2_or_logger = c->kick2;
-#endif
+/*   /\* Are we in a super-cell ? *\/ */
+/*   if (c->super == c) { */
 
-      /* Add the time-step calculation task and its dependency */
-      c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
-                                      0, 0, c, NULL);
+/*     /\* Local tasks only... *\/ */
+/*     if (c->nodeID == e->nodeID) { */
 
-      scheduler_addunlock(s, kick2_or_logger, c->timestep);
-      scheduler_addunlock(s, c->timestep, c->kick1);
+/*       /\* Add the two half kicks *\/ */
+/*       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0, */
+/*                                    c, NULL); */
 
-      /* Subgrid tasks: star formation */
-      if (with_star_formation && c->hydro.count > 0) {
-        scheduler_addunlock(s, kick2_or_logger, c->top->hydro.star_formation);
-        scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
-      }
+/*       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0, */
+/*                                    c, NULL); */
 
-      /* Time-step limiter */
-      if (with_timestep_limiter) {
+/* #if defined(WITH_LOGGER) */
+/*       struct task *kick2_or_logger; */
+/*       if (with_logger) { */
+/*         /\* Add the hydro logger task. *\/ */
+/*         c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0, */
+/*                                       0, c, NULL); */
 
-        c->timestep_limiter = scheduler_addtask(
-            s, task_type_timestep_limiter, task_subtype_none, 0, 0, c, NULL);
+/*         /\* Add the kick2 dependency *\/ */
+/*         scheduler_addunlock(s, c->kick2, c->logger); */
 
-        scheduler_addunlock(s, c->timestep, c->timestep_limiter);
-        scheduler_addunlock(s, c->timestep_limiter, c->kick1);
-      }
+/*         /\* Create a variable in order to avoid to many ifdef *\/ */
+/*         kick2_or_logger = c->logger; */
+/*       } else { */
+/*         kick2_or_logger = c->kick2; */
+/*       } */
+/* #else */
+/*       struct task *kick2_or_logger = c->kick2; */
+/* #endif */
 
-      /* Time-step synchronization */
-      if (with_timestep_sync) {
+/*       /\* Add the time-step calculation task and its dependency *\/ */
+/*       c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none, */
+/*                                       0, 0, c, NULL); */
 
-        c->timestep_sync = scheduler_addtask(s, task_type_timestep_sync,
-                                             task_subtype_none, 0, 0, c, NULL);
+/*       scheduler_addunlock(s, kick2_or_logger, c->timestep); */
+/*       scheduler_addunlock(s, c->timestep, c->kick1); */
 
-        scheduler_addunlock(s, c->timestep, c->timestep_sync);
-        scheduler_addunlock(s, c->timestep_sync, c->kick1);
-      }
+/*       /\* Subgrid tasks: star formation *\/ */
+/*       if (with_star_formation && c->hydro.count > 0) { */
+/*         scheduler_addunlock(s, kick2_or_logger, c->top->hydro.star_formation); */
+/*         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep); */
+/*       } */
 
-      if (with_timestep_limiter && with_timestep_sync) {
-        scheduler_addunlock(s, c->timestep_limiter, c->timestep_sync);
-      }
-    }
-  } else { /* We are above the super-cell so need to go deeper */
+/*       /\* Time-step limiter *\/ */
+/*       if (with_timestep_limiter) { */
 
-    /* Recurse. */
-    if (c->split)
-      for (int k = 0; k < 8; k++)
-        if (c->progeny[k] != NULL)
-          engine_make_hierarchical_tasks_common(e, c->progeny[k]);
-  }
+/*         c->timestep_limiter = scheduler_addtask( */
+/*             s, task_type_timestep_limiter, task_subtype_none, 0, 0, c, NULL); */
+
+/*         scheduler_addunlock(s, c->timestep, c->timestep_limiter); */
+/*         scheduler_addunlock(s, c->timestep_limiter, c->kick1); */
+/*       } */
+
+/*       /\* Time-step synchronization *\/ */
+/*       if (with_timestep_sync) { */
+
+/*         c->timestep_sync = scheduler_addtask(s, task_type_timestep_sync, */
+/*                                              task_subtype_none, 0, 0, c, NULL); */
+
+/*         scheduler_addunlock(s, c->timestep, c->timestep_sync); */
+/*         scheduler_addunlock(s, c->timestep_sync, c->kick1); */
+/*       } */
+
+/*       if (with_timestep_limiter && with_timestep_sync) { */
+/*         scheduler_addunlock(s, c->timestep_limiter, c->timestep_sync); */
+/*       } */
+/*     } */
+/*   } else { /\* We are above the super-cell so need to go deeper *\/ */
+
+/*     /\* Recurse. *\/ */
+/*     if (c->split) */
+/*       for (int k = 0; k < 8; k++) */
+/*         if (c->progeny[k] != NULL) */
+/*           engine_make_hierarchical_tasks_common(e, c->progeny[k]); */
+/*   } */
 }
 
 /**
@@ -1384,14 +1407,14 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
     /* Make the common tasks (time integration) */
-    engine_make_hierarchical_tasks_common(e, c);
-    /* Add the hydro stuff */
-    if (with_hydro)
-      engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
-    /* And the gravity stuff */
-    if (with_self_gravity || with_ext_gravity)
-      engine_make_hierarchical_tasks_gravity(e, c);
-  }
+    engine_make_hierarchical_tasks_common(e, c, 0, 0);
+  /*   /\* Add the hydro stuff *\/ */
+  /*   if (with_hydro) */
+  /*     engine_make_hierarchical_tasks_hydro(e, c, /\*star_resort_cell=*\/NULL); */
+  /*   /\* And the gravity stuff *\/ */
+  /*   if (with_self_gravity || with_ext_gravity) */
+  /*     engine_make_hierarchical_tasks_gravity(e, c); */
+  /* } */
 }
 
 /**
@@ -1606,22 +1629,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     struct cell *cj = t->cj;
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
-
-    /* Link sort tasks to all the higher sort task. */
-    if (t_type == task_type_sort) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent) {
-        if (finger->hydro.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->hydro.sorts);
-      }
-
-      /* Link stars sort tasks to all the higher sort task. */
-    } else if (t_type == task_type_stars_sort) {
-      for (struct cell *finger = t->ci->parent; finger != NULL;
-           finger = finger->parent) {
-        if (finger->stars.sorts != NULL)
-          scheduler_addunlock(sched, t, finger->stars.sorts);
-      }
 
       /* Link self tasks to cells. */
     } else if (t_type == task_type_self) {
