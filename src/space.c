@@ -6989,7 +6989,6 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   /* Store the current values */
   const size_t current_nr_parts = s->nr_parts;
   const size_t current_nr_gparts = s->nr_gparts;
-  const size_t current_nr_dmparts = s->nr_dmparts;
 
   if (current_nr_parts != 0)
     error("Generating gas particles from DM but gas already exists!");
@@ -7153,9 +7152,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       p->v[1] = gp_gas->v_full[1];
       p->v[2] = gp_gas->v_full[2];
 
-      dmp->v[0] = gp_dm->v_full[0];
-      dmp->v[1] = gp_dm->v_full[1];
-      dmp->v[2] = gp_dm->v_full[2];
+      dmp->v_full[0] = gp_dm->v_full[0];
+      dmp->v_full[1] = gp_dm->v_full[1];
+      dmp->v_full[2] = gp_dm->v_full[2];
 
       /* Set the smoothing length to the mean inter-particle separation */
       p->h = d;
@@ -7241,7 +7240,7 @@ long long space_get_max_parts_id(struct space *s) {
   for (size_t i = 0; i < s->nr_sinks; ++i) max_id = max(max_id, s->sinks[i].id);
   for (size_t i = 0; i < s->nr_sparts; ++i) max_id = max(max_id, s->sparts[i].id);
   for (size_t i = 0; i < s->nr_bparts; ++i) max_id = max(max_id, s->bparts[i].id);
-  for (size_t i = 0; i < s->nr_dmparts; ++i) max_id = max(max_id, s->dmparts[i].id);
+  for (size_t i = 0; i < s->nr_dmparts; ++i) max_id = max(max_id, s->dmparts[i].id_or_neg_offset);
   for (size_t i = 0; i < s->nr_gparts; ++i)
     if (s->gparts[i].type == swift_type_dark_matter_background)
       max_id = max(max_id, s->gparts[i].id_or_neg_offset);
