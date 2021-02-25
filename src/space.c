@@ -6989,6 +6989,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   /* Store the current values */
   const size_t current_nr_parts = s->nr_parts;
   const size_t current_nr_gparts = s->nr_gparts;
+  const size_t current_nr_dmparts = s->nr_dmparts;
 
   if (current_nr_parts != 0)
     error("Generating gas particles from DM but gas already exists!");
@@ -7021,15 +7022,21 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
   /* New particle counts after replication */
   s->size_parts = s->nr_parts = nr_zoom_gparts;
+  s->size_dmparts = s->nr_dmparts = nr_zoom_gparts;
   s->size_gparts = s->nr_gparts = 2 * nr_zoom_gparts + nr_background_gparts;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
+  struct dmpart *dmparts = NULL;
 
   if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
+
+  if (swift_memalign("dmparts", (void **)&dmparts, dmpart_align,
+                     s->nr_dmparts * sizeof(struct dmpart)) != 0)
+    error("Failed to allocate new dmpart array.");
 
   if (swift_memalign("gparts", (void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
@@ -7037,6 +7044,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
   /* And zero the parts */
   bzero(gparts, s->nr_gparts * sizeof(struct gpart));
+  bzero(dmparts, s->nr_dmparts * sizeof(struct dmpart));
   bzero(parts, s->nr_parts * sizeof(struct part));
 
   /* Compute some constants */
@@ -7062,6 +7070,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       struct part *p = &parts[j];
       struct gpart *gp_gas = &gparts[current_nr_gparts + j];
       struct gpart *gp_dm = &gparts[i];
+      struct dmpart *dmp = &dmparts[i];
 
       /* Start by copying over the gpart */
       memcpy(gp_gas, &s->gparts[i], sizeof(struct gpart));
@@ -7070,6 +7079,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       /* Set the IDs */
       p->id = gp_gas->id_or_neg_offset * 2 + 1;
       gp_dm->id_or_neg_offset *= 2;
+      dmp->id_or_neg_offset = gp_dm->id_or_neg_offset;
 
       if (gp_dm->id_or_neg_offset < 0)
         error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
@@ -7077,10 +7087,16 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
       if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
 
+      if (dmp->id_or_neg_offset < 0)
+        error("dark matter particle ID overflowd (id=%lld)",
+              dmp->id_or_neg_offset);
+
       /* Set the links correctly */
       p->gpart = gp_gas;
+      dmp->gpart = gp_dm;
       gp_gas->id_or_neg_offset = -j;
       gp_gas->type = swift_type_gas;
+      gp_dm->type = swift_type_dark_matter;
 
       /* Compute positions shift */
       const double d = cbrt(gp_dm->mass * bg_density_inv);
@@ -7090,7 +7106,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       /* Set the masses */
       gp_dm->mass *= (1. - mass_ratio);
       gp_gas->mass *= mass_ratio;
+
       hydro_set_mass(p, gp_gas->mass);
+      dmp->mass = gp_dm->mass;
 
       /* Verify that we are not generating a gas particle larger than the
          threashold for particle splitting */
@@ -7110,6 +7128,10 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       p->x[1] = gp_gas->x[1];
       p->x[2] = gp_gas->x[2];
 
+      dmp->x[0] = gp_dm->x[0];
+      dmp->x[1] = gp_dm->x[1];
+      dmp->x[2] = gp_dm->x[2];
+
       /* Box-wrap the whole thing to be safe */
       if (periodic) {
         gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
@@ -7121,6 +7143,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
         p->x[0] = box_wrap(p->x[0], 0., dim[0]);
         p->x[1] = box_wrap(p->x[1], 0., dim[1]);
         p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+        dmp->x[0] = box_wrap(dmp->x[0], 0., dim[0]);
+        dmp->x[1] = box_wrap(dmp->x[1], 0., dim[1]);
+        dmp->x[2] = box_wrap(dmp->x[2], 0., dim[2]);
       }
 
       /* Also copy the velocities */
@@ -7128,8 +7153,13 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       p->v[1] = gp_gas->v_full[1];
       p->v[2] = gp_gas->v_full[2];
 
+      dmp->v[0] = gp_dm->v_full[0];
+      dmp->v[1] = gp_dm->v_full[1];
+      dmp->v[2] = gp_dm->v_full[2];
+
       /* Set the smoothing length to the mean inter-particle separation */
       p->h = d;
+      dmp->h = d;
 
       /* Note that the thermodynamic properties (u, S, ...) will be set later */
 
@@ -7140,7 +7170,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 
   /* Replace the content of the space */
   swift_free("gparts", s->gparts);
+  swift_free("dmparts", s->dmparts);
   s->parts = parts;
+  s->dmparts = dmparts;
   s->gparts = gparts;
 }
 
@@ -7207,13 +7239,11 @@ long long space_get_max_parts_id(struct space *s) {
   long long max_id = -1;
   for (size_t i = 0; i < s->nr_parts; ++i) max_id = max(max_id, s->parts[i].id);
   for (size_t i = 0; i < s->nr_sinks; ++i) max_id = max(max_id, s->sinks[i].id);
-  for (size_t i = 0; i < s->nr_sparts; ++i)
-    max_id = max(max_id, s->sparts[i].id);
-  for (size_t i = 0; i < s->nr_bparts; ++i)
-    max_id = max(max_id, s->bparts[i].id);
+  for (size_t i = 0; i < s->nr_sparts; ++i) max_id = max(max_id, s->sparts[i].id);
+  for (size_t i = 0; i < s->nr_bparts; ++i) max_id = max(max_id, s->bparts[i].id);
+  for (size_t i = 0; i < s->nr_dmparts; ++i) max_id = max(max_id, s->dmparts[i].id);
   for (size_t i = 0; i < s->nr_gparts; ++i)
-    if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background)
+    if (s->gparts[i].type == swift_type_dark_matter_background)
       max_id = max(max_id, s->gparts[i].id_or_neg_offset);
   return max_id;
 }
