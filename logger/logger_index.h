@@ -87,6 +87,8 @@ size_t logger_index_get_particle_offset(struct logger_index *index,
                                         long long id, int type);
 void logger_index_free(struct logger_index *index);
 void logger_index_sort_file(struct logger_index *index);
+int logger_index_get_offset(struct logger_index *index, int64_t id, int type,
+                            uint64_t *offset);
 struct index_data *logger_index_get_data(struct logger_index *index, int type);
 struct index_data *logger_index_get_created_history(struct logger_index *index,
                                                     int type);
