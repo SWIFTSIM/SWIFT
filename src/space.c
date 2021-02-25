@@ -7093,9 +7093,13 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       /* Set the links correctly */
       p->gpart = gp_gas;
       dmp->gpart = gp_dm;
+
       gp_gas->id_or_neg_offset = -j;
       gp_gas->type = swift_type_gas;
+
+      gp_dm->id_or_neg_offset = -j;
       gp_dm->type = swift_type_dark_matter;
+
 
       /* Compute positions shift */
       const double d = cbrt(gp_dm->mass * bg_density_inv);
