@@ -79,7 +79,9 @@ def write_particle_type(snap, part_type, args):
                 continue
 
             # Read the fields
-            fields_tmp = reader.get_particle_data(fields_name, args.time, part_type)
+            fields_tmp = reader.get_particle_data(
+                fields=fields_name, time=args.time, part_type=part_type)
+
             if fields is None:
                 fields = fields_tmp
             else:
@@ -87,19 +89,22 @@ def write_particle_type(snap, part_type, args):
                     fields[i] = np.append(fields[i], fields_tmp[i], axis=0)
 
     # Do we have this particle type?
-    if fields is None or fields[0].shape[0] == 0:
+    if fields is None:
+        return 0
+    first_field = list(fields.values())[0]
+    if first_field.shape[0] == 0:
         return 0
 
     # Get the number of particles
-    npart = fields[0].shape[0]
+    npart = first_field.shape[0]
 
     # Create the group
     name = "PartType%i" % part_type
     grp = snap.create_group(name)
 
     # Save the data
-    for i, field in enumerate(fields_name):
-        grp.create_dataset(field, data=fields[i])
+    for field in fields_name:
+        grp.create_dataset(field, data=fields[field])
 
     return npart
 
