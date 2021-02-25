@@ -6347,8 +6347,10 @@ void space_init(struct space *s, struct swift_params *params,
                        verbose);
     parts = s->parts;
     gparts = s->gparts;
+    dmparts = s->dmparts;
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
+    Ndmpart = s->nr_dmparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!dry_run)
