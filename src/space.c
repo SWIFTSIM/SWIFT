@@ -7074,6 +7074,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       /* Start by copying over the gpart */
       memcpy(gp_gas, &s->gparts[i], sizeof(struct gpart));
       memcpy(gp_dm, &s->gparts[i], sizeof(struct gpart));
+      memcpy(dmp, &s->dmparts[i], sizeof(struct dmpart));
 
       /* Set the IDs */
       p->id = gp_gas->id_or_neg_offset * 2 + 1;
@@ -7156,13 +7157,13 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
       p->v[1] = gp_gas->v_full[1];
       p->v[2] = gp_gas->v_full[2];
 
-      dmp->v_full[0] = gp_dm->v_full[0];
+      /*dmp->v_full[0] = gp_dm->v_full[0];
       dmp->v_full[1] = gp_dm->v_full[1];
-      dmp->v_full[2] = gp_dm->v_full[2];
+      dmp->v_full[2] = gp_dm->v_full[2];*/
 
       /* Set the smoothing length to the mean inter-particle separation */
       p->h = d;
-      dmp->h = d;
+      /*dmp->h = d;*/
 
       /* Note that the thermodynamic properties (u, S, ...) will be set later */
 
