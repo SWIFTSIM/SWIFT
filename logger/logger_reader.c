@@ -743,6 +743,148 @@ void logger_reader_read_all_particles(struct logger_reader *reader, double time,
 }
 
 /**
+ * @brief Read the particles of a given type from the index file and their ids.
+ *
+ * @param reader The #logger_reader.
+ * @param time The requested time for the particle.
+ * @param interp_type The type of interpolation.
+ * @param global_fields_wanted The fields requested (global index).
+ * @param n_fields_wanted Number of field requested.
+ * @param output Pointer to the output array. Size: (n_fields_wanted,
+ * sum(n_part)).
+ * @param n_part Number of particles of each type.
+ * Updated with the number of particles found.
+ * @param type The particle type
+ * @param ids The particles' ids.
+ * The ids not found are removed from this array.
+ */
+void logger_reader_read_particles_from_ids_single_type(
+    struct logger_reader *reader, double time,
+    enum logger_reader_type interp_type, const int *global_fields_wanted,
+    const int n_fields_wanted, void **output, uint64_t *n_part,
+    enum part_type type, long long *ids) {
+
+  const struct header *h = &reader->log.header;
+
+  /* Count the number of previous parts for the shift in output */
+  uint64_t prev_npart = 0;
+  for (int i = 0; i < type; i++) {
+    prev_npart += n_part[i];
+  }
+
+  /* Allocate temporary memory. */
+  struct field_information *fields_wanted = (struct field_information *)malloc(
+      sizeof(struct field_information) * n_fields_wanted);
+  if (fields_wanted == NULL) {
+    error_python("Failed to allocate the field information.");
+  }
+
+  /* Get the list of fields. */
+  const int all_fields_count = tools_get_number_fields(type);
+  struct field_information *all_fields = (struct field_information *)malloc(
+      all_fields_count * sizeof(struct field_information));
+  tools_get_list_fields(all_fields, type, h);
+
+  /* Convert fields into the local array. */
+  logger_reader_get_fields_wanted(reader, global_fields_wanted, fields_wanted,
+                                  n_fields_wanted, all_fields, all_fields_count,
+                                  type);
+
+  /* Read the particles */
+  for (size_t i = 0; i < n_part[type]; i++) {
+
+    /* Get the offset */
+    size_t offset = 0;
+    int found = logger_index_get_offset(&reader->index.index_prev, ids[i], type,
+                                        &offset);
+
+    /* Deal with the particles not found */
+    if (!found) {
+      if (i != n_part[type] - 1) ids[i] = ids[i + 1];
+      n_part[type] -= 1;
+      i -= 1;
+      continue;
+    }
+
+    /* Loop over each field. */
+    for (int field = 0; field < n_fields_wanted; field++) {
+      const int global = fields_wanted[field].global_index;
+      void *output_single =
+          output[field] + (i + prev_npart) * h->masks[global].size;
+
+      /* Read the field. */
+      int particle_removed = logger_reader_read_field(
+          reader, time, reader->time.time_offset, interp_type, offset,
+          &fields_wanted[field], all_fields, all_fields_count, output_single,
+          type);
+
+      /* Is the particle still present? */
+      if (particle_removed) {
+        if (i != n_part[type] - 1) ids[i] = ids[i + 1];
+        n_part[type] -= 1;
+        i -= 1;
+        break;
+      }
+    }
+  }
+
+  /* Free the memory */
+  free(all_fields);
+  free(fields_wanted);
+}
+
+/**
+ * @brief Read the particles from the index file and their ids.
+ *
+ * @param reader The #logger_reader.
+ * @param time The requested time for the particle.
+ * @param interp_type The type of interpolation.
+ * @param global_fields_wanted The fields requested (global index).
+ * @param n_fields_wanted Number of field requested.
+ * @param output Pointer to the output array. Size: (n_fields_wanted,
+ * sum(n_part)).
+ * @param n_part Number of particles of each type.
+ * Updated with the number of particles found.
+ * @param ids The particles' ids.
+ * The ids not found are removed from this array.
+ */
+void logger_reader_read_particles_from_ids(struct logger_reader *reader,
+                                           double time,
+                                           enum logger_reader_type interp_type,
+                                           const int *global_fields_wanted,
+                                           const int n_fields_wanted,
+                                           void **output, uint64_t *n_part,
+                                           long long **ids) {
+
+  /* Read the gas */
+  if (n_part[swift_type_gas] != 0) {
+    logger_reader_read_particles_from_ids_single_type(
+        reader, time, interp_type, global_fields_wanted, n_fields_wanted,
+        output, n_part, swift_type_gas, ids[swift_type_gas]);
+  }
+
+  /* Read the dark matter. */
+  if (n_part[swift_type_dark_matter] != 0) {
+    logger_reader_read_particles_from_ids_single_type(
+        reader, time, interp_type, global_fields_wanted, n_fields_wanted,
+        output, n_part, swift_type_dark_matter, ids[swift_type_dark_matter]);
+  }
+  /* Read the dark matter background. */
+  if (n_part[swift_type_dark_matter_background] != 0) {
+    logger_reader_read_particles_from_ids_single_type(
+        reader, time, interp_type, global_fields_wanted, n_fields_wanted,
+        output, n_part, swift_type_dark_matter_background,
+        ids[swift_type_dark_matter_background]);
+  }
+  /* Read the stars. */
+  if (n_part[swift_type_stars] != 0) {
+    logger_reader_read_particles_from_ids_single_type(
+        reader, time, interp_type, global_fields_wanted, n_fields_wanted,
+        output, n_part, swift_type_stars, ids[swift_type_stars]);
+  }
+}
+
+/**
  * @brief Get the simulation initial time.
  *
  * @param reader The #logger_reader.

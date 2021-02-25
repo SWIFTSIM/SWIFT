@@ -57,25 +57,59 @@ print("time: %g" % args.time)
 # read the logger
 positions = np.empty((0, 3))
 entropies = np.empty(0)
-gas_type = 0
 for f in args.files:
     if f.endswith(".dump"):
         filename = f[:-5]
     else:
         raise Exception("It seems that you are not providing a logfile (.dump)")
     with logger.Reader(filename, verbose=0) as reader:
-        t = reader.get_time_limits()
-        out = reader.get_particle_data(
-            fields=["Coordinates", "Entropies"], time=args.time)
 
-        fields = reader.get_list_fields(part_type=gas_type)
+        # Ensure that the fields are present
+        fields = ["Coordinates", "Entropies", "ParticleIDs"]
+        missing = set(fields).difference(set(reader.gas.get_list_fields()))
+
+        # Could be also be called like this:
+        # reader.get_list_fields(part_type=0)
+        # or reader.get_list_fields(part_type=[0, 1, 4]) for multiple types.
+
+        if missing:
+            raise Exception("Fields %s not found in the logfile." % missing)
+
         if ("Coordinates" not in fields or
             "Entropies" not in fields):
             raise Exception("Field not found in the logfile")
 
+        # Read all the particles
+        t = reader.get_time_limits()
+
+        out = reader.get_data(
+            fields=fields, time=args.time, part_type=logger.gas)
+        # Could be also called like this
+        # reader.gas.get_data(fields=fields, time=args.time)
+
+        # Get the particle ids and select a fraction of the IDs
+        gas_ids = out["ParticleIDs"]
+        gas_ids = gas_ids[:len(gas_ids)//2]
+
+        # Read from the ids
+        # As we are filtering by particle ids, the field "ParticleIDs" is required
+        # in order to verify the particle obtained.
+        out = reader.gas.get_data(
+            fields=fields, time=args.time, filter_by_ids=gas_ids)
+        # Could be also called like this:
+        # ids = [None] * 6
+        # ids[logger.gas] = gas_ids
+        # out = reader.get_data(
+        #     fields=fields, time=args.time, filter_by_ids=ids)
+
+        # Print the missing ids
+        gas_ids, ids_found = set(gas_ids), set(out["ParticleIDs"])
+        print("The following ids were not found: ", gas_ids.difference(ids_found))
+        print("The following ids are wrongly missing: ", ids_found.difference(gas_ids))
+
         # add the data to the list
-        positions = np.append(positions, out[0], axis=0)
-        entropies = np.append(entropies, out[1], axis=0)
+        positions = np.append(positions, out["Coordinates"], axis=0)
+        entropies = np.append(entropies, out["Entropies"], axis=0)
 
 print("Min/Max of the position:", positions.min(), positions.max())
 print("Min/Max of the entropy:", entropies.min(), entropies.max())
