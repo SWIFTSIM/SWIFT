@@ -1,6 +1,7 @@
 *~
 *.hdf5
 *.dirstamp
+*.idea
 
 Makefile
 Makefile.in
