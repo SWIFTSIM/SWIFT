@@ -352,6 +352,18 @@ if test "$enable_naive_interactions_stars" = "yes"; then
    AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_STARS],1,[Enable use of naive cell interaction functions for stars])
 fi
 
+# Check whether we want to default to naive cell interactions (stars)
+AC_ARG_ENABLE([naive-interactions-rt],
+   [AS_HELP_STRING([--enable-naive-interactions-rt],
+     [Activate use of naive cell interaction functions for stars in RT tasks@<:@yes/no@:>@]
+   )],
+   [enable_naive_interactions_stars="$enableval"],
+   [enable_naive_interactions_stars="no"]
+)
+if test "$enable_naive_interactions_rt" = "yes"; then
+   AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_RT],1,[Enable use of naive cell interaction functions for stars in RT tasks])
+fi
+
 # Check if gravity force checks are on for some particles.
 AC_ARG_ENABLE([gravity-force-checks],
    [AS_HELP_STRING([--enable-gravity-force-checks=<N>],

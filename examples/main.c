@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct sink_props sink_properties;
   struct feedback_props feedback_properties;
+  struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
@@ -579,6 +580,11 @@ int main(int argc, char *argv[]) {
         "Error: Cannot use radiative transfer without stars, --stars must be "
         "chosen\n");
   }
+  if (with_rt && !with_feedback) {
+    error(
+        "Error: Cannot use radiative transfer without --feedback "
+        "(even if configured --with-feedback=none)");
+  }
 
 #ifndef STARS_GEAR
   /* Temporary, this dependency will be removed later */
@@ -1034,13 +1040,19 @@ int main(int argc, char *argv[]) {
     /* Initialise the feedback properties */
     if (with_feedback) {
 #ifdef FEEDBACK_NONE
-      if (!with_rt)
+      if (!with_rt) /* allow swift to run without feedback model if RT is on. */
         error("ERROR: Running with feedback but compiled without it.");
 #endif
       feedback_props_init(&feedback_properties, &prog_const, &us, params,
                           &hydro_properties, &cosmo);
     } else
       bzero(&feedback_properties, sizeof(struct feedback_props));
+
+    /* Initialize RT properties */
+    if (with_rt) {
+      rt_props_init(&rt_properties, params);
+    } else
+      bzero(&rt_properties, sizeof(struct rt_props));
 
     /* Initialise the black holes properties */
     if (with_black_holes) {
@@ -1392,8 +1404,9 @@ int main(int argc, char *argv[]) {
                 talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
                 &stars_properties, &black_holes_properties, &sink_properties,
-                &feedback_properties, &mesh, &potential, &cooling_func,
-                &starform, &chemistry, &fof_properties, &los_properties);
+                &feedback_properties, &rt_properties, &mesh, &potential,
+                &cooling_func, &starform, &chemistry, &fof_properties,
+                &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, with_aff, talking, restart_file);
 

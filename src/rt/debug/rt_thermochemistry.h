@@ -34,6 +34,8 @@
 __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     struct part *restrict p) {
 
+  if (!p->rt_data.injection_done)
+    error("Trying to do thermochemistry when injection step hasn't been done");
   if (!p->rt_data.gradients_done)
     error("Trying to do thermochemistry when gradient step hasn't been done");
   if (!p->rt_data.transport_done)
