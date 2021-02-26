@@ -47,9 +47,10 @@ INLINE static int rt_write_particles(const struct part* parts,
                                  "number of calls "
                                  "to this particle during one time step");
   list[3] =
-      io_make_output_field("RTPhotonsUpdated", INT, 1, UNIT_CONV_NO_UNITS, 0,
-                           parts, rt_data.photon_number_updated,
-                           "=1 if photon number has been updated in this step");
+      io_make_output_field("RTInjectionDone", INT, 1, UNIT_CONV_NO_UNITS, 0,
+                           parts, rt_data.injection_done,
+                           "How many times rt_injection_update_photon_density "
+                           "has been called");
   list[4] =
       io_make_output_field("RTCallsIactGradient", INT, 1, UNIT_CONV_NO_UNITS, 0,
                            parts, rt_data.calls_iact_gradient,
@@ -100,4 +101,19 @@ INLINE static int rt_write_stars(const struct spart* sparts,
 
   return 4;
 }
+
+/**
+ * @brief Write the RT model properties to the snapshot.
+ *
+ * @param rtp The #rt_props
+ * @param h_grp The HDF5 group in which to write
+ */
+INLINE static void rt_write_flavour(hid_t h_grp, const struct rt_props* rtp) {
+#if defined(HAVE_HDF5)
+
+  io_write_attribute_s(h_grp, "RT Scheme", RT_IMPLEMENTATION);
+
+#endif
+}
+
 #endif /* SWIFT_RT_IO_DEBUG_H */
