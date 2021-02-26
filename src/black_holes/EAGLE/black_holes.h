@@ -777,16 +777,23 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     }
   }
 
-  /* Compute the boost factor from Booth &^^ Schaye (2009) */
+  /* Compute the boost factor from Booth & Schaye (2009) */
   if (props->with_boost_factor) {
     const double XH = 0.75;
     const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
     const double n_H = gas_rho_phys * XH / proton_mass;
     const double boost_ratio = n_H / props->boost_n_h_star;
-    const double boost_factor =
-        (props->boost_alpha_only)
-            ? props->boost_alpha
-            : max(pow(boost_ratio, props->boost_beta), props->boost_alpha);
+
+    double boost_factor = 1.;
+    if (props->boost_alpha_only) {
+      boost_factor = props->boost_alpha;
+    } else {
+
+      /* Booth & Schaye (2009), eq. 4 */
+      if (n_H > props->boost_n_h_star) {
+        boost_factor = pow(boost_ratio, props->boost_beta);
+      }
+    }
     Bondi_rate *= boost_factor;
     bp->accretion_boost_factor = boost_factor;
   } else {
