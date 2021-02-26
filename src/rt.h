@@ -29,12 +29,15 @@
 
 /* Import the right RT definition */
 #if defined(RT_NONE)
+#define RT_IMPLEMENTATION "none"
 #include "./rt/none/rt.h"
 #include "./rt/none/rt_iact.h"
 #elif defined(RT_DEBUG)
+#define RT_IMPLEMENTATION "debug"
 #include "./rt/debug/rt.h"
 #include "./rt/debug/rt_iact.h"
 #elif defined(RT_M1)
+#define RT_IMPLEMENTATION "M1closure"
 #include "./rt/M1closure/rt.h"
 #include "./rt/M1closure/rt_iact.h"
 #else

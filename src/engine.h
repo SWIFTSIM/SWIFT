@@ -471,6 +471,9 @@ struct engine {
   /* Properties of the sellar feedback model */
   struct feedback_props *feedback_props;
 
+  /* Properties of the radiative transfer model */
+  struct rt_props *rt_props;
+
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
@@ -569,25 +572,23 @@ void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_dump_snapshot(struct engine *e);
 void engine_run_on_dump(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params);
-void engine_init(struct engine *e, struct space *s, struct swift_params *params,
-                 struct output_options *output_options, long long Ngas,
-                 long long Ngparts, long long Nsinks, long long Nstars,
-                 long long Nblackholes, long long Nbackground_gparts,
-                 int policy, int verbose, struct repartition *reparttype,
-                 const struct unit_system *internal_units,
-                 const struct phys_const *physical_constants,
-                 struct cosmology *cosmo, struct hydro_props *hydro,
-                 const struct entropy_floor_properties *entropy_floor,
-                 struct gravity_props *gravity, const struct stars_props *stars,
-                 const struct black_holes_props *black_holes,
-                 const struct sink_props *sinks,
-                 struct feedback_props *feedback, struct pm_mesh *mesh,
-                 const struct external_potential *potential,
-                 struct cooling_function_data *cooling_func,
-                 const struct star_formation *starform,
-                 const struct chemistry_global_data *chemistry,
-                 struct fof_props *fof_properties,
-                 struct los_props *los_properties);
+void engine_init(
+    struct engine *e, struct space *s, struct swift_params *params,
+    struct output_options *output_options, long long Ngas, long long Ngparts,
+    long long Nsinks, long long Nstars, long long Nblackholes,
+    long long Nbackground_gparts, int policy, int verbose,
+    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct phys_const *physical_constants, struct cosmology *cosmo,
+    struct hydro_props *hydro,
+    const struct entropy_floor_properties *entropy_floor,
+    struct gravity_props *gravity, const struct stars_props *stars,
+    const struct black_holes_props *black_holes, const struct sink_props *sinks,
+    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
+    const struct external_potential *potential,
+    struct cooling_function_data *cooling_func,
+    const struct star_formation *starform,
+    const struct chemistry_global_data *chemistry,
+    struct fof_props *fof_properties, struct los_props *los_properties);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_threads, int with_aff, int verbose,

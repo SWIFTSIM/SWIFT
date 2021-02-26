@@ -19,8 +19,6 @@
 #ifndef SWIFT_RT_NONE_H
 #define SWIFT_RT_NONE_H
 
-#include "rt_thermochemistry.h"
-
 /**
  * @file src/rt/none/rt.h
  * @brief Main header file for no radiative transfer scheme.
@@ -28,50 +26,64 @@
 
 /**
  * @brief Initialisation of the RT density loop related particle data.
+ * Note: during initalisation (space_init), rt_reset_part and rt_init_part
+ * are both called individually.
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {}
 
 /**
- * @brief Reset of the RT extra hydro particle data.
+ * @brief Reset of the RT hydro particle data not related to the density.
+ * Note: during initalisation (space_init), rt_reset_part and rt_init_part
+ * are both called individually.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p) {}
 
 /**
- * @brief First initialisation of the RT extra hydro particle data.
+ * @brief First initialisation of the RT hydro particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p) {}
 
 /**
- * @brief Initialisation of the RT density loop related particle data.
+ * @brief Initialisation of the RT density loop related star particle data.
+ * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
+ * are both called individually.
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
     struct spart* restrict sp) {}
 
 /**
- * @brief Reset of the RT extra star particle data.
+ * @brief Reset of the RT star particle data not related to the density.
+ * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
+ * are both called individually.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
     struct spart* restrict sp) {}
 
 /**
- * @brief First initialisation of the RT extra star particle data.
+ * @brief First initialisation of the RT star particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {}
 
 /**
  * @brief Update the photon number of a particle, i.e. compute
- *        E^{n+1} = E^n + dt * dE_* / dt
+ *  E^{n+1} = E^n + dt * dE_* / dt. This function finalises
+ *  the injection step.
+ *
+ * @param p particle to work on
+ * @param props struct #rt_props that contains global RT properties
  */
 __attribute__((always_inline)) INLINE static void
-rt_injection_update_photon_density(struct part* restrict p) {}
+rt_injection_update_photon_density(struct part* restrict p,
+                                   struct rt_props* props) {}
 
 /**
  * @brief Compute the photon emission rates for this stellar particle
- *        This function is called every time the spart is initialized
+ *        This function is called every time the spart is being reset
+ *        (during start-up and during stars ghost if spart is active)
  *        and assumes that the photon emission rate is an intrinsic
  *        stellar property, i.e. doesn't depend on the environment.
  *
@@ -93,7 +105,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient(
     struct part* restrict p) {}
 
 /**
- * @brief finishes up the transport step by actually doing the time integration
+ * @brief finishes up the transport step
  *
  * @param p particle to work on
  */
@@ -101,14 +113,11 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p) {}
 
 /**
- * @brief Wraps around rt_do_thermochemistry function
+ * @brief Do the thermochemistry on a particle.
  *
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p) {
-
-  rt_do_thermochemistry(p);
-}
+    struct part* restrict p) {}
 
 #endif /* SWIFT_RT_NONE_H */

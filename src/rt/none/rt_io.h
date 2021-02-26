@@ -43,4 +43,13 @@ INLINE static int rt_write_stars(const struct spart* sparts,
                                  struct io_props* list) {
   return 0;
 }
+
+/**
+ * @brief Write the RT model properties to the snapshot.
+ *
+ * @param rtp The #rt_props
+ * @param h_grp The HDF5 group in which to write
+ */
+INLINE static void rt_write_flavour(hid_t h_grp, const struct rt_props* rtp) {}
+
 #endif /* SWIFT_RT_IO_NONE_H */

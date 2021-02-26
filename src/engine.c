@@ -2746,25 +2746,23 @@ void engine_unpin(void) {
  * @param fof_properties The #fof_props of this run.
  * @param los_properties the #los_props of this run.
  */
-void engine_init(struct engine *e, struct space *s, struct swift_params *params,
-                 struct output_options *output_options, long long Ngas,
-                 long long Ngparts, long long Nsinks, long long Nstars,
-                 long long Nblackholes, long long Nbackground_gparts,
-                 int policy, int verbose, struct repartition *reparttype,
-                 const struct unit_system *internal_units,
-                 const struct phys_const *physical_constants,
-                 struct cosmology *cosmo, struct hydro_props *hydro,
-                 const struct entropy_floor_properties *entropy_floor,
-                 struct gravity_props *gravity, const struct stars_props *stars,
-                 const struct black_holes_props *black_holes,
-                 const struct sink_props *sinks,
-                 struct feedback_props *feedback, struct pm_mesh *mesh,
-                 const struct external_potential *potential,
-                 struct cooling_function_data *cooling_func,
-                 const struct star_formation *starform,
-                 const struct chemistry_global_data *chemistry,
-                 struct fof_props *fof_properties,
-                 struct los_props *los_properties) {
+void engine_init(
+    struct engine *e, struct space *s, struct swift_params *params,
+    struct output_options *output_options, long long Ngas, long long Ngparts,
+    long long Nsinks, long long Nstars, long long Nblackholes,
+    long long Nbackground_gparts, int policy, int verbose,
+    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct phys_const *physical_constants, struct cosmology *cosmo,
+    struct hydro_props *hydro,
+    const struct entropy_floor_properties *entropy_floor,
+    struct gravity_props *gravity, const struct stars_props *stars,
+    const struct black_holes_props *black_holes, const struct sink_props *sinks,
+    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
+    const struct external_potential *potential,
+    struct cooling_function_data *cooling_func,
+    const struct star_formation *starform,
+    const struct chemistry_global_data *chemistry,
+    struct fof_props *fof_properties, struct los_props *los_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -2852,6 +2850,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
+  e->rt_props = rt;
   e->chemistry = chemistry;
   e->fof_properties = fof_properties;
   e->parameter_file = params;
