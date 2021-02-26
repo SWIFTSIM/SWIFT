@@ -76,6 +76,7 @@
 #include "random.h"
 #include "restart.h"
 #include "rt.h"
+#include "rt_properties.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "serial_io.h"

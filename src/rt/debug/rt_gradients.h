@@ -38,14 +38,24 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
-  if (pi->rt_data.photon_number_updated == 0)
-    error("Interacting part in rt gradients with photon number not updated");
-  if (pj->rt_data.photon_number_updated == 0)
-    error("Interacting part in rt gradients with photon number not updated");
+  if (pi->rt_data.injection_done != 1)
+    error(
+        "Trying to do iact gradient when "
+        "finalise injection count is %d"
+        "ID %lld",
+        pi->rt_data.injection_done, pi->id);
+
+  if (pj->rt_data.injection_done != 1)
+    error(
+        "Trying to do iact gradient when "
+        "finalise injection count is %d"
+        "ID %lld",
+        pj->rt_data.injection_done, pj->id);
 
   pi->rt_data.calls_tot += 1;
   pi->rt_data.calls_per_step += 1;
   pi->rt_data.calls_iact_gradient += 1;
+
   pj->rt_data.calls_tot += 1;
   pj->rt_data.calls_per_step += 1;
   pj->rt_data.calls_iact_gradient += 1;
@@ -65,10 +75,17 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
-  if (pi->rt_data.photon_number_updated == 0)
-    error("Interacting part in rt gradients with photon number not updated");
-  if (pj->rt_data.photon_number_updated == 0)
-    error("Interacting part in rt gradients with photon number not updated");
+  if (pi->rt_data.injection_done != 1)
+    error(
+        "Trying to do iact gradients when finalise "
+        "injection count is %d ID %lld",
+        pi->rt_data.injection_done, pi->id);
+
+  if (pj->rt_data.injection_done != 1)
+    message(
+        "Trying to do iact gradients when finalise injection count is %d "
+        "ID %lld in nonsym gradients. You should look into this",
+        pj->rt_data.injection_done, pj->id);
 
   pi->rt_data.calls_tot += 1;
   pi->rt_data.calls_per_step += 1;

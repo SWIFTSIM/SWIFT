@@ -28,6 +28,7 @@
 #include "active.h"
 #include "cell.h"
 #include "memswap.h"
+#include "rt_do_cells.h"
 
 /* Load the profiler header, if needed. */
 #ifdef WITH_PROFILER
@@ -247,14 +248,17 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
  */
 static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
 
+  /* Note: we only get this far if engine_policy_rt is flagged. */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_rt))
+    error("Unksipping RT stuff without the policy being on");
+#endif
+
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  /* Ignore empty cells. */
-  if (c->hydro.count == 0) return;
-
-  /* Skip inactive cells. */
-  if (!cell_is_active_hydro(c, e)) return;
+  /* Do we have work to do? */
+  if (!rt_should_do_unskip_cell(c, e)) return;
 
   /* Recurse */
   if (c->split) {
@@ -406,7 +410,7 @@ void engine_unskip(struct engine *e) {
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
         (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && cell_is_active_hydro(c, e))) {
+        (with_rt && rt_should_do_unskip_cell(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));

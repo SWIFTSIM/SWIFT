@@ -246,6 +246,12 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_bpart;
       break;
 
+    case task_type_rt_ghost1:
+    case task_type_rt_ghost2:
+    case task_type_rt_tchem:
+      return task_action_part;
+      break;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -278,6 +284,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_sink_merger:
         case task_subtype_sink_compute_formation:
           return task_action_sink;
+
+        case task_subtype_rt_inject:
+          return task_action_all;
+          break;
+
+        case task_subtype_rt_transport:
+        case task_subtype_rt_gradient:
+          return task_action_part;
           break;
 
         case task_subtype_grav:
@@ -521,6 +535,9 @@ void task_unlock(struct task *t) {
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
+    case task_type_rt_ghost1:
+    case task_type_rt_ghost2:
+    case task_type_rt_tchem:
       cell_unlocktree(ci);
       break;
 
@@ -565,6 +582,9 @@ void task_unlock(struct task *t) {
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
+      } else if (subtype == task_subtype_rt_inject) {
+        cell_unlocktree(ci);
+        cell_sunlocktree(ci);
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
@@ -612,6 +632,11 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_do_bh_swallow) {
         cell_bunlocktree(ci);
         cell_bunlocktree(cj);
+      } else if (subtype == task_subtype_rt_inject) {
+        cell_sunlocktree(ci);
+        cell_sunlocktree(cj);
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
@@ -722,6 +747,9 @@ int task_lock(struct task *t) {
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
     case task_type_timestep_sync:
+    case task_type_rt_ghost1:
+    case task_type_rt_ghost2:
+    case task_type_rt_tchem:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
@@ -801,6 +829,14 @@ int task_lock(struct task *t) {
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
 #endif
+      } else if (subtype == task_subtype_rt_inject) {
+        if (ci->stars.hold) return 0;
+        if (ci->hydro.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
+        if (cell_locktree(ci) != 0) {
+          cell_sunlocktree(ci);
+          return 0;
+        }
       } else { /* subtype == hydro */
         if (ci->hydro.hold) return 0;
         if (cell_locktree(ci) != 0) return 0;
@@ -919,6 +955,26 @@ int task_lock(struct task *t) {
         if (cell_blocktree(ci) != 0) return 0;
         if (cell_blocktree(cj) != 0) {
           cell_bunlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_rt_inject) {
+        /* Lock the stars and the gas particles in both cells */
+        if (ci->stars.hold || cj->stars.hold) return 0;
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (cell_slocktree(ci) != 0) return 0;
+        if (cell_slocktree(cj) != 0) {
+          cell_sunlocktree(ci);
+          return 0;
+        }
+        if (cell_locktree(ci) != 0) {
+          cell_sunlocktree(ci);
+          cell_sunlocktree(cj);
+          return 0;
+        }
+        if (cell_locktree(cj) != 0) {
+          cell_sunlocktree(ci);
+          cell_sunlocktree(cj);
+          cell_unlocktree(ci);
           return 0;
         }
       } else if (subtype == task_subtype_limiter) {
