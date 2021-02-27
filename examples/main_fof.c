@@ -633,7 +633,8 @@ int main(int argc, char *argv[]) {
               &gravity_properties,
               /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
               /*sink_properties=*/NULL,
-              /*feedback_properties=*/NULL, &mesh, /*potential=*/NULL,
+              /*feedback_properties=*/NULL, /*rt_properties=*/NULL, &mesh,
+              /*potential=*/NULL,
               /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
               &fof_properties, /*los_properties=*/NULL);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
