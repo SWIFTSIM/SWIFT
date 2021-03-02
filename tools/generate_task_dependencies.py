@@ -38,7 +38,8 @@ class Task:
         self.policy = self.read_attribute("policy", s)
         self.cell_contains = self.read_attribute("cell_contains", s)
         self.act_on = self.read_attribute("act_on", s)
-        self.link = []
+        self.link_to = []
+        self.linked_from = []
 
     def read_attribute(self, attribute_name: str, s: str):
         """
@@ -52,11 +53,17 @@ class Task:
         attr = get_string_between(s, attribute_name, "]")
         return attr
 
-    def add_link(self, name: str):
+    def add_linked_from(self, name: str):
         """
         Add a link for this task.
         """
-        self.link.append(name)
+        self.linked_from.append(name)
+
+    def add_link_to(self, name: str):
+        """
+        Add a link for this task.
+        """
+        self.link_to.append(name)
 
     def print_task(self):
         """
@@ -64,7 +71,7 @@ class Task:
         """
         print("{}: iact={}, active={}, level={}, link={}".format(
             self.name, self.iact_type, self.active,
-            self.level, self.link))
+            self.level, self.link_to))
 
     def write_if_condition(self, f: typing.TextIO, level: bool = True,
                            policy: bool = True, task_type: bool = False,
@@ -112,7 +119,6 @@ class Task:
         """
         is_implicit = int(self.iact_type == "implicit")
         if self.iact_type != "single" and not is_implicit:
-            print("Skipping", self.name)
             return
 
         # Compute the scheduler_addtask
@@ -161,17 +167,171 @@ class Task:
             unlock += "\t};\n"
         f.write(unlock)
 
-    def write_maketask_iact_iact(
-            self, f: typing.TextIO, link: str, tasks: dict):
-        raise Exception("It should never happens")
+    def write_maketask_extra_loop_single(
+            self, f: typing.TextIO, tasks: dict):
+        """
+        Write the code corresponding to link_to for a single cell task.
+        """
+        if len(self.link_to) == 0:
+            return
 
-    def write_maketask_iact_single(
-            self, f: typing.TextIO, link: str, tasks: dict):
-        return
+        iact1 = self.iact_type
+        if iact1 == "iact":
+            raise Exception("Should not happen")
 
-    def write_maketask_single_iact(
-            self, f: typing.TextIO, link: str, tasks: dict):
-        return
+        # Write the initial if condition
+        if_done = self.write_if_condition(
+            f, level=False, task_type=True)
+
+        # loop over all the links
+        for link in self.link_to:
+            if "self" in link or "pair" in link:
+                print("Skipping self/pair")
+                continue
+
+            iact2 = tasks[link].iact_type
+
+            # Only link tasks that are not iact.
+            if iact2 != "iact":
+                self.write_maketask_single_single(f, link, tasks)
+
+        # Close parenthesis
+        if if_done:
+            f.write("};\n")
+
+    def write_iact_link_pair(self, f, tasks, task_type):
+        f.write("if (t_type == task_type_%s) {\n" % task_type)
+
+        # Create the task
+        if self.name != "density":
+            # Create the task
+            create = "\tstruct task *new = scheduler_addtask(s,"
+            create += " task_type_{task_type}, task_subtype_{subtype}, "
+            create += "flags, 0, ci, cj);\n"
+            f.write(create.format(task_type=task_type,
+                                  subtype=ref_tasks[self.name]["subtype"]))
+
+            # Add it to the link
+            addlink = "\tengine_addlink(e, &{cell}->{variable}, new);\n"
+            f.write(addlink.format(
+                cell="ci", variable=ref_tasks[self.name]["variable"]))
+            f.write(addlink.format(
+                cell="cj", variable=ref_tasks[self.name]["variable"]))
+
+        else:
+            f.write("\tstruct task *new = t;\n")
+
+        # Make link towards current task
+        for link_from in self.linked_from:
+            t2 = tasks[link_from]
+            iact2 = t2.iact_type
+            if iact2 == "iact":
+                raise Exception("Should not happen")
+
+            link_level = ""
+            if t2.level:
+                link_level = "%s->" % t2.level
+
+            unlock = "\tscheduler_addunlock(s, {cell}->{level}{name}, new);\n"
+            f.write(unlock.format(
+                cell="ci", level=link_level,
+                name=ref_tasks[link_from]["variable"]))
+            f.write(unlock.format(
+                cell="cj", level=link_level,
+                name=ref_tasks[link_from]["variable"]))
+
+        # Make link from current task
+        for link_to in self.link_to:
+            t2 = tasks[link_to]
+            iact2 = t2.iact_type
+            if iact2 == "iact":
+                raise Exception("Should not happen")
+
+            link_level = ""
+            if t2.level:
+                link_level = "%s->" % t2.level
+
+            unlock = "\tscheduler_addunlock(s, new, {cell}->{level}{name});\n"
+            f.write(unlock.format(
+                cell="ci", level=link_level,
+                name=ref_tasks[link_to]["variable"]))
+            f.write(unlock.format(
+                cell="cj", level=link_level,
+                name=ref_tasks[link_to]["variable"]))
+
+    def write_iact_link_self(self, f, tasks, task_type):
+        f.write("if (t_type == task_type_%s) {\n" % task_type)
+
+        # Create the task
+        if self.name != "density":
+            # Create the task
+            create = "\tstruct task *new = scheduler_addtask(s,"
+            create += " task_type_{task_type}, task_subtype_{subtype}, "
+            create += "flags, 0, ci, NULL);\n"
+            f.write(create.format(task_type=task_type,
+                                  subtype=ref_tasks[self.name]["subtype"]))
+
+            # Add it to the link
+            addlink = "\tengine_addlink(e, &ci->{variable}, new);\n"
+            f.write(addlink.format(variable=ref_tasks[self.name]["variable"]))
+
+        else:
+            f.write("\tstruct task *new = t;\n")
+
+        # Make link towards current task
+        for link_from in self.linked_from:
+            t2 = tasks[link_from]
+            iact2 = t2.iact_type
+            if iact2 == "iact":
+                raise Exception("Should not happen")
+
+            link_level = ""
+            if t2.level:
+                link_level = "%s->" % t2.level
+
+            unlock = "\tscheduler_addunlock(s, ci->{level}{name}, new);\n"
+            f.write(unlock.format(level=link_level,
+                                  name=ref_tasks[link_from]["variable"]))
+
+        # Make link from current task
+        for link_to in self.link_to:
+            t2 = tasks[link_to]
+            iact2 = t2.iact_type
+            if iact2 == "iact":
+                raise Exception("Should not happen")
+
+            link_level = ""
+            if t2.level:
+                link_level = "%s->" % t2.level
+
+            unlock = "\tscheduler_addunlock(s, new, ci->{level}{name});\n"
+            f.write(unlock.format(level=link_level,
+                                  name=ref_tasks[link_to]["variable"]))
+
+    def write_maketask_extra_loop_iact(
+            self, f: typing.TextIO, tasks: dict):
+        if len(self.link_to) == 0:
+            raise Exception("Should not happen")
+
+        # Self case
+        f.write("// self case\n")
+        self.write_iact_link_self(f, tasks, task_type="self")
+        f.write("}\n")
+
+        # Subself case
+        f.write("// sub self case\n")
+        self.write_iact_link_self(f, tasks, task_type="sub_self")
+        f.write("}\n")
+
+        # Pair case
+        f.write("// pair case\n")
+        self.write_iact_link_pair(f, tasks, task_type="pair")
+        f.write("}\n")
+
+        # Subpair case
+        f.write("// sub pair case\n")
+        self.write_iact_link_pair(f, tasks, task_type="sub_pair")
+        f.write("}\n")
 
     def write_maketask_extra_loop(
             self, f: typing.TextIO, tasks: dict):
@@ -187,37 +347,11 @@ class Task:
 
         # Write header
         f.write("// %s\n" % self.name)
-        if len(self.link) == 0:
-            return
 
-        # Write the initial if condition
-        if_done = self.write_if_condition(
-            f, level=False, task_type=True)
-
-        iact1 = self.iact_type
-
-        # loop over all the links
-        for link in self.link:
-            if "self" in link or "pair" in link:
-                print("Skipping self/pair")
-                continue
-
-            iact2 = tasks[link].iact_type
-
-            # Deal with the case where both tasks are not iact
-            if iact1 != "iact" and iact2 != "iact":
-                self.write_maketask_single_single(f, link, tasks)
-            # Deal with the case where both are iact
-            elif iact1 == "iact" and iact2 == "iact":
-                self.write_maketask_iact_iact(f, link, tasks)
-            elif iact1 == "iact":
-                self.write_maketask_iact_single(f, link, tasks)
-            else:
-                self.write_maketask_single_iact(f, link, tasks)
-
-        # Close parenthesis
-        if if_done:
-            f.write("};\n")
+        if self.iact_type == "iact":
+            self.write_maketask_extra_loop_iact(f, tasks)
+        else:
+            self.write_maketask_extra_loop_single(f, tasks)
 
 
 class Reader:
@@ -264,7 +398,15 @@ class Reader:
             raise Exception(
                 "Trying to link {} without any definition".format(
                     names[0]))
-        self.tasks[names[0]].add_link(names[1])
+
+        if "pair_" in names[0]:
+            print("TODO")
+            names[0] = names[0].split("_")[1]
+        if "pair_" in names[1]:
+            print("TODO")
+            names[1] = names[1].split("_")[1]
+        self.tasks[names[0]].add_link_to(names[1])
+        self.tasks[names[1]].add_linked_from(names[0])
 
     def read_definition(self, line: str):
         """
