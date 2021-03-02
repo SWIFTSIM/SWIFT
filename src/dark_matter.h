@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
     gp->sidm_probability = 0.f;
     gp->time_step_size = 0.f;
     gp->num_neighbours = 0.f;
-    gp->sidm_data.sigma = 0.;
+    gp->sidm_data.sigma = 0.f;
 }
 
 
@@ -227,8 +227,6 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
     /* Remove flag */
     dmp->sidm_data.sidm_flag = 0.f;
     
-    /* Calculate mean cross section for this particle */
-    dmp->sidm_data.sigma /= dmp->num_neighbours;
 }
 
 

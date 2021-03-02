@@ -664,17 +664,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     const double vij = sqrt(v2) * cosmo->a_inv;
     
     double sigma = 0.;
-    /* Scattering cross section per unit mass (in internal units) */
-    if (sidm_props->with_constant_sigma)
-        sigma = sidm_props->sigma;
-    
-    if (sidm_props->with_velocity_dependent_sigma)
-        sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
 
-    if (sidm_props->with_momentum_transfer_sigma)
-        sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
-    
-    pi->sidm_data.sigma += sigma;
+    /* Scattering cross section per unit mass (in internal units) */
+    if (sidm_props->with_constant_sigma) {
+
+      sigma = sidm_props->sigma;
+      pi->sidm_data.sigma = sigma;
+
+    } else if (sidm_props->with_velocity_dependent_sigma) {
+
+      sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
+      pi->sidm_data.sigma += sigma / pi->num_neighbours;
+
+    } else if (sidm_props->with_momentum_transfer_sigma) {
+
+      sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
+      pi->sidm_data.sigma += sigma / pi->num_neighbours;
+
+    }
 
     /* DM particle mass */
     const double mass_j = pj->mass;
@@ -736,18 +743,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double vij = sqrt(v2) * cosmo->a_inv;
     
     double sigma = 0.;
-    /* Scattering cross section per unit mass (in internal units) */
-    if (sidm_props->with_constant_sigma)
-        sigma = sidm_props->sigma;
-    
-    if (sidm_props->with_velocity_dependent_sigma)
-        sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
-    
-    if (sidm_props->with_momentum_transfer_sigma)
-        sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
-    
-    pi->sidm_data.sigma += sigma;
-    pj->sidm_data.sigma += sigma;
+
+  /* Scattering cross section per unit mass (in internal units) */
+  if (sidm_props->with_constant_sigma) {
+
+    sigma = sidm_props->sigma;
+    pi->sidm_data.sigma = sigma;
+    pj->sidm_data.sigma = sigma;
+
+  } else if (sidm_props->with_velocity_dependent_sigma) {
+
+    sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
+    pi->sidm_data.sigma += sigma / pi->num_neighbours;
+    pj->sidm_data.sigma += sigma / pj->num_neighbours;
+
+  } else if (sidm_props->with_momentum_transfer_sigma) {
+
+    sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
+    pi->sidm_data.sigma += sigma / pi->num_neighbours;
+    pj->sidm_data.sigma += sigma / pj->num_neighbours;
+
+  }
 
     /* DM particle mass */
     const double mass_i = pi->mass;
