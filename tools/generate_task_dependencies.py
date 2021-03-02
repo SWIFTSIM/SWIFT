@@ -53,17 +53,19 @@ class Task:
         attr = get_string_between(s, attribute_name, "]")
         return attr
 
-    def add_linked_from(self, name: str):
+    def add_linked_from(self, name: str, task_type: str):
         """
         Add a link for this task.
         """
-        self.linked_from.append(name)
+        self.linked_from.append({"name": name,
+                                 "task_type": task_type})
 
-    def add_link_to(self, name: str):
+    def add_link_to(self, name: str, task_type: str):
         """
         Add a link for this task.
         """
-        self.link_to.append(name)
+        self.link_to.append({"name": name,
+                             "task_type": task_type})
 
     def print_task(self):
         """
@@ -185,15 +187,14 @@ class Task:
 
         # loop over all the links
         for link in self.link_to:
-            if "self" in link or "pair" in link:
-                print("Skipping self/pair")
-                continue
+            link_name = link["name"]
 
-            iact2 = tasks[link].iact_type
+            iact2 = tasks[link_name].iact_type
 
             # Only link tasks that are not iact.
             if iact2 != "iact":
-                self.write_maketask_single_single(f, link, tasks)
+                self.write_maketask_single_single(
+                    f, link_name, tasks)
 
         # Close parenthesis
         if if_done:
@@ -223,7 +224,12 @@ class Task:
 
         # Make link towards current task
         for link_from in self.linked_from:
-            t2 = tasks[link_from]
+            link_name = link_from["name"]
+
+            if link_from["task_type"] is not None and link_from["task_type"] not in task_type:
+                continue
+
+            t2 = tasks[link_name]
             iact2 = t2.iact_type
             if iact2 == "iact":
                 raise Exception("Should not happen")
@@ -235,14 +241,19 @@ class Task:
             unlock = "\tscheduler_addunlock(s, {cell}->{level}{name}, new);\n"
             f.write(unlock.format(
                 cell="ci", level=link_level,
-                name=ref_tasks[link_from]["variable"]))
+                name=ref_tasks[link_name]["variable"]))
             f.write(unlock.format(
                 cell="cj", level=link_level,
-                name=ref_tasks[link_from]["variable"]))
+                name=ref_tasks[link_name]["variable"]))
 
         # Make link from current task
         for link_to in self.link_to:
-            t2 = tasks[link_to]
+            link_name = link_to["name"]
+
+            if link_to["task_type"] is not None and link_to["task_type"] not in task_type:
+                continue
+
+            t2 = tasks[link_name]
             iact2 = t2.iact_type
             if iact2 == "iact":
                 raise Exception("Should not happen")
@@ -254,10 +265,10 @@ class Task:
             unlock = "\tscheduler_addunlock(s, new, {cell}->{level}{name});\n"
             f.write(unlock.format(
                 cell="ci", level=link_level,
-                name=ref_tasks[link_to]["variable"]))
+                name=ref_tasks[link_name]["variable"]))
             f.write(unlock.format(
                 cell="cj", level=link_level,
-                name=ref_tasks[link_to]["variable"]))
+                name=ref_tasks[link_name]["variable"]))
 
     def write_iact_link_self(self, f, tasks, task_type):
         f.write("if (t_type == task_type_%s) {\n" % task_type)
@@ -280,7 +291,12 @@ class Task:
 
         # Make link towards current task
         for link_from in self.linked_from:
-            t2 = tasks[link_from]
+            link_name = link_from["name"]
+
+            if link_from["task_type"] is not None and link_from["task_type"] not in task_type:
+                continue
+
+            t2 = tasks[link_name]
             iact2 = t2.iact_type
             if iact2 == "iact":
                 raise Exception("Should not happen")
@@ -291,11 +307,16 @@ class Task:
 
             unlock = "\tscheduler_addunlock(s, ci->{level}{name}, new);\n"
             f.write(unlock.format(level=link_level,
-                                  name=ref_tasks[link_from]["variable"]))
+                                  name=ref_tasks[link_name]["variable"]))
 
         # Make link from current task
         for link_to in self.link_to:
-            t2 = tasks[link_to]
+            link_name = link_to["name"]
+
+            if link_to["task_type"] is not None and link_to["task_type"] not in task_type:
+                continue
+
+            t2 = tasks[link_name]
             iact2 = t2.iact_type
             if iact2 == "iact":
                 raise Exception("Should not happen")
@@ -306,7 +327,7 @@ class Task:
 
             unlock = "\tscheduler_addunlock(s, new, ci->{level}{name});\n"
             f.write(unlock.format(level=link_level,
-                                  name=ref_tasks[link_to]["variable"]))
+                                  name=ref_tasks[link_name]["variable"]))
 
     def write_maketask_extra_loop_iact(
             self, f: typing.TextIO, tasks: dict):
@@ -399,14 +420,22 @@ class Reader:
                 "Trying to link {} without any definition".format(
                     names[0]))
 
-        if "pair_" in names[0]:
-            print("TODO")
-            names[0] = names[0].split("_")[1]
-        if "pair_" in names[1]:
-            print("TODO")
-            names[1] = names[1].split("_")[1]
-        self.tasks[names[0]].add_link_to(names[1])
-        self.tasks[names[1]].add_linked_from(names[0])
+        task_type = None
+
+        # extract the task name
+        if "pair_" in names[0] or "self_" in names[0]:
+            split = names[0].split("_")
+            names[0] = split[-1]
+            task_type = "_".join(split[:-1])
+        if "pair_" in names[1] or "self_" in names[1]:
+            if task_type is not None:
+                raise Exception("Not implemented")
+            split = names[1].split("_")
+            names[1] = split[-1]
+            task_type = "_".join(split[:-1])
+
+        self.tasks[names[0]].add_link_to(names[1], task_type=task_type)
+        self.tasks[names[1]].add_linked_from(names[0], task_type=task_type)
 
     def read_definition(self, line: str):
         """
