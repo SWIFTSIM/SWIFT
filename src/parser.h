@@ -71,6 +71,8 @@ double parser_get_param_double(struct swift_params *params, const char *name);
 void parser_get_param_string(struct swift_params *params, const char *name,
                              char *retParam);
 
+int parser_does_param_exist(struct swift_params *params, const char *name);
+
 char parser_get_opt_param_char(struct swift_params *params, const char *name,
                                char def);
 int parser_get_opt_param_int(struct swift_params *params, const char *name,

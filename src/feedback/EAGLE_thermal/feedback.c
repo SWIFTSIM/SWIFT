@@ -547,10 +547,45 @@ void feedback_props_init(struct feedback_props* fp,
       parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_Z_0");
   fp->n_0_cgs = parser_get_param_double(
       params, "EAGLEFeedback:SNII_energy_fraction_n_0_H_p_cm3");
-  fp->n_n =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_n_n");
-  fp->n_Z =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_n_Z");
+
+  /* Indicies can either be included in the parameter file as powers,
+   * or as widths - but not both! The width and power are always related
+   * by the relation power = 1.0 / (ln(10) * width) */
+
+  int n_n_exists =
+      parser_does_param_exist(params, "EAGLEFeedback:SNII_energy_fraction_n_n");
+  int n_Z_exists =
+      parser_does_param_exist(params, "EAGLEFeedback:SNII_energy_fraction_n_Z");
+  int s_n_exists = parser_does_param_exist(
+      params, "EAGLEFeedback:SNII_energy_fraction_sigma_n");
+  int s_Z_exists = parser_does_param_exist(
+      params, "EAGLEFeedback:SNII_energy_fraction_sigma_Z");
+
+  if (n_n_exists && s_n_exists) {
+    error("Cannot specify both n_n and sigma_n in SNII energy fraction.");
+  }
+
+  if (n_Z_exists && s_Z_exists) {
+    error("Cannot specify both n_Z and sigma_Z in SNII energy fraction.");
+  }
+
+  if (n_n_exists) {
+    fp->n_n = parser_get_param_double(params,
+                                      "EAGLEFeedback:SNII_energy_fraction_n_n");
+  } else {
+    fp->n_n = 1.0 / (M_LN10 *
+                     parser_get_param_double(
+                         params, "EAGLEFeedback:SNII_energy_fraction_sigma_n"));
+  }
+
+  if (n_Z_exists) {
+    fp->n_Z = parser_get_param_double(params,
+                                      "EAGLEFeedback:SNII_energy_fraction_n_Z");
+  } else {
+    fp->n_Z = 1.0 / (M_LN10 *
+                     parser_get_param_double(
+                         params, "EAGLEFeedback:SNII_energy_fraction_sigma_Z"));
+  }
 
   /* Check that it makes sense. */
   if (fp->f_E_max < fp->f_E_min) {
@@ -715,7 +750,15 @@ void feedback_props_init(struct feedback_props* fp,
    * mass bins used in IMF  */
   compute_ejecta(fp);
 
-  message("initialized stellar feedback");
+  const double s_n = 1.0 / (M_LN10 * fp->n_n);
+  const double s_Z = 1.0 / (M_LN10 * fp->n_Z);
+
+  message("Feedback model is EAGLE (%s)", energy_fraction);
+  message("Feedback energy fraction min=%f, max=%f", fp->f_E_min, fp->f_E_max);
+  message("Feedback energy fraction powers: n_n=%f, n_Z=%f", fp->n_n, fp->n_Z);
+  message("Feedback energy fraction widths: s_n=%f, s_Z=%f", s_n, s_Z);
+  message("Feedback energy fraction pivots: Z_0=%f, n_0_cgs=%f", fp->Z_0,
+          fp->n_0_cgs);
 }
 
 /**
