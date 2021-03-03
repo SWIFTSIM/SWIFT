@@ -92,7 +92,7 @@ class Task:
         if self.level and level:
             if_condition += "(c->%s == c) && " % self.level
         if self.policy and policy:
-            if_condition += "(e->policy && engine_policy_%s) && " % self.policy
+            if_condition += "(e->policy & engine_policy_%s) && " % self.policy
         if task_type:
             task_type_name = task_type
             if isinstance(task_type, bool):
@@ -145,6 +145,30 @@ class Task:
             code += "};\n"
         f.write(code)
 
+    def write_maketask_recursions(
+            self, f: typing.TextIO, tasks: dict):
+        if self.iact_type != "splitted":
+            return
+
+        func = "void engine_add_{name}(struct engine *e, struct cell *c,\n"
+        func += "\tstruct task *task_in, struct task *task_out) {{\n\n"
+        func += "\tif (c->hydro.count_total == 0) return;\n"
+        func += "\tif (!c->split || c->hydro.count_total < engine_max_parts_per_{name}) {{\n\n"
+        func += "\t\tstruct scheduler *s = &e->sched;\n"
+        func += "\t\tc->{variable} = scheduler_addtask(s, task_type_{task_type}, task_subtype_none,\n"
+        func += "\t\t\t0, 0, c, NULL);\n"
+        func += "\t\tscheduler_addunlock(s, task_in, c->{variable});\n"
+        func += "\t\tscheduler_addunlock(s, c->{variable}, task_out);\n"
+        func += "\t}} else {{\n"
+        func += "\t\tfor(int k = 0; k < 8; k++)\n"
+        func += "\t\t\tif(c->progeny[k] != NULL)\n"
+        func += "\t\t\t\tengine_add_{name}(e, c->progeny[k], task_in, task_out);\n"
+        func += "\t}}\n}}\n\n"
+        func = func.format(
+            name=self.name, variable=ref_tasks[self.name]["variable"],
+            task_type=ref_tasks[self.name]["type"])
+        f.write(func)
+
     def write_maketask_single_single(
             self, f: typing.TextIO, link: str, tasks: dict):
         # Generate part of the variable name
@@ -176,6 +200,39 @@ class Task:
             unlock += "\t};\n"
         f.write(unlock)
 
+    def write_splitted(
+            self, f: typing.TextIO, tasks: dict):
+
+        if len(self.link_to) != 1 or len(self.linked_from) != 1:
+            raise Exception("Cannot recurse with more than 1 link")
+
+        t_bef = tasks[self.linked_from[0]["name"]]
+        t_aft = tasks[self.link_to[0]["name"]]
+
+        level = ""
+        if t_bef.level:
+            level = t_bef.level + "->"
+        before = "ci->{level}{name}".format(
+            level=level, name=ref_tasks[t_bef.name]["variable"])
+
+        level = ""
+        if t_aft.level:
+            level = t_aft.level + "->"
+        after = "ci->{level}{name}".format(
+            level=level, name=ref_tasks[t_aft.name]["variable"])
+
+
+        # Write the task
+        if_written = self.write_if_condition(
+            f, level=False, policy=True, task_type=ref_tasks[t_bef.name]["type"])
+
+        add = "\tengine_add_{name}(e, ci, {before}, {after});\n"
+        f.write(add.format(
+            name=self.name, before=before, after=after))
+
+        if if_written:
+            f.write("}\n")
+
     def write_maketask_extra_loop_single(
             self, f: typing.TextIO, tasks: dict):
         """
@@ -199,9 +256,11 @@ class Task:
             iact2 = tasks[link_name].iact_type
 
             # Only link tasks that are not iact.
-            if iact2 != "iact":
-                self.write_maketask_single_single(
-                    f, link_name, tasks)
+            if iact2 == "iact" or iact2 == "splitted":
+                continue
+
+            self.write_maketask_single_single(
+                f, link_name, tasks)
 
         # Close parenthesis
         if if_done:
@@ -395,8 +454,10 @@ class Task:
 
         if self.iact_type == "iact":
             self.write_maketask_extra_loop_iact(f, tasks)
-        else:
+        elif self.iact_type != "splitted":
             self.write_maketask_extra_loop_single(f, tasks)
+        else:
+            self.write_splitted(f, tasks)
 
 
 class Reader:
@@ -485,6 +546,12 @@ class Reader:
             for name in self.tasks:
                 self.tasks[name].write_maketask_definitions(f)
 
+            f.write("\n")
+            f.write("// Recursions\n")
+            for name in self.tasks:
+                self.tasks[name].write_maketask_recursions(f, self.tasks)
+
+            f.write("\n")
             f.write("// Dependencies\n")
             for name in self.tasks:
                 self.tasks[name].write_maketask_extra_loop(f, self.tasks)

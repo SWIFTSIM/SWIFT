@@ -8,9 +8,9 @@ sort[type=single,level=hydro.super,active=hydro,policy=hydro]
 density[type=iact,active=hydro,updates=hydro,updates=hydro,policy=hydro,act_on=hydro]
 
 ghost_in[type=implicit,level=hydro.super,policy=hydro]
-ghost[type=single,level=top,active=hydro,updates=hydro,policy=hydro]
+ghost[type=splitted,level=hydro.super,active=hydro,updates=hydro,policy=hydro]
 ghost_out[type=implicit,level=hydro.super,policy=hydro]
-extra_ghost[type=single,level=top,active=hydro,updates=hydro,policy=hydro]
+extra_ghost[type=single,level=hydro.super,active=hydro,updates=hydro,policy=hydro]
 
 gradient[type=iact,active=hydro,updates=hydro,updates=hydro,policy=hydro,act_on=hydro]
 force[type=iact,active=hydro,updates=hydro,updates=hydro,policy=hydro,act_on=hydro]
