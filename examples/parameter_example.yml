@@ -87,6 +87,8 @@ Gravity:
   max_physical_DM_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
   comoving_baryon_softening:     0.0026994 # Comoving Plummer-equivalent softening length for baryon particles (in internal units).
   max_physical_baryon_softening: 0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
+  comoving_nu_softening:         0.0026994 # Comoving Plummer-equivalent softening length for neutrino particles (in internal units).
+  max_physical_nu_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for neutrino particles (in internal units).
   softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
   rebuild_frequency:             0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).

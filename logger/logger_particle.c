@@ -179,6 +179,7 @@ void logger_particle_interpolate_field(
     /* Dark matter */
     case swift_type_dark_matter:
     case swift_type_dark_matter_background:
+    case swift_type_neutrino:
       if (field->module != field_module_default)
         error("Module not implemented");
       gravity_logger_interpolate_field(time_before, before, time_after, after,

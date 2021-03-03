@@ -1,0 +1,55 @@
+InternalUnitSystem:
+  UnitMass_in_cgs:	1.9884350000e+43 # 1e10 M_sol
+  UnitLength_in_cgs:	3.0856775815e+24 # 1 Mpc
+  UnitVelocity_in_cgs:	9.7846194238e+07 # 1 Gyr
+  UnitCurrent_in_cgs:	1.0000000000e+00 # 1 A
+  UnitTemp_in_cgs:	1.0000000000e+00 # 1 K
+
+Cosmology:
+  Omega_m:	0.3122685143
+  Omega_b:	0.0491989267
+  Omega_lambda:	0.6853646238
+  h:		0.6737000000
+  a_begin:	0.0250000000 # z = 39.000000
+  a_end:	1.0000000000
+  N_nu:		1
+  N_ur:         1.0196
+  T_nu_0:	1.9517578050
+  M_nu_eV:	0.0486000000
+  deg_nu:       2.0
+
+TimeIntegration:
+  dt_min:	1.0000e-10
+  dt_max:	1.0000e-02
+
+Scheduler:
+  max_top_level_cells:	16
+  cell_split_size:	100
+
+Snapshots:
+  scale_factor_first:	0.0250000000 # z = 39.000000
+  delta_time:		1.2500
+  basename:		box
+  compression:		4
+
+Statistics:
+  scale_factor_first:	0.0250000000 # z = 39.000000
+  delta_time:		1.2500
+
+Restarts:
+  delta_hours:	4.00
+
+InitialConditions:
+  file_name:	particles.hdf5
+  periodic:	1
+
+Gravity:
+  mesh_side_length:	32
+  MAC:			geometric
+  eta:			0.02500
+  theta_cr:		0.50000
+  rebuild_frequency:	0.00 # rebuild always
+  comoving_DM_softening:		0.0400000000 	# 0.0400 of the mean inter-particle separation
+  max_physical_DM_softening:		0.0400000000 	# 0.0400 of the mean inter-particle separation
+  comoving_nu_softening:		0.0400000000 	# 0.0400 of the mean inter-particle separation
+  max_physical_nu_softening:		0.0400000000 	# 0.0400 of the mean inter-particle separation

@@ -118,6 +118,20 @@ static long long cell_count_non_inhibited_sinks(const struct cell* c) {
   return count;
 }
 
+static long long cell_count_non_inhibited_neutrinos(const struct cell* c) {
+  const int total_count = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_neutrino)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 /**
  * @brief Write a single 1D array to a hdf5 group.
  *
@@ -190,7 +204,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   if (distributed) {
     if (global_offsets[0] != 0 || global_offsets[1] != 0 ||
         global_offsets[2] != 0 || global_offsets[3] != 0 ||
-        global_offsets[4] != 0 || global_offsets[5] != 0)
+        global_offsets[4] != 0 || global_offsets[5] != 0 ||
+        global_offsets[6] != 0)
       error("Global offset non-zero in the distributed io case!");
   }
 #endif
@@ -212,24 +227,26 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL,
             *count_background_gpart = NULL, *count_spart = NULL,
-            *count_bpart = NULL, *count_sink = NULL;
+            *count_bpart = NULL, *count_sink = NULL, *count_nupart = NULL;
   count_part = (long long*)malloc(nr_cells * sizeof(long long));
   count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_spart = (long long*)malloc(nr_cells * sizeof(long long));
   count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_sink = (long long*)malloc(nr_cells * sizeof(long long));
+  count_nupart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
   long long *offset_part = NULL, *offset_gpart = NULL,
             *offset_background_gpart = NULL, *offset_spart = NULL,
-            *offset_bpart = NULL, *offset_sink = NULL;
+            *offset_bpart = NULL, *offset_sink = NULL, *offset_nupart = NULL;
   offset_part = (long long*)malloc(nr_cells * sizeof(long long));
   offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_sink = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_nupart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;
@@ -238,6 +255,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   offset_spart[0] = 0;
   offset_bpart[0] = 0;
   offset_sink[0] = 0;
+  offset_nupart[0] = 0;
 
   /* Collect the cell information of *local* cells */
   long long local_offset_part = 0;
@@ -246,6 +264,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   long long local_offset_spart = 0;
   long long local_offset_bpart = 0;
   long long local_offset_sink = 0;
+  long long local_offset_nupart = 0;
   for (int i = 0; i < nr_cells; ++i) {
 
     /* Store in which file this cell will be found */
@@ -276,6 +295,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       count_spart[i] = cell_count_non_inhibited_stars(&cells_top[i]);
       count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
       count_sink[i] = cell_count_non_inhibited_sinks(&cells_top[i]);
+      count_nupart[i] = cell_count_non_inhibited_neutrinos(&cells_top[i]);
 
       /* Offsets including the global offset of all particles on this MPI rank
        * Note that in the distributed case, the global offsets are 0 such that
@@ -290,6 +310,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       offset_bpart[i] =
           local_offset_bpart + global_offsets[swift_type_black_hole];
       offset_sink[i] = local_offset_sink + global_offsets[swift_type_sink];
+      offset_nupart[i] =
+          local_offset_nupart + global_offsets[swift_type_neutrino];
 
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
@@ -297,6 +319,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       local_offset_spart += count_spart[i];
       local_offset_bpart += count_bpart[i];
       local_offset_sink += count_sink[i];
+      local_offset_nupart += count_nupart[i];
 
     } else {
 
@@ -312,6 +335,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       count_spart[i] = 0;
       count_bpart[i] = 0;
       count_sink[i] = 0;
+      count_nupart[i] = 0;
 
       offset_part[i] = 0;
       offset_gpart[i] = 0;
@@ -319,6 +343,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       offset_spart[i] = 0;
       offset_bpart[i] = 0;
       offset_sink[i] = 0;
+      offset_nupart[i] = 0;
     }
   }
 
@@ -337,6 +362,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                 MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, count_nupart, nr_cells, MPI_LONG_LONG_INT,
+                MPI_BOR, MPI_COMM_WORLD);
 
   MPI_Allreduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
@@ -349,6 +376,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   MPI_Allreduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT,
+                MPI_BOR, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, offset_nupart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
 
   /* For the centres we use a sum as MPI does not like bit-wise operations
@@ -466,6 +495,15 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                      "counts");
     }
 
+    if (global_counts[swift_type_neutrino] > 0 &&
+        num_fields[swift_type_neutrino] > 0) {
+      io_write_array(h_grp_files, nr_cells, files, INT, "PartType6", "files");
+      io_write_array(h_grp_offsets, nr_cells, offset_nupart, LONGLONG,
+                     "PartType6", "offsets");
+      io_write_array(h_grp_counts, nr_cells, count_nupart, LONGLONG,
+                     "PartType6", "counts");
+    }
+
     H5Gclose(h_grp_offsets);
     H5Gclose(h_grp_files);
     H5Gclose(h_grp_counts);
@@ -480,12 +518,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   free(count_spart);
   free(count_bpart);
   free(count_sink);
+  free(count_nupart);
   free(offset_part);
   free(offset_gpart);
   free(offset_background_gpart);
   free(offset_spart);
   free(offset_bpart);
   free(offset_sink);
+  free(offset_nupart);
 }
 
 #endif /* HAVE_HDF5 */

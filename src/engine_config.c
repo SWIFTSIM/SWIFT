@@ -178,6 +178,43 @@ void engine_config(int restart, int fof, struct engine *e,
   /* Welcome message */
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
+  if (!restart && e->total_nr_neutrino_gparts > 0) {
+    /* For diagnostics, collect the range of neutrino masses in eV */
+    float neutrino_mass_min = FLT_MAX;
+    float neutrino_mass_max = -FLT_MAX;
+
+    if (e->s->nr_gparts > 0) {
+      for (size_t k = 0; k < e->s->nr_gparts; k++) {
+        if (e->s->gparts[k].type == swift_type_neutrino) {
+          struct gpart *gp = &e->s->gparts[k];
+          float neutrino_mass = gp->mass;
+          if (neutrino_mass > neutrino_mass_max)
+            neutrino_mass_max = neutrino_mass;
+          if (neutrino_mass < neutrino_mass_min)
+            neutrino_mass_min = neutrino_mass;
+        }
+      }
+
+      float min_max_mass[2] = {neutrino_mass_min, neutrino_mass_max};
+
+#ifdef WITH_MPI
+      min_max_mass[1] = -min_max_mass[1];
+
+      MPI_Allreduce(MPI_IN_PLACE, min_max_mass, 2, MPI_FLOAT, MPI_MIN,
+                    MPI_COMM_WORLD);
+
+      min_max_mass[1] = -min_max_mass[1];
+#endif
+
+      if (e->nodeID == 0) {
+        float mass_mult = e->neutrino_mass_conversion_factor;
+        message("Neutrino mass multiplier: %.5e eV / U_M", mass_mult);
+        message("Neutrino simulation particle masses in range: [%.4f, %.4f] eV",
+                min_max_mass[0] * mass_mult, min_max_mass[1] * mass_mult);
+      }
+    }
+  }
+
   /* Get the number of queues */
   int nr_queues =
       parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);

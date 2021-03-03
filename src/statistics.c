@@ -551,7 +551,8 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     /* Get the particle */
     const struct gpart *gp = &gparts[k];
 
-    /* Ignore the hydro particles as they are already computed */
+    /* Ignore the hydro particles as they are already computed and skip
+     * neutrinos */
     if (gp->type != swift_type_dark_matter &&
         gp->type != swift_type_dark_matter_background)
       continue;

@@ -276,6 +276,15 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Background DM gpart particle linked to something !");
     }
 
+    /* We have a neutrino DM particle */
+    if (gparts[k].type == swift_type_neutrino &&
+        gparts[k].time_bin != time_bin_not_created) {
+
+      /* Check that it's not linked */
+      if (gparts[k].id_or_neg_offset <= 0)
+        error("Neutrino DM gpart particle linked to something !");
+    }
+
     /* We have a gas particle */
     else if (gparts[k].type == swift_type_gas) {
 
