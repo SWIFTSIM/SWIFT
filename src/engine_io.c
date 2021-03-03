@@ -882,7 +882,8 @@ void engine_compute_next_fof_time(struct engine *e) {
  * @param e The #engine.
  * @param params The #swift_params.
  */
-void engine_init_output_lists(struct engine *e, struct swift_params *params) {
+void engine_init_output_lists(struct engine *e, struct swift_params *params,
+                              const struct output_options *output_options) {
 
   /* Deal with snapshots */
   e->output_list_snapshots = NULL;
@@ -890,6 +891,13 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params) {
                    &e->delta_time_snapshot);
 
   if (e->output_list_snapshots) {
+
+    /* If we are using a different output selection for the
+     * various entries, verify that the user did not specify
+     * invalid selections. */
+    if (e->output_list_snapshots->select_output_on)
+      output_list_check_selection(e->output_list_snapshots, output_options);
+
     engine_compute_next_snapshot_time(e);
 
     if (e->policy & engine_policy_cosmology)

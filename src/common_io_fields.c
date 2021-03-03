@@ -159,10 +159,16 @@ void io_prepare_output_fields(struct output_options* output_options,
       have_default = 1;
 
     /* How many fields should each ptype write by default? */
-    int ptype_num_fields_to_write[swift_type_count];
+    int ptype_num_fields_to_write[swift_type_count] = {0};
 
     /* What is the default writing status for each ptype (on/off)? */
-    int ptype_default_write_status[swift_type_count];
+    int ptype_default_write_status[swift_type_count] = {0};
+
+    /* Default snapshot basename for this output selection */
+    char basename[FILENAME_BUFFER_SIZE] = select_output_default_basename;
+
+    /* Default snapshot subdir name for this output selection */
+    char subdir_name[FILENAME_BUFFER_SIZE] = select_output_default_subdir_name;
 
     /* Initialise section-specific writing counters for each particle type.
      * If default is 'write', then we start from the total to deduct any fields
@@ -203,8 +209,18 @@ void io_prepare_output_fields(struct output_options* output_options,
        * 'Standard' parameter */
       if (strstr(param_name, section_name) == NULL) continue;
       if (strstr(param_name, ":Standard_") != NULL) continue;
-      if (strstr(param_name, ":basename") != NULL) continue;
-      if (strstr(param_name, ":subdir") != NULL) continue;
+
+      /* Deal with a possible non-standard snapshot basename */
+      if (strstr(param_name, ":basename") != NULL) {
+        parser_get_param_string(params, param_name, basename);
+        continue;
+      }
+
+      /* Deal with a possible non-standard snapshot subdir name */
+      if (strstr(param_name, ":subdir") != NULL) {
+        parser_get_param_string(params, param_name, subdir_name);
+        continue;
+      }
 
       /* Get the particle type for current parameter
        * (raises an error if it could not determine it) */
@@ -282,14 +298,24 @@ void io_prepare_output_fields(struct output_options* output_options,
       output_options->num_fields_to_write[section_id][ptype] =
           ptype_num_fields_to_write[ptype];
     }
+
+    /* Also copy the output names */
+    strcpy(output_options->basenames[section_id], basename);
+    strcpy(output_options->subdir_names[section_id], subdir_name);
+
   } /* Ends loop over sections, for different output classes */
 
   /* Add field numbers for (possible) implicit `Default` output class */
   if (!have_default) {
     const int default_id = output_options->select_output->sectionCount;
-    for (int ptype = 0; ptype < swift_type_count; ptype++)
+    for (int ptype = 0; ptype < swift_type_count; ptype++) {
       output_options->num_fields_to_write[default_id][ptype] =
           ptype_num_fields_total[ptype];
+    }
+    sprintf(output_options->basenames[default_id], "%s",
+            select_output_default_basename);
+    sprintf(output_options->subdir_names[default_id], "%s",
+            select_output_default_subdir_name);
   }
 }
 

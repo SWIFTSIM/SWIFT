@@ -117,7 +117,6 @@ example, look like:
     Masses_Gas: off
     Velocities_Gas: DScale1
     Densities_Gas: FMantissa9
-    ParticleIDs_Gas: IntegerNBits
 	 
 
 For convenience, there is also the option to set a default output status for
@@ -128,7 +127,7 @@ field for each particle type:
 
 .. code:: YAML
 
-   BlackHolesOnly:
+   Default:
      Standard_Gas: off
      Standard_DM: off
      Standard_DMBackground: off
@@ -142,7 +141,7 @@ selection:
 
 .. code:: YAML
 
-   BlackHolesOnly:
+   Default:
      basename: bh
      subdir: snip
 
@@ -187,6 +186,7 @@ cousins. To do this, we will define two top-level sections in our
     Metal_Mass_Fractions_Gas: off
     Element_Mass_Fractions_Gas: off
     Densities_Gas: FMantissa9
+    basename: snip
     ...
 
 To then select which outputs are 'snapshots' and which are 'snipshots', you
@@ -207,8 +207,8 @@ to your choice in the output list will be written to the snapshot header as
 ``Header/SelectOutput``.
 
 Note that if a the name used in the ``Select Output`` column does not
-exist as a section in the output selection YAML file, SWIFT will write
-all the available fields. 
+exist as a section in the output selection YAML file, SWIFT will exit
+with an error message.
 
 Using non-regular snapshot numbers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -238,5 +238,5 @@ Assuming the snapshot basename (either global or set for the
 ``Snapshot`` output selection) was set to ``snap``.
 
 Note that to specify labels, the ``Select Output`` column needs to be
-specified (but can simply default to dumping everything).
+specified.
 
