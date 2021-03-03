@@ -183,6 +183,8 @@ aliases are shown in the third column of the table.
 +---------------------+------------------------+-----------------------------+----------------------------------------+
 | ``/PartType5/``     | Black Holes            | ``/BHParticles/``           | ``swift_type_black_hole``              |
 +---------------------+------------------------+-----------------------------+----------------------------------------+
+| ``/PartType6/``     | Neutrino Dark Matter   | ``/NeutrinoParticles/``     | ``swift_type_neutrino``                |
++---------------------+------------------------+-----------------------------+----------------------------------------+
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.

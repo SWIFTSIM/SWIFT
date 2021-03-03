@@ -42,6 +42,7 @@ int tools_get_number_fields(enum part_type type) {
 
     case swift_type_dark_matter:
     case swift_type_dark_matter_background:
+    case swift_type_neutrino:
       number_fields = gravity_logger_field_count;
       return number_fields;
 
@@ -133,6 +134,7 @@ void tools_get_list_fields(struct field_information *fields,
 
     case swift_type_dark_matter:
     case swift_type_dark_matter_background:
+    case swift_type_neutrino:
       copy_field_to_struct_single_particle_type(gravity, field_module_default);
       break;
 

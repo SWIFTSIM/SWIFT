@@ -266,6 +266,7 @@ struct engine {
   long long total_nr_sinks;
   long long total_nr_bparts;
   long long total_nr_DM_background_gparts;
+  long long total_nr_neutrino_gparts;
 
   /* Total numbers of cells (top-level and sub-cells) in the system. */
   long long total_nr_cells;
@@ -294,6 +295,9 @@ struct engine {
 
   /* Total mass in the simulation */
   double total_mass;
+
+  /* Conversion factor between microscopic neutrino mass (eV) and gpart mass */
+  double neutrino_mass_conversion_factor;
 
   /* The internal system of units */
   const struct unit_system *internal_units;
@@ -577,7 +581,7 @@ void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
-    long long Nbackground_gparts, int policy, int verbose,
+    long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
