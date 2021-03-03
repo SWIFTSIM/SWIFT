@@ -190,7 +190,7 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
     if (dmp->sidm_data.sidm_flag > 0) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-        message("SIDM kick for dmpart %lld h=%e", dmp->id_or_neg_offset, dmp[k]->h);
+        message("SIDM kick for dmpart %lld h=%e", dmp->id_or_neg_offset, dmp->h);
 #endif
         
         /* Reverse recent half drift */
