@@ -30,6 +30,8 @@
 
 /*! Default name for the SelectOutput header */
 #define select_output_header_default_name "Default"
+#define select_output_default_basename "Standard"
+#define select_output_default_subdir_name "Standard"
 
 /**
  * @brief Output selection properties, including the parsed files.
@@ -44,6 +46,18 @@ struct output_options {
    * output style is used but not specified. */
   int num_fields_to_write[OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1]
                          [swift_type_count];
+
+  /*! Basenames to use for the snapshots of the given selection
+   * If set to the default, the code will use the name set in the
+   * snapshot section of the param file. */
+  char basenames[OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1]
+                [FILENAME_BUFFER_SIZE];
+
+  /*! Subdir names to use for the snapshots of the given selection
+   * If set to the default, the code will use the name set in the
+   * snapshot section of the param file. */
+  char subdir_names[OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1]
+                   [FILENAME_BUFFER_SIZE];
 };
 
 /* Create and destroy */

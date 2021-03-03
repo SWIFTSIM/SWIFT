@@ -472,7 +472,7 @@ void engine_config(int restart, int fof, struct engine *e,
               e->time_end - e->time_begin);
 
     /* Read (or re-read the list of outputs */
-    engine_init_output_lists(e, params);
+    engine_init_output_lists(e, params, e->output_options);
 
     /* Check whether output quantities make sense */
     if (e->policy & engine_policy_cosmology) {
