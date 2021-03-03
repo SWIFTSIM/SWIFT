@@ -94,11 +94,18 @@ class Task:
         if self.policy and policy:
             if_condition += "(e->policy && engine_policy_%s) && " % self.policy
         if task_type:
+            task_type_name = task_type
+            if isinstance(task_type, bool):
+                task_type_name = ref_tasks[self.name]["type"]
             if_condition += "(t->type == task_type_%s) && " % \
-                ref_tasks[self.name]["type"]
+                task_type_name
         if task_subtype:
+            task_subtype_name = task_subtype
+            if isinstance(task_subtype, bool):
+                task_subtype_name = ref_tasks[self.name]["subtype"]
+
             if_condition += "(t->subtype == task_subtype_%s) && " % \
-                ref_tasks[self.name]["subtype"]
+                task_subtype_name
 
         if len(if_condition) == 0:
             return False
@@ -201,7 +208,8 @@ class Task:
             f.write("};\n")
 
     def write_iact_link_pair(self, f, tasks, task_type):
-        f.write("if (t_type == task_type_%s) {\n" % task_type)
+        if_written = self.write_if_condition(
+            f, level=False, policy=True, task_type=task_type, task_subtype="density")
 
         # Create the task
         if self.name != "density":
@@ -226,7 +234,7 @@ class Task:
         for link_from in self.linked_from:
             link_name = link_from["name"]
 
-            if link_from["task_type"] is not None and link_from["task_type"] not in task_type:
+            if link_from["task_type"] is not None and link_from["task_type"] != task_type:
                 continue
 
             t2 = tasks[link_name]
@@ -242,15 +250,22 @@ class Task:
             f.write(unlock.format(
                 cell="ci", level=link_level,
                 name=ref_tasks[link_name]["variable"]))
-            f.write(unlock.format(
+
+            if t2.level:
+                f.write("\tif(ci->%s != cj->%s) {\n" % (t2.level, t2.level))
+
+            f.write("\t" + unlock.format(
                 cell="cj", level=link_level,
                 name=ref_tasks[link_name]["variable"]))
+
+            if t2.level:
+                f.write("}\n")
 
         # Make link from current task
         for link_to in self.link_to:
             link_name = link_to["name"]
 
-            if link_to["task_type"] is not None and link_to["task_type"] not in task_type:
+            if link_to["task_type"] is not None and link_to["task_type"] != task_type:
                 continue
 
             t2 = tasks[link_name]
@@ -266,12 +281,23 @@ class Task:
             f.write(unlock.format(
                 cell="ci", level=link_level,
                 name=ref_tasks[link_name]["variable"]))
-            f.write(unlock.format(
+
+            if t2.level:
+                f.write("\tif(ci->%s != cj->%s) {\n" % (t2.level, t2.level))
+
+            f.write("\t" + unlock.format(
                 cell="cj", level=link_level,
                 name=ref_tasks[link_name]["variable"]))
 
+            if t2.level:
+                f.write("}\n")
+
+        if if_written:
+            f.write("}\n")
+
     def write_iact_link_self(self, f, tasks, task_type):
-        f.write("if (t_type == task_type_%s) {\n" % task_type)
+        if_written = self.write_if_condition(
+            f, level=False, policy=True, task_type=task_type, task_subtype="density")
 
         # Create the task
         if self.name != "density":
@@ -293,7 +319,7 @@ class Task:
         for link_from in self.linked_from:
             link_name = link_from["name"]
 
-            if link_from["task_type"] is not None and link_from["task_type"] not in task_type:
+            if link_from["task_type"] is not None and link_from["task_type"] != task_type:
                 continue
 
             t2 = tasks[link_name]
@@ -313,7 +339,7 @@ class Task:
         for link_to in self.link_to:
             link_name = link_to["name"]
 
-            if link_to["task_type"] is not None and link_to["task_type"] not in task_type:
+            if link_to["task_type"] is not None and link_to["task_type"] != task_type:
                 continue
 
             t2 = tasks[link_name]
@@ -328,6 +354,8 @@ class Task:
             unlock = "\tscheduler_addunlock(s, new, ci->{level}{name});\n"
             f.write(unlock.format(level=link_level,
                                   name=ref_tasks[link_name]["variable"]))
+        if if_written:
+            f.write("}\n")
 
     def write_maketask_extra_loop_iact(
             self, f: typing.TextIO, tasks: dict):
@@ -337,22 +365,18 @@ class Task:
         # Self case
         f.write("// self case\n")
         self.write_iact_link_self(f, tasks, task_type="self")
-        f.write("}\n")
 
         # Subself case
         f.write("// sub self case\n")
         self.write_iact_link_self(f, tasks, task_type="sub_self")
-        f.write("}\n")
 
         # Pair case
         f.write("// pair case\n")
         self.write_iact_link_pair(f, tasks, task_type="pair")
-        f.write("}\n")
 
         # Subpair case
         f.write("// sub pair case\n")
         self.write_iact_link_pair(f, tasks, task_type="sub_pair")
-        f.write("}\n")
 
     def write_maketask_extra_loop(
             self, f: typing.TextIO, tasks: dict):

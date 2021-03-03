@@ -24,6 +24,11 @@ tasks = {
         "type": "ghost",
         "subtype": None,
     },
+    "extra_ghost": {
+        "variable": "hydro.extra_ghost",
+        "type": "extra_ghost",
+        "subtype": None,
+    },
     "ghost_out": {
         "variable": "hydro.ghost_out",
         "type": "ghost_out",
@@ -33,6 +38,11 @@ tasks = {
         "variable": "hydro.force",
         "type": None,
         "subtype": "force",
+    },
+    "gradient": {
+        "variable": "hydro.gradient",
+        "type": None,
+        "subtype": "gradient",
     },
     "end_hydro_force": {
         "variable": "hydro.end_force",

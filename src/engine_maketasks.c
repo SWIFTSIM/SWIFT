@@ -831,7 +831,40 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c,
     super = 1;
 
   /* Copy code below */
-
+// Hierarchical taks
+if ((c->hydro.super == c) && (e->policy && engine_policy_hydro)) {
+	 c->hydro.drift = scheduler_addtask(s, task_type_drift_part, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->hydro.super == c) && (e->policy && engine_policy_hydro)) {
+	 c->hydro.sorts = scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->hydro.super == c) && (e->policy && engine_policy_hydro)) {
+	 c->hydro.ghost_in = scheduler_addtask(s, task_type_ghost_in, task_subtype_none, 0, 1, c, NULL);
+};
+if ((c->top == c) && (e->policy && engine_policy_hydro)) {
+	 c->hydro.ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->hydro.super == c) && (e->policy && engine_policy_hydro)) {
+	 c->hydro.ghost_out = scheduler_addtask(s, task_type_ghost_out, task_subtype_none, 0, 1, c, NULL);
+};
+if ((c->top == c) && (e->policy && engine_policy_hydro)) {
+	 c->hydro.extra_ghost = scheduler_addtask(s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->hydro.super == c) && (e->policy && engine_policy_hydro)) {
+	 c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->super == c)) {
+	 c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->super == c)) {
+	 c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->super == c) && (e->policy && engine_policy_timestep_limiter)) {
+	 c->timestep_limiter = scheduler_addtask(s, task_type_timestep_limiter, task_subtype_none, 0, 0, c, NULL);
+};
+if ((c->super == c)) {
+	 c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0, c, NULL);
+};
   /* Copy done */
 
   /* Can we still go deeper? */
@@ -1934,49 +1967,255 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                               void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int with_cooling = (e->policy & engine_policy_cooling);
-  const int with_timestep_limiter =
-      (e->policy & engine_policy_timestep_limiter);
-  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
-  const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_black_holes = (e->policy & engine_policy_black_holes);
-  const int with_rt = (e->policy & engine_policy_rt);
-  const int with_sink = (e->policy & engine_policy_sinks);
-#ifdef EXTRA_HYDRO_LOOP
-  struct task *t_gradient = NULL;
-#endif
-#ifdef EXTRA_STAR_LOOPS
-  struct task *t_star_prep1 = NULL;
-  struct task *t_star_prep2 = NULL;
-#endif
-  struct task *t_force = NULL;
-  struct task *t_limiter = NULL;
-  struct task *t_star_density = NULL;
-  struct task *t_star_feedback = NULL;
-  struct task *t_bh_density = NULL;
-  struct task *t_bh_swallow = NULL;
-  struct task *t_do_gas_swallow = NULL;
-  struct task *t_do_bh_swallow = NULL;
-  struct task *t_bh_feedback = NULL;
-  struct task *t_rt_inject = NULL;
-  struct task *t_sink_formation = NULL;
-  struct task *t_rt_gradient = NULL;
-  struct task *t_rt_transport = NULL;
-  struct task *t_sink_merger = NULL;
+  struct scheduler *s = &e->sched;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
     struct task *t = &((struct task *)map_data)[ind];
-    const enum task_types t_type = t->type;
-    const enum task_subtypes t_subtype = t->subtype;
-    const long long flags = t->flags;
+    //const enum task_types t_type = t->type;
+    //const enum task_subtypes t_subtype = t->subtype;
     struct cell *const ci = t->ci;
     struct cell *const cj = t->cj;
+    const long long flags = t->flags;
 
     /* Copy code here */
-
+// Dependencies
+// drift_part
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_drift_part)) {
+		scheduler_addunlock(s, ci->hydro.super->hydro.drift, ci->hydro.super->hydro.sorts);
+};
+// sort
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_sort)) {
+};
+// density
+// self case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = t;
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.ghost_in);
+}
+// sub self case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_sub_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = t;
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.sorts, new);
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.ghost_in);
+}
+// pair case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = t;
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.drift, new);
+}
+	scheduler_addunlock(s, ci->hydro.super->hydro.sorts, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.sorts, new);
+}
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.ghost_in);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, new, cj->hydro.super->hydro.ghost_in);
+}
+}
+// sub pair case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_sub_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = t;
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.drift, new);
+}
+	scheduler_addunlock(s, ci->hydro.super->hydro.sorts, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.sorts, new);
+}
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.ghost_in);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, new, cj->hydro.super->hydro.ghost_in);
+}
+}
+// ghost_in
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_ghost_in)) {
+		scheduler_addunlock(s, ci->hydro.super->hydro.ghost_in, ci->top->hydro.ghost);
+};
+// ghost
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_ghost)) {
+		scheduler_addunlock(s, ci->top->hydro.ghost, ci->hydro.super->hydro.ghost_out);
+};
+// ghost_out
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_ghost_out)) {
+};
+// extra_ghost
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_extra_ghost)) {
+};
+// gradient
+// self case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_self, task_subtype_gradient, flags, 0, ci, NULL);
+	engine_addlink(e, &ci->hydro.gradient, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, new);
+	scheduler_addunlock(s, new, ci->top->hydro.extra_ghost);
+}
+// sub self case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_sub_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_sub_self, task_subtype_gradient, flags, 0, ci, NULL);
+	engine_addlink(e, &ci->hydro.gradient, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, new);
+	scheduler_addunlock(s, new, ci->top->hydro.extra_ghost);
+}
+// pair case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_pair, task_subtype_gradient, flags, 0, ci, cj);
+	engine_addlink(e, &ci->hydro.gradient, new);
+	engine_addlink(e, &cj->hydro.gradient, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.ghost_out, new);
+}
+	scheduler_addunlock(s, new, ci->top->hydro.extra_ghost);
+	if(ci->top != cj->top) {
+		scheduler_addunlock(s, new, cj->top->hydro.extra_ghost);
+}
+}
+// sub pair case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_sub_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_sub_pair, task_subtype_gradient, flags, 0, ci, cj);
+	engine_addlink(e, &ci->hydro.gradient, new);
+	engine_addlink(e, &cj->hydro.gradient, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.ghost_out, new);
+}
+	scheduler_addunlock(s, new, ci->top->hydro.extra_ghost);
+	if(ci->top != cj->top) {
+		scheduler_addunlock(s, new, cj->top->hydro.extra_ghost);
+}
+}
+// force
+// self case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_self, task_subtype_force, flags, 0, ci, NULL);
+	engine_addlink(e, &ci->hydro.force, new);
+	scheduler_addunlock(s, ci->top->hydro.extra_ghost, new);
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.end_force);
+}
+// sub self case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_sub_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_sub_self, task_subtype_force, flags, 0, ci, NULL);
+	engine_addlink(e, &ci->hydro.force, new);
+	scheduler_addunlock(s, ci->top->hydro.extra_ghost, new);
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.end_force);
+}
+// pair case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_pair, task_subtype_force, flags, 0, ci, cj);
+	engine_addlink(e, &ci->hydro.force, new);
+	engine_addlink(e, &cj->hydro.force, new);
+	scheduler_addunlock(s, ci->top->hydro.extra_ghost, new);
+	if(ci->top != cj->top) {
+		scheduler_addunlock(s, cj->top->hydro.extra_ghost, new);
+}
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.end_force);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, new, cj->hydro.super->hydro.end_force);
+}
+}
+// sub pair case
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_sub_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_sub_pair, task_subtype_force, flags, 0, ci, cj);
+	engine_addlink(e, &ci->hydro.force, new);
+	engine_addlink(e, &cj->hydro.force, new);
+	scheduler_addunlock(s, ci->top->hydro.extra_ghost, new);
+	if(ci->top != cj->top) {
+		scheduler_addunlock(s, cj->top->hydro.extra_ghost, new);
+}
+	scheduler_addunlock(s, new, ci->hydro.super->hydro.end_force);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, new, cj->hydro.super->hydro.end_force);
+}
+}
+// end_hydro_force
+if ((e->policy && engine_policy_hydro) && (t->type == task_type_end_hydro_force)) {
+		scheduler_addunlock(s, ci->hydro.super->hydro.end_force, ci->super->kick2);
+};
+// kick2
+if ((t->type == task_type_kick2)) {
+		scheduler_addunlock(s, ci->super->kick2, ci->super->timestep);
+};
+// limiter
+// self case
+if ((e->policy && engine_policy_timestep_limiter) && (t->type == task_type_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_self, task_subtype_limiter, flags, 0, ci, NULL);
+	engine_addlink(e, &ci->hydro.limiter, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	scheduler_addunlock(s, ci->super->kick2, new);
+	scheduler_addunlock(s, ci->super->timestep, new);
+	scheduler_addunlock(s, new, ci->super->timestep_limiter);
+}
+// sub self case
+if ((e->policy && engine_policy_timestep_limiter) && (t->type == task_type_sub_self) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_sub_self, task_subtype_limiter, flags, 0, ci, NULL);
+	engine_addlink(e, &ci->hydro.limiter, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	scheduler_addunlock(s, ci->super->kick2, new);
+	scheduler_addunlock(s, ci->super->timestep, new);
+	scheduler_addunlock(s, new, ci->super->timestep_limiter);
+}
+// pair case
+if ((e->policy && engine_policy_timestep_limiter) && (t->type == task_type_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_pair, task_subtype_limiter, flags, 0, ci, cj);
+	engine_addlink(e, &ci->hydro.limiter, new);
+	engine_addlink(e, &cj->hydro.limiter, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.drift, new);
+}
+	scheduler_addunlock(s, ci->super->kick2, new);
+	if(ci->super != cj->super) {
+		scheduler_addunlock(s, cj->super->kick2, new);
+}
+	scheduler_addunlock(s, ci->super->timestep, new);
+	if(ci->super != cj->super) {
+		scheduler_addunlock(s, cj->super->timestep, new);
+}
+	scheduler_addunlock(s, new, ci->super->timestep_limiter);
+	if(ci->super != cj->super) {
+		scheduler_addunlock(s, new, cj->super->timestep_limiter);
+}
+}
+// sub pair case
+if ((e->policy && engine_policy_timestep_limiter) && (t->type == task_type_sub_pair) && (t->subtype == task_subtype_density)) {
+	struct task *new = scheduler_addtask(s, task_type_sub_pair, task_subtype_limiter, flags, 0, ci, cj);
+	engine_addlink(e, &ci->hydro.limiter, new);
+	engine_addlink(e, &cj->hydro.limiter, new);
+	scheduler_addunlock(s, ci->hydro.super->hydro.drift, new);
+	if(ci->hydro.super != cj->hydro.super) {
+		scheduler_addunlock(s, cj->hydro.super->hydro.drift, new);
+}
+	scheduler_addunlock(s, ci->super->kick2, new);
+	if(ci->super != cj->super) {
+		scheduler_addunlock(s, cj->super->kick2, new);
+}
+	scheduler_addunlock(s, ci->super->timestep, new);
+	if(ci->super != cj->super) {
+		scheduler_addunlock(s, cj->super->timestep, new);
+}
+	scheduler_addunlock(s, new, ci->super->timestep_limiter);
+	if(ci->super != cj->super) {
+		scheduler_addunlock(s, new, cj->super->timestep_limiter);
+}
+}
+// timestep
+if ((t->type == task_type_timestep)) {
+		scheduler_addunlock(s, ci->super->timestep, ci->super->kick1);
+if ((e->policy && engine_policy_timestep_limiter)) {
+		scheduler_addunlock(s, ci->super->timestep, ci->super->timestep_limiter);
+	};
+};
+// timestep_limiter
+if ((e->policy && engine_policy_timestep_limiter) && (t->type == task_type_timestep_limiter)) {
+		scheduler_addunlock(s, ci->super->timestep_limiter, ci->super->kick1);
+};
+// kick1
     /* Copy done */
 
   }
