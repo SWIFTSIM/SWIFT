@@ -908,6 +908,56 @@ size_t io_count_dm_background_gparts(const struct gpart* const gparts,
   return count;
 }
 
+void io_prepare_dm_neutrino_gparts_mapper(void* restrict data, int Ndm,
+                                          void* dummy) {
+
+  struct gpart* restrict gparts = (struct gpart*)data;
+
+  /* Let's give all these gparts a negative id */
+  for (int i = 0; i < Ndm; ++i) {
+
+    /* Negative ids are not allowed */
+    if (gparts[i].id_or_neg_offset < 0)
+      error("Negative ID for DM particle %i: ID=%lld", i,
+            gparts[i].id_or_neg_offset);
+
+    /* Set gpart type */
+    gparts[i].type = swift_type_neutrino;
+  }
+}
+
+/**
+ * @brief Prepare the neutrino dark matter particles (in gparts) read in
+ * for the addition of the other particle types
+ *
+ * This function assumes that the DM & background DM particles are all at the
+ * start of the gparts array and that the neutrinos directly follow them.
+ *
+ * @param tp The current #threadpool.
+ * @param gparts The array of #gpart freshly read in.
+ * @param Ndm The number of DM particles read in.
+ */
+void io_prepare_dm_neutrino_gparts(struct threadpool* tp,
+                                   struct gpart* const gparts, size_t Ndm) {
+
+  threadpool_map(tp, io_prepare_dm_neutrino_gparts_mapper, gparts, Ndm,
+                 sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
+}
+
+size_t io_count_dm_neutrino_gparts(const struct gpart* const gparts,
+                                   const size_t Ndm) {
+
+  swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
+                            SWIFT_STRUCT_ALIGNMENT);
+
+  size_t count = 0;
+  for (size_t i = 0; i < Ndm; ++i) {
+    if (gparts_array[i].type == swift_type_neutrino) ++count;
+  }
+
+  return count;
+}
+
 struct duplication_data {
 
   struct part* parts;
@@ -1371,6 +1421,50 @@ void io_collect_gparts_background_to_write(
     if ((gparts[i].time_bin != time_bin_inhibited) &&
         (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter_background)) {
+
+      if (with_stf) vr_data_written[count] = vr_data[i];
+
+      gparts_written[count] = gparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Ngparts_written)
+    error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
+          count, Ngparts_written);
+}
+
+/**
+ * @brief Copy every non-inhibited neutrino DM #gpart into the gparts_written
+ * array.
+ *
+ * @param gparts The array of #gpart containing all particles.
+ * @param vr_data The array of gpart-related VELOCIraptor output.
+ * @param gparts_written The array of #gpart to fill with particles we want to
+ * write.
+ * @param vr_data_written The array of gpart-related VELOCIraptor with particles
+ * we want to write.
+ * @param Ngparts The total number of #part.
+ * @param Ngparts_written The total number of #part to write.
+ * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
+ */
+void io_collect_gparts_neutrino_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* restrict vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* restrict vr_data_written,
+    const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Ngparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_neutrino)) {
 
       if (with_stf) vr_data_written[count] = vr_data[i];
 

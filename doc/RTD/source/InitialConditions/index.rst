@@ -53,11 +53,13 @@ file format for compatibility reasons.
 +---------------------+------------------------+----------------------------------------+
 | ``/PartType2/``     | Background Dark Matter | ``swift_type_dark_matter_background``  |
 +---------------------+------------------------+----------------------------------------+
-| ``/PartType3/``     | Ignored                |                                        |
+| ``/PartType3/``     | Sinks                  | ``swift_type_sink``                    |
 +---------------------+------------------------+----------------------------------------+
 | ``/PartType4/``     | Stars                  | ``swift_type_star``                    |
 +---------------------+------------------------+----------------------------------------+
 | ``/PartType5/``     | Black Holes            | ``swift_type_black_hole``              |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType6/``     | Neutrino Dark Matter   | ``swift_type_neutrino``                |
 +---------------------+------------------------+----------------------------------------+
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
