@@ -540,7 +540,9 @@ EAGLEFeedback:
   SNII_energy_fraction_Z_0:            0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
   SNII_energy_fraction_n_0_H_p_cm3:    0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:            0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
-  SNII_energy_fraction_n_n:            0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
+  SNII_energy_fraction_n_n:            0.8686          # Power-law for the (birth) density dependance of the SNII energy fraction.
+  SNII_energy_fraction_sigma_Z:        0.5             # Transition width for the metallicity dependence of the SNII energy fraction. Specify this or n_Z, both are not simultaneously accepted.
+  SNII_energy_fraction_sigma_n:        0.5             # Transition width for the (birth) density dependence of the SNII energy fraction. Specify this or n_n, both are not simultaneously accepted.
   SNII_energy_fraction_use_birth_density: 0            # Are we using the density at birth to compute f_E or at feedback time?
   SNII_energy_fraction_use_birth_metallicity: 0        # Are we using the metallicity at birth to compute f_E or at feedback time?
   SNIa_DTD:                            PowerLaw        # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
