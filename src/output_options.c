@@ -300,15 +300,32 @@ void output_options_get_basename(const struct output_options* output_options,
                                  char subdir_name[FILENAME_BUFFER_SIZE],
                                  char basename[FILENAME_BUFFER_SIZE]) {
 
-  /* Full name for the default path */
-  char field[PARSER_MAX_LINE_SIZE];
-  sprintf(field, "%.*s:basename", FIELD_BUFFER_SIZE, selection_name);
+  /* Get the ID of the output selection in the structure */
+  int selection_id =
+      parser_get_section_id(output_options->select_output, selection_name);
 
-  parser_get_opt_param_string(output_options->select_output, field, basename,
-                              default_basename);
+  /* Special treatment for absent `Default` section */
+  if (selection_id < 0) {
+    selection_id = output_options->select_output->sectionCount;
+  }
 
-  sprintf(field, "%.*s:subdir", FIELD_BUFFER_SIZE, selection_name);
+  /* If the default keyword is found, we use the name provided
+   * in the param file (not the select output!), aka. the argument
+   * of the function. */
+  if (strcmp(output_options->basenames[selection_id],
+             select_output_default_basename) == 0) {
+    sprintf(basename, "%s", default_basename);
+  } else {
+    sprintf(basename, "%s", output_options->basenames[selection_id]);
+  }
 
-  parser_get_opt_param_string(output_options->select_output, field, subdir_name,
-                              default_subdirname);
+  /* If the default keyword is found, we use the subdir name provided
+   * in the param file (not the select output!), aka. the argument
+   * of the function. */
+  if (strcmp(output_options->subdir_names[selection_id],
+             select_output_default_subdir_name) == 0) {
+    sprintf(subdir_name, "%s", default_subdirname);
+  } else {
+    sprintf(subdir_name, "%s", output_options->subdir_names[selection_id]);
+  }
 }
