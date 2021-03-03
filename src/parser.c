@@ -527,6 +527,26 @@ static void parse_section_param(char *line, int *isFirstParam,
   }
 }
 
+/**
+ * @brief Checks whether a parameter is currently present in the params
+ *        structure. Do not use this function to test if a parameter exists,
+ *        and then provide an optional value instead. That can be achieved
+ *        using the parser_get_opt_param_TYPE functions.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @return Whether or not the parameter exists as a boolean.
+ **/
+int parser_does_param_exist(struct swift_params *params, const char *name) {
+  for (int i = 0; i < params->paramCount; i++) {
+    if (strcmp(name, params->data[i].name) == 0) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 // Retrieve parameter value from structure. TYPE is the data type, float, int
 // etc. FMT the format required for that data type, i.e. %f, %d etc. and DESC
 // a one word description of the type, "float", "int" etc.
