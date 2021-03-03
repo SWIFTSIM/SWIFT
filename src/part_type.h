@@ -31,6 +31,7 @@ enum part_type {
   swift_type_sink = 3,
   swift_type_stars = 4,
   swift_type_black_hole = 5,
+  swift_type_neutrino = 6,
   swift_type_count
 } __attribute__((packed));
 

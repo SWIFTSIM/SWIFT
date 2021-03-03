@@ -869,8 +869,8 @@ void space_collect_sum_gpart_mass(void *restrict map_data, int count,
   const struct gpart *gparts = (const struct gpart *)map_data;
 
   /* Local collection */
-  double sum_DM = 0., sum_DM_background = 0.;
-  long long count_DM = 0, count_DM_background = 0;
+  double sum_DM = 0., sum_DM_background = 0., sum_nu = 0.;
+  long long count_DM = 0, count_DM_background = 0, count_nu = 0;
   for (int i = 0; i < count; ++i) {
     if (gparts[i].type == swift_type_dark_matter) {
       sum_DM += gparts[i].mass;
@@ -880,6 +880,10 @@ void space_collect_sum_gpart_mass(void *restrict map_data, int count,
       sum_DM_background += gparts[i].mass;
       count_DM_background++;
     }
+    if (gparts[i].type == swift_type_neutrino) {
+      sum_nu += gparts[i].mass;
+      count_nu++;
+    }
   }
 
   /* Store back */
@@ -887,6 +891,8 @@ void space_collect_sum_gpart_mass(void *restrict map_data, int count,
   atomic_add(&s->initial_count_particles[1], count_DM);
   atomic_add_d(&s->initial_mean_mass_particles[2], sum_DM_background);
   atomic_add(&s->initial_count_particles[2], count_DM_background);
+  atomic_add_d(&s->initial_mean_mass_particles[6], sum_nu);
+  atomic_add(&s->initial_count_particles[6], count_nu);
 }
 
 void space_collect_sum_sink_mass(void *restrict map_data, int count,
@@ -1021,10 +1027,11 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, int periodic, int replicate,
-                int remap_ids, int generate_gas_in_ics, int hydro,
-                int self_gravity, int star_formation, int DM_background,
-                int neutrinos, int verbose, int dry_run, int nr_nodes) {
+                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
+                int replicate, int remap_ids, int generate_gas_in_ics,
+                int hydro, int self_gravity, int star_formation,
+                int DM_background, int neutrinos, int verbose, int dry_run,
+                int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1044,6 +1051,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->nr_sparts = Nspart;
   s->nr_bparts = Nbpart;
   s->nr_sinks = Nsink;
+  s->nr_nuparts = Nnupart;
   s->size_parts = Npart;
   s->size_gparts = Ngpart;
   s->size_sparts = Nspart;
@@ -1097,8 +1105,8 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background, dim,
-                       verbose);
+    space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background,
+                       neutrinos, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
     Npart = s->nr_parts;
@@ -1118,6 +1126,8 @@ void space_init(struct space *s, struct swift_params *params,
   if (replicate > 1) {
     if (DM_background)
       error("Can't replicate the space if background DM particles are in use.");
+    if (neutrinos)
+      error("Can't replicate the space if neutrino DM particles are in use.");
 
     space_replicate(s, replicate, verbose);
     parts = s->parts;
@@ -1636,7 +1646,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   }
   for (size_t i = 0; i < local_nr_dm; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background)
+        s->gparts[i].type == swift_type_dark_matter_background ||
+        s->gparts[i].type == swift_type_neutrino)
       s->gparts[i].id_or_neg_offset = offset_dm + i;
   }
 }
@@ -1663,7 +1674,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         const struct hydro_props *hydro_properties,
                         const int periodic, const int with_background,
-                        const double dim[3], const int verbose) {
+                        const int with_neutrinos, const double dim[3],
+                        const int verbose) {
 
   /* Check that this is a sensible ting to do */
   if (!s->with_hydro)
@@ -1700,21 +1712,28 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   const float splitting_mass_threshold =
       hydro_properties->particle_splitting_mass_threshold;
 
-  /* Start by counting the number of background and zoom DM particles */
+  /* Start by counting the number of background, neutrino & zoom DM particles */
   size_t nr_background_gparts = 0;
+  size_t nr_neutrino_gparts = 0;
   if (with_background) {
     for (size_t i = 0; i < current_nr_gparts; ++i)
       if (s->gparts[i].type == swift_type_dark_matter_background)
         ++nr_background_gparts;
   }
-  const size_t nr_zoom_gparts = current_nr_gparts - nr_background_gparts;
+  if (with_neutrinos) {
+    for (size_t i = 0; i < current_nr_gparts; ++i)
+      if (s->gparts[i].type == swift_type_neutrino) ++nr_neutrino_gparts;
+  }
+  const size_t nr_zoom_gparts =
+      current_nr_gparts - nr_background_gparts - nr_neutrino_gparts;
 
   if (nr_zoom_gparts == 0)
     error("Can't generate gas from ICs if there are no high res. particles");
 
   /* New particle counts after replication */
   s->size_parts = s->nr_parts = nr_zoom_gparts;
-  s->size_gparts = s->nr_gparts = 2 * nr_zoom_gparts + nr_background_gparts;
+  s->size_gparts = s->nr_gparts =
+      2 * nr_zoom_gparts + nr_background_gparts + nr_neutrino_gparts;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
@@ -1743,8 +1762,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   size_t j = 0;
   for (size_t i = 0; i < current_nr_gparts; ++i) {
 
-    /* For the background DM particles, just copy the data */
-    if (s->gparts[i].type == swift_type_dark_matter_background) {
+    /* For the background & neutrino DM particles, just copy the data */
+    if (s->gparts[i].type == swift_type_dark_matter_background ||
+        s->gparts[i].type == swift_type_neutrino) {
 
       memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
 
@@ -1890,7 +1910,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     if (fabs(Omega_sim - Omega_cosmo) > 1e-3)
       error(
           "The matter content of the simulation does not match the cosmology "
-          "in the parameter file cosmo.Omega_m=%e Omega_particles=%e. Are you"
+          "in the parameter file cosmo.Omega_m=%e Omega_particles=%e. Are you "
           "running with neutrinos? Then account for cosmo.Omega_nu_0=%e too.",
           cosmo->Omega_m, Omega_sim, cosmo->Omega_nu_0);
   }
@@ -1914,7 +1934,8 @@ long long space_get_max_parts_id(struct space *s) {
     max_id = max(max_id, s->bparts[i].id);
   for (size_t i = 0; i < s->nr_gparts; ++i)
     if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background)
+        s->gparts[i].type == swift_type_dark_matter_background ||
+        s->gparts[i].type == swift_type_neutrino)
       max_id = max(max_id, s->gparts[i].id_or_neg_offset);
   return max_id;
 }

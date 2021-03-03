@@ -734,6 +734,12 @@ void logger_reader_read_all_particles(struct logger_reader *reader, double time,
         reader, time, interp_type, global_fields_wanted, n_fields_wanted,
         output, n_part, swift_type_dark_matter_background);
   }
+  /* Read the neutrino dark matter. */
+  if (n_part[swift_type_neutrino] != 0) {
+    logger_reader_read_all_particles_single_type(
+        reader, time, interp_type, global_fields_wanted, n_fields_wanted,
+        output, n_part, swift_type_neutrino);
+  }
   /* Read the stars. */
   if (n_part[swift_type_stars] != 0) {
     logger_reader_read_all_particles_single_type(

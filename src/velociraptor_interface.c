@@ -334,15 +334,8 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
       } break;
 
       case swift_type_dark_matter:
-
-        convert_gpart_pos(e, &(gparts[i]), swift_parts[i].x);
-        convert_gpart_vel(e, &(gparts[i]), swift_parts[i].v);
-        swift_parts[i].id = gparts[i].id_or_neg_offset;
-        swift_parts[i].u = 0.f;
-        swift_parts[i].T = 0.f;
-        break;
-
       case swift_type_dark_matter_background:
+      case swift_type_neutrino:
 
         convert_gpart_pos(e, &(gparts[i]), swift_parts[i].x);
         convert_gpart_vel(e, &(gparts[i]), swift_parts[i].v);
@@ -592,12 +585,9 @@ void velociraptor_dump_orphan_particles(struct engine *e,
           convert_bpart_vel(e, bp, &vel[3 * offset]);
           ids[offset] = bparts[-gparts[i].id_or_neg_offset].id;
         } break;
-        case swift_type_dark_matter: {
-          convert_gpart_pos(e, &gparts[i], &pos[3 * offset]);
-          convert_gpart_vel(e, &gparts[i], &vel[3 * offset]);
-          ids[offset] = gparts[i].id_or_neg_offset;
-        } break;
-        case swift_type_dark_matter_background: {
+        case swift_type_dark_matter:
+        case swift_type_dark_matter_background:
+        case swift_type_neutrino: {
           convert_gpart_pos(e, &gparts[i], &pos[3 * offset]);
           convert_gpart_vel(e, &gparts[i], &vel[3 * offset]);
           ids[offset] = gparts[i].id_or_neg_offset;
