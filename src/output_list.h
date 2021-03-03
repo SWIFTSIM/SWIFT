@@ -99,7 +99,7 @@ void output_list_print(const struct output_list *output_list);
 void output_list_clean(struct output_list **output_list);
 void output_list_struct_dump(struct output_list *list, FILE *stream);
 void output_list_struct_restore(struct output_list *list, FILE *stream);
-int output_list_check_duplicates(const struct output_list *list_a,
-                                 const struct output_list *list_b);
+void output_list_check_selection(const struct output_list *list,
+                                 const struct output_options *output_options);
 
 #endif /* SWIFT_OUTPUT_LIST_H */

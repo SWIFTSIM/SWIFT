@@ -168,7 +168,8 @@ void output_list_read_file(struct output_list *output_list,
     found_select_output = 0;
     for (int i = 0; i < output_list->select_output_number_of_names; i++) {
 
-      if (!strcmp(select_output_buffer, output_list->select_output_names[i])) {
+      if (strcmp(select_output_buffer, output_list->select_output_names[i]) ==
+          0) {
         /* We already have this select output list string in the buffer! */
         output_list->select_output_indices[ind] = i;
         found_select_output = 1;
@@ -382,6 +383,29 @@ void output_list_init(struct output_list **list, const struct engine *e,
     *delta_time = (*list)->times[1] / (*list)->times[0];
   } else {
     *delta_time = (*list)->times[1] - (*list)->times[0];
+  }
+}
+
+/**
+ * @brief Verify that a given output list only contains output selections
+ * that have actually been read in.
+ *
+ * @param list the #output_list.
+ * @param output_options The #output_options we read in earlier.
+ */
+void output_list_check_selection(const struct output_list *list,
+                                 const struct output_options *output_options) {
+
+  for (size_t i = 0; i < list->size; ++i) {
+
+    const int list_id = list->select_output_indices[i];
+
+    const int selection_id = parser_get_section_id(
+        output_options->select_output, list->select_output_names[list_id]);
+
+    if (selection_id < 0)
+      error("Invalid output selection found in output list: '%s'",
+            list->select_output_names[list_id]);
   }
 }
 
