@@ -188,6 +188,10 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
 __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmpart *restrict dmp) {
     
     if (dmp->sidm_data.sidm_flag > 0) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        message("SIDM kick for dmpart %lld h=%e", dmp->id_or_neg_offset, dmp[k]->h);
+#endif
         
         /* Reverse recent half drift */
         dmp->x[0] -= dmp->v_full[0] * dmp->sidm_data.dt_drift / 2.f;

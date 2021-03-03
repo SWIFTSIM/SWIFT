@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
 /**
  * @brief Finishes the gravity calculation.
  *
- * Multiplies the forces and accelerations by the appropiate constants.
+ * Multiplies the forces and accelerations by the appropriate constants.
  * Applies cosmological correction for periodic BCs.
  *
  * No need to apply the potential normalisation correction for periodic
