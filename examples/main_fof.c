@@ -523,7 +523,7 @@ int main(int argc, char *argv[]) {
   N_total[swift_type_sink] = Nsink;
   N_total[swift_type_stars] = Nspart;
   N_total[swift_type_black_hole] = Nbpart;
-  N_long[swift_type_neutrino] = Nnupart;
+  N_total[swift_type_neutrino] = Nnupart;
   N_total[swift_type_count] = Ngpart;
 #endif
 
@@ -607,7 +607,7 @@ int main(int argc, char *argv[]) {
   N_total[swift_type_sink] = s.nr_sinks;
   N_total[swift_type_stars] = s.nr_sparts;
   N_total[swift_type_black_hole] = s.nr_bparts;
-  N_long[swift_type_neutrino] = s.nr_nuparts;
+  N_total[swift_type_neutrino] = s.nr_nuparts;
 #endif
 
   /* Say a few nice things about the space we just created. */
