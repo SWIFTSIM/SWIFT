@@ -126,6 +126,7 @@ enum task_subtypes {
   task_subtype_part_swallow,
   task_subtype_bpart_merger,
   task_subtype_gpart,
+  task_subtype_subgpart,
   task_subtype_multipole,
   task_subtype_spart,
   task_subtype_stars_density,
@@ -224,6 +225,10 @@ struct task {
 
   /*! MPI request corresponding to this task */
   MPI_Request req;
+
+  /* Sub task offset and size, multiples of particles not bytes. */
+  int offset;
+  int size;
 
 #endif
 

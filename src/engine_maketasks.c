@@ -93,8 +93,49 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
-      t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
-                                 ci->mpi.tag, 0, ci, cj);
+      //if (ci->grav.count > 128000 && ci->split) {
+      if (ci->grav.count > 8192 && ci->split) {
+
+        /* Split the work into a number of subtasks, limited to 8 to make it
+         * easy to keep track of the additional MPI tags.
+         *
+         * First we have a top-level task that the subtasks depend on. It is
+         * also the job of this task to do the final import of the complete
+         * data.
+         */
+        ci->grav.mpisplit = 1; // XXX should propate down cells for sub-cell
+                               // only activations.
+        t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
+                                   -1, 0, ci, cj);
+
+        /* Construct the subtasks setting the data limits for each transfer. */
+        int offset = 0;
+        int size = ci->grav.count / 8 + 1;
+        for (int k = 0; k < 8; k++) {
+          struct task *tc_grav = scheduler_addtask(s, task_type_send,
+                                                   task_subtype_subgpart,
+                                                   ci->mpi.tag + k, 0,
+                                                   ci, cj);
+          tc_grav->offset = offset;
+          if (offset + size > ci->grav.count) size = ci->grav.count - offset;
+          tc_grav->size = size;
+
+          /* Next chunk. */
+          offset += size;
+
+          /* We unlock the top send task and append to the link of subsends. */
+          scheduler_addunlock(s, tc_grav, t_grav);
+          engine_addlink(e, &ci->grav.subsend, tc_grav);
+
+          /* Like the main task make sure we drift before you send. */
+          scheduler_addunlock(s, ci->grav.super->grav.drift, tc_grav);
+        }
+
+      } else {
+        /* Normal single send. */
+        t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
+                                   ci->mpi.tag, 0, ci, cj);
+      }
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_gpart,
                                ci->mpi.tag, 0, ci, cj);
@@ -167,8 +208,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
-                               0, ci, cj);
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
+                               ci->mpi.tag, 0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 ci->mpi.tag, 0, ci, cj);
 
@@ -777,9 +818,41 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
 #endif  // SWIFT_DEBUG_CHECKS
 
-    /* Create the tasks. */
-    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
-                               c->mpi.tag, 0, c, NULL);
+    //if (c->grav.count > 128000 && c->split) {
+    if (c->grav.count > 8192 && c->split) {
+      
+      /* The work has been split into a number of send subtasks, limited to 8
+       * to make it easy to keep track of the additional MPI tags. Need to
+       * handle that.
+       */
+      c->grav.mpisplit = 1;
+      t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
+                                 -1, 0, c, NULL);
+
+      /* The sends will arrive in chunks, we need a task per chunk. */
+      int offset = 0;
+      int size = c->grav.count / 8 + 1;
+      for (int k = 0; k < 8; k++) {
+        struct task *tc_grav = scheduler_addtask(s, task_type_recv,
+                                                 task_subtype_subgpart,
+                                                 c->mpi.tag + k,
+                                                 0, c, NULL);
+        tc_grav->offset = offset;
+        if (offset + size > c->grav.count) size = c->grav.count - offset;
+        tc_grav->size = size;
+
+        /* Next chunk. */
+        offset += size;
+
+        engine_addlink(e, &c->grav.subrecv, tc_grav);
+        scheduler_addunlock(s, tc_grav, t_grav);
+      }
+
+    } else {
+      /* Normal recv task. */
+      t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
+                                 c->mpi.tag, 0, c, NULL);
+    }
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
                              c->mpi.tag, 0, c, NULL);

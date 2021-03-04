@@ -455,6 +455,8 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
+          } else if (t->subtype == task_subtype_subgpart) {
+            /* Do nothing. task_subtype_gpart does work. */
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {

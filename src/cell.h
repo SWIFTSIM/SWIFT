@@ -402,7 +402,7 @@ struct cell {
     /*! Size of the packed representation */
     int pcell_size;
 
-    /*! MPI tag associated with this cell */
+    /*! MPI tags associated with this cell */
     int tag;
 
   } mpi;
@@ -1011,7 +1011,7 @@ __attribute__((always_inline)) INLINE static void cell_ensure_tagged(
 
   lock_lock(&c->hydro.lock);
   if (c->mpi.tag < 0 &&
-      (c->mpi.tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
+      (c->mpi.tag = (10 * atomic_inc(&cell_next_tag))) > cell_max_tag)
     error("Ran out of cell tags.");
   if (lock_unlock(&c->hydro.lock) != 0) {
     error("Failed to unlock cell.");

@@ -2021,6 +2021,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
+        } else if (t->subtype == task_subtype_subgpart) {
+
+          count = t->size;
+          size = count * sizeof(struct gpart);
+          type = gpart_mpi_type;
+          buff = ((char *)t->ci->grav.parts) + (t->offset * sizeof(struct gpart));
+
         } else if (t->subtype == task_subtype_spart) {
 
           count = t->ci->stars.count;
@@ -2053,17 +2060,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
-                        subtaskMPI_comms[t->subtype], &t->req);
+        /* Don't activate sends with subsends, just use those for tidying up. */
+        if (t->flags != -1) {
+          err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
 
-        if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit irecv for particle data.");
+          if (err != MPI_SUCCESS) {
+            mpi_error(err, "Failed to emit irecv for particle data.");
+          }
+
+          /* And log, if logging enabled. */
+          mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
+                                t->ci->nodeID, t->flags);
         }
-
-        /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
-                              t->ci->nodeID, t->flags);
-
         qid = 1 % s->nr_queues;
       }
 #else
@@ -2138,6 +2147,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
+        } else if (t->subtype == task_subtype_subgpart) {
+
+          count = t->size;
+          size = count * sizeof(struct gpart);
+          type = gpart_mpi_type;
+          buff = ((char *)t->ci->grav.parts) + (t->offset * sizeof(struct gpart));
+
         } else if (t->subtype == task_subtype_spart) {
 
           count = t->ci->stars.count;
@@ -2172,21 +2188,25 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        if (size > s->mpi_message_limit) {
-          err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-        } else {
-          err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
-                           subtaskMPI_comms[t->subtype], &t->req);
-        }
+        /* Don't activate sends with subsends, just use those for tidying up. */
+        if (t->flags != -1) {
 
-        if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit isend for particle data.");
-        }
+          if (size > s->mpi_message_limit) {
+            err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
+                            subtaskMPI_comms[t->subtype], &t->req);
+          } else {
+            err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
+                             subtaskMPI_comms[t->subtype], &t->req);
+          }
 
-        /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
-                              t->cj->nodeID, t->flags);
+          if (err != MPI_SUCCESS) {
+            mpi_error(err, "Failed to emit isend for particle data.");
+          }
+          
+          /* And log, if logging enabled. */
+          mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
+                                t->cj->nodeID, t->flags);
+        }
 
         qid = 0;
       }
@@ -2350,7 +2370,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
-    if (res == NULL && qid > 1)
+    if (res == NULL && qid > 16)
 #else
     if (res == NULL)
 #endif

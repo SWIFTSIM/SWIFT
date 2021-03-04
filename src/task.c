@@ -130,6 +130,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "part_swallow",
     "bpart_merger",
     "gpart",
+    "subgpart",
     "multipole",
     "spart",
     "stars_density",
@@ -639,23 +640,26 @@ int task_lock(struct task *t) {
     case task_type_recv:
     case task_type_send:
 #ifdef WITH_MPI
-      /* Check the status of the MPI request. */
-      if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
-        char buff[MPI_MAX_ERROR_STRING];
-        int len;
-        MPI_Error_string(err, buff, &len);
-        error(
-            "Failed to test request on send/recv task (type=%s/%s tag=%lld, "
-            "%s).",
-            taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
-      }
+      if (t->flags != -1) {
+        /* Check the status of the MPI request. */
+        if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
+          char buff[MPI_MAX_ERROR_STRING];
+          int len;
+          MPI_Error_string(err, buff, &len);
+          error(
+                "Failed to test request on send/recv task (type=%s/%s tag=%lld, "
+                "%s).",
+                taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
+        }
+        
+        /* And log deactivation, if logging enabled. */
+        if (res) {
+          mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+        }
 
-      /* And log deactivation, if logging enabled. */
-      if (res) {
-        mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+        return res;
       }
-
-      return res;
+      return 1;
 #else
       error("SWIFT was not compiled with MPI support.");
 #endif

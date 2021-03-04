@@ -148,11 +148,38 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
        l = l->next)
     ;
+
   if (l == NULL) {
-    error("Missing link to send task.");
+    error("Missing link to send task (%s).", subtaskID_names[subtype]);
   }
+
   scheduler_activate(s, l->t);
   return l;
+}
+
+/**
+ * @brief Search and add any MPI send subtasks to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of interest.
+ * @param subtype the task subtype to activate.
+ * @param nodeID The nodeID of the foreign cell.
+ *
+ * @return 1 if any relevant subtasks are found.
+ */
+__attribute__((always_inline)) INLINE static int
+scheduler_activate_subsends(struct scheduler *s, struct link *link,
+                            enum task_subtypes subtype, int nodeID) {
+  struct link *l = NULL;
+  int found = 0;
+  for (l = link; l != NULL; l = l->next) {
+    if (l->t->cj->nodeID == nodeID && l->t->subtype == subtype) {
+      scheduler_activate(s, l->t);
+      message("activating subsends");
+      found = 1;
+    }
+  }
+  return found;
 }
 
 /**
@@ -176,6 +203,30 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
   }
   scheduler_activate(s, l->t);
   return l;
+}
+
+/**
+ * @brief Search and add any MPI recv subtasks to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of interest.
+ * @param subtype the task subtype to activate.
+ *
+ * @return 1 if any relevant subtasks are found.
+ */
+__attribute__((always_inline)) INLINE static int
+scheduler_activate_subrecvs(struct scheduler *s, struct link *link,
+                            enum task_subtypes subtype) {
+  struct link *l = NULL;
+  int found = 0;
+  for (l = link; l != NULL; l = l->next) {
+    if (l->t->subtype == subtype ) {
+      scheduler_activate(s, l->t);
+      //message("activating subrecvs");
+      found = 1;
+    }
+  }
+  return found;
 }
 
 /* Function prototypes. */
