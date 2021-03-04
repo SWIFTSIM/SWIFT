@@ -199,7 +199,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (with_self_gravity && gp->old_a_grav_norm == 0.f)
-    error("Old acceleration is 0!");
+    error("Old acceleration of %lld is 0!", gp->id_or_neg_offset);
 #endif
 
   /* Let's get physical... */
