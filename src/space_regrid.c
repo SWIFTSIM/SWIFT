@@ -318,7 +318,6 @@ void space_regrid(struct space *s, int verbose) {
           c->mpi.tag = -1;
           c->mpi.recv = NULL;
           c->mpi.send = NULL;
-          //c->grav.mpisplit = 0;
           c->grav.subsend = NULL;
           c->grav.subrecv = NULL;
 #endif  // WITH_MPI

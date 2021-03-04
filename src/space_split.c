@@ -248,7 +248,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       star_formation_logger_init(&cp->stars.sfh);
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
-      //c->grav.mpisplit = 0;
 #endif  // WITH_MPI
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cp->cellID = last_cell_id++;

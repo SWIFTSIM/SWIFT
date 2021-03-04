@@ -929,7 +929,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             struct link *l = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
             if (l->t->flags == -1) {
-            //if (ci->grav.mpisplit) { // XXX for sub-cells as well?
               scheduler_activate_subrecvs(s, ci->grav.subrecv,
                                           task_subtype_subgpart);
             }
@@ -945,7 +944,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                                      task_subtype_gpart,
                                                      ci_nodeID);
             if (l->t->flags == -1) {
-            //if (cj->grav.mpisplit) {
 
               /* Could be split, look for any subsends for this foreign cell. */
               scheduler_activate_subsends(s, cj->grav.subsend,
@@ -971,7 +969,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             struct link *l = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
 
             if (l->t->flags == -1) {
-              //if (cj->grav.mpisplit) {
               scheduler_activate_subrecvs(s, cj->grav.subrecv,
                                           task_subtype_subgpart);
             }
@@ -987,7 +984,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                                      task_subtype_gpart,
                                                      cj_nodeID);
             if (l->t->flags == -1) {
-              //if (ci->grav.mpisplit) {
               scheduler_activate_subsends(s, ci->grav.subsend,
                                           task_subtype_subgpart,
                                           cj_nodeID);

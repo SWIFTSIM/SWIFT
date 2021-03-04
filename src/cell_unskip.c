@@ -1675,7 +1675,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           struct link *ll = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
 
           if (ll->t->flags == -1) {
-            //if (ci->grav.mpisplit) {
             /* Look for any subtasks. */
             scheduler_activate_subrecvs(s, ci->grav.subrecv, task_subtype_subgpart);
           }
@@ -1692,7 +1691,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                                                    ci_nodeID);
           
           if (ll->t->flags == -1) {
-            //if (cj->grav.mpisplit) {
             scheduler_activate_subsends(s, cj->grav.subsend, task_subtype_subgpart, ci_nodeID);
           }
 
@@ -1712,7 +1710,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) {
           struct link *ll = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
           if (ll->t->flags == -1) {
-            //if (cj->grav.mpisplit) {
             scheduler_activate_subrecvs(s, cj->grav.subrecv, task_subtype_subgpart);
           }
         }
@@ -1728,7 +1725,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                                                    cj_nodeID);
 
           if (ll->t->flags == -1) {
-            //if (ci->grav.mpisplit) {
             scheduler_activate_subsends(s, ci->grav.subsend, task_subtype_subgpart, cj_nodeID);
           }
 
