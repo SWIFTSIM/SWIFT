@@ -1672,9 +1672,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+          struct link *ll = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
 
-          if (ci->grav.mpisplit) {
+          if (ll->t->flags == -1) {
+            //if (ci->grav.mpisplit) {
             /* Look for any subtasks. */
             scheduler_activate_subrecvs(s, ci->grav.subrecv, task_subtype_subgpart);
           }
@@ -1687,10 +1688,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
-                                  ci_nodeID);
-
-          if (cj->grav.mpisplit) {
+          struct link *ll = scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
+                                                   ci_nodeID);
+          
+          if (ll->t->flags == -1) {
+            //if (cj->grav.mpisplit) {
             scheduler_activate_subsends(s, cj->grav.subsend, task_subtype_subgpart, ci_nodeID);
           }
 
@@ -1708,8 +1710,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
-          if (cj->grav.mpisplit) {
+          struct link *ll = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+          if (ll->t->flags == -1) {
+            //if (cj->grav.mpisplit) {
             scheduler_activate_subrecvs(s, cj->grav.subrecv, task_subtype_subgpart);
           }
         }
@@ -1721,10 +1724,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
-                                  cj_nodeID);
+          struct link *ll = scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
+                                                   cj_nodeID);
 
-          if (ci->grav.mpisplit) {
+          if (ll->t->flags == -1) {
+            //if (ci->grav.mpisplit) {
             scheduler_activate_subsends(s, ci->grav.subsend, task_subtype_subgpart, cj_nodeID);
           }
 

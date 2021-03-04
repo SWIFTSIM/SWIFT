@@ -226,6 +226,7 @@ SUBTYPES = [
     "part_swallow",
     "bpart_merger",
     "gpart",
+    "subgpart",
     "multipole",
     "spart",
     "stars_density",

@@ -103,8 +103,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
          * also the job of this task to do the final import of the complete
          * data.
          */
-        ci->grav.mpisplit = 1; // XXX should propate down cells for sub-cell
-                               // only activations.
+        //ci->grav.mpisplit = 1; // XXX should propate down cells for sub-cell
+        //                       // only activations.
         t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                    -1, 0, ci, cj);
 
@@ -825,7 +825,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
        * to make it easy to keep track of the additional MPI tags. Need to
        * handle that.
        */
-      c->grav.mpisplit = 1;
+      //c->grav.mpisplit = 1;
       t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                  -1, 0, c, NULL);
 

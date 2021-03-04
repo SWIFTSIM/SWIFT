@@ -175,11 +175,14 @@ scheduler_activate_subsends(struct scheduler *s, struct link *link,
   for (l = link; l != NULL; l = l->next) {
     if (l->t->cj->nodeID == nodeID && l->t->subtype == subtype) {
       scheduler_activate(s, l->t);
-      message("activating subsends");
-      found = 1;
+      found++;
     }
   }
-  return found;
+  if (found > 0)
+    message("activated %d subsends", found);
+  else
+    message("not activating any subsends");
+  return (found > 0);
 }
 
 /**
@@ -222,11 +225,14 @@ scheduler_activate_subrecvs(struct scheduler *s, struct link *link,
   for (l = link; l != NULL; l = l->next) {
     if (l->t->subtype == subtype ) {
       scheduler_activate(s, l->t);
-      //message("activating subrecvs");
-      found = 1;
+      found++;
     }
   }
-  return found;
+  if (found > 0)
+    message("activated %d subrecvs", found);
+  else
+    message("not activating any subrecvs");
+  return (found > 0);
 }
 
 /* Function prototypes. */

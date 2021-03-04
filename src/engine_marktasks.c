@@ -927,8 +927,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_gravity) {
 
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
-            if (ci->grav.mpisplit) { // XXX for sub-cells as well?
+            struct link *l = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+            if (l->t->flags == -1) {
+            //if (ci->grav.mpisplit) { // XXX for sub-cells as well?
               scheduler_activate_subrecvs(s, ci->grav.subrecv,
                                           task_subtype_subgpart);
             }
@@ -943,7 +944,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             struct link *l = scheduler_activate_send(s, cj->mpi.send,
                                                      task_subtype_gpart,
                                                      ci_nodeID);
-            if (cj->grav.mpisplit) {
+            if (l->t->flags == -1) {
+            //if (cj->grav.mpisplit) {
 
               /* Could be split, look for any subsends for this foreign cell. */
               scheduler_activate_subsends(s, cj->grav.subsend,
@@ -966,9 +968,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_gravity) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+            struct link *l = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
 
-            if (cj->grav.mpisplit) {
+            if (l->t->flags == -1) {
+              //if (cj->grav.mpisplit) {
               scheduler_activate_subrecvs(s, cj->grav.subrecv,
                                           task_subtype_subgpart);
             }
@@ -983,7 +986,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             struct link *l = scheduler_activate_send(s, ci->mpi.send,
                                                      task_subtype_gpart,
                                                      cj_nodeID);
-            if (ci->grav.mpisplit) {
+            if (l->t->flags == -1) {
+              //if (ci->grav.mpisplit) {
               scheduler_activate_subsends(s, ci->grav.subsend,
                                           task_subtype_subgpart,
                                           cj_nodeID);

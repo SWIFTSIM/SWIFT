@@ -122,7 +122,6 @@ struct cell_grav {
 
 #ifdef WITH_MPI
   /*! Has split MPI subtasks. */
-  int mpisplit;
   struct link *subsend;
   struct link *subrecv;
 #endif
