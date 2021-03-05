@@ -21,6 +21,29 @@ def get_string_between(s: str, beg: str, end: str):
     return m[len(beg):-len(end)]
 
 
+def level_is_below(level1, level2):
+    if level1 == level2:
+        return True
+
+    if level1 is None or level2 is None:
+        return True
+
+    if level1 == "top":
+        return False
+
+    if level2 == "top":
+        return True
+
+    if level1 == "hydro.super":
+        return True
+
+    if level2 == "hydro.super" and (level1 == "top" or level1 == "super"):
+        return False
+
+    print(level1, level2)
+    raise Exception("Case not handled")
+
+
 class Task:
     """
     Class representing a single task along with its links.
@@ -58,14 +81,16 @@ class Task:
         Add a link for this task.
         """
         self.linked_from.append({"name": name,
-                                 "task_type": task_type})
+                                 "task_type": task_type,
+                                 "done": False})
 
     def add_link_to(self, name: str, task_type: str):
         """
         Add a link for this task.
         """
         self.link_to.append({"name": name,
-                             "task_type": task_type})
+                             "task_type": task_type,
+                             "done": False})
 
     def print_task(self):
         """
@@ -75,9 +100,11 @@ class Task:
             self.name, self.iact_type, self.active,
             self.level, self.link_to))
 
-    def write_if_condition(self, f: typing.TextIO, level: bool = True,
-                           policy: bool = True, task_type: bool = False,
-                           task_subtype: bool = False):
+    def write_if_condition(
+            self, f: typing.TextIO, level: bool = True,
+            policy: bool = True, task_type: bool = False,
+            task_subtype: bool = False, cell_contains: bool = False,
+            cell: str = "c"):
         """
         Write the if condition for this task.
         The conditions can be disabled if needed.
@@ -90,7 +117,8 @@ class Task:
         """
         if_condition = ""
         if self.level and level:
-            if_condition += "(c->%s == c) && " % self.level
+            if_condition += "({cell}->{level} == {cell}) && ".format(
+                cell=cell, level=self.level)
         if self.policy and policy:
             if_condition += "(e->policy & engine_policy_%s) && " % self.policy
         if task_type:
@@ -106,6 +134,9 @@ class Task:
 
             if_condition += "(t->subtype == task_subtype_%s) && " % \
                 task_subtype_name
+        if self.cell_contains and cell_contains:
+            if_condition += "({cell}->{contains}.count > 0) && ".format(
+                cell=cell, contains=self.cell_contains)
 
         if len(if_condition) == 0:
             return False
@@ -139,7 +170,7 @@ class Task:
             implicit=is_implicit)
 
         # Write the code inside a file
-        if_done = self.write_if_condition(f)
+        if_done = self.write_if_condition(f, cell_contains=True)
         code = "\t %s;\n" % creation
         if if_done:
             code += "};\n"
@@ -185,7 +216,8 @@ class Task:
         # Write the if condition
         write_policy = self.policy != link.policy
         if_done2 = link.write_if_condition(
-            f, level=False, policy=write_policy)
+            f, level=False, policy=write_policy, cell_contains=True,
+            cell="ci")
 
         # Generate the scheduler_addunlock
         unlock = "\t\tscheduler_addunlock(s, ci->{level1}{name1},"
@@ -221,7 +253,6 @@ class Task:
         after = "ci->{level}{name}".format(
             level=level, name=ref_tasks[t_aft.name]["variable"])
 
-
         # Write the task
         if_written = self.write_if_condition(
             f, level=False, policy=True, task_type=ref_tasks[t_bef.name]["type"])
@@ -232,6 +263,32 @@ class Task:
 
         if if_written:
             f.write("}\n")
+
+    def link_done(self, link_name, tasks, linked_from):
+        # TODO improve this
+        t2 = tasks[link_name]
+        if linked_from:
+            for l in self.linked_from:
+                if l["name"] == link_name:
+                    if l["done"] is True:
+                        raise Exception("Wrong")
+                    l["done"] = True
+            for l in t2.link_to:
+                if l["name"] == self.name:
+                    if l["done"] is True:
+                        raise Exception("Wrong")
+                    l["done"] = True
+        else:
+            for l in self.link_to:
+                if l["name"] == link_name:
+                    if l["done"] is True:
+                        raise Exception("Wrong")
+                    l["done"] = True
+            for l in t2.linked_from:
+                if l["name"] == self.name:
+                    if l["done"] is True:
+                        raise Exception("Wrong")
+                    l["done"] = True
 
     def write_maketask_extra_loop_single(
             self, f: typing.TextIO, tasks: dict):
@@ -247,7 +304,39 @@ class Task:
 
         # Write the initial if condition
         if_done = self.write_if_condition(
-            f, level=False, task_type=True)
+            f, level=False, task_type=True, cell_contains=True,
+            cell="ci")
+
+        # loop over all the links
+        for link in self.linked_from:
+            link_name = link["name"]
+
+            iact2 = tasks[link_name].iact_type
+
+            # Only link tasks that are not iact.
+            if iact2 == "iact" or iact2 == "splitted":
+                continue
+
+            # Ensure that the pointers are well defined
+            if not level_is_below(self.level, tasks[link_name].level):
+                continue
+
+            # Ensure that we have only 1 link
+            if link["done"]:
+                continue
+
+            write_policy = self.policy != tasks[link_name].policy
+            if2 = tasks[link_name].write_if_condition(
+                f, level=False, policy=write_policy, task_type=False,
+                task_subtype=False, cell_contains=True, cell="ci")
+
+            tasks[link_name].write_maketask_single_single(
+                f, self.name, tasks)
+
+            self.link_done(link_name, tasks, linked_from=True)
+
+            if if2:
+                f.write("};\n")
 
         # loop over all the links
         for link in self.link_to:
@@ -259,8 +348,26 @@ class Task:
             if iact2 == "iact" or iact2 == "splitted":
                 continue
 
+            # Ensure that the pointers are well defined
+            if not level_is_below(self.level, tasks[link_name].level):
+                continue
+
+            # Ensure that we have only 1 link
+            if link["done"]:
+                continue
+
+            write_policy = self.policy != tasks[link_name].policy
+            if2 = tasks[link_name].write_if_condition(
+                f, level=False, policy=write_policy, task_type=False,
+                task_subtype=False, cell_contains=True, cell="ci")
+
             self.write_maketask_single_single(
                 f, link_name, tasks)
+
+            self.link_done(link_name, tasks, linked_from=False)
+
+            if if2:
+                f.write("};\n")
 
         # Close parenthesis
         if if_done:
@@ -495,6 +602,18 @@ class Reader:
             e = line.rfind('"')
             self.name = line[s+1:e]
 
+    def extract_subtype(self, name, task_type=None):
+        if "sub_pair_" in name or "sub_self_" in name:
+            split = name.split("_")
+            name = "_".join(split[2:])
+            task_type = "_".join(split[:2])
+        elif "pair_" in name or "self_" in name:
+            split = name.split("_")
+            name = "_".join(split[1:])
+            task_type = "_".join(split[:1])
+
+        return name, task_type
+
     def read_link(self, line: str):
         """
         Read a line containing a link
@@ -508,16 +627,8 @@ class Reader:
         task_type = None
 
         # extract the task name
-        if "pair_" in names[0] or "self_" in names[0]:
-            split = names[0].split("_")
-            names[0] = split[-1]
-            task_type = "_".join(split[:-1])
-        if "pair_" in names[1] or "self_" in names[1]:
-            if task_type is not None:
-                raise Exception("Not implemented")
-            split = names[1].split("_")
-            names[1] = split[-1]
-            task_type = "_".join(split[:-1])
+        names[0], task_type = self.extract_subtype(names[0])
+        names[1], task_type = self.extract_subtype(names[1], task_type)
 
         self.tasks[names[0]].add_link_to(names[1], task_type=task_type)
         self.tasks[names[1]].add_linked_from(names[0], task_type=task_type)
@@ -542,14 +653,14 @@ class Reader:
         Write the code corresponding to the task system into a file.
         """
         with open(filename, "w") as f:
-            f.write("// Hierarchical taks\n")
-            for name in self.tasks:
-                self.tasks[name].write_maketask_definitions(f)
-
-            f.write("\n")
             f.write("// Recursions\n")
             for name in self.tasks:
                 self.tasks[name].write_maketask_recursions(f, self.tasks)
+
+            f.write("\n")
+            f.write("// Hierarchical taks\n")
+            for name in self.tasks:
+                self.tasks[name].write_maketask_definitions(f)
 
             f.write("\n")
             f.write("// Dependencies\n")
