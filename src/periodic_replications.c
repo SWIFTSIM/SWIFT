@@ -132,7 +132,7 @@ void replication_list_init(struct replication_list *replication_list,
 
   /* Now sort replications by minimum distance */
   qsort(replication_list->replication, 
-        (size_t) replication_list->replication, 
+        (size_t) replication_list->nrep, 
         sizeof(struct replication),
         compare_replication_rmin);
 }
