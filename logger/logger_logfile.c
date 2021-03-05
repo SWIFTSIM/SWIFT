@@ -211,7 +211,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
           (current_time - init_time) * (100. - current) / current;
 
       /* Print the remaining time */
-      tools_print_progress(current, remaining_time, "Checking the offsets");
+      tools_print_progress(current, remaining_time, "Reversing the offsets");
 
       /* Compute the next update of the progress */
       next_percentage += delta_percentage;
