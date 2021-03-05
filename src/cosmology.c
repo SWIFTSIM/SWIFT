@@ -73,7 +73,7 @@ static INLINE double interp_table(const double *table, const double x,
   /* Indicate that the whole array is aligned on boundaries */
   swift_align_information(double, table, SWIFT_STRUCT_ALIGNMENT);
 
-  if (ii <= 1)
+  if (ii < 1)
     return table[0] * xx;
   else
     return table[ii - 1] + (table[ii] - table[ii - 1]) * (xx - ii);
