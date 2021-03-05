@@ -51,6 +51,8 @@
 #include "./cooling/EAGLE/cooling.h"
 #elif defined(COOLING_COLIBRE)
 #include "./cooling/COLIBRE/cooling.h"
+#elif defined(COOLING_LAMBDA_T_TABLE)
+#include "./cooling/Lambda_T_table/cooling.h"
 #else
 #error "Invalid choice of cooling function."
 #endif

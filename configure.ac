@@ -1998,7 +1998,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, COLIBRE, Wiersma, Ploeckinger, grackle_*, Lambda-T-table default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2047,6 +2047,10 @@ case "$with_cooling" in
    Ploeckinger)
       AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
       with_cooling="COLIBRE (Ploeckinger+20 tables)"
+   ;;
+   Lambda-T-table)
+      AC_DEFINE([COOLING_LAMBDA_T_TABLE], [1], [Cooling following a tabulated Lambda(T) curve.])
+      with_cooling="Lambda-T table"
    ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
