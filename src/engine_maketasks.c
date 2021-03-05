@@ -93,8 +93,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
-      //if (ci->grav.count > 128000 && ci->split) {
-      if (ci->grav.count > 8192 && ci->split) {
+      if (ci->grav.count > 128000 && ci->split) {
 
         /* Split the work into a number of subtasks, limited to 8 to make it
          * easy to keep track of the additional MPI tags.
@@ -816,9 +815,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
 #endif  // SWIFT_DEBUG_CHECKS
 
-    //if (c->grav.count > 128000 && c->split) {
-    if (c->grav.count > 8192 && c->split) {
-      
+    if (c->grav.count > 128000 && c->split) {
+
       /* The work has been split into a number of send subtasks, limited to 8
        * to make it easy to keep track of the additional MPI tags. Need to
        * handle that.

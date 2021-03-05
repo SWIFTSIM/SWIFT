@@ -178,10 +178,10 @@ scheduler_activate_subsends(struct scheduler *s, struct link *link,
       found++;
     }
   }
-  if (found > 0)
-    message("activated %d subsends", found);
-  else
-    message("not activating any subsends");
+  //if (found > 0)
+  //  message("activated %d subsends", found);
+  //else
+  //  message("not activating any subsends");
   return (found > 0);
 }
 
@@ -228,10 +228,10 @@ scheduler_activate_subrecvs(struct scheduler *s, struct link *link,
       found++;
     }
   }
-  if (found > 0)
-    message("activated %d subrecvs", found);
-  else
-    message("not activating any subrecvs");
+  //if (found > 0)
+  //  message("activated %d subrecvs", found);
+  //else
+  //  message("not activating any subrecvs");
   return (found > 0);
 }
 
