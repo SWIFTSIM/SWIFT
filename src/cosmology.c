@@ -572,7 +572,6 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Retrieve some constants */
   const double a_begin = c->a_begin;
-  const double a_end = c->a_end;
 
   /* Allocate memory for the interpolation tables */
   if (swift_memalign("cosmo.table", (void **)&c->drift_fac_interp_table,
@@ -678,19 +677,19 @@ void cosmology_init_tables(struct cosmology *c) {
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->universe_age_at_present_day = result;
 
-  /* Integrate the comoving distance \int_{a_table[i]}^{a_end} c dt/a */
+  /* Integrate the comoving distance \int_{a_begin}^{a_table[i]} c dt/a */
   F.function = &comoving_distance_integrand;
   for (int i = 0; i < cosmology_table_length; i++) {
-    gsl_integration_qag(&F, a_table[i], a_end, 0, 1.0e-10, GSL_workspace_size,
+    gsl_integration_qag(&F, a_begin, a_table[i], 0, 1.0e-10, GSL_workspace_size,
                         GSL_INTEG_GAUSS61, space, &result, &abserr);
 
     /* Store result */
     c->comoving_distance_interp_table[i] = result;
   }
 
-  /* Integrate the comoving distance \int_{a_end}^{1.0} c dt/a */
+  /* Integrate the comoving distance \int_{a_begin}^{1.0} c dt/a */
   F.function = &comoving_distance_integrand;
-  gsl_integration_qag(&F, a_end, 1.0, 0, 1.0e-10, GSL_workspace_size,
+  gsl_integration_qag(&F, a_begin, 1.0, 0, 1.0e-10, GSL_workspace_size,
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->comoving_distance_interp_table_offset = result;
 
@@ -1202,12 +1201,12 @@ double cosmology_get_comoving_distance(const struct cosmology *c,
 
   const double log_a = log(a);
 
-  /* Distance from a to a_end */
+  /* Comoving distance from a_begin to a */
   const double dist = interp_table(c->comoving_distance_interp_table, log_a,
                                    c->log_a_begin, c->log_a_end);
 
-  /* Add distance from a_end to a=1 */
-  return dist+c->comoving_distance_interp_table_offset;
+  /* Subtract dist from comoving distance from a_begin to a=1 */
+  return c->comoving_distance_interp_table_offset - dist;
 }
 
 
