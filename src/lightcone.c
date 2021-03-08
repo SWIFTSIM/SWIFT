@@ -249,8 +249,10 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
   const double a_end   = c->a_begin * exp(ti_old * c->time_base + dt_drift);
 
   /* Find comoving distance to these expansion factors */
-  const double comoving_dist_2_start = pow(cosmology_get_comoving_distance(c, a_start), 2.0);
-  const double comoving_dist_2_end   = pow(cosmology_get_comoving_distance(c, a_end), 2.0);
+  const double comoving_dist_start   = cosmology_get_comoving_distance(c, a_start);
+  const double comoving_dist_2_start = comoving_dist_start*comoving_dist_start;
+  const double comoving_dist_end     = cosmology_get_comoving_distance(c, a_end);
+  const double comoving_dist_2_end   = comoving_dist_end*comoving_dist_end;
 
   /* Thickness of the 'shell' between the lightcone surfaces at start and end of drift.
      We use this as a limit on how far a particle can drift (i.e. assume v < c).*/
@@ -316,10 +318,48 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
        it didn't cross*/
     if(r2_end < comoving_dist_2_end)continue;
 
-    /* This periodic copy of the gpart crossed the lightcone during this drift */
+    /* This periodic copy of the gpart crossed the lightcone during this drift.
+       Now need to estimate when it crossed within the timestep.
+
+       If r is the distance from the observer to this periodic copy of the particle,
+       and it crosses after a fraction f of the drift:
+
+       r_cross = r_start + (r_end - r_start) * f
+
+       and if R is the comoving distance to the lightcone surface
+
+       R_cross = R_start + (R_end - R_start) * f
+
+       The particle crosses the lightcone when r_cross = R_cross, so
+
+       r_start + (r_end - r_start) * f = R_start + (R_end - R_start) * f
+
+       Solving for f:
+
+       f = (r_start - R_start) / (R_end - R_start - r_end + r_start)
+
+    */
+    const double f = (sqrt(r2_start) - comoving_dist_start) /
+      (comoving_dist_end-comoving_dist_start-sqrt(r2_end)+sqrt(r2_start));
+
+    /* f should always be in the range 0-1 */
+    const double eps = 1.0e-5;
+    if((f < eps) || (f > 1.0+eps)) error("Particle interpolated outside time step!");
+
+    /* Compute expansion factor at crossing */
+    const double a_cross = c->a_begin * exp(ti_old * c->time_base + f * dt_drift);
+    
+    /* Compute position at crossing */
+    const double x_cross[3] = {
+      x_start[0] + dt_drift * f * gp->v_full[0],
+      x_start[1] + dt_drift * f * gp->v_full[1],
+      x_start[2] + dt_drift * f * gp->v_full[2],
+    };
+
     /* For testing: here we write out the initial coordinates to a text file */
     lock_lock(&io_lock);
-    fprintf(fd, "%16.8e, %16.8e, %16.8e\n", x_start[0], x_start[1], x_start[2]);
+    fprintf(fd, "%16.8e, %16.8e, %16.8e, %16.8e\n",
+            a_cross, x_cross[0], x_cross[1], x_cross[2]);
     lock_unlock(&io_lock);
 
   } /* Next periodic replication*/
