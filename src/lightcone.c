@@ -101,6 +101,33 @@ void lightcone_init(struct lightcone_props *props,
   parser_get_param_double_array(params, "Lightcone:observer_position", 3,
                                 props->observer_position);
 
+  /* Whether we're doing a pencil beam */
+  props->pencil_beam = parser_get_opt_param_int(params, "Lightcone:pencil_beam", 0);
+  
+  /* Direction of the pencil beam */
+  for(int i=0; i<3; i+=1)
+    props->view_vector[i] = 0.0;
+  parser_get_opt_param_double_array(params, "Lightcone:view_vector", 3, props->view_vector);
+  
+  /* Radius of the pencil beam (radians) */
+  props->view_radius = parser_get_opt_param_double(params, "Lightcone:view_radius", 0.0);
+
+  if(props->pencil_beam) {
+
+    /* Normalize the view vector */
+    double dr2 = 0.0;
+    for(int i=0; i<3; i+=1)
+      dr2 += props->view_vector[i] * props->view_vector[i];
+    if(dr2==0.0)error("Must specify non-zero Lightcone:view_vector if Lightcone:pencil_beam != 0");
+    for(int i=0; i<3; i+=1)
+      props->view_vector[i] /= sqrt(dr2);
+
+    /* Sanity check on radius */
+    if((props->view_radius <= 0.0) || (props->view_radius >= 0.5*M_PI))
+      error("Must have 0 < Lightcone:view_radius < pi/2 radians");
+
+  }
+
   /* Get the size of the simulation box */
   props->boxsize = s->dim[0];
   if(s->dim[1] != s->dim[0] || s->dim[2] != s->dim[0])
@@ -356,10 +383,33 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
       x_start[2] + dt_drift * f * gp->v_full[2],
     };
 
+    /* Check if the particle is in the field of view */
+    if(props->pencil_beam) {
+      
+      /* Get distance to the particle at time of crossing */
+      double r_cross = 0;
+      for(i=0; i<3; i+=1)      
+        r_cross += x_cross[i]*x_cross[i];
+      r_cross = sqrt(r_cross);
+
+      /* Find dot product of view vector and particle position at crossing */
+      double dp = 0.0;
+      for(i=0; i<3; i+=1)
+        dp += x_cross[i]*props->view_vector[i];
+      
+      /* Find angle between line of sight and particle position (assuming view_vector is normalized) */
+      double theta = acos(dp/r_cross);
+
+      /* If particle is outside view radius at crossing, don't output it */
+      if(theta > props->view_radius)continue;
+
+    }
+
     /* For testing: here we write out the initial coordinates to a text file */
     lock_lock(&io_lock);
-    fprintf(fd, "%16.8e, %16.8e, %16.8e, %16.8e\n",
-            a_cross, x_cross[0], x_cross[1], x_cross[2]);
+    fprintf(fd, "%12lld, %14.6e, %14.6e, %14.6e, %14.6e\n",
+            gp->id_or_neg_offset, a_cross,
+            x_cross[0], x_cross[1], x_cross[2]);
     lock_unlock(&io_lock);
 
   } /* Next periodic replication*/

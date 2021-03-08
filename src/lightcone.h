@@ -48,6 +48,15 @@ struct lightcone_props {
   /*! Redshift range the lightcone covers */
   double z_min, z_max;
 
+  /*! Whether we're doing a pencil beam */
+  int pencil_beam;
+
+  /*! Vector along the pencil beam */
+  double view_vector[3];
+
+  /*! Radius of the pencil beam in radians */
+  double view_radius;
+
   /*! Simulation box size (volume must be a cube) */
   double boxsize;
 
