@@ -344,7 +344,7 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     /* f should always be in the range 0-1 */
     const double eps = 1.0e-5;
-    if((f < eps) || (f > 1.0+eps)) error("Particle interpolated outside time step!");
+    if((f < 0.0-eps) || (f > 1.0+eps)) error("Particle interpolated outside time step!");
 
     /* Compute expansion factor at crossing */
     const double a_cross = c->a_begin * exp(ti_old * c->time_base + f * dt_drift);
