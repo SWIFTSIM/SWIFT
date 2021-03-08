@@ -133,6 +133,10 @@ void lightcone_init(struct lightcone_props *props,
   if(s->dim[1] != s->dim[0] || s->dim[2] != s->dim[0])
     error("Lightcones require a cubic simulation box.");
 
+  /* Store expansion factors at z_min, z_max */
+  props->a_at_z_min = 1.0/(1.0+props->z_min);
+  props->a_at_z_max = 1.0/(1.0+props->z_max);
+
   /* Initially have no replication list */
   props->have_replication_list = 0;
   props->ti_old = 0;
@@ -149,10 +153,13 @@ void lightcone_init(struct lightcone_props *props,
   lock_init(&io_lock);
   char fname[500];
   sprintf(fname, "lightcone.%d.txt", myrank);
-  if(restart)
+  if(restart) {
     fd = fopen(fname, "a"); // FIXME: will duplicate particles if we crashed!
-  else
+  } else {
     fd = fopen(fname, "w");
+    fprintf(fd, "%s\n", "# ID, a, x, y, z");
+  }
+
 }
 
 
@@ -228,16 +235,16 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   double lightcone_rmin = cosmology_get_comoving_distance(cosmo, a_current);
   double lightcone_rmax = cosmology_get_comoving_distance(cosmo, a_old);
   if(lightcone_rmin > lightcone_rmax)
-    error("Lightcone has rmin > rmax - check z_min and z_max parameters?");
+    error("Lightcone has rmin > rmax");
 
   /* Allow inner boundary layer, assuming all particles have v < c.
      This is to account for particles moving during the time step. */
-  lightcone_rmin -= (lightcone_rmax-lightcone_rmin);
+  double boundary = lightcone_rmax-lightcone_rmin;
 
   /* Determine periodic copies we need to search */
   replication_list_init(&props->replication_list, boxsize,
                         props->observer_position,
-                        lightcone_rmin, lightcone_rmax);
+                        lightcone_rmin-boundary, lightcone_rmax);
 
   /* Record that we made the list */
   props->have_replication_list = 1;
@@ -274,6 +281,9 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
   /* Determine expansion factor at start and end of the drift */
   const double a_start = c->a_begin * exp(ti_old * c->time_base);
   const double a_end   = c->a_begin * exp(ti_old * c->time_base + dt_drift);
+
+  /* Does this drift overlap the lightcone redshift range? If not, nothing to do. */
+  if((a_start > props->a_at_z_min) || (a_end < props->a_at_z_max))return;
 
   /* Find comoving distance to these expansion factors */
   const double comoving_dist_start   = cosmology_get_comoving_distance(c, a_start);
@@ -405,7 +415,7 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     }
 
-    /* For testing: here we write out the initial coordinates to a text file */
+    /* For testing: here we write out the coordinates to a text file */
     lock_lock(&io_lock);
     fprintf(fd, "%12lld, %14.6e, %14.6e, %14.6e, %14.6e\n",
             gp->id_or_neg_offset, a_cross,

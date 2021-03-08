@@ -78,6 +78,9 @@ struct lightcone_props {
   /*! Range of times used to generate the replication list */
   integertime_t ti_old, ti_current;
 
+  /*! Expansion factors corresponding to z_min, z_max */
+  double a_at_z_min, a_at_z_max;
+
 };
 
 void lightcone_init(struct lightcone_props *props,
