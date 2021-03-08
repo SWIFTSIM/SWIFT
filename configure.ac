@@ -357,8 +357,8 @@ AC_ARG_ENABLE([naive-interactions-rt],
    [AS_HELP_STRING([--enable-naive-interactions-rt],
      [Activate use of naive cell interaction functions for stars in RT tasks@<:@yes/no@:>@]
    )],
-   [enable_naive_interactions_stars="$enableval"],
-   [enable_naive_interactions_stars="no"]
+   [enable_naive_interactions_rt="$enableval"],
+   [enable_naive_interactions_rt="no"]
 )
 if test "$enable_naive_interactions_rt" = "yes"; then
    AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_RT],1,[Enable use of naive cell interaction functions for stars in RT tasks])
