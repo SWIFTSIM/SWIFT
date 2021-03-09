@@ -730,13 +730,16 @@ float cooling_get_particle_subgrid_HI_fraction(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  /* Get the EOS temperature from the entropy floor */
-  const float T_EOS = entropy_floor_temperature(p, cosmo, floor_props);
-  const float log10_T_EOS_max =
-      log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Limit imposed by the entropy floor */
+  const double A_EOS = entropy_floor(p, cosmo, floor_props);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
+
+  const float log10_u_EOS_max_cgs =
+      log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
   /* Get the total metallicity in units of solar */
   float abundance_ratio[colibre_cooling_N_elementtypes];
@@ -763,7 +766,7 @@ float cooling_get_particle_subgrid_HI_fraction(
 
   return compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10_T, log10_u_EOS_max_cgs, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
       cooling_compute_subgrid_HI_fraction);
 }
@@ -791,13 +794,16 @@ float cooling_get_particle_subgrid_HII_fraction(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  /* Get the EOS temperature from the entropy floor */
-  const float T_EOS = entropy_floor_temperature(p, cosmo, floor_props);
-  const float log10_T_EOS_max =
-      log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Limit imposed by the entropy floor */
+  const double A_EOS = entropy_floor(p, cosmo, floor_props);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
+
+  const float log10_u_EOS_max_cgs =
+      log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
   /* Get the total metallicity in units of solar */
   float abundance_ratio[colibre_cooling_N_elementtypes];
@@ -824,7 +830,7 @@ float cooling_get_particle_subgrid_HII_fraction(
 
   return compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10_T, log10_u_EOS_max_cgs, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
       cooling_compute_subgrid_HII_fraction);
 }
@@ -852,13 +858,16 @@ float cooling_get_particle_subgrid_H2_fraction(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  /* Get the EOS temperature from the entropy floor */
-  const float T_EOS = entropy_floor_temperature(p, cosmo, floor_props);
-  const float log10_T_EOS_max =
-      log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Limit imposed by the entropy floor */
+  const double A_EOS = entropy_floor(p, cosmo, floor_props);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
+
+  const float log10_u_EOS_max_cgs =
+      log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
   /* Get the total metallicity in units of solar */
   float abundance_ratio[colibre_cooling_N_elementtypes];
@@ -885,7 +894,7 @@ float cooling_get_particle_subgrid_H2_fraction(
 
   return compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10_T, log10_u_EOS_max_cgs, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
       cooling_compute_subgrid_H2_fraction);
 }
@@ -912,13 +921,16 @@ float cooling_get_particle_subgrid_temperature(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  /* Get the EOS temperature from the entropy floor */
-  const float T_EOS = entropy_floor_temperature(p, cosmo, floor_props);
-  const float log10_T_EOS_max =
-      log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Limit imposed by the entropy floor */
+  const double A_EOS = entropy_floor(p, cosmo, floor_props);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
+
+  const float log10_u_EOS_max_cgs =
+      log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
   /* Get the total metallicity in units of solar */
   float abundance_ratio[colibre_cooling_N_elementtypes];
@@ -945,7 +957,7 @@ float cooling_get_particle_subgrid_temperature(
 
   return compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max, HII_region, abundance_ratio,
+      log10_T, log10_u_EOS_max_cgs, HII_region, abundance_ratio,
       log10(u_phys * cooling->internal_energy_to_cgs),
       cooling_compute_subgrid_temperature);
 }
@@ -974,13 +986,16 @@ float cooling_get_particle_subgrid_density(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  /* Get the EOS temperature from the entropy floor */
-  const float T_EOS = entropy_floor_temperature(p, cosmo, floor_props);
-  const float log10_T_EOS_max =
-      log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Limit imposed by the entropy floor */
+  const double A_EOS = entropy_floor(p, cosmo, floor_props);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
+
+  const float log10_u_EOS_max_cgs =
+      log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
   /* Get the total metallicity in units of solar */
   float abundance_ratio[colibre_cooling_N_elementtypes];
@@ -1007,7 +1022,7 @@ float cooling_get_particle_subgrid_density(
 
   return compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_0_cgs),
+      log10_T, log10_u_EOS_max_cgs, HII_region, abundance_ratio, log10(u_0_cgs),
       cooling_compute_subgrid_density);
 }
 
@@ -1030,13 +1045,16 @@ void cooling_set_particle_subgrid_properties(
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp) {
 
-  /* Get the EOS temperature from the entropy floor */
-  const float T_EOS = entropy_floor_temperature(p, cosmo, floor_props);
-  const float log10_T_EOS_max =
-      log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
-
   /* Physical density of this particle */
   const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Limit imposed by the entropy floor */
+  const double A_EOS = entropy_floor(p, cosmo, floor_props);
+  const double u_EOS = gas_internal_energy_from_entropy(rho_phys, A_EOS);
+  const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
+
+  const float log10_u_EOS_max_cgs =
+      log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
   /* Get the total metallicity in units of solar */
   float abundance_ratio[colibre_cooling_N_elementtypes];
@@ -1064,12 +1082,12 @@ void cooling_set_particle_subgrid_properties(
 
   p->cooling_data.subgrid_temp = compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_cgs),
+      log10_T, log10_u_EOS_max_cgs, HII_region, abundance_ratio, log10(u_cgs),
       cooling_compute_subgrid_temperature);
 
   p->cooling_data.subgrid_dens = compute_subgrid_property(
       cooling, phys_const, floor_props, cosmo, rho_phys, logZZsol, XH, P_phys,
-      log10_T, log10_T_EOS_max, HII_region, abundance_ratio, log10(u_cgs),
+      log10_T, log10_u_EOS_max_cgs, HII_region, abundance_ratio, log10(u_cgs),
       cooling_compute_subgrid_density);
 }
 

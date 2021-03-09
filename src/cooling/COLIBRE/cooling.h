@@ -130,7 +130,7 @@ double compute_subgrid_property(
     const struct entropy_floor_properties *floor_props,
     const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
     const float XH, const float P_phys, const float log10_T,
-    const float log10_T_EOS_max, const int HII_region,
+    const float log10_u_EOS_max_cgs, const int HII_region,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const double log_u_cgs, const enum cooling_subgrid_properties isub);
 

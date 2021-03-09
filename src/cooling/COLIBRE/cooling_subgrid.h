@@ -170,7 +170,7 @@ double get_thermal_equilibrium_pressure(
  * @param XH The Hydrogen abundance of the gas.
  * @param P_phys Pressure of the gas in internal physical units.
  * @param log10_T The logarithm base 10 of the temperature of the gas.
- * @param log10_T_EOS_max The logarithm base 10 of the maximal temperature
+ * @param log10_u_EOS_max_cgs The logarithm base 10 of the maximal energy in cgs
  * to be considered on the EOS at the density of the gas.
  * @param HII_region Is this patch of gas in an HII region?
  * @param abundance_ratio element abundance ratio of gas particle
@@ -183,7 +183,7 @@ double compute_subgrid_property(
     const struct entropy_floor_properties *floor_props,
     const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
     const float XH, const float P_phys, const float log10_T,
-    const float log10_T_EOS_max, const int HII_region,
+    const float log10_u_EOS_max_cgs, const int HII_region,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const double log_u_cgs, const enum cooling_subgrid_properties isub) {
 
@@ -280,7 +280,7 @@ double compute_subgrid_property(
 
   /* Return case 1:
    * Particle is above the equation of state, nothing to be done */
-  if (log10_T >= log10_T_EOS_max) {
+  if (log_u_cgs >= log10_u_EOS_max_cgs) {
     return standard_return;
   }
 
