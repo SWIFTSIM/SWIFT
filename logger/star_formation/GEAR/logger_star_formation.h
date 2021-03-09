@@ -24,6 +24,7 @@
 /* local includes */
 #include "logger_interpolation.h"
 #include "logger_loader_io.h"
+#include "logger_parameters.h"
 #include "logger_python_tools.h"
 #include "star_formation_particle_logger.h"
 
@@ -58,12 +59,14 @@ star_formation_logger_reader_link_derivatives(struct header *head) {}
  * @param t Requested time.
  * @param field The field to reconstruct (follows the order of
  * #star_formation_logger_fields).
+ * @param params The simulation's #logger_parameters.
  */
 __attribute__((always_inline)) INLINE static void
 star_formation_logger_interpolate_field(
     const double t_before, const struct logger_field *restrict before,
     const double t_after, const struct logger_field *restrict after,
-    void *restrict output, const double t, const int field) {
+    void *restrict output, const double t, const int field,
+    const struct logger_parameters *params) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the times */
@@ -78,7 +81,7 @@ star_formation_logger_interpolate_field(
   switch (field) {
     case star_formation_logger_field_all:
       interpolate_linear_float_ND(t_before, before, t_after, after, output, t,
-                                  /* Dimension */ 2);
+                                  /* Dimension */ 2, /* periodic= */ 0, params);
 
       /* Deal with the progenitor id */
       long long *proj_id =
