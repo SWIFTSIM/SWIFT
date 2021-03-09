@@ -1144,7 +1144,10 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
         bp->reposition.delta_x[1] *= repos_frac;
         bp->reposition.delta_x[2] *= repos_frac;
       }
-    } /* ends section for fractional repositioning */ else {
+
+      /* ends section for fractional repositioning */
+    } else {
+
       /* We _should_ reposition, but not fractionally. Here, we will
        * reposition exactly on top of another gas particle - which
        * could cause issues, so we add on a small fractional offset
