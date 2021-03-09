@@ -382,7 +382,8 @@ void engine_config(int restart, int fof, struct engine *e,
     char *hostnames = NULL;
 
     if (nodeID == 0) {
-      hostnames = calloc(nr_nodes * hostname_buffer_length, sizeof(char));
+      hostnames =
+          (char *)calloc(nr_nodes * hostname_buffer_length, sizeof(char));
       if (hostnames == NULL)
         error("Failed to allocate memory for hostname list");
     }
