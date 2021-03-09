@@ -50,6 +50,7 @@
 #include "logger_index.h"
 #include "logger_loader_io.h"
 #include "logger_logfile.h"
+#include "logger_parameters.h"
 #include "logger_particle.h"
 
 /**
@@ -100,6 +101,9 @@ struct logger_reader {
     /* Index of the element in the time array */
     size_t index;
   } time;
+
+  /* Information from the yaml file */
+  struct logger_parameters params;
 
   /* Level of verbosity. */
   int verbose;

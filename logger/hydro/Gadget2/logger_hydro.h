@@ -25,6 +25,7 @@
 #include "hydro_logger.h"
 #include "logger_interpolation.h"
 #include "logger_loader_io.h"
+#include "logger_parameters.h"
 #include "logger_python_tools.h"
 
 /* Index of the mask in the header mask array */
@@ -72,6 +73,7 @@ hydro_logger_reader_link_derivatives(struct header *head) {
  * @param t Requested time.
  * @param field The field to reconstruct (follows the order of
  * #hydro_logger_fields).
+ * @param params The simulation's #logger_parameters.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_logger_interpolate_field(const double t_before,
@@ -79,7 +81,8 @@ hydro_logger_interpolate_field(const double t_before,
                                const double t_after,
                                const struct logger_field *restrict after,
                                void *restrict output, const double t,
-                               const int field) {
+                               const int field,
+                               const struct logger_parameters *params) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the times */
@@ -95,23 +98,25 @@ hydro_logger_interpolate_field(const double t_before,
     /* Do the position */
     case hydro_logger_field_coordinates:
       interpolate_quintic_double_float_ND(t_before, before, t_after, after,
-                                          output, t, /* dimesion= */ 3);
+                                          output, t, /* dimesion= */ 3,
+                                          params->periodic, params);
       break;
       /* Do the velocity */
     case hydro_logger_field_velocities:
       interpolate_cubic_float_ND(t_before, before, t_after, after, output, t,
-                                 /* dimesion= */ 3);
+                                 /* dimesion= */ 3, /* periodic= */ 0, params);
       break;
     case hydro_logger_field_accelerations:
       interpolate_linear_float_ND(t_before, before, t_after, after, output, t,
-                                  /* dimesion= */ 3);
+                                  /* dimesion= */ 3, /* periodic= */ 0, params);
       break;
       /* Do the linear interpolation of float. */
     case hydro_logger_field_smoothing_lengths:
     case hydro_logger_field_entropies:
     case hydro_logger_field_densities:
     case hydro_logger_field_masses:
-      interpolate_linear_float(t_before, before, t_after, after, output, t);
+      interpolate_linear_float(t_before, before, t_after, after, output, t,
+                               /* periodic= */ 0, params);
       break;
       /* Check the ids */
     case hydro_logger_field_particle_ids:
