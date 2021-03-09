@@ -642,6 +642,10 @@ EAGLEAGN:
 DefaultSink:
     cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
 
+# GEAR sink particles
+GEARSink:
+    cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+
 # Parameters related to radiative transfer ---------------------------------------
 
 # Debugging/Development RT scheme

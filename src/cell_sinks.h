@@ -45,6 +45,9 @@ struct cell_sinks {
     /*! Linked list of the tasks computing this cell's sink formation checks. */
     struct link *compute_formation;
 
+    /*! Linked list of the tasks computing this cell's sink accretion. */
+    struct link *accretion;
+
     /*! Linked list of the tasks computing this cell's sink merger. */
     struct link *merger;
 
@@ -53,6 +56,9 @@ struct cell_sinks {
 
     /*! Implicit tasks marking the entry of the sink block of tasks */
     struct task *sink_in;
+
+    /*! Implicit tasks marking the separation between merger and accretion */
+    struct task *ghost;
 
     /*! Implicit tasks marking the exit of the sink block of tasks */
     struct task *sink_out;

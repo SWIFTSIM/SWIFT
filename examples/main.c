@@ -597,6 +597,12 @@ int main(int argc, char *argv[]) {
 #endif
 #endif /* idfef RT_NONE */
 
+#ifdef SINK_NONE
+  if (with_sink) {
+    error("Running with sink particles but compiled without them!");
+  }
+#endif
+
 /* Let's pin the main thread, now we know if affinity will be used. */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   if (with_aff &&

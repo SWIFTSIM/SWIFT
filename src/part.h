@@ -125,6 +125,8 @@ struct threadpool;
 /* Import the right sink particle definition */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_part.h"
+#elif defined(SINK_GEAR)
+#include "./sink/GEAR/sink_part.h"
 #else
 #error "Invalid choice of sink particle"
 #endif

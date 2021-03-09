@@ -39,6 +39,9 @@ enum sink_merger_remove {
 #if defined(SINK_NONE)
 #include "./sink/Default/sink.h"
 #include "./sink/Default/sink_iact.h"
+#elif defined(SINK_GEAR)
+#include "./sink/GEAR/sink.h"
+#include "./sink/GEAR/sink_iact.h"
 #else
 #error "Invalid choice of sink model"
 #endif
