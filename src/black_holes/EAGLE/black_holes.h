@@ -1175,8 +1175,8 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
       const float norm = 0.001f * bp->h * length_inv;
 
       bp->reposition.delta_x[0] += offset_dx * norm;
-      bp->reposition.delta_y[0] += offset_dy * norm;
-      bp->reposition.delta_z[0] += offset_dz * norm;
+      bp->reposition.delta_x[1] += offset_dy * norm;
+      bp->reposition.delta_x[2] += offset_dz * norm;
     }
   } /* ends section if we found eligible repositioning target(s) */
 }
