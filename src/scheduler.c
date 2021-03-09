@@ -2068,6 +2068,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_part_prep1 ||
                    t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
@@ -2082,7 +2083,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
-        } else if (t->subtype == task_subtype_spart) {
+        } else if (t->subtype == task_subtype_spart_density ||
+                   t->subtype == task_subtype_spart_prep2) {
 
           count = t->ci->stars.count;
           size = count * sizeof(struct spart);
@@ -2185,6 +2187,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_part_prep1 ||
                    t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
@@ -2199,7 +2202,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
 
-        } else if (t->subtype == task_subtype_spart) {
+        } else if (t->subtype == task_subtype_spart_density ||
+                   t->subtype == task_subtype_spart_prep2) {
 
           count = t->ci->stars.count;
           size = count * sizeof(struct spart);

@@ -137,7 +137,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "bpart_merger",
     "gpart",
     "multipole",
-    "spart",
+    "spart_density",
+    "part_prep1",
+    "spart_prep2",
     "stars_density",
     "stars_prep1",
     "stars_prep2",
@@ -1643,6 +1645,7 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_stars_ghost:
     case task_type_stars_prep_ghost1:
+    case task_type_hydro_prep_ghost1:
     case task_type_stars_prep_ghost2:
       return task_category_feedback;
 

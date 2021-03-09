@@ -799,6 +799,11 @@ void engine_allocate_foreign_particles(struct engine *e) {
                        spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
+    bzero(s->sparts_foreign, s->size_sparts_foreign * sizeof(struct spart));
+    for (size_t i = 0; i < s->size_sparts_foreign; ++i) {
+      s->sparts_foreign[i].time_bin = time_bin_not_created;
+      s->sparts_foreign[i].id = -43;
+    }
   }
 
   /* Allocate space for the foreign particles we will receive */
@@ -1550,6 +1555,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
         t->type == task_type_sink_out || t->type == task_type_sink_formation ||
         t->type == task_type_stars_prep_ghost1 ||
+        t->type == task_type_hydro_prep_ghost1 ||
         t->type == task_type_stars_prep_ghost2 ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||

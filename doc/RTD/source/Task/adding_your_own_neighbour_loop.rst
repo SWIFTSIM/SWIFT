@@ -41,7 +41,7 @@ For example::
       task_subtype_tend_spart,      task_subtype_tend_sink,         task_subtype_tend_bpart,
       task_subtype_xv,              task_subtype_rho,               task_subtype_part_swallow,
       task_subtype_bpart_merger,    task_subtype_gpart,             task_subtype_multipole,
-      task_subtype_spart,           task_subtype_stars_density,     task_subtype_stars_feedback,
+      task_subtype_spart_density,   task_subtype_stars_density,     task_subtype_stars_feedback,
       task_subtype_new_iact,        task_subtype_count
     } __attribute__((packed));
 
