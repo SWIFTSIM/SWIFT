@@ -25,6 +25,7 @@
 #include "chemistry_logger.h"
 #include "logger_interpolation.h"
 #include "logger_loader_io.h"
+#include "logger_parameters.h"
 #include "logger_python_tools.h"
 
 /* Index of the mask in the header mask array */
@@ -70,12 +71,14 @@ chemistry_logger_reader_link_derivatives_spart(struct header *head) {}
  * @param t Requested time.
  * @param field The field to reconstruct (follows the order of
  * #chemistry_logger_fields).
+ * @param params The simulation's #logger_parameters.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_logger_interpolate_field_part(
     const double t_before, const struct logger_field *restrict before,
     const double t_after, const struct logger_field *restrict after,
-    void *restrict output, const double t, const int field) {}
+    void *restrict output, const double t, const int field,
+    const struct logger_parameters *params) {}
 
 /**
  * @brief Interpolate a field of the #spart at the given time.
@@ -92,12 +95,14 @@ chemistry_logger_interpolate_field_part(
  * @param t Requested time.
  * @param field The field to reconstruct (follows the order of
  * #chemistry_logger_fields).
+ * @param params The simulation's #logger_parameters.
  */
 __attribute__((always_inline)) INLINE static void
 chemistry_logger_interpolate_field_spart(
     const double t_before, const struct logger_field *restrict before,
     const double t_after, const struct logger_field *restrict after,
-    void *restrict output, const double t, const int field) {}
+    void *restrict output, const double t, const int field,
+    const struct logger_parameters *params) {}
 
 #ifdef HAVE_PYTHON
 /**

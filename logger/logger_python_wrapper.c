@@ -181,6 +181,30 @@ static PyObject *getTimeLimits(PyObject *self, PyObject *Py_UNUSED(ignored)) {
   return (PyObject *)out;
 }
 
+/**
+ * @brief Read the box size.
+ *
+ * <b>returns</b> tuple containing the box size.
+ */
+static PyObject *get_box_size(PyObject *self, PyObject *Py_UNUSED(ignored)) {
+  if (!((PyObjectReader *)self)->ready) {
+    error_python(
+        "The logger is not ready yet."
+        "Did you forget to open it with \"with\"?");
+  }
+
+  /* initialize the reader. */
+  struct logger_reader *reader = &((PyObjectReader *)self)->reader;
+
+  /* Create the output */
+  PyObject *out = PyTuple_New(reader->params.dimension);
+  for (int i = 0; i < reader->params.dimension; i++) {
+    PyTuple_SetItem(out, i, PyFloat_FromDouble(reader->params.box_size[i]));
+  }
+
+  return (PyObject *)out;
+}
+
 #define find_field_in_module_internal(MODULE, PART)                           \
   for (int local = 0; local < MODULE##_logger_field##PART##_count; local++) { \
     const int global = MODULE##_logger_local_to_global##PART[local];          \
@@ -871,6 +895,12 @@ static PyMethodDef libloggerReaderMethods[] = {
      "-------\n\n"
      "times: tuple\n"
      "  time min, time max\n"},
+    {"get_box_size", get_box_size, METH_NOARGS,
+     "Gives the box size of the simulation.\n\n"
+     "Returns\n"
+     "-------\n\n"
+     "box_size: tuple\n"
+     "  The box size.\n"},
     {"get_data", (PyCFunction)pyGetData, METH_VARARGS | METH_KEYWORDS,
      "Read some fields from the logfile at a given time.\n\n"
      "Parameters\n"

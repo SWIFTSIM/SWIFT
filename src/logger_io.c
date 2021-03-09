@@ -417,12 +417,11 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
  * @params e The #engine.
  */
 void logger_write_description(struct logger_writer* log, struct engine* e) {
+
   /* Only the master writes the description */
-  if (engine_rank != 0) {
+  if (e->nodeID != 0) {
     return;
   }
-  /* const struct unit_system *internal_units = e->internal_units; */
-  /* const struct unit_system *snapshot_units = e->snapshot_units; */
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -430,13 +429,53 @@ void logger_write_description(struct logger_writer* log, struct engine* e) {
 
   /* Open file */
   FILE* f = NULL;
-  f = fopen(fileName, "wb");
+  f = fopen(fileName, "w");
 
   if (f == NULL) {
     error("Failed to open file %s", fileName);
   }
 
-  /* TODO Write stuff */
+  /* Write the header section */
+  fprintf(f, "Header:\n");
+  fprintf(f, "  BoxSize: [%g, %g, %g]\n", e->s->dim[0], e->s->dim[1],
+          e->s->dim[2]);
+  fprintf(f, "  Dimension: %i\n", (int)hydro_dimension);
+  fprintf(f, "  RunName: %s\n", e->run_name);
+  fprintf(f, "  Periodic: %i\n", e->s->periodic);
+  fprintf(f, "\n");
+
+  /* Write unit system */
+  const struct unit_system* us = e->internal_units;
+  fprintf(f, "InternalUnitSystem:\n");
+  fprintf(f, "  UnitMass_in_cgs: %g\n", units_get_base_unit(us, UNIT_MASS));
+  fprintf(f, "  UnitLength_in_cgs: %g\n", units_get_base_unit(us, UNIT_LENGTH));
+  fprintf(f, "  UnitTime_in_cgs: %g\n", units_get_base_unit(us, UNIT_TIME));
+  fprintf(f, "  UnitCurrent_in_cgs: %g\n",
+          units_get_base_unit(us, UNIT_CURRENT));
+  fprintf(f, "  UnitTemp_in_cgs: %g\n",
+          units_get_base_unit(us, UNIT_TEMPERATURE));
+  fprintf(f, "\n");
+
+  /* Write the code section */
+  fprintf(f, "Code:\n");
+  fprintf(f, "  Code: SWIFT\n");
+  fprintf(f, "  CodeVersion: %s\n", package_version());
+  fprintf(f, "  CompilerName: %s\n", compiler_name());
+  fprintf(f, "  CompilerVersion: %s\n", compiler_version());
+  fprintf(f, "  GitBranch: %s\n", git_branch());
+  fprintf(f, "  GitRevision: %s\n", git_revision());
+  fprintf(f, "  GitDate: %s\n", git_date());
+  fprintf(f, "  ConfigurationOptions: %s\n", configuration_options());
+  fprintf(f, "  RandomSeed: %i\n", SWIFT_RANDOM_SEED_XOR);
+  fprintf(f, "\n");
+
+  /* Write the policy section */
+  fprintf(f, "Policy:\n");
+  for (int i = 1; i < engine_maxpolicy; i++) {
+    const int value = e->policy & (1 << i) ? 1 : 0;
+    fprintf(f, "  %s: %i\n", engine_policy_names[i + 1], value);
+  }
+  fprintf(f, "\n");
 
   /* Close file */
   fclose(f);
