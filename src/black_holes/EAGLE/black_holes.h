@@ -712,19 +712,21 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
           /*HII_region=*/0);
       const float log10_gas_T = log10f(gas_T);
 
-      /* Get the temperature on the EOS at this physical density */
-      const float T_EOS = entropy_floor_gas_temperature(
-          gas_rho_phys, bp->rho_gas, cosmo, floor_props);
+      /* Internal energy on the entropy floor */
+      const double P_EOS = entropy_floor_gas_pressure(gas_rho_phys, bp->rho_gas,
+                                                      cosmo, floor_props);
+      const double u_EOS =
+          gas_internal_energy_from_pressure(gas_rho_phys, P_EOS);
+      const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
-      /* Add the allowed offset */
-      const float log10_T_EOS_max =
-          log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
+      const float log10_u_EOS_max_cgs =
+          log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
       /* Compute the subgrid density assuming pressure
        * equilibirum if on the entropy floor */
       const double rho_sub = compute_subgrid_property(
           cooling, constants, floor_props, cosmo, gas_rho_phys, logZZsol, XH,
-          gas_P_phys, log10_gas_T, log10_T_EOS_max, /*HII_region=*/0,
+          gas_P_phys, log10_gas_T, log10_u_EOS_max_cgs, /*HII_region=*/0,
           abundance_ratio, 0.f, cooling_compute_subgrid_density);
 
       /* Record what we used */
