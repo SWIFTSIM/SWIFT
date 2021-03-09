@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "periodic_replications.h"
 
@@ -12,14 +13,12 @@ int main(int argc, char *argv[]) {
     observer_position[i] = strtod(argv[2+i], NULL);
   double lightcone_rmin = strtod(argv[5], NULL);
   double lightcone_rmax = strtod(argv[6], NULL);
-  double lightcone_boundary = 0.0;
 
   /* Make the list */
   struct replication_list replication_list;
   replication_list_init(&replication_list,
                         boxsize, observer_position,
-                        lightcone_rmin, lightcone_rmax,
-                        lightcone_boundary);
+                        lightcone_rmin, lightcone_rmax);
   
   /* Output the list */
   //printf("nrep=%d\n", replication_list.nrep);
@@ -29,8 +28,8 @@ int main(int argc, char *argv[]) {
              replication_list.replication[i].coord[0],
              replication_list.replication[i].coord[1],
              replication_list.replication[i].coord[2],
-             replication_list.replication[i].rmin,
-             replication_list.replication[i].rmax);
+             sqrt(replication_list.replication[i].rmin2),
+             sqrt(replication_list.replication[i].rmax2));
     }
 
   /* Free the list */
