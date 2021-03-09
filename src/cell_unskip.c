@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "active.h"
 #include "engine.h"
+#include "feedback.h"
 #include "rt_do_cells.h"
 #include "space_getsid.h"
 
@@ -2045,10 +2046,16 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
-
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_prep1);
+#endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart,
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_density,
                                   ci_nodeID);
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
+                                  ci_nodeID);
+#endif
           cell_activate_drift_spart(cj, s);
 
           /* If the local cell is active, send its ti_end values. */
@@ -2057,15 +2064,20 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         }
 
         if (ci_active) {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart);
-
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_density);
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep2);
+#endif
           /* If the foreign cell is active, we want its ti_end values. */
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
-
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_prep1,
+                                  ci_nodeID);
+#endif
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
@@ -2076,10 +2088,16 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_prep1);
+#endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart,
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_density,
                                   cj_nodeID);
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
+                                  cj_nodeID);
+#endif
           cell_activate_drift_spart(ci, s);
 
           /* If the local cell is active, send its ti_end values. */
@@ -2088,14 +2106,20 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         }
 
         if (cj_active) {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart);
-
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_density);
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep2);
+#endif
           /* If the foreign cell is active, we want its ti_end values. */
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+#ifdef EXTRA_STAR_LOOPS
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_prep1,
+                                  cj_nodeID);
+#endif
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
