@@ -13,12 +13,17 @@ int main(int argc, char *argv[]) {
     observer_position[i] = strtod(argv[2+i], NULL);
   double lightcone_rmin = strtod(argv[5], NULL);
   double lightcone_rmax = strtod(argv[6], NULL);
+  double view_vector[3];
+  for(int i=0; i<3; i+=1)
+    view_vector[i] = strtod(argv[7+i], NULL);
+  double view_radius = strtod(argv[10], NULL);
 
   /* Make the list */
   struct replication_list replication_list;
   replication_list_init(&replication_list,
                         boxsize, observer_position,
-                        lightcone_rmin, lightcone_rmax);
+                        lightcone_rmin, lightcone_rmax,
+                        1, view_vector, view_radius, 0.0);
   
   /* Output the list */
   //printf("nrep=%d\n", replication_list.nrep);

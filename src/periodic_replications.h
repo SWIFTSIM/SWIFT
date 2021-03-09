@@ -46,9 +46,10 @@ struct replication_list {
 };
 
 void replication_list_init(struct replication_list *replication_list,
-                           double boxsize,
-                           double observer_position[3],
-                           double lightcone_rmin, double lightcone_rmax);
+                           double boxsize, double observer_position[3],
+                           double lightcone_rmin, double lightcone_rmax,
+                           int pencil_beam, double *view_vector,
+                           double view_radius, double boundary);
 
 void replication_list_clean(struct replication_list *replication_list);
 

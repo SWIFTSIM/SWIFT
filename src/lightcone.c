@@ -244,7 +244,9 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   /* Determine periodic copies we need to search */
   replication_list_init(&props->replication_list, boxsize,
                         props->observer_position,
-                        lightcone_rmin-boundary, lightcone_rmax);
+                        lightcone_rmin-boundary, lightcone_rmax,
+                        props->pencil_beam, props->view_vector,
+                        props->view_radius, boundary);
 
   /* Record that we made the list */
   props->have_replication_list = 1;

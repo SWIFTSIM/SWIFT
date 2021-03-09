@@ -55,12 +55,11 @@ static int compare_replication_rmin(const void *a, const void *b) {
  * @param replication_list Pointer to the struct to initialise.
  */
 
-/* TODO: ensure lightcone_rmin is reduced to allow for drifting */
-
 void replication_list_init(struct replication_list *replication_list,
-                           double boxsize,
-                           double observer_position[3],
-                           double lightcone_rmin, double lightcone_rmax) {
+                           double boxsize, double observer_position[3],
+                           double lightcone_rmin, double lightcone_rmax,
+                           int pencil_beam, double *view_vector,
+                           double view_radius, double boundary) {
   
   /* Find range of replications to examine in each dimension */
   int rep_min[3];
@@ -80,30 +79,63 @@ void replication_list_init(struct replication_list *replication_list,
       for(int j=rep_min[1]; j<=rep_max[1]; j+=1) {
         for(int k=rep_min[2]; k<=rep_max[2]; k+=1) {
           
-          /* Find centre of this replication */
-          double cx = boxsize*i + 0.5*boxsize;
-          double cy = boxsize*j + 0.5*boxsize;
-          double cz = boxsize*k + 0.5*boxsize;
+          /* Find centre of this replication relative to observer */
+          double cx = boxsize*i + 0.5*boxsize - observer_position[0];
+          double cy = boxsize*j + 0.5*boxsize - observer_position[1];
+          double cz = boxsize*k + 0.5*boxsize - observer_position[2];
 
           /* Find distance to closest point in this replication  */
           double dx, dy, dz;
-          dx = abs(observer_position[0] - cx) - 0.5*boxsize;
+          dx = abs(cx) - 0.5*boxsize;
           if(dx < 0) dx = 0;
-          dy = abs(observer_position[1] - cy) - 0.5*boxsize;
+          dy = abs(cy) - 0.5*boxsize;
           if(dy < 0) dy = 0;
-          dz = abs(observer_position[2] - cz) - 0.5*boxsize;
+          dz = abs(cz) - 0.5*boxsize;
           if(dz < 0) dz = 0;
           double rep_rmin = sqrt(dx*dx+dy*dy+dz*dz);
 
           /* Find distance to most distant point in this replication  */
-          dx = abs(observer_position[0] - cx) + 0.5*boxsize;
-          dy = abs(observer_position[1] - cy) + 0.5*boxsize;
-          dz = abs(observer_position[2] - cz) + 0.5*boxsize;
+          dx = abs(cx) + 0.5*boxsize;
+          dy = abs(cy) + 0.5*boxsize;
+          dz = abs(cz) + 0.5*boxsize;
           double rep_rmax = sqrt(dx*dx+dy*dy+dz*dz);
 
-          /* Check if any point in this replication could be in the lightcone */
-          if(rep_rmax > lightcone_rmin && rep_rmin < lightcone_rmax) {
-    
+          /* Flag if any point in this replication could be in the lightcone */
+          int in_lightcone = 1;
+
+          /* Check distance limits */
+          if(rep_rmax < lightcone_rmin || rep_rmin > lightcone_rmax) in_lightcone = 0;
+
+          /* Check if we might overlap the pencil beam */
+          if(pencil_beam && in_lightcone) {
+            
+            /* Get radius of bounding sphere around this replication */
+            double radius = 0.5*sqrt(3.0)*boxsize + boundary;
+
+            /* Get distance along line of sight from observer to this replication */
+            double r_los = cx*view_vector[0] + cy*view_vector[1] + cz*view_vector[2];
+
+            /* Get distance from observer to the centre of this replication*/
+            double r_centre = sqrt(cx*cx+cy*cy+cz*cz);
+
+            /* Lower limit on distance to closest point */
+            double r_min = r_centre - radius;
+
+            if(r_centre > radius) {
+              
+              /* Get upper limit on angular size of the replication at this distance */
+              double angular_size = atan2(radius, r_min);
+
+              /* Get angle between line of sight and centre of replication */
+              double los_angle = acos(r_los/r_centre);
+
+              /* Check for overlap or case where cube is behind us */
+              if(los_angle > angular_size+view_radius || r_los < 0 )in_lightcone = 0;
+
+            }
+          }
+
+          if(in_lightcone) {
             /* Store replications on second pass */
             if(ipass==1) {
               /* Get a pointer to the next replication */
@@ -116,8 +148,7 @@ void replication_list_init(struct replication_list *replication_list,
               rep->coord[1] = j;
               rep->coord[2] = k;
             }
-            replication_list->nrep += 1;
-            
+            replication_list->nrep += 1; 
           }
         } /* Next replication in z */
       } /* Next replication in y */

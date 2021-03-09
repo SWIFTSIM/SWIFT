@@ -36,15 +36,18 @@ def draw_sphere(x, y, z, r):
 
 if __name__ == "__main__":
 
-    boxsize = 100
-    observer_position = (50, 50, 50)
+    boxsize = 50
+    observer_position = (25, 25, 25)
     lc_rmin = 240
     lc_rmax = 250
+    view_vector = (1.0, 0.0, 0.0)
+    view_radius = np.radians(20.0)
 
     # Run the code    
     command = (["./test_replications", str(boxsize)] +
                [str(obs_pos) for obs_pos in observer_position] +
-               [str(lc_rmin), str(lc_rmax)])
+               [str(lc_rmin), str(lc_rmax)] +
+               [str(v) for v in view_vector] + [str(view_radius),])
 
     process = subprocess.run(command,
                              stdout=subprocess.PIPE,
@@ -58,6 +61,7 @@ if __name__ == "__main__":
     rmin = data[:,3]
     rmax = data[:,4]
     nrep = data.shape[0]
+    print(nrep)
 
     # Plot
     fig = plt.figure()
