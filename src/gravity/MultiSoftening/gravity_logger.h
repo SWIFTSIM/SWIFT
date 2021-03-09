@@ -148,8 +148,13 @@ INLINE static char *gravity_logger_write_particle(
   /* Write the acceleration. */
   if (logger_should_write_field(mask_data[gravity_logger_field_accelerations],
                                 mask)) {
-    memcpy(buff, p->a_grav, 3 * sizeof(float));
-    buff += 3 * sizeof(float);
+    float acc[3] = {
+        p->a_grav[0] + p->a_grav_mesh[0],
+        p->a_grav[1] + p->a_grav_mesh[1],
+        p->a_grav[2] + p->a_grav_mesh[2],
+    };
+    memcpy(buff, acc, sizeof(acc));
+    buff += sizeof(acc);
   }
 
   /* Write the mass. */

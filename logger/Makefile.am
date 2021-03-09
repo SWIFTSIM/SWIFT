@@ -80,12 +80,13 @@ endif
 SUBDIRS = tests
 
 # List required headers
-include_HEADERS = logger_header.h logger_loader_io.h logger_particle.h logger_time.h logger_tools.h logger_reader.h \
-	logger_logfile.h logger_index.h quick_sort.h logger_python_tools.h logger_interpolation.h
+include_HEADERS = logger_header.h logger_loader_io.h logger_particle.h logger_time.h logger_tools.h
+include_HEADERS +=  logger_reader.h logger_logfile.h logger_index.h quick_sort.h logger_python_tools.h
+include_HEADERS += logger_interpolation.h logger_parameters.h
 
 # Common source files
 AM_SOURCES = logger_header.c logger_loader_io.c logger_particle.c logger_time.c logger_tools.c logger_reader.c
-AM_SOURCES += logger_logfile.c logger_index.c quick_sort.c
+AM_SOURCES += logger_logfile.c logger_index.c quick_sort.c logger_parameters.c
 AM_SOURCES += $(GRAVITY_SRC) $(STARS_SRC) $(HYDRO_SRC) $(CHEMISTRY_SRC) $(STAR_FORMATION_SRC)
 
 if HAVEPYTHON

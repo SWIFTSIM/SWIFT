@@ -300,6 +300,12 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
   size_t offset_new;
   char *buff = (char *)dump_get(&log->dump, size_total, &offset_new);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Save the buffer position in order to test if the requested buffer was
+   * really used */
+  const char *buff_before = buff;
+#endif
+
   /* Write the particles */
   for (int i = 0; i < count; i++) {
     /* Get the masks */
@@ -343,6 +349,15 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
                          xp[i].logger_data.last_offset);
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure that the buffer was fully used */
+  const int diff = buff - buff_before;
+  if (diff != (int)size_total) {
+    error("It seems that the requested buffer was not totally used: %i != %zi",
+          diff, size_total);
+  }
+#endif
 }
 
 /**
@@ -462,6 +477,11 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp, int count,
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
   char *buff = (char *)dump_get(&log->dump, size_total, &offset_new);
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Save the buffer position in order to test if the requested buffer was
+   * really used */
+  const char *buff_before = buff;
+#endif
 
   for (int i = 0; i < count; i++) {
     /* Get the masks */
@@ -509,6 +529,14 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp, int count,
                          sp[i].logger_data.last_offset);
     }
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure that the buffer was fully used */
+  const int diff = buff - buff_before;
+  if (diff != (int)size_total) {
+    error("It seems that the requested buffer was not totally used: %i != %zi",
+          diff, size_total);
+  }
+#endif
 }
 
 /**
@@ -595,34 +623,32 @@ void logger_log_gparts(struct logger_writer *log, struct gpart *p, int count,
   const uint32_t special_flags = logger_pack_flags_and_data(flag, flag_data);
 
   /* Compute the size of the buffer. */
+  /* As we might have some non DM particles, we cannot log_all_fields blindly */
   size_t size_total = 0;
-  if (log_all_fields) {
-    size_t size = log->max_size_record_gpart + logger_header_bytes;
+  for (int i = 0; i < count; i++) {
+    /* Log only the dark matter */
+    if (p[i].type != swift_type_dark_matter &&
+        p[i].type != swift_type_dark_matter_background)
+      continue;
+
+    unsigned int mask = 0;
+    size_t size = 0;
+    gravity_logger_compute_size_and_mask(log->mask_data_pointers.gravity, &p[i],
+                                         log_all_fields, &size, &mask);
     if (flag != 0) {
       size += size_special_flag;
     }
-    size_total = count * size;
-  } else {
-    for (int i = 0; i < count; i++) {
-      /* Log only the dark matter */
-      if (p[i].type != swift_type_dark_matter &&
-          p[i].type != swift_type_dark_matter_background)
-        continue;
-
-      unsigned int mask = 0;
-      size_t size = 0;
-      gravity_logger_compute_size_and_mask(log->mask_data_pointers.gravity,
-                                           &p[i], log_all_fields, &size, &mask);
-      if (flag != 0) {
-        size += size_special_flag;
-      }
-      size_total += size + logger_header_bytes;
-    }
+    size_total += size + logger_header_bytes;
   }
 
   /* Allocate a chunk of memory in the dump of the right size. */
   size_t offset_new;
   char *buff = (char *)dump_get(&log->dump, size_total, &offset_new);
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Save the buffer position in order to test if the requested buffer was
+   * really used */
+  const char *buff_before = buff;
+#endif
 
   for (int i = 0; i < count; i++) {
     /* Log only the dark matter */
@@ -668,6 +694,14 @@ void logger_log_gparts(struct logger_writer *log, struct gpart *p, int count,
                          p[i].id_or_neg_offset, p[i].logger_data.last_offset);
     }
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure that the buffer was fully used */
+  const int diff = buff - buff_before;
+  if (diff != (int)size_total) {
+    error("It seems that the requested buffer was not totally used: %i != %zi",
+          diff, size_total);
+  }
+#endif
 }
 
 /**
@@ -946,6 +980,8 @@ void logger_init_masks(struct logger_writer *log, const struct engine *e) {
   }
 
   /* Compute the maximal size of the records. */
+
+  /* Hydro */
   log->max_size_record_part = 0;
   for (int i = 0; i < hydro_logger_field_count; i++) {
     log->max_size_record_part += log->mask_data_pointers.hydro[i].size;
@@ -954,11 +990,13 @@ void logger_init_masks(struct logger_writer *log, const struct engine *e) {
     log->max_size_record_part += log->mask_data_pointers.chemistry_part[i].size;
   }
 
+  /* Gravity */
   log->max_size_record_gpart = 0;
   for (int i = 0; i < gravity_logger_field_count; i++) {
     log->max_size_record_gpart += log->mask_data_pointers.gravity[i].size;
   }
 
+  /* Stars */
   log->max_size_record_spart = 0;
   for (int i = 0; i < stars_logger_field_count; i++) {
     log->max_size_record_spart += log->mask_data_pointers.stars[i].size;
@@ -976,10 +1014,12 @@ void logger_init_masks(struct logger_writer *log, const struct engine *e) {
   log->logger_count_mask = num_fields;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  message("The logger contains the following masks:");
-  for (int i = 0; i < log->logger_count_mask; i++) {
-    message("%20s:\t mask=%03u\t size=%i", log->logger_mask_data[i].name,
-            log->logger_mask_data[i].mask, log->logger_mask_data[i].size);
+  if (e->nodeID == 0) {
+    message("The logger contains the following masks:");
+    for (int i = 0; i < log->logger_count_mask; i++) {
+      message("%20s:\t mask=%03u\t size=%i", log->logger_mask_data[i].name,
+              log->logger_mask_data[i].mask, log->logger_mask_data[i].size);
+    }
   }
 #endif
 }

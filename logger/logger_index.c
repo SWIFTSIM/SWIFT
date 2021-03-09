@@ -208,7 +208,7 @@ struct index_data *logger_index_get_removed_history(struct logger_index *index,
  */
 int logger_index_contains_time_array(struct logger_index *index) {
   /* Only the first index file should have a time array */
-  if (index->time != 0.) {
+  if (index->integer_time != 0) {
     error_python("Only the first index file can have a time array.");
   }
 

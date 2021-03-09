@@ -24,6 +24,7 @@
 /* local includes */
 #include "logger_interpolation.h"
 #include "logger_loader_io.h"
+#include "logger_parameters.h"
 #include "logger_python_tools.h"
 #include "stars_logger.h"
 
@@ -72,6 +73,7 @@ stars_logger_reader_link_derivatives(struct header *head) {
  * @param t Requested time.
  * @param field The field to reconstruct (follows the order of
  * #stars_logger_fields).
+ * @param params The simulation's #logger_parameters.
  */
 __attribute__((always_inline)) INLINE static void
 stars_logger_interpolate_field(const double t_before,
@@ -79,7 +81,8 @@ stars_logger_interpolate_field(const double t_before,
                                const double t_after,
                                const struct logger_field *restrict after,
                                void *restrict output, const double t,
-                               const int field) {
+                               const int field,
+                               const struct logger_parameters *params) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the times */
@@ -94,19 +97,22 @@ stars_logger_interpolate_field(const double t_before,
   switch (field) {
     case stars_logger_field_coordinates:
       interpolate_quintic_double_float_ND(t_before, before, t_after, after,
-                                          output, t, /* dimension= */ 3);
+                                          output, t, /* dimension= */ 3,
+                                          params->periodic, params);
       break;
     case stars_logger_field_velocities:
       interpolate_cubic_float_ND(t_before, before, t_after, after, output, t,
-                                 /* dimension= */ 3);
+                                 /* dimension= */ 3, /* periodic= */ 0, params);
       break;
     case stars_logger_field_accelerations:
       interpolate_linear_float_ND(t_before, before, t_after, after, output, t,
-                                  /* dimension= */ 3);
+                                  /* dimension= */ 3, /* periodic= */ 0,
+                                  params);
       break;
     case stars_logger_field_smoothing_lengths:
     case stars_logger_field_masses:
-      interpolate_linear_float(t_before, before, t_after, after, output, t);
+      interpolate_linear_float(t_before, before, t_after, after, output, t,
+                               /* periodic= */ 0, params);
       break;
     case stars_logger_field_particle_ids:
       interpolate_ids(t_before, before, t_after, after, output, t);
