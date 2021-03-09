@@ -1553,7 +1553,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
         t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
-        t->type == task_type_sink_out || t->type == task_type_sink_formation ||
+        t->type == task_type_sink_ghost || t->type == task_type_sink_out ||
+        t->type == task_type_sink_formation ||
         t->type == task_type_stars_prep_ghost1 ||
         t->type == task_type_hydro_prep_ghost1 ||
         t->type == task_type_stars_prep_ghost2 ||
@@ -1579,6 +1580,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_sink_compute_formation ||
         t->subtype == task_subtype_sink_merger ||
+        t->subtype == task_subtype_sink_accretion ||
         t->subtype == task_subtype_tend_part ||
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||

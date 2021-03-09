@@ -242,6 +242,21 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Activate the sink accretion */
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_sink_accretion) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_sink_accretion) {
+        if (ci_active_sinks) {
+          scheduler_activate(s, t);
+        }
+      }
+
       /* Activate the black hole density */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_bh_density) {
@@ -624,7 +639,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Sink formation */
       else if ((t_subtype == task_subtype_sink_compute_formation ||
-                t_subtype == task_subtype_sink_merger) &&
+                t_subtype == task_subtype_sink_merger ||
+                t_subtype == task_subtype_sink_accretion) &&
                (ci_active_sinks || cj_active_sinks) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
@@ -1285,7 +1301,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Sink implicit tasks? */
-    else if (t_type == task_type_sink_in || t_type == task_type_sink_out) {
+    else if (t_type == task_type_sink_in || t_type == task_type_sink_out ||
+             t_type == task_type_sink_ghost) {
       if (cell_is_active_sinks(t->ci, e) || cell_is_active_hydro(t->ci, e))
         scheduler_activate(s, t);
     }
@@ -1345,7 +1362,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Subgrid tasks: sink formation */
     else if (t_type == task_type_sink_formation) {
-      if (cell_is_active_hydro(t->ci, e)) {
+      if (t->ci->hydro.count > 0 && cell_is_active_hydro(t->ci, e)) {
         cell_activate_sink_formation_tasks(t->ci, s);
         cell_activate_super_sink_drifts(t->ci, s);
       }

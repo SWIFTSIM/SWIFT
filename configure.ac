@@ -2217,7 +2217,7 @@ esac
 # Sink model.
 AC_ARG_WITH([sink],
    [AS_HELP_STRING([--with-sink=<model>],
-      [Sink particle model to use @<:@none, default: none@:>@]
+      [Sink particle model to use @<:@none, GEAR, default: none@:>@]
    )],
    [with_sink="$withval"],
    [with_sink="none"]
@@ -2235,7 +2235,10 @@ case "$with_sink" in
    none)
       AC_DEFINE([SINK_NONE], [1], [No sink particle model])
    ;;
-   *)
+   GEAR)
+    AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
+    ;;
+    *)
       AC_MSG_ERROR([Unknown sink particle model model: $with_sink])
    ;;
 esac
