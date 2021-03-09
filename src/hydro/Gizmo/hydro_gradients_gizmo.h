@@ -50,8 +50,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = 1.0f / r;
 
   float wi, wj, wi_dx, wj_dx;
   float Bi[3][3];
@@ -178,8 +179,9 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
                                struct part *restrict pi,
                                struct part *restrict pj) {
 
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = 1.0f / r;
 
   float Bi[3][3];
   float Wi[5], Wj[5];
