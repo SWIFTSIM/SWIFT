@@ -25,6 +25,8 @@
 /* Select the correct sink model */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_properties.h"
+#elif defined(SINK_GEAR)
+#include "./sink/GEAR/sink_properties.h"
 #else
 #error "Invalid choice of black hole model"
 #endif

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_SINKS_IACT_H
-#define SWIFT_DEFAULT_SINKS_IACT_H
+#ifndef SWIFT_GEAR_SINKS_IACT_H
+#define SWIFT_GEAR_SINKS_IACT_H
 
 /**
  * @brief Compute formation interaction between two particles (non-symmetric).
@@ -63,11 +63,12 @@ runner_iact_nonsym_sinks_compute_formation(const float r2, const float *dx,
  * @param Which particle should be removed?
  * Possible value: (sink_merger_remove_none/first/second)
  */
-__attribute__((always_inline)) INLINE static enum sink_merger_remove
-runner_iact_sym_sinks_merger(const float r2, const float *dx, const float hi,
-                             const float hj, struct sink *restrict si,
-                             struct sink *restrict sj, const float a,
-                             const float H) {
+__attribute__((always_inline)) INLINE static int runner_iact_sym_sinks_merger(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct sink *restrict si, struct sink *restrict sj, const float a,
+    const float H) {
+
+  return sink_merger_remove_none;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
@@ -77,8 +78,6 @@ runner_iact_sym_sinks_merger(const float r2, const float *dx, const float hi,
   /* Update ngb counters */
   ++si->num_ngb_merger;
 #endif
-
-  return sink_merger_remove_none;
 }
 
 /**
