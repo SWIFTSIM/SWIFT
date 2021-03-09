@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2021 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_SINK_PART_H
-#define SWIFT_DEFAULT_SINK_PART_H
+#ifndef SWIFT_GEAR_SINK_PART_H
+#define SWIFT_GEAR_SINK_PART_H
 
 #include "timeline.h"
 
@@ -83,4 +83,4 @@ struct sink {
 #endif
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_DEFAULT_SINK_PART_H */
+#endif /* SWIFT_GEAR_SINK_PART_H */
