@@ -96,8 +96,7 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
 void lightcone_struct_restore(struct lightcone_props *props, FILE *stream);
 
 void lightcone_init_replication_list(struct lightcone_props *props,
-                                     struct cosmology *cosmo,
-                                     struct space *s,
+                                     const struct cosmology *cosmo,
                                      const integertime_t ti_old,
                                      const integertime_t ti_current,
                                      const double dt_max);

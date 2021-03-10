@@ -214,8 +214,7 @@ void lightcone_flush(void) {
  * @param time_max End of the time step
  */
 void lightcone_init_replication_list(struct lightcone_props *props,
-                                     struct cosmology *cosmo,
-                                     struct space *s,
+                                     const struct cosmology *cosmo,
                                      const integertime_t ti_old,
                                      const integertime_t ti_current,
                                      const double dt_max) {

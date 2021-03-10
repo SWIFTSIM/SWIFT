@@ -2135,7 +2135,7 @@ void engine_step(struct engine *e) {
   /* Determine which periodic replications could contribute to the lightcone
      during this time step */
   if(e->lightcone_properties->enabled)
-    lightcone_init_replication_list(e->lightcone_properties, e->cosmology, e->s,
+    lightcone_init_replication_list(e->lightcone_properties, e->cosmology,
                                     e->ti_old, e->ti_current, e->dt_max);
 #endif
 
