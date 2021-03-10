@@ -215,7 +215,6 @@ void lightcone_flush(void) {
  */
 void lightcone_init_replication_list(struct lightcone_props *props,
                                      const struct cosmology *cosmo,
-                                     const integertime_t ti_old,
                                      const integertime_t ti_current,
                                      const double dt_max) {
 
@@ -225,9 +224,12 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   /* Get the size of the simulation box */
   const double boxsize = props->boxsize;
 
+  /* Get a lower limit on earliest time particle may be drifted from */
+  integertime_t ti_old = ti_current - dt_max / cosmo->time_base;
+
   /* Get expansion factor at earliest and latest times particles might be drifted between */
   double a_current = cosmo->a_begin * exp(ti_current * cosmo->time_base);
-  double a_old = cosmo->a_begin * exp(ti_old * cosmo->time_base - dt_max);
+  double a_old = cosmo->a_begin * exp(ti_old * cosmo->time_base);
   if(a_old < cosmo->a_begin)a_old = cosmo->a_begin;
 
   /* Convert redshift range to a distance range */
