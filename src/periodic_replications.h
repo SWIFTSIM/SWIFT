@@ -30,8 +30,8 @@ struct replication {
   /* Maximum distance squared from the observer to any point in the replication */
   double rmax2;
 
-  /* Integer coordinates of the replication */
-  int coord[3];
+  /* Coordinates of the replication */
+  double coord[3];
 };
 
 

@@ -303,6 +303,11 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
                                box_wrap(gp->x[1], 0.0, boxsize),
                                box_wrap(gp->x[2], 0.0, boxsize)};
   
+  /* Get wrapped position relative to observer */
+  const double x_wrapped_rel[3] = {x_wrapped[0] - observer_position[0],
+                                   x_wrapped[1] - observer_position[1],
+                                   x_wrapped[2] - observer_position[2]};
+
   /* Loop over periodic copies of the volume:
      
      Here we're looking for cases where a periodic copy of the particle
@@ -327,9 +332,9 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     /* Get the coordinates of this periodic copy of the gpart relative to the observer */
     const double x_start[3] = {
-      x_wrapped[0] + rep[i].coord[0]*boxsize - observer_position[0],
-      x_wrapped[1] + rep[i].coord[1]*boxsize - observer_position[1],
-      x_wrapped[2] + rep[i].coord[2]*boxsize - observer_position[2],
+      x_wrapped_rel[0] + rep[i].coord[0],
+      x_wrapped_rel[1] + rep[i].coord[1],
+      x_wrapped_rel[2] + rep[i].coord[2],
     };
 
     /* Get distance squared from the observer at start of drift */

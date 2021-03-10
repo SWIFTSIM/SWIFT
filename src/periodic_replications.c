@@ -144,9 +144,9 @@ void replication_list_init(struct replication_list *replication_list,
               /* Store info about this replication */
               rep->rmin2 = pow(rep_rmin, 2.0);
               rep->rmax2 = pow(rep_rmax, 2.0);
-              rep->coord[0] = i;
-              rep->coord[1] = j;
-              rep->coord[2] = k;
+              rep->coord[0] = i*boxsize;
+              rep->coord[1] = j*boxsize;
+              rep->coord[2] = k*boxsize;
             }
             replication_list->nrep += 1; 
           }
