@@ -84,7 +84,6 @@ struct lightcone_props {
 };
 
 void lightcone_init(struct lightcone_props *props,
-                    const int myrank,
                     const struct space *s,
                     struct swift_params *params,
                     const int restart);

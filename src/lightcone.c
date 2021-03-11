@@ -44,6 +44,8 @@
 static swift_lock_type io_lock;
 static FILE *fd;
 
+extern int engine_rank;
+
 /**
  * @brief Dump lightcone_props struct to the output stream.
  *
@@ -85,7 +87,6 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
  * @param params the parameter file parser.
  */
 void lightcone_init(struct lightcone_props *props,
-                    const int myrank,
                     const struct space *s,
                     struct swift_params *params,
                     const int restart) {
@@ -152,7 +153,7 @@ void lightcone_init(struct lightcone_props *props,
   /* Set up the output file(s) */
   lock_init(&io_lock);
   char fname[500];
-  sprintf(fname, "lightcone.%d.txt", myrank);
+  sprintf(fname, "lightcone.%d.txt", engine_rank);
   if(restart) {
     fd = fopen(fname, "a"); // FIXME: will duplicate particles if we crashed!
   } else {
@@ -256,6 +257,8 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   props->ti_old = ti_old;
   props->ti_current = ti_current;
 
+  /* Report the size of the list */
+  if(engine_rank==0)message("no. of replications to check: %d\n", props->replication_list.nrep);
 }
 
 
