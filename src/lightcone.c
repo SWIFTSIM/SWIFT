@@ -279,8 +279,11 @@ void lightcone_init_replication_list(struct lightcone_props *props,
     char fname[500];
     sprintf(fname, "replication_list.%d.txt", output_nr);
     FILE *fd_rep = fopen(fname, "w");
-    fprintf(fd_rep, "# Inner radius, outer radius\n");
-    fprintf(fd_rep, "%e, %e\n", lightcone_rmin-boundary, lightcone_rmax);
+    fprintf(fd_rep, "# Observer x, y, z\n");
+    fprintf(fd_rep, "%e, %e, %e\n", props->observer_position[0],
+            props->observer_position[1], props->observer_position[2]); 
+    fprintf(fd_rep, "# Box size, inner radius, outer radius\n");
+    fprintf(fd_rep, "%e, %e, %e\n", boxsize, lightcone_rmin-boundary, lightcone_rmax);
     fprintf(fd_rep, "# x, y, z, rmin2, rmax2\n");
     replication_list_write(&props->replication_list, fd_rep);
     fclose(fd_rep);
