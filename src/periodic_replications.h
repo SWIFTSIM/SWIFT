@@ -17,9 +17,10 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
+
 #ifndef SWIFT_PERIODIC_REPLICATIONS_H
 #define SWIFT_PERIODIC_REPLICATIONS_H
-
 
 /* Struct to store information about one periodic replication of the simulation box */
 struct replication {
@@ -52,5 +53,7 @@ void replication_list_init(struct replication_list *replication_list,
                            double view_radius, double boundary);
 
 void replication_list_clean(struct replication_list *replication_list);
+
+void replication_list_write(struct replication_list *replication_list, FILE *fd);
 
 #endif

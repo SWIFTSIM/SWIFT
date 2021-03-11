@@ -179,3 +179,22 @@ void replication_list_clean(struct replication_list *replication_list) {
   replication_list->replication = NULL;
   replication_list->nrep = 0;
 }
+
+/**
+ * @brief Write a replication list to a file as text
+ *
+ * @param replication_list The replication list
+ * @param fd The file to write to
+ */
+
+void replication_list_write(struct replication_list *replication_list, FILE *fd) {
+
+  for(int i=0; i<replication_list->nrep; i+=1) {
+    fprintf(fd, "%e, %e, %e, %e, %e\n",
+            replication_list->replication[i].coord[0],
+            replication_list->replication[i].coord[1],
+            replication_list->replication[i].coord[2],
+            sqrt(replication_list->replication[i].rmin2),
+            sqrt(replication_list->replication[i].rmax2));
+  }
+}

@@ -42,8 +42,15 @@
 
 /* Just for testing, so we can dump particles to a text file */
 static swift_lock_type io_lock;
-static FILE *fd;
+static FILE *fd_part;
 
+/* Whether to dump the replication list */
+#define DUMP_REPLICATIONS 1
+#ifdef DUMP_REPLICATIONS
+static int output_nr = 0;
+#endif
+
+/* MPI rank for diagnostic messages */
 extern int engine_rank;
 
 /**
@@ -155,10 +162,10 @@ void lightcone_init(struct lightcone_props *props,
   char fname[500];
   sprintf(fname, "lightcone.%d.txt", engine_rank);
   if(restart) {
-    fd = fopen(fname, "a"); // FIXME: will duplicate particles if we crashed!
+    fd_part = fopen(fname, "a"); // FIXME: will duplicate particles if we crashed!
   } else {
-    fd = fopen(fname, "w");
-    fprintf(fd, "%s\n", "# ID, a, x, y, z");
+    fd_part = fopen(fname, "w");
+    fprintf(fd_part, "%s\n", "# ID, a, x, y, z");
   }
 
 }
@@ -168,7 +175,7 @@ void lightcone_init(struct lightcone_props *props,
  * @brief Flush any remaining lightcone output.
  */
 void lightcone_flush(void) {
-  fclose(fd);    
+  fclose(fd_part);    
 }
 
 
@@ -233,7 +240,7 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   double a_old = cosmo->a_begin * exp(ti_old * cosmo->time_base);
   if(a_old < cosmo->a_begin)a_old = cosmo->a_begin;
 
-  /* Convert redshift range to a distance range */
+  /* Colk7nvert redshift range to a distance range */
   double lightcone_rmin = cosmology_get_comoving_distance(cosmo, a_current);
   double lightcone_rmax = cosmology_get_comoving_distance(cosmo, a_old);
   if(lightcone_rmin > lightcone_rmax)
@@ -242,11 +249,13 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   /* Allow inner boundary layer, assuming all particles have v < c.
      This is to account for particles moving during the time step. */
   double boundary = lightcone_rmax-lightcone_rmin;
+  lightcone_rmin -= boundary;
+  if(lightcone_rmin < 0)lightcone_rmin = 0;
 
   /* Determine periodic copies we need to search */
   replication_list_init(&props->replication_list, boxsize,
                         props->observer_position,
-                        lightcone_rmin-boundary, lightcone_rmax,
+                        lightcone_rmin, lightcone_rmax,
                         props->pencil_beam, props->view_vector,
                         props->view_radius, boundary);
 
@@ -258,7 +267,26 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   props->ti_current = ti_current;
 
   /* Report the size of the list */
-  if(engine_rank==0)message("no. of replications to check: %d\n", props->replication_list.nrep);
+  if(engine_rank==0) {
+    message("no. of replications to check: %d", props->replication_list.nrep);
+    message("shell to search inner radius=%e, outer radius=%e", lightcone_rmin,
+            lightcone_rmax);
+  }
+
+  /* Write out the list, if required */
+#ifdef DUMP_REPLICATIONS
+  if(engine_rank==0) {
+    char fname[500];
+    sprintf(fname, "replication_list.%d.txt", output_nr);
+    FILE *fd_rep = fopen(fname, "w");
+    fprintf(fd_rep, "# Inner radius, outer radius\n");
+    fprintf(fd_rep, "%e, %e\n", lightcone_rmin-boundary, lightcone_rmax);
+    fprintf(fd_rep, "# x, y, z, rmin2, rmax2\n");
+    replication_list_write(&props->replication_list, fd_rep);
+    fclose(fd_rep);
+    output_nr += 1;
+  }
+#endif
 }
 
 
@@ -428,7 +456,7 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     /* For testing: here we write out the coordinates to a text file */
     lock_lock(&io_lock);
-    fprintf(fd, "%12lld, %14.6e, %14.6e, %14.6e, %14.6e\n",
+    fprintf(fd_part, "%12lld, %14.6e, %14.6e, %14.6e, %14.6e\n",
             gp->id_or_neg_offset, a_cross,
             x_cross[0], x_cross[1], x_cross[2]);
     lock_unlock(&io_lock);
