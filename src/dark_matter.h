@@ -30,17 +30,22 @@
  *
  * @param gp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct dmpart* gp) {
+__attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct dmpart* dmp) {
     
-    gp->density.wcount = 0.f;
-    gp->density.wcount_dh = 0.f;
-    gp->rho = 0.f;
-    gp->density.rho_dh = 0.f;
+    dmp->density.wcount = 0.f;
+    dmp->density.wcount_dh = 0.f;
+    dmp->rho = 0.f;
+    dmp->density.rho_dh = 0.f;
     
-    gp->sidm_probability = 0.f;
-    gp->time_step_size = 0.f;
-    gp->num_neighbours = 0.f;
-    gp->sidm_data.sigma = 0.f;
+    dmp->sidm_probability = 0.f;
+    dmp->time_step_size = 0.f;
+    dmp->num_neighbours = 0.f;
+
+    dmp->velocity_ngb[0] = 0.f;
+    dmp->velocity_ngb[1] = 0.f;
+    dmp->velocity_ngb[2] = 0.f;
+    dmp->velocity_dispersion = 0.f;
+
 }
 
 
@@ -49,22 +54,22 @@ __attribute__((always_inline)) INLINE static void dark_matter_init_dmpart(struct
  *
  * @param gp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dmpart* gp, float dt_drift) {
+__attribute__((always_inline)) INLINE static void sidm_init_velocities(struct dmpart* dmp, float dt_drift) {
     
     /* No SIDM flag at the beginning */
-    gp->sidm_data.sidm_flag = 0.0f;
+    dmp->sidm_data.sidm_flag = 0.0f;
     
     /* Reset counter */
-    gp->sidm_data.sidm_events_per_timestep = 0.0f;
+    dmp->sidm_data.sidm_events_per_timestep = 0.0f;
 
     /* Drift time */
-    gp->sidm_data.dt_drift = dt_drift;
-    
+    dmp->sidm_data.dt_drift = dt_drift;
+
     /* Make a copy of particle velocity */
-    gp->sidm_data.v_full[0] = gp->v_full[0];
-    gp->sidm_data.v_full[1] = gp->v_full[1];
-    gp->sidm_data.v_full[2] = gp->v_full[2];
-    
+    dmp->sidm_data.v_full[0] = dmp->v_full[0];
+    dmp->sidm_data.v_full[1] = dmp->v_full[1];
+    dmp->sidm_data.v_full[2] = dmp->v_full[2];
+
 }
 
 
@@ -98,8 +103,16 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->time_bin = 0;
 
     dark_matter_init_dmpart(dmp);
-    
-    dmp->sidm_data.sigma = 0.;
+
+    if (sidm_props->with_constant_sigma) {
+
+      dmp->sidm_data.sigma = sidm_props->sigma;
+
+    } else {
+
+      dmp->sidm_data.sigma = 0.;
+
+    }
 
 }
 
@@ -119,7 +132,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_predict_extra(
  * @param gp The particle.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_values(
-                struct dmpart* restrict gp) {}
+                struct dmpart* restrict dmp) {}
 
 
 /**
@@ -129,28 +142,59 @@ __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_va
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_end_density(
-    struct dmpart* gp, const struct cosmology* cosmo, const struct sidm_props* sidm_props,
+    struct dmpart* dmp, const struct cosmology* cosmo, const struct sidm_props* sidm_props,
     const double dt) {
         
     /* Some smoothing length multiples. */
-    const float h = gp->h;
+    const float h = dmp->h;
     const float h_inv = 1.0f / h;                       /* 1/h */
     const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
     const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
     
     /* Final operation on the density (add self-contribution). */
-    gp->rho += gp->mass * dm_kernel_root;
-    gp->density.rho_dh -= hydro_dimension * gp->mass * dm_kernel_root;
-    gp->density.wcount += dm_kernel_root;
-    gp->density.wcount_dh -= hydro_dimension * dm_kernel_root;
+    dmp->rho += dmp->mass * dm_kernel_root;
+    /*const float rho_inv = 1.f / dmp->rho;*/
+
+    dmp->density.rho_dh -= hydro_dimension * dmp->mass * dm_kernel_root;
+    dmp->density.wcount += dm_kernel_root;
+    dmp->density.wcount_dh -= hydro_dimension * dm_kernel_root;
 
     /* Finish the calculation by inserting the missing h-factors */
-    gp->rho *= h_inv_dim;
-    gp->density.rho_dh *= h_inv_dim_plus_one;
-    gp->density.wcount *= h_inv_dim;
-    gp->density.wcount_dh *= h_inv_dim_plus_one;
-    
-    gp->time_step_size = dt;
+    dmp->rho *= h_inv_dim;
+    dmp->density.rho_dh *= h_inv_dim_plus_one;
+    dmp->density.wcount *= h_inv_dim;
+    dmp->density.wcount_dh *= h_inv_dim_plus_one;
+    /*dmp->velocity_dispersion *= h_inv_dim * rho_inv;
+    dmp->velocity_ngb[0] *= h_inv_dim * rho_inv;
+    dmp->velocity_ngb[1] *= h_inv_dim * rho_inv;
+    dmp->velocity_ngb[2] *= h_inv_dim * rho_inv;*/
+
+    dmp->velocity_dispersion /= dmp->num_neighbours;
+    dmp->velocity_ngb[0] /= dmp->num_neighbours;
+    dmp->velocity_ngb[1] /= dmp->num_neighbours;
+    dmp->velocity_ngb[2] /= dmp->num_neighbours;
+
+    dmp->time_step_size = dt;
+
+    /* Finish velocity dispersion calculation. Currently, the variable
+    *  velocity_ngb holds <v^2> instead. */
+    const double v2 = dmp->velocity_ngb[0] * dmp->velocity_ngb[0] +
+                      dmp->velocity_ngb[1] * dmp->velocity_ngb[1] +
+                      dmp->velocity_ngb[2] * dmp->velocity_ngb[2];
+
+    dmp->velocity_dispersion -= v2;
+
+    /* Low number of neighbours may cause this, avoid .. */
+    if (dmp->velocity_dispersion < 0.f) dmp->velocity_dispersion *= -1.f;
+
+    dmp->velocity_dispersion /= 3.f;
+    dmp->velocity_dispersion = sqrt(dmp->velocity_dispersion);
+
+    /* Let's initialize here sigma if we have velocity dependence */
+    if (!sidm_props->with_constant_sigma) {
+      dmp->sidm_data.sigma = 0.;
+    }
+
 }
 
 /**
@@ -161,20 +205,24 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighbours(
-    struct dmpart* restrict gp, const struct cosmology* cosmo) {
+    struct dmpart* restrict dmp, const struct cosmology* cosmo) {
     
     /* Some smoothing length multiples. */
-    const float h = gp->h;
+    const float h = dmp->h;
     const float h_inv = 1.0f / h;                 /* 1/h */
     const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
     /* Re-set problematic values */
-    gp->rho = gp->mass * dm_kernel_root * h_inv_dim;
-    gp->density.wcount = dm_kernel_root * h_inv_dim;
-    gp->density.rho_dh = 0.f;
-    gp->density.wcount_dh = 0.f;
-    gp->num_neighbours = 0.f;
-    gp->sidm_data.sigma = 0.f;
+    dmp->rho = dmp->mass * dm_kernel_root * h_inv_dim;
+    dmp->density.wcount = dm_kernel_root * h_inv_dim;
+    dmp->density.rho_dh = 0.f;
+    dmp->density.wcount_dh = 0.f;
+    dmp->num_neighbours = 0.f;
+
+    dmp->velocity_ngb[0] = FLT_MAX;
+    dmp->velocity_ngb[1] = FLT_MAX;
+    dmp->velocity_ngb[2] = FLT_MAX;
+    dmp->velocity_dispersion = FLT_MAX;
 }
 
 
@@ -244,14 +292,36 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
  * @param sidm_properties The SIDM parameters
  */
 __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
-    const struct dmpart *restrict dmp, const struct sidm_props* sidm_props) {
-    
-    /* Constant to limit probability from being too large? */
-    const float kappa = 1e-2;
-    
-    /* Timestep limiter (internal units) */
-    const float dm_timestep = kappa / dmp->sidm_probability;
-    
+    const struct dmpart *restrict dmp, const struct sidm_props* sidm_props,
+    const struct cosmology* cosmo) {
+
+    double dm_timestep;
+
+    /* Only limit timestep if you are surrounding but lots of
+     * neighbours, otherwise do not */
+    if (dmp->num_neighbours > 5) {
+
+
+      /* Constant to limit probability from being too large? */
+      const float kappa = 4e-2;
+      const float rho_phys = dmp->rho * cosmo->a3_inv;
+      const float veldisp_phys = dmp->velocity_dispersion * cosmo->a_inv;
+
+      /* Scattering cross section is already in physical units */
+      const double probability = rho_phys * dmp->sidm_data.sigma * veldisp_phys;
+
+      /* Time-step limiter (internal units) */
+      dm_timestep = kappa / probability;
+
+      /* The new timestep of the DMpart cannot be smaller than the minimum allowed
+         * time-step */
+      dm_timestep = max(dm_timestep, sidm_props->time_step_min);
+
+    } else {
+
+      dm_timestep = sidm_props->time_step_max;
+    }
+
     return dm_timestep;
 }
 

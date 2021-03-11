@@ -42,7 +42,7 @@
 #define sidm_props_default_h_sidm FLT_MAX
 #define sidm_props_default_h_tolerance 1e-4
 #define sidm_props_default_volume_change 1.4f
-#define sidm_props_default_sigma 1.f
+#define sidm_props_default_sigma 0
 #define sidm_props_default_mx 0.f
 #define sidm_props_default_mphi 0.f
 #define sidm_props_default_alphax 0.01
@@ -134,6 +134,9 @@ void sidm_props_init(struct sidm_props* sidm_props,
     const float max_volume_change = parser_get_opt_param_float(params, "SPH:max_volume_change", sidm_props_default_volume_change);
     
     sidm_props->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+    sidm_props->time_step_min = parser_get_param_float(params, "SIDM:minimum_timestep");
+    sidm_props->time_step_max = parser_get_param_float(params, "SIDM:maximum_timestep");
 }
 
 /**

@@ -52,7 +52,7 @@ struct dmpart {
 
   /* Particle cutoff radius. */
   float h;
-    
+
   /*! Particle time bin */
   timebin_t time_bin;
     
@@ -74,6 +74,13 @@ struct dmpart {
   
   /* Counter of number of neighbours */
   float num_neighbours;
+
+  /* Velocity dispersion at the particles' position */
+  float velocity_dispersion;
+
+  /*! Smoothed velocity of the dark matter particles surrounding the particle,
+   * in the frame of the dm particle (internal units) */
+  float velocity_ngb[3];
 
   struct {
 

@@ -366,6 +366,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     pi->density.wcount += wi;
     pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+    /* Neighbour's (drifted) velocity   */
+    /* (we don't include a Hubble term since we are interested in the */
+    /* velocity contribution at the location of the DM particle)      */
+    const float dvi[3] = {pj->v_full[0] - pi->v_full[0],
+                          pj->v_full[1] - pi->v_full[1],
+                          pj->v_full[2] - pi->v_full[2]};
+
+    /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
+    /*pi->velocity_ngb[0] += mj * dvi[0] * wi;
+    pi->velocity_ngb[1] += mj * dvi[1] * wi;
+    pi->velocity_ngb[2] += mj * dvi[2] * wi;*/
+    pi->velocity_ngb[0] += dvi[0];
+    pi->velocity_ngb[1] += dvi[1];
+    pi->velocity_ngb[2] += dvi[2];
+
+    /*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
+    pi->velocity_dispersion += (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);
+
     /* Compute density of pj. */
     const float hj_inv = 1.f / hj;
     const float uj = r * hj_inv;
@@ -375,7 +393,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
     pj->density.wcount += wj;
     pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
-        
+
+    const float dvj[3] = {pi->v_full[0] - pj->v_full[0],
+                          pi->v_full[1] - pj->v_full[1],
+                          pi->v_full[2] - pj->v_full[2]};
+
+    /*pj->velocity_ngb[0] += mi * dvj[0] * wj;
+    pj->velocity_ngb[1] += mi * dvj[1] * wj;
+    pj->velocity_ngb[2] += mi * dvj[2] * wj;*/
+    pj->velocity_ngb[0] += dvj[0];
+    pj->velocity_ngb[1] += dvj[1];
+    pj->velocity_ngb[2] += dvj[2];
+
+    /*pj->velocity_dispersion += mi * wj * (dvj[0] * dvj[0] + dvj[1] * dvj[1] + dvj[2] * dvj[2]);*/
+    pj->velocity_dispersion += (dvj[0] * dvj[0] + dvj[1] * dvj[1] + dvj[2] * dvj[2]);
+
     /* Increasing counters */
     ++pi->num_neighbours;
     ++pj->num_neighbours;
@@ -414,7 +446,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     
     pi->density.wcount += wi;
     pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
-    
+
+    /* Neighbour's (drifted) velocity   */
+    /* (we don't include a Hubble term since we are interested in the */
+    /* velocity contribution at the location of the DM particle)      */
+    const float dvi[3] = {pj->v_full[0] - pi->v_full[0],
+                          pj->v_full[1] - pi->v_full[1],
+                          pj->v_full[2] - pi->v_full[2]};
+
+    /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
+    /*pi->velocity_ngb[0] += mj * dvi[0] * wi;
+    pi->velocity_ngb[1] += mj * dvi[1] * wi;
+    pi->velocity_ngb[2] += mj * dvi[2] * wi;*/
+    pi->velocity_ngb[0] += dvi[0];
+    pi->velocity_ngb[1] += dvi[1];
+    pi->velocity_ngb[2] += dvi[2];
+
+    /*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
+    pi->velocity_dispersion += (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);
+
     /* Increasing counter */
     ++pi->num_neighbours;
 }
@@ -449,7 +499,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     double dv = cosmo->a_inv * sqrt(dv2) / 2.0;
     float e[3] = {0.f,0.f,0.f};
     
-    /* Direction of kick is randomly chosen or not, depends on scattering model */
+    /* Direction of kick is randomly chosen or not, it depends on scattering model */
     if (sidm_props->with_isotropic_scattering) {
         
         /* Draw a random number between (0,1] */
@@ -475,16 +525,16 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         const float u = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM_theta);
         
         double v = cosmo->a_inv * sqrt(dv2);
-        float mx = sidm_props->mx / 10.;
-        float mphi = sidm_props->mphi / 10.;
-        float w = 300. * 1e5 * mphi / mx; /* physical units cm/s */
+        double mx = sidm_props->mx / 10.;
+        double mphi = sidm_props->mphi / 10.;
+        double w = 300. * 1e5 * mphi / mx; /* physical units cm/s */
         w /= units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
         w *= units_cgs_conversion_factor(us, UNIT_CONV_TIME); /* physical but internal units now */
-        float w2 = w * w;
+        double w2 = w * w;
         const float a = v * v / w2;
         const float a2 = a * a;
-        const float dx = u/(2. * (a+1))-1./(2.*a);
-        const float x = (1./dx)/a2 + (a+2.)/a;
+        const float dx = u / ( 2.f * ( a + 1.f )) - 1.f / ( 2.f * a );
+        const float x = ( 1.f / dx ) / a2 + ( a + 2.f) / a;
         
         /* Calculate theta from prob. distribution */
         const float theta = acos(x);
@@ -669,7 +719,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     if (sidm_props->with_constant_sigma) {
 
       sigma = sidm_props->sigma;
-      pi->sidm_data.sigma = sigma;
 
     } else if (sidm_props->with_velocity_dependent_sigma) {
 
@@ -680,7 +729,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
       sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
       pi->sidm_data.sigma += sigma / pi->num_neighbours;
-
     }
 
     /* DM particle mass */
@@ -744,26 +792,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     
     double sigma = 0.;
 
-  /* Scattering cross section per unit mass (in internal units) */
-  if (sidm_props->with_constant_sigma) {
+    /* Scattering cross section per unit mass (in internal units) */
+    if (sidm_props->with_constant_sigma) {
 
-    sigma = sidm_props->sigma;
-    pi->sidm_data.sigma = sigma;
-    pj->sidm_data.sigma = sigma;
+      sigma = sidm_props->sigma;
+      pi->sidm_data.sigma = sigma;
+      pj->sidm_data.sigma = sigma;
 
-  } else if (sidm_props->with_velocity_dependent_sigma) {
+    } else if (sidm_props->with_velocity_dependent_sigma) {
 
-    sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
-    pi->sidm_data.sigma += sigma / pi->num_neighbours;
-    pj->sidm_data.sigma += sigma / pj->num_neighbours;
+      sigma = velocity_dependent_sigma_model(vij, sidm_props, us);
+      pi->sidm_data.sigma += sigma / pi->num_neighbours;
+      pj->sidm_data.sigma += sigma / pj->num_neighbours;
 
-  } else if (sidm_props->with_momentum_transfer_sigma) {
+    } else if (sidm_props->with_momentum_transfer_sigma) {
 
-    sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
-    pi->sidm_data.sigma += sigma / pi->num_neighbours;
-    pj->sidm_data.sigma += sigma / pj->num_neighbours;
+      sigma = momentum_transfer_sigma_model(vij, sidm_props, us);
+      pi->sidm_data.sigma += sigma / pi->num_neighbours;
+      pj->sidm_data.sigma += sigma / pj->num_neighbours;
 
-  }
+    }
 
     /* DM particle mass */
     const double mass_i = pi->mass;

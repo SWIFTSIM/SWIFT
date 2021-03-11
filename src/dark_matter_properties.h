@@ -104,6 +104,12 @@ struct sidm_props {
     /*! Maximal change of h over one time-step */
     float log_max_h_change;
 
+    /*! -- Minimum allowed time-step of DMpart in internal units */
+    float time_step_min;
+
+    /*! -- Maximum allowed time-step of DMpart in internal units */
+    float time_step_max;
+
 };
 
 /**
