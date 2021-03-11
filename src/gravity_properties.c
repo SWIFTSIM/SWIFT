@@ -266,7 +266,14 @@ void gravity_props_print(const struct gravity_props *p) {
 
   message("Self-gravity time integration: eta=%.4f", p->eta);
 
-  message("Self-gravity opening angle:  theta=%.4f", p->theta_crit);
+  if (p->use_adaptive_tolerance) {
+    message("Self-gravity opening angle scheme:  adaptive");
+    message("Self-gravity opening angle:  epsilon_fmm=%.6f",
+            p->adaptive_tolerance);
+  } else {
+    message("Self-gravity opening angle scheme:  fixed");
+    message("Self-gravity opening angle:  theta_cr=%.4f", p->theta_crit);
+  }
 
   message("Self-gravity softening functional form: %s",
           kernel_gravity_softening_name);
