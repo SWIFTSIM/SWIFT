@@ -309,6 +309,12 @@ struct space {
   /*! Structure dealing with the computation of a unique ID */
   struct unique_id unique_id;
 
+  /*! Are we running with a zoom region? */
+  int with_zoom_region;
+
+  /*! Structure that stores the zoom regions properties. */
+  struct zoom_region_properties *zoom_props;
+
 #ifdef WITH_MPI
 
   /*! Buffers for parts that we will receive from foreign cells. */
@@ -328,6 +334,39 @@ struct space {
   size_t nr_bparts_foreign, size_bparts_foreign;
 
 #endif
+};
+
+struct zoom_region_properties {
+
+  /*! Centre of mass of the zoom region. */
+  double com[3];
+
+  /*! Dimensions of the zoom region. */
+  double dim[3];
+
+  /*! Width of the top level zoom cells. */
+  //double width[3];
+
+  /*! Inverse width of the top level zoom cells. */
+  //double iwidth[3];
+
+  /*! Space dimensions in number of top level zoom cells. */
+  //int cdim[3];
+
+  /*! Vector outlining the zoom region boundaries. */
+  //double region_bounds[6];
+
+  /*! Offset in the top level cell list zoom cells start from. */
+  //int tl_cell_offset;
+
+  /*! Maximum size the zoom region can become. */
+  //double max_size;
+
+  /*! Increase zoom region by this factor. */
+  //double boost_factor;
+
+  /*! What parttype to create the zoom region from. */
+  //int mask_parttype;
 };
 
 /* Function prototypes. */

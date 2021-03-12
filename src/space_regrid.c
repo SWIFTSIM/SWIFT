@@ -29,6 +29,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "scheduler.h"
+#include "zoom_region.h"
 
 /**
  * @brief Re-build the top-level cell grid.
@@ -176,6 +177,9 @@ void space_regrid(struct space *s, int verbose) {
    * Can happen when restarting the application. */
   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
+
+  /* Construct the zoom region. */
+  if (s->with_zoom_region) construct_zoom_region(s, verbose);
 
   /* Do we need to re-build the upper-level cells? */
   // tic = getticks();

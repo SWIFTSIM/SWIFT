@@ -57,6 +57,7 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "zoom_region.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -1377,6 +1378,9 @@ void space_init(struct space *s, struct swift_params *params,
         "Running with star formation but without spare star particles. "
         "Increase 'Scheduler:cell_extra_sparts'.");
   }
+
+  /* Init the zoom region. */
+  zoom_region_init(params, s);
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
