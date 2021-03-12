@@ -208,7 +208,7 @@ INLINE static double random_unit_interval_part_ID_and_ray_idx(
     const enum random_number_type type) {
 
   /* For better mixing, we apply a non-linear transformation y=x^3 */
-  const long long ray_idx_3 = ray_idx * ray_idx * ray_idx;
+  const long long ray_idx_3 = (long long)1 + ray_idx * ray_idx * ray_idx;
   return random_unit_interval_two_IDs(id_star, ray_idx_3, ti_current, type);
 }
 
