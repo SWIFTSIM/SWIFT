@@ -644,8 +644,9 @@ INLINE static double momentum_transfer_sigma_model(float v, const struct sidm_pr
     float v4 = v * v * v * v;
     double dln_sigma = 2. * log(1. + v * v * 0.5 /w2) - log(1. + v * v /w2);
     
-    /* Scattering cross section in physical units */
-    double sigma = sigma0 * 2. * w4 / v4;
+    /* Scattering cross section in physical units, with extra factor of 2 since
+     * it has proven to work better (Robertson +2018) */
+    double sigma = sigma0 * 4. * w4 / v4;
     sigma *= dln_sigma;
     
     /* Scattering cross section in internal units */
