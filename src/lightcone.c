@@ -223,9 +223,10 @@ void lightcone_flush(void) {
  */
 void lightcone_init_replication_list(struct lightcone_props *props,
                                      const struct cosmology *cosmo,
+                                     const integertime_t ti_old,
                                      const integertime_t ti_current,
                                      const double dt_max) {
-
+  
   /* Deallocate the old list, if there is one */
   if(props->have_replication_list)replication_list_clean(&props->replication_list);
 
@@ -233,14 +234,17 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   const double boxsize = props->boxsize;
 
   /* Get a lower limit on earliest time particle may be drifted from */
-  integertime_t ti_old = ti_current - dt_max / cosmo->time_base;
+  float dt = cosmo->time_end - cosmo->time_begin;
+  while (dt > dt_max) dt /= 2.f;
+  timebin_t bin = get_time_bin(dt*cosmo->time_base_inv);
+  integertime_t ti_lim = get_integer_time_begin(ti_old, bin);
 
   /* Get expansion factor at earliest and latest times particles might be drifted between */
   double a_current = cosmo->a_begin * exp(ti_current * cosmo->time_base);
-  double a_old = cosmo->a_begin * exp(ti_old * cosmo->time_base);
+  double a_old = cosmo->a_begin * exp(ti_lim * cosmo->time_base);
   if(a_old < cosmo->a_begin)a_old = cosmo->a_begin;
 
-  /* Colk7nvert redshift range to a distance range */
+  /* Convert redshift range to a distance range */
   double lightcone_rmin = cosmology_get_comoving_distance(cosmo, a_current);
   double lightcone_rmax = cosmology_get_comoving_distance(cosmo, a_old);
   if(lightcone_rmin > lightcone_rmax)
@@ -263,7 +267,7 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   props->have_replication_list = 1;
 
   /* Store times we used to make the list, for consistency check later */
-  props->ti_old = ti_old;
+  props->ti_old = ti_lim;
   props->ti_current = ti_current;
 
   /* Report the size of the list */
