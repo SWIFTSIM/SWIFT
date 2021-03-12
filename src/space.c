@@ -1379,8 +1379,10 @@ void space_init(struct space *s, struct swift_params *params,
         "Increase 'Scheduler:cell_extra_sparts'.");
   }
 
+#ifdef WITH_ZOOM_REGION
   /* Init the zoom region. */
   zoom_region_init(params, s);
+#endif
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);

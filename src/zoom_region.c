@@ -24,7 +24,7 @@
  * @param s The space
  */
 void zoom_region_init(struct swift_params *params, struct space *s) {
-
+#ifdef WITH_ZOOM_REGION
   /* Are we running with a zoom region? */
   s->with_zoom_region = parser_get_opt_param_int(params, "ZoomRegion:enable", 0);
 
@@ -41,6 +41,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
   //  s->zoom_props->boost_factor =
   //      parser_get_opt_param_double(params, "ZoomRegion:boost_factor", 1.0);
   }
+#endif
 }
 
 /**
@@ -54,7 +55,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
  * @param verbose Are we talking?
  */
 void construct_zoom_region(struct space *s, int verbose) {
-
+#ifdef WITH_ZOOM_REGION
   double new_zoom_boundary[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
   const size_t nr_gparts = s->nr_gparts;
   double mtot = 0.0;
@@ -122,4 +123,5 @@ void construct_zoom_region(struct space *s, int verbose) {
     message("com: [%f %f %f] dim: [%f %f %f]",
           com[0], com[1], com[2], s->zoom_props->dim[0], s->zoom_props->dim[1],
           s->zoom_props->dim[2]);
+#endif
 }

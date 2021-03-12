@@ -82,6 +82,19 @@ fi
 #  Restrict support.
 AC_C_RESTRICT
 
+# Running with a zoom region.
+AC_ARG_ENABLE([zoom-region],
+    [AS_HELP_STRING([--enable-zoom-region],
+        [support for zoom simulations]
+    )],
+    [with_zoom_region="${enableval}"],
+    [with_zoom_region="no"]
+)
+
+if test "$with_zoom_region" = "yes"; then
+   AC_DEFINE([WITH_ZOOM_REGION], 1, [zoom_region enabled])
+fi
+
 # logger
 AC_ARG_ENABLE([logger],
 	[AS_HELP_STRING([--enable-logger],
@@ -2585,5 +2598,6 @@ AC_MSG_RESULT([
 
    Particle Logger      : $with_logger
    Python enabled       : $have_python
+   Zoom region support  : $with_zoom_region
 
  ------------------------])

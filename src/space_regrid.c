@@ -178,13 +178,15 @@ void space_regrid(struct space *s, int verbose) {
   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
-  /* Construct the zoom region. */
-  if (s->with_zoom_region) construct_zoom_region(s, verbose);
-
   /* Do we need to re-build the upper-level cells? */
   // tic = getticks();
   if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
       cdim[2] < s->cdim[2]) {
+
+#ifdef WITH_ZOOM_REGION
+    /* Compute the bounds of the zoom region from the DM particles. */
+    if (s->with_zoom_region) construct_zoom_region(s, verbose);
+#endif
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
