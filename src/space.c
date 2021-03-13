@@ -2490,11 +2490,16 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
 
   /* Write line for current cell */
   fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
-  fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+  fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g,", c->hydro.count,
           c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
           c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-  fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
+  fprintf(f, "%g,%g,%i,%i", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
+#ifdef WITH_ZOOM_REGION
+    fprintf(f, ",%i\n", c->tl_cell_type);
+#else
+    fprintf(f, "\n");
+#endif
 
   /* Write children */
   for (int i = 0; i < 8; i++) {
@@ -2526,13 +2531,23 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
     fprintf(f,
             "hydro_count,stars_count,gpart_count,super,hydro_super,"
             "loc1,loc2,loc3,width1,width2,width3,");
-    fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
+    fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth");
+#ifdef WITH_ZOOM_REGION
+    fprintf(f, ",tl_cell_type\n");
+#else
+    fprintf(f, "\n");
+#endif
 
     /* Write root data */
     fprintf(f, "%i, ,-1,", root_id);
     fprintf(f, "%li,%li,%li, , , , , , , , ,", s->nr_parts, s->nr_sparts,
             s->nr_gparts);
-    fprintf(f, " , , ,\n");
+    fprintf(f, " , , ,");
+#ifdef WITH_ZOOM_REGION
+    fprintf(f, " ,\n");
+#else
+    fprintf(f, "\n");
+#endif
   }
 
   /* Write all the top level cells (and their children) */
