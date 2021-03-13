@@ -221,6 +221,14 @@ void space_regrid(struct space *s, int verbose) {
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
 
+#ifdef WITH_ZOOM_REGION
+    /* Double the number of top level cells, 2nd copy is for zoom region. */
+    if (s->with_zoom_region) {
+      s->tot_cells *= 2;
+      s->nr_cells *= 2;
+    }
+#endif
+
     if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
@@ -286,6 +294,9 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for star formation (spart).");
     }
 
+#ifdef WITH_ZOOM_REGION
+    construct_tl_cells_with_zoom_region(s, cdim, dmin, ti_current);
+#else
     /* Set the cell location and sizes. */
     for (int i = 0; i < cdim[0]; i++)
       for (int j = 0; j < cdim[1]; j++)
@@ -325,12 +336,15 @@ void space_regrid(struct space *s, int verbose) {
           cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
 #endif
         }
+#endif //WITH_ZOOM_REGION
 
     /* Be verbose about the change. */
     if (verbose)
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
               cdim[2]);
 
+    space_write_cell_hierarchy(s, 0);
+    exit(1);
 #ifdef WITH_MPI
     if (oldnodeIDs != NULL) {
       /* We have changed the top-level cell dimension, so need to redistribute

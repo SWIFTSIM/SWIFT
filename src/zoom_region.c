@@ -45,9 +45,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
 }
 
 /**
- * @brief Compute the extent/bounds of the zoom region.
- *
- * Constructed from the high-res dark matter particles only (swift_type_dark_matter).
+ * @brief Compute the extent/bounds of the zoom region using the high-res DM particles.
  *
  * The min/max [x,y,z] for each particle is found, and the CoM of these particles is computed.
  *
@@ -125,3 +123,132 @@ void construct_zoom_region(struct space *s, int verbose) {
           s->zoom_props->dim[2]);
 #endif
 }
+
+void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const float dmin,
+        const integertime_t ti_current) {
+#ifdef WITH_ZOOM_REGION
+  /* We are recomputing the boundary of the zoom region. */
+  double zoom_region_bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
+  const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
+  float dmin_zoom = 0.f;
+
+  /* Loop over top level cells twice, second time is for the zoom region. */
+  for (int n = 0; n < 2; n++) {
+    if (n == 1 && !s->with_zoom_region) continue;
+
+    /* Set the cell location and sizes. */
+    for (int i = 0; i < cdim[0]; i++)
+      for (int j = 0; j < cdim[1]; j++)
+        for (int k = 0; k < cdim[2]; k++) {
+          const size_t cid = cell_getid(cdim, i, j, k);
+
+          struct cell *restrict c;
+          if (n == 0) {
+            /* Natural top level cells. */
+            c = &s->cells_top[cid];
+            c->loc[0] = i * s->width[0];
+            c->loc[1] = j * s->width[1];
+            c->loc[2] = k * s->width[2];
+            c->width[0] = s->width[0];
+            c->width[1] = s->width[1];
+            c->width[2] = s->width[2];
+            if (s->with_self_gravity)
+              c->grav.multipole = &s->multipoles_top[cid];
+            c->tl_cell_type = tl_cell;
+            c->dmin = dmin;
+          } else {
+            /* Zoom region top level cells. */
+            c = &s->cells_top[cid + zoom_cell_offset];
+            c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
+            c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
+            c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
+            c->width[0] = s->zoom_props->width[0];
+            c->width[1] = s->zoom_props->width[1];
+            c->width[2] = s->zoom_props->width[2];
+            if (s->with_self_gravity)
+              c->grav.multipole = &s->multipoles_top[cid + zoom_cell_offset];
+            c->tl_cell_type = zoom_tl_cell;
+            c->dmin = dmin_zoom;
+          }
+          c->depth = 0;
+          c->split = 0;
+          c->hydro.count = 0;
+          c->grav.count = 0;
+          c->stars.count = 0;
+          c->top = c;
+          c->super = c;
+          c->hydro.super = c;
+          c->grav.super = c;
+          c->hydro.ti_old_part = ti_current;
+          c->grav.ti_old_part = ti_current;
+          c->stars.ti_old_part = ti_current;
+          c->black_holes.ti_old_part = ti_current;
+          c->grav.ti_old_multipole = ti_current;
+#ifdef WITH_MPI
+          c->mpi.tag = -1;
+          c->mpi.recv = NULL;
+          c->mpi.send = NULL;
+#endif
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+          c->cellID = -last_cell_id;
+          last_cell_id++;
+#endif
+          /* Only do what comes next first time round. */
+          if (n == 1) continue;
+          /* Is this top level cell within the zoom region? */
+          if (s->with_zoom_region &&
+              (c->loc[0] + c->width[0] >
+               s->zoom_props->com[0] - s->zoom_props->dim[0] / 2.) &&
+              (c->loc[0] <
+               s->zoom_props->com[0] + s->zoom_props->dim[0] / 2.) &&
+              (c->loc[1] + c->width[1] >
+               s->zoom_props->com[1] - s->zoom_props->dim[1] / 2.) &&
+              (c->loc[1] <
+               s->zoom_props->com[1] + s->zoom_props->dim[1] / 2.) &&
+              (c->loc[2] + c->width[2] >
+               s->zoom_props->com[2] - s->zoom_props->dim[2] / 2.) &&
+              (c->loc[2] <
+               s->zoom_props->com[2] + s->zoom_props->dim[2] / 2.)) {
+
+            /* Tag this top level cell as part of the zoom region. */
+            c->tl_cell_type = void_tl_cell;
+
+            /* Update the bounds of the zoom region. */
+            if (c->loc[0] < zoom_region_bounds[0])
+              zoom_region_bounds[0] = c->loc[0];
+            if (c->loc[0] + c->width[0] > zoom_region_bounds[1])
+              zoom_region_bounds[1] = c->loc[0] + c->width[0];
+            if (c->loc[1] < zoom_region_bounds[2])
+              zoom_region_bounds[2] = c->loc[1];
+            if (c->loc[1] + c->width[1] > zoom_region_bounds[3])
+              zoom_region_bounds[3] = c->loc[1] + c->width[1];
+            if (c->loc[2] < zoom_region_bounds[4])
+              zoom_region_bounds[4] = c->loc[2];
+            if (c->loc[2] + c->width[2] > zoom_region_bounds[5])
+              zoom_region_bounds[5] = c->loc[2] + c->width[2];
+          }
+        }
+
+    /* Compute size of top level zoom cells on first iteration. */
+    if (n == 1) continue;
+    if (s->with_zoom_region) {
+      s->zoom_props->dim[0] = zoom_region_bounds[1] - zoom_region_bounds[0];
+      s->zoom_props->dim[1] = zoom_region_bounds[3] - zoom_region_bounds[2];
+      s->zoom_props->dim[2] = zoom_region_bounds[5] - zoom_region_bounds[4];
+
+      for (int l = 0; l < 3; l++) {
+        s->zoom_props->width[l] = s->zoom_props->dim[l] / cdim[l];
+        s->zoom_props->iwidth[l] = 1 / s->zoom_props->width[l];
+        s->zoom_props->cdim[l] = cdim[l];
+      }
+
+      for (int l = 0; l < 6; l++)
+        s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
+      s->zoom_props->tl_cell_offset = zoom_cell_offset;
+      dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
+                       s->zoom_props->width[2]);
+    }
+  }
+#endif
+}
+

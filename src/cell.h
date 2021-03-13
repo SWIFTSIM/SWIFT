@@ -343,6 +343,17 @@ enum cell_flags {
   cell_flag_unskip_pair_grav_processed = (1UL << 20)
 };
 
+#ifdef WITH_ZOOM_REGION
+/**
+ * @brief What kind of top level cell is this cell?
+ *
+ * 0 = A standard top level cell.
+ * 1 = An ignored top level cell (as it is within the zoom region).
+ * 2 = A top level zoom cell.
+ */
+enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell };
+#endif
+
 /**
  * @brief Cell within the tree structure.
  *
@@ -457,6 +468,11 @@ struct cell {
 
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
+
+#ifdef WITH_ZOOM_REGION
+  /*! What kind of top level cell is this ? */
+  enum tl_cell_types tl_cell_type;
+#endif
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */

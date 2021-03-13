@@ -345,28 +345,19 @@ struct zoom_region_properties {
   double dim[3];
 
   /*! Width of the top level zoom cells. */
-  //double width[3];
+  double width[3];
 
   /*! Inverse width of the top level zoom cells. */
-  //double iwidth[3];
+  double iwidth[3];
 
   /*! Space dimensions in number of top level zoom cells. */
-  //int cdim[3];
+  int cdim[3];
 
   /*! Vector outlining the zoom region boundaries. */
-  //double region_bounds[6];
+  double region_bounds[6];
 
   /*! Offset in the top level cell list zoom cells start from. */
-  //int tl_cell_offset;
-
-  /*! Maximum size the zoom region can become. */
-  //double max_size;
-
-  /*! Increase zoom region by this factor. */
-  //double boost_factor;
-
-  /*! What parttype to create the zoom region from. */
-  //int mask_parttype;
+  int tl_cell_offset;
 };
 
 /* Function prototypes. */
