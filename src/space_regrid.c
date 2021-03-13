@@ -295,7 +295,7 @@ void space_regrid(struct space *s, int verbose) {
     }
 
 #ifdef WITH_ZOOM_REGION
-    construct_tl_cells_with_zoom_region(s, cdim, dmin, ti_current);
+    construct_tl_cells_with_zoom_region(s, cdim, dmin, ti_current, verbose);
 #else
     /* Set the cell location and sizes. */
     for (int i = 0; i < cdim[0]; i++)

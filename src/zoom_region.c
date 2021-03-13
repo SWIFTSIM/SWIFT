@@ -36,10 +36,6 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     if (s->zoom_props == NULL)
       error("Error allocating memory for the zoom parameters.");
 
-  //  s->zoom_props->max_size =
-  //      parser_get_opt_param_double(params, "ZoomRegion:max_size", FLT_MAX);
-  //  s->zoom_props->boost_factor =
-  //      parser_get_opt_param_double(params, "ZoomRegion:boost_factor", 1.0);
   }
 #endif
 }
@@ -124,9 +120,24 @@ void construct_zoom_region(struct space *s, int verbose) {
 #endif
 }
 
+/**
+ * @brief Build the TL cells, with a zoom region.
+ *
+ * This replaces the loop in space_regrid when running with a zoom region.
+ * 
+ * Construct an additional set of TL "zoom" cells embedded within the TL cell structure
+ * with the dimensions of each cell structure being the same (with differing widths).
+ *
+ * Therefore the new TL cell structure is 2*cdim**3, with the "natural" TL cells ocupying the 
+ * first half of the TL cell list, and the "zoom" TL cells ocupying the second half.
+ *
+ * @param s The space.
+ * @param verbose Are we talking?
+ */
 void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const float dmin,
-        const integertime_t ti_current) {
+        const integertime_t ti_current, const int verbose) {
 #ifdef WITH_ZOOM_REGION
+  
   /* We are recomputing the boundary of the zoom region. */
   double zoom_region_bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
   const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
@@ -249,6 +260,75 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
                        s->zoom_props->width[2]);
     }
   }
+
+  /* Now find what cells neighbour the zoom region. */
+  find_neighbouring_cells(s, verbose);
+
 #endif
 }
 
+/**
+ * @brief Find what TL cells surround the zoom region.
+ *
+ * When interacting "natural" TL cells and "zoom" TL cells, it helps to know what natural TL
+ * cells surround the zoom region. These cells then get tagged as "tl_cell_neighbour".
+ *
+ * @param s The space.
+ * @param verbose Are we talking?
+ */
+void find_neighbouring_cells(struct space *s, const int verbose) {
+
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int periodic = s->periodic;
+  struct cell *cells = s->cells_top;
+
+  const int delta_m = 1;
+  const int delta_p = 1;
+
+  int neighbour_count = 0;
+
+  /* Loop over each cell in the space to find the neighbouring top level cells
+   * surrounding the zoom region. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell ID. */
+        const int cid = cell_getid(cdim, i, j, k);
+
+        /* Only interested in cells hosting zoom top level cells. */
+        if (cells[cid].tl_cell_type != void_tl_cell) continue;
+
+        /* Loop over all its direct neighbours. */
+        for (int ii = -delta_m; ii <= delta_p; ii++) {
+          int iii = i + ii;
+          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+          iii = (iii + cdim[0]) % cdim[0];
+          for (int jj = -delta_m; jj <= delta_p; jj++) {
+            int jjj = j + jj;
+            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+            jjj = (jjj + cdim[1]) % cdim[1];
+            for (int kk = -delta_m; kk <= delta_p; kk++) {
+              int kkk = k + kk;
+              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+              kkk = (kkk + cdim[2]) % cdim[2];
+
+              /* Get the cell ID of the neighbour. */
+              const int cjd = cell_getid(cdim, iii, jjj, kkk);
+
+              if (cells[cjd].tl_cell_type == tl_cell) {
+
+                /* Record that we've found a neighbour. */
+                cells[cjd].tl_cell_type = tl_cell_neighbour;
+                neighbour_count++;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (verbose)
+    message("%i cells neighbouring the zoom region", neighbour_count);
+}
