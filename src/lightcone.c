@@ -175,7 +175,7 @@ void lightcone_init(struct lightcone_props *props,
  * @brief Flush any remaining lightcone output.
  */
 void lightcone_flush(void) {
-  fclose(fd_part);    
+  fclose(fd_part);
 }
 
 
@@ -226,7 +226,7 @@ void lightcone_init_replication_list(struct lightcone_props *props,
                                      const integertime_t ti_old,
                                      const integertime_t ti_current,
                                      const double dt_max) {
-  
+
   /* Deallocate the old list, if there is one */
   if(props->have_replication_list)replication_list_clean(&props->replication_list);
 
@@ -320,8 +320,8 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
     error("Particle drift is outside the range used to make replication list!");
 
   /* Determine expansion factor at start and end of the drift */
-  const double a_start = c->a_begin * exp(ti_old * c->time_base);
-  const double a_end   = c->a_begin * exp(ti_old * c->time_base + dt_drift);
+  const double a_start = c->a_begin * exp(ti_old     * c->time_base);
+  const double a_end   = c->a_begin * exp(ti_current * c->time_base);
 
   /* Does this drift overlap the lightcone redshift range? If not, nothing to do. */
   if((a_start > props->a_at_z_min) || (a_end < props->a_at_z_max))return;
@@ -429,9 +429,10 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
     const double eps = 1.0e-5;
     if((f < 0.0-eps) || (f > 1.0+eps)) error("Particle interpolated outside time step!");
 
-    /* Compute expansion factor at crossing */
-    const double a_cross = c->a_begin * exp(ti_old * c->time_base + f * dt_drift);
-    
+    /* Compute expansion factor at crossing (approximate, used for debugging) */    
+    const double ti_cross = ti_old + (ti_current-ti_old)*f;
+    const double a_cross = c->a_begin * exp(ti_cross * c->time_base);
+
     /* Compute position at crossing */
     const double x_cross[3] = {
       x_start[0] + dt_drift * f * gp->v_full[0],
