@@ -142,12 +142,12 @@ hydro_logger_interpolate_field(const double t_before,
       /* Div v */
       x[n_linear] = interpolate_cubic_hermite_spline(
           t_before, bef[n_linear], bef[n_linear + 1], t_after, aft[n_linear],
-          aft[n_linear + 1], t, /* periodic= */ 0, params);
+          aft[n_linear + 1], t);
 
       /* d Div v / dt */
       x[n_linear + 1] = wa * aft[n_linear + 1] + wb * bef[n_linear + 1];
       /* Use the linear interpolation */
-      x[1] = wa * div_aft[1] + wb * div_bef[1];
+      x[1] = wa * aft[n_linear + 2] + wb * bef[n_linear + 2];
       break;
     }
 
