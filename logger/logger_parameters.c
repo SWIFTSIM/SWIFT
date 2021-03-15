@@ -31,11 +31,14 @@
  * @brief Initialize the parameters from the yaml file.
  *
  * @param reader The #logger_reader.
- * @param basename The basename of the logger files.
- * @param verbose The verbose level.
+ * @param params The #logger_parameters to initialize.
+ * @param number_threads The number of threads for the threadpool
+ * (-1 in order to use the default value).
+ *
  */
 void logger_parameters_init(struct logger_parameters *params,
-                            const struct logger_reader *reader) {
+                            const struct logger_reader *reader,
+                            int number_threads) {
 
   /* Generate filename */
   char filename[STRING_SIZE];
@@ -67,4 +70,10 @@ void logger_parameters_init(struct logger_parameters *params,
   /* Read if we are running with cosmology */
   params->with_cosmology =
       parser_get_param_int(&swift_params, "Policy:cosmological integration");
+
+  /* Save the number of threads */
+  params->number_threads = number_threads;
+  if (reader->verbose > 0) {
+    message("Running with %i threads", params->number_threads);
+  }
 }

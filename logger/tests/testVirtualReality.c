@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
   parser_get_param_string(&params, "Logger:basename", basename);
   strcat(basename, "_0000");
   logger_reader_init(&reader, basename,
-                     /* Verbose */ 0);
+                     /* Verbose */ 0, /* number_threads */1);
 
   /* Read the time limits */
   double begin = logger_reader_get_time_begin(&reader);
