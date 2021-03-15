@@ -40,6 +40,18 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
 #endif
 }
 
+/**
+ * @brief For a given particle location, what TL cell does it belong to?
+ *
+ * Slightly more complicated in the zoom case, as there are now two embedded TL grids.
+ * 
+ * First see if the particle is within the zoom bounds, then find its TL cell. 
+ *
+ * @param cdim Cell dimentions of the TL grid (same for natural TL and zoom grid).
+ * @param x, y, z Location of particle.
+ * @param i, j, k Location of particle (as integer fraction of box, 0 to 1).
+ * @param s The space.
+ */
 int cell_getid_zoom(const int cdim[3], const double x, const double y,
                     const double z, const struct space *s,
                     const int i, const int j, const int k) {
@@ -62,6 +74,7 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
       y > zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
       z > zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
 
+    /* Which zoom TL cell are we in? */
     const int zoom_index =
         cell_getid(cdim, (x - zoom_region_bounds[0]) * ih_x_zoom,
                    (y - zoom_region_bounds[2]) * ih_y_zoom,
@@ -71,6 +84,7 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
     if (zoom_index < 0 || zoom_index >= cdim[0] * cdim[1] * cdim[2])
       error("zoom_index out of range %i (%f %f %f)", cell_id, x, y, z);
 #endif
+  /* If not then treat it like normal, and find the natural TL cell. */
   } else {
     cell_id = cell_getid(cdim, i, j, k);
   }
