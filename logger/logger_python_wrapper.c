@@ -67,6 +67,9 @@ typedef struct {
   /* Verbose level */
   int verbose;
 
+  /* Number of threads to use */
+  int number_threads;
+
   /* Reader for each type of particles */
   PyParticleReader *part_reader[swift_type_count];
 
@@ -130,17 +133,19 @@ static int Reader_init(PyObjectReader *self, PyObject *args, PyObject *kwds) {
   /* input variables. */
   char *basename = NULL;
   int verbose = 0;
+  int number_threads = 1;
 
   /* List of keyword arguments. */
-  static char *kwlist[] = {"basename", "verbose", NULL};
+  static char *kwlist[] = {"basename", "verbose", "number_threads", NULL};
 
   /* parse the arguments. */
-  if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|i", kwlist, &basename,
-                                   &verbose))
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|ii", kwlist, &basename,
+                                   &verbose, &number_threads))
     return -1;
 
   /* Copy the arguments */
   self->verbose = verbose;
+  self->number_threads = number_threads;
 
   size_t n_plus_null = strlen(basename) + 1;
   self->basename = (char *)malloc(n_plus_null * sizeof(char));
@@ -381,7 +386,7 @@ static PyObject *pyEnter(__attribute__((unused)) PyObject *self,
 
   PyObjectReader *self_reader = (PyObjectReader *)self;
   logger_reader_init(&self_reader->reader, self_reader->basename,
-                     self_reader->verbose);
+                     self_reader->verbose, self_reader->number_threads);
   self_reader->ready = 1;
 
   /* Allocate the particle readers */
@@ -769,6 +774,9 @@ static PyObject *pyGetData(__attribute__((unused)) PyObject *self,
     output[i] = malloc(n_tot * h->masks[field_indices[i]].size);
   }
 
+  /* Enable multithreading */
+  Py_BEGIN_ALLOW_THREADS;
+
   /* Read the particles. */
   if (part_ids == Py_None) {
     logger_reader_read_all_particles(reader, time, logger_reader_lin,
@@ -804,6 +812,9 @@ static PyObject *pyGetData(__attribute__((unused)) PyObject *self,
       n_tot += n_part[i];
     }
   }
+
+  /* Disable multithreading */
+  Py_END_ALLOW_THREADS;
 
   /* Create the python output. */
   PyObject *array = logger_loader_create_output(output, field_indices, n_fields,

@@ -117,7 +117,7 @@ enum logger_reader_event {
 
 void logger_reader_init_index(struct logger_reader *reader);
 void logger_reader_init(struct logger_reader *reader, const char *basename,
-                        int verbose);
+                        int verbose, int number_threads);
 void logger_reader_free(struct logger_reader *reader);
 
 void logger_reader_set_time(struct logger_reader *reader, double time);
