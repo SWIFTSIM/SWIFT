@@ -43,9 +43,13 @@ struct logger_parameters {
 
   /* Are we doing a cosmological simulation? */
   int with_cosmology;
+
+  /* Number of threads to use in the threadpools */
+  int number_threads;
 };
 
 void logger_parameters_init(struct logger_parameters *params,
-                            const struct logger_reader *reader);
+                            const struct logger_reader *reader,
+                            int number_threads);
 
 #endif  // LOGGER_LOGGER_PARAMETERS_H

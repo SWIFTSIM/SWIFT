@@ -1,0 +1,41 @@
+Header:
+  BoxSize: [1, 1, 1]
+  Dimension: 3
+  RunName: Untitled SWIFT simulation
+  Periodic: 0
+
+InternalUnitSystem:
+  UnitMass_in_cgs: 1
+  UnitLength_in_cgs: 1
+  UnitTime_in_cgs: 1
+  UnitCurrent_in_cgs: 1
+  UnitTemp_in_cgs: 1
+
+Policy:
+  steal: 1
+  keep: 1
+  block: 0
+  cpu tight: 0
+  mpi: 0
+  numa affinity: 1
+  hydro: 1
+  self gravity: 0
+  external gravity: 0
+  cosmological integration: 0
+  drift everything: 0
+  reconstruct multi-poles: 0
+  temperature: 0
+  cooling: 0
+  stars: 0
+  structure finding: 0
+  star formation: 0
+  feedback: 0
+  black holes: 0
+  fof search: 0
+  time-step limiter: 1
+  time-step sync: 0
+  logger: 1
+  line of sight: 0
+  sink: 0
+  rt: 0
+
