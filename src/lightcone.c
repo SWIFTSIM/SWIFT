@@ -95,6 +95,7 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
  */
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
+                    const struct cosmology *cosmo,
                     struct swift_params *params,
                     const int restart) {
   
@@ -144,6 +145,27 @@ void lightcone_init(struct lightcone_props *props,
   /* Store expansion factors at z_min, z_max */
   props->a_at_z_min = 1.0/(1.0+props->z_min);
   props->a_at_z_max = 1.0/(1.0+props->z_max);
+
+  /* Estimate number of particles which will be output.
+
+     Assumptions:
+     - flat cosmology (haven't implemented comoving volume calculation for non-flat)
+     - uniform box
+  */
+  const long long nr_gparts = s->nr_gparts;
+  long long total_nr_gparts;
+#ifdef WITH_MPI
+  MPI_Reduce(&nr_gparts, &total_nr_gparts, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  total_nr_gparts = nr_gparts;
+#endif
+  if(engine_rank==0) {
+    const double lightcone_rmax = cosmology_get_comoving_distance(cosmo, props->a_at_z_max);
+    const double lightcone_rmin = cosmology_get_comoving_distance(cosmo, props->a_at_z_min);
+    const double volume = 4./3.*M_PI*(pow(lightcone_rmax, 3.)-pow(lightcone_rmin, 3.));
+    const long long est_nr_output = total_nr_gparts / pow(props->boxsize, 3.0) * volume;
+    message("gparts in lightcone (if uniform box+flat cosmology): %lld", est_nr_output);
+  }
 
   /* Initially have no replication list */
   props->have_replication_list = 0;
