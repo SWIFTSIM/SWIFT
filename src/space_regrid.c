@@ -343,8 +343,6 @@ void space_regrid(struct space *s, int verbose) {
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
               cdim[2]);
 
-    space_write_cell_hierarchy(s, 0);
-    exit(1);
 #ifdef WITH_MPI
     if (oldnodeIDs != NULL) {
       /* We have changed the top-level cell dimension, so need to redistribute

@@ -29,6 +29,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "memswap.h"
+#include "zoom_region.h"
 
 /*! Expected maximal number of strays received at a rebuild */
 extern int space_expected_max_nr_strays;
@@ -850,9 +851,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_gind =
-        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
-                   gp->x[2] * s->iwidth[2]);
+#ifdef WITH_ZOOM_REGION
+    const int new_gind = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s,
+                              (int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]),
+                              (int)(gp->x[2] * s->iwidth[2]));
+#else
+    const int new_gind = cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
+                                    gp->x[2] * s->iwidth[2]);
+#endif
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_gind];

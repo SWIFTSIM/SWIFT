@@ -40,6 +40,45 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
 #endif
 }
 
+int cell_getid_zoom(const int cdim[3], const double x, const double y,
+                    const double z, const struct space *s,
+                    const int i, const int j, const int k) {
+#ifdef WITH_ZOOM_REGION
+  /* Properties of the zoom region. */
+  const struct zoom_region_properties *zoom_props = s->zoom_props;
+  const int zoom_cell_offset = zoom_props->tl_cell_offset;
+  const double zoom_region_bounds[6] = {
+      zoom_props->region_bounds[0], zoom_props->region_bounds[1],
+      zoom_props->region_bounds[2], zoom_props->region_bounds[3],
+      zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
+  const double ih_x_zoom = zoom_props->iwidth[0];
+  const double ih_y_zoom = zoom_props->iwidth[1];
+  const double ih_z_zoom = zoom_props->iwidth[2];
+  int cell_id;
+
+  /* Are the passed coordinates within the zoom region? */
+  if (s->with_zoom_region &&
+      x > zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
+      y > zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
+      z > zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
+
+    const int zoom_index =
+        cell_getid(cdim, (x - zoom_region_bounds[0]) * ih_x_zoom,
+                   (y - zoom_region_bounds[2]) * ih_y_zoom,
+                   (z - zoom_region_bounds[4]) * ih_z_zoom);
+    cell_id = zoom_cell_offset + zoom_index;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (zoom_index < 0 || zoom_index >= cdim[0] * cdim[1] * cdim[2])
+      error("zoom_index out of range %i (%f %f %f)", cell_id, x, y, z);
+#endif
+  } else {
+    cell_id = cell_getid(cdim, i, j, k);
+  }
+
+  return cell_id;
+#endif
+}
+
 /**
  * @brief Compute the extent/bounds of the zoom region using the high-res DM particles.
  *
