@@ -1539,19 +1539,31 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
   const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+  int delta_m, delta_p, cid_with_offset, cjd_with_offset, periodic;
+#ifdef WITH_ZOOM_REGION
+  int delta_zoom;
+#endif
 
   /* Compute how many cells away we need to walk */
   const double distance = 2.5 * cells[0].width[0] / theta_crit;
   int delta = (int)(distance / cells[0].width[0]) + 1;
-  int delta_m = delta;
-  int delta_p = delta;
+  delta_m = delta;
+  delta_p = delta;
+  periodic = s->periodic;
+
+#ifdef WITH_ZOOM_REGION
+  /* Compute how many cells to walk in the zoom region. */
+  if (s->with_zoom_region) {
+    const double distance_zoom = 2.5 * cells[s->zoom_props->tl_cell_offset].width[0] / theta_crit;
+    delta_zoom = (int)(distance_zoom / cells[s->zoom_props->tl_cell_offset].width[0]) + 1;
+  }
+#endif 
 
   /* Special case where every cell is in range of every other one */
   if (delta >= cdim[0] / 2) {
@@ -1570,15 +1582,28 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
 
-    if (s->with_zoom_region && cid >= s->zoom_props->tl_cell_offset) continue;
+#ifdef WITH_ZOOM_REGION
+    /* Are we in the zoom cells now? */
+    if (s->with_zoom_region && cid >= s->zoom_props->tl_cell_offset) {
+      delta_m = delta_zoom;
+      delta_p = delta_zoom;
+      periodic = 0;
+      cid_with_offset = cid - s->zoom_props->tl_cell_offset;
+    } else {
+      cid_with_offset = cid;
+    }
+#else
+    cid_with_offset = cid;
+#endif
 
     /* Integer indices of the cell in the top-level grid */
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
+    const int i = cid_with_offset / (cdim[1] * cdim[2]);
+    const int j = (cid_with_offset / cdim[2]) % cdim[1];
+    const int k = cid_with_offset % cdim[2];
 
     /* Get the cell */
     struct cell *ci = &cells[cid];
+    
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
@@ -1604,10 +1629,19 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
           /* Get the cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
-          struct cell *cj = &cells[cjd];
+#ifdef WITH_ZOOM_REGION
+          if (s->with_zoom_region && cid >= s->zoom_props->tl_cell_offset) {
+            cjd_with_offset = cjd + s->zoom_props->tl_cell_offset;
+          } else {
+            cjd_with_offset = cjd;
+          }
+#else
+        cjd_with_offset = cjd;
+#endif
+          struct cell *cj = &cells[cjd_with_offset];
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
-          if (cid >= cjd || cj->grav.count == 0 ||
+          if (cid_with_offset >= cjd || cj->grav.count == 0 ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
@@ -1625,7 +1659,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
               cell_min_dist2_same_size(ci, cj, periodic, dim);
 
           /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius2 > max_distance2) continue;
+          if (s->periodic && min_radius2 > max_distance2) continue;
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -4074,8 +4108,8 @@ void engine_maketasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
     if (s->with_zoom_region) {
-      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom,
-                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      //threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom,
+      //ne_make_self_gravity_tasks_mapper,               NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
       threadpool_map(&e->threadpool,
                      engine_make_self_gravity_tasks_mapper_between_toplevels,
                      NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
