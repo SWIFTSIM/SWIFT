@@ -15,9 +15,6 @@ void find_neighbouring_cells(struct space *s, const int verbose);
 double cell_min_dist2_diff_size(const struct cell *restrict ci,
                                 const struct cell *restrict cj,
                                 const int periodic, const double dim[3]);
-void engine_make_self_gravity_tasks_mapper_zoom(void *map_data,
-                                                int num_elements,
-                                                void *extra_data);
 void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
                                                              int num_elements,
                                                              void *extra_data);
