@@ -101,8 +101,10 @@ void lightcone_init_replication_list(struct lightcone_props *props,
                                      const integertime_t ti_current,
                                      const double dt_max);
 
-void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *gp,
-                                   const double dt_drift, const integertime_t ti_old,
-                                   const integertime_t ti_current);
+void lightcone_check_particle_crosses(const struct lightcone_props *props,
+                                      const struct cosmology *c, const struct gpart *gp,
+                                      const double *x, const float *v_full,
+                                      const double dt_drift, const integertime_t ti_old,
+                                      const integertime_t ti_current);
 
 #endif /* SWIFT_LIGHTCONE_H */

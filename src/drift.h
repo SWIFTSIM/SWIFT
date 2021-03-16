@@ -86,8 +86,9 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 #endif
 
 #ifdef WITH_LIGHTCONE
-  if(e->lightcone_properties->enabled)
-    lightcone_check_gpart_crosses(e, gp, dt_drift, ti_old, ti_current);
+  lightcone_check_particle_crosses(e->lightcone_properties, e->cosmology,
+                                   gp, gp->x, gp->v_full,
+                                   dt_drift, ti_old, ti_current);
 #endif
 
   /* Drift... */
@@ -118,7 +119,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
     double dt_kick_hydro, double dt_kick_grav, double dt_therm,
     integertime_t ti_old, integertime_t ti_current,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor) {
+    const struct entropy_floor_properties *floor,
+    const struct lightcone_props *lightcone_properties) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -143,6 +145,11 @@ __attribute__((always_inline)) INLINE static void drift_part(
     xp->v_full[1] = 0.f;
     xp->v_full[2] = 0.f;
   }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  lightcone_check_particle_crosses(lightcone_properties, cosmo, p->gpart,
+    p->x, xp->v_full, dt_drift, ti_old, ti_current);
 #endif
 
   /* Drift... */
@@ -193,7 +200,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
  */
 __attribute__((always_inline)) INLINE static void drift_spart(
     struct spart *restrict sp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current) {
+      integertime_t ti_current, const struct cosmology *cosmo,
+      const struct lightcone_props *lightcone_properties) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->ti_drift != ti_old)
@@ -219,6 +227,11 @@ __attribute__((always_inline)) INLINE static void drift_spart(
     sp->v[1] = 0.f;
     sp->v[2] = 0.f;
   }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  lightcone_check_particle_crosses(lightcone_properties, cosmo, sp->gpart,
+    sp->x, sp->v, dt_drift, ti_old, ti_current);
 #endif
 
   /* Drift... */
@@ -247,7 +260,8 @@ __attribute__((always_inline)) INLINE static void drift_spart(
  */
 __attribute__((always_inline)) INLINE static void drift_bpart(
     struct bpart *restrict bp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current) {
+      integertime_t ti_current, const struct cosmology *cosmo,
+      const struct lightcone_props *lightcone_properties) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (bp->ti_drift != ti_old)
@@ -273,6 +287,11 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
     bp->v[1] = 0.f;
     bp->v[2] = 0.f;
   }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  lightcone_check_particle_crosses(lightcone_properties, cosmo, bp->gpart,
+    bp->x, bp->v, dt_drift, ti_old, ti_current);
 #endif
 
   /* Drift... */

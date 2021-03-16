@@ -319,23 +319,48 @@ void lightcone_init_replication_list(struct lightcone_props *props,
 }
 
 
+void lightcone_buffer_dark_matter_particle(const struct gpart *gp,
+                                           const double x_cross[3],
+                                           const double a_cross) {
+
+  /* For testing: here we write out the coordinates to a text file */
+  lock_lock(&io_lock);
+  fprintf(fd_part, "%12lld, %14.6e, %14.6e, %14.6e, %14.6e\n",
+          gp->id_or_neg_offset, a_cross,
+          x_cross[0], x_cross[1], x_cross[2]);
+  lock_unlock(&io_lock);
+
+}
+
+
 /**
  * @brief Check if a gpart crosses the lightcone during a drift.
+ *
+ * Here we don't assume anything about the particle type except
+ * that it has a corresponding #gpart. x and v_full must be set
+ * by the calling function because gp->x and gp->v_full may not
+ * be the right values to use for some particle types.
+ *
+ * The particle type is checked if we decide to output the
+ * particle, at which point we call a type specific function.
  *
  * @param e The #engine structure.
  * @param gp The #gpart to check.
  */
-void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *gp,
-                                   const double dt_drift, const integertime_t ti_old,
-                                   const integertime_t ti_current) {
+void lightcone_check_particle_crosses(const struct lightcone_props *props,
+                                      const struct cosmology *c, const struct gpart *gp,
+                                      const double *x, const float *v_full,
+                                      const double dt_drift, const integertime_t ti_old,
+                                      const integertime_t ti_current) {
+
+  /* Are we making a lightcone? */
+  if(!props->enabled)return;
 
   /* Unpack some variables we need */
-  const struct lightcone_props *props = e->lightcone_properties;
   const double boxsize = props->boxsize;
   const double *observer_position = props->observer_position;
   const int nreps = props->replication_list.nrep;
   const struct replication *rep = props->replication_list.replication;
-  const struct cosmology *c = e->cosmology;
 
   /* Consistency check - are our limits on the drift endpoints good? */
   if(ti_old < props->ti_old || ti_current > props->ti_current)
@@ -359,9 +384,9 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
   const double boundary = comoving_dist_2_start - comoving_dist_2_end;
 
   /* Wrap particle starting coordinates into the box */
-  const double x_wrapped[3] = {box_wrap(gp->x[0], 0.0, boxsize),
-                               box_wrap(gp->x[1], 0.0, boxsize),
-                               box_wrap(gp->x[2], 0.0, boxsize)};
+  const double x_wrapped[3] = {box_wrap(x[0], 0.0, boxsize),
+                               box_wrap(x[1], 0.0, boxsize),
+                               box_wrap(x[2], 0.0, boxsize)};
   
   /* Get wrapped position relative to observer */
   const double x_wrapped_rel[3] = {x_wrapped[0] - observer_position[0],
@@ -408,9 +433,9 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     /* Get position of this periodic copy at the end of the drift */
     const double x_end[3] = {
-      x_start[0] + dt_drift * gp->v_full[0],
-      x_start[1] + dt_drift * gp->v_full[1],
-      x_start[2] + dt_drift * gp->v_full[2],
+      x_start[0] + dt_drift * v_full[0],
+      x_start[1] + dt_drift * v_full[1],
+      x_start[2] + dt_drift * v_full[2],
     };
 
     /* Get distance squared from the observer at end of drift */
@@ -457,9 +482,9 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     /* Compute position at crossing */
     const double x_cross[3] = {
-      x_start[0] + dt_drift * f * gp->v_full[0],
-      x_start[1] + dt_drift * f * gp->v_full[1],
-      x_start[2] + dt_drift * f * gp->v_full[2],
+      x_start[0] + dt_drift * f * v_full[0],
+      x_start[1] + dt_drift * f * v_full[1],
+      x_start[2] + dt_drift * f * v_full[2],
     };
 
     /* Check if the particle is in the field of view */
@@ -484,13 +509,43 @@ void lightcone_check_gpart_crosses(const struct engine *e, const struct gpart *g
 
     }
 
-    /* For testing: here we write out the coordinates to a text file */
-    lock_lock(&io_lock);
-    fprintf(fd_part, "%12lld, %14.6e, %14.6e, %14.6e, %14.6e\n",
-            gp->id_or_neg_offset, a_cross,
-            x_cross[0], x_cross[1], x_cross[2]);
-    lock_unlock(&io_lock);
+    /* Need to write out this particle */
+    switch (gp->type) {
+
+    case swift_type_gas: {
+      /*
+      const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+      */
+      error("Gas particle lightcone output not implemented yet");
+    } break;
+
+    case swift_type_stars: {
+      /*
+      const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
+      */
+      error("Star particle lightcone output not implemented yet");
+    } break;
+
+    case swift_type_black_hole: {
+      /*
+      const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
+      */
+      error("BH particle lightcone output not implemented yet");
+    } break;
+
+    case swift_type_dark_matter:
+    case swift_type_dark_matter_background: {
+      lightcone_buffer_dark_matter_particle(gp, x_cross, a_cross);
+    } break;
+
+    case swift_type_neutrino: {
+      error("Neutrino particle lightcone output not implemented yet");
+    } break;
+
+    default:
+      error("Particle type not implemented in lightcones.");
+    }
 
   } /* Next periodic replication*/
-
 }
