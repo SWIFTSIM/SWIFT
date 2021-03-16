@@ -80,7 +80,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float rho = p->rho;
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
   const float P_old = gas_pressure_from_internal_energy(rho, u_old);
-  const float T_old = P_old / (rho * phys_const->const_boltzmann_k);
+  const float T_old = P_old * phys_const->const_proton_mass /
+                      (rho * phys_const->const_boltzmann_k);
 
   const double logT = log10(T_old);
   int jl = 0;
@@ -135,7 +136,51 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct hydro_props* hydro_props, const struct part* restrict p,
     const struct xpart* restrict xp) {
 
-  return FLT_MAX;
+  const float rho = p->rho;
+  const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float P_old = gas_pressure_from_internal_energy(rho, u_old);
+  const float T_old = P_old * phys_const->const_proton_mass /
+                      (rho * phys_const->const_boltzmann_k);
+
+  const double logT = log10(T_old);
+  int jl = 0;
+  int ju = cooling->nT;
+  while (ju - jl > 1) {
+    int jm = (ju + jl) >> 1;
+    if (logT > cooling->logT[jm]) {
+      jl = jm;
+    } else {
+      ju = jm;
+    }
+  }
+  if (jl == cooling->nT - 1) {
+    --jl;
+  }
+
+  const double logTm = cooling->logT[jl];
+  const double logTp = cooling->logT[jl + 1];
+  const double logLambdam = cooling->logLambda[jl];
+  const double logLambdap = cooling->logLambda[jl + 1];
+  const double logdLambdadTm = cooling->logdLambdadT[jl];
+  const double logdLambdadTp = cooling->logdLambdadT[jl + 1];
+  const double fT = (logT - logTm) / (logTp - logTm);
+  const float cooling_du_dt =
+      pow(10., logLambdam * (1. - fT) + logLambdap * fT) *
+      rho; /* todo: need to divide by mu^2 */
+  const float cooling_d2u_dt2 =
+      pow(10., logdLambdadTm * (1. - fT) + logdLambdadTp * fT) *
+      rho; /* todo: need to divide by mu^2 */
+
+  float dt = FLT_MAX;
+  if (cooling_du_dt > 0.0f) {
+    const float cooling_dt = u_old / cooling_du_dt;
+    dt = fminf(dt, 0.1f * cooling_dt);
+  }
+  if (cooling_d2u_dt2 > 0.0f) {
+    const float cooling_dt = sqrtf(u_old / cooling_d2u_dt2);
+    dt = fminf(dt, 10. * cooling_dt);
+  }
+  return dt;
 }
 
 /**
@@ -298,7 +343,21 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
   for (int i = 0; i < nT; ++i) {
     cooling->logT[i] /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
     cooling->logLambda[i] /= factor;
+  }
 
+  cooling->logdLambdadT = (double*)malloc(cooling->nT * sizeof(double));
+  cooling->logdLambdadT[0] = (cooling->logLambda[1] - cooling->logLambda[0]) /
+                             (cooling->logT[1] - cooling->logT[0]);
+  for (int i = 1; i < nT - 1; ++i) {
+    cooling->logdLambdadT[i] =
+        (cooling->logLambda[i + 1] - cooling->logLambda[i - 1]) /
+        (cooling->logT[i + 1] - cooling->logT[i - 1]);
+  }
+  cooling->logdLambdadT[nT - 1] =
+      (cooling->logLambda[nT - 1] - cooling->logLambda[nT - 2]) /
+      (cooling->logT[nT - 1] - cooling->logT[nT - 2]);
+
+  for (int i = 0; i < nT; ++i) {
     if (cooling->logT[i] > 0.) {
       cooling->logT[i] = log10(cooling->logT[i]);
     } else {
@@ -308,6 +367,12 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
       cooling->logLambda[i] = log10(cooling->logLambda[i]);
     } else {
       cooling->logLambda[i] = -99.;
+    }
+    cooling->logdLambdadT[i] = abs(cooling->logdLambdadT[i]);
+    if (cooling->logdLambdadT[i] > 0.) {
+      cooling->logdLambdadT[i] = log10(cooling->logdLambdadT[i]);
+    } else {
+      cooling->logdLambdadT[i] = -99.;
     }
   }
 
@@ -337,6 +402,7 @@ static INLINE void cooling_clean(struct cooling_function_data* cooling) {
 
   free(cooling->logT);
   free(cooling->logLambda);
+  free(cooling->logdLambdadT);
 }
 
 /**

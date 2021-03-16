@@ -35,6 +35,9 @@ struct cooling_function_data {
   /*! @brief Log Lambda values. */
   double *logLambda;
 
+  /*! @brief Log |dLambda/dT| values. */
+  double *logdLambdadT;
+
   /*! @brief Number of values in the table. */
   int nT;
 };
