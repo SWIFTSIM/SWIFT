@@ -14,6 +14,7 @@ config.sub
 ltmain.sh
 libtool
 build
+cmake-build-debug/
 
 src/version_string.h
 swift*.tar.gz
