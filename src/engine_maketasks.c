@@ -52,6 +52,7 @@
 #include "feedback.h"
 #include "proxy.h"
 #include "timers.h"
+#include "zoom_region.h"
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
@@ -1568,6 +1569,8 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
+
+    if (s->with_zoom_region && cid >= s->zoom_props->tl_cell_offset) continue;
 
     /* Integer indices of the cell in the top-level grid */
     const int i = cid / (cdim[1] * cdim[2]);
@@ -4070,6 +4073,13 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    if (s->with_zoom_region) {
+      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom,
+                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool,
+                     engine_make_self_gravity_tasks_mapper_between_toplevels,
+                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    }
   }
 
   if (e->verbose)

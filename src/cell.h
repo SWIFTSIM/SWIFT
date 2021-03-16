@@ -669,9 +669,9 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const int periodic, const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("Cells of different size!");
-  if (ci->width[1] != cj->width[1]) error("Cells of different size!");
-  if (ci->width[2] != cj->width[2]) error("Cells of different size!");
+  if (ci->width[0] != cj->width[0]) error("x cells of different size! %f %f %zu %zu", ci->width[0], cj->width[1], ci->cellID, cj->cellID);
+  if (ci->width[1] != cj->width[1]) error("y cells of different size!");
+  if (ci->width[2] != cj->width[2]) error("z cells of different size!");
 #endif
 
   const double cix_min = ci->loc[0];
@@ -1340,7 +1340,11 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
   if (c->depth != 0) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
+#ifdef WITH_ZOOM_REGION
+    if (1) {
+#else
     if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
+#endif
       /* print warning only once */
       if (last_cell_id == 1ULL) {
         message(

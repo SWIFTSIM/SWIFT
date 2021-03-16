@@ -32,6 +32,7 @@
 #include "part.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "zoom_region.h"
 
 /**
  * @brief Clear the unskip flags of this cell.
@@ -2421,8 +2422,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     if (periodic) {
 
       /* Minimal distance between any pair of particles */
-      const double min_radius2 =
-          cell_min_dist2_same_size(top, cj, periodic, dim);
+#ifdef WITH_ZOOM_REGION
+      const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+#else
+      const double min_radius2 = cell_min_dist2_same_size(top, cj, periodic, dim);
+#endif
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {
