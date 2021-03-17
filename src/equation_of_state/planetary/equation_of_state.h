@@ -98,6 +98,10 @@ enum eos_planetary_material_id {
   /*! Tillotson basalt */
   eos_planetary_id_Til_basalt =
       eos_planetary_type_Til * eos_planetary_type_factor + 3,
+    
+  /*! Tillotson ice */
+  eos_planetary_id_Til_ice =
+      eos_planetary_type_Til * eos_planetary_type_factor + 4,
 
   /* Hubbard & MacFarlane (1980) Uranus/Neptune */
 
@@ -143,9 +147,17 @@ enum eos_planetary_material_id {
   eos_planetary_id_CMS19_He =
       eos_planetary_type_SESAME * eos_planetary_type_factor + 6,
     
-  /*! CMS19 hydrogen-helium (Chabrier et al. 2019) SESAME-like H-He mixture (Y=0.275) */
+  /*! CMS19 hydrogen-helium (Chabrier et al. 2019) SESAME-like H-He mixture (Y=0.245) */
   eos_planetary_id_CMS19_HHe =
       eos_planetary_type_SESAME * eos_planetary_type_factor + 7,
+    
+  /*! SCVH95 hydrogen-helium (Saumon et al. 1995) SESAME-like H-He mixture (Y=0.245) */
+  eos_planetary_id_SCVH95_HHe =
+      eos_planetary_type_SESAME * eos_planetary_type_factor + 8,
+    
+  /*! REOS3 hydrogen-helium (Becker et al. 2014) SESAME-like H-He mixture (Y=0.245) */
+  eos_planetary_id_REOS3_HHe =
+      eos_planetary_type_SESAME * eos_planetary_type_factor + 9,
 
   /* ANEOS */
 
@@ -173,9 +185,9 @@ enum eos_planetary_material_id {
  */
 struct eos_parameters {
   struct idg_params idg_def;
-  struct Til_params Til_iron, Til_granite, Til_water, Til_basalt;
+  struct Til_params Til_iron, Til_granite, Til_water, Til_basalt, Til_ice;
   struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
-  struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water, AQUA, CMS19_H, CMS19_He, CMS19_HHe;
+  struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water, AQUA, CMS19_H, CMS19_He, CMS19_HHe, SCVH95_HHe, REOS3_HHe;
   struct SESAME_params ANEOS_forsterite, ANEOS_iron, ANEOS_Fe85Si15;
 };
 
@@ -234,6 +246,11 @@ gas_internal_energy_from_entropy(float density, float entropy,
         case eos_planetary_id_Til_basalt:
           return Til_internal_energy_from_entropy(density, entropy,
                                                   &eos.Til_basalt);
+          break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_internal_energy_from_entropy(density, entropy,
+                                                  &eos.Til_ice);
           break;
 
         default:
@@ -311,6 +328,16 @@ gas_internal_energy_from_entropy(float density, float entropy,
         case eos_planetary_id_CMS19_HHe:
           return SESAME_internal_energy_from_entropy(density, entropy,
                                                      &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_internal_energy_from_entropy(density, entropy,
+                                                     &eos.REOS3_HHe);
           break;
 
         default:
@@ -401,6 +428,10 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
         case eos_planetary_id_Til_basalt:
           return Til_pressure_from_entropy(density, entropy, &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_pressure_from_entropy(density, entropy, &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -474,6 +505,16 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
         case eos_planetary_id_CMS19_HHe:
           return SESAME_pressure_from_entropy(density, entropy,
                                               &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_pressure_from_entropy(density, entropy,
+                                              &eos.REOS3_HHe);
           break;
 
         default:
@@ -565,6 +606,10 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
         case eos_planetary_id_Til_basalt:
           return Til_entropy_from_pressure(density, P, &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_entropy_from_pressure(density, P, &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -630,6 +675,14 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
               
         case eos_planetary_id_CMS19_HHe:
           return SESAME_entropy_from_pressure(density, P, &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_entropy_from_pressure(density, P, &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_entropy_from_pressure(density, P, &eos.REOS3_HHe);
           break;
 
         default:
@@ -719,6 +772,10 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
         case eos_planetary_id_Til_basalt:
           return Til_soundspeed_from_entropy(density, entropy, &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_soundspeed_from_entropy(density, entropy, &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -792,6 +849,16 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
         case eos_planetary_id_CMS19_HHe:
           return SESAME_soundspeed_from_entropy(density, entropy,
                                                 &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_soundspeed_from_entropy(density, entropy,
+                                                &eos.REOS3_HHe);
           break;
 
         default:
@@ -882,6 +949,10 @@ gas_entropy_from_internal_energy(float density, float u,
         case eos_planetary_id_Til_basalt:
           return Til_entropy_from_internal_energy(density, u, &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_entropy_from_internal_energy(density, u, &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -955,6 +1026,16 @@ gas_entropy_from_internal_energy(float density, float u,
         case eos_planetary_id_CMS19_HHe:
           return SESAME_entropy_from_internal_energy(density, u,
                                                      &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_entropy_from_internal_energy(density, u,
+                                                     &eos.REOS3_HHe);
           break;
 
         default:
@@ -1047,6 +1128,10 @@ gas_pressure_from_internal_energy(float density, float u,
         case eos_planetary_id_Til_basalt:
           return Til_pressure_from_internal_energy(density, u, &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_pressure_from_internal_energy(density, u, &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -1120,6 +1205,16 @@ gas_pressure_from_internal_energy(float density, float u,
         case eos_planetary_id_CMS19_HHe:
           return SESAME_pressure_from_internal_energy(density, u,
                                                       &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_pressure_from_internal_energy(density, u,
+                                                      &eos.REOS3_HHe);
           break;
 
         default:
@@ -1215,6 +1310,10 @@ gas_internal_energy_from_pressure(float density, float P,
         case eos_planetary_id_Til_basalt:
           return Til_internal_energy_from_pressure(density, P, &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_internal_energy_from_pressure(density, P, &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -1288,6 +1387,16 @@ gas_internal_energy_from_pressure(float density, float P,
         case eos_planetary_id_CMS19_HHe:
           return SESAME_internal_energy_from_pressure(density, P,
                                                       &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_internal_energy_from_pressure(density, P,
+                                                      &eos.REOS3_HHe);
           break;
 
         default:
@@ -1382,6 +1491,11 @@ gas_soundspeed_from_internal_energy(float density, float u,
           return Til_soundspeed_from_internal_energy(density, u,
                                                      &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_soundspeed_from_internal_energy(density, u,
+                                                     &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -1458,6 +1572,16 @@ gas_soundspeed_from_internal_energy(float density, float u,
         case eos_planetary_id_CMS19_HHe:
           return SESAME_soundspeed_from_internal_energy(density, u,
                                                         &eos.CMS19_HHe);
+          break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_soundspeed_from_internal_energy(density, u,
+                                                        &eos.REOS3_HHe);
           break;
 
         default:
@@ -1548,6 +1672,10 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
         case eos_planetary_id_Til_basalt:
           return Til_soundspeed_from_pressure(density, P, &eos.Til_basalt);
           break;
+              
+        case eos_planetary_id_Til_ice:
+          return Til_soundspeed_from_pressure(density, P, &eos.Til_ice);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -1615,6 +1743,14 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
         case eos_planetary_id_CMS19_HHe:
           return SESAME_soundspeed_from_pressure(density, P, &eos.CMS19_HHe);
           break;
+              
+        case eos_planetary_id_SCVH95_HHe:
+          return SESAME_soundspeed_from_pressure(density, P, &eos.SCVH95_HHe);
+          break;
+              
+        case eos_planetary_id_REOS3_HHe:
+          return SESAME_soundspeed_from_pressure(density, P, &eos.REOS3_HHe);
+          break;
 
         default:
           error("Unknown material ID! mat_id = %d", mat_id);
@@ -1675,6 +1811,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
   char CMS19_H_table_file[PARSER_MAX_LINE_SIZE];
   char CMS19_He_table_file[PARSER_MAX_LINE_SIZE];
   char CMS19_HHe_table_file[PARSER_MAX_LINE_SIZE];
+  char SCVH95_HHe_table_file[PARSER_MAX_LINE_SIZE];
+  char REOS3_HHe_table_file[PARSER_MAX_LINE_SIZE];
   char ANEOS_forsterite_table_file[PARSER_MAX_LINE_SIZE];
   char ANEOS_iron_table_file[PARSER_MAX_LINE_SIZE];
   char ANEOS_Fe85Si15_table_file[PARSER_MAX_LINE_SIZE];
@@ -1693,11 +1831,13 @@ __attribute__((always_inline)) INLINE static void eos_init(
     set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
     set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
     set_Til_basalt(&e->Til_basalt, eos_planetary_id_Til_basalt);
+    set_Til_ice(&e->Til_ice, eos_planetary_id_Til_ice);
 
     convert_units_Til(&e->Til_iron, us);
     convert_units_Til(&e->Til_granite, us);
     convert_units_Til(&e->Til_water, us);
     convert_units_Til(&e->Til_basalt, us);
+    convert_units_Til(&e->Til_ice, us);
   }
 
   // Hubbard & MacFarlane (1980)
@@ -1736,6 +1876,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
     set_CMS19_H(&e->CMS19_H, eos_planetary_id_CMS19_H);
     set_CMS19_He(&e->CMS19_He, eos_planetary_id_CMS19_He);
     set_CMS19_HHe(&e->CMS19_HHe, eos_planetary_id_CMS19_HHe);
+    set_SCVH95_HHe(&e->SCVH95_HHe, eos_planetary_id_SCVH95_HHe);
+    set_REOS3_HHe(&e->REOS3_HHe, eos_planetary_id_REOS3_HHe);
 
     parser_get_param_string(params, "EoS:planetary_SESAME_iron_table_file",
                             SESAME_iron_table_file);
@@ -1753,6 +1895,10 @@ __attribute__((always_inline)) INLINE static void eos_init(
                             CMS19_He_table_file);
     parser_get_param_string(params, "EoS:planetary_CMS19_HHe_table_file",
                             CMS19_HHe_table_file);
+    parser_get_param_string(params, "EoS:planetary_SCVH95_HHe_table_file",
+                            SCVH95_HHe_table_file);
+    parser_get_param_string(params, "EoS:planetary_REOS3_HHe_table_file",
+                            REOS3_HHe_table_file);
 
     load_table_SESAME(&e->SESAME_iron, SESAME_iron_table_file);
     load_table_SESAME(&e->SESAME_basalt, SESAME_basalt_table_file);
@@ -1762,6 +1908,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
     load_table_SESAME(&e->CMS19_H, CMS19_H_table_file);
     load_table_SESAME(&e->CMS19_He, CMS19_He_table_file);
     load_table_SESAME(&e->CMS19_HHe, CMS19_HHe_table_file);
+    load_table_SESAME(&e->SCVH95_HHe, SCVH95_HHe_table_file);
+    load_table_SESAME(&e->REOS3_HHe, REOS3_HHe_table_file);
 
     prepare_table_SESAME(&e->SESAME_iron);
     prepare_table_SESAME(&e->SESAME_basalt);
@@ -1771,6 +1919,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
     prepare_table_SESAME(&e->CMS19_H);
     prepare_table_SESAME(&e->CMS19_He);
     prepare_table_SESAME(&e->CMS19_HHe);
+    prepare_table_SESAME(&e->SCVH95_HHe);
+    prepare_table_SESAME(&e->REOS3_HHe);
 
     convert_units_SESAME(&e->SESAME_iron, us);
     convert_units_SESAME(&e->SESAME_basalt, us);
@@ -1780,6 +1930,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
     convert_units_SESAME(&e->CMS19_H, us);
     convert_units_SESAME(&e->CMS19_He, us);
     convert_units_SESAME(&e->CMS19_HHe, us);
+    convert_units_SESAME(&e->SCVH95_HHe, us);
+    convert_units_SESAME(&e->REOS3_HHe, us);
   }
 
   // ANEOS -- using SESAME-style tables

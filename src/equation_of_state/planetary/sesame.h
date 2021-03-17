@@ -100,7 +100,19 @@ INLINE static void set_CMS19_HHe(struct SESAME_params *mat,
                                   enum eos_planetary_material_id mat_id) {
   // Chabrier et al. (2019)
   mat->mat_id = mat_id;
-  mat->date = 20201014;
+  mat->date = 20210219;
+}
+INLINE static void set_SCVH95_HHe(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Saumon et al. 1995
+  mat->mat_id = mat_id;
+  mat->date = 20210219;
+}
+INLINE static void set_REOS3_HHe(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Becker et al. 2014
+  mat->mat_id = mat_id;
+  mat->date = 20210302;
 }
 INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
                                         enum eos_planetary_material_id mat_id) {

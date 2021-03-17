@@ -115,6 +115,23 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->eta_zero = 0.875f;
   mat->P_min = 0.0f;
 }
+INLINE static void set_Til_ice(struct Til_params *mat,
+                                 enum eos_planetary_material_id mat_id) {
+  mat->mat_id = mat_id;
+  mat->rho_0 = 1293.0f;
+  mat->a = 0.3f;
+  mat->b = 0.1f;
+  mat->A = 1.07e10f;
+  mat->B = 6.5e10f;
+  mat->u_0 = 1.0e7f;
+  mat->u_iv = 7.73e5f;
+  mat->u_cv = 3.04e6f;
+  mat->alpha = 10.0f;
+  mat->beta = 5.0f;
+  mat->eta_min = 0.925f;
+  mat->eta_zero = 0.875f;
+  mat->P_min = 0.0f;
+}
 
 // Convert to internal units
 INLINE static void convert_units_Til(struct Til_params *mat,
