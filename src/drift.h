@@ -120,7 +120,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
     integertime_t ti_old, integertime_t ti_current,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor,
-    const struct lightcone_props *lightcone_properties) {
+    struct lightcone_props *lightcone_properties) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -201,7 +201,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
 __attribute__((always_inline)) INLINE static void drift_spart(
     struct spart *restrict sp, double dt_drift, integertime_t ti_old,
       integertime_t ti_current, const struct cosmology *cosmo,
-      const struct lightcone_props *lightcone_properties) {
+      struct lightcone_props *lightcone_properties) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->ti_drift != ti_old)
@@ -261,7 +261,7 @@ __attribute__((always_inline)) INLINE static void drift_spart(
 __attribute__((always_inline)) INLINE static void drift_bpart(
     struct bpart *restrict bp, double dt_drift, integertime_t ti_old,
       integertime_t ti_current, const struct cosmology *cosmo,
-      const struct lightcone_props *lightcone_properties) {
+      struct lightcone_props *lightcone_properties) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (bp->ti_drift != ti_old)

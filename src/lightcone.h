@@ -27,6 +27,9 @@
 #include "parser.h"
 #include "periodic_replications.h"
 #include "timeline.h"
+#include "part_type.h"
+#include "particle_buffer.h"
+
 
 /* Avoid cyclic inclusions */
 struct cosmology;
@@ -81,7 +84,60 @@ struct lightcone_props {
   /*! Expansion factors corresponding to z_min, z_max */
   double a_at_z_min, a_at_z_max;
 
+  /*! Buffers to store particles on the lightcone */
+  struct particle_buffer buffer[swift_type_count];
+
 };
+
+
+/**
+ * @brief Gas particle data for lightcone output
+ */
+struct lightcone_gas_data {
+  long long id;
+  double x[3];
+};
+
+/**
+ * @brief Dark matter particle data for lightcone output
+ */
+struct lightcone_dark_matter_data {
+  long long id;
+  double x[3];
+};
+
+/**
+ * @brief Dark matter background particle data for lightcone output
+ */
+struct lightcone_dark_matter_background_data {
+  long long id;
+  double x[3];
+};
+
+/**
+ * @brief Star particle data for lightcone output
+ */
+struct lightcone_stars_data {
+  long long id;
+  double x[3];
+};
+
+/**
+ * @brief Black hole particle data for lightcone output
+ */
+struct lightcone_black_hole_data {
+  long long id;
+  double x[3];
+};
+
+/**
+ * @brief Neutrino particle data for lightcone output
+ */
+struct lightcone_neutrino_data {
+  long long id;
+  double x[3];
+};
+
 
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
@@ -89,7 +145,6 @@ void lightcone_init(struct lightcone_props *props,
                     struct swift_params *params,
                     const int restart);
 
-void lightcone_flush(void);
 
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
 
@@ -101,10 +156,13 @@ void lightcone_init_replication_list(struct lightcone_props *props,
                                      const integertime_t ti_current,
                                      const double dt_max);
 
-void lightcone_check_particle_crosses(const struct lightcone_props *props,
+void lightcone_check_particle_crosses(struct lightcone_props *props,
                                       const struct cosmology *c, const struct gpart *gp,
                                       const double *x, const float *v_full,
                                       const double dt_drift, const integertime_t ti_old,
                                       const integertime_t ti_current);
+
+void lightcone_flush_buffers(struct lightcone_props *props,
+                               size_t min_num_to_flush);
 
 #endif /* SWIFT_LIGHTCONE_H */

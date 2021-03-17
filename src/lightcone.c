@@ -24,6 +24,7 @@
 /* Some standard headers. */
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 /* This object's header. */
 #include "lightcone.h"
@@ -34,15 +35,12 @@
 #include "cosmology.h"
 #include "lock.h"
 #include "parser.h"
+#include "particle_buffer.h"
 #include "periodic.h"
 #include "periodic_replications.h"
 #include "restart.h"
 #include "space.h"
 #include "timeline.h"
-
-/* Just for testing, so we can dump particles to a text file */
-static swift_lock_type io_lock;
-static FILE *fd_part;
 
 /* Whether to dump the replication list */
 #define DUMP_REPLICATIONS 1
@@ -66,6 +64,9 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
   tmp.replication_list.nrep = 0;
   tmp.replication_list.replication = NULL;
   tmp.have_replication_list = 0;
+
+  /* Don't write out particle buffers - must flush before dumping restart. */
+  memset(tmp.buffer, 0, sizeof(struct particle_buffer)*swift_type_count);
 
   restart_write_blocks((void *) &tmp, sizeof(struct lightcone_props), 1, stream,
                        "lightcone_props", "lightcone_props");
@@ -176,28 +177,69 @@ void lightcone_init(struct lightcone_props *props,
   if(!restart) {
     props->tot_num_particles_written = 0;
     props->num_particles_written_to_file = 0;
-    props->current_file = 0;
+    props->current_file = -1;
   }
   
-  /* Set up the output file(s) */
-  lock_init(&io_lock);
-  char fname[500];
-  sprintf(fname, "lightcone.%d.txt", engine_rank);
-  if(restart) {
-    fd_part = fopen(fname, "a"); // FIXME: will duplicate particles if we crashed!
-  } else {
-    fd_part = fopen(fname, "w");
-    fprintf(fd_part, "%s\n", "# ID, a, x, y, z");
-  }
+  /* Initialize particle output buffers */
+  const size_t elements_per_block = 100000;
+
+  particle_buffer_init(&props->buffer[swift_type_gas],
+                       sizeof(struct lightcone_gas_data),
+                       elements_per_block);
+
+  particle_buffer_init(&props->buffer[swift_type_dark_matter],
+                       sizeof(struct lightcone_dark_matter_data),
+                       elements_per_block);
+
+  particle_buffer_init(&props->buffer[swift_type_dark_matter_background],
+                       sizeof(struct lightcone_dark_matter_background_data),
+                       elements_per_block);
+
+  particle_buffer_init(&props->buffer[swift_type_stars],
+                       sizeof(struct lightcone_stars_data),
+                       elements_per_block);
+
+  particle_buffer_init(&props->buffer[swift_type_neutrino],
+                       sizeof(struct lightcone_dark_matter_data),
+                       elements_per_block);
 
 }
 
 
 /**
- * @brief Flush any remaining lightcone output.
+ * @brief Flush any buffers which exceed the specified size.
  */
-void lightcone_flush(void) {
-  fclose(fd_part);
+void lightcone_flush_buffers(struct lightcone_props *props,
+                             size_t min_num_to_flush) {
+
+  /* Count how many types have data to write out */
+  int types_to_flush = 0;
+
+  /* Loop over particle types we know how to write out */
+  for(int ptype=0; ptype<swift_type_count; ptype+=1) {
+    switch(ptype) {
+    case swift_type_gas:
+    case swift_type_dark_matter:
+    case swift_type_dark_matter_background:
+    case swift_type_stars:
+    case swift_type_neutrino:
+      if(props->buffer[ptype].total_num_elements >= min_num_to_flush &&
+         props->buffer[ptype].total_num_elements > 0) {
+        types_to_flush += 1;
+      }
+      break;
+    default:
+      /* Don't support this type, so do nothing */
+      break;
+    }
+  }
+  
+  /* Check if there's anything to do */
+  if(types_to_flush==0)return;
+
+  /* We have data to flush, so open (or create) the output file */
+  
+
 }
 
 
@@ -319,20 +361,6 @@ void lightcone_init_replication_list(struct lightcone_props *props,
 }
 
 
-void lightcone_buffer_dark_matter_particle(const struct gpart *gp,
-                                           const double x_cross[3],
-                                           const double a_cross) {
-
-  /* For testing: here we write out the coordinates to a text file */
-  lock_lock(&io_lock);
-  fprintf(fd_part, "%12lld, %14.6e, %14.6e, %14.6e, %14.6e\n",
-          gp->id_or_neg_offset, a_cross,
-          x_cross[0], x_cross[1], x_cross[2]);
-  lock_unlock(&io_lock);
-
-}
-
-
 /**
  * @brief Check if a gpart crosses the lightcone during a drift.
  *
@@ -347,7 +375,7 @@ void lightcone_buffer_dark_matter_particle(const struct gpart *gp,
  * @param e The #engine structure.
  * @param gp The #gpart to check.
  */
-void lightcone_check_particle_crosses(const struct lightcone_props *props,
+void lightcone_check_particle_crosses(struct lightcone_props *props,
                                       const struct cosmology *c, const struct gpart *gp,
                                       const double *x, const float *v_full,
                                       const double dt_drift, const integertime_t ti_old,
@@ -477,8 +505,8 @@ void lightcone_check_particle_crosses(const struct lightcone_props *props,
     if((f < 0.0-eps) || (f > 1.0+eps)) error("Particle interpolated outside time step!");
 
     /* Compute expansion factor at crossing (approximate, used for debugging) */    
-    const double ti_cross = ti_old + (ti_current-ti_old)*f;
-    const double a_cross = c->a_begin * exp(ti_cross * c->time_base);
+    //const double ti_cross = ti_old + (ti_current-ti_old)*f;
+    //const double a_cross = c->a_begin * exp(ti_cross * c->time_base);
 
     /* Compute position at crossing */
     const double x_cross[3] = {
@@ -501,7 +529,8 @@ void lightcone_check_particle_crosses(const struct lightcone_props *props,
       for(i=0; i<3; i+=1)
         dp += x_cross[i]*props->view_vector[i];
       
-      /* Find angle between line of sight and particle position (assuming view_vector is normalized) */
+      /* Find angle between line of sight and particle position
+         (assuming view_vector is normalized) */
       double theta = acos(dp/r_cross);
 
       /* If particle is outside view radius at crossing, don't output it */
@@ -534,9 +563,19 @@ void lightcone_check_particle_crosses(const struct lightcone_props *props,
       error("BH particle lightcone output not implemented yet");
     } break;
 
-    case swift_type_dark_matter:
+    case swift_type_dark_matter: {
+
+      struct lightcone_dark_matter_data data;
+      data.id = gp->id_or_neg_offset;
+      data.x[0] = x_cross[0];
+      data.x[1] = x_cross[1];
+      data.x[2] = x_cross[2];
+      particle_buffer_append(props->buffer+swift_type_dark_matter, &data);
+ 
+    } break;
+
     case swift_type_dark_matter_background: {
-      lightcone_buffer_dark_matter_particle(gp, x_cross, a_cross);
+            
     } break;
 
     case swift_type_neutrino: {
