@@ -25,14 +25,16 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <hdf5.h>
 
 /* This object's header. */
 #include "lightcone.h"
 
 /* Local headers */
+#include "common_io.h"
+#include "cosmology.h"
 #include "engine.h"
 #include "error.h"
-#include "cosmology.h"
 #include "lock.h"
 #include "parser.h"
 #include "particle_buffer.h"
@@ -103,6 +105,9 @@ void lightcone_init(struct lightcone_props *props,
   /* Whether we generate lightcone output */
   props->enabled = 1;
 
+  /* Base name for output files */
+  parser_get_param_string(params, "Lightcone:basename", props->basename);
+
   /* Redshift range for the lightcone */
   props->z_min = parser_get_param_double(params, "Lightcone:z_min");
   props->z_max = parser_get_param_double(params, "Lightcone:z_max");
@@ -110,6 +115,9 @@ void lightcone_init(struct lightcone_props *props,
   /* Coordinates of the observer in the simulation box */
   parser_get_param_double_array(params, "Lightcone:observer_position", 3,
                                 props->observer_position);
+
+  /* Write particles to disk if this many or more are in the buffer */
+  props->max_particles_buffered = parser_get_opt_param_int(params, "Lightcone:max_particles_buffered", 100000);
 
   /* Whether we're doing a pencil beam */
   props->pencil_beam = parser_get_opt_param_int(params, "Lightcone:pencil_beam", 0);
@@ -175,11 +183,16 @@ void lightcone_init(struct lightcone_props *props,
 
   /* If we're not restarting, initialize various counters */
   if(!restart) {
-    props->tot_num_particles_written = 0;
-    props->num_particles_written_to_file = 0;
+    for(int i=0; i<swift_type_count; i+=1) {
+      props->tot_num_particles_written[i] = 0;
+      props->num_particles_written_to_file[i] = 0;
+    }
     props->current_file = -1;
   }
-  
+
+  /* Always start a new file initially, whether starting or restarting */
+  props->start_new_file = 1;
+
   /* Initialize particle output buffers */
   const size_t elements_per_block = 100000;
 
@@ -210,10 +223,14 @@ void lightcone_init(struct lightcone_props *props,
  * @brief Flush any buffers which exceed the specified size.
  */
 void lightcone_flush_buffers(struct lightcone_props *props,
-                             size_t min_num_to_flush) {
+                             int flush_all, int end_file) {
 
   /* Count how many types have data to write out */
   int types_to_flush = 0;
+
+  /* Will flush any buffers with more particles than this */
+  int max_to_buffer = props->max_particles_buffered;
+  if(flush_all)max_to_buffer = 0;
 
   /* Loop over particle types we know how to write out */
   for(int ptype=0; ptype<swift_type_count; ptype+=1) {
@@ -223,7 +240,7 @@ void lightcone_flush_buffers(struct lightcone_props *props,
     case swift_type_dark_matter_background:
     case swift_type_stars:
     case swift_type_neutrino:
-      if(props->buffer[ptype].total_num_elements >= min_num_to_flush &&
+      if(props->buffer[ptype].total_num_elements >= max_to_buffer &&
          props->buffer[ptype].total_num_elements > 0) {
         types_to_flush += 1;
       }
@@ -235,10 +252,71 @@ void lightcone_flush_buffers(struct lightcone_props *props,
   }
   
   /* Check if there's anything to do */
-  if(types_to_flush==0)return;
+  if(types_to_flush>0) {
+    
+    /* We have data to flush, so open or create the output file */
+    hid_t file_id;
+    char fname[FILENAME_BUFFER_SIZE];
+    if(props->start_new_file) {
 
-  /* We have data to flush, so open (or create) the output file */
-  
+      /* Get the name of the next file */
+      props->current_file += 1;
+      sprintf(fname, "%s_%04d.hdf5", props->basename, props->current_file);
+
+      /* Create the file */
+      file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      if(file_id < 0)error("Unable to create new lightcone file: %s", fname);
+
+      /* We have now written no particles to the current file */
+      for(int ptype=0; ptype<swift_type_count; ptype+=1)
+        props->num_particles_written_to_file[ptype] = 0;    
+
+      /* We no longer need to create a new file */
+      props->start_new_file = 0;
+
+    } else {
+
+      /* Re-open an existing file */
+      sprintf(fname, "%s_%04d.hdf5", props->basename, props->current_file);
+      file_id = H5Fopen(fname, H5F_ACC_RDWR, H5P_DEFAULT);
+      if(file_id < 0)error("Unable to open current lightcone file: %s", fname);
+
+    }
+
+    /* Loop over particle types */
+    for(int ptype=0; ptype<swift_type_count; ptype+=1) {
+      if(props->buffer[ptype].total_num_elements >= max_to_buffer &&
+         props->buffer[ptype].total_num_elements > 0) {
+        switch(ptype) {
+        case swift_type_gas:
+          error("Lightcone output not implemented yet for gas");
+          break;
+        case swift_type_dark_matter:
+          //lightcone_write_dark_matter(props, file_id);
+          error("Lightcone output not implemented yet for DM");
+          break;
+        case swift_type_dark_matter_background:
+          error("Lightcone output not implemented yet for background DM");
+          break;
+        case swift_type_stars:
+          error("Lightcone output not implemented yet for stars");
+          break;
+        case swift_type_neutrino:
+          error("Lightcone output not implemented yet for neutrinos");
+          break;
+        default:
+          /* Don't support this type, so do nothing */
+          break;
+        }
+      }
+    } /* Next particle type */
+
+    /* We're done updating the output file */
+    H5Fclose(file_id);
+  }
+
+  /* If we need to start a new file next time, record this */
+  if(end_file)props->start_new_file = 1;
 
 }
 

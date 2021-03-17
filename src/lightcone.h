@@ -45,6 +45,9 @@ struct lightcone_props {
   /*! Whether we're doing lightcone outputs */
   int enabled;
 
+  /*! Output base name */
+  char basename[PARSER_MAX_LINE_SIZE];
+
   /*! Position of the observer in the simulation box */
   double observer_position[3];
 
@@ -70,10 +73,10 @@ struct lightcone_props {
   struct replication_list replication_list;
 
   /*! Total number of particles written to the lightcone by this MPI rank */
-  long long tot_num_particles_written;
+  long long tot_num_particles_written[swift_type_count];
 
   /*! Number of particles written to the current file by this MPI rank */
-  long long num_particles_written_to_file;
+  long long num_particles_written_to_file[swift_type_count];
 
   /*! Index of the current output file for this MPI rank */
   int current_file;
@@ -86,6 +89,12 @@ struct lightcone_props {
 
   /*! Buffers to store particles on the lightcone */
   struct particle_buffer buffer[swift_type_count];
+  
+  /*! Will write particles to disk if buffer exceeds this size */
+  int max_particles_buffered;
+
+  /*! Whether we should make a new file on the next flush */
+  int start_new_file;
 
 };
 
@@ -163,6 +172,6 @@ void lightcone_check_particle_crosses(struct lightcone_props *props,
                                       const integertime_t ti_current);
 
 void lightcone_flush_buffers(struct lightcone_props *props,
-                               size_t min_num_to_flush);
+                               int flush_all, int end_file);
 
 #endif /* SWIFT_LIGHTCONE_H */
