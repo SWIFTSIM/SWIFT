@@ -42,7 +42,6 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
