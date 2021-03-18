@@ -99,55 +99,6 @@ struct lightcone_props {
 };
 
 
-/**
- * @brief Gas particle data for lightcone output
- */
-struct lightcone_gas_data {
-  long long id;
-  double x[3];
-};
-
-/**
- * @brief Dark matter particle data for lightcone output
- */
-struct lightcone_dark_matter_data {
-  long long id;
-  double x[3];
-};
-
-/**
- * @brief Dark matter background particle data for lightcone output
- */
-struct lightcone_dark_matter_background_data {
-  long long id;
-  double x[3];
-};
-
-/**
- * @brief Star particle data for lightcone output
- */
-struct lightcone_stars_data {
-  long long id;
-  double x[3];
-};
-
-/**
- * @brief Black hole particle data for lightcone output
- */
-struct lightcone_black_hole_data {
-  long long id;
-  double x[3];
-};
-
-/**
- * @brief Neutrino particle data for lightcone output
- */
-struct lightcone_neutrino_data {
-  long long id;
-  double x[3];
-};
-
-
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
                     const struct cosmology *cosmo,
