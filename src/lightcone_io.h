@@ -31,8 +31,11 @@
 
 /* Forward declarations */
 struct gpart;
+struct part;
+struct xpart;
+struct spart;
+struct bpart;
 struct lightcone_props;
-
 
 /**
  * @brief Gas particle data for lightcone output
@@ -41,6 +44,13 @@ struct lightcone_gas_data {
   long long id;
   double x[3];
 };
+
+void lightcone_store_gas(const struct gpart *gp, const struct part *p,
+                         const struct xpart *xp, const double x_cross[3],
+                         struct lightcone_gas_data *data);
+
+void lightcone_write_gas(struct lightcone_props *props, hid_t file_id, int ptype);
+
 
 /**
  * @brief Dark matter particle data for lightcone output
@@ -55,13 +65,6 @@ void lightcone_store_dark_matter(const struct gpart *gp, const double x_cross[3]
 
 void lightcone_write_dark_matter(struct lightcone_props *props, hid_t file_id, int ptype);
 
-/**
- * @brief Dark matter background particle data for lightcone output
- */
-struct lightcone_dark_matter_background_data {
-  long long id;
-  double x[3];
-};
 
 /**
  * @brief Star particle data for lightcone output
@@ -71,6 +74,13 @@ struct lightcone_stars_data {
   double x[3];
 };
 
+void lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
+                           const double x_cross[3],
+                           struct lightcone_stars_data *data);
+
+void lightcone_write_stars(struct lightcone_props *props, hid_t file_id, int ptype);
+
+
 /**
  * @brief Black hole particle data for lightcone output
  */
@@ -79,12 +89,10 @@ struct lightcone_black_hole_data {
   double x[3];
 };
 
-/**
- * @brief Neutrino particle data for lightcone output
- */
-struct lightcone_neutrino_data {
-  long long id;
-  double x[3];
-};
+void lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
+                                 const double x_cross[3],
+                                 struct lightcone_black_hole_data *data);
+
+void lightcone_write_black_hole(struct lightcone_props *props, hid_t file_id, int ptype);
 
 #endif

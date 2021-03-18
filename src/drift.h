@@ -88,7 +88,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 #ifdef WITH_LIGHTCONE
   lightcone_check_particle_crosses(e->lightcone_properties, e->cosmology,
                                    gp, gp->x, gp->v_full,
-                                   dt_drift, ti_old, ti_current);
+                                   dt_drift, ti_old, ti_current,
+                                   NULL, NULL);
 #endif
 
   /* Drift... */
@@ -149,7 +150,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
 #ifdef WITH_LIGHTCONE
   lightcone_check_particle_crosses(lightcone_properties, cosmo, p->gpart,
-    p->x, xp->v_full, dt_drift, ti_old, ti_current);
+                                   p->x, xp->v_full, dt_drift, ti_old, ti_current,
+                                   p, xp);
 #endif
 
   /* Drift... */
@@ -231,7 +233,8 @@ __attribute__((always_inline)) INLINE static void drift_spart(
 
 #ifdef WITH_LIGHTCONE
   lightcone_check_particle_crosses(lightcone_properties, cosmo, sp->gpart,
-    sp->x, sp->v, dt_drift, ti_old, ti_current);
+                                   sp->x, sp->v, dt_drift, ti_old, ti_current,
+                                   sp, NULL);
 #endif
 
   /* Drift... */
@@ -291,7 +294,8 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
 
 #ifdef WITH_LIGHTCONE
   lightcone_check_particle_crosses(lightcone_properties, cosmo, bp->gpart,
-    bp->x, bp->v, dt_drift, ti_old, ti_current);
+                                   bp->x, bp->v, dt_drift, ti_old, ti_current,
+                                   bp, NULL);
 #endif
 
   /* Drift... */

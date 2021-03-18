@@ -206,7 +206,7 @@ void lightcone_init(struct lightcone_props *props,
                        elements_per_block);
 
   particle_buffer_init(&props->buffer[swift_type_dark_matter_background],
-                       sizeof(struct lightcone_dark_matter_background_data),
+                       sizeof(struct lightcone_dark_matter_data),
                        elements_per_block);
 
   particle_buffer_init(&props->buffer[swift_type_stars],
@@ -214,7 +214,7 @@ void lightcone_init(struct lightcone_props *props,
                        elements_per_block);
 
   particle_buffer_init(&props->buffer[swift_type_neutrino],
-                       sizeof(struct lightcone_neutrino_data),
+                       sizeof(struct lightcone_dark_matter_data),
                        elements_per_block);
 
 }
@@ -466,7 +466,8 @@ void lightcone_check_particle_crosses(struct lightcone_props *props,
                                       const struct cosmology *c, const struct gpart *gp,
                                       const double *x, const float *v_full,
                                       const double dt_drift, const integertime_t ti_old,
-                                      const integertime_t ti_current) {
+                                      const integertime_t ti_current,
+                                      void *extra1, void *extra2) {
 
   /* Are we making a lightcone? */
   if(!props->enabled)return;
@@ -629,25 +630,31 @@ void lightcone_check_particle_crosses(struct lightcone_props *props,
     switch (gp->type) {
 
     case swift_type_gas: {
-      /*
-      const struct part *p = &parts[-gparts[i].id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
-      */
-      error("Gas particle lightcone output not implemented yet");
+
+      const struct part *p = (struct part *) extra1;
+      const struct xpart *xp = (struct xpart *) extra2;
+      struct lightcone_gas_data data;
+      lightcone_store_gas(gp, p, xp, x_cross, &data);
+      particle_buffer_append(props->buffer+swift_type_gas, &data);
+ 
     } break;
 
     case swift_type_stars: {
-      /*
-      const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
-      */
-      error("Star particle lightcone output not implemented yet");
+
+      const struct spart *sp = (struct spart *) extra1;
+      struct lightcone_stars_data data;
+      lightcone_store_stars(gp, sp, x_cross, &data);
+      particle_buffer_append(props->buffer+swift_type_stars, &data);
+
     } break;
 
     case swift_type_black_hole: {
-      /*
-      const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
-      */
-      error("BH particle lightcone output not implemented yet");
+
+      const struct bpart *bp = (struct bpart *) extra1;
+      struct lightcone_black_hole_data data;
+      lightcone_store_black_hole(gp, bp, x_cross, &data);
+      particle_buffer_append(props->buffer+swift_type_black_hole, &data);
+
     } break;
 
     case swift_type_dark_matter: {
@@ -659,11 +666,21 @@ void lightcone_check_particle_crosses(struct lightcone_props *props,
     } break;
 
     case swift_type_dark_matter_background: {
+
+      /* Assumed to have same properties as DM particles */
+      struct lightcone_dark_matter_data data;
+      lightcone_store_dark_matter(gp, x_cross, &data);
+      particle_buffer_append(props->buffer+swift_type_dark_matter_background, &data);
             
     } break;
 
     case swift_type_neutrino: {
-      error("Neutrino particle lightcone output not implemented yet");
+
+      /* Assumed to have same properties as DM particles */
+      struct lightcone_dark_matter_data data;
+      lightcone_store_dark_matter(gp, x_cross, &data);
+      particle_buffer_append(props->buffer+swift_type_neutrino, &data);
+
     } break;
 
     default:

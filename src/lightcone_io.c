@@ -127,6 +127,66 @@ hid_t open_group(hid_t file_id, int ptype, size_t num_written) {
 }
 
 /**
+ * @brief Store gas properties to write to the lightcone
+ */
+void lightcone_store_gas(const struct gpart *gp, const struct part *p,
+                         const struct xpart *xp, const double x_cross[3],
+                         struct lightcone_gas_data *data) {
+  data->id = gp->id_or_neg_offset;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+}
+
+
+/**
+ * @brief Append buffered gas particles to the output file.
+ */
+void lightcone_write_gas(struct lightcone_props *props, hid_t file_id,
+                         int ptype) {
+
+  /* Number of particles already written to the file */
+  const size_t num_written = props->num_particles_written_to_file[ptype];
+
+  /* Number of buffered particles */
+  const size_t num_to_write = props->buffer[ptype].total_num_elements;
+
+  /* Create or open the HDF5 group for this particle type */
+  hid_t group_id = open_group(file_id, ptype, num_written);
+
+  /* Allocate output arrays */
+  double *pos = malloc(3*num_to_write*sizeof(double));
+  long long *id = malloc(num_to_write*sizeof(long long));
+
+  /* Loop over blocks of buffered particles and copy to output arrays */
+  size_t num_elements;
+  size_t offset = 0;
+  struct particle_buffer_block *block = NULL;
+  struct lightcone_gas_data *data;
+  do {
+    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
+    for(size_t i=0; i<num_elements; i+=1) {
+      id[offset]      = data[i].id;
+      pos[3*offset+0] = data[i].x[0];
+      pos[3*offset+1] = data[i].x[1];
+      pos[3*offset+2] = data[i].x[2];
+      offset += 1;
+    }
+  } while(block);
+
+  /* Write the data */
+  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+
+  /* Clean up */
+  free(pos);
+  free(id);
+  H5Gclose(group_id);
+}
+
+
+/**
  * @brief Store dark matter properties to write to the lightcone
  */
 void lightcone_store_dark_matter(const struct gpart *gp, const double x_cross[3],
@@ -184,3 +244,122 @@ void lightcone_write_dark_matter(struct lightcone_props *props, hid_t file_id,
   H5Gclose(group_id);
 }
 
+
+/**
+ * @brief Store star properties to write to the lightcone
+ */
+void lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
+                           const double x_cross[3],
+                           struct lightcone_stars_data *data) {
+  data->id = gp->id_or_neg_offset;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+}
+
+
+/**
+ * @brief Append buffered star particles to the output file.
+ */
+void lightcone_write_stars(struct lightcone_props *props, hid_t file_id,
+                           int ptype) {
+
+  /* Number of particles already written to the file */
+  const size_t num_written = props->num_particles_written_to_file[ptype];
+
+  /* Number of buffered particles */
+  const size_t num_to_write = props->buffer[ptype].total_num_elements;
+
+  /* Create or open the HDF5 group for this particle type */
+  hid_t group_id = open_group(file_id, ptype, num_written);
+
+  /* Allocate output arrays */
+  double *pos = malloc(3*num_to_write*sizeof(double));
+  long long *id = malloc(num_to_write*sizeof(long long));
+
+  /* Loop over blocks of buffered particles and copy to output arrays */
+  size_t num_elements;
+  size_t offset = 0;
+  struct particle_buffer_block *block = NULL;
+  struct lightcone_stars_data *data;
+  do {
+    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
+    for(size_t i=0; i<num_elements; i+=1) {
+      id[offset]      = data[i].id;
+      pos[3*offset+0] = data[i].x[0];
+      pos[3*offset+1] = data[i].x[1];
+      pos[3*offset+2] = data[i].x[2];
+      offset += 1;
+    }
+  } while(block);
+
+  /* Write the data */
+  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+
+  /* Clean up */
+  free(pos);
+  free(id);
+  H5Gclose(group_id);
+}
+
+
+/**
+ * @brief Store black hole properties to write to the lightcone
+ */
+void lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
+                           const double x_cross[3],
+                           struct lightcone_black_hole_data *data) {
+  data->id = gp->id_or_neg_offset;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+}
+
+
+/**
+ * @brief Append buffered black hole particles to the output file.
+ */
+void lightcone_write_black_hole(struct lightcone_props *props, hid_t file_id,
+                           int ptype) {
+
+  /* Number of particles already written to the file */
+  const size_t num_written = props->num_particles_written_to_file[ptype];
+
+  /* Number of buffered particles */
+  const size_t num_to_write = props->buffer[ptype].total_num_elements;
+
+  /* Create or open the HDF5 group for this particle type */
+  hid_t group_id = open_group(file_id, ptype, num_written);
+
+  /* Allocate output arrays */
+  double *pos = malloc(3*num_to_write*sizeof(double));
+  long long *id = malloc(num_to_write*sizeof(long long));
+
+  /* Loop over blocks of buffered particles and copy to output arrays */
+  size_t num_elements;
+  size_t offset = 0;
+  struct particle_buffer_block *block = NULL;
+  struct lightcone_black_hole_data *data;
+  do {
+    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
+    for(size_t i=0; i<num_elements; i+=1) {
+      id[offset]      = data[i].id;
+      pos[3*offset+0] = data[i].x[0];
+      pos[3*offset+1] = data[i].x[1];
+      pos[3*offset+2] = data[i].x[2];
+      offset += 1;
+    }
+  } while(block);
+
+  /* Write the data */
+  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+
+  /* Clean up */
+  free(pos);
+  free(id);
+  H5Gclose(group_id);
+}
