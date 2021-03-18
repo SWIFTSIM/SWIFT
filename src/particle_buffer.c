@@ -37,6 +37,8 @@ void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
 /**
  * @brief Deallocate a particle buffer.
  *
+ * The buffer is no longer in a usable state after this.
+ *
  * @param buffer The #particle_buffer
  *
  */
@@ -52,6 +54,24 @@ void particle_buffer_free(struct particle_buffer *buffer) {
   buffer->first_block = NULL;
   buffer->last_block = NULL;
   lock_destroy(&buffer->lock);
+}
+
+
+/**
+ * @brief Empty a particle buffer
+ *
+ * This leaves the buffer ready to accept new elements.
+ *
+ * @param buffer The #particle_buffer
+ *
+ */
+void particle_buffer_empty(struct particle_buffer *buffer) {
+  
+  const size_t element_size = buffer->element_size;
+  const size_t elements_per_block = buffer->elements_per_block;
+
+  particle_buffer_free(buffer);
+  particle_buffer_init(buffer, element_size, elements_per_block);
 }
 
 

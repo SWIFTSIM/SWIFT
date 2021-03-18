@@ -21,7 +21,10 @@ struct particle_buffer {
 
 void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
                           size_t elements_per_block);
+
 void particle_buffer_free(struct particle_buffer *buffer);
+
+void particle_buffer_empty(struct particle_buffer *buffer);
 
 void particle_buffer_append(struct particle_buffer *buffer, void *data);
 
