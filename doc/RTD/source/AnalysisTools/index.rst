@@ -144,7 +144,7 @@ A variety of plotting tools for tasks and threadpools is available in ``tools/ta
 To be able to use the task analysis tools, you need to compile swift with ``--enable-task-debugging``
 and then run swift with ``-y <interval>``, where ``<interval>`` is the interval between time steps
 on which the additional task data will be dumped. Swift will then create ``thread_stats-step<nr>.dat``
-and ``thread_info-step<nr>.dat`` files. Similarly, for threadpool debugging, you need to compile
+and ``thread_info-step<nr>.dat`` files. Similarly, for threadpool related tools, you need to compile
 swift with ``--enable-threadpool-debugging`` and then run it with ``-Y <interval>``.
 
 For the analysis and plotting scripts listed below, you need to provide the **\*info-step<nr>.dat** 
