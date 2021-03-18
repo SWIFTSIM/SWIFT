@@ -46,7 +46,7 @@
 #include "timeline.h"
 
 /* Whether to dump the replication list */
-#define DUMP_REPLICATIONS 1
+//#define DUMP_REPLICATIONS
 #ifdef DUMP_REPLICATIONS
 static int output_nr = 0;
 #endif
@@ -287,8 +287,9 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
     /* Loop over particle types */
     for(int ptype=0; ptype<swift_type_count; ptype+=1) {
-      if(props->buffer[ptype].total_num_elements >= max_to_buffer &&
-         props->buffer[ptype].total_num_elements > 0) {
+
+      const size_t num_to_write = props->buffer[ptype].total_num_elements;
+      if(num_to_write >= max_to_buffer && num_to_write > 0) {
         switch(ptype) {
         case swift_type_gas:
           error("Lightcone output not implemented yet for gas");
@@ -296,6 +297,7 @@ void lightcone_flush_buffers(struct lightcone_props *props,
         case swift_type_dark_matter:
           lightcone_write_dark_matter(props, file_id, ptype);
           particle_buffer_empty(&props->buffer[ptype]);
+          props->num_particles_written_to_file[ptype] += num_to_write;
           break;
         case swift_type_dark_matter_background:
           error("Lightcone output not implemented yet for background DM");
@@ -418,11 +420,13 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   props->ti_current = ti_current;
 
   /* Report the size of the list */
+#ifdef DUMP_REPLICATIONS
   if(engine_rank==0) {
     message("no. of replications to check: %d", props->replication_list.nrep);
     message("shell to search inner radius=%e, outer radius=%e", lightcone_rmin,
             lightcone_rmax);
   }
+#endif
 
   /* Write out the list, if required */
 #ifdef DUMP_REPLICATIONS

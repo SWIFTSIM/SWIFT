@@ -25,6 +25,7 @@ void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
   
   buffer->element_size = element_size;
   buffer->elements_per_block = elements_per_block;
+  buffer->total_num_elements = 0;
   buffer->first_block = malloc(sizeof(struct particle_buffer_block));
   buffer->first_block->num_elements = 0;
   buffer->first_block->data = malloc(elements_per_block*element_size);
