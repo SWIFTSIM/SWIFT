@@ -101,10 +101,19 @@ void output_options_struct_dump(struct output_options* output_options,
                                 FILE* stream) {
   parser_struct_dump(output_options->select_output, stream);
 
-  const size_t count =
+  const size_t count_fields =
       (OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1) * swift_type_count;
-  restart_write_blocks(output_options->num_fields_to_write, count * sizeof(int),
-                       1, stream, "output_options", "output options");
+  restart_write_blocks(output_options->num_fields_to_write,
+                       count_fields * sizeof(int), 1, stream,
+                       "output_options_fields", "output options");
+
+  const size_t count_chars =
+      (OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1) * FILENAME_BUFFER_SIZE;
+  restart_write_blocks(output_options->basenames, count_chars * sizeof(char), 1,
+                       stream, "output_options_basenames", "output options");
+  restart_write_blocks(output_options->subdir_names, count_chars * sizeof(char),
+                       1, stream, "output_options_subdir_names",
+                       "output options");
 }
 
 /**
@@ -121,10 +130,18 @@ void output_options_struct_restore(struct output_options* output_options,
 
   output_options->select_output = select_output;
 
-  const size_t count =
+  const size_t count_fields =
       (OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1) * swift_type_count;
-  restart_read_blocks(output_options->num_fields_to_write, count * sizeof(int),
-                      1, stream, NULL, "output options");
+  restart_read_blocks(output_options->num_fields_to_write,
+                      count_fields * sizeof(int), 1, stream, NULL,
+                      "output options_fields");
+
+  const size_t count_chars =
+      (OUTPUT_LIST_MAX_NUM_OF_SELECT_OUTPUT_STYLES + 1) * FILENAME_BUFFER_SIZE;
+  restart_read_blocks(output_options->basenames, count_chars * sizeof(char), 1,
+                      stream, NULL, "output options_basenames");
+  restart_read_blocks(output_options->subdir_names, count_chars * sizeof(char),
+                      1, stream, NULL, "output options_subdir_names");
 }
 
 /**
