@@ -360,6 +360,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
               stars_spart_has_no_neighbours(sp, cosmo);
+              rt_spart_has_no_neighbours(sp);
             }
 
           } else {
@@ -1335,6 +1336,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               pressure_floor_part_has_no_neighbours(p, xp, cosmo);
               star_formation_part_has_no_neighbours(p, xp, star_formation,
                                                     cosmo);
+              rt_part_has_no_neighbours(p);
             }
 
           } else {
