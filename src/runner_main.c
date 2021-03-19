@@ -466,7 +466,9 @@ void *runner_main(void *data) {
           }
 
           /* And log deactivation, if logging enabled. */
-          mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+          if (t->flags != -1) {
+            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+          }
 
           break;
 
@@ -531,7 +533,9 @@ void *runner_main(void *data) {
           }
 
           /* And log deactivation, if logging enabled. */
-          mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+          if (t->flags != -1) {
+            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+          }
 
           break;
 #endif

@@ -2033,8 +2033,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
-                              t->ci->nodeID, t->flags, -1);
+        if (t->flags != -1) {
+          mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
+                                t->ci->nodeID, t->flags, -1);
+        }
 
         qid = -1;
       }
@@ -2120,8 +2122,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        //mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
+        //if (t->flags != -1) {
+        //  mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
         //                      t->cj->nodeID, t->flags, -1);
+        //}
 
         qid = -1; //1 % s->nr_queues;
       }
@@ -2713,7 +2717,7 @@ void scheduler_rdma_init_communications(struct scheduler *s, int verbose) {
   /* Now we open up communications between the nodes. */
   infinity_open_communications(s->nr_ranks, s->recv_mpicache->window_sizes,
                                &s->recv_handle, &s->send_handle, verbose);
-  
+
 #endif
 }
 
