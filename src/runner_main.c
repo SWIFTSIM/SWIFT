@@ -405,46 +405,48 @@ void *runner_main(void *data) {
 #ifdef WITH_MPI
         case task_type_send:
           {
-            // XXX log actual time used in call, not how long we are queued.
-            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
-                                  cj->nodeID, t->flags, r->cpuid);
+            if (t->flags != -1) {
+              // XXX log actual time used in call, not how long we are queued.
+              mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
+                                    cj->nodeID, t->flags, r->cpuid);
 
-            /* Need space for the data and the headers. */
-            scheduler_rdma_blocktype datasize =
-              scheduler_rdma_toblocks(t->win_size) + scheduler_rdma_header_size;
+              /* Need space for the data and the headers. */
+              scheduler_rdma_blocktype datasize =
+                scheduler_rdma_toblocks(t->win_size) + scheduler_rdma_header_size;
 
-            /* Access the registered memory for transferring this data. */
-            scheduler_rdma_blocktype *dataptr =
-              infinity_get_send_buffer(sched->send_handle, cj->nodeID,
-                                       scheduler_rdma_tobytes(datasize));
+              /* Access the registered memory for transferring this data. */
+              scheduler_rdma_blocktype *dataptr =
+                infinity_get_send_buffer(sched->send_handle, cj->nodeID,
+                                         scheduler_rdma_tobytes(datasize));
 
-            /* First element is marked as LOCKED, so only we can update. */
-            dataptr[0] = scheduler_rdma_locked;
-            dataptr[1] = t->win_size;
-            dataptr[2] = t->flags;
-            dataptr[3] = engine_rank;
-            memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->win_size);
+              /* First element is marked as LOCKED, so only we can update. */
+              dataptr[0] = scheduler_rdma_locked;
+              dataptr[1] = t->win_size;
+              dataptr[2] = t->flags;
+              dataptr[3] = engine_rank;
+              memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->win_size);
 
 #ifdef SWIFT_DEBUG_CHECKS
-            if (e->verbose)
-              message(
-                      "Sending message to %d from %d subtype %d tag %zu size %zu"
-                      " (cf %lld %zu) offset %zu",
-                      cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
-                      t->win_size, t->offset);
+              if (e->verbose)
+                message(
+                        "Sending message to %d from %d subtype %d tag %zu size %zu"
+                        " (cf %lld %zu) offset %zu",
+                        cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
+                        t->win_size, t->offset);
 #endif
-            infinity_send_data(sched->send_handle, cj->nodeID,
-                               scheduler_rdma_tobytes(datasize),
-                               scheduler_rdma_tobytes(t->win_offset));
+              infinity_send_data(sched->send_handle, cj->nodeID,
+                                 scheduler_rdma_tobytes(datasize),
+                                 scheduler_rdma_tobytes(t->win_offset));
 #ifdef SWIFT_DEBUG_CHECKS
-            if (e->verbose) {
-              message(
-                      "Sent message to %d subtype %d tag %zu size %zu offset %zu"
-                      " (cf %lld %zu)",
-                      cj->nodeID, subtype, dataptr[2], dataptr[1], t->win_offset, t->flags,
-                      t->size);
+              if (e->verbose) {
+                message(
+                        "Sent message to %d subtype %d tag %zu size %zu offset %zu"
+                        " (cf %lld %zu)",
+                        cj->nodeID, subtype, dataptr[2], dataptr[1], t->win_offset, t->flags,
+                        t->size);
+              }
+#endif
             }
-#endif
           }
 
           if (t->subtype == task_subtype_tend_part) {
