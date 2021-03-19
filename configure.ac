@@ -94,7 +94,7 @@ AC_ARG_ENABLE([csds],
 if test "$with_csds" = "yes"; then
    AC_DEFINE([WITH_LOGGER], 1, [csds enabled])
    # Ensure that the submodule is initialized
-   $ac_top_srcdir/tools/update-modules
+   $ac_top_srcdir/tools/update-modules csds
    # The csds requires that long long is a 64bit type, let's
    # check that.
    AC_CHECK_SIZEOF([long long int])
