@@ -586,11 +586,6 @@ int main(int argc, char *argv[]) {
         "(even if configured --with-feedback=none)");
   }
 
-#ifndef STARS_GEAR
-  /* Temporary, this dependency will be removed later */
-  error(
-      "Error: Cannot use radiative transfer without GEAR star model for now\n");
-#endif
 #ifdef WITH_MPI
   /* Temporary, this will be removed in due time */
   error("Error: Cannot use radiative transfer with MPI\n");
@@ -1776,6 +1771,7 @@ int main(int argc, char *argv[]) {
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
+  if (with_rt) rt_clean(e.rt_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   free(output_options);

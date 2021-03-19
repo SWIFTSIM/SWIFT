@@ -84,6 +84,22 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
                                                                 double n) {}
 
 /**
+ * @brief Exception handle a hydro part not having any neighbours in ghost task
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
+    struct part* p){};
+
+/**
+ * @brief Exception handle a star part not having any neighbours in ghost task
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
+    struct spart* sp){};
+
+/**
  * @brief Update the photon number of a particle, i.e. compute
  *  E^{n+1} = E^n + dt * dE_* / dt. This function finalises
  *  the injection step.
@@ -134,5 +150,13 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
     struct part* restrict p) {}
+
+/**
+ * @brief Clean the allocated memory inside the RT properties struct.
+ *
+ * @param props the #rt_props.
+ */
+__attribute__((always_inline)) INLINE static void rt_clean(
+    struct rt_props* props) {}
 
 #endif /* SWIFT_RT_M1_H */

@@ -168,7 +168,7 @@ const char *task_category_names[task_category_count] = {
     "black holes", "cooling", "star formation",
     "limiter",     "sync",    "time integration",
     "mpi",         "fof",     "others",
-    "sink"};
+    "sink",        "RT"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -1732,6 +1732,14 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_fof_pair:
       return task_category_fof;
 
+    case task_type_rt_in:
+    case task_type_rt_ghost1:
+    case task_type_rt_ghost2:
+    case task_type_rt_transport_out:
+    case task_type_rt_tchem:
+    case task_type_rt_out:
+      return task_category_rt;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -1767,6 +1775,11 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_sink_merger:
         case task_subtype_sink_accretion:
           return task_category_sink;
+
+        case task_subtype_rt_inject:
+        case task_subtype_rt_gradient:
+        case task_subtype_rt_transport:
+          return task_category_rt;
 
         default:
           return task_category_others;
