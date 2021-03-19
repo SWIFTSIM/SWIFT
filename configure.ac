@@ -94,16 +94,24 @@ AC_ARG_ENABLE([csds],
 if test "$with_csds" = "yes"; then
    AC_DEFINE([WITH_LOGGER], 1, [csds enabled])
    # Ensure that the submodule is initialized
-   $ac_top_srcdir/tools/update-modules csds
+   ${srcdir}/tools/update-modules csds
    # The csds requires that long long is a 64bit type, let's
    # check that.
    AC_CHECK_SIZEOF([long long int])
    if test "$ac_cv_sizeof_long_long_int" != "8"; then
       AC_MSG_ERROR([The CSDS requires that 'long long int' has size 8 bytes])
    fi
+
+   # Ensure that everything is alright for the CSDS
+   if test ! -f csds/Makefile.in; then
+      AC_MSG_ERROR([It seems that the submodule "CSDS" was not initialized, please rerun autogen.sh and reconfigure.])
+   fi
+
 fi
-AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
-AM_COND_IF([HAVELOGGER], [AC_CONFIG_FILES([csds/Makefile])])
+AM_CONDITIONAL([HAVELOGGER],[test $with_csds = "yes"])
+AM_COND_IF([HAVELOGGER], [AC_CONFIG_FILES([csds/Makefile csds/src/Makefile csds/tests/Makefile])])
+
+
 
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
