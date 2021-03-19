@@ -1546,10 +1546,10 @@ case "$with_subgrid" in
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
-	with_subgrid_black_holes=none
+	with_subgrid_black_holes=EAGLE
 	with_subgrid_task_order=EAGLE
   	with_subgrid_sink=none
-	enable_fof=no
+	enable_fof=yes
    ;;
    EAGLE-XL)
 	with_subgrid_cooling=COLIBRE
