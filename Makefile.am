@@ -24,7 +24,7 @@ if HAVEEAGLECOOLING
 SUBDIRS += examples/Cooling/CoolingRates
 endif
 if HAVELOGGER
-SUBDIRS += logger
+SUBDIRS += csds
 endif
 
 # Non-standard files that should be part of the distribution.

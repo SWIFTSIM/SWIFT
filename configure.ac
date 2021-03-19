@@ -82,23 +82,26 @@ fi
 #  Restrict support.
 AC_C_RESTRICT
 
-# logger
-AC_ARG_ENABLE([logger],
-	[AS_HELP_STRING([--enable-logger],
-		[enable the particle logger]
+# CSDS
+AC_ARG_ENABLE([csds],
+	[AS_HELP_STRING([--enable-csds],
+		[enable the Continuous Simulation Data Stream]
 	)],
-	[with_logger="${enableval}"],
-	[with_logger="no"]
+	[with_csds="${enableval}"],
+	[with_csds="no"]
 )
 
-if test "$with_logger" = "yes"; then
-   AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
-   # The logger requires that long long is a 64bit type, let's
+if test "$with_csds" = "yes"; then
+   AC_DEFINE([WITH_LOGGER], 1, [csds enabled])
+   # Ensure that the submodule is initialized
+   $ac_top_srcdir/tools/update-modules
+   # The csds requires that long long is a 64bit type, let's
    # check that.
    AC_CHECK_SIZEOF([long long int])
    if test "$ac_cv_sizeof_long_long_int" != "8"; then
-      AC_MSG_ERROR([The particle logger requires that 'long long int' has size 8 bytes])
+      AC_MSG_ERROR([The CSDS requires that 'long long int' has size 8 bytes])
    fi
+   AC_CONFIG_FILES([csds/Makefile csds/src/Makefile csds/tests/Makefile])
 fi
 AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
 
@@ -2505,7 +2508,7 @@ AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-mult
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
-AC_CONFIG_FILES([argparse/Makefile tools/Makefile logger/Makefile logger/tests/Makefile])
+AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
@@ -2601,7 +2604,7 @@ AC_MSG_RESULT([
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
 
-   Particle Logger      : $with_logger
-   Python enabled       : $have_python
+   Continuous Simulation Data Stream : $with_csds
+   Python enabled                    : $have_python
 
  ------------------------])
