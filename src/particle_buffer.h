@@ -12,7 +12,6 @@ struct particle_buffer_block {
 struct particle_buffer {
   size_t element_size;
   size_t elements_per_block;
-  size_t total_num_elements;
   struct particle_buffer_block *first_block;
   struct particle_buffer_block *last_block;
   swift_lock_type lock;
@@ -31,5 +30,7 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data);
 void particle_buffer_iterate(struct particle_buffer *buffer,
                              struct particle_buffer_block **block,
                              size_t *num_elements, void **data);
+
+size_t particle_buffer_num_elements(struct particle_buffer *buffer);
 
 #endif /* SWIFT_PARTICLE_BUFFER_H */

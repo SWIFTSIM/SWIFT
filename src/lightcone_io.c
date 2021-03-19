@@ -118,7 +118,7 @@ hid_t init_write(struct lightcone_props *props, hid_t file_id, int ptype,
   *num_written = props->num_particles_written_to_file[ptype];
   
   /* Number of buffered particles */
-  *num_to_write = props->buffer[ptype].total_num_elements;
+  *num_to_write = particle_buffer_num_elements(&props->buffer[ptype]);
 
   /* Create or open the HDF5 group for this particle type */
   const char *name = part_type_names[ptype];
@@ -226,6 +226,7 @@ void lightcone_write_dark_matter(struct lightcone_props *props, hid_t file_id,
       pos[3*offset+0] = data[i].x[0];
       pos[3*offset+1] = data[i].x[1];
       pos[3*offset+2] = data[i].x[2];
+      
       offset += 1;
     }
   } while(block);

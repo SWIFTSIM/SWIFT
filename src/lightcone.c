@@ -195,7 +195,7 @@ void lightcone_init(struct lightcone_props *props,
   props->start_new_file = 1;
 
   /* Initialize particle output buffers */
-  const size_t elements_per_block = 100000;
+  const size_t elements_per_block = 10000;
 
   particle_buffer_init(&props->buffer[swift_type_gas],
                        sizeof(struct lightcone_gas_data),
@@ -239,7 +239,7 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
   /* Loop over particle types we know how to write out */
   for(int ptype=0; ptype<swift_type_count; ptype+=1) {
-    const size_t num_to_write = props->buffer[ptype].total_num_elements;
+    const size_t num_to_write = particle_buffer_num_elements(&props->buffer[ptype]);
     switch(ptype) {
     case swift_type_gas:
     case swift_type_dark_matter:
@@ -289,7 +289,7 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
     /* Loop over particle types */
     for(int ptype=0; ptype<swift_type_count; ptype+=1) {
-      const size_t num_to_write = props->buffer[ptype].total_num_elements;
+      const size_t num_to_write = particle_buffer_num_elements(&props->buffer[ptype]);
       if(num_to_write >= max_to_buffer && num_to_write > 0) {
         switch(ptype) {
         case swift_type_gas:

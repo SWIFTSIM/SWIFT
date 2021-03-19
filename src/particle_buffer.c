@@ -10,7 +10,8 @@
  *
  * Stores a sequence of data objects of size element_size,
  * allowing new elements to be appended by multiple threads
- * simultaneously.
+ * simultaneously. Note that ONLY the append operation is
+ * thread safe.
  *
  * Objects are stored in a linked list of blocks and new blocks
  * are allocated as needed.
@@ -25,7 +26,6 @@ void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
   
   buffer->element_size = element_size;
   buffer->elements_per_block = elements_per_block;
-  buffer->total_num_elements = 0;
   buffer->first_block = malloc(sizeof(struct particle_buffer_block));
   buffer->first_block->num_elements = 0;
   buffer->first_block->data = malloc(elements_per_block*element_size);
@@ -79,6 +79,8 @@ void particle_buffer_empty(struct particle_buffer *buffer) {
 /**
  * @brief Append an element to a particle buffer.
  *
+ * May be called from multiple threads simultaneously.
+ *
  * @param buffer The #particle_buffer
  * @param data The element to append
  *
@@ -90,18 +92,15 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
  
   while(1) {
 
-    /* Find the current block */
-    struct particle_buffer_block *block = buffer->last_block;
+    /* Find the current block (atomic because last_block may be modified by other threads) */
+    struct particle_buffer_block *block = __atomic_load_n(&buffer->last_block, __ATOMIC_SEQ_CST);
 
     /* Find next available index in current block */
     size_t index = __atomic_fetch_add(&block->num_elements, 1, __ATOMIC_SEQ_CST);
 
-    /* Increment total number of elements */
-    __atomic_fetch_add(&buffer->total_num_elements, 1, __ATOMIC_SEQ_CST);
-
-    if(index < buffer->elements_per_block) {
+    if(index < elements_per_block) {
       /* We reserved a valid index, so copy the data */
-      memcpy(block->data+index*buffer->element_size, data, buffer->element_size);
+      memcpy(block->data+index*element_size, data, element_size);
       return;
     } else {
       /* No space left, so we need to allocate a new block */
@@ -111,10 +110,10 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
         /* Allocate and initialize the new block */
         struct particle_buffer_block *new_block = malloc(sizeof(struct particle_buffer_block));
         char *new_block_data = malloc(elements_per_block*element_size);
-        __atomic_store_n(&new_block->data, new_block_data, __ATOMIC_SEQ_CST);
-        __atomic_store_n(&new_block->num_elements, 0, __ATOMIC_SEQ_CST);
-        __atomic_store_n(&new_block->next, NULL, __ATOMIC_SEQ_CST);
-        __atomic_store_n(&block->next, new_block, __ATOMIC_SEQ_CST);
+        new_block->data = new_block_data;
+        new_block->num_elements = 0;
+        new_block->next = NULL;
+        block->next = new_block;
         __atomic_thread_fence(__ATOMIC_SEQ_CST);
         /* After this store other threads will write to the new block,
            so all initialization must complete before this. */
@@ -156,4 +155,28 @@ void particle_buffer_iterate(struct particle_buffer *buffer,
     *num_elements = 0;
   }
 
+}
+
+
+/**
+ * @brief Return number of elements in particle buffer.
+ *
+ * @param buffer The #particle_buffer
+ *
+ */
+size_t particle_buffer_num_elements(struct particle_buffer *buffer) {
+
+  size_t num_elements = 0;
+  struct particle_buffer_block *block = buffer->first_block;
+  while(block) {
+    if(block->num_elements < buffer->elements_per_block) {
+      /* Non-full block, so block->num_elements is correct */
+      num_elements += block->num_elements;
+    } else {
+      /* Full block, so block->num_elements may be out of range */
+      num_elements += buffer->elements_per_block;
+    }
+    block = block->next;
+  }
+  return num_elements;
 }
