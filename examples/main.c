@@ -1056,6 +1056,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialize RT properties */
     if (with_rt) {
+      if (hydro_properties.particle_splitting)
+        error("Can't run with RT and particle splitting as of yet.");
       rt_props_init(&rt_properties, params);
     } else
       bzero(&rt_properties, sizeof(struct rt_props));

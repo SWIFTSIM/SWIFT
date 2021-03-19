@@ -757,6 +757,11 @@ void space_convert_rt_star_quantities_mapper(void *restrict map_data,
   for (int k = 0; k < scount; k++) {
 
     struct spart *restrict sp = &sparts[k];
+    rt_reset_spart(sp);
+
+    /* If we're running with star controlled injection, we don't
+     * need to compute the stellar emission rates here now. */
+    if (!e->rt_props->hydro_controlled_injection) continue;
 
     /* get star's age and time step for stellar emission rates */
     const integertime_t ti_begin =
@@ -781,17 +786,38 @@ void space_convert_rt_star_quantities_mapper(void *restrict map_data,
   }
 }
 
+void space_convert_rt_hydro_quantities_mapper(void *restrict map_data,
+                                              int count,
+                                              void *restrict extra_data) {
+
+  struct part *restrict parts = (struct part *)map_data;
+
+  for (int k = 0; k < count; k++) {
+    struct part *restrict p = &parts[k];
+    rt_reset_part(p);
+  }
+}
+
 /**
  * @brief Initializes values of radiative transfer data for particles
  * that needs to be set before the first actual step is done, but will
  * be reset in forthcoming steps when the corresponding particle is
- * active. In particular, we need the stellar emisison rates to be set
- * from the start, not only after the stellar particle has been active.
- * This function requires that the time bins for star particles have
- * been set already and is called after the 0-th time step.
- * TODO MLADEN: this is only for the injection version where
- * hydro particles "pull" radiation from stars. Shouldn't be
- * necessary for feedback like model.
+ * active.
+ * In hydro controlled injection, in particular we need the stellar
+ * emisison rates to be set from the start, not only after the stellar
+ * particle has been active. This function requires that the time bins
+ * for star particles have been set already and is called after the
+ * zeroth time step.
+ * In either star controlled injection or hydro controlled injection,
+ * for the debug RT scheme some data fields need to be reset after the
+ * zeroth step. In particular the interaction count between stars and
+ * hydro particles needs to be reset to zero; Otherwise only the active
+ * particles/stars will be reset when called in their respective ghosts,
+ * while the others remain nonzero, such that the respective sums over
+ * all hydro particles and the sum over all star particles won't be
+ * equal any longer.
+ * TODO MLADEN: Clean this up once you finish with the hydro/star
+ * controlled injection and debugging mode.
  *
  * @param s The #space.
  * @param verbose Are we talkative?
@@ -800,7 +826,16 @@ void space_convert_rt_quantities(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  if (s->nr_sparts > 0) /* star particle loop */
+  if (s->nr_parts > 0)
+    /* Particle loop. Reset hydro particle values so we don't inject too much
+     * radiation into the gas */
+    threadpool_map(&s->e->threadpool, space_convert_rt_hydro_quantities_mapper,
+                   s->parts, s->nr_parts, sizeof(struct part),
+                   threadpool_auto_chunk_size, /*extra_data=*/s->e);
+
+  if (s->nr_sparts > 0)
+    /* Star particle loop. Hydro controlled injection requires star particles
+     * to have their emission rated computed and ready for interactions. */
     threadpool_map(&s->e->threadpool, space_convert_rt_star_quantities_mapper,
                    s->sparts, s->nr_sparts, sizeof(struct spart),
                    threadpool_auto_chunk_size, /*extra_data=*/s->e);

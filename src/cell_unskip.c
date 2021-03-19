@@ -29,7 +29,7 @@
 #include "active.h"
 #include "engine.h"
 #include "feedback.h"
-#include "rt_do_cells.h"
+#include "rt_active.h"
 #include "space_getsid.h"
 
 extern int engine_star_resort_task_depth;
@@ -2791,7 +2791,6 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */
 
-  /* Drift stars even if they aren't active */
   if (c->stars.drift != NULL) {
     if (rt_should_do_cell(c, e)) {
       cell_activate_drift_part(c, s);
@@ -2799,7 +2798,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-  /* Now unskip all RT specific tasks */
+  /* Now unskip all RT specific interaction tasks */
   for (struct link *l = c->hydro.rt_inject; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
@@ -2907,9 +2906,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
       if (cell_is_active_hydro(l->t->ci, e)) scheduler_activate(s, l->t);
     }
 
-    if (cell_is_active_hydro(c, e)) {
-      /* Unskip all the other task types */
+    /* Unskip all the other task types */
+
+    /* You need to pay attention to stars as well when unskipping rt_in
+     * to gather dependencies from the feedback loop */
+    if (rt_should_do_unskip_cell(c, e)) {
       if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
+    }
+
+    if (cell_is_active_hydro(c, e)) {
       if (c->hydro.rt_ghost1 != NULL) {
         scheduler_activate(s, c->hydro.rt_ghost1);
       }

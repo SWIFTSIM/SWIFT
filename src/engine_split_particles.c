@@ -31,6 +31,7 @@
 #include "hydro.h"
 #include "particle_splitting.h"
 #include "random.h"
+#include "rt.h"
 #include "star_formation.h"
 #include "tracers.h"
 
@@ -248,6 +249,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       tracers_split_part(p, xp, particle_split_factor);
       tracers_split_part(&global_parts[k_parts], &global_xparts[k_parts],
                          particle_split_factor);
+
+      /* Split the RT fields */
+      rt_split_part(p, particle_split_factor);
+      rt_split_part(&global_parts[k_parts], particle_split_factor);
 
       /* Mark the particles as not having been swallowed */
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);

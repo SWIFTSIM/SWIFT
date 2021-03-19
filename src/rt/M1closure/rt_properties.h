@@ -28,7 +28,12 @@
 /**
  * @brief Properties of the 'M1closure' radiative transfer model
  */
-struct rt_props {};
+struct rt_props {
+
+  /* Are we running with hydro or star controlled injection?
+   * This is added to avoid #ifdef macros as far as possible */
+  int hydro_controlled_injection;
+};
 
 /**
  * @brief Print the RT model.
@@ -53,8 +58,42 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
 __attribute__((always_inline)) INLINE static void rt_props_init(
     struct rt_props* rtp, struct swift_params* params) {
 
+#ifdef RT_HYDRO_CONTROLLED_INJECTION
+  rtp->hydro_controlled_injection = 1;
+#else
+  rtp->hydro_controlled_injection = 0;
+#endif
+
   /* After initialisation, print params to screen */
   rt_props_print(rtp);
+}
+
+/**
+ * @brief Write an RT properties struct to the given FILE as a
+ * stream of bytes.
+ *
+ * @param props the struct
+ * @param stream the file stream
+ */
+__attribute__((always_inline)) INLINE static void rt_struct_dump(
+    const struct rt_props* props, FILE* stream) {
+
+  restart_write_blocks((void*)props, sizeof(struct rt_props), 1, stream,
+                       "RT props", "RT properties struct");
+}
+
+/**
+ * @brief Restore an RT properties struct from the given FILE as
+ * a stream of bytes.
+ *
+ * @param props the struct
+ * @param stream the file stream
+ */
+__attribute__((always_inline)) INLINE static void rt_struct_restore(
+    struct rt_props* props, FILE* stream) {
+
+  restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
+                      "RT properties struct");
 }
 
 #endif /* SWIFT_RT_PROPERTIES_M1_H */

@@ -28,10 +28,11 @@
 struct rt_part_data {
 
   /* data to store during entire run */
-  int calls_tot; /* total number of calls to this particle during entire run */
+  unsigned long long
+      radiation_absorbed_tot; /* how much radiation this part received from
+                                 stars during total lifetime */
 
   /* data to store during one time step */
-  int calls_per_step;       /* calls per time step to this particle */
   int iact_stars_inject;    /* how many stars this particle interacted with */
   int calls_iact_gradient;  /* calls from gradient interaction loop */
   int calls_iact_transport; /* calls from transport interaction loop */
@@ -47,10 +48,10 @@ struct rt_part_data {
 struct rt_spart_data {
 
   /* data to store during entire run */
-  int calls_tot; /* total number of calls to this particle during entire run */
+  unsigned long long radiation_emitted_tot; /* how much radiation this star
+                                               emitted during total lifetime */
 
   /* data to store during one time step */
-  int calls_per_step;    /* calls per time step to this particle */
   int iact_hydro_inject; /* how many hydro particles this particle interacted
                             with */
   int emission_rate_set; /* stellar photon emisison rate has been computed */
