@@ -54,6 +54,12 @@ struct lightcone_props {
   /*! Redshift range the lightcone covers */
   double z_min, z_max;
 
+  /*! Size of chunks in particle buffer */
+  int buffer_chunk_size;
+
+  /*! Size of chunks in HDF5 output files */
+  int hdf5_chunk_size;
+
   /*! Whether we're doing a pencil beam */
   int pencil_beam;
 

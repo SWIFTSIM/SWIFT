@@ -37,8 +37,9 @@
 /**
  * @brief Write data to a HDF5 dataset, appending along first axis if it already exists
  */
-void append_dataset(hid_t loc_id, const char *name, hid_t mem_type_id, const int rank,
-                    const hsize_t *dims, const hsize_t num_written, const void *data) {
+void append_dataset(hid_t loc_id, const char *name, hid_t mem_type_id, hsize_t chunk_size,
+                    const int rank, const hsize_t *dims, const hsize_t num_written,
+                    const void *data) {
   
   const int max_rank = 2;
   if(rank > max_rank)error("HDF5 dataset has too may dimensions. Increase max_rank.");
@@ -59,11 +60,10 @@ void append_dataset(hid_t loc_id, const char *name, hid_t mem_type_id, const int
   max_dims[0] = H5S_UNLIMITED;
 
   /* Determine chunk size in each dimension */
-  const hsize_t chunk_size = 102400;
   hsize_t chunk_dims[max_rank];
   for(int i=1; i<rank; i+=1)
     chunk_dims[i] = full_dims[i];
-  chunk_dims[0] = chunk_size;
+  chunk_dims[0] = (hsize_t) chunk_size;
 
   /* Find offset to region to write in each dimension */
   hsize_t offset[max_rank];
@@ -177,9 +177,10 @@ void lightcone_write_gas(struct lightcone_props *props, hid_t file_id,
   } while(block);
 
   /* Write the data */
+  const hsize_t chunk_size = props->hdf5_chunk_size;
   hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
 
   /* Clean up */
   free(pos);
@@ -232,9 +233,10 @@ void lightcone_write_dark_matter(struct lightcone_props *props, hid_t file_id,
   } while(block);
 
   /* Write the data */
+  const hsize_t chunk_size = props->hdf5_chunk_size;
   hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
 
   /* Clean up */
   free(pos);
@@ -287,9 +289,10 @@ void lightcone_write_stars(struct lightcone_props *props, hid_t file_id,
   } while(block);
 
   /* Write the data */
+  const hsize_t chunk_size = props->hdf5_chunk_size;
   hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
 
   /* Clean up */
   free(pos);
@@ -342,9 +345,10 @@ void lightcone_write_black_hole(struct lightcone_props *props, hid_t file_id,
   } while(block);
 
   /* Write the data */
+  const hsize_t chunk_size = props->hdf5_chunk_size;
   hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
 
   /* Clean up */
   free(pos);
@@ -396,9 +400,10 @@ void lightcone_write_neutrino(struct lightcone_props *props, hid_t file_id,
   } while(block);
 
   /* Write the data */
+  const hsize_t chunk_size = props->hdf5_chunk_size;
   hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, 1, dims, num_written, id);
+  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
+  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
 
   /* Clean up */
   free(pos);

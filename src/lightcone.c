@@ -120,6 +120,12 @@ void lightcone_init(struct lightcone_props *props,
   /* Write particles to disk if this many or more are in the buffer */
   props->max_particles_buffered = parser_get_opt_param_int(params, "Lightcone:max_particles_buffered", 100000);
 
+  /* Chunk size for particles buffered in memory  */
+  props->buffer_chunk_size = parser_get_opt_param_int(params, "Lightcone:buffer_chunk_size", 20000);
+
+  /* Chunk size for particles buffered in memory  */
+  props->hdf5_chunk_size = parser_get_opt_param_int(params, "Lightcone:hdf5_chunk_size", 16384);
+
   /* Whether we're doing a pencil beam */
   props->pencil_beam = parser_get_opt_param_int(params, "Lightcone:pencil_beam", 0);
   
@@ -195,7 +201,7 @@ void lightcone_init(struct lightcone_props *props,
   props->start_new_file = 1;
 
   /* Initialize particle output buffers */
-  const size_t elements_per_block = 10000;
+  const size_t elements_per_block = (size_t) props->buffer_chunk_size;
 
   particle_buffer_init(&props->buffer[swift_type_gas],
                        sizeof(struct lightcone_gas_data),
