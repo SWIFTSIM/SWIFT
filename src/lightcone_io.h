@@ -95,4 +95,19 @@ void lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
 
 void lightcone_write_black_hole(struct lightcone_props *props, hid_t file_id, int ptype);
 
+
+/**
+ * @brief Neutrino particle data for lightcone output
+ */
+struct lightcone_neutrino_data {
+  long long id;
+  double x[3];
+};
+
+void lightcone_store_neutrino(const struct gpart *gp, const double x_cross[3],
+                              struct lightcone_neutrino_data *data);
+
+void lightcone_write_neutrino(struct lightcone_props *props, hid_t file_id, int ptype);
+
+
 #endif

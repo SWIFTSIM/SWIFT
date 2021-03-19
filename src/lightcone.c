@@ -213,8 +213,12 @@ void lightcone_init(struct lightcone_props *props,
                        sizeof(struct lightcone_stars_data),
                        elements_per_block);
 
+  particle_buffer_init(&props->buffer[swift_type_black_hole],
+                       sizeof(struct lightcone_black_hole_data),
+                       elements_per_block);
+
   particle_buffer_init(&props->buffer[swift_type_neutrino],
-                       sizeof(struct lightcone_dark_matter_data),
+                       sizeof(struct lightcone_neutrino_data),
                        elements_per_block);
 
 }
@@ -235,6 +239,7 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
   /* Loop over particle types we know how to write out */
   for(int ptype=0; ptype<swift_type_count; ptype+=1) {
+    const size_t num_to_write = props->buffer[ptype].total_num_elements;
     switch(ptype) {
     case swift_type_gas:
     case swift_type_dark_matter:
@@ -242,10 +247,7 @@ void lightcone_flush_buffers(struct lightcone_props *props,
     case swift_type_stars:
     case swift_type_black_hole:
     case swift_type_neutrino:
-      if(props->buffer[ptype].total_num_elements >= max_to_buffer &&
-         props->buffer[ptype].total_num_elements > 0) {
-        types_to_flush += 1;
-      }
+      if(num_to_write >= max_to_buffer && num_to_write > 0)types_to_flush += 1;
       break;
     default:
       /* Don't support this type, so do nothing */
@@ -287,34 +289,31 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
     /* Loop over particle types */
     for(int ptype=0; ptype<swift_type_count; ptype+=1) {
-
       const size_t num_to_write = props->buffer[ptype].total_num_elements;
       if(num_to_write >= max_to_buffer && num_to_write > 0) {
         switch(ptype) {
         case swift_type_gas:
-          error("Lightcone output not implemented yet for gas");
+          lightcone_write_gas(props, file_id, ptype);
           break;
         case swift_type_dark_matter:
-          lightcone_write_dark_matter(props, file_id, ptype);
-          particle_buffer_empty(&props->buffer[ptype]);
-          props->num_particles_written_to_file[ptype] += num_to_write;
-          break;
         case swift_type_dark_matter_background:
-          error("Lightcone output not implemented yet for background DM");
+          lightcone_write_dark_matter(props, file_id, ptype);
           break;
         case swift_type_stars:
-          error("Lightcone output not implemented yet for stars");
+          lightcone_write_stars(props, file_id, ptype);
           break;
         case swift_type_black_hole:
-          error("Lightcone output not implemented yet for black holes");
+          lightcone_write_black_hole(props, file_id, ptype);
           break;
         case swift_type_neutrino:
-          error("Lightcone output not implemented yet for neutrinos");
+          lightcone_write_neutrino(props, file_id, ptype);
           break;
         default:
           /* Don't support this type, so do nothing */
-          break;
+          continue;
         }
+        particle_buffer_empty(&props->buffer[ptype]);
+        props->num_particles_written_to_file[ptype] += num_to_write;          
       }
     } /* Next particle type */
 
@@ -676,15 +675,15 @@ void lightcone_check_particle_crosses(struct lightcone_props *props,
 
     case swift_type_neutrino: {
 
-      /* Assumed to have same properties as DM particles */
-      struct lightcone_dark_matter_data data;
-      lightcone_store_dark_matter(gp, x_cross, &data);
+      struct lightcone_neutrino_data data;
+      lightcone_store_neutrino(gp, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_neutrino, &data);
 
     } break;
 
     default:
-      error("Particle type not implemented in lightcones.");
+      /* Particle type not implemented in lightcones, so do nothing. */
+      break;
     }
 
   } /* Next periodic replication*/
