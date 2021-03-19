@@ -25,7 +25,8 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
-#include "rt_do_cells.h"
+#include "rt.h"
+#include "rt_active.h"
 #include "runner_doiact_rt.h"
 
 /**
@@ -72,6 +73,9 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
     /* Skip inhibited particles. */
     if (spart_is_inhibited(si, e)) continue;
 
+    /* Skip inactive particles */
+    if (!rt_is_spart_active_in_loop(si, e)) continue;
+
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
@@ -89,7 +93,7 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(pj, e)) continue;
 
       /* Skip inactive particles. */
-      if (!part_is_active(pj, e)) continue;
+      if (!rt_is_part_active_in_loop(pj, e)) continue;
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -103,7 +107,7 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 
-      if (r2 < hig2) {
+      if (r2 < hig2 && e->rt_props->hydro_controlled_injection) {
 
         const integertime_t ti_current = e->ti_current;
         const integertime_t pti_end =
@@ -181,6 +185,9 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
     /* Skip inhibited particles. */
     if (spart_is_inhibited(si, e)) continue;
 
+    /* Skip inactive particles */
+    if (!rt_is_spart_active_in_loop(si, e)) continue;
+
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
@@ -198,7 +205,7 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
       if (part_is_inhibited(pj, e)) continue;
 
       /* Skip inactive particles. */
-      if (!part_is_active(pj, e)) continue;
+      if (!rt_is_part_active_in_loop(pj, e)) continue;
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -208,7 +215,7 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef RT_DEBUG
-      if (r2 < hig2) {
+      if (r2 < hig2 && e->rt_props->hydro_controlled_injection) {
 
         const integertime_t ti_current = e->ti_current;
         const integertime_t pti_end =
@@ -296,7 +303,11 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
       struct spart *restrict spi = &sparts_i[sort_i[pid].i];
       const float hi = spi->h;
 
+      /* Skip inhibited particles */
       if (spart_is_inhibited(spi, e)) continue;
+
+      /* Skip inactive particles */
+      if (!rt_is_spart_active_in_loop(spi, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -323,7 +334,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (part_is_inhibited(pj, e)) continue;
 
         /* Skip inactive particles. */
-        if (!part_is_active(pj, e)) continue;
+        if (!rt_is_part_active_in_loop(pj, e)) continue;
 
         const float hj = pj->h;
         const float pjx = pj->x[0] - cj->loc[0];
@@ -341,7 +352,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 
-        if (r2 < hig2) {
+        if (r2 < hig2 && e->rt_props->hydro_controlled_injection) {
 
           const integertime_t ti_current = e->ti_current;
           const integertime_t pti_end =
@@ -401,7 +412,11 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
       struct spart *spj = &sparts_j[sort_j[pjd].i];
       const float hj = spj->h;
 
+      /* Skip inhibited particles */
       if (spart_is_inhibited(spj, e)) continue;
+
+      /* Skip inactive particles */
+      if (!rt_is_spart_active_in_loop(spj, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
@@ -428,7 +443,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (part_is_inhibited(pi, e)) continue;
 
         /* Skip inactive particles. */
-        if (!part_is_active(pi, e)) continue;
+        if (!rt_is_part_active_in_loop(pi, e)) continue;
 
         const float hi = pi->h;
         const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
@@ -446,7 +461,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (spj->ti_drift != e->ti_current)
           error("Particle spj not drifted to current time");
 
-        if (r2 < hjg2) {
+        if (r2 < hjg2 && e->rt_props->hydro_controlled_injection) {
 
           const integertime_t ti_current = e->ti_current;
           const integertime_t pti_end =
@@ -540,7 +555,7 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(pj, e)) continue;
 
       /* Skip inactive particles. */
-      if (!part_is_active(pj, e)) continue;
+      if (!rt_is_part_active_in_loop(pj, e)) continue;
 
       rt_debugging_check_injection_part(pj, e->rt_props);
     }
@@ -557,6 +572,9 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
 
       /* Skip inhibited particles. */
       if (spart_is_inhibited(si, e)) continue;
+
+      /* Skip inactive particles */
+      if (!rt_is_spart_active_in_loop(si, e)) continue;
 
       rt_debugging_check_injection_spart(si, e->rt_props);
     }
@@ -683,7 +701,7 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
         if (part_is_inhibited(pj, e)) continue;
 
         /* Skip inactive particles. */
-        if (!part_is_active(pj, e)) continue;
+        if (!rt_is_part_active_in_loop(pj, e)) continue;
 
         rt_debugging_check_injection_part(pj, e->rt_props);
       }
@@ -701,6 +719,9 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
 
         /* Skip inhibited particles. */
         if (spart_is_inhibited(si, e)) continue;
+
+        /* Skip inactive particles */
+        if (!rt_is_spart_active_in_loop(si, e)) continue;
 
         rt_debugging_check_injection_spart(si, e->rt_props);
       }

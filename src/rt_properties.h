@@ -26,6 +26,7 @@
 
 /* Config parameters. */
 #include "../config.h"
+#include "rt.h"
 
 /* Import the right RT definition */
 #if defined(RT_NONE)

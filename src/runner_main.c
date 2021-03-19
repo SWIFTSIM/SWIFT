@@ -125,8 +125,10 @@
 
 /* Import radiative transfer loop functions. */
 #define FUNCTION inject
+#define FUNCTION_TASK_LOOP TASK_LOOP_RT_INJECT
 #include "runner_doiact_rt.h"
 #undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
