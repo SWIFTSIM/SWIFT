@@ -28,7 +28,7 @@
 #include "active.h"
 #include "cell.h"
 #include "memswap.h"
-#include "rt_do_cells.h"
+#include "rt_active.h"
 
 /* Load the profiler header, if needed. */
 #ifdef WITH_PROFILER
