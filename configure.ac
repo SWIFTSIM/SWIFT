@@ -103,6 +103,7 @@ if test "$with_csds" = "yes"; then
    fi
 fi
 AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
+AM_COND_IF([HAVELOGGER], [AC_CONFIG_FILES([csds/Makefile])])
 
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
@@ -2507,7 +2508,6 @@ AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-mult
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
-AC_CONFIG_FILES([csds/Makefile csds/src/Makefile csds/tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
