@@ -51,6 +51,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "proxy.h"
+#include "rt_properties.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -1396,6 +1397,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
           scheduler_addunlock(s, c->top->hydro.star_formation, c->hydro.rt_in);
         if (with_feedback)
           scheduler_addunlock(s, c->stars.stars_out, c->hydro.rt_in);
+        /* TODO: check/add dependencies from Loic's new sink SF tasks */
 
         /* RT ghost out task */
         c->hydro.rt_out =
@@ -1406,9 +1408,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         /* non-implicit ghost 1 */
         c->hydro.rt_ghost1 = scheduler_addtask(
             s, task_type_rt_ghost1, task_subtype_none, 0, 0, c, NULL);
-        /* RT related data gets reset in the drifts because the related
-         * quantities are vectorial. So we need a dependency here. */
-        scheduler_addunlock(s, c->hydro.drift, c->hydro.rt_ghost1);
+        /* add the explicit dependency on kick2 for cases where injection
+         * gets skipped */
+        scheduler_addunlock(s, c->super->kick2, c->hydro.rt_ghost1);
 
         /* non-implicit ghost 2 */
         c->hydro.rt_ghost2 = scheduler_addtask(

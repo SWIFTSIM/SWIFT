@@ -16,20 +16,62 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_DO_CELLS_H
-#define SWIFT_RT_DO_CELLS_H
+#ifndef SWIFT_RT_ACTIVE_H
+#define SWIFT_RT_ACTIVE_H
 
 /* Local includes. */
 #include "active.h"
 
 /**
- * @file rt_do_cells.h
+ * @file rt_active.h
  * @brief This file contains the checks for whether radiative transfer
- * (injection) tasks should be activated for given cells.
+ * (injection) tasks should be activated for given cells, parts, or sparts.
  * The functions differ from the checks in `src/active.h` in that not only
  * time-step data is being checked, but more properties as well. So for
- * consistency, they get their own file.
+ * consistency, they get their own file. Finally, the functions are gathered
+ * in one RT related file to concentrate all #ifdef macro shenanigans in a
+ * single place as far as possible.
  */
+
+/**
+ * @brief Pick whether we need to check whether an spart is active depending
+ * on which version of injection we are using. This is done here to minimize
+ * #ifdef macros throughout this file.
+ *
+ * Returns 1 if spart is active.
+ *
+ * @param sp star particle
+ * @param e the engine
+ */
+__attribute__((always_inline)) INLINE static int rt_is_spart_active_in_loop(
+    struct spart *restrict sp, const struct engine *e) {
+
+#ifdef RT_HYDRO_CONTROLLED_INJECTION
+  return 1; /* ignore stellar activity when gas pulls radiation from stars */
+#else
+  return spart_is_active(sp, e);
+#endif
+}
+
+/**
+ * @brief Pick whether we need to check whether a part is active depending
+ * on which version of injection we are using. This is done here to minimize
+ * #ifdef macros throughout this file.
+ *
+ * Returns 1 if spart is active.
+ *
+ * @param p the part
+ * @param e the engine
+ */
+__attribute__((always_inline)) INLINE static int rt_is_part_active_in_loop(
+    struct part *restrict p, const struct engine *e) {
+
+#ifdef RT_HYDRO_CONTROLLED_INJECTION
+  return part_is_active(p, e);
+#else
+  return 1; /* ignore hydro activity when stars push radiation onto gas */
+#endif
+}
 
 /**
  * @brief Does a cell contain particles that should do RT this step?
@@ -43,8 +85,13 @@
 __attribute__((always_inline)) INLINE static int rt_should_do_cell(
     const struct cell *c, const struct engine *e) {
 
+#ifdef RT_HYDRO_CONTROLLED_INJECTION
   return ((cell_is_active_hydro(c, e) && (c->hydro.count > 0)) &&
           (c->stars.count > 0));
+#else
+  return ((cell_is_active_stars(c, e) && (c->hydro.count > 0)) &&
+          (c->stars.count > 0));
+#endif
 }
 
 /**
@@ -60,8 +107,13 @@ __attribute__((always_inline)) INLINE static int rt_should_do_cell(
 __attribute__((always_inline)) INLINE static int rt_should_do_cell_pair(
     const struct cell *ci, const struct cell *cj, const struct engine *e) {
 
+#ifdef RT_HYDRO_CONTROLLED_INJECTION
   return (cell_is_active_hydro(cj, e) && (cj->hydro.count > 0) &&
           (ci->stars.count > 0));
+#else
+  return (cell_is_active_stars(ci, e) && (ci->stars.count > 0) &&
+          (cj->hydro.count > 0));
+#endif
 }
 
 /**
@@ -77,8 +129,13 @@ __attribute__((always_inline)) INLINE static int rt_should_do_cell_pair(
  */
 __attribute__((always_inline)) INLINE static int rt_should_do_unskip_cell(
     const struct cell *c, const struct engine *e) {
-
-  return (cell_is_active_hydro(c, e) && (c->hydro.count > 0));
+  /* whether it's hydro controlled or not, we need to check for hydro
+   * activity at the top level. We also need to check for star activity
+   * so we can activate the rt_in implicit tasks to catch dependencies
+   * before the injection and not be overwritten by work in star density
+   * ghosts. */
+  return ((cell_is_active_hydro(c, e) && (c->hydro.count > 0)) ||
+          cell_is_active_stars(c, e));
 }
 
-#endif /* SWIFT_RT_DO_CELLS_H */
+#endif /* SWIFT_RT_ACTIVE_H */

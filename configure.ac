@@ -2429,6 +2429,24 @@ case "$with_rt" in
    ;;
 esac
 
+AC_ARG_ENABLE([rt-hydro-controlled-injection],
+    [AS_HELP_STRING([--enable-rt-hydro-controlled-injection],
+        [enable the radiative transfer injection scheme where \
+        active hydro particles gather radiation from neighbouring \
+        stars. Experimental feature, use with caution. \
+        @<:@no/yes@:>@ Default: no]
+    )],
+    [with_hydro_controlled_injection="${enableval}"],
+    [with_hydro_controlled_injection="no"]
+)
+
+rt_extra_msg="" # extra message for ./configure printout
+if test "$with_hydro_controlled_injection" = "yes"; then
+    rt_extra_msg=", hydro controlled injection"
+    AC_DEFINE([RT_HYDRO_CONTROLLED_INJECTION], 1, [Enable hydro controlled radiative transfer injection scheme])
+fi
+
+
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
@@ -2566,7 +2584,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
-   Radiative transfer   : $with_rt
+   Radiative transfer   : $with_rt$rt_extra_msg
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
