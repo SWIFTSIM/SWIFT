@@ -1,6 +1,7 @@
 .. AnalysisTools
    Loic Hausammann 20th March 2019
    Peter W. Draper 28th March 2019
+   Mladen Ivkovic 18th March 2021
 
 .. _Analysis_Tools:
 
@@ -172,3 +173,15 @@ A short summary of the scripts in ``tools/task_plots/``:
 
 For more details on the scripts as well as further options, look at the documentation at the top
 of the individual scripts and call them with the ``-h`` flag.
+
+Task data is also dumped when using MPI and the tasks above can be used on
+that as well, some offer the ability to process all ranks, and others to
+select individual ranks. 
+
+It is also possible to process a complete run of task data from all the
+available steps using the ``process_plot_tasks`` and
+``process_plot_tasks_MPI`` scripts, as appropriate, these have two arguments,
+the number of concurrent processes to use and a time limit. Concurrent
+processes are useful to speed up the analysis of a lot of task data and a
+consistent time limit so that comparisons across plots is easy. The results
+can be viewed in a single HTML document. 
