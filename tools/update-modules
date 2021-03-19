@@ -1,0 +1,228 @@
+#!/bin/sh
+#+
+#  Name:
+#     update-modules
+
+#  Purpose:
+#     Update or initialise the git submodules
+
+#  Type of Module:
+#     Bourne shell script
+
+#  Usage:
+#     update-modules [-f] [submodule]
+
+#  Description:
+#     This script attempts to safely update or initialise the content of all
+#     the submodules or the given submodule. It should be ran whenever a
+#     submodule is known to be out-of-date, or when the submodules have not
+#     yet been initialised. It can also be run at other times to get a listing
+#     of the submodules and their status.
+#
+#     The script can update or initialise a single submodule, or if no
+#     command-line argument is given all the known submodules. Note that after
+#     any new submodules are added to the repository these must be made known
+#     by a git-pull or git-fetch before running this script.
+#
+#     If any of the submodules contain local changes then this script will
+#     refuse to run as the update process is destructive (although most
+#     committed changes will be recoverable, see git-reflog). Note this means
+#     that no changes to any submodules will be made, regardless of whether
+#     they could be updated and/or initialized or not until the problem has
+#     been resolved.
+#
+#     In extreme circumstances when you do not have any changes to preserve
+#     the "-f" flag can be used to skip all safety checks.
+#
+#     It is necessary that this script be ran at least once after a
+#     repository clone is created. This will be done by the bootstrap
+#     script.
+
+#  Notes:
+#     Recovering after errors: If a submodule fails to clone (typical causes
+#     are usually network errors or badly configured git) on the initial
+#     update the container directory can often be automatically removed. In
+#     that case you'll need to re-create it before updating will succeed. It
+#     can also be a good idea to remove the partial repository that a failed
+#     clone can give you, so for instance if the Perl module failed to clone
+#     you should do:
+#
+#         rm -rf thirdparty/perlsys/perl/perl
+#         mkdir thirdparty/perlsys/perl/perl
+#
+#     before attempting to continue.
+
+#  Authors:
+#     PWD: P.W. Draper (JAC, Durham University)
+#     {enter_new_authors_here}
+
+#  Copyright:
+#     Copyright (C) 2009 Science and Technology Facilities Council.
+#     All Rights Reserved.
+
+#  Licence:
+#     This program is free software; you can redistribute it and/or
+#     modify it under the terms of the GNU General Public License as
+#     published by the Free Software Foundation; either version 2 of the
+#     License, or (at your option) any later version.
+#
+#     This program is distributed in the hope that it will be
+#     useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+#     of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program; if not, write to the Free Software
+#     Foundation, Inc., 51 Franklin Street,Fifth Floor, Boston, MA
+#     02110-1301, USA
+
+#  History:
+#     10-FEB-2009: (PWD):
+#        Original version.
+#     {enter_further_changes_here}
+
+#-
+
+echo ""
+echo "Updating local repository submodules:"
+
+#  Parse any command-line arguments. We just have two -f and/or a submodule.
+
+check=1
+if test "$1" != ""; then
+   if test "$1" = "-f"; then
+      check=0
+      shift
+   fi
+   submodule="$1"
+else
+   submodule=""
+fi
+
+#  Get a summary of the submodules. If this returns any content then one or
+#  more have been modified and/or committed and may need to be pushed or reset
+#  before proceeding. Could also mean that the module just needs updating.
+
+summary=`git submodule summary $submodule`
+if test "$check" = "1" -a "$summary" != ""; then
+
+   #  Check for modules that have modifications committed.
+   git ls-files --stage -- $submodule | grep '^160000 ' |
+      while read mode sha1 stage path; do
+         if git diff-files --quiet -- "$path"; then
+            #  Submodule is unmodified.
+            :
+         else
+            #  Submodule is modified. Either internally, needs an update
+            #  or could be missing.
+            if test -d $path; then
+               #  We want to check internally, ask submodule if it has the
+               #  requested SHA as its head, if not it may need an update.
+               if GIT_DIR=$path/.git git rev-parse --verify $sha1^0 >/dev/null 2>&1; then
+
+                  #  Contains the requested SHA already, that's OK as long
+                  #  as the branch isn't ahead of the remote tracked version.
+                  #  If we're not on a branch then there's no test available.
+                  branch=`GIT_DIR=$path/.git git symbolic-ref HEAD 2>/dev/null | sed 's,refs/heads/,,'`
+                  if test "$branch" != ""; then
+                     ahead=`GIT_DIR=$path/.git git log origin/$branch..$branch 2>/dev/null`
+                     if test "$ahead" != ""; then
+                        echo "ERROR: a submodule is ahead of remote branch, not updating anything"
+                        echo "... $path"
+                        echo "    `git submodule summary $path`"
+                        exit 1
+                     fi
+                  fi
+               fi
+            else
+               #  No directory! That's an error.
+               echo "ERROR: missing submodule directory, not updating anything"
+               echo "... $path"
+               exit 1
+            fi
+         fi
+      done
+   if test "$?" != "0"; then
+      #  Last command in sub-shell exited in error. So stop.
+      exit 1
+   fi
+fi
+
+#  The above will not report modified files that have not been committed.
+#  This isn't important, but probably indicates some activity in the submodule
+#  so refuse to proceed when they are present as well.
+
+if test "$submodule" = ""; then
+   #  Get a list of all the paths to the submodules.
+   submodule_list="`git config -f .gitmodules --get-regexp '.*\.path$' | awk '{print $2}'`"
+else
+   submodule_list="$submodule"
+
+   #  Verify this a submodule, which may not be initialised yet.
+   found="`git config -f .gitmodules --get-regexp ".*${submodule}\.path$" | awk '{print $2}'`"
+   if test "$found" = ""; then
+      echo "ERROR: no such submodule: ... $submodule"
+      exit 1
+   fi
+fi
+
+if test "$check" = "1"; then
+   for m in $submodule_list; do
+
+      if test -d "$m"; then
+
+         #  May not be checked in yet, so no repository in place. Check that
+         #  by counting the files, must be more than ". ..", if this is a
+         #  submodule.
+         nfiles=`cd $m && ls -a | wc -w`
+         if test $nfiles -gt 2 ; then
+            (cd $m && git diff) >/dev/null 2>&1 ; # XXX hack need to update submodule index?
+
+            #  Check for local modifications. Force this command to use the
+            #  submodule repository, not the current one. If this is really a
+            #  repository that is OK, otherwise (i.e bad repository, none
+            #  repository files present) an error will occur.
+            modified=`cd $m && git --git-dir .git diff-index --name-status HEAD 2>&1`
+            if test "$?" != "0"; then
+               echo "ERROR: submodule repository query failed, not updating anything"
+               echo "... $m"
+               echo "    $modified"
+               exit 1
+            fi
+            if test "$modified" != ""; then
+               echo "ERROR: submodule has modified files, not updating anything"
+               echo "... $m"
+               echo "    $modified" | head
+               exit 1
+            fi
+         else
+            echo "... $m requires initialisation"
+         fi
+      else
+         echo "ERROR: submodule directory is missing, not updating anything"
+         echo "... $m"
+         exit 1
+      fi
+   done
+fi
+
+#  No modifications, or told to not check, so safe to check for updates. Note
+#  we always init to capture any new submodules added since the last update.
+
+git submodule init $submodule
+if test "$?" != "0"; then
+   echo "ERROR: failed to initialise a submodule"
+   exit 1
+fi
+
+git submodule update $submodule
+if test "$?" != "0"; then
+   echo "ERROR: failed to update a submodule"
+   exit 1
+fi
+
+#  Success output the status of the submodules.
+git submodule status $submodule | awk '{print "...",$2,$3}'
+echo ""
+
+exit
