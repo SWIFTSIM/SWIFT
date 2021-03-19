@@ -1,0 +1,53 @@
+MetaData:
+  run_name: "uniform_rt"
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988416e+43  # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.085678e+24  # kpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1.            # Amperes
+  UnitTemp_in_cgs:     1.            # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.      # The starting time of the simulation (in internal units).
+  time_end:   1.953125e-03
+  dt_min:     1.e-8   # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1.e-04  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output       # Common part of the name of output files
+  time_first:          0.           # Time of the first output (in internal units)
+  delta_time:          6.103516e-05
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  time_first:          0.
+  delta_time:          5e-3 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./uniformBox-rt.hdf5  # The file to read
+  periodic:   0                     # periodic ICs?
+
+# Properties of the stars
+Stars:
+  overwrite_birth_time: 1
+  birth_time:           -1   # Give the star in the ICs a decent birth time
+
+Scheduler:
+  max_top_level_cells:       24
+  cell_split_size:           25       # Lower than default to test going deep(er) in the tree
+  dependency_graph_frequency: 0
+
+# Debugging/Development RT scheme
+DebugRT:
+    all_parts_have_stars:  0          # Set to 1 to do additional tests that only work if all hydro particles have a star particle neighbour
