@@ -318,6 +318,8 @@ void space_regrid(struct space *s, int verbose) {
           c->mpi.tag = -1;
           c->mpi.recv = NULL;
           c->mpi.send = NULL;
+          c->grav.subsend = NULL;
+          c->grav.subrecv = NULL;
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)

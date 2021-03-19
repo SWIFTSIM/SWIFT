@@ -38,11 +38,11 @@
 #include "memuse.h"
 
 /* Use exit when not developing, avoids core dumps. */
-#ifdef SWIFT_DEVELOP_MODE
+//#ifdef SWIFT_DEVELOP_MODE
 #define swift_abort(errcode) abort()
-#else
-#define swift_abort(errcode) exit(errcode)
-#endif
+//#else
+//#define swift_abort(errcode) exit(errcode)
+//#endif
 
 /* If reporting memory usage, try to dump that when exiting in error. */
 #ifdef SWIFT_MEMUSE_REPORTS

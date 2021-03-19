@@ -128,6 +128,7 @@ enum task_subtypes {
   task_subtype_part_swallow,
   task_subtype_bpart_merger,
   task_subtype_gpart,
+  task_subtype_subgpart,
   task_subtype_multipole,
   task_subtype_spart,
   task_subtype_stars_density,
@@ -226,11 +227,15 @@ struct task {
   void *rdmabuff;
   //int rdmalockind;
 
-  /*! Size of the buffer. */
-  size_t size;
+  /*! Size of the send buffer. */
+  size_t win_size;
 
   /*! Offset of the buffer in remote window. */
-  size_t offset;
+  size_t win_offset;
+
+  /* Sub task offset and size, multiples of particles not bytes. */
+  int sub_offset;
+  int sub_size;
 
 #endif
 

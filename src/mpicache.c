@@ -146,7 +146,7 @@ void mpicache_add(struct mpicache *cache, int node, struct task *t) {
 
     /* Derive the size in bytes, may not be set yet. */
 #ifdef WITH_MPI
-  t->size = scheduler_mpi_size(t);
+  t->win_size = scheduler_mpi_size(t);
 #endif
 
   /* And store. */
@@ -203,11 +203,11 @@ void mpicache_apply(struct mpicache *cache, int nr_ranks, const char *prefix) {
     int node = cache->entries[k].node;
 
     /* Window sizes are in bytes. */
-    cache->window_sizes[node] += task->size + scheduler_rdma_tobytes(scheduler_rdma_header_size);
+    cache->window_sizes[node] += task->win_size + scheduler_rdma_tobytes(scheduler_rdma_header_size);
 
     /* Offsets are in blocks. */
-    task->offset = task_offset[node];
-    task_offset[node] += scheduler_rdma_toblocks(task->size) + scheduler_rdma_header_size;
+    task->win_offset = task_offset[node];
+    task_offset[node] += scheduler_rdma_toblocks(task->win_size) + scheduler_rdma_header_size;
   }
   free(task_offset);
 

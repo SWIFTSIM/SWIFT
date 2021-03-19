@@ -1991,7 +1991,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
       {
         /* Size of message in bytes. */
-        t->size = scheduler_mpi_size(t);
+        t->win_size = scheduler_mpi_size(t);
 
         /* Allocate memory for tasks that receive temporary data for
          * unpacking. */
@@ -2003,7 +2003,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_bpart_merger ||
             t->subtype == task_subtype_sf_counts ||
             t->subtype == task_subtype_multipole) {
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
@@ -2013,6 +2013,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           t->buff = t->ci->grav.parts;
+
+        } else if (t->subtype == task_subtype_subgpart) {
+
+          t->buff = ((char *)t->ci->grav.parts) + (t->sub_offset * sizeof(struct gpart));
 
         } else if (t->subtype == task_subtype_spart) {
 
@@ -2029,7 +2033,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
+        mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
                               t->ci->nodeID, t->flags, -1);
 
         qid = -1;
@@ -2042,37 +2046,37 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
       {
         /* Set the size of message in bytes and point buff at message. . */
-        t->size = scheduler_mpi_size(t);
+        t->win_size = scheduler_mpi_size(t);
 
         if (t->subtype == task_subtype_tend_part) {
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_gpart) {
 
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_spart) {
 
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)t->buff);
 
         } else if (t->subtype == task_subtype_tend_bpart) {
 
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_end_step_black_holes(
               t->ci, (struct pcell_step_black_holes *)t->buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_part_swallow(t->ci,
                                  (struct black_holes_part_data *)t->buff);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
 
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
@@ -2087,6 +2091,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           t->buff = t->ci->grav.parts;
 
+        } else if (t->subtype == task_subtype_subgpart) {
+
+          t->buff = ((char *)t->ci->grav.parts) + (t->sub_offset * sizeof(struct gpart));
+
         } else if (t->subtype == task_subtype_spart) {
 
           t->buff = t->ci->stars.parts;
@@ -2099,12 +2107,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_multipole) {
 
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
-          t->buff = malloc(t->size);
+          t->buff = malloc(t->win_size);
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
 
         } else {
@@ -2112,7 +2120,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        //mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
+        //mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
         //                      t->cj->nodeID, t->flags, -1);
 
         qid = -1; //1 % s->nr_queues;
@@ -2154,7 +2162,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 #ifdef WITH_MPI
   /* Unlock sends and recvs, need scheduler so no in task_unlock. */
-  if (t->type == task_type_send) {
+  if (t->type == task_type_send && t->flags != -1) {
     if (lock_unlock(&s->send_lock[t->cj->nodeID % scheduler_rdma_max_sends]) != 0) {
       error("Unlocking the MPI send lock failed.\n");
     }
@@ -2638,8 +2646,17 @@ size_t scheduler_mpi_size(struct task *t) {
              t->subtype == task_subtype_limiter) {
     size = t->ci->hydro.count * sizeof(struct part);
 
+  } else if (t->subtype == task_subtype_subgpart) {
+    /* Only sending part of a cell. */
+    size = t->sub_size * sizeof(struct gpart);
+
   } else if (t->subtype == task_subtype_gpart) {
-    size = t->ci->grav.count * sizeof(struct gpart);
+    if (t->flags != -1) {
+      size = t->ci->grav.count * sizeof(struct gpart);
+    } else {
+      /* Never sent. */
+      size = 0;
+    }
 
   } else if (t->subtype == task_subtype_spart) {
     size = t->ci->stars.count * sizeof(struct spart);

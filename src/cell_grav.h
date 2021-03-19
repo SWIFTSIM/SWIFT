@@ -119,6 +119,13 @@ struct cell_grav {
 
   /*! Number of M-M tasks that are associated with this cell. */
   short int nr_mm_tasks;
+
+#ifdef WITH_MPI
+  /*! Has split MPI subtasks. */
+  struct link *subsend;
+  struct link *subrecv;
+#endif
+
 };
 
 #endif /* SWIFT_CELL_GRAV_H */

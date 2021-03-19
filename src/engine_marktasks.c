@@ -607,8 +607,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_hydro) {
-            struct link *l = scheduler_activate_send(
-                s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+            struct link *l = scheduler_activate_send(s, cj->mpi.send,
+                                                     task_subtype_xv,
+                                                     ci_nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -921,10 +922,17 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
         if (ci_nodeID != nodeID) {
+          
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (cj_active_gravity)
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+          if (cj_active_gravity) {
+
+            struct link *l = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+            if (l->t->flags == -1) {
+              scheduler_activate_subrecvs(s, l->t->ci->grav.subrecv,
+                                          task_subtype_subgpart);
+            }
+          }
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (ci_active_gravity)
@@ -932,9 +940,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_gravity) {
+            struct link *l = scheduler_activate_send(s, cj->mpi.send,
+                                                     task_subtype_gpart,
+                                                     ci_nodeID);
+            if (l->t->flags == -1) {
 
-            struct link *l = scheduler_activate_send(
-                s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
+              /* Could be split, look for any subsends for this foreign cell. */
+              scheduler_activate_subsends(s, l->t->ci->grav.subsend,
+                                          task_subtype_subgpart,
+                                          ci_nodeID);
+            }
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -950,8 +965,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         } else if (cj_nodeID != nodeID) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_gravity)
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+          if (ci_active_gravity) {
+            struct link *l = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
+
+            if (l->t->flags == -1) {
+              scheduler_activate_subrecvs(s, l->t->ci->grav.subrecv,
+                                          task_subtype_subgpart);
+            }
+          }
 
           /* If the foreign cell is active, we want its ti_end values. */
           if (cj_active_gravity)
@@ -959,9 +980,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_gravity) {
-
-            struct link *l = scheduler_activate_send(
-                s, ci->mpi.send, task_subtype_gpart, cj_nodeID);
+            struct link *l = scheduler_activate_send(s, ci->mpi.send,
+                                                     task_subtype_gpart,
+                                                     cj_nodeID);
+            if (l->t->flags == -1) {
+              scheduler_activate_subsends(s, l->t->ci->grav.subsend,
+                                          task_subtype_subgpart,
+                                          cj_nodeID);
+            }
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)

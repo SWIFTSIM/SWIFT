@@ -343,7 +343,7 @@ void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
 #ifdef WITH_MPI
     fprintf(file, "%d %d %d %s %s %.2f %lld %zd\n", nodeID, index, k,
             taskID_names[t->type], subtaskID_names[t->subtype], t->weight,
-            t->flags, t->size);
+            t->flags, t->win_size);
 #else
     fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
             taskID_names[t->type], subtaskID_names[t->subtype], t->weight);

@@ -203,6 +203,7 @@ SUBTYPES = [
     "part_swallow",
     "bpart_merger",
     "gpart",
+    "subgpart",
     "multipole",
     "spart",
     "stars_density",
@@ -440,15 +441,19 @@ for i in range(nthread):
 num_lines = pl.shape(data)[0]
 for line in range(num_lines):
     thread = int(data[line, threadscol])
+    tasktype = TASKTYPES[int(data[line, taskcol])]
+
+    #  Only look at MPI?
+    #if not "send" in tasktype and not "recv" in tasktype:
+    #    continue
 
     tasks[thread].append({})
-    tasktype = TASKTYPES[int(data[line, taskcol])]
     subtype = SUBTYPES[int(data[line, subtaskcol])]
     tasks[thread][-1]["type"] = tasktype
     tasks[thread][-1]["subtype"] = subtype
-    tic = int(data[line, ticcol]) / CPU_CLOCK
-    toc = int(data[line, toccol]) / CPU_CLOCK
-    qtic = int(data[line, qticcol]) / CPU_CLOCK
+    tic = float(data[line, ticcol]) / CPU_CLOCK
+    toc = float(data[line, toccol]) / CPU_CLOCK
+    qtic = tic - (float(data[line, qticcol]) / CPU_CLOCK)
     unlocks = int(data[line, unlockscol])
     tasks[thread][-1]["tic"] = tic
     tasks[thread][-1]["toc"] = toc
@@ -480,7 +485,6 @@ for i in range(nthread):
 
     #  Collect ranges and colours into arrays. Also indexed lists for lookup tables.
     tictocs = []
-    qtictocs = []
     colours = []
     tics = []
     tocs = []
@@ -489,7 +493,6 @@ for i in range(nthread):
     labels = []
     for task in tasks[i]:
         tictocs.append((task["tic"], task["toc"] - task["tic"]))
-        qtictocs.append((task["qtic"], task["tic"] - task["qtic"]))
         colours.append(task["colour"])
 
         tics.append(task["tic"])

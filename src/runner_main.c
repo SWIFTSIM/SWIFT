@@ -406,12 +406,12 @@ void *runner_main(void *data) {
         case task_type_send:
           {
             // XXX log actual time used in call, not how long we are queued.
-            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->size,
+            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
                                   cj->nodeID, t->flags, r->cpuid);
 
             /* Need space for the data and the headers. */
             scheduler_rdma_blocktype datasize =
-              scheduler_rdma_toblocks(t->size) + scheduler_rdma_header_size;
+              scheduler_rdma_toblocks(t->win_size) + scheduler_rdma_header_size;
 
             /* Access the registered memory for transferring this data. */
             scheduler_rdma_blocktype *dataptr =
@@ -420,10 +420,10 @@ void *runner_main(void *data) {
 
             /* First element is marked as LOCKED, so only we can update. */
             dataptr[0] = scheduler_rdma_locked;
-            dataptr[1] = t->size;
+            dataptr[1] = t->win_size;
             dataptr[2] = t->flags;
             dataptr[3] = engine_rank;
-            memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->size);
+            memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->win_size);
 
 #ifdef SWIFT_DEBUG_CHECKS
             if (e->verbose)
@@ -431,17 +431,17 @@ void *runner_main(void *data) {
                       "Sending message to %d from %d subtype %d tag %zu size %zu"
                       " (cf %lld %zu) offset %zu",
                       cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
-                      t->size, t->offset);
+                      t->win_size, t->offset);
 #endif
             infinity_send_data(sched->send_handle, cj->nodeID,
                                scheduler_rdma_tobytes(datasize),
-                               scheduler_rdma_tobytes(t->offset));
+                               scheduler_rdma_tobytes(t->win_offset));
 #ifdef SWIFT_DEBUG_CHECKS
             if (e->verbose) {
               message(
                       "Sent message to %d subtype %d tag %zu size %zu offset %zu"
                       " (cf %lld %zu)",
-                      cj->nodeID, subtype, dataptr[2], dataptr[1], t->offset, t->flags,
+                      cj->nodeID, subtype, dataptr[2], dataptr[1], t->win_offset, t->flags,
                       t->size);
             }
 #endif
@@ -471,8 +471,10 @@ void *runner_main(void *data) {
         case task_type_recv:
           /* Ready to process. So copy to local buffers. XXX could be avoided
            * for some types below. */
-          if (t->rdmabuff == NULL) error("No RDMA data yet!");
-          memcpy(t->buff, t->rdmabuff, t->size);
+          if (t->flags != -1) {
+            if (t->rdmabuff == NULL) error("No RDMA data yet!");
+            memcpy(t->buff, t->rdmabuff, t->win_size);
+          }
 
           if (t->subtype == task_subtype_tend_part) {
             cell_unpack_end_step_hydro(ci, (struct pcell_step_hydro *)t->buff);
@@ -509,6 +511,8 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
+          } else if (t->subtype == task_subtype_subgpart) {
+            /* Do nothing. task_subtype_gpart does work. */
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
