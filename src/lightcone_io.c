@@ -159,6 +159,7 @@ void lightcone_write_gas(struct lightcone_props *props, hid_t file_id,
   /* Allocate output arrays */
   double *pos = malloc(3*num_to_write*sizeof(double));
   long long *id = malloc(num_to_write*sizeof(long long));
+  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
 
   /* Loop over blocks of buffered particles and copy to output arrays */
   size_t num_elements;
@@ -214,6 +215,7 @@ void lightcone_write_dark_matter(struct lightcone_props *props, hid_t file_id,
   /* Allocate output arrays */
   double *pos = malloc(3*num_to_write*sizeof(double));
   long long *id = malloc(num_to_write*sizeof(long long));
+  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
 
   /* Loop over blocks of buffered particles and copy to output arrays */
   size_t num_elements;
@@ -271,6 +273,7 @@ void lightcone_write_stars(struct lightcone_props *props, hid_t file_id,
   /* Allocate output arrays */
   double *pos = malloc(3*num_to_write*sizeof(double));
   long long *id = malloc(num_to_write*sizeof(long long));
+  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
 
   /* Loop over blocks of buffered particles and copy to output arrays */
   size_t num_elements;
@@ -327,6 +330,7 @@ void lightcone_write_black_hole(struct lightcone_props *props, hid_t file_id,
   /* Allocate output arrays */
   double *pos = malloc(3*num_to_write*sizeof(double));
   long long *id = malloc(num_to_write*sizeof(long long));
+  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
 
   /* Loop over blocks of buffered particles and copy to output arrays */
   size_t num_elements;
@@ -382,6 +386,7 @@ void lightcone_write_neutrino(struct lightcone_props *props, hid_t file_id,
   /* Allocate output arrays */
   double *pos = malloc(3*num_to_write*sizeof(double));
   long long *id = malloc(num_to_write*sizeof(long long));
+  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
 
   /* Loop over blocks of buffered particles and copy to output arrays */
   size_t num_elements;
