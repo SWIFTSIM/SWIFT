@@ -22,6 +22,7 @@
 #include <math.h>
 
 #include "align.h"
+#include "cell.h"
 #include "error.h"
 #include "memuse.h"
 #include "lightcone_replications.h"
@@ -171,5 +172,76 @@ void replication_list_write(struct replication_list *replication_list, FILE *fd)
             replication_list->replication[i].coord[2],
             sqrt(replication_list->replication[i].rmin2),
             sqrt(replication_list->replication[i].rmax2));
+  }
+}
+
+
+/**
+ * Determine subset of replications which overlap a #cell
+ *
+ * @param rep_in The input replication list
+ * @param cell The input cell
+ * @param rep_out The output replication list
+ *
+ * Initializes rep_out, which must then be freed with
+ * replication_list_clean().
+ *
+ */
+void replication_list_subset_for_cell(const struct replication_list *rep_in,
+                                      const struct cell *cell,
+                                      const double observer_position[3],
+                                      struct replication_list *rep_out) {
+  
+  /* Find centre coordinates of this cell */
+  const double cell_centre[] = {cell->loc[0]+0.5*cell->width[0],
+                                cell->loc[1]+0.5*cell->width[1],
+                                cell->loc[2]+0.5*cell->width[2]};
+  
+  /* Find 'effective' width of this cell - particles can wander out of the cell */
+  const double cell_eff_width[] = {2.0*cell->width[0],
+                                   2.0*cell->width[1],
+                                   2.0*cell->width[2]};
+
+  /* Allocate array of replications for the new list */
+  const int nrep_max = rep_in->nrep;
+  if(swift_memalign("lightcone_replications", (void **) &rep_out->replication,
+                    SWIFT_STRUCT_ALIGNMENT, sizeof(struct replication)*nrep_max) != 0) {
+    error("Failed to allocate pruned lightcone replication list");
+  }
+
+  /* Loop over all replications */
+  rep_out->nrep = 0;
+  for(int i=0; i<nrep_max; i+=1) {
+    
+    /* Get a pointer to this input replication */
+    const struct replication *rep = rep_in->replication+i;
+
+    /* Find coordinates of centre of this replication of the cell relative to the observer */
+    double cell_rep_centre[3];
+    for(int j=0; j<3; j+=1) {
+      cell_rep_centre[j] = rep->coord[j] + cell_centre[j] - observer_position[j];
+    }
+
+    /* Compute minimum possible distance squared from observer to this replication of this cell */
+    double cell_rmin2 = 0.0;
+    for(int j=0; j<3; j+=1) {
+      double dx = abs(cell_rep_centre[j]) - 0.5*cell_eff_width[j];
+      if(dx < 0.0)dx = 0.0;
+      cell_rmin2 += dx;
+    }
+
+    /* Compute maximum possible distance squared from observer to this replication of this cell */
+    double cell_rmax2 = 0.0;
+    for(int j=0; j<3; j+=1) {
+      double dx = abs(cell_rep_centre[j]) + 0.5*cell_eff_width[j];
+      cell_rmax2 += dx;
+    }
+
+    /* Decide whether this cell could contribute to this replication */
+    if(cell_rmax2 >= rep->rmin2 && cell_rmin2 <= rep->rmax2) {
+      memcpy(rep_out->replication+rep_out->nrep, rep, sizeof(struct replication));
+      rep_out->nrep +=1;
+    }
+    /* Next input replication */
   }
 }

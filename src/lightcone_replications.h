@@ -22,6 +22,9 @@
 #ifndef SWIFT_PERIODIC_REPLICATIONS_H
 #define SWIFT_PERIODIC_REPLICATIONS_H
 
+/* Forward declarations */
+struct cell;
+
 /* Struct to store information about one periodic replication of the simulation box */
 struct replication {
 
@@ -53,5 +56,10 @@ void replication_list_init(struct replication_list *replication_list,
 void replication_list_clean(struct replication_list *replication_list);
 
 void replication_list_write(struct replication_list *replication_list, FILE *fd);
+
+void replication_list_subset_for_cell(const struct replication_list *rep_in,
+                                      const struct cell *cell,
+                                      const double observer_position[3],
+                                      struct replication_list *rep_out);
 
 #endif
