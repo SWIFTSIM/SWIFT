@@ -360,6 +360,9 @@ void engine_config(int restart, int fof, struct engine *e,
 #ifndef WITH_MPI
     error("SWIFT was not compiled with MPI support.");
 #else
+
+    /* Make sure the corresponding policy is set and make space for the proxies
+     */
     e->policy |= engine_policy_mpi;
     if ((e->proxies = (struct proxy *)calloc(sizeof(struct proxy),
                                              engine_maxproxies)) == NULL)
@@ -370,6 +373,41 @@ void engine_config(int restart, int fof, struct engine *e,
     e->syncredist =
         parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
 
+    /* Collect the hostname of each rank into a file */
+
+    const int hostname_buffer_length = 256;
+    char my_hostname[256] = {0};
+    sprintf(my_hostname, "%s", hostname());
+
+    char *hostnames = NULL;
+
+    if (nodeID == 0) {
+      hostnames =
+          (char *)calloc(nr_nodes * hostname_buffer_length, sizeof(char));
+      if (hostnames == NULL)
+        error("Failed to allocate memory for hostname list");
+    }
+
+    MPI_Gather(my_hostname, hostname_buffer_length, MPI_BYTE, hostnames,
+               hostname_buffer_length, MPI_BYTE, 0, MPI_COMM_WORLD);
+
+    if (nodeID == 0) {
+      FILE *ranklog = NULL;
+      if (restart)
+        ranklog = fopen("rank_hostname.log", "a");
+      else
+        ranklog = fopen("rank_hostname.log", "w");
+
+      /* Write the header every restart-cycle. It does not hurt. */
+      fprintf(ranklog, "# step rank hostname\n");
+
+      for (int i = 0; i < nr_nodes; ++i)
+        fprintf(ranklog, "%d %d %s\n", e->step, i,
+                hostnames + hostname_buffer_length * i);
+
+      fclose(ranklog);
+      free(hostnames);
+    }
 #endif
   }
 

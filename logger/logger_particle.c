@@ -147,12 +147,14 @@ logger_particle_read_special_flag(const struct logger_reader *reader,
  * @param time_after Time of field_after (> t).
  * @param time Requested time.
  * @param field The field to reconstruct.
+ * @param params The simulation's #logger_parameters.
  */
 void logger_particle_interpolate_field(
     const double time_before, const struct logger_field *restrict before,
     const double time_after, const struct logger_field *restrict after,
     void *restrict output, const double time,
-    const struct field_information *field, enum part_type type) {
+    const struct field_information *field, enum part_type type,
+    const struct logger_parameters *params) {
 
   /* Select the correct interpolation */
   switch (type) {
@@ -162,13 +164,14 @@ void logger_particle_interpolate_field(
       switch (field->module) {
         case field_module_default:
           hydro_logger_interpolate_field(time_before, before, time_after, after,
-                                         output, time, field->local_index);
+                                         output, time, field->local_index,
+                                         params);
           break;
 
         case field_module_chemistry:
-          chemistry_logger_interpolate_field_part(time_before, before,
-                                                  time_after, after, output,
-                                                  time, field->local_index);
+          chemistry_logger_interpolate_field_part(
+              time_before, before, time_after, after, output, time,
+              field->local_index, params);
           break;
 
         default:
@@ -183,7 +186,8 @@ void logger_particle_interpolate_field(
       if (field->module != field_module_default)
         error("Module not implemented");
       gravity_logger_interpolate_field(time_before, before, time_after, after,
-                                       output, time, field->local_index);
+                                       output, time, field->local_index,
+                                       params);
       break;
 
     /* Stars */
@@ -191,19 +195,20 @@ void logger_particle_interpolate_field(
       switch (field->module) {
         case field_module_default:
           stars_logger_interpolate_field(time_before, before, time_after, after,
-                                         output, time, field->local_index);
+                                         output, time, field->local_index,
+                                         params);
           break;
 
         case field_module_chemistry:
-          chemistry_logger_interpolate_field_spart(time_before, before,
-                                                   time_after, after, output,
-                                                   time, field->local_index);
+          chemistry_logger_interpolate_field_spart(
+              time_before, before, time_after, after, output, time,
+              field->local_index, params);
           break;
 
         case field_module_star_formation:
-          star_formation_logger_interpolate_field(time_before, before,
-                                                  time_after, after, output,
-                                                  time, field->local_index);
+          star_formation_logger_interpolate_field(
+              time_before, before, time_after, after, output, time,
+              field->local_index, params);
           break;
 
         default:

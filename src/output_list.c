@@ -461,6 +461,9 @@ void output_list_struct_dump(struct output_list *list, FILE *stream) {
 
   restart_write_blocks(list->select_output_indices, list->size, sizeof(int),
                        stream, "output_list", "select_output_indices");
+
+  restart_write_blocks(list->snapshot_labels, list->size, sizeof(int), stream,
+                       "output_list", "snapshot_labels");
 }
 
 /**
@@ -477,4 +480,8 @@ void output_list_struct_restore(struct output_list *list, FILE *stream) {
   list->select_output_indices = (int *)malloc(sizeof(int) * list->size);
   restart_read_blocks(list->select_output_indices, list->size, sizeof(int),
                       stream, NULL, "select_output_indices");
+
+  list->snapshot_labels = (int *)malloc(sizeof(int) * list->size);
+  restart_read_blocks(list->snapshot_labels, list->size, sizeof(int), stream,
+                      NULL, "snapshot_labels");
 }

@@ -25,6 +25,7 @@
 #ifdef WITH_LOGGER
 
 /* Includes. */
+#include "align.h"
 #include "common_io.h"
 #include "dump.h"
 #include "error.h"

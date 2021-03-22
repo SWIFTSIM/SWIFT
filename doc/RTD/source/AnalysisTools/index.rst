@@ -1,6 +1,7 @@
 .. AnalysisTools
    Loic Hausammann 20th March 2019
    Peter W. Draper 28th March 2019
+   Mladen Ivkovic 18th March 2021
 
 .. _Analysis_Tools:
 
@@ -133,3 +134,54 @@ suitable for matching between ranks. The unique keys to associate records
 between ranks (so that the MPI_Isend and MPI_Irecv pairs can be identified)
 are "otherrank/rank/subtype/tag/size" and "rank/otherrank/subtype/tag/size"
 for send and recv respectively. When matching ignore step0.
+
+
+
+
+Task and Threadpool Plots and Analysis Tools
+--------------------------------------------
+
+A variety of plotting tools for tasks and threadpools is available in ``tools/task_plots/``.
+To be able to use the task analysis tools, you need to compile swift with ``--enable-task-debugging``
+and then run swift with ``-y <interval>``, where ``<interval>`` is the interval between time steps
+on which the additional task data will be dumped. Swift will then create ``thread_stats-step<nr>.dat``
+and ``thread_info-step<nr>.dat`` files. Similarly, for threadpool related tools, you need to compile
+swift with ``--enable-threadpool-debugging`` and then run it with ``-Y <interval>``.
+
+For the analysis and plotting scripts listed below, you need to provide the **\*info-step<nr>.dat** 
+files as a cmdline argument, not the ``*stats-step<nr>.dat`` files.
+
+A short summary of the scripts in ``tools/task_plots/``:
+
+- ``analyse_tasks.py``: 
+    The output is an analysis of the task timings, including deadtime per thread
+    and step, total amount of time spent for each task type, for the whole step
+    and per thread and the minimum and maximum times spent per task type.
+- ``analyse_threadpool_tasks.py``: 
+    The output is an analysis of the threadpool task timings, including 
+    deadtime per thread and step, total amount of time spent for each task type, for the
+    whole step and per thread and the minimum and maximum times spent per task type.
+- ``iplot_tasks.py``: 
+    An interactive task plot, showing what thread was doing what task and for 
+    how long for a step.  **Needs python2 and the tkinter module**.
+- ``plot_tasks.py``: 
+    Creates a task plot image, showing what thread was doing what task and for how long. 
+- ``plot_threadpool.py``: 
+    Creates a threadpool plot image, showing what thread was doing what threadpool call and for
+    how long. 
+
+
+For more details on the scripts as well as further options, look at the documentation at the top
+of the individual scripts and call them with the ``-h`` flag.
+
+Task data is also dumped when using MPI and the tasks above can be used on
+that as well, some offer the ability to process all ranks, and others to
+select individual ranks. 
+
+It is also possible to process a complete run of task data from all the
+available steps using the ``process_plot_tasks`` and
+``process_plot_tasks_MPI`` scripts, as appropriate, these have two arguments,
+the number of concurrent processes to use and a time limit. Concurrent
+processes are useful to speed up the analysis of a lot of task data and a
+consistent time limit so that comparisons across plots is easy. The results
+can be viewed in a single HTML document. 

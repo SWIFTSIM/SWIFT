@@ -50,6 +50,7 @@
 #include "logger_index.h"
 #include "logger_loader_io.h"
 #include "logger_logfile.h"
+#include "logger_parameters.h"
 #include "logger_particle.h"
 
 /**
@@ -101,6 +102,9 @@ struct logger_reader {
     size_t index;
   } time;
 
+  /* Information from the yaml file */
+  struct logger_parameters params;
+
   /* Level of verbosity. */
   int verbose;
 };
@@ -113,7 +117,7 @@ enum logger_reader_event {
 
 void logger_reader_init_index(struct logger_reader *reader);
 void logger_reader_init(struct logger_reader *reader, const char *basename,
-                        int verbose);
+                        int verbose, int number_threads);
 void logger_reader_free(struct logger_reader *reader);
 
 void logger_reader_set_time(struct logger_reader *reader, double time);

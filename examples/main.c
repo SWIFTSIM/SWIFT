@@ -599,16 +599,17 @@ int main(int argc, char *argv[]) {
         "(even if configured --with-feedback=none)");
   }
 
-#ifndef STARS_GEAR
-  /* Temporary, this dependency will be removed later */
-  error(
-      "Error: Cannot use radiative transfer without GEAR star model for now\n");
-#endif
 #ifdef WITH_MPI
   /* Temporary, this will be removed in due time */
   error("Error: Cannot use radiative transfer with MPI\n");
 #endif
 #endif /* idfef RT_NONE */
+
+#ifdef SINK_NONE
+  if (with_sink) {
+    error("Running with sink particles but compiled without them!");
+  }
+#endif
 
 /* Let's pin the main thread, now we know if affinity will be used. */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
@@ -1063,6 +1064,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialize RT properties */
     if (with_rt) {
+      if (hydro_properties.particle_splitting)
+        error("Can't run with RT and particle splitting as of yet.");
       rt_props_init(&rt_properties, params);
     } else
       bzero(&rt_properties, sizeof(struct rt_props));
@@ -1803,6 +1806,7 @@ int main(int argc, char *argv[]) {
   if (with_lightcone) lightcone_flush_buffers(&lightcone_properties,
                                               /* flush_all = */ 1,
                                               /* end_file = */ 1);
+  if (with_rt) rt_clean(e.rt_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   free(output_options);

@@ -67,6 +67,9 @@ typedef struct {
   /* Verbose level */
   int verbose;
 
+  /* Number of threads to use */
+  int number_threads;
+
   /* Reader for each type of particles */
   PyParticleReader *part_reader[swift_type_count];
 
@@ -130,17 +133,19 @@ static int Reader_init(PyObjectReader *self, PyObject *args, PyObject *kwds) {
   /* input variables. */
   char *basename = NULL;
   int verbose = 0;
+  int number_threads = 1;
 
   /* List of keyword arguments. */
-  static char *kwlist[] = {"basename", "verbose", NULL};
+  static char *kwlist[] = {"basename", "verbose", "number_threads", NULL};
 
   /* parse the arguments. */
-  if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|i", kwlist, &basename,
-                                   &verbose))
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|ii", kwlist, &basename,
+                                   &verbose, &number_threads))
     return -1;
 
   /* Copy the arguments */
   self->verbose = verbose;
+  self->number_threads = number_threads;
 
   size_t n_plus_null = strlen(basename) + 1;
   self->basename = (char *)malloc(n_plus_null * sizeof(char));
@@ -177,6 +182,30 @@ static PyObject *getTimeLimits(PyObject *self, PyObject *Py_UNUSED(ignored)) {
   PyObject *out = PyTuple_New(2);
   PyTuple_SetItem(out, 0, PyFloat_FromDouble(time_min));
   PyTuple_SetItem(out, 1, PyFloat_FromDouble(time_max));
+
+  return (PyObject *)out;
+}
+
+/**
+ * @brief Read the box size.
+ *
+ * <b>returns</b> tuple containing the box size.
+ */
+static PyObject *get_box_size(PyObject *self, PyObject *Py_UNUSED(ignored)) {
+  if (!((PyObjectReader *)self)->ready) {
+    error_python(
+        "The logger is not ready yet."
+        "Did you forget to open it with \"with\"?");
+  }
+
+  /* initialize the reader. */
+  struct logger_reader *reader = &((PyObjectReader *)self)->reader;
+
+  /* Create the output */
+  PyObject *out = PyTuple_New(reader->params.dimension);
+  for (int i = 0; i < reader->params.dimension; i++) {
+    PyTuple_SetItem(out, i, PyFloat_FromDouble(reader->params.box_size[i]));
+  }
 
   return (PyObject *)out;
 }
@@ -357,7 +386,7 @@ static PyObject *pyEnter(__attribute__((unused)) PyObject *self,
 
   PyObjectReader *self_reader = (PyObjectReader *)self;
   logger_reader_init(&self_reader->reader, self_reader->basename,
-                     self_reader->verbose);
+                     self_reader->verbose, self_reader->number_threads);
   self_reader->ready = 1;
 
   /* Allocate the particle readers */
@@ -745,6 +774,9 @@ static PyObject *pyGetData(__attribute__((unused)) PyObject *self,
     output[i] = malloc(n_tot * h->masks[field_indices[i]].size);
   }
 
+  /* Enable multithreading */
+  Py_BEGIN_ALLOW_THREADS;
+
   /* Read the particles. */
   if (part_ids == Py_None) {
     logger_reader_read_all_particles(reader, time, logger_reader_lin,
@@ -780,6 +812,9 @@ static PyObject *pyGetData(__attribute__((unused)) PyObject *self,
       n_tot += n_part[i];
     }
   }
+
+  /* Disable multithreading */
+  Py_END_ALLOW_THREADS;
 
   /* Create the python output. */
   PyObject *array = logger_loader_create_output(output, field_indices, n_fields,
@@ -871,6 +906,12 @@ static PyMethodDef libloggerReaderMethods[] = {
      "-------\n\n"
      "times: tuple\n"
      "  time min, time max\n"},
+    {"get_box_size", get_box_size, METH_NOARGS,
+     "Gives the box size of the simulation.\n\n"
+     "Returns\n"
+     "-------\n\n"
+     "box_size: tuple\n"
+     "  The box size.\n"},
     {"get_data", (PyCFunction)pyGetData, METH_VARARGS | METH_KEYWORDS,
      "Read some fields from the logfile at a given time.\n\n"
      "Parameters\n"

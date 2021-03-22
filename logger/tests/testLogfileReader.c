@@ -227,7 +227,8 @@ int main(int argc, char *argv[]) {
   char basename[200];
   parser_get_param_string(&params, "Logger:basename", basename);
   strcat(basename, "_0000");
-  logger_reader_init(&reader, basename, /* verbose */ 1);
+  logger_reader_init(&reader, basename, /* verbose */ 1,
+                     /* number_threads */ 1);
 
   /*
     Finally check everything.

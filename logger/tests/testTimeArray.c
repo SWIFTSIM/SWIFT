@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the time array */
   struct time_array times;
-  time_array_init(&times);
+  time_array_init(&times, /* initial_size */ 1024);
 
   /* Add elements */
   for (size_t i = 0; i < NUMBER_OF_ELEMENT; i++) {

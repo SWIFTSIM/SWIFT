@@ -125,8 +125,10 @@
 
 /* Import radiative transfer loop functions. */
 #define FUNCTION inject
+#define FUNCTION_TASK_LOOP TASK_LOOP_RT_INJECT
 #include "runner_doiact_rt.h"
 #undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
@@ -145,6 +147,13 @@
 /* Import the sink compute formation loop functions. */
 #define FUNCTION compute_formation
 #define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
+#include "runner_doiact_sinks.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
+/* Import the sink compute formation loop functions. */
+#define FUNCTION accretion
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_ACCRETION
 #include "runner_doiact_sinks.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
@@ -267,6 +276,8 @@ void *runner_main(void *data) {
             runner_doself2_branch_rt_transport(r, ci);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_doself_branch_sinks_compute_formation(r, ci);
+          else if (t->subtype == task_subtype_sink_accretion)
+            runner_doself_branch_sinks_accretion(r, ci);
           else if (t->subtype == task_subtype_sink_merger)
             runner_doself_sinks_merger(r, ci);
           else
@@ -315,6 +326,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_rt_transport(r, ci, cj);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dopair_branch_sinks_compute_formation(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_accretion)
+            runner_dopair_branch_sinks_accretion(r, ci, cj);
           else if (t->subtype == task_subtype_sink_merger)
             runner_do_sym_pair_sinks_merger(r, ci, cj);
           else
@@ -361,6 +374,8 @@ void *runner_main(void *data) {
             runner_dosub_self2_rt_transport(r, ci, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_self_sinks_compute_formation(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_accretion)
+            runner_dosub_self_sinks_accretion(r, ci, 1);
           else if (t->subtype == task_subtype_sink_merger)
             runner_dosub_self_sinks_merger(r, ci);
           else
@@ -407,6 +422,8 @@ void *runner_main(void *data) {
             runner_dosub_pair2_rt_transport(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_compute_formation)
             runner_dosub_pair_sinks_compute_formation(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_accretion)
+            runner_dosub_pair_sinks_accretion(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_merger)
             runner_dosub_pair_sinks_merger(r, ci, cj);
           else
@@ -543,8 +560,12 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
-          } else if (t->subtype == task_subtype_spart) {
+          } else if (t->subtype == task_subtype_spart_density) {
             runner_do_recv_spart(r, ci, 1, 1);
+          } else if (t->subtype == task_subtype_part_prep1) {
+            runner_do_recv_part(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_spart_prep2) {
+            runner_do_recv_spart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
             runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_swallow) {

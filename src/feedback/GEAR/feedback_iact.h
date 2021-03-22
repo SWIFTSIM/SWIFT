@@ -50,9 +50,8 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r */
+  const float r = sqrtf(r2);
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;

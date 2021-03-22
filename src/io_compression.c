@@ -144,7 +144,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     const int bias = (1 << (e_size - 1)) - 1;
 
     H5Tclose(*h_type);
-    *h_type = H5Tcopy(H5T_IEEE_F32BE);
+    *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
     hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
     if (h_err < 0)
       error("Error while setting type properties for field '%s'.", field_name);
@@ -200,7 +200,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     const int bias = (1 << (e_size - 1)) - 1;
 
     H5Tclose(*h_type);
-    *h_type = H5Tcopy(H5T_IEEE_F32BE);
+    *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
     hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
     if (h_err < 0)
       error("Error while setting type properties for field '%s'.", field_name);
@@ -256,7 +256,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     const int bias = (1 << (e_size - 1)) - 1;
 
     H5Tclose(*h_type);
-    *h_type = H5Tcopy(H5T_IEEE_F32BE);
+    *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
     hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
     if (h_err < 0)
       error("Error while setting type properties for field '%s'.", field_name);
@@ -312,7 +312,7 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     const int bias = (1 << (e_size - 1)) - 1;
 
     H5Tclose(*h_type);
-    *h_type = H5Tcopy(H5T_IEEE_F32BE);
+    *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
     hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
     if (h_err < 0)
       error("Error while setting type properties for field '%s'.", field_name);

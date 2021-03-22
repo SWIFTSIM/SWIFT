@@ -85,6 +85,7 @@
 #include "profiler.h"
 #include "proxy.h"
 #include "restart.h"
+#include "rt_properties.h"
 #include "runner.h"
 #include "sink_properties.h"
 #include "sort_part.h"
@@ -800,6 +801,11 @@ void engine_allocate_foreign_particles(struct engine *e) {
                        spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
+    bzero(s->sparts_foreign, s->size_sparts_foreign * sizeof(struct spart));
+    for (size_t i = 0; i < s->size_sparts_foreign; ++i) {
+      s->sparts_foreign[i].time_bin = time_bin_not_created;
+      s->sparts_foreign[i].id = -43;
+    }
   }
 
   /* Allocate space for the foreign particles we will receive */
@@ -1549,8 +1555,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
         t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
-        t->type == task_type_sink_out || t->type == task_type_sink_formation ||
+        t->type == task_type_sink_ghost || t->type == task_type_sink_out ||
+        t->type == task_type_sink_formation ||
         t->type == task_type_stars_prep_ghost1 ||
+        t->type == task_type_hydro_prep_ghost1 ||
         t->type == task_type_stars_prep_ghost2 ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
@@ -1574,6 +1582,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_sink_compute_formation ||
         t->subtype == task_subtype_sink_merger ||
+        t->subtype == task_subtype_sink_accretion ||
         t->subtype == task_subtype_tend_part ||
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
@@ -2376,6 +2385,12 @@ void engine_step(struct engine *e) {
 
   /* Verify that all the unskip flags for the gravity have been cleaned */
   space_check_unskip_flags(e->s);
+#endif
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined RT_DEBUG
+  /* if we're running the debug RT scheme, do some checks after every step */
+  if (e->policy & engine_policy_rt)
+    rt_debugging_checks_end_of_step(e, e->verbose);
 #endif
 
   /* Collect information about the next time-step */
@@ -3343,6 +3358,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
+  rt_struct_dump(e->rt_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
@@ -3459,6 +3475,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
+
+  struct rt_props *rt_properties =
+      (struct rt_props *)malloc(sizeof(struct rt_props));
+  rt_struct_restore(rt_properties, stream);
+  e->rt_props = rt_properties;
 
   struct black_holes_props *black_holes_properties =
       (struct black_holes_props *)malloc(sizeof(struct black_holes_props));

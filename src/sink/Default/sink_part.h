@@ -74,6 +74,12 @@ struct sink {
 
   /*! List of interacting particles in compute formation SELF and PAIR */
   long long ids_ngbs_formation[MAX_NUM_OF_NEIGHBOURS_SINKS];
+
+  /*! Number of interactions in compute formation SELF and PAIR */
+  int num_ngb_accretion;
+
+  /*! List of interacting particles in compute formation SELF and PAIR */
+  long long ids_ngbs_accretion[MAX_NUM_OF_NEIGHBOURS_SINKS];
 #endif
 } SWIFT_STRUCT_ALIGN;
 

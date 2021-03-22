@@ -252,6 +252,34 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               feedback_reset_feedback(sp, feedback_props);
             }
 
+            if (with_rt) {
+
+              rt_reset_spart(sp);
+
+              /* Get particle time-step */
+              double dt_star;
+              if (with_cosmology) {
+
+                /* get star's age and time step for stellar emission rates */
+                const integertime_t ti_begin =
+                    get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+                const integertime_t ti_step =
+                    get_integer_timestep(sp->time_bin);
+                dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                   ti_begin + ti_step);
+
+              } else {
+                dt_star = get_timestep(sp->time_bin, e->time_base);
+              }
+
+              /* Calculate age of the star at current time */
+              const double star_age_end_of_step =
+                  stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
+
+              rt_compute_stellar_emission_rate(sp, e->time,
+                                               star_age_end_of_step, dt_star);
+            }
+
             /* Ok, we are done with this particle */
             continue;
           }
@@ -332,6 +360,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
               stars_spart_has_no_neighbours(sp, cosmo);
+              rt_spart_has_no_neighbours(sp);
             }
 
           } else {
@@ -394,6 +423,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         if (with_rt) {
+
+          rt_reset_spart(sp);
 
           /* Get particle time-step */
           double dt_star;
@@ -897,7 +928,8 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 
         /* Compute the final operations for repositioning of this BH */
         black_holes_end_reposition(bp, e->black_holes_properties,
-                                   e->physical_constants, e->cosmology, dt);
+                                   e->physical_constants, e->cosmology, dt,
+                                   e->ti_current);
 
         /* Compute variables required for the feedback loop */
         black_holes_prepare_feedback(bp, e->black_holes_properties,
@@ -1207,6 +1239,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+            rt_reset_part(p);
+
             /* Ok, we are done with this particle */
             continue;
           }
@@ -1302,6 +1336,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               pressure_floor_part_has_no_neighbours(p, xp, cosmo);
               star_formation_part_has_no_neighbours(p, xp, star_formation,
                                                     cosmo);
+              rt_part_has_no_neighbours(p);
             }
 
           } else {
@@ -1364,6 +1399,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_acceleration(p);
 
 #endif /* EXTRA_HYDRO_LOOP */
+
+        rt_reset_part(p);
       }
 
       /* We now need to treat the particles whose smoothing length had not

@@ -81,4 +81,33 @@ runner_iact_sym_sinks_merger(const float r2, const float *dx, const float hi,
   return sink_merger_remove_none;
 }
 
+/**
+ * @brief Accretion interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sink particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_sinks_accretion(const float r2, const float *dx,
+                                   const float hi, const float hj,
+                                   struct sink *restrict si,
+                                   const struct part *restrict pj,
+                                   const float a, const float H) {
+
+#ifdef DEBUG_INTERACTIONS_SINKS
+  /* Update ngb counters */
+  if (si->num_ngb_accretion < MAX_NUM_OF_NEIGHBOURS_SINKS)
+    si->ids_ngbs_accretion[si->num_ngb_accretion] = pj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_accretion;
+#endif
+}
+
 #endif

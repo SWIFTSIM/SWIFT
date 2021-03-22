@@ -99,10 +99,11 @@ enum task_types {
   task_type_bh_swallow_ghost3, /* Implicit */
   task_type_fof_self,
   task_type_fof_pair,
-  task_type_sink_in,  /* Implicit */
-  task_type_sink_out, /* Implicit */
-  task_type_rt_in,    /* Implicit */
-  task_type_rt_out,   /* Implicit */
+  task_type_sink_in,    /* Implicit */
+  task_type_sink_ghost, /* Implicit */
+  task_type_sink_out,   /* Implicit */
+  task_type_rt_in,      /* Implicit */
+  task_type_rt_out,     /* Implicit */
   task_type_sink_formation,
   task_type_rt_ghost1,
   task_type_rt_ghost2,
@@ -133,7 +134,9 @@ enum task_subtypes {
   task_subtype_bpart_merger,
   task_subtype_gpart,
   task_subtype_multipole,
-  task_subtype_spart,
+  task_subtype_spart_density,
+  task_subtype_part_prep1,
+  task_subtype_spart_prep2,
   task_subtype_stars_density,
   task_subtype_stars_prep1,
   task_subtype_stars_prep2,
@@ -150,6 +153,7 @@ enum task_subtypes {
   task_subtype_sink_merger,
   task_subtype_rt_inject,
   task_subtype_sink_compute_formation,
+  task_subtype_sink_accretion,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
   task_subtype_count
@@ -190,6 +194,7 @@ enum task_categories {
   task_category_fof,
   task_category_others,
   task_category_sink,
+  task_category_rt,
   task_category_count
 };
 

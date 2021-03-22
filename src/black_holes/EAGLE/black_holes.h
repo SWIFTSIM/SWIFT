@@ -603,7 +603,7 @@ black_hole_energy_reservoir_threshold(struct bpart* bp,
 }
 
 /**
- * @brief Compute the accretion rate of the black hole and all the quantites
+ * @brief Compute the accretion rate of the black hole and all the quantities
  * required for the feedback loop.
  *
  * @param bp The black hole particle.
@@ -615,6 +615,7 @@ black_hole_energy_reservoir_threshold(struct bpart* bp,
  * @param time Time since the start of the simulation (non-cosmo mode).
  * @param with_cosmology Are we running with cosmology?
  * @param dt The time-step size (in physical internal units).
+ * @param ti_begin The time at which the step begun (ti_current).
  */
 __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
@@ -712,19 +713,21 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
           /*HII_region=*/0);
       const float log10_gas_T = log10f(gas_T);
 
-      /* Get the temperature on the EOS at this physical density */
-      const float T_EOS = entropy_floor_gas_temperature(
-          gas_rho_phys, bp->rho_gas, cosmo, floor_props);
+      /* Internal energy on the entropy floor */
+      const double P_EOS = entropy_floor_gas_pressure(gas_rho_phys, bp->rho_gas,
+                                                      cosmo, floor_props);
+      const double u_EOS =
+          gas_internal_energy_from_pressure(gas_rho_phys, P_EOS);
+      const double u_EOS_max = u_EOS * exp10(cooling->dlogT_EOS);
 
-      /* Add the allowed offset */
-      const float log10_T_EOS_max =
-          log10f(max(T_EOS, FLT_MIN)) + cooling->dlogT_EOS;
+      const float log10_u_EOS_max_cgs =
+          log10f(u_EOS_max * cooling->internal_energy_to_cgs + FLT_MIN);
 
       /* Compute the subgrid density assuming pressure
        * equilibirum if on the entropy floor */
       const double rho_sub = compute_subgrid_property(
           cooling, constants, floor_props, cosmo, gas_rho_phys, logZZsol, XH,
-          gas_P_phys, log10_gas_T, log10_T_EOS_max, /*HII_region=*/0,
+          gas_P_phys, log10_gas_T, log10_u_EOS_max_cgs, /*HII_region=*/0,
           abundance_ratio, 0.f, cooling_compute_subgrid_density);
 
       /* Record what we used */
@@ -1081,11 +1084,12 @@ black_holes_get_repositioning_speed(const struct bpart* restrict bp,
  * @param constants The physical constants (in internal units).
  * @param cosmo The cosmological model.
  * @param dt The black hole particle's time step.
+ * @param ti_begin The time at the start of the temp
  */
 __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
-    const double dt) {
+    const double dt, const integertime_t ti_begin) {
 
   /* First check: did we find any eligible neighbour particle to jump to? */
   if (bp->reposition.min_potential != FLT_MAX) {
@@ -1140,8 +1144,41 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
         bp->reposition.delta_x[1] *= repos_frac;
         bp->reposition.delta_x[2] *= repos_frac;
       }
-    } /* ends section for fractional repositioning */
-  }   /* ends section if we found eligible repositioning target(s) */
+
+      /* ends section for fractional repositioning */
+    } else {
+
+      /* We _should_ reposition, but not fractionally. Here, we will
+       * reposition exactly on top of another gas particle - which
+       * could cause issues, so we add on a small fractional offset
+       * of magnitude 0.001 h in the reposition delta. */
+
+      /* Generate three random numbers in the interval [-0.5, 0.5[; id,
+       * id**2, and id**3 are required to give unique random numbers (as
+       * random_unit_interval is completely reproducible). */
+      const float offset_dx =
+          random_unit_interval(bp->id, ti_begin, random_number_BH_reposition) -
+          0.5f;
+      const float offset_dy =
+          random_unit_interval(bp->id * bp->id, ti_begin,
+                               random_number_BH_reposition) -
+          0.5f;
+      const float offset_dz =
+          random_unit_interval(bp->id * bp->id * bp->id, ti_begin,
+                               random_number_BH_reposition) -
+          0.5f;
+
+      const float length_inv =
+          1.0f / sqrtf(offset_dx * offset_dx + offset_dy * offset_dy +
+                       offset_dz * offset_dz);
+
+      const float norm = 0.001f * bp->h * length_inv;
+
+      bp->reposition.delta_x[0] += offset_dx * norm;
+      bp->reposition.delta_x[1] += offset_dy * norm;
+      bp->reposition.delta_x[2] += offset_dz * norm;
+    }
+  } /* ends section if we found eligible repositioning target(s) */
 }
 
 /**

@@ -107,6 +107,7 @@ const char *taskID_names[task_type_count] = {
     "fof_self",
     "fof_pair",
     "sink_in",
+    "sink_ghost",
     "sink_out",
     "rt_in",
     "rt_out",
@@ -137,7 +138,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "bpart_merger",
     "gpart",
     "multipole",
-    "spart",
+    "spart_density",
+    "part_prep1",
+    "spart_prep2",
     "stars_density",
     "stars_prep1",
     "stars_prep2",
@@ -154,6 +157,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_merger",
     "rt_inject",
     "sink_compute_formation",
+    "sink_accretion",
     "rt_gradient",
     "rt_transport",
 };
@@ -164,7 +168,7 @@ const char *task_category_names[task_category_count] = {
     "black holes", "cooling", "star formation",
     "limiter",     "sync",    "time integration",
     "mpi",         "fof",     "others",
-    "sink"};
+    "sink",        "RT"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -281,9 +285,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           return task_action_bpart;
           break;
 
+        case task_subtype_sink_accretion:
         case task_subtype_sink_merger:
         case task_subtype_sink_compute_formation:
-          return task_action_sink;
+          return task_action_all;
 
         case task_subtype_rt_inject:
           return task_action_all;
@@ -568,6 +573,10 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_sink_merger) {
         cell_sink_unlocktree(ci);
         cell_gunlocktree(ci);
+      } else if (subtype == task_subtype_sink_accretion) {
+        cell_unlocktree(ci);
+        cell_sink_unlocktree(ci);
+        cell_gunlocktree(ci);
       } else if ((subtype == task_subtype_stars_density) ||
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
@@ -611,6 +620,13 @@ void task_unlock(struct task *t) {
       } else if (subtype == task_subtype_sink_merger) {
         cell_sink_unlocktree(ci);
         cell_sink_unlocktree(cj);
+        cell_gunlocktree(ci);
+        cell_gunlocktree(cj);
+      } else if (subtype == task_subtype_sink_accretion) {
+        cell_sink_unlocktree(ci);
+        cell_sink_unlocktree(cj);
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
         cell_gunlocktree(ci);
         cell_gunlocktree(cj);
       } else if ((subtype == task_subtype_stars_density) ||
@@ -767,7 +783,8 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_sink:
-      cell_sink_locktree(ci);
+      if (ci->sinks.hold) return 0;
+      if (cell_sink_locktree(ci) != 0) return 0;
       break;
 
     case task_type_self:
@@ -797,6 +814,20 @@ int task_lock(struct task *t) {
         if (cell_sink_locktree(ci) != 0) return 0;
         if (cell_locktree(ci) != 0) {
           cell_sink_unlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_sink_accretion) {
+        if (ci->sinks.hold) return 0;
+        if (ci->grav.phold) return 0;
+        if (ci->hydro.hold) return 0;
+        if (cell_sink_locktree(ci) != 0) return 0;
+        if (cell_locktree(ci) != 0) {
+          cell_sink_unlocktree(ci);
+          return 0;
+        }
+        if (cell_glocktree(ci) != 0) {
+          cell_sink_unlocktree(ci);
+          cell_unlocktree(ci);
           return 0;
         }
       } else if ((subtype == task_subtype_stars_density) ||
@@ -882,6 +913,42 @@ int task_lock(struct task *t) {
           cell_sink_unlocktree(ci);
           cell_sink_unlocktree(cj);
           cell_unlocktree(ci);
+          return 0;
+        }
+      } else if (subtype == task_subtype_sink_accretion) {
+        /* Lock the sinks and the gas particles in both cells */
+        if (ci->sinks.hold || cj->sinks.hold) return 0;
+        if (ci->hydro.hold || cj->hydro.hold) return 0;
+        if (ci->grav.phold || cj->grav.phold) return 0;
+        if (cell_sink_locktree(ci) != 0) return 0;
+        if (cell_sink_locktree(cj) != 0) {
+          cell_sink_unlocktree(ci);
+          return 0;
+        }
+        if (cell_locktree(ci) != 0) {
+          cell_sink_unlocktree(ci);
+          cell_sink_unlocktree(cj);
+          return 0;
+        }
+        if (cell_locktree(cj) != 0) {
+          cell_sink_unlocktree(ci);
+          cell_sink_unlocktree(cj);
+          cell_unlocktree(ci);
+          return 0;
+        }
+        if (cell_glocktree(ci) != 0) {
+          cell_sink_unlocktree(ci);
+          cell_sink_unlocktree(cj);
+          cell_unlocktree(ci);
+          cell_unlocktree(cj);
+          return 0;
+        }
+        if (cell_glocktree(cj) != 0) {
+          cell_sink_unlocktree(ci);
+          cell_sink_unlocktree(cj);
+          cell_unlocktree(ci);
+          cell_unlocktree(cj);
+          cell_gunlocktree(ci);
           return 0;
         }
       } else if (subtype == task_subtype_sink_merger) {
@@ -1163,6 +1230,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_sink_merger:
       strcpy(cluster, "SinkMerger");
+      break;
+    case task_subtype_sink_accretion:
+      strcpy(cluster, "SinkAccretion");
       break;
     default:
       strcpy(cluster, "None");
@@ -1643,6 +1713,7 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_stars_ghost:
     case task_type_stars_prep_ghost1:
+    case task_type_hydro_prep_ghost1:
     case task_type_stars_prep_ghost2:
       return task_category_feedback;
 
@@ -1660,6 +1731,14 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_fof_self:
     case task_type_fof_pair:
       return task_category_fof;
+
+    case task_type_rt_in:
+    case task_type_rt_ghost1:
+    case task_type_rt_ghost2:
+    case task_type_rt_transport_out:
+    case task_type_rt_tchem:
+    case task_type_rt_out:
+      return task_category_rt;
 
     case task_type_self:
     case task_type_pair:
@@ -1694,7 +1773,13 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_sink_compute_formation:
         case task_subtype_sink_merger:
+        case task_subtype_sink_accretion:
           return task_category_sink;
+
+        case task_subtype_rt_inject:
+        case task_subtype_rt_gradient:
+        case task_subtype_rt_transport:
+          return task_category_rt;
 
         default:
           return task_category_others;

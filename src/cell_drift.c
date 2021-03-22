@@ -239,7 +239,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
         rt_init_part(p);
-        rt_reset_part(p);
 
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, p->h);

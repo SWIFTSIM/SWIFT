@@ -1,0 +1,23 @@
+This is a trivial test case for the RT debug scheme: swift needs to be compiled
+with `--with-rt=debug`. The example generates initial conditions with uniformly 
+distributed hydro particles and a smaller, also uniformly distributed, star 
+particle box in the center such that the hydro particles close to the faces of 
+the box have no star neighbours.
+
+Furthermore, the run is set up such that each time step all particles are 
+active, and each time step an output is generated. This is necessary for the 
+'./rt_uniform_box_checks.py' script to run successfully.
+
+The './rt_sanity_checks.py' script tests some general properties of the RT 
+debug scheme, and any simulation run with this particular RT scheme should 
+pass the tests therein. 
+
+The `swift_rt_debug_io.py` contains IO routines for the debugging output that
+is used by the other scripts.
+
+
+
+Tl;dr: 
+    - `./rt_uniform_box_checks.py` only works for this example
+    - `./rt_sanity_checks.py` is made to work on any run with the RT debug scheme
+
