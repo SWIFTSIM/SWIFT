@@ -45,6 +45,9 @@ struct lightcone_props {
   /*! Whether we're doing lightcone outputs */
   int enabled;
 
+  /*! Which particle types we're doing */
+  int use_type[swift_type_count];
+
   /*! Output base name */
   char basename[PARSER_MAX_LINE_SIZE];
 
