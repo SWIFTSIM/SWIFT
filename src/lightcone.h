@@ -63,15 +63,6 @@ struct lightcone_props {
   /*! Size of chunks in HDF5 output files */
   int hdf5_chunk_size;
 
-  /*! Whether we're doing a pencil beam */
-  int pencil_beam;
-
-  /*! Vector along the pencil beam */
-  double view_vector[3];
-
-  /*! Radius of the pencil beam in radians */
-  double view_radius;
-
   /*! Simulation box size (volume must be a cube) */
   double boxsize;
 

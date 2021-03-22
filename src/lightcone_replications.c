@@ -60,9 +60,7 @@ static int compare_replication_rmin(const void *a, const void *b) {
 
 void replication_list_init(struct replication_list *replication_list,
                            double boxsize, double observer_position[3],
-                           double lightcone_rmin, double lightcone_rmax,
-                           int pencil_beam, double *view_vector,
-                           double view_radius, double boundary) {
+                           double lightcone_rmin, double lightcone_rmax) {
   
   /* Find range of replications to examine in each dimension */
   int rep_min[3];
@@ -108,35 +106,6 @@ void replication_list_init(struct replication_list *replication_list,
 
           /* Check distance limits */
           if(rep_rmax < lightcone_rmin || rep_rmin > lightcone_rmax) in_lightcone = 0;
-
-          /* Check if we might overlap the pencil beam */
-          if(pencil_beam && in_lightcone) {
-            
-            /* Get radius of bounding sphere around this replication */
-            double radius = 0.5*sqrt(3.0)*boxsize + boundary;
-
-            /* Get distance along line of sight from observer to this replication */
-            double r_los = cx*view_vector[0] + cy*view_vector[1] + cz*view_vector[2];
-
-            /* Get distance from observer to the centre of this replication*/
-            double r_centre = sqrt(cx*cx+cy*cy+cz*cz);
-
-            /* Lower limit on distance to closest point */
-            double r_min = r_centre - radius;
-
-            if(r_centre > radius) {
-              
-              /* Get upper limit on angular size of the replication at this distance */
-              double angular_size = atan2(radius, r_min);
-
-              /* Get angle between line of sight and centre of replication */
-              double los_angle = acos(r_los/r_centre);
-
-              /* Check for overlap or case where cube is behind us */
-              if(los_angle > angular_size+view_radius || r_los < 0 )in_lightcone = 0;
-
-            }
-          }
 
           if(in_lightcone) {
             /* Store replications on second pass */
