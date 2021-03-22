@@ -24,7 +24,7 @@
 #include "align.h"
 #include "error.h"
 #include "memuse.h"
-#include "periodic_replications.h"
+#include "lightcone_replications.h"
 
 
 /**

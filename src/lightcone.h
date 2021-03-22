@@ -24,11 +24,11 @@
 #include "../config.h"
 
 /* Local headers */
+#include "lightcone_replications.h"
 #include "parser.h"
-#include "periodic_replications.h"
-#include "timeline.h"
 #include "part_type.h"
 #include "particle_buffer.h"
+#include "timeline.h"
 
 
 /* Avoid cyclic inclusions */
