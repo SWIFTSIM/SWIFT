@@ -3,6 +3,9 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#include "align.h"
+#include "error.h"
+#include "memuse.h"
 #include "particle_buffer.h"
 
 /**
@@ -19,19 +22,25 @@
  * @param buffer The #particle_buffer
  * @param element_size Size of a single element
  * @param elements_per_block Number of elements to store in each block
+ * @param name Name to use when logging memory allocations
  *
  */
 void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
-                          size_t elements_per_block) {
+                          size_t elements_per_block, char *name) {
   
   buffer->element_size = element_size;
   buffer->elements_per_block = elements_per_block;
   buffer->first_block = malloc(sizeof(struct particle_buffer_block));
-  buffer->first_block->num_elements = 0;
-  buffer->first_block->data = malloc(elements_per_block*element_size);
+  if(!buffer->first_block)error("Failed to allocate particle buffer first block: %s", buffer->name);
+  buffer->first_block->num_elements = 0;  
+  if(swift_memalign(buffer->name, (void **) &buffer->first_block->data,
+                    SWIFT_STRUCT_ALIGNMENT, element_size*elements_per_block) != 0) {
+    error("Failed to allocate particle buffer first block data : %s", buffer->name);
+  }
   buffer->first_block->next = NULL;
   buffer->last_block = buffer->first_block;
   lock_init(&buffer->lock);
+  strncpy(buffer->name, name, PARTICLE_BUFFER_NAME_LENGTH);
 }
 
 
@@ -48,7 +57,7 @@ void particle_buffer_free(struct particle_buffer *buffer) {
   struct particle_buffer_block *block = buffer->first_block;
   while(block) {
     struct particle_buffer_block *next = block->next;
-    free(block->data);
+    swift_free(buffer->name, block->data);
     free(block);
     block = next;
   }
@@ -70,9 +79,10 @@ void particle_buffer_empty(struct particle_buffer *buffer) {
   
   const size_t element_size = buffer->element_size;
   const size_t elements_per_block = buffer->elements_per_block;
-
+  char name[PARTICLE_BUFFER_NAME_LENGTH];
+  strncpy(name, buffer->name, PARTICLE_BUFFER_NAME_LENGTH);
   particle_buffer_free(buffer);
-  particle_buffer_init(buffer, element_size, elements_per_block);
+  particle_buffer_init(buffer, element_size, elements_per_block, name);
 }
 
 
@@ -109,7 +119,12 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
       if(!block->next) {
         /* Allocate and initialize the new block */
         struct particle_buffer_block *new_block = malloc(sizeof(struct particle_buffer_block));
-        char *new_block_data = malloc(elements_per_block*element_size);
+        if(!new_block)error("Failed to allocate new particle buffer block: %s", buffer->name);
+        char *new_block_data;
+        if(swift_memalign(buffer->name, (void **) &new_block_data, SWIFT_STRUCT_ALIGNMENT,
+                          element_size*elements_per_block) != 0) {
+          error("Failed to allocate particle buffer data block: %s", buffer->name);
+        }
         new_block->data = new_block_data;
         new_block->num_elements = 0;
         new_block->next = NULL;

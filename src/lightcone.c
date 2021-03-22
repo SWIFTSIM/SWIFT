@@ -205,27 +205,27 @@ void lightcone_init(struct lightcone_props *props,
 
   particle_buffer_init(&props->buffer[swift_type_gas],
                        sizeof(struct lightcone_gas_data),
-                       elements_per_block);
+                       elements_per_block, "lightcone_gas");
 
   particle_buffer_init(&props->buffer[swift_type_dark_matter],
                        sizeof(struct lightcone_dark_matter_data),
-                       elements_per_block);
+                       elements_per_block, "lightcone_dm");
 
   particle_buffer_init(&props->buffer[swift_type_dark_matter_background],
                        sizeof(struct lightcone_dark_matter_data),
-                       elements_per_block);
+                       elements_per_block, "lightcone_dm_bg");
 
   particle_buffer_init(&props->buffer[swift_type_stars],
                        sizeof(struct lightcone_stars_data),
-                       elements_per_block);
+                       elements_per_block, "lightcone_stars");
 
   particle_buffer_init(&props->buffer[swift_type_black_hole],
                        sizeof(struct lightcone_black_hole_data),
-                       elements_per_block);
+                       elements_per_block, "lightcone_bh");
 
   particle_buffer_init(&props->buffer[swift_type_neutrino],
                        sizeof(struct lightcone_neutrino_data),
-                       elements_per_block);
+                       elements_per_block, "lightcone_neutrino");
 
 }
 

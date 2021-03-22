@@ -21,6 +21,9 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "align.h"
+#include "error.h"
+#include "memuse.h"
 #include "periodic_replications.h"
 
 
@@ -157,7 +160,10 @@ void replication_list_init(struct replication_list *replication_list,
     /* Allocate storage after first pass */
     if(ipass==0) {
       const int nrep = replication_list->nrep;
-      replication_list->replication = malloc(sizeof(struct replication)*nrep); 
+      if(swift_memalign("lightcone_replications", (void **) &replication_list->replication,
+                        SWIFT_STRUCT_ALIGNMENT, sizeof(struct replication)*nrep) != 0) {
+        error("Failed to allocate lightcone replication list");
+      }
     }
   } /* Next pass */
 
@@ -175,7 +181,7 @@ void replication_list_init(struct replication_list *replication_list,
  * @param replication_list Pointer to the struct to deallocate.
  */
 void replication_list_clean(struct replication_list *replication_list) {
-  free(replication_list->replication);
+  swift_free("lightcone_replications", replication_list->replication);
   replication_list->replication = NULL;
   replication_list->nrep = 0;
 }
