@@ -139,7 +139,7 @@ hid_t init_write(struct lightcone_props *props, hid_t file_id, int ptype,
 void lightcone_store_gas(const struct gpart *gp, const struct part *p,
                          const struct xpart *xp, const double x_cross[3],
                          struct lightcone_gas_data *data) {
-  data->id = gp->id_or_neg_offset;
+  data->id = p->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
@@ -251,7 +251,7 @@ void lightcone_write_dark_matter(struct lightcone_props *props, hid_t file_id,
 void lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
                            const double x_cross[3],
                            struct lightcone_stars_data *data) {
-  data->id = gp->id_or_neg_offset;
+  data->id = sp->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
@@ -307,7 +307,7 @@ void lightcone_write_stars(struct lightcone_props *props, hid_t file_id,
 void lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
                                 const double x_cross[3],
                                 struct lightcone_black_hole_data *data) {
-  data->id = gp->id_or_neg_offset;
+  data->id = bp->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
