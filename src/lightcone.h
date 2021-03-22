@@ -111,6 +111,7 @@ void lightcone_init(struct lightcone_props *props,
                     struct swift_params *params,
                     const int restart);
 
+void lightcone_clean(struct lightcone_props *props);
 
 void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream);
 

@@ -334,6 +334,28 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
 
 /**
+ * @brief Flush all buffers and deallocate lightcone data.
+ */
+void lightcone_clean(struct lightcone_props *props) {
+
+  /* Flush particle buffers */
+  lightcone_flush_buffers(props, /* flush_all = */ 1, /* end_file = */ 1);
+
+  /* Deallocate particle buffers */
+  particle_buffer_free(&props->buffer[swift_type_gas]);
+  particle_buffer_free(&props->buffer[swift_type_dark_matter]);
+  particle_buffer_free(&props->buffer[swift_type_dark_matter_background]);
+  particle_buffer_free(&props->buffer[swift_type_stars]);
+  particle_buffer_free(&props->buffer[swift_type_black_hole]);
+  particle_buffer_free(&props->buffer[swift_type_neutrino]);
+  
+  /* Free replication list, if we have one */
+  if(props->have_replication_list)replication_list_clean(&props->replication_list);
+
+}
+
+
+/**
  * @brief Determine periodic copies of the simulation box which could
  * contribute to the lightcone.
  *

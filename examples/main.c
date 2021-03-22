@@ -1803,9 +1803,7 @@ int main(int argc, char *argv[]) {
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_lightcone) lightcone_flush_buffers(&lightcone_properties,
-                                              /* flush_all = */ 1,
-                                              /* end_file = */ 1);
+  if (with_lightcone) lightcone_clean(e.lightcone_properties);
   if (with_rt) rt_clean(e.rt_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
