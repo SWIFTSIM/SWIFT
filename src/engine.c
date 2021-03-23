@@ -2198,6 +2198,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         /*t->subtype == task_subtype_dark_matter_limiter ||*/
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_sidm ||
+        t->subtype == task_subtype_dmpart_rho ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
         t->subtype == task_subtype_bh_swallow ||

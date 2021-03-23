@@ -297,13 +297,12 @@ __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
 
     double dm_timestep;
 
-    /* Only limit timestep if you are surrounding but lots of
+    /* Only limit the time step if you are surrounded by lots of
      * neighbours, otherwise do not */
     if (dmp->num_neighbours > 5) {
 
-
       /* Constant to limit probability from being too large? */
-      const float kappa = 4e-2;
+      const float kappa = 1e-2;
       const float rho_phys = dmp->rho * cosmo->a3_inv;
       const float veldisp_phys = dmp->velocity_dispersion * cosmo->a_inv;
 
@@ -320,6 +319,7 @@ __attribute__((always_inline)) INLINE static float dark_matter_compute_timestep(
     } else {
 
       dm_timestep = sidm_props->time_step_max;
+
     }
 
     return dm_timestep;

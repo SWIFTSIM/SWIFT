@@ -870,32 +870,29 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_nodeID != nodeID) {
               
               if (cj_active_dark_matter) {
-                  
-                  /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);*/
+
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
                   /* If the local cell is active, more stuff will be needed. */
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart,
-                                          ci_nodeID);
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart_rho, ci_nodeID);
                   
                   /* Drif before you send */
                   cell_activate_drift_dmpart(cj, s);
 
                   /* If the local cell is active, send its ti_end values. */
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
-                                          ci_nodeID);
-                  
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart, ci_nodeID);
               }
               
               if (ci_active_dark_matter) {
-                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart);
+
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_rho);
                   
                   /* If the foreign cell is active, we want its ti_end values. */
                   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
                   
                   /* Is the foreign cell active and will need stuff from us? */
-                  /*scheduler_activate_send(s, cj->mpi.send, task_subtype_sidm,
-                                          ci_nodeID);*/
-                  
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+
                   /* Drift the cell which will be sent; note that not all sent
                    particles will be drifted, only those that are needed. */
                   cell_activate_drift_dmpart(cj, s);
@@ -905,28 +902,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               
               /* If the local cell is active, receive data from the foreign cell. */
               if (ci_active_dark_matter) {
-                  /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);*/
+
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
                   /* If the local cell is active, more stuff will be needed. */
-                  scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart,
-                                          cj_nodeID);
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart_rho, cj_nodeID);
+
                   cell_activate_drift_dmpart(ci, s);
                   
                   /* If the local cell is active, send its ti_end values. */
-                  scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
-                                          cj_nodeID);
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart, cj_nodeID);
               }
               
               if (cj_active_dark_matter) {
-                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart);
+
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart_rho);
                   
                   /* If the foreign cell is active, we want its ti_end values. */
                   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
                   
                   /* Is the foreign cell active and will need stuff from us? */
-                  /*scheduler_activate_send(s, ci->mpi.send, task_subtype_sidm,
-                                          cj_nodeID);*/
-                  
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+
                   /* Drift the cell which will be sent; note that not all sent
                    particles will be drifted, only those that are needed. */
                   cell_activate_drift_dmpart(ci, s);

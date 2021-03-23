@@ -2076,7 +2076,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = spart_mpi_type;
           buff = t->ci->stars.parts;
             
-        } else if (t->subtype == task_subtype_dmpart) {
+        } else if (t->subtype == task_subtype_dmpart_rho) {
             
             count = t->ci->dark_matter.count;
             size = count * sizeof(struct dmpart);
@@ -2199,7 +2199,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
             
-        } else if (t->subtype == task_subtype_dmpart) {
+        } else if (t->subtype == task_subtype_dmpart_rho) {
             
             count = t->ci->dark_matter.count;
             size = count * sizeof(struct dmpart);

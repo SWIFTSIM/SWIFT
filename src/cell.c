@@ -5337,44 +5337,77 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             /* Check whether there was too much particle motion, i.e. the
              cell neighbour conditions were violated. */
             if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
-            
+
             
 #ifdef WITH_MPI
             /* Activate the send/recv tasks. */
             if (ci_nodeID != nodeID) {
-                
-                /* Receive the foreign parts to compute DM parts interactions */
-                /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sidm);*/
-                
-                /* Send the local part information */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart, ci_nodeID);
 
-                /* Drift the cell which will be sent; note that not all sent
-                 particles will be drifted, only those that are needed. */
-                cell_activate_drift_dmpart(ci, s);
-                
-                /* Send the new DM time-steps */
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
-                                        ci_nodeID);
+                /* If the local cell is active, receive data from the foreign cell. */
+                if (cj_active) {
 
+                    /* Receive the foreign parts to compute DM parts interactions */
+                    /*scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_rho);*/
+
+                    /* Send the local part information */
+                    scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart_rho, ci_nodeID);
+
+                    /* Send the new DM time-steps */
+                    scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart,
+                                            ci_nodeID);
+                    }
+
+                if (ci_active) {
+
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_rho);
+
+                  /* If the foreign cell is active, we want its ti_end values. */
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
+
+                  /* Is the foreign cell active and will need stuff from us? */
+                  /*scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart_rho, ci_nodeID);*/
+
+                  /* Drift the cell which will be sent; note that not all sent
+                     particles will be drifted, only those that are needed. */
+                  cell_activate_drift_dmpart(cj, s);
+                }
                 
             } else if (cj_nodeID != nodeID) {
                 
-                /* Receive the foreign parts to compute DM parts interactions */
-                /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sidm);*/
+                /* If the local cell is active, receive data from the foreign cell. */
+                if (ci_active) {
+                  /*scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart_rho);*/
 
-                /* Send the local part information */
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_dmpart, ci_nodeID);
+                  if (cj_active) {
+                    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart_rho);
 
-                /* Drift the cell which will be sent; note that not all sent
-                 particles will be drifted, only those that are needed. */
-                cell_activate_drift_dmpart(cj, s);
-                
-                /* Send the new DM time-steps */
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart,
-                                        cj_nodeID);
+                  }
+                }
 
+                /* If the foreign cell is active, we want its ti_end values. */
+                if (cj_active)
+                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_dmpart);
 
+                /* Is the foreign cell active and will need stuff from us? */
+                if (cj_active) {
+
+                  /*scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart_rho, cj_nodeID);*/
+
+                  /* Drift the cell which will be sent; note that not all sent
+                     particles will be drifted, only those that are needed. */
+                  cell_activate_drift_dmpart(ci, s);
+
+                  /* If the local cell is also active, more stuff will be needed. */
+                  if (ci_active) {
+
+                    scheduler_activate_send(s, ci->mpi.send, task_subtype_dmpart_rho, cj_nodeID);
+
+                  }
+                }
+
+                /* If the local cell is active, send its ti_end values. */
+                if (ci_active)
+                  scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart, cj_nodeID);
             }
 #endif
         }

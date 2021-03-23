@@ -558,14 +558,14 @@ void engine_redistribute(struct engine *e) {
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
   struct bpart *bparts = s->bparts;
-    struct dmpart *dmparts = s->dmparts;
+  struct dmpart *dmparts = s->dmparts;
   ticks tic = getticks();
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
-    size_t nr_dmparts = s->nr_dmparts;
+  size_t nr_dmparts = s->nr_dmparts;
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {
@@ -905,73 +905,85 @@ void engine_redistribute(struct engine *e) {
                    &savelink_data);
   }
   swift_free("b_dest", b_dest);
-    
-    
-    /* Get destination of each dm-particle */
-    int *dm_counts;
-    if ((dm_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
-        error("Failed to allocate dm_counts temporary buffer.");
-    
-    int *dm_dest;
-    if ((dm_dest = (int *)swift_malloc("dm_dest", sizeof(int) * nr_dmparts)) == NULL)
-        error("Failed to allocate dm_dest temporary buffer.");
-    
-    redist_data.counts = dm_counts;
-    redist_data.dest = dm_dest;
-    redist_data.base = (void *)dmparts;
-    
-    threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_dmpart, dmparts,
-                   nr_dmparts, sizeof(struct dmpart), threadpool_auto_chunk_size,
-                   &redist_data);
-    
-    /* Sort the particles according to their cell index. */
-    if (nr_dmparts > 0)
-        space_dmparts_sort(s->dmparts, dm_dest, &dm_counts[nodeID * nr_nodes], nr_nodes,
-                          0);
-    
+
+  /* Allocate temporary arrays to store the counts of particles to be sent
+   * and the destination of each particle */
+  int *dm_counts;
+  if ((dm_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
+    error("Failed to allocate dm_counts temporary buffer.");
+
+  int *dm_dest;
+  if ((dm_dest = (int *)swift_malloc("dm_dest", sizeof(int) * nr_dmparts)) == NULL)
+    error("Failed to allocate dest temporary buffer.");
+
+  /* Simple index of node IDs, used for mappers over nodes. */
+  int *nodes = NULL;
+  if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
+    error("Failed to allocate nodes temporary buffer.");
+  for (int k = 0; k < nr_nodes; k++) nodes[k] = k;
+
+  /* Get destination of each particle */
+  struct redist_mapper_data redist_data;
+  redist_data.s = s;
+  redist_data.nodeID = nodeID;
+  redist_data.nr_nodes = nr_nodes;
+
+  redist_data.counts = dm_counts;
+  redist_data.dest = dm_dest;
+  redist_data.base = (void *)dmparts;
+
+  threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_dmpart, dmparts,
+                 nr_dmparts, sizeof(struct dmpart), threadpool_auto_chunk_size,
+                 &redist_data);
+
+  /* Sort the particles according to their cell index. */
+  if (nr_dmparts > 0)
+    space_dmparts_sort(s->dmparts, dm_dest, &dm_counts[nodeID * nr_nodes], nr_nodes, 0);
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Verify that the bpart have been sorted correctly. */
     for (size_t k = 0; k < nr_dmparts; k++) {
         const struct dmpart *dmp = &s->dmparts[k];
-        
+
         if (dmp->time_bin == time_bin_inhibited)
             error("Inhibited particle found after sorting!");
-        
+
         if (dmp->time_bin == time_bin_not_created)
             error("Inhibited particle found after sorting!");
-        
+
         /* New cell index */
         const int new_cid =
         cell_getid(s->cdim, dmp->x[0] * s->iwidth[0], dmp->x[1] * s->iwidth[1],
                    dmp->x[2] * s->iwidth[2]);
-        
+
         /* New cell of this bpart */
         const struct cell *c = &s->cells_top[new_cid];
         const int new_node = c->nodeID;
-        
+
         if (dm_dest[k] != new_node)
             error("dmpart's new node index not matching sorted index.");
-        
+
         if (dmp->x[0] < c->loc[0] || dmp->x[0] > c->loc[0] + c->width[0] ||
             dmp->x[1] < c->loc[1] || dmp->x[1] > c->loc[1] + c->width[1] ||
             dmp->x[2] < c->loc[2] || dmp->x[2] > c->loc[2] + c->width[2])
             error("dmpart not sorted into the right top-level cell!");
     }
 #endif
-    
-    /* We need to re-link the gpart partners of dmparts. */
-    if (nr_dmparts > 0) {
-        
-        struct savelink_mapper_data savelink_data;
-        savelink_data.nr_nodes = nr_nodes;
-        savelink_data.counts = dm_counts;
-        savelink_data.parts = (void *)dmparts;
-        savelink_data.nodeID = nodeID;
-        threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_bpart,
-                       nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
-                       &savelink_data);
-    }
-    swift_free("b_dest", dm_dest);
+
+  /* We will need to re-link the gpart partners of parts, so save their
+   * relative positions in the sent lists. */
+  if (nr_dmparts > 0) {
+
+    struct savelink_mapper_data savelink_data;
+    savelink_data.nr_nodes = nr_nodes;
+    savelink_data.counts = dm_counts;
+    savelink_data.parts = (void *)dmparts;
+    savelink_data.nodeID = nodeID;
+    threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_dmpart,
+                   nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                   &savelink_data);
+  }
+  swift_free("dm_dest", dm_dest);
 
   /* Get destination of each g-particle */
   int *g_counts;
@@ -1048,10 +1060,10 @@ void engine_redistribute(struct engine *e) {
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce bparticle transfer counts.");
 
-    /* Get all the dm_counts from all the nodes. */
-    if (MPI_Allreduce(MPI_IN_PLACE, dm_counts, nr_nodes * nr_nodes, MPI_INT,
-                      MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
-        error("Failed to allreduce bparticle transfer counts.");
+  /* Get all the dm_counts from all the nodes. */
+  if (MPI_Allreduce(MPI_IN_PLACE, dm_counts, nr_nodes * nr_nodes, MPI_INT,
+                    MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce bparticle transfer counts.");
 
   /* Report how many particles will be moved. */
   if (e->verbose) {
@@ -1210,12 +1222,11 @@ void engine_redistribute(struct engine *e) {
   s->size_bparts = engine_redistribute_alloc_margin * nr_bparts_new;
     
     
-    /* Dark matter particles. */
-    new_parts =
-    engine_do_redistribute("dmparts", dm_counts, (char *)s->dmparts,
-                           nr_dmparts_new, sizeof(struct dmpart), dmpart_align,
-                           dmpart_mpi_type, nr_nodes, nodeID, e->syncredist);
-    swift_free("bparts", s->dmparts);
+  /* Dark matter particles. */
+  new_parts = engine_do_redistribute("dmparts", dm_counts, (char *)s->dmparts,
+                                     nr_dmparts_new, sizeof(struct dmpart), dmpart_align,
+                                             dmpart_mpi_type, nr_nodes, nodeID, e->syncredist);
+    swift_free("dmparts", s->dmparts);
     s->dmparts = (struct dmpart *)new_parts;
     s->nr_dmparts = nr_dmparts_new;
     s->size_dmparts = engine_redistribute_alloc_margin * nr_dmparts_new;
@@ -1281,7 +1292,7 @@ void engine_redistribute(struct engine *e) {
   relink_data.g_counts = g_counts;
   relink_data.s_counts = s_counts;
   relink_data.b_counts = b_counts;
-    relink_data.dm_counts = dm_counts;
+  relink_data.dm_counts = dm_counts;
   relink_data.nodeID = nodeID;
   relink_data.nr_nodes = nr_nodes;
 
@@ -1294,7 +1305,7 @@ void engine_redistribute(struct engine *e) {
   free(g_counts);
   free(s_counts);
   free(b_counts);
-    free(dm_counts);
+  free(dm_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
@@ -1355,7 +1366,7 @@ void engine_redistribute(struct engine *e) {
   s->nr_extra_gparts = 0;
   s->nr_extra_sparts = 0;
   s->nr_extra_bparts = 0;
-    s->nr_extra_dmparts = 0;
+  s->nr_extra_dmparts = 0;
 
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;
