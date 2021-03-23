@@ -879,7 +879,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
               /* If the foreign cell is active, we want its ti_end values. */
               if (ci_active_dark_matter)
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
+                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_dmpart);
 
               /* Is the foreign cell active and will need stuff from us? */
               if (ci_active_dark_matter) {

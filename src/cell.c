@@ -5373,7 +5373,7 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
 
                 /* If the local cell is active, send its ti_end values. */
                 if (cj_active)
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_part, ci_nodeID);
+                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_dmpart, ci_nodeID);
 
             } else if (cj_nodeID != nodeID) {
                 
