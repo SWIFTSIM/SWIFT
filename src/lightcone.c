@@ -468,10 +468,9 @@ void lightcone_init_replication_list(struct lightcone_props *props,
  * The particle type is checked if we decide to output the
  * particle, at which point we call a type specific function.
  *
- * @param e The #engine structure.
- * @param gp The #gpart to check.
  */
 void lightcone_check_particle_crosses(struct lightcone_props *props,
+                                      struct replication_list *replication_list,
                                       const struct cosmology *c, const struct gpart *gp,
                                       const double *x, const float *v_full,
                                       const double dt_drift, const integertime_t ti_old,
@@ -487,8 +486,8 @@ void lightcone_check_particle_crosses(struct lightcone_props *props,
   /* Unpack some variables we need */
   const double boxsize = props->boxsize;
   const double *observer_position = props->observer_position;
-  const int nreps = props->replication_list.nrep;
-  const struct replication *rep = props->replication_list.replication;
+  const int nreps = replication_list->nrep;
+  const struct replication *rep = replication_list->replication;
 
   /* Consistency check - are our limits on the drift endpoints good? */
   if(ti_old < props->ti_old || ti_current > props->ti_current)

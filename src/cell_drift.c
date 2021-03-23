@@ -55,6 +55,16 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   struct part *const parts = c->hydro.parts;
   struct xpart *const xparts = c->hydro.xparts;
 
+#ifdef WITH_LIGHTCONE
+  struct replication_list replication_list;
+  if(c==c->top) {
+    replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
+                                     c, e->lightcone_properties->observer_position,
+                                     &replication_list);
+    c->replication_list = &replication_list;
+  }
+#endif
+
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
@@ -149,7 +159,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current, e->cosmology, e->hydro_properties,
-                 e->entropy_floor, e->lightcone_properties);
+                 e->entropy_floor, e->lightcone_properties, c->top->replication_list);
 
       /* Update the tracers properties */
       tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
@@ -245,6 +255,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       }
     }
 
+#ifdef WITH_LIGHTCONE
+    if(c==c->top) replication_list_clean(&replication_list);
+#endif
+
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
@@ -278,6 +292,16 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   const integertime_t ti_current = e->ti_current;
   struct gpart *const gparts = c->grav.parts;
   const struct gravity_props *grav_props = e->gravity_properties;
+
+#ifdef WITH_LIGHTCONE
+  struct replication_list replication_list;
+  if(c==c->top) {
+    replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
+                                     c, e->lightcone_properties->observer_position,
+                                     &replication_list);
+    c->replication_list = &replication_list;
+  }
+#endif
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
@@ -339,7 +363,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (gpart_is_inhibited(gp, e)) continue;
 
       /* Drift... */
-      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e);
+      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
+                  c->top->replication_list);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -396,6 +421,10 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       }
     }
 
+#ifdef WITH_LIGHTCONE
+    if(c==c->top) replication_list_clean(&replication_list);
+#endif
+
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
   }
@@ -420,6 +449,16 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   const integertime_t ti_old_spart = c->stars.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct spart *const sparts = c->stars.parts;
+
+#ifdef WITH_LIGHTCONE
+    struct replication_list replication_list;
+    if(c==c->top) {
+      replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
+                                       c, e->lightcone_properties->observer_position,
+                                       &replication_list);
+      c->replication_list = &replication_list;
+    }
+#endif
 
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
@@ -499,7 +538,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_spart, ti_current, e->cosmology,
-                  e->lightcone_properties);
+                  e->lightcone_properties, c->top->replication_list);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -573,6 +612,10 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       }
     }
 
+#ifdef WITH_LIGHTCONE
+    if(c==c->top) replication_list_clean(&replication_list);
+#endif
+
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
@@ -608,6 +651,16 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct bpart *const bparts = c->black_holes.parts;
+
+#ifdef WITH_LIGHTCONE
+  struct replication_list replication_list;
+  if(c==c->top) {
+    replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
+                                     c, e->lightcone_properties->observer_position,
+                                     &replication_list);
+    c->replication_list = &replication_list;
+  }
+#endif
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
@@ -676,7 +729,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       dt_drift = (ti_current - ti_old_bpart) * e->time_base;
     }
 
-    /* Loop over all the star particles in the cell */
+    /* Loop over all the black hole particles in the cell */
     const size_t nr_bparts = c->black_holes.count;
     for (size_t k = 0; k < nr_bparts; k++) {
 
@@ -688,7 +741,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_bpart(bp, dt_drift, ti_old_bpart, ti_current, e->cosmology,
-                  e->lightcone_properties);
+                  e->lightcone_properties, c->top->replication_list);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -754,6 +807,10 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
         cell_h_max_active = max(cell_h_max_active, bp->h);
       }
     }
+
+#ifdef WITH_LIGHTCONE
+    if(c==c->top) replication_list_clean(&replication_list);
+#endif
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
@@ -853,7 +910,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       dt_drift = (ti_current - ti_old_sink) * e->time_base;
     }
 
-    /* Loop over all the star particles in the cell */
+    /* Loop over all the sink particles in the cell */
     const size_t nr_sinks = c->sinks.count;
     for (size_t k = 0; k < nr_sinks; k++) {
 

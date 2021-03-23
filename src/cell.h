@@ -50,6 +50,7 @@
 /* Avoid cyclic inclusions */
 struct engine;
 struct scheduler;
+struct replication_list;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that
@@ -470,6 +471,11 @@ struct cell {
 
   /*! The list of sub-tasks that have been executed on this cell */
   char subtasks_executed[task_type_count];
+#endif
+
+#ifdef WITH_LIGHTCONE
+  /*! List of periodic replications of the cell which could contribute to the lightcone */
+  struct replication_list *replication_list;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

@@ -227,14 +227,14 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
     for(int j=0; j<3; j+=1) {
       double dx = abs(cell_rep_centre[j]) - 0.5*cell_eff_width[j];
       if(dx < 0.0)dx = 0.0;
-      cell_rmin2 += dx;
+      cell_rmin2 += dx*dx;
     }
 
     /* Compute maximum possible distance squared from observer to this replication of this cell */
     double cell_rmax2 = 0.0;
     for(int j=0; j<3; j+=1) {
       double dx = abs(cell_rep_centre[j]) + 0.5*cell_eff_width[j];
-      cell_rmax2 += dx;
+      cell_rmax2 += dx*dx;
     }
 
     /* Decide whether this cell could contribute to this replication */

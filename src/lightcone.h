@@ -118,6 +118,7 @@ void lightcone_init_replication_list(struct lightcone_props *props,
                                      const double dt_max);
 
 void lightcone_check_particle_crosses(struct lightcone_props *props,
+                                      struct replication_list *replication_list,
                                       const struct cosmology *c, const struct gpart *gp,
                                       const double *x, const float *v_full,
                                       const double dt_drift, const integertime_t ti_old,
