@@ -253,12 +253,14 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
- * @param t_rho The density comm. task, if it has already been created.
+ * @param t_xv The density comm. task, if it has already been created.
+ * @param t_rho The sidm comm. task, if it has already been created.
  * @param t_ti The send_ti_end task, if it has already been created.
  */
 void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
-                                struct cell *cj, struct task *t_rho, struct task *t_ti) {
+        struct cell *cj, struct task *t_xv, struct task *t_rho, struct task *t_ti) {
 
+#ifdef WITH_MPI
     struct link *l = NULL;
     struct scheduler *s = &e->sched;
     const int nodeID = cj->nodeID;
@@ -276,15 +278,16 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
     if (l != NULL) {
 
         /* Create the tasks and their dependencies? */
-        if (t_rho == NULL) {
+        if (t_xv == NULL) {
 
             /* Make sure this cell is tagged. */
             cell_ensure_tagged(ci);
 
+            t_xv = scheduler_addtask(s, task_type_send, task_subtype_dmpart_xv, ci->mpi.tag, 0, ci, cj);
+
             t_rho = scheduler_addtask(s, task_type_send, task_subtype_dmpart_rho, ci->mpi.tag, 0, ci, cj);
 
-            t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart,
-                                     ci->mpi.tag, 0, ci, cj);
+            t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart, ci->mpi.tag, 0, ci, cj);
 
             /* The send_rho task should unlock the super_hydro-cell's kick task. */
             scheduler_addunlock(s, t_rho, ci->dark_matter.super->dark_matter.sidm_kick);
@@ -292,13 +295,19 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
             /* The send_rho task depends on the cell's ghost task. */
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.ghost, t_rho);
 
+            /* The send_xv task should unlock the super_hydro-cell's ghost task. */
+            scheduler_addunlock(s, t_xv, ci->dark_matter.super->dark_matter.ghost);
+
             /* Drift before you send */
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.drift, t_rho);
+
+            scheduler_addunlock(s, ci->dark_matter.super->dark_matter.drift, t_xv);
 
             scheduler_addunlock(s, ci->super->timestep, t_ti);
         }
 
         /* Add them to the local cell. */
+        engine_addlink(e, &ci->mpi.send, t_xv);
         engine_addlink(e, &ci->mpi.send, t_rho);
         engine_addlink(e, &ci->mpi.send, t_ti);
     }
@@ -307,7 +316,7 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
     if (ci->split)
         for (int k = 0; k < 8; k++)
             if (ci->progeny[k] != NULL)
-                engine_addtasks_send_dark_matter(e, ci->progeny[k], cj, t_rho, t_ti);
+                engine_addtasks_send_dark_matter(e, ci->progeny[k], cj, t_xv, t_rho, t_ti);
 
 #else
     error("SWIFT was not compiled with MPI support.");
@@ -641,7 +650,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
-                                struct task *t_rho, struct task *t_ti) {
+        struct task *t_xv, struct task *t_rho, struct task *t_ti) {
 
 #ifdef WITH_MPI
     struct scheduler *s = &e->sched;
@@ -650,7 +659,7 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any hydro tasks ? */
-  if (t_rho == NULL && c->dark_matter.density != NULL) {
+  if (t_xv == NULL && c->dark_matter.density != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
@@ -658,6 +667,8 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Create the tasks. */
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_dmpart_xv, c->mpi.tag, 0, c, NULL);
+
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_dmpart_rho, c->mpi.tag,
                               0, c, NULL);
 
@@ -666,25 +677,27 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
 
   }
 
-  if (t_rho != NULL) {
-    engine_addlink(e, &c->mpi.recv, t_rho);
-    engine_addlink(e, &c->mpi.recv, t_ti);
+  if (t_xv != NULL) {
+      engine_addlink(e, &c->mpi.recv, t_xv);
+      engine_addlink(e, &c->mpi.recv, t_rho);
+      engine_addlink(e, &c->mpi.recv, t_ti);
 
-    /* Add dependencies. */
-    for (struct link *l = c->dark_matter.density; l != NULL; l = l->next) {
-      scheduler_addunlock(s, l->t, t_rho);
-    }
-    for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_rho, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
-    }
+      /* Add dependencies. */
+      for (struct link *l = c->dark_matter.density; l != NULL; l = l->next) {
+          scheduler_addunlock(s, t_xv, l->t);
+          scheduler_addunlock(s, l->t, t_rho);
+      }
+      for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) {
+          scheduler_addunlock(s, t_rho, l->t);
+          scheduler_addunlock(s, l->t, t_ti);
+      }
   }
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_dark_matter(e, c->progeny[k], t_rho, t_ti);
+        engine_addtasks_recv_dark_matter(e, c->progeny[k], t_xv, t_rho, t_ti);
 
 #else
     error("SWIFT was not compiled with MPI support.");

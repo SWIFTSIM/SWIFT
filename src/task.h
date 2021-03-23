@@ -130,6 +130,7 @@ enum task_subtypes {
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
+  task_subtype_dmpart_xv,
   task_subtype_dmpart_rho,
   task_subtype_stars_density,
   task_subtype_stars_feedback,

@@ -333,10 +333,8 @@ void runner_do_recv_dmpart(struct runner *r, struct cell *c, int clear_sorts,
         for (int k = 0; k < 8; k++) {
             if (c->progeny[k] != NULL && c->progeny[k]->dark_matter.count > 0) {
                 runner_do_recv_dmpart(r, c->progeny[k], clear_sorts, 0);
-                ti_dark_matter_end_min =
-                min(ti_dark_matter_end_min, c->progeny[k]->dark_matter.ti_end_min);
-                ti_dark_matter_end_max =
-                max(ti_dark_matter_end_max, c->progeny[k]->dark_matter.ti_end_max);
+                ti_dark_matter_end_min = min(ti_dark_matter_end_min, c->progeny[k]->dark_matter.ti_end_min);
+                ti_dark_matter_end_max = max(ti_dark_matter_end_max, c->progeny[k]->dark_matter.ti_end_max);
                 h_max = max(h_max, c->progeny[k]->dark_matter.h_max);
             }
         }
