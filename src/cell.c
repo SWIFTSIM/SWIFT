@@ -468,7 +468,7 @@ int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts) {
 #endif
     
     /* Do we have a gravity task at this level? */
-    if (cell_get_recv(c, task_subtype_dmpart) != NULL) {
+    if (cell_get_recv(c, task_subtype_dmpart_xv) != NULL) {
         
         /* Recursively attach the gparts */
         const int counts = cell_link_dmparts(c, dmparts);
@@ -626,7 +626,7 @@ int cell_count_dmparts_for_tasks(const struct cell *c) {
 #endif
     
     /* Do we have a gravity task at this level? */
-    if (cell_get_recv(c, task_subtype_dmpart) != NULL) {
+    if (cell_get_recv(c, task_subtype_dmpart_xv) != NULL) {
         return c->dark_matter.count;
     }
     
@@ -5298,47 +5298,45 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
         if ((ci_active && ci_nodeID == nodeID) ||
             (cj_active && cj_nodeID == nodeID)) {
             scheduler_activate(s, t);
-            
+
             /* Activate dark matter drift */
             if (t->type == task_type_self) {
                 if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
                 /*if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);*/
                 if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
 
+            } else if (t->type == task_type_pair) {
+                /* Activate the drift tasks. */
+                if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
+                if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
+
+                if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
+                if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
+
+                /* Activate the limiter tasks. */
+                /*if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
+                if (cj_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
             }
 
-            else if (t->type == task_type_pair) {
-                    /* Activate the drift tasks. */
-                    if (ci_nodeID == nodeID) cell_activate_drift_dmpart(ci, s);
-                    if (ci_nodeID == nodeID) cell_activate_sync_dmpart(ci, s);
-                
-                    if (cj_nodeID == nodeID) cell_activate_drift_dmpart(cj, s);
-                    if (cj_nodeID == nodeID) cell_activate_sync_dmpart(cj, s);
-                
-                    /* Activate the limiter tasks. */
-                    /*if (ci_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(ci, s);
-                    if (cj_nodeID == nodeID && with_timestep_limiter) cell_activate_dm_limiter(cj, s);*/
-            }
-            
-            /* Store current values of dx_max and h_max. */
+                /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_self) {
                 cell_activate_subcell_dark_matter_tasks(ci, NULL, s);
             }
-            
-            /* Store current values of dx_max and h_max. */
+
+                /* Store current values of dx_max and h_max. */
             else if (t->type == task_type_sub_pair) {
                 cell_activate_subcell_dark_matter_tasks(ci, cj, s);
             }
         }
-        
+
         /* Only interested in pair interactions as of here. */
         if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-            
+
             /* Check whether there was too much particle motion, i.e. the
              cell neighbour conditions were violated. */
             if (cell_need_rebuild_for_dark_matter_pair(ci, cj)) rebuild = 1;
 
-            
+
 #ifdef WITH_MPI
             /* Activate the send/recv tasks. */
             if (ci_nodeID != nodeID) {
@@ -5413,11 +5411,11 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
                 /* If the local cell is active, send its ti_end values. */
                 if (ci_active)
                   scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_dmpart, cj_nodeID);
-
-#endif
             }
+#endif
         }
-    
+    }
+
     /* Unskip all the other task types. */
     if (c->nodeID == nodeID && cell_is_active_dark_matter(c, e)) {
         for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) scheduler_activate(s, l->t);

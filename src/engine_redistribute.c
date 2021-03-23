@@ -406,6 +406,17 @@ static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 1);
 static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 0);
 #endif
 
+/**
+ * @brief Save position of dmpart-gpart links.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ */
+#ifdef SWIFT_DEBUG_CHECKS
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(dmpart, 1);
+#else
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(dmpart, 0);
+#endif
+
+
 #endif /* savelink_mapper_data */
 
 #ifdef WITH_MPI /* relink_mapper_data */
@@ -443,7 +454,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
   int *g_counts = mydata->g_counts;
   int *s_counts = mydata->s_counts;
   int *b_counts = mydata->b_counts;
-    int *dm_counts = mydata->dm_counts;
+  int *dm_counts = mydata->dm_counts;
   struct space *s = mydata->s;
 
   for (int i = 0; i < num_elements; i++) {
@@ -455,14 +466,14 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
     size_t offset_gparts = 0;
     size_t offset_sparts = 0;
     size_t offset_bparts = 0;
-      size_t offset_dmparts = 0;
+    size_t offset_dmparts = 0;
     for (int n = 0; n < node; n++) {
       int ind_recv = n * nr_nodes + nodeID;
       offset_parts += counts[ind_recv];
       offset_gparts += g_counts[ind_recv];
       offset_sparts += s_counts[ind_recv];
       offset_bparts += b_counts[ind_recv];
-        offset_dmparts += dm_counts[ind_recv];
+      offset_dmparts += dm_counts[ind_recv];
     }
 
     /* Number of gparts sent from this node. */
@@ -915,18 +926,6 @@ void engine_redistribute(struct engine *e) {
   int *dm_dest;
   if ((dm_dest = (int *)swift_malloc("dm_dest", sizeof(int) * nr_dmparts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
-
-  /* Simple index of node IDs, used for mappers over nodes. */
-  int *nodes = NULL;
-  if ((nodes = (int *)malloc(sizeof(int) * nr_nodes)) == NULL)
-    error("Failed to allocate nodes temporary buffer.");
-  for (int k = 0; k < nr_nodes; k++) nodes[k] = k;
-
-  /* Get destination of each particle */
-  struct redist_mapper_data redist_data;
-  redist_data.s = s;
-  redist_data.nodeID = nodeID;
-  redist_data.nr_nodes = nr_nodes;
 
   redist_data.counts = dm_counts;
   redist_data.dest = dm_dest;
