@@ -182,6 +182,7 @@ int main(int argc, char *argv[]) {
   int with_rt = 0;
   int verbose = 0;
   int nr_threads = 1;
+  int nr_pool_threads = 1;
   int with_verbose_timers = 0;
   char *output_parameters_filename = NULL;
   char *cpufreqarg = NULL;
@@ -298,9 +299,15 @@ int main(int argc, char *argv[]) {
                  handle_cmdparam, (intptr_t)&cmdps, 0),
       OPT_BOOLEAN('r', "restart", &restart, "Continue using restart files.",
                   NULL, 0, 0),
-      OPT_INTEGER('t', "threads", &nr_threads,
-                  "The number of threads to use on each MPI rank. Defaults to "
-                  "1 if not specified.",
+      OPT_INTEGER(
+          't', "threads", &nr_threads,
+          "The number of task threads to use on each MPI rank. Defaults to "
+          "1 if not specified.",
+          NULL, 0, 0),
+      OPT_INTEGER(0, "pool-threads", &nr_pool_threads,
+                  "The number of threads to use on each MPI rank for the "
+                  "threadpool operations. "
+                  "Defaults to the numbers of task threads if not specified.",
                   NULL, 0, 0),
       OPT_INTEGER('T', "timers", &with_verbose_timers,
                   "Print timers every time-step.", NULL, 0, 0),
@@ -359,6 +366,9 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+
+  /* Deal with thread numbers */
+  if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
 
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
@@ -931,7 +941,7 @@ int main(int argc, char *argv[]) {
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, with_aff, talking, restart_file);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
@@ -1416,7 +1426,7 @@ int main(int argc, char *argv[]) {
                 &rt_properties, &mesh, &potential, &cooling_func, &starform,
                 &chemistry, &fof_properties, &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, with_aff, talking, restart_file);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
