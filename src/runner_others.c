@@ -179,10 +179,108 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Spawns some stars from the sink particles.
  *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_star_formation_sink(struct runner *r, struct cell *c,
+                                   int timer) {
+
+  struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct sink_props *sink_props = e->sink_properties;
+  const int count = c->sinks.count;
+  struct sink *restrict sinks = c->sinks.parts;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const struct unit_system *restrict us = e->internal_units;
+  const int current_stars_count = c->stars.count;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running star formation task on a foreign node!");
+#endif
+
+  /* Anything to do here? */
+  if (count == 0 || !cell_is_active_sinks(c, e)) {
+    return;
+  }
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_star_formation_sink(r, cp, 0);
+
+        /* Update the h_max */
+        c->stars.h_max = max(c->stars.h_max, cp->stars.h_max);
+        c->stars.h_max_active =
+            max(c->stars.h_max_active, cp->stars.h_max_active);
+      }
+  } else {
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct sink *restrict s = &sinks[k];
+
+      /* Only work on active particles */
+      if (sink_is_active(s, e)) {
+
+#ifdef WITH_LOGGER
+        error("TODO");
+#endif
+
+        /* Spawn as many sink as necessary */
+        while (sink_spawn_star(s, e, sink_props, cosmo, with_cosmology,
+                               phys_const, us)) {
+
+          /* Create a new star */
+          struct spart *sp = cell_spawn_new_spart_from_sink(e, c, s);
+          if (sp == NULL)
+            error("Run out of available star particles or gparts");
+
+          /* Copy the properties to the star particle */
+          sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
+                                       with_cosmology, phys_const, us);
+
+          /* Update the h_max */
+          c->stars.h_max = max(c->stars.h_max, sp->h);
+          c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+        }
+      }
+    } /* Loop over the particles */
+  }
+
+  /* If we formed any stars, the star sorts are now invalid. We need to
+   * re-compute them. */
+  if (with_feedback && (c == c->top) &&
+      (current_stars_count != c->stars.count)) {
+    cell_set_star_resort_flag(c);
+  }
+
+  if (timer) TIMER_TOC(timer_do_star_formation);
+}
+
+/**
+ * @brief Convert some hydro particles into stars depending on the star
+ * formation model.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
  */
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
-
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct star_formation *sf_props = e->star_formation;
@@ -470,7 +568,6 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
             dt_sink =
                 cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-
           } else {
             dt_sink = get_timestep(p->time_bin, time_base);
           }

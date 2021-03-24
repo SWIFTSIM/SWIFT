@@ -129,6 +129,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.prep1_ghost = NULL;
     c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
+    c->hydro.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
     c->stars.prep1_ghost = NULL;
