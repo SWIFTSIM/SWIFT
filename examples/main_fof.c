@@ -647,7 +647,7 @@ int main(int argc, char *argv[]) {
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       &fof_properties, /*los_properties=*/NULL);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
-                nr_threads, with_aff, talking, NULL);
+                nr_threads, nr_threads, with_aff, talking, NULL);
 
   if (myrank == 0) {
     clocks_gettime(&toc);
