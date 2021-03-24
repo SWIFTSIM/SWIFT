@@ -135,19 +135,21 @@ static void engine_dumper_init(struct engine *e) {
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
- * @param nr_threads The number of threads per MPI rank.
+ * @param nr_task_threads The number of engine threads per MPI rank.
+ * @param nr_pool_threads The number of threadpool threads per MPI rank.
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
-                   const char *restart_file) {
+                   int nr_task_threads, int nr_pool_threads, int with_aff,
+                   int verbose, const char *restart_file) {
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
-  e->nr_threads = nr_threads;
+  e->nr_threads = nr_task_threads;
+  e->nr_pool_threads = nr_pool_threads;
   e->nr_nodes = nr_nodes;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
@@ -217,9 +219,9 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Get the number of queues */
   int nr_queues =
-      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
+      parser_get_opt_param_int(params, "Scheduler:nr_queues", e->nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
-  if (nr_queues != nr_threads)
+  if (nr_queues != nr_task_threads)
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
 
@@ -438,7 +440,7 @@ void engine_config(int restart, int fof, struct engine *e,
                                 engine_default_timesteps_file_name);
 
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
-            nr_nodes * nr_threads);
+            nr_nodes * nr_task_threads);
     e->file_timesteps = fopen(timestepsfileName, mode);
 
     if (!restart) {
@@ -735,7 +737,8 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 
   /* Initialize the threadpool. */
-  threadpool_init(&e->threadpool, e->nr_threads);
+  threadpool_init(&e->threadpool, nr_pool_threads);
+  if (verbose) message("Using %d threads in the thread-pool", nr_pool_threads);
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
