@@ -114,6 +114,34 @@ INLINE static void convert_part_sub_species_frac(const struct engine* e,
   ret[2] /= sum;
 }
 
+INLINE static void convert_part_HI_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const float X_H =
+      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
+
+  const float HI_frac = cooling_get_particle_subgrid_HI_fraction(
+      e->internal_units, e->physical_constants, e->cosmology,
+      e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
+
+  *ret = hydro_get_mass(p) * X_H * HI_frac;
+}
+
+INLINE static void convert_part_H2_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const float X_H =
+      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
+
+  const float H2_frac = cooling_get_particle_subgrid_H2_fraction(
+      e->internal_units, e->physical_constants, e->cosmology,
+      e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
+
+  *ret = hydro_get_mass(p) * X_H * H2_frac * 2.f;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -160,7 +188,23 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "above deltaT of the entropy floor, the normal hydro quantities are "
       "used.");
 
-  return 4;
+  list[4] = io_make_output_field_convert_part(
+      "AtomicHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_HI_mass,
+      "Atomic hydrogen masses containted in the particles. This quantity is "
+      "obtained from the cooling tables and, if the particle is on the entropy "
+      "floor, by extrapolating to the equilibrium curve assuming constant "
+      "pressure.");
+
+  list[5] = io_make_output_field_convert_part(
+      "MolecularHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_H2_mass,
+      "Molecular hydrogen masses containted in the particles. This quantity is "
+      "obtained from the cooling tables and, if the particle is on the entropy "
+      "floor, by extrapolating to the equilibrium curve assuming constant "
+      "pressure.");
+
+  return 6;
 }
 
 #endif /* SWIFT_COOLING_COLIBRE_IO_H */
