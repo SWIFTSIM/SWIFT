@@ -688,8 +688,8 @@ runner_iact_nonsym_bh_gas_feedback(
 
       /* Store the feedback energy */
       const double delta_energy = delta_u * hydro_get_mass(pj);
-      tracers_after_black_holes_feedback(xpj, with_cosmology, cosmo->a, time,
-                                         delta_energy);
+      tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
+                                         time, delta_energy);
 
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */

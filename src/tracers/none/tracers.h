@@ -123,6 +123,7 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {}
  *
  * Nothing to do here.
  *
+ * @param p The particle data.
  * @param xp The extended particle data.
  * @param with_cosmology Are we running with cosmology?
  * @param scale_factor The current scale-factor (if running with cosmo)
@@ -131,8 +132,8 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {}
  * units)
  */
 static INLINE void tracers_after_black_holes_feedback(
-    struct xpart *xp, const int with_cosmology, const float scale_factor,
-    const double time, const double delta_energy) {}
+    const struct part *p, struct xpart *xp, const int with_cosmology,
+    const float scale_factor, const double time, const double delta_energy) {}
 
 /**
  * @brief Split the tracer content of a particle into n pieces

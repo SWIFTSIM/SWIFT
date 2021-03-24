@@ -135,6 +135,8 @@ static INLINE void tracers_first_init_xpart(
   xp->tracers_data.hit_by_SNII_feedback = 0;
   xp->tracers_data.hit_by_AGN_feedback = 0;
   xp->tracers_data.AGN_feedback_energy = 0.f;
+  xp->tracers_data.last_AGN_injection_scale_factor = -1.f;
+  xp->tracers_data.density_at_last_AGN_feedback_event = -1.f;
 }
 
 /**
@@ -160,8 +162,17 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {
  * (internal physical units)
  */
 static INLINE void tracers_after_black_holes_feedback(
-    struct xpart *xp, const int with_cosmology, const float scale_factor,
-    const double time, const double delta_energy) {
+    const struct part *p, struct xpart *xp, const int with_cosmology,
+    const float scale_factor, const double time, const double delta_energy) {
+
+  if (with_cosmology)
+    xp->tracers_data.last_AGN_injection_scale_factor = scale_factor;
+  else
+    xp->tracers_data.last_AGN_injection_time = time;
+
+  xp->tracers_data.density_at_last_AGN_feedback_event =
+      hydro_get_comoving_density(p) /
+      (scale_factor * scale_factor * scale_factor);
 
   xp->tracers_data.hit_by_AGN_feedback++;
   xp->tracers_data.AGN_feedback_energy += delta_energy;
