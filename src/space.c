@@ -1986,13 +1986,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     
     /* Re-allocate the index array for the dmparts if needed.. */
     if (s->nr_dmparts + 1 > s_index_size) {
-        int *bind_new;
-        if ((bind_new = (int *)swift_malloc(
+        int *dmind_new;
+        if ((dmind_new = (int *)swift_malloc(
                                             "dm_index", sizeof(int) * (s->nr_dmparts + 1))) == NULL)
             error("Failed to allocate temporary dm-particle indices.");
-        memcpy(bind_new, dm_index, sizeof(int) * nr_dmparts);
+        memcpy(dmind_new, dm_index, sizeof(int) * nr_dmparts);
         swift_free("dm_index", dm_index);
-        dm_index = bind_new;
+        dm_index = dmind_new;
     }
 
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -2284,8 +2284,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   swift_free("cell_spart_counts", cell_spart_counts);
   swift_free("b_index", b_index);
   swift_free("cell_bpart_counts", cell_bpart_counts);
-    swift_free("dm_index", dm_index);
-    swift_free("cell_dmpart_counts", cell_dmpart_counts);
+  swift_free("dm_index", dm_index);
+  swift_free("cell_dmpart_counts", cell_dmpart_counts);
   swift_free("sink_index", sink_index);
   swift_free("cell_sink_counts", cell_sink_counts);
 

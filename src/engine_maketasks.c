@@ -653,7 +653,7 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
         struct task *t_xv, struct task *t_rho, struct task *t_ti) {
 
 #ifdef WITH_MPI
-    struct scheduler *s = &e->sched;
+   struct scheduler *s = &e->sched;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -2112,10 +2112,10 @@ void engine_make_dark_matter_loops_tasks_mapper(void *map_data, int num_elements
         const long long flags = t->flags;
         struct cell *const ci = t->ci;
         struct cell *const cj = t->cj;
-        
+
         /* Escape early */
         if (t->type == task_type_none) continue;
-        
+
         /* Self-interaction? */
         else if (t_type == task_type_self && t_subtype == task_subtype_dark_matter_density) {
             
@@ -3506,7 +3506,54 @@ void engine_make_dark_matter_tasks_mapper(void *map_data, int num_elements,
                     const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
                     scheduler_addtask(sched, task_type_pair, task_subtype_dark_matter_density, sid, 0,
                                       ci, cj);
-                    
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+                    /* Let's cross-check that we had a proxy for that cell */
+                    if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+                        /* Find the proxy for this node */
+                      const int proxy_id = e->proxy_ind[cj->nodeID];
+                      if (proxy_id < 0)
+                        error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+                      const struct proxy *p = &e->proxies[proxy_id];
+
+                      /* Check whether the cell exists in the proxy */
+                      int n = 0;
+                      for (; n < p->nr_cells_in; n++)
+                        if (p->cells_in[n] == cj) {
+                          break;
+                        }
+                      if (n == p->nr_cells_in)
+                        error(
+                            "Cell %d not found in the proxy but trying to construct "
+                            "grav task!",
+                            cjd);
+                    } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+                      /* Find the proxy for this node */
+                      const int proxy_id = e->proxy_ind[ci->nodeID];
+                      if (proxy_id < 0)
+                        error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+                      const struct proxy *p = &e->proxies[proxy_id];
+
+                      /* Check whether the cell exists in the proxy */
+                      int n = 0;
+                      for (; n < p->nr_cells_in; n++)
+                        if (p->cells_in[n] == ci) {
+                          break;
+                        }
+                      if (n == p->nr_cells_in)
+                        error(
+                            "Cell %d not found in the proxy but trying to construct "
+                            "grav task!",
+                            cid);
+                    }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
                 }
             }
         }
@@ -3557,16 +3604,17 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                        /*t_feedback=*/NULL,
                                        /*t_ti=*/NULL);
 
-    /* Add the send tasks for the cells in the proxy that have a gravity
+    /* Add the send tasks for the cells in the proxy that have a dark matter
      * connection. */
+    if (type & proxy_cell_type_gravity)
+        engine_addtasks_send_dark_matter(e, ci, cj,/*t_xv=*/NULL,/*t_rho=*/NULL,/*t_ti=*/NULL);
+
+      /* Add the send tasks for the cells in the proxy that have a gravity
+       * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_send_gravity(e, ci, cj, NULL, NULL);
 
-    /* Add the send tasks for the cells in the proxy that have a dark matter
-     * connection. */
-    if (type & proxy_cell_type_gravity)
-      engine_addtasks_send_dark_matter(e, ci, cj,/*t_xv=*/NULL,/*t_rho=*/NULL,/*t_ti=*/NULL);
   }
 }
 
@@ -3606,17 +3654,16 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                        /*t_gas_swallow=*/NULL,
                                        /*t_feedback=*/NULL,
                                        /*t_ti=*/NULL);
+    /* Add the recv tasks for the cells in the proxy that have a hydro
+     * connection. */
+    if (type & proxy_cell_type_gravity)
+        engine_addtasks_recv_dark_matter(e, ci,/*t_xv=*/NULL,/*t_rho=*/NULL,/*t_ti=*/NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_ti=*/NULL);
-      
-      /* Add the recv tasks for the cells in the proxy that have a hydro
-       * connection. */
-    if (type & proxy_cell_type_gravity)
-      engine_addtasks_recv_dark_matter(e, ci,/*t_xv=*/NULL,/*t_rho=*/NULL,/*t_ti=*/NULL);
 
   }
 }

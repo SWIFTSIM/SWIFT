@@ -1606,11 +1606,13 @@ __attribute__((always_inline)) INLINE static void cell_ensure_tagged(
     struct cell *c) {
 #ifdef WITH_MPI
 
-  lock_lock(&c->hydro.lock);
+ /* lock_lock(&c->hydro.lock);*/
+  lock_lock(&c->dark_matter.lock);
   if (c->mpi.tag < 0 &&
       (c->mpi.tag = atomic_inc(&cell_next_tag)) > cell_max_tag)
     error("Ran out of cell tags.");
-  if (lock_unlock(&c->hydro.lock) != 0) {
+ /* if (lock_unlock(&c->hydro.lock) != 0) {*/
+  if (lock_unlock(&c->dark_matter.lock) != 0) {
     error("Failed to unlock cell.");
   }
 #else

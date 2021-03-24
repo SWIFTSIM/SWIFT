@@ -625,7 +625,7 @@ int cell_count_dmparts_for_tasks(const struct cell *c) {
         error("Counting foreign particles in a local cell!");
 #endif
     
-    /* Do we have a gravity task at this level? */
+    /* Do we have a dark matter task at this level? */
     if (cell_get_recv(c, task_subtype_dmpart_xv) != NULL) {
         return c->dark_matter.count;
     }
@@ -4072,7 +4072,7 @@ void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
         }
     }
     
-    /* Otherwise, pair interation */
+    /* Otherwise, pair interaction */
     else {
         /* Should we even bother? */
         if (!cell_is_active_dark_matter(ci, e) && !cell_is_active_dark_matter(cj, e)) return;
@@ -5273,7 +5273,7 @@ void cell_activate_dark_matter_ghost(struct cell *c, struct scheduler *s,
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
-    
+
     struct engine *e = s->space->e;
     /*const int with_timestep_limiter = (e->policy & engine_policy_timestep_limiter);*/
     const int nodeID = e->nodeID;

@@ -72,7 +72,7 @@ struct proxy {
   struct gpart *gparts_in, *gparts_out;
   struct spart *sparts_in, *sparts_out;
   struct bpart *bparts_in, *bparts_out;
-    struct dmpart *dmparts_in, *dmparts_out;
+  struct dmpart *dmparts_in, *dmparts_out;
   int size_parts_in, size_parts_out;
   int nr_parts_in, nr_parts_out;
   int size_gparts_in, size_gparts_out;
@@ -81,8 +81,8 @@ struct proxy {
   int nr_sparts_in, nr_sparts_out;
   int size_bparts_in, size_bparts_out;
   int nr_bparts_in, nr_bparts_out;
-    int size_dmparts_in, size_dmparts_out;
-    int nr_dmparts_in, nr_dmparts_out;
+  int size_dmparts_in, size_dmparts_out;
+  int nr_dmparts_in, nr_dmparts_out;
 
   /* Buffer to hold the incomming/outgoing particle counts. */
   int buff_out[5], buff_in[5];
@@ -95,7 +95,7 @@ struct proxy {
   MPI_Request req_gparts_out, req_gparts_in;
   MPI_Request req_sparts_out, req_sparts_in;
   MPI_Request req_bparts_out, req_bparts_in;
-    MPI_Request req_dmparts_out, req_dmparts_in;
+  MPI_Request req_dmparts_out, req_dmparts_in;
   MPI_Request req_cells_count_out, req_cells_count_in;
   MPI_Request req_cells_out, req_cells_in;
 #endif

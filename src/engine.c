@@ -1500,8 +1500,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts);
         gparts = &gparts[count_gparts];
 
-        const size_t count_dmparts =
-            cell_link_foreign_dmparts(e->proxies[k].cells_in[j], dmparts);
+        const size_t count_dmparts = cell_link_foreign_dmparts(e->proxies[k].cells_in[j], dmparts);
         dmparts = &dmparts[count_dmparts];
 
       }

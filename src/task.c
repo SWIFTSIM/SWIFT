@@ -114,7 +114,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",    "grav",         "external_grav",  "tend_part",
     "tend_gpart", "tend_spart",   "tend_bpart",   "tend_dmpart",  "xv",
     "rho",        "part_swallow", "bpart_merger", "gpart",
-    "multipole",  "spart",        "dmpart",       "stars_density",  "stars_feedback",
+    "multipole",  "spart",        "dmpart_xv",  "dmpart_rho", "stars_density",  "stars_feedback",
     "sf_count",   "bpart_rho",    "bpart_swallow",  "bpart_feedback",
     "bh_density", "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
     "bh_feedback",};
@@ -273,6 +273,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         return task_action_part;
       else if (t->ci->grav.count > 0)
         return task_action_gpart;
+      else if (t->ci->dark_matter.count > 0)
+          return task_action_dmpart;
       else {
 #ifdef SWIFT_DEBUG_CHECKS
         error("Task without particles");

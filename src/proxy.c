@@ -616,7 +616,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
         if (MPI_Isend(p->dmparts_out, p->nr_dmparts_out, dmpart_mpi_type, p->nodeID,
                       p->mynodeID * proxy_tag_shift + proxy_tag_dmparts,
                       MPI_COMM_WORLD, &p->req_dmparts_out) != MPI_SUCCESS)
-            error("Failed to isend spart data.");
+            error("Failed to isend dmpart data.");
         // message( "isent spart data (%i) to node %i." , p->nr_sparts_out ,
         // p->nodeID ); fflush(stdout);
     }
@@ -641,7 +641,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
   p->nr_gparts_in = p->buff_in[1];
   p->nr_sparts_in = p->buff_in[2];
   p->nr_bparts_in = p->buff_in[3];
-    p->nr_dmparts_in = p->buff_in[4];
+  p->nr_dmparts_in = p->buff_in[4];
 
   /* Is there enough space in the buffers? */
   if (p->nr_parts_in > p->size_parts_in) {
@@ -1130,13 +1130,13 @@ void proxy_clean(struct proxy *p) {
   swift_free("gparts_out", p->gparts_out);
   swift_free("sparts_out", p->sparts_out);
   swift_free("bparts_out", p->bparts_out);
-    swift_free("dmparts_out", p->dmparts_out);
+  swift_free("dmparts_out", p->dmparts_out);
   swift_free("parts_in", p->parts_in);
   swift_free("xparts_in", p->xparts_in);
   swift_free("gparts_in", p->gparts_in);
   swift_free("sparts_in", p->sparts_in);
   swift_free("bparts_in", p->bparts_in);
-    swift_free("dmparts_in", p->dmparts_in);
+  swift_free("dmparts_in", p->dmparts_in);
 }
 
 /**
