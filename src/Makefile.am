@@ -64,7 +64,8 @@ include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += logger_history.h chemistry_logger.h star_formation_particle_logger.h
-include_HEADERS += healpix_map.h lightcone.h lightcone_io.h lightcone_replications.h particle_buffer.h
+include_HEADERS += healpix_map.h lightcone.h lightcone_io.h lightcone_replications.h lightcone_crossing.h
+include_HEADERS += particle_buffer.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =

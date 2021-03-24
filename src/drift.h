@@ -32,6 +32,7 @@
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "lightcone.h"
+#include "lightcone_crossing.h"
 #include "part.h"
 #include "sink.h"
 #include "stars.h"

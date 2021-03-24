@@ -30,11 +30,9 @@
 #include "particle_buffer.h"
 #include "timeline.h"
 
-
 /* Avoid cyclic inclusions */
 struct cosmology;
 struct engine;
-struct gpart;
 struct space;
 
 /**
@@ -116,14 +114,6 @@ void lightcone_init_replication_list(struct lightcone_props *props,
                                      const integertime_t ti_old,
                                      const integertime_t ti_current,
                                      const double dt_max);
-
-void lightcone_check_particle_crosses(struct lightcone_props *props,
-                                      struct replication_list *replication_list,
-                                      const struct cosmology *c, const struct gpart *gp,
-                                      const double *x, const float *v_full,
-                                      const double dt_drift, const integertime_t ti_old,
-                                      const integertime_t ti_current,
-                                      void *extra1, void *extra2);
 
 void lightcone_flush_buffers(struct lightcone_props *props,
                                int flush_all, int end_file);
