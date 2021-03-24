@@ -55,6 +55,9 @@ struct lightcone_props {
   /*! Redshift range the lightcone covers */
   double z_min, z_max;
 
+  /*! Corresponding range in distance squared */
+  double r2_min, r2_max;
+
   /*! Size of chunks in particle buffer */
   int buffer_chunk_size;
 

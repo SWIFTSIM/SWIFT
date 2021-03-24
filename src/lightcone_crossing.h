@@ -190,6 +190,12 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
       x_start[2] + dt_drift * f * v_full[2],
     };
 
+    /* Check if particle is in our distance limits at crossing */
+    const double r2_cross = (x_cross[0]*x_cross[0] +
+                             x_cross[1]*x_cross[1] + 
+                             x_cross[2]*x_cross[2]);
+    if(r2_cross < props->r2_min || r2_cross > props->r2_max)continue;
+
     /* Need to write out this particle */
     switch (gp->type) {
 

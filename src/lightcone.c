@@ -146,6 +146,10 @@ void lightcone_init(struct lightcone_props *props,
   props->a_at_z_min = 1.0/(1.0+props->z_min);
   props->a_at_z_max = 1.0/(1.0+props->z_max);
 
+  /* Find corresponding distance squared */
+  props->r2_max = pow(cosmology_get_comoving_distance(cosmo, props->a_at_z_max), 2.0);
+  props->r2_min = pow(cosmology_get_comoving_distance(cosmo, props->a_at_z_min), 2.0);
+
   /* Estimate number of particles which will be output.
 
      Assumptions:
