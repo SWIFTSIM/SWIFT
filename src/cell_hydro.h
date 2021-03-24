@@ -100,6 +100,9 @@ struct cell_hydro {
     /*! Task for star formation */
     struct task *star_formation;
 
+    /*! Task for star formation from sink particles */
+    struct task *star_formation_sink;
+
     /*! Task for sink formation */
     struct task *sink_formation;
 

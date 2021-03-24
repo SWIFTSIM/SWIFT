@@ -30,7 +30,9 @@ Snapshots:
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
 
 Scheduler:
+  cell_extra_gparts: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sinks: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts: 100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -56,7 +58,7 @@ SPH:
   particle_splitting_mass_threshold: 7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
   generate_random_ids:               0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
   initial_temperature:               0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
-  minimal_temperature:               0        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
+  minimal_temperature:               10       # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:                   0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
   H_ionization_temperature:          1e4      # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
   viscosity_alpha:                   0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
@@ -82,4 +84,7 @@ HernquistPotential:
   epsilon:         0.2      # Softening size (internal units)
 
 DefaultSink:
+  cut_off_radius: 0.1      # Cut off radius of all the sinks in internal units.
+
+GEARSink:
   cut_off_radius: 0.1      # Cut off radius of all the sinks in internal units.
