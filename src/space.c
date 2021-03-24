@@ -171,7 +171,7 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells[ind]];
-    cell_reorder_extra_gparts(c, s->parts, s->sparts);
+    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks);
   }
 }
 
@@ -1047,6 +1047,7 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param star_formation flag whether we are doing star formation or not?
+ * @param with_sink flag whether we are doing sink particles or not?
  * @param DM_background Are we running with some DM background particles?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
@@ -1064,7 +1065,7 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
-                int hydro, int self_gravity, int star_formation,
+                int hydro, int self_gravity, int star_formation, int with_sink,
                 int DM_background, int neutrinos, int verbose, int dry_run,
                 int nr_nodes) {
 
@@ -1079,6 +1080,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_self_gravity = self_gravity;
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
+  s->with_sink = with_sink;
   s->with_DM_background = DM_background;
   s->with_neutrinos = neutrinos;
   s->nr_parts = Npart;
@@ -1402,22 +1404,36 @@ void space_init(struct space *s, struct swift_params *params,
 #endif
 
   /* Do we want any spare particles for on the fly creation? */
-  if (!star_formation || !swift_star_formation_model_creates_stars) {
+  if (!(star_formation || with_sink) ||
+      !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
   }
 
-  if (star_formation && swift_star_formation_model_creates_stars &&
-      space_extra_sparts == 0) {
+  const int create_sparts =
+      (star_formation && swift_star_formation_model_creates_stars) || with_sink;
+  if (create_sparts && space_extra_sparts == 0) {
     error(
         "Running with star formation but without spare star particles. "
         "Increase 'Scheduler:cell_extra_sparts'.");
+  }
+
+  if (with_sink && space_extra_gparts == 0) {
+    error(
+        "Running with star formation from sink but without spare g-particles. "
+        "Increase 'Scheduler:cell_extra_gparts'.");
+  }
+  if (with_sink && space_extra_sinks == 0) {
+    error(
+        "Running with star formation from sink but without spare "
+        "sink-particles. "
+        "Increase 'Scheduler:cell_extra_sinks'.");
   }
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);
 
   /* Compute the max id for the generation of unique id. */
-  if (star_formation && swift_star_formation_model_creates_stars) {
+  if (create_sparts) {
     space_init_unique_id(s, nr_nodes);
   }
 }
@@ -2071,9 +2087,12 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
       error("Synchronized particle not treated! id=%lld synchronized=%d",
             parts[k].id, parts[k].limiter_data.to_be_synchronized);
 
-    if (parts[k].gpart != NULL)
-      if (parts[k].time_bin != parts[k].gpart->time_bin)
-        error("Gpart not on the same time-bin as part");
+    if (parts[k].gpart != NULL) {
+      if (parts[k].time_bin != parts[k].gpart->time_bin) {
+        error("Gpart not on the same time-bin as part %i %i", parts[k].time_bin,
+              parts[k].gpart->time_bin);
+      }
+    }
   }
 #else
   error("Calling debugging code without debugging flag activated.");

@@ -171,6 +171,10 @@ void space_allocate_extras(struct space *s, int verbose) {
         if (s->parts[i].time_bin != time_bin_not_created)
           s->parts[i].gpart += delta;
       }
+      for (size_t i = 0; i < nr_sinks; ++i) {
+        if (s->sinks[i].time_bin != time_bin_not_created)
+          s->sinks[i].gpart += delta;
+      }
       for (size_t i = 0; i < nr_sparts; ++i) {
         if (s->sparts[i].time_bin != time_bin_not_created)
           s->sparts[i].gpart += delta;

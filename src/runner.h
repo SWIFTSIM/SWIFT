@@ -134,6 +134,7 @@ void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
 void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
                                struct cell *cj, int timer);
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer);
+void runner_do_star_formation_sink(struct runner *r, struct cell *c, int timer);
 void runner_do_sink_formation(struct runner *r, struct cell *c);
 void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer);
 
