@@ -45,6 +45,10 @@ struct replication_list {
   /* Number of replications*/
   int nrep;
 
+  /* Distance limits used to make this replication list */
+  double lightcone_rmin;
+  double lightcone_rmax;
+
   /* Array of replications with nrep elements */
   struct replication *replication;
 };

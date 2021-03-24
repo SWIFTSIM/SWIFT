@@ -142,6 +142,11 @@ void replication_list_init(struct replication_list *replication_list,
         (size_t) replication_list->nrep, 
         sizeof(struct replication),
         compare_replication_rmin);
+
+  /* Record the distance limits we used - may need these to refine the list later */
+  replication_list->lightcone_rmin = lightcone_rmin;
+  replication_list->lightcone_rmax = lightcone_rmax;
+
 }
 
 
@@ -197,7 +202,7 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
                                 cell->loc[1]+0.5*cell->width[1],
                                 cell->loc[2]+0.5*cell->width[2]};
   
-  /* Find 'effective' width of this cell - particles can wander out of the cell */
+  /* Find 'effective' width of this cell - particles can wander out of the cell by up to half a cell width */
   const double cell_eff_width[] = {2.0*cell->width[0],
                                    2.0*cell->width[1],
                                    2.0*cell->width[2]};
@@ -208,6 +213,10 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
                     SWIFT_STRUCT_ALIGNMENT, sizeof(struct replication)*nrep_max) != 0) {
     error("Failed to allocate pruned lightcone replication list");
   }
+
+  /* Get distance limits (squared) used to make the input list */
+  const double lightcone_rmin2 = pow(rep_in->lightcone_rmin, 2.0);
+  const double lightcone_rmax2 = pow(rep_in->lightcone_rmax, 2.0);
 
   /* Loop over all replications */
   rep_out->nrep = 0;
@@ -238,10 +247,15 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
     }
 
     /* Decide whether this cell could contribute to this replication */
-    if(cell_rmax2 >= rep->rmin2 && cell_rmin2 <= rep->rmax2) {
+    if(cell_rmax2 >= lightcone_rmin2 && cell_rmin2 <= lightcone_rmax2) {
       memcpy(rep_out->replication+rep_out->nrep, rep, sizeof(struct replication));
       rep_out->nrep +=1;
     }
     /* Next input replication */
   }
+
+  /* Not used currently */
+  rep_out->lightcone_rmin = rep_in->lightcone_rmin;
+  rep_out->lightcone_rmax = rep_in->lightcone_rmax;
+
 }
