@@ -37,6 +37,19 @@ struct tracers_xpart_data {
     float maximum_temperature_time;
   };
 
+  union {
+
+    /*! Scale-factor at which the particle last received energy from AGN */
+    float last_AGN_injection_scale_factor;
+
+    /*! Time at which the particle last received energy from AGN */
+    float last_AGN_injection_time;
+  };
+
+  /*! Density of the gas at the last AGN feedback event
+   * (physical internal units) */
+  float density_at_last_AGN_feedback_event;
+
   /*! Total amount of AGN feedback energy received by this particle
    * (physical units) */
   float AGN_feedback_energy;
