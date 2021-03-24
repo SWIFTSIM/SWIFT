@@ -286,6 +286,11 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct task *t_prep2, struct task *t_sf_counts,
                                 struct task *t_ti,
                                 const int with_star_formation) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
+    error("TODO");
+  }
+#endif
 
 #ifdef WITH_MPI
 
@@ -659,6 +664,11 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_density, struct task *t_prep2,
                                 struct task *t_sf_counts, struct task *t_ti,
                                 const int with_star_formation) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
+    error("TODO");
+  }
+#endif
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -943,7 +953,9 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = with_sinks && with_stars;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
@@ -959,10 +971,15 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
     }
 
-    if (with_sinks && c->hydro.count > 0) {
-      c->hydro.sink_formation = scheduler_addtask(
-          s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
+    if (with_star_formation_sink &&
+        (c->hydro.count > 0 || c->sinks.count > 0)) {
+      c->hydro.star_formation_sink = scheduler_addtask(
+          s, task_type_star_formation_sink, task_subtype_none, 0, 0, c, NULL);
     }
+
+    /* hydro.sink_formation plays the role of a ghost => always created */
+    c->hydro.sink_formation = scheduler_addtask(
+        s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
   }
 
   /* Are we in a super-cell ? */
@@ -1008,6 +1025,14 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       if (with_star_formation && c->hydro.count > 0) {
         scheduler_addunlock(s, kick2_or_logger, c->top->hydro.star_formation);
         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
+      }
+
+      /* Subgrid tasks: star formation from sinks */
+      if (with_star_formation_sink &&
+          (c->hydro.count > 0 || c->sinks.count > 0)) {
+        scheduler_addunlock(s, kick2_or_logger,
+                            c->top->hydro.star_formation_sink);
+        scheduler_addunlock(s, c->top->hydro.star_formation_sink, c->timestep);
       }
 
       /* Time-step limiter */
@@ -1232,6 +1257,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = (with_sinks && with_stars);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
 #ifdef WITH_LOGGER
@@ -1244,7 +1270,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
 
-    if (with_feedback && with_star_formation && c->hydro.count > 0) {
+    /* Star formation */
+    if (with_feedback && c->hydro.count > 0 && with_star_formation) {
 
       /* Record this is the level where we re-sort */
       star_resort_cell = c;
@@ -1253,6 +1280,20 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
           s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
 
       scheduler_addunlock(s, c->top->hydro.star_formation,
+                          c->hydro.stars_resort);
+    }
+
+    /* Star formation from sinks */
+    if (with_feedback && with_star_formation_sink &&
+        (c->hydro.count > 0 || c->sinks.count > 0)) {
+
+      /* Record this is the level where we re-sort */
+      star_resort_cell = c;
+
+      c->hydro.stars_resort = scheduler_addtask(
+          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
+
+      scheduler_addunlock(s, c->top->hydro.star_formation_sink,
                           c->hydro.stars_resort);
     }
   }
@@ -1313,6 +1354,28 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->sinks.drift = scheduler_addtask(s, task_type_drift_sink,
                                            task_subtype_none, 0, 0, c, NULL);
         scheduler_addunlock(s, c->sinks.drift, c->super->kick2);
+
+        c->sinks.sink_in =
+            scheduler_addtask(s, task_type_sink_in, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+
+        c->sinks.ghost =
+            scheduler_addtask(s, task_type_sink_ghost, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+
+        c->sinks.sink_out =
+            scheduler_addtask(s, task_type_sink_out, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+
+        /* Link to the main tasks */
+        scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
+        scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep);
+
+        if (with_stars &&
+            (c->top->hydro.count > 0 || c->top->sinks.count > 0)) {
+          scheduler_addunlock(s, c->hydro.super->sinks.sink_out,
+                              c->top->hydro.star_formation_sink);
+        }
       }
 
       /* Black holes */
@@ -1380,7 +1443,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #endif
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
-        if (with_feedback && with_star_formation && c->hydro.count > 0) {
+        /* Star formation*/
+        if (with_feedback && c->hydro.count > 0 && with_star_formation) {
+          scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
+                              c->stars.stars_in);
+        }
+        /* Star formation from sinks */
+        if (with_feedback && with_star_formation_sink &&
+            (c->hydro.count > 0 || c->sinks.count > 0)) {
           scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
                               c->stars.stars_in);
         }
@@ -1393,8 +1463,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_rt_in, task_subtype_none, 0,
                               /* implicit= */ 1, c, NULL);
         scheduler_addunlock(s, c->super->kick2, c->hydro.rt_in);
-        if (with_star_formation && c->top->hydro.count > 0)
+        /* Star formation */
+        if (c->top->hydro.count > 0 && with_star_formation)
           scheduler_addunlock(s, c->top->hydro.star_formation, c->hydro.rt_in);
+        /* Star formation from sinks */
+        if (with_star_formation_sink &&
+            (c->top->hydro.count > 0 || c->top->sinks.count > 0))
+          scheduler_addunlock(s, c->top->hydro.star_formation_sink,
+                              c->hydro.rt_in);
         if (with_feedback)
           scheduler_addunlock(s, c->stars.stars_out, c->hydro.rt_in);
         /* TODO: check/add dependencies from Loic's new sink SF tasks */
@@ -1427,26 +1503,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
         scheduler_addunlock(s, c->hydro.rt_transport_out, c->hydro.rt_tchem);
         scheduler_addunlock(s, c->hydro.rt_tchem, c->hydro.rt_out);
-      }
-
-      /* Subgrid tasks: sink */
-      if (with_sinks) {
-
-        c->sinks.sink_in =
-            scheduler_addtask(s, task_type_sink_in, task_subtype_none, 0,
-                              /* implicit = */ 1, c, NULL);
-
-        c->sinks.ghost =
-            scheduler_addtask(s, task_type_sink_ghost, task_subtype_none, 0,
-                              /* implicit = */ 1, c, NULL);
-
-        c->sinks.sink_out =
-            scheduler_addtask(s, task_type_sink_out, task_subtype_none, 0,
-                              /* implicit = */ 1, c, NULL);
-
-        /* Link to the main tasks */
-        scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
-        scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep);
       }
 
       /* Subgrid tasks: black hole feedback */
@@ -2103,6 +2159,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     if (t->type == task_type_none) continue;
     if (t->type == task_type_stars_resort) continue;
     if (t->type == task_type_star_formation) continue;
+    if (t->type == task_type_star_formation_sink) continue;
     if (t->type == task_type_sink_formation) continue;
 
     /* Sort tasks depend on the drift of the cell (gas version). */
@@ -3825,6 +3882,12 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_sync = (e->policy & engine_policy_timestep_sync);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->policy & engine_policy_sinks) {
+    error("TODO");
+  }
+#endif
+
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
     struct cell *cj = cell_type_pairs[k].cj;
@@ -3873,6 +3936,12 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (e->policy & engine_policy_sinks) {
+    error("TODO");
+  }
+#endif
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;

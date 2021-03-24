@@ -44,7 +44,7 @@
  */
 void space_update_unique_id(struct space *s) {
   /* Do we need unique IDs? */
-  if (!star_formation_need_unique_id) {
+  if (!star_formation_need_unique_id && !sink_need_unique_id) {
     return;
   }
 
@@ -116,7 +116,7 @@ void space_update_unique_id(struct space *s) {
  */
 long long space_get_new_unique_id(struct space *s) {
   /* Do we need unique IDs? */
-  if (!star_formation_need_unique_id) {
+  if (!star_formation_need_unique_id && !sink_need_unique_id) {
     error("The scheme selected does not seem to use unique ID.");
   }
 
@@ -166,7 +166,7 @@ long long space_get_new_unique_id(struct space *s) {
  */
 void space_init_unique_id(struct space *s, int nr_nodes) {
   /* Do we need unique IDs? */
-  if (!star_formation_need_unique_id) {
+  if (!star_formation_need_unique_id && !sink_need_unique_id) {
     return;
   }
 

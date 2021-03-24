@@ -634,7 +634,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
-
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
