@@ -1206,8 +1206,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
-    } else if (t->subtype == task_subtype_dark_matter_density ||
-               t->subtype == task_subtype_sidm) {
+    } else if (t->subtype == task_subtype_dark_matter_density) {
       scheduler_splittask_dark_matter(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
@@ -1818,14 +1817,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i;
         break;
       case task_type_send:
-        if (count_i < 1e5)
-          cost = 10.f * (wscale * count_i) * count_i;
+        if (gcount_i < 1e5)
+          cost = 10.f * (wscale * gcount_i) * gcount_i;
         else
           cost = 2e9;
         break;
       case task_type_recv:
-        if (count_i < 1e5)
-          cost = 5.f * (wscale * count_i) * count_i;
+        if (gcount_i < 1e5)
+          cost = 5.f * (wscale * gcount_i) * gcount_i;
         else
           cost = 1e9;
         break;

@@ -1104,8 +1104,8 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
     long long N_long[swift_type_count + 1] = {0};
     N_long[swift_type_gas] = Ngas;
-    N_long[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
+    /*N_long[swift_type_dark_matter] =
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;*/
     N_long[swift_type_dark_matter_background] = Ngpart_background;
     N_long[swift_type_sink] = Nsink;
     N_long[swift_type_stars] = Nspart;
@@ -1202,8 +1202,9 @@ int main(int argc, char *argv[]) {
     Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts + s.nr_sinks;
 #if defined(WITH_MPI)
     N_long[swift_type_gas] = s.nr_parts;
-    N_long[swift_type_dark_matter] =
-        with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons : 0;
+    /*N_long[swift_type_dark_matter] =
+        with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons : 0;*/
+    N_total[swift_type_dark_matter] = s.nr_dmparts;
     N_long[swift_type_count] = s.nr_gparts;
     N_long[swift_type_stars] = s.nr_sparts;
     N_long[swift_type_sink] = s.nr_sinks;

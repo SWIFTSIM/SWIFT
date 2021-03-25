@@ -564,7 +564,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
   p->buff_out[2] = p->nr_sparts_out;
   p->buff_out[3] = p->nr_bparts_out;
   p->buff_out[4] = p->nr_dmparts_out;
-  if (MPI_Isend(p->buff_out, 4, MPI_INT, p->nodeID,
+  if (MPI_Isend(p->buff_out, 5, MPI_INT, p->nodeID,
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
@@ -622,7 +622,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
     }
 
   /* Receive the number of particles. */
-  if (MPI_Irecv(p->buff_in, 4, MPI_INT, p->nodeID,
+  if (MPI_Irecv(p->buff_in, 5, MPI_INT, p->nodeID,
                 p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
@@ -891,7 +891,7 @@ void proxy_dmparts_load(struct proxy *p, const struct dmpart *dmparts, int N) {
                                                "dmparts_out", sizeof(struct dmpart) * p->size_dmparts_out)) == NULL)
             error("Failed to re-allocate dmparts_out buffers.");
         memcpy(tp, p->dmparts_out, sizeof(struct dmpart) * p->nr_dmparts_out);
-        swift_free("bparts_out", p->dmparts_out);
+        swift_free("dmparts_out", p->dmparts_out);
         p->dmparts_out = tp;
     }
     

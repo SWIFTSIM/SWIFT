@@ -346,9 +346,9 @@ struct space {
   struct bpart *bparts_foreign;
   size_t nr_bparts_foreign, size_bparts_foreign;
 
-    /*! Buffers for dm-parts that we will receive from foreign cells. */
-    struct dmpart *dmparts_foreign;
-    size_t nr_dmparts_foreign, size_dmparts_foreign;
+  /*! Buffers for dm-parts that we will receive from foreign cells. */
+  struct dmpart *dmparts_foreign;
+  size_t nr_dmparts_foreign, size_dmparts_foreign;
 
 #endif
 };
