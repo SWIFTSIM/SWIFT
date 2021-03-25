@@ -1224,11 +1224,11 @@ void engine_redistribute(struct engine *e) {
   /* Dark matter particles. */
   new_parts = engine_do_redistribute("dmparts", dm_counts, (char *)s->dmparts,
                                      nr_dmparts_new, sizeof(struct dmpart), dmpart_align,
-                                             dmpart_mpi_type, nr_nodes, nodeID, e->syncredist);
-    swift_free("dmparts", s->dmparts);
-    s->dmparts = (struct dmpart *)new_parts;
-    s->nr_dmparts = nr_dmparts_new;
-    s->size_dmparts = engine_redistribute_alloc_margin * nr_dmparts_new;
+                                     dmpart_mpi_type, nr_nodes, nodeID, e->syncredist);
+  swift_free("dmparts", s->dmparts);
+  s->dmparts = (struct dmpart *)new_parts;
+  s->nr_dmparts = nr_dmparts_new;
+  s->size_dmparts = engine_redistribute_alloc_margin * nr_dmparts_new;
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
