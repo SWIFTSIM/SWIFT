@@ -60,7 +60,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   if(c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
-                                     e->lightcone_properties->boxsize, &replication_list);
+                                     &replication_list);
     c->replication_list = &replication_list;
   }
 #endif
@@ -298,7 +298,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   if(c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
-                                     e->lightcone_properties->boxsize, &replication_list);
+                                     &replication_list);
     c->replication_list = &replication_list;
   }
 #endif
@@ -455,7 +455,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
     if(c==c->top) {
       replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                        c, e->lightcone_properties->observer_position,
-                                       e->lightcone_properties->boxsize, &replication_list);
+                                       &replication_list);
       c->replication_list = &replication_list;
     }
 #endif
@@ -657,7 +657,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   if(c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
-                                     e->lightcone_properties->boxsize, &replication_list);
+                                     &replication_list);
     c->replication_list = &replication_list;
   }
 #endif
