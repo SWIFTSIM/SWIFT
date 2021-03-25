@@ -364,12 +364,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
-                  &e->lightcone_properties->replication_list);
-
-      /*
-        drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
-        c->top->replication_list);
-      */
+                  c->top->replication_list);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
