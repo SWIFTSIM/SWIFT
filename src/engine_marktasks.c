@@ -1390,7 +1390,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Subgrid tasks: sink formation */
     else if (t_type == task_type_sink_formation) {
-      if (t->ci->hydro.count > 0 && cell_is_active_hydro(t->ci, e)) {
+      if (with_star_formation_sink && t->ci->hydro.count > 0 &&
+          cell_is_active_hydro(t->ci, e)) {
         cell_activate_sink_formation_tasks(t->ci, s);
         cell_activate_super_sink_drifts(t->ci, s);
       }
