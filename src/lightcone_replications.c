@@ -195,6 +195,7 @@ void replication_list_write(struct replication_list *replication_list, FILE *fd)
 void replication_list_subset_for_cell(const struct replication_list *rep_in,
                                       const struct cell *cell,
                                       const double observer_position[3],
+                                      const double boxsize,
                                       struct replication_list *rep_out) {
   
   /* Find centre coordinates of this cell */
@@ -218,39 +219,73 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
   const double lightcone_rmin2 = pow(rep_in->lightcone_rmin, 2.0);
   const double lightcone_rmax2 = pow(rep_in->lightcone_rmax, 2.0);
 
-  /* Loop over all replications */
+  /* For cells on the edge of the grid we need to take into account that particles
+     may have wandered over the box boundary where they will get wrapped to ~boxsize
+     away from their parent cell (because in lightcone_check_particle_crosses we
+     wrap the initial position into the box). So if a cell is on the edge of the grid
+     we repeat the check using the periodic copy of the cell across the boundary and 
+     if any periodic copy could contribute we have to keep this replication. Worst 
+     case is if it's a corner cell where we have to check 7 extra copies.
+
+     Here we're assuming that the cell's particles can only wander over into immediate
+     neighbour cells and not, for example, a cell two cells away.
+  */
+  int imin[] = {0, 0, 0};
+  int imax[] = {0, 0, 0};
+  for(int i=0; i<3; i+=1) {
+    /* Check if cell can contribute particles outside box in this dimension */
+    if(cell_centre[i] - 0.5*cell_eff_width[i] < 0.0)imin[i] = -1;
+    if(cell_centre[i] + 0.5*cell_eff_width[i] > boxsize)imax[i] = 1;
+  }
+
+  /* Loop over all replications of the simulation box */
   rep_out->nrep = 0;
   for(int i=0; i<nrep_max; i+=1) {
     
     /* Get a pointer to this input replication */
     const struct replication *rep = rep_in->replication+i;
 
-    /* Find coordinates of centre of this replication of the cell relative to the observer */
-    double cell_rep_centre[3];
-    for(int j=0; j<3; j+=1) {
-      cell_rep_centre[j] = rep->coord[j] + cell_centre[j] - observer_position[j];
+    /* Loop over this cell and it's periodic copies if it's on one or more box edges */
+    int keep_replication = 0;
+    for(int ix=imin[0]; ix<=imax[0]; ix+=1) {
+      for(int iy=imin[1]; iy<=imax[1]; iy+=1) {
+        for(int iz=imin[2]; iz<=imax[2]; iz+=1) {
+          
+          /* Coordinate offset to this copy of the cell */
+          const double cell_offset[] = {ix*boxsize, iy*boxsize, iz*boxsize};
+
+          /* Find coordinates of centre of this replication of the cell relative to the observer */
+          double cell_rep_centre[3];
+          for(int j=0; j<3; j+=1) {
+            cell_rep_centre[j] = rep->coord[j] + cell_centre[j] + cell_offset[j] - observer_position[j];
+          }
+
+          /* Compute minimum possible distance squared from observer to this replication of this cell */
+          double cell_rmin2 = 0.0;
+          for(int j=0; j<3; j+=1) {
+            double dx = abs(cell_rep_centre[j]) - 0.5*cell_eff_width[j];
+            if(dx < 0.0)dx = 0.0;
+            cell_rmin2 += dx*dx;
+          }
+
+          /* Compute maximum possible distance squared from observer to this replication of this cell */
+          double cell_rmax2 = 0.0;
+          for(int j=0; j<3; j+=1) {
+            double dx = abs(cell_rep_centre[j]) + 0.5*cell_eff_width[j];
+            cell_rmax2 += dx*dx;
+          }
+          
+          /* Decide whether this cell could contribute to this replication */
+          if(cell_rmax2 >= lightcone_rmin2 && cell_rmin2 <= lightcone_rmax2)keep_replication=1;
+        }
+      }
     }
 
-    /* Compute minimum possible distance squared from observer to this replication of this cell */
-    double cell_rmin2 = 0.0;
-    for(int j=0; j<3; j+=1) {
-      double dx = abs(cell_rep_centre[j]) - 0.5*cell_eff_width[j];
-      if(dx < 0.0)dx = 0.0;
-      cell_rmin2 += dx*dx;
-    }
-
-    /* Compute maximum possible distance squared from observer to this replication of this cell */
-    double cell_rmax2 = 0.0;
-    for(int j=0; j<3; j+=1) {
-      double dx = abs(cell_rep_centre[j]) + 0.5*cell_eff_width[j];
-      cell_rmax2 += dx*dx;
-    }
-
-    /* Decide whether this cell could contribute to this replication */
-    if(cell_rmax2 >= lightcone_rmin2 && cell_rmin2 <= lightcone_rmax2) {
+    if(keep_replication) {
       memcpy(rep_out->replication+rep_out->nrep, rep, sizeof(struct replication));
       rep_out->nrep +=1;
     }
+
     /* Next input replication */
   }
 

@@ -60,7 +60,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   if(c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
-                                     &replication_list);
+                                     e->lightcone_properties->boxsize, &replication_list);
     c->replication_list = &replication_list;
   }
 #endif
@@ -298,7 +298,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   if(c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
-                                     &replication_list);
+                                     e->lightcone_properties->boxsize, &replication_list);
     c->replication_list = &replication_list;
   }
 #endif
@@ -364,7 +364,12 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
-                  c->top->replication_list);
+                  &e->lightcone_properties->replication_list);
+
+      /*
+        drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
+        c->top->replication_list);
+      */
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -455,7 +460,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
     if(c==c->top) {
       replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                        c, e->lightcone_properties->observer_position,
-                                       &replication_list);
+                                       e->lightcone_properties->boxsize, &replication_list);
       c->replication_list = &replication_list;
     }
 #endif
@@ -657,7 +662,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   if(c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
-                                     &replication_list);
+                                     e->lightcone_properties->boxsize, &replication_list);
     c->replication_list = &replication_list;
   }
 #endif

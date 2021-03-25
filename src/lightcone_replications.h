@@ -64,6 +64,7 @@ void replication_list_write(struct replication_list *replication_list, FILE *fd)
 void replication_list_subset_for_cell(const struct replication_list *rep_in,
                                       const struct cell *cell,
                                       const double observer_position[3],
+                                      const double boxsize,
                                       struct replication_list *rep_out);
 
 #endif
