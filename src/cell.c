@@ -5418,7 +5418,9 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
 
     /* Unskip all the other task types. */
     if (c->nodeID == nodeID && cell_is_active_dark_matter(c, e)) {
-        for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) scheduler_activate(s, l->t);
+        for (struct link *l = c->dark_matter.sidm; l != NULL; l = l->next) {
+            scheduler_activate(s, l->t);
+        }
         /*for (struct link *l = c->dark_matter.limiter; l != NULL; l = l->next) scheduler_activate(s, l->t);*/
         if (c->dark_matter.ghost != NULL) cell_activate_dark_matter_ghost(c, s, e);
         if (c->dark_matter.sidm_kick != NULL) scheduler_activate(s, c->dark_matter.sidm_kick);

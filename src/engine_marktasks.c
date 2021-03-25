@@ -940,7 +940,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               if (cj_active_dark_matter) {
 
                       scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_xv);
-
                       if (ci_active_dark_matter)
                           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_rho);
               }

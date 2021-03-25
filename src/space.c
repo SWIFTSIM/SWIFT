@@ -383,11 +383,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
   }
-    if (s->dmparts_foreign != NULL) {
-        swift_free("dmparts_foreign", s->dmparts_foreign);
-        s->size_dmparts_foreign = 0;
-        s->dmparts_foreign = NULL;
-    }
+  if (s->dmparts_foreign != NULL) {
+      swift_free("dmparts_foreign", s->dmparts_foreign);
+      s->size_dmparts_foreign = 0;
+      s->dmparts_foreign = NULL;
+  }
   if (clear_cell_pointers) {
     for (int k = 0; k < s->e->nr_proxies; k++) {
       for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {

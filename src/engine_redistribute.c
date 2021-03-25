@@ -1354,9 +1354,9 @@ void engine_redistribute(struct engine *e) {
     for (int k = 0; k < nr_cells; k++)
       if (cells[k].nodeID == nodeID) my_cells += 1;
     message(
-        "node %i now has %zu parts, %zu sparts, %zu bparts and %zu gparts in "
+        "node %i now has %zu parts, %zu sparts, %zu bparts, %zu gparts and %zu dmparts in "
         "%i cells.",
-        nodeID, nr_parts_new, nr_sparts_new, nr_bparts_new, nr_gparts_new,
+        nodeID, nr_parts_new, nr_sparts_new, nr_bparts_new, nr_gparts_new, nr_dmparts_new,
         my_cells);
   }
 
