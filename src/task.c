@@ -127,6 +127,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "tend_sink",
     "tend_bpart",
     "xv",
+    "subxv",
     "rho",
     "part_swallow",
     "bpart_merger",

@@ -124,6 +124,7 @@ enum task_subtypes {
   task_subtype_tend_sink,
   task_subtype_tend_bpart,
   task_subtype_xv,
+  task_subtype_subxv,
   task_subtype_rho,
   task_subtype_part_swallow,
   task_subtype_bpart_merger,

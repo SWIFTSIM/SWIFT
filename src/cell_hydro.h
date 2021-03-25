@@ -167,6 +167,12 @@ struct cell_hydro {
   /*! Bit-mask indicating the sorted directions */
   uint16_t sort_allocated;
 
+#ifdef WITH_MPI
+  /*! Has split MPI subtasks. */
+  struct link *subsend;
+  struct link *subrecv;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /*! Last (integer) time the cell's sort arrays were updated. */

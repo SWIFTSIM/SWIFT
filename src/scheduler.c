@@ -2010,6 +2010,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_limiter) {
 
           t->buff = t->ci->hydro.parts;
+
+        } else if (t->subtype == task_subtype_subxv) {
+
+          t->buff = ((char *)t->ci->hydro.parts) + (t->sub_offset * sizeof(struct part));
+
         } else if (t->subtype == task_subtype_gpart) {
 
           t->buff = t->ci->grav.parts;
@@ -2088,6 +2093,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_limiter) {
 
           t->buff = t->ci->hydro.parts;
+
+        } else if (t->subtype == task_subtype_subxv) {
+
+          t->buff = ((char *)t->ci->hydro.parts) + (t->sub_offset * sizeof(struct part));
 
         } else if (t->subtype == task_subtype_gpart) {
 
@@ -2650,6 +2659,10 @@ size_t scheduler_mpi_size(struct task *t) {
              t->subtype == task_subtype_limiter) {
     size = t->ci->hydro.count * sizeof(struct part);
 
+  } else if (t->subtype == task_subtype_subxv) {
+    /* Only sending part of a cell. */
+    size = t->sub_size * sizeof(struct part);
+
   } else if (t->subtype == task_subtype_subgpart) {
     /* Only sending part of a cell. */
     size = t->sub_size * sizeof(struct gpart);
@@ -2716,7 +2729,8 @@ void scheduler_rdma_init_communications(struct scheduler *s, int verbose) {
 
   /* Now we open up communications between the nodes. */
   infinity_open_communications(s->nr_ranks, s->recv_mpicache->window_sizes,
-                               &s->recv_handle, &s->send_handle, verbose);
+                               &s->recv_handle, &s->send_handle, 
+                               s->mpi_cell_limit, verbose);
 
 #endif
 }

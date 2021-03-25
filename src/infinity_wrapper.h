@@ -38,7 +38,7 @@ extern "C" {
 #endif
 void infinity_open_communications(int nr_servers, size_t *sizes,
                                   void **recv_handle, void **send_handle, 
-                                  int verbose);
+                                  int prealloc, int verbose);
 void *infinity_get_send_buffer(void *qphandle, int index, size_t size);
   void infinity_send_data(void *qphandle, int index, size_t size,
                           size_t offset);

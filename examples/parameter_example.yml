@@ -123,7 +123,9 @@ Scheduler:
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
   links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
-  mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
+  mpi_message_limit:         4         # (Optional) Maximum MPI task message size to send non-buffered, KB.
+  mpi_cell_limit:            12        # (Optional) Maximum MPI task message size, used to split into mpi_split_limit more messages, MB
+  mpi_split_limit:           1         # (Optional) Number of messages to split large sends into.
   engine_max_parts_per_ghost:    1000  # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:   1000  # (Optional) Maximum number of sparts per ghost.
   engine_max_parts_per_cooling: 10000  # (Optional) Maximum number of parts per cooling task.

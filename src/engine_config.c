@@ -681,14 +681,21 @@ void engine_config(int restart, int fof, struct engine *e,
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
                  (e->policy & scheduler_flag_steal), e->nodeID, &e->threadpool);
-
-  /* Maximum size of MPI task messages, in KB, that should not be buffered,
-   * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
-   * changed on restart.
+ 
+  /* Maximum sizes of MPI task messages, in KB. First is limit for messages
+   * that should not be buffered, that is sent using MPI_Issend, not
+   * MPI_Isend. 4Mb by default.
+   * The second limit is how large MPI messages (MB, for grav and hydro) for a
+   * should be before an attempt to split into mpi_split_limit additional
+   * tasks is made. Note this increases the number of MPI tags used by this factor.
    */
-  e->sched.mpi_message_limit =
-      parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
+  e->sched.mpi_message_limit = (size_t) (parser_get_opt_param_float(params, "Scheduler:mpi_message_limit", 4.0) * 1024.0);
+  e->sched.mpi_cell_limit = (size_t)(parser_get_opt_param_float(params, "Scheduler:mpi_cell_limit", 8.0) * 1024.0 * 1024.0);
+  e->sched.mpi_split_limit = (int) parser_get_opt_param_int(params, "Scheduler:mpi_split_limit", 8);
+  message("MPI limits: %zu %zu %d", e->sched.mpi_message_limit,
+          e->sched.mpi_cell_limit, e->sched.mpi_split_limit);
 
+ 
   if (restart) {
 
     /* Overwrite the constants for the scheduler */

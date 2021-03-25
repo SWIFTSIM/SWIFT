@@ -208,6 +208,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.send = NULL;
     c->grav.subsend = NULL;
     c->grav.subrecv = NULL;
+    c->hydro.subsend = NULL;
+    c->hydro.subrecv = NULL;
 #endif
   }
 }

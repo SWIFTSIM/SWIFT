@@ -199,6 +199,7 @@ SUBTYPES = [
     "tend_sink",
     "tend_bpart",
     "xv",
+    "subxv",
     "rho",
     "part_swallow",
     "bpart_merger",

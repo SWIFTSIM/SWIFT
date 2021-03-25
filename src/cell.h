@@ -1004,14 +1004,15 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
  * This function locks the cell so that tags can be added concurrently.
  *
  * @param c The #cell to tag.
+ * @param stride The tag stride, usually s->mpi_split_limit.
  */
-__attribute__((always_inline)) INLINE static void cell_ensure_tagged(
-    struct cell *c) {
+__attribute__((always_inline)) INLINE
+static void cell_ensure_tagged(struct cell *c, int stride) {
 #ifdef WITH_MPI
 
   lock_lock(&c->hydro.lock);
   if (c->mpi.tag < 0 &&
-      (c->mpi.tag = (10 * atomic_inc(&cell_next_tag))) > cell_max_tag)
+      (c->mpi.tag = (stride * atomic_inc(&cell_next_tag))) > cell_max_tag)
     error("Ran out of cell tags.");
   if (lock_unlock(&c->hydro.lock) != 0) {
     error("Failed to unlock cell.");

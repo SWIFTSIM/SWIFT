@@ -587,7 +587,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_hydro) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            struct link *l = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            if (l->t->flags == -1) {
+              scheduler_activate_subrecvs(s, l->t->ci->hydro.subrecv,
+                                          task_subtype_subxv);
+            }
+
             if (ci_active_hydro) {
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 #ifdef EXTRA_HYDRO_LOOP
@@ -610,6 +615,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             struct link *l = scheduler_activate_send(s, cj->mpi.send,
                                                      task_subtype_xv,
                                                      ci_nodeID);
+            if (l->t->flags == -1) {
+              scheduler_activate_subsends(s, l->t->ci->hydro.subsend,
+                                          task_subtype_subxv, ci_nodeID);
+            }
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -658,7 +667,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_hydro) {
 
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            struct link *l = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            if (l->t->flags == -1) {
+              scheduler_activate_subrecvs(s, l->t->ci->hydro.subrecv,
+                                          task_subtype_subxv);
+            }
+
+
             if (cj_active_hydro) {
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 #ifdef EXTRA_HYDRO_LOOP
@@ -681,6 +696,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             struct link *l = scheduler_activate_send(
                 s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+
+            if (l->t->flags == -1) {
+              scheduler_activate_subsends(s, l->t->ci->hydro.subsend,
+                                          task_subtype_subxv, cj_nodeID);
+            }
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -740,7 +760,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_nodeID != nodeID) {
 
           if (cj_active_stars) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            struct link *l = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            if (l->t->flags == -1) {
+              scheduler_activate_subrecvs(s, l->t->ci->hydro.subrecv,
+                                          task_subtype_subxv);
+            }
+
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
             /* If the local cell is active, more stuff will be needed. */
@@ -760,8 +785,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
 
             /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
-                                    ci_nodeID);
+            struct link *l = scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                                     ci_nodeID);
+            if (l->t->flags == -1) {
+              scheduler_activate_subsends(s, l->t->ci->hydro.subsend,
+                                          task_subtype_subxv, ci_nodeID);
+            }
+
             scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
                                     ci_nodeID);
 
@@ -774,7 +804,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_stars) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            struct link *l = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            if (l->t->flags == -1) {
+              scheduler_activate_subrecvs(s, l->t->ci->hydro.subrecv,
+                                          task_subtype_subxv);
+            }
+
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
             /* If the local cell is active, more stuff will be needed. */
@@ -794,8 +829,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
 
             /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
-                                    cj_nodeID);
+            struct link *l = scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                                     cj_nodeID);
+            if (l->t->flags == -1) {
+              scheduler_activate_subsends(s, l->t->ci->hydro.subsend,
+                                          task_subtype_subxv, cj_nodeID);
+            }
             scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
                                     cj_nodeID);
 

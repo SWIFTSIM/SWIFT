@@ -90,7 +90,7 @@ struct qps_data {
 static void *create_servers(struct mpi_servers *servers, int nr_servers,
                             size_t *sizes, int myrank, int verbose);
 static void *connect_clients(struct mpi_servers *servers, int nr_servers,
-                             int myrank, int verbose);
+                             int myrank, int prealloc, int verbose);
 
 
 struct server_data {
@@ -99,6 +99,7 @@ struct server_data {
   size_t *sizes;
   int myrank;
   int verbose;
+  int prealloc;
   void *handle;
 };
 
@@ -129,6 +130,7 @@ static void *send_thread(void *arg) {
   data->handle = connect_clients(data->servers,
                                  data->nr_servers,
                                  data->myrank,
+                                 data->prealloc,
                                  data->verbose);
   return NULL;
 }
@@ -155,11 +157,12 @@ static void *recv_thread(void *arg) {
  * @param sizes the size needed to receive messages.
  * @param recv_handle handle for the recv QPs.
  * @param send_handle handle for the send QPs.
+ * @param prealloc expected size of messages.
  * @param verbose output noise.
  */
 void infinity_open_communications(int nr_servers, size_t *sizes,
                                   void **recv_handle, void **send_handle,
-                                  int verbose) {
+                                  int prealloc, int verbose) {
 
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
 
@@ -199,6 +202,7 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
   recv_data.nr_servers = nr_servers;
   recv_data.sizes = sizes;
   recv_data.myrank = engine_rank;
+  recv_data.prealloc = 0;
   recv_data.verbose = verbose;
   recv_data.handle = NULL;
 
@@ -210,6 +214,7 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
   send_data.servers = &servers;
   send_data.nr_servers = nr_servers;
   send_data.myrank = engine_rank;
+  send_data.prealloc = prealloc;
   send_data.verbose = verbose;
   send_data.handle = NULL;
 
@@ -238,12 +243,13 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
  * @param servers a #mpi_servers struct with the server details.
  * @param nr_servers the number of servers expected to connect.
  * @param myrank the MPI rank of this process.
+ * @param prealloc expected size of buffers in bytes, avoids reallocation.
  * @param verbose if 1 then report the connections made.
  *
  * @return handle for the QPs and related data.
  */
 static void *connect_clients(struct mpi_servers *servers, int nr_servers,
-                             int myrank, int verbose) {
+                             int myrank, int prealloc, int verbose) {
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
 
   /* Struct to hold all the persistent data. */
@@ -267,9 +273,9 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
     calloc(nr_servers, sizeof(infinity::memory::Buffer *));
   cqps->send_buffers_size = (size_t *) calloc(nr_servers, sizeof(size_t));
 
-  //  XXX hack alert... Pre-allocate buffers.
+  /*  Pre-allocate buffers to some expected size. */
   for (int k = 0; k < nr_servers; k++) {
-    infinity_get_send_buffer(cqps, k, 300000000);
+    infinity_get_send_buffer(cqps, k, prealloc);
   }
 
   /* We need to listen for messages from the other rank servers that we can

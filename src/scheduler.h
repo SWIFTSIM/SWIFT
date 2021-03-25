@@ -135,6 +135,13 @@ struct scheduler {
    * MPI. */
   size_t mpi_message_limit;
 
+  /* Maximum size of messages, in bytes, that we should split into 
+   * sub messages to use more MPI messages for the exchange. */
+  size_t mpi_cell_limit;
+
+  /* Number of messages we should split big messages into. */
+  int mpi_split_limit;
+
   /* 'Pointer' to the seed for the random number generator */
   pthread_key_t local_seed_pointer;
 
@@ -226,9 +233,9 @@ scheduler_activate_subsends(struct scheduler *s, struct link *link,
     }
   }
   //if (found > 0)
-  //  message("activated %d subsends", found);
+  //  message("activated %d %s subsends", found, subtaskID_names[subtype]);
   //else
-  //  message("not activating any subsends");
+  //  message("not activating any %s subsends", subtaskID_names[subtype]);
   return (found > 0);
 }
 
@@ -294,9 +301,9 @@ scheduler_activate_subrecvs(struct scheduler *s, struct link *link,
     }
   }
   //if (found > 0)
-  //  message("activated %d subrecvs", found);
+  //  message("activated %d %s subrecvs", found, subtaskID_names[subtype]);
   //else
-  //  message("not activating any subrecvs");
+  //  message("not activating any %s subrecvs", subtaskID_names[subtype]);
   return (found > 0);
 }
 
