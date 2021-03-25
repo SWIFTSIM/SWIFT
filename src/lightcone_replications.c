@@ -68,8 +68,8 @@ void replication_list_init(struct replication_list *replication_list,
   int rep_min[3];
   int rep_max[3];
   for(int i=0; i<3; i+=1) {
-    rep_min[i] = (int) floor((observer_position[i] - lightcone_rmax) / boxsize);
-    rep_max[i] = (int) floor((observer_position[i] + lightcone_rmax) / boxsize);
+    rep_min[i] = (int) floor((observer_position[i] - lightcone_rmax - 0.5*cell_width) / boxsize);
+    rep_max[i] = (int) floor((observer_position[i] + lightcone_rmax + 0.5*cell_width) / boxsize);
   }
 
   /* On first pass just count replications */
