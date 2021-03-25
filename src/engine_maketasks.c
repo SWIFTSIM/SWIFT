@@ -977,9 +977,12 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
           s, task_type_star_formation_sink, task_subtype_none, 0, 0, c, NULL);
     }
 
-    /* hydro.sink_formation plays the role of a ghost => always created */
-    c->hydro.sink_formation = scheduler_addtask(
-        s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
+    if (with_sinks) {
+      /* hydro.sink_formation plays the role of a ghost => always created when
+       * playing with sinks*/
+      c->hydro.sink_formation = scheduler_addtask(
+          s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
+    }
   }
 
   /* Are we in a super-cell ? */
