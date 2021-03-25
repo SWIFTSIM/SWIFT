@@ -50,7 +50,8 @@
 __attribute__((always_inline)) INLINE static void drift_gpart(
     struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current, const struct gravity_props *grav_props,
-    const struct engine *e, struct replication_list *replication_list) {
+    const struct engine *e, struct replication_list *replication_list,
+    const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->ti_drift != ti_old)
@@ -90,7 +91,7 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   if(replication_list->nrep > 0)
     lightcone_check_particle_crosses(e->lightcone_properties, replication_list,
                                      e->cosmology, gp, gp->x, gp->v_full,
-                                     dt_drift, ti_old, ti_current,
+                                     dt_drift, ti_old, ti_current, cell_loc,
                                      NULL, NULL);
 #endif
 
@@ -124,7 +125,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor,
     struct lightcone_props *lightcone_properties,
-    struct replication_list *replication_list) {
+    struct replication_list *replication_list, const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -155,7 +156,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   if(replication_list->nrep > 0)
     lightcone_check_particle_crosses(lightcone_properties, replication_list,
                                      cosmo, p->gpart, p->x, xp->v_full, dt_drift,
-                                     ti_old, ti_current, p, xp);
+                                     ti_old, ti_current, cell_loc, p, xp);
 #endif
 
   /* Drift... */
@@ -208,7 +209,7 @@ __attribute__((always_inline)) INLINE static void drift_spart(
     struct spart *restrict sp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current, const struct cosmology *cosmo,
     struct lightcone_props *lightcone_properties,
-    struct replication_list *replication_list) {
+    struct replication_list *replication_list, const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->ti_drift != ti_old)
@@ -240,7 +241,7 @@ __attribute__((always_inline)) INLINE static void drift_spart(
   if(replication_list->nrep > 0)
     lightcone_check_particle_crosses(lightcone_properties, replication_list,
                                      cosmo, sp->gpart, sp->x, sp->v, dt_drift,
-                                     ti_old, ti_current, sp, NULL);
+                                     ti_old, ti_current, cell_loc, sp, NULL);
 #endif
 
   /* Drift... */
@@ -271,7 +272,7 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
     struct bpart *restrict bp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current, const struct cosmology *cosmo,
     struct lightcone_props *lightcone_properties,
-    struct replication_list *replication_list) {
+    struct replication_list *replication_list, const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (bp->ti_drift != ti_old)
@@ -303,7 +304,7 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
   if(replication_list->nrep > 0)
     lightcone_check_particle_crosses(lightcone_properties, replication_list,
                                      cosmo, bp->gpart, bp->x, bp->v, dt_drift,
-                                     ti_old, ti_current, bp, NULL);
+                                     ti_old, ti_current, cell_loc, bp, NULL);
 #endif
 
   /* Drift... */

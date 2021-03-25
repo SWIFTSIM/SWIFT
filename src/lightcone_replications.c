@@ -60,7 +60,8 @@ static int compare_replication_rmin(const void *a, const void *b) {
  */
 
 void replication_list_init(struct replication_list *replication_list,
-                           double boxsize, double observer_position[3],
+                           double boxsize, double cell_width,
+                           double observer_position[3],
                            double lightcone_rmin, double lightcone_rmax) {
   
   /* Find range of replications to examine in each dimension */
@@ -86,20 +87,20 @@ void replication_list_init(struct replication_list *replication_list,
           double cy = boxsize*j + 0.5*boxsize - observer_position[1];
           double cz = boxsize*k + 0.5*boxsize - observer_position[2];
 
-          /* Find distance to closest point in this replication  */
+          /* Find distance to closest possible particle in this replication  */
           double dx, dy, dz;
-          dx = abs(cx) - 0.5*boxsize;
+          dx = abs(cx) - 0.5*boxsize - 0.5*cell_width;
           if(dx < 0) dx = 0;
-          dy = abs(cy) - 0.5*boxsize;
+          dy = abs(cy) - 0.5*boxsize - 0.5*cell_width;
           if(dy < 0) dy = 0;
-          dz = abs(cz) - 0.5*boxsize;
+          dz = abs(cz) - 0.5*boxsize - 0.5*cell_width;
           if(dz < 0) dz = 0;
           double rep_rmin = sqrt(dx*dx+dy*dy+dz*dz);
 
-          /* Find distance to most distant point in this replication  */
-          dx = abs(cx) + 0.5*boxsize;
-          dy = abs(cy) + 0.5*boxsize;
-          dz = abs(cz) + 0.5*boxsize;
+          /* Find distance to most distant possible particle in this replication  */
+          dx = abs(cx) + 0.5*boxsize + 0.5*cell_width;
+          dy = abs(cy) + 0.5*boxsize + 0.5*cell_width;
+          dz = abs(cz) + 0.5*boxsize + 0.5*cell_width;
           double rep_rmax = sqrt(dx*dx+dy*dy+dz*dz);
 
           /* Flag if any point in this replication could be in the lightcone */

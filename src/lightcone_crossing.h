@@ -51,7 +51,8 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
      struct lightcone_props *props, struct replication_list *replication_list,
      const struct cosmology *c, const struct gpart *gp, const double *x,
      const float *v_full, const double dt_drift, const integertime_t ti_old,
-     const integertime_t ti_current, void *extra1, void *extra2) {
+     const integertime_t ti_current, const double cell_loc[3],
+     void *extra1, void *extra2) {
 
   /* Are we making a lightcone? */
   if(!props->enabled)return;
@@ -86,10 +87,10 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
      We use this as a limit on how far a particle can drift (i.e. assume v < c).*/
   const double boundary = comoving_dist_2_start - comoving_dist_2_end;
 
-  /* Wrap particle starting coordinates into the box */
-  const double x_wrapped[3] = {box_wrap(x[0], 0.0, boxsize),
-                               box_wrap(x[1], 0.0, boxsize),
-                               box_wrap(x[2], 0.0, boxsize)};
+  /* Wrap particle starting coordinates to nearest it's parent cell */
+  const double x_wrapped[3] = {box_wrap(x[0], cell_loc[0]-0.5*boxsize, cell_loc[0]+0.5*boxsize),
+                               box_wrap(x[1], cell_loc[1]-0.5*boxsize, cell_loc[1]+0.5*boxsize),
+                               box_wrap(x[2], cell_loc[2]-0.5*boxsize, cell_loc[2]+0.5*boxsize)};
   
   /* Get wrapped position relative to observer */
   const double x_wrapped_rel[3] = {x_wrapped[0] - observer_position[0],

@@ -67,6 +67,9 @@ struct lightcone_props {
   /*! Simulation box size (volume must be a cube) */
   double boxsize;
 
+  /*! Top level cell width */
+  double cell_width;
+
   /*! Whether list of replications exists */
   int have_replication_list;
 

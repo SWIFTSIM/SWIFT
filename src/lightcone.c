@@ -142,6 +142,11 @@ void lightcone_init(struct lightcone_props *props,
   if(s->dim[1] != s->dim[0] || s->dim[2] != s->dim[0])
     error("Lightcones require a cubic simulation box.");
 
+  /* Get top level cell size */
+  props->cell_width = s->width[0];
+  if(s->width[1] != s->width[0] || s->width[2] != s->width[0])
+    error("Lightcones require cubic top level cells.");
+
   /* Store expansion factors at z_min, z_max */
   props->a_at_z_min = 1.0/(1.0+props->z_min);
   props->a_at_z_max = 1.0/(1.0+props->z_max);
@@ -422,6 +427,7 @@ void lightcone_init_replication_list(struct lightcone_props *props,
 
   /* Determine periodic copies we need to search */
   replication_list_init(&props->replication_list, boxsize,
+                        props->cell_width,
                         props->observer_position,
                         lightcone_rmin, lightcone_rmax);
 

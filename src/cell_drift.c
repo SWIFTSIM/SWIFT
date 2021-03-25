@@ -159,7 +159,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current, e->cosmology, e->hydro_properties,
-                 e->entropy_floor, e->lightcone_properties, c->top->replication_list);
+                 e->entropy_floor, e->lightcone_properties, c->top->replication_list,
+                 c->loc);
 
       /* Update the tracers properties */
       tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
@@ -364,7 +365,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
-                  c->top->replication_list);
+                  c->top->replication_list, c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -538,7 +539,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_spart, ti_current, e->cosmology,
-                  e->lightcone_properties, c->top->replication_list);
+                  e->lightcone_properties, c->top->replication_list,
+                  c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -741,7 +743,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_bpart(bp, dt_drift, ti_old_bpart, ti_current, e->cosmology,
-                  e->lightcone_properties, c->top->replication_list);
+                  e->lightcone_properties, c->top->replication_list,
+                  c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
