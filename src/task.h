@@ -129,6 +129,7 @@ enum task_subtypes {
   task_subtype_part_swallow,
   task_subtype_bpart_merger,
   task_subtype_gpart,
+  task_subtype_dogpart,
   task_subtype_subgpart,
   task_subtype_multipole,
   task_subtype_spart,
@@ -238,6 +239,8 @@ struct task {
   int sub_offset;
   int sub_size;
 
+  /* The main task with memory offsets, if a sub one. */
+  struct task *main_task;
 #endif
 
   /*! Rank of a task in the order */

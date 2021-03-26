@@ -88,10 +88,9 @@ struct qps_data {
 
 /* Forward declarations. */
 static void *create_servers(struct mpi_servers *servers, int nr_servers,
-                            size_t *sizes, int myrank, int verbose);
+                            int myrank, size_t *sizes, int verbose);
 static void *connect_clients(struct mpi_servers *servers, int nr_servers,
-                             int myrank, int prealloc, int verbose);
-
+                             int myrank, size_t *sizes, int verbose);
 
 struct server_data {
   struct mpi_servers *servers;
@@ -99,7 +98,6 @@ struct server_data {
   size_t *sizes;
   int myrank;
   int verbose;
-  int prealloc;
   void *handle;
 };
 
@@ -130,7 +128,7 @@ static void *send_thread(void *arg) {
   data->handle = connect_clients(data->servers,
                                  data->nr_servers,
                                  data->myrank,
-                                 data->prealloc,
+                                 data->sizes,
                                  data->verbose);
   return NULL;
 }
@@ -143,8 +141,8 @@ static void *recv_thread(void *arg) {
   struct server_data *data = (struct server_data *)arg;
   data->handle = create_servers(data->servers,
                                 data->nr_servers,
-                                data->sizes,
                                 data->myrank,
+                                data->sizes,
                                 data->verbose);
   return NULL;
 }
@@ -154,15 +152,17 @@ static void *recv_thread(void *arg) {
  * clients.
  *
  * @param nr_servers number of MPI ranks.
- * @param sizes the size needed to receive messages.
+ * @param recv_sizes the sizes, in bytes, needed to receive all data from the
+ *                   remotes. Size of nr_servers.
+ * @param send_sizes the sizes, in bytes, needed to send all the data to the
+ *                   remotes. Size of nr_servers.
  * @param recv_handle handle for the recv QPs.
  * @param send_handle handle for the send QPs.
- * @param prealloc expected size of messages.
  * @param verbose output noise.
  */
-void infinity_open_communications(int nr_servers, size_t *sizes,
-                                  void **recv_handle, void **send_handle,
-                                  int prealloc, int verbose) {
+void infinity_open_communications(int nr_servers, size_t *recv_sizes,
+                                  size_t *send_sizes, void **recv_handle,
+                                  void **send_handle, int verbose) {
 
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
 
@@ -200,9 +200,8 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
   struct server_data recv_data;
   recv_data.servers = &servers;
   recv_data.nr_servers = nr_servers;
-  recv_data.sizes = sizes;
+  recv_data.sizes = recv_sizes;
   recv_data.myrank = engine_rank;
-  recv_data.prealloc = 0;
   recv_data.verbose = verbose;
   recv_data.handle = NULL;
 
@@ -214,7 +213,7 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
   send_data.servers = &servers;
   send_data.nr_servers = nr_servers;
   send_data.myrank = engine_rank;
-  send_data.prealloc = prealloc;
+  send_data.sizes = send_sizes;
   send_data.verbose = verbose;
   send_data.handle = NULL;
 
@@ -243,13 +242,14 @@ void infinity_open_communications(int nr_servers, size_t *sizes,
  * @param servers a #mpi_servers struct with the server details.
  * @param nr_servers the number of servers expected to connect.
  * @param myrank the MPI rank of this process.
- * @param prealloc expected size of buffers in bytes, avoids reallocation.
+ * @param sizes the sizes needed to hold all the send requests, size of
+ *              nr_servers. 
  * @param verbose if 1 then report the connections made.
  *
  * @return handle for the QPs and related data.
  */
 static void *connect_clients(struct mpi_servers *servers, int nr_servers,
-                             int myrank, int prealloc, int verbose) {
+                             int myrank, size_t *sizes, int verbose) {
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
 
   /* Struct to hold all the persistent data. */
@@ -273,9 +273,10 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
     calloc(nr_servers, sizeof(infinity::memory::Buffer *));
   cqps->send_buffers_size = (size_t *) calloc(nr_servers, sizeof(size_t));
 
-  /*  Pre-allocate buffers to some expected size. */
+  /*  Allocate buffers to the expected maximum size. */
   for (int k = 0; k < nr_servers; k++) {
-    infinity_get_send_buffer(cqps, k, prealloc);
+    cqps->send_buffers[k] = new infinity::memory::Buffer(cqps->context, sizes[k]);
+    cqps->send_buffers_size[k] = sizes[k];
   }
 
   /* We need to listen for messages from the other rank servers that we can
@@ -325,22 +326,12 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
 /**
  * @brief Return the send buffer associated with a handle for a server.
  *
- * The buffer is large enough for the required size.
- *
  * @param qphandle the send handle from infinity_open_communications.
  * @param index index of the server to send to.
- * @param size the size of the buffer in bytes.
  */
-void *infinity_get_send_buffer(void *qphandle, int index, size_t size) {
+void *infinity_get_send_buffer(void *qphandle, int index) {
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
   struct qps_data *cqps = (struct qps_data *)qphandle;
-
-  /* Create or resize the registered memory used to send data. */
-  if (cqps->send_buffers_size[index] < size) {
-    if (cqps->send_buffers[index] != NULL) delete cqps->send_buffers[index];
-    cqps->send_buffers[index] = new infinity::memory::Buffer(cqps->context, size);
-    cqps->send_buffers_size[index] = size;
-  }
 
   /* And give access. */
   return cqps->send_buffers[index]->getData();
@@ -358,32 +349,36 @@ void *infinity_get_send_buffer(void *qphandle, int index, size_t size) {
  * @param qphandle the send handle from infinity_open_communications.
  * @param index index of the server to send to.
  * @param size the number of bytes to send from the local buffer.
- * @param offset the offset into the remote buffer, note in bytes not blocks.
+ * @param local_offset the offset into the send buffer, note in bytes not blocks.
+ * @param remote_offset the offset into the remote buffer, note in bytes not blocks.
  */
-void infinity_send_data(void *qphandle, int index, size_t size, size_t offset) {
+void infinity_send_data(void *qphandle, int index, size_t size,
+                        size_t local_offset, size_t remote_offset) {
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
   struct qps_data *cqps = (struct qps_data *)qphandle;
 
 
-  // XXX need to support local offsets other than 0 to connect more than once
-  // to the same server at the same time...
   infinity::requests::RequestToken requestToken(cqps->context);
   cqps->qps[index]->write(cqps->send_buffers[index],
-                          0,                           // localOffset
+                          local_offset,                // localOffset
                           cqps->remote_buffers[index], // destination
-                          offset,                      // remoteOffset
+                          remote_offset,               // remoteOffset
                           size,                        // sizeInBytes
                           infinity::queues::OperationFlags(),
                           &requestToken);
   requestToken.waitUntilCompleted();
   requestToken.reset();
 
-  /* Now we update the unlock field. */
-  ((BLOCKTYPE *)cqps->send_buffers[index]->getData())[0] = UNLOCKED;
+  /* Now we update the unlock field, note local_offset in bytes. */
+  char *cptr = (char *)(cqps->send_buffers[index]->getData());
+  cptr += local_offset;
+  BLOCKTYPE *bptr = (BLOCKTYPE *)cptr;
+  bptr[0] = UNLOCKED;
+
   cqps->qps[index]->write(cqps->send_buffers[index],
-                          0,                           // localOffset
+                          local_offset,                // localOffset
                           cqps->remote_buffers[index], // destination
-                          offset,                      // remoteOffset
+                          remote_offset,               // remoteOffset
                           BYTESINBLOCK,                // sizeInBytes
                           infinity::queues::OperationFlags(),
                           &requestToken);
@@ -417,7 +412,8 @@ void infinity_free_handle(void *qphandle) {
     free(cqps->token_buffers);
   }
   if (cqps->send_buffers != NULL) {
-    for (int k = 0; k < cqps->nr_qps; k++) delete cqps->send_buffers[k];
+    // XXX See 0 sized...
+    //for (int k = 0; k < cqps->nr_qps; k++) delete cqps->send_buffers[k];
     free(cqps->send_buffers);
     free(cqps->send_buffers_size);
   }
@@ -444,7 +440,7 @@ void infinity_free_handle(void *qphandle) {
  * @return handle for the QPs and related data.
  */
 static void *create_servers(struct mpi_servers *servers, int nr_servers,
-                                     size_t *sizes, int myrank, int verbose) {
+                            int myrank, size_t *sizes, int verbose) {
 
 #if defined(HAVE_INFINITY) && defined(WITH_MPI)
   /* Struct to hold all the persistent data. */

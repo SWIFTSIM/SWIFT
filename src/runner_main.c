@@ -416,40 +416,56 @@ void *runner_main(void *data) {
 
               /* Access the registered memory for transferring this data. */
               scheduler_rdma_blocktype *dataptr =
-                infinity_get_send_buffer(sched->send_handle, cj->nodeID,
-                                         scheduler_rdma_tobytes(datasize));
+                infinity_get_send_buffer(sched->send_handle, cj->nodeID);
 
               /* First element is marked as LOCKED, so only we can update. */
-              dataptr[0] = scheduler_rdma_locked;
-              dataptr[1] = t->win_size;
-              dataptr[2] = t->flags;
-              dataptr[3] = engine_rank;
-              memcpy(&dataptr[scheduler_rdma_header_size], t->buff, t->win_size);
+              dataptr[t->win_offset] = scheduler_rdma_locked;
+              dataptr[t->win_offset + 1] = t->win_size;
+              dataptr[t->win_offset + 2] = t->flags;
+              dataptr[t->win_offset + 3] = engine_rank;
+
+              // For this type the data should already be copied and ready to go.
+              if (t->subtype != task_subtype_gpart) {
+                memcpy(&dataptr[t->win_offset + scheduler_rdma_header_size],
+                       t->buff, t->win_size);
+              }
 
 #ifdef SWIFT_DEBUG_CHECKS
               if (e->verbose)
                 message(
                         "Sending message to %d from %d subtype %d tag %zu size %zu"
-                        " (cf %lld %zu) offset %zu",
-                        cj->nodeID, ci->nodeID, subtype, dataptr[2], dataptr[1], t->flags,
-                        t->win_size, t->offset);
+                        " (cf %lld %zu) offsets %zu",
+                        cj->nodeID, ci->nodeID, t->subtype, dataptr[t->win_offset+2], 
+                        dataptr[t->win_offset+1], t->flags, t->win_size, t->win_offset);
 #endif
               infinity_send_data(sched->send_handle, cj->nodeID,
                                  scheduler_rdma_tobytes(datasize),
+                                 scheduler_rdma_tobytes(t->win_offset),
                                  scheduler_rdma_tobytes(t->win_offset));
 #ifdef SWIFT_DEBUG_CHECKS
               if (e->verbose) {
                 message(
                         "Sent message to %d subtype %d tag %zu size %zu offset %zu"
                         " (cf %lld %zu)",
-                        cj->nodeID, subtype, dataptr[2], dataptr[1], t->win_offset, t->flags,
-                        t->size);
+                        cj->nodeID, t->subtype, dataptr[t->win_offset+2],
+                        dataptr[t->win_offset+1], t->win_offset, t->flags,
+                        t->win_size);
               }
 #endif
             }
           }
+          
+          if (t->subtype == task_subtype_subgpart) {
 
-          if (t->subtype == task_subtype_tend_part) {
+            /* Get the send buffer for this remote and copy our data chunk. */
+            char *dataptr = infinity_get_send_buffer(sched->send_handle, cj->nodeID);
+            size_t offset = scheduler_rdma_tobytes(scheduler_rdma_header_size) +
+              scheduler_rdma_tobytes(t->main_task->win_offset) +
+              (t->sub_offset *sizeof(struct gpart));
+            memcpy(dataptr + offset, t->buff, t->sub_size * sizeof(struct gpart));
+            //message("running subgpart copy");
+          }
+          else if (t->subtype == task_subtype_tend_part) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_gpart) {
             free(t->buff);
@@ -473,11 +489,13 @@ void *runner_main(void *data) {
           break;
 
         case task_type_recv:
-          /* Ready to process. So copy to local buffers. XXX could be avoided
-           * for some types below. */
+          /* Ready to process. So copy to local buffer, unless we are doing
+           * this in parts. */
           if (t->flags != -1) {
-            if (t->rdmabuff == NULL) error("No RDMA data yet!");
-            memcpy(t->buff, t->rdmabuff, t->win_size);
+            if (t->subtype != task_subtype_gpart) {
+              if (t->rdmabuff == NULL) error("No RDMA data yet!");
+              memcpy(t->buff, t->rdmabuff, t->win_size);
+            }
           }
 
           if (t->subtype == task_subtype_tend_part) {
@@ -515,10 +533,23 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);
-          } else if (t->subtype == task_subtype_gpart) {
+
+          } else if (t->subtype == task_subtype_dogpart) {
+            /* Handle complete data movement. */
+            //message("completing recv with the dogpart");
             runner_do_recv_gpart(r, ci, 1);
+
+          } else if (t->subtype == task_subtype_gpart) {
+            /* Does nothing, just unlocks subgpart and dogpart recvs, already
+             * accepted remove data send. */
+
           } else if (t->subtype == task_subtype_subgpart) {
-            /* Do nothing. task_subtype_gpart does work. */
+
+            /* Only move our part of the data. */
+            char *ptr1 = ((char *)t->buff);
+            char *ptr2 = ((char *)t->main_task->rdmabuff) + (t->sub_offset * sizeof(struct gpart));
+            memcpy(ptr1, ptr2, t->sub_size * sizeof(struct gpart));
+            
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {

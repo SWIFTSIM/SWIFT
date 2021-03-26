@@ -2019,6 +2019,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           t->buff = t->ci->grav.parts;
 
+        } else if (t->subtype == task_subtype_dogpart) {
+
+          t->buff = t->ci->grav.parts;
+
         } else if (t->subtype == task_subtype_subgpart) {
 
           t->buff = ((char *)t->ci->grav.parts) + (t->sub_offset * sizeof(struct gpart));
@@ -2034,7 +2038,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           t->buff = t->ci->black_holes.parts;
 
         } else {
-          error("Unknown communication sub-type");
+          error("Unknown communication sub-type %d/%s", t->subtype, subtaskID_names[t->subtype]);
         }
 
         /* And log, if logging enabled. */
@@ -2174,11 +2178,14 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   if (!t->implicit) task_unlock(t);
 
 #ifdef WITH_MPI
-  /* Unlock sends and recvs, need scheduler so no in task_unlock. */
-  if (t->type == task_type_send && t->flags != -1) {
-    if (lock_unlock(&s->send_lock[t->cj->nodeID % scheduler_rdma_max_sends]) != 0) {
-      error("Unlocking the MPI send lock failed.\n");
+  /* Unlock sends and recvs, need scheduler so not in task_unlock. */
+  if (t->type == task_type_send) {
+    if (t->subtype != task_subtype_subgpart) {
+      if (lock_unlock(&s->send_lock[t->cj->nodeID % scheduler_rdma_max_sends]) != 0) {
+        error("Unlocking the MPI send lock failed.\n");
+      }
     }
+    //message("unlocking %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
 
     //if (t->rdmalockind < 0) error("RDMA send buffer index corruption");
     //if (lock_unlock(&s->send_lock[t->rdmalockind]) != 0) {
@@ -2663,17 +2670,13 @@ size_t scheduler_mpi_size(struct task *t) {
     /* Only sending part of a cell. */
     size = t->sub_size * sizeof(struct part);
 
-  } else if (t->subtype == task_subtype_subgpart) {
-    /* Only sending part of a cell. */
-    size = t->sub_size * sizeof(struct gpart);
+  } else if (t->subtype == task_subtype_subgpart||
+             t->subtype == task_subtype_dogpart) {
+    /* Never send or receive directly. */
+    return 0;
 
   } else if (t->subtype == task_subtype_gpart) {
-    if (t->flags != -1) {
-      size = t->ci->grav.count * sizeof(struct gpart);
-    } else {
-      /* Never sent. */
-      size = 0;
-    }
+    size = t->ci->grav.count * sizeof(struct gpart);
 
   } else if (t->subtype == task_subtype_spart) {
     size = t->ci->stars.count * sizeof(struct spart);
@@ -2728,9 +2731,11 @@ void scheduler_rdma_init_communications(struct scheduler *s, int verbose) {
   mpicache_apply(s->recv_mpicache, s->nr_ranks, "recv");
 
   /* Now we open up communications between the nodes. */
-  infinity_open_communications(s->nr_ranks, s->recv_mpicache->window_sizes,
+  infinity_open_communications(s->nr_ranks,
+                               s->recv_mpicache->window_sizes,
+                               s->send_mpicache->window_sizes,
                                &s->recv_handle, &s->send_handle, 
-                               s->mpi_cell_limit, verbose);
+                               verbose);
 
 #endif
 }

@@ -132,6 +132,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "part_swallow",
     "bpart_merger",
     "gpart",
+    "dogpart",
     "subgpart",
     "multipole",
     "spart",
@@ -637,11 +638,17 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
     /* Communication task? */
     case task_type_send:
       {
-        /* Top-level split tasks are always ready. */
-        if (t->flags < 0) return 1;
+
+        /* subgpart can always run, just moves data. */
+        if (subtype == task_subtype_subgpart) {
+          //message("locking %s/%s", taskID_names[type], subtaskID_names[subtype]);
+          return 1;
+        }
+
 #ifdef WITH_MPI
         /* Try to grab one of the locks. For any destination rank... */
         if (lock_trylock(&s->send_lock[cj->nodeID % scheduler_rdma_max_sends]) != 0) return 0;
+        //message("locking %s/%s", taskID_names[type], subtaskID_names[subtype]);
         return 1;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -652,8 +659,18 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
     case task_type_recv:
       {
 #ifdef WITH_MPI
-        /* Top-level split tasks are always ready. */
-        if (t->flags < 0) return 1;
+
+        /* subgpart can always run, just moves data. */
+        if (subtype == task_subtype_subgpart) {
+          //message("locking %s/%s", taskID_names[type], subtaskID_names[subtype]);
+          return 1;
+        }
+
+        /* dogpart can always run, just processes all data. */
+        if (subtype == task_subtype_dogpart) {
+          return 1;
+          //message("locking %s/%s", taskID_names[type], subtaskID_names[subtype]);
+        }
 
         /* Try to grab one of the locks.*/
         //if (lock_trylock(&s->recv_lock[ci->nodeID % scheduler_rdma_max_recvs]) == 0) {
@@ -665,16 +682,15 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
           if (t->flags == (int)dataptr[2] && t->win_size == dataptr[1] &&
               ci->nodeID == (int)dataptr[3]) {
             
-#ifdef SWIFT_DEBUG_CHECKS
+            //#ifdef SWIFT_DEBUG_CHECKS
             if (s->space->e->verbose) {
               message(
                       "Accepted from %d subtype %d tag %lld size %zu"
                       " offset %zu",
                       ci->nodeID, subtype, t->flags, t->win_size, t->win_offset);
             }
-#endif
-            /* Ready to process. So prepare for copy to task buffer which
-             * happens in the runner. */
+            //#endif
+            /* Ready to process. */
             t->rdmabuff = (void *)&dataptr[scheduler_rdma_header_size];
             
               /* Back to locked. */
@@ -686,8 +702,8 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
             message("missed recv at our offset %zu from %d "
                     "subtype %d tag %lld size %zu "
                     "see tag %zu size %zu from %zu",
-                    t->offset, ci->nodeID, subtype,
-                    t->flags, t->size, dataptr[2], dataptr[1], dataptr[3]);
+                    t->win_offset, ci->nodeID, subtype,
+                    t->flags, t->win_size, dataptr[2], dataptr[1], dataptr[3]);
 #endif
           }
         }
