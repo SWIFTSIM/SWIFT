@@ -467,7 +467,7 @@ struct engine {
   struct pm_mesh *mesh;
 
   /* Properties of external gravitational potential */
-  const struct external_potential *external_potential;
+  struct external_potential *external_potential;
 
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
@@ -592,7 +592,7 @@ void engine_init(
     struct gravity_props *gravity, const struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
-    const struct external_potential *potential,
+    struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,

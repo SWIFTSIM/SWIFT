@@ -1772,6 +1772,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, e->s);
 
+  /* Update the external potential */
+  if ((e->policy & engine_policy_external_gravity))
+    potential_update(e->time, e->external_potential);
+
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
     /* Mark the first time step in the particle logger file. */
@@ -2780,7 +2784,7 @@ void engine_init(
     struct gravity_props *gravity, const struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
-    const struct external_potential *potential,
+    struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
