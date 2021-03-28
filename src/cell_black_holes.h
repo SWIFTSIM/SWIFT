@@ -78,9 +78,6 @@ struct cell_black_holes {
     /*! Last (integer) time the cell's bpart were drifted forward in time. */
     integertime_t ti_old_part;
 
-    /*! Maximum end of (integer) time step in this cell for black hole tasks. */
-    integertime_t ti_end_max;
-
     /*! Nr of #bpart this cell can hold after addition of new #bpart. */
     int count_total;
 

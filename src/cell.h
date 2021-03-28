@@ -114,9 +114,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for hydro tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for hydro tasks */
-    integertime_t ti_end_max;
-
     /*! Maximal integer beginning-of-timestep in this cell for hydro tasks */
     integertime_t ti_beg_max;
 
@@ -146,9 +143,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for gravity tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for gravity tasks */
-    integertime_t ti_end_max;
-
     /*! Maximal integer beginning-of-timestep in this cell for gravity tasks */
     integertime_t ti_beg_max;
 
@@ -175,9 +169,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for stars tasks */
-    integertime_t ti_end_max;
-
     /*! Integer time of the last drift of the #spart in this cell */
     integertime_t ti_old_part;
 
@@ -195,9 +186,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for black hole tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for black hole tasks */
-    integertime_t ti_end_max;
-
     /*! Integer time of the last drift of the #spart in this cell */
     integertime_t ti_old_part;
 
@@ -214,9 +202,6 @@ struct pcell {
 
     /*! Minimal integer end-of-timestep in this cell for sinks tasks */
     integertime_t ti_end_min;
-
-    /*! Maximal integer end-of-timestep in this cell for sinks tasks */
-    integertime_t ti_end_max;
 
     /*! Integer time of the last drift of the #sink in this cell */
     integertime_t ti_old_part;
@@ -244,9 +229,6 @@ struct pcell_step_hydro {
   /*! Minimal integer end-of-timestep in this cell (hydro) */
   integertime_t ti_end_min;
 
-  /*! Minimal integer end-of-timestep in this cell (hydro) */
-  integertime_t ti_end_max;
-
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
 };
@@ -255,18 +237,12 @@ struct pcell_step_grav {
 
   /*! Minimal integer end-of-timestep in this cell (gravity) */
   integertime_t ti_end_min;
-
-  /*! Minimal integer end-of-timestep in this cell (gravity) */
-  integertime_t ti_end_max;
 };
 
 struct pcell_step_stars {
 
   /*! Minimal integer end-of-timestep in this cell (stars) */
   integertime_t ti_end_min;
-
-  /*! Maximal integer end-of-timestep in this cell (stars) */
-  integertime_t ti_end_max;
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
@@ -276,9 +252,6 @@ struct pcell_step_black_holes {
 
   /*! Minimal integer end-of-timestep in this cell (black_holes) */
   integertime_t ti_end_min;
-
-  /*! Maximal integer end-of-timestep in this cell (black_holes) */
-  integertime_t ti_end_max;
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
@@ -359,11 +332,14 @@ struct cell {
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
 
-  /*! Linking pointer for "memory management". */
-  struct cell *next;
+  union {
 
-  /*! Parent cell. */
-  struct cell *parent;
+    /*! Linking pointer for "memory management". */
+    struct cell *next;
+
+    /*! Parent cell. */
+    struct cell *parent;
+  };
 
   /*! Pointer to the top-level cell in a hierarchy */
   struct cell *top;
