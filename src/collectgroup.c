@@ -44,11 +44,6 @@ struct mpicollectgroup1 {
   integertime_t ti_stars_end_min;
   integertime_t ti_sinks_end_min;
   integertime_t ti_black_holes_end_min;
-  integertime_t ti_hydro_end_max;
-  integertime_t ti_gravity_end_max;
-  integertime_t ti_stars_end_max;
-  integertime_t ti_sinks_end_max;
-  integertime_t ti_black_holes_end_max;
   integertime_t ti_hydro_beg_max;
   integertime_t ti_gravity_beg_max;
   integertime_t ti_stars_beg_max;
@@ -98,27 +93,19 @@ void collectgroup_init(void) {
 void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
 
   e->ti_hydro_end_min = grp1->ti_hydro_end_min;
-  e->ti_hydro_end_max = grp1->ti_hydro_end_max;
   e->ti_hydro_beg_max = grp1->ti_hydro_beg_max;
   e->ti_gravity_end_min = grp1->ti_gravity_end_min;
-  e->ti_gravity_end_max = grp1->ti_gravity_end_max;
   e->ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   e->ti_stars_end_min = grp1->ti_stars_end_min;
-  e->ti_stars_end_max = grp1->ti_stars_end_max;
   e->ti_stars_beg_max = grp1->ti_stars_beg_max;
   e->ti_black_holes_end_min = grp1->ti_black_holes_end_min;
-  e->ti_black_holes_end_max = grp1->ti_black_holes_end_max;
   e->ti_black_holes_beg_max = grp1->ti_black_holes_beg_max;
   e->ti_sinks_end_min = grp1->ti_sinks_end_min;
-  e->ti_sinks_end_max = grp1->ti_sinks_end_max;
   e->ti_sinks_beg_max = grp1->ti_sinks_beg_max;
 
   e->ti_end_min =
       min5(e->ti_hydro_end_min, e->ti_gravity_end_min, e->ti_sinks_end_min,
            e->ti_stars_end_min, e->ti_black_holes_end_min);
-  e->ti_end_max =
-      max5(e->ti_hydro_end_max, e->ti_gravity_end_max, e->ti_sinks_end_max,
-           e->ti_stars_end_max, e->ti_black_holes_end_max);
   e->ti_beg_max =
       max5(e->ti_hydro_beg_max, e->ti_gravity_beg_max, e->ti_sinks_beg_max,
            e->ti_stars_beg_max, e->ti_black_holes_beg_max);
@@ -207,16 +194,13 @@ void collectgroup1_init(
     size_t s_updated, size_t sink_updated, size_t b_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
-    integertime_t ti_hydro_end_max, integertime_t ti_hydro_beg_max,
-    integertime_t ti_gravity_end_min, integertime_t ti_gravity_end_max,
+    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
-    integertime_t ti_stars_end_max, integertime_t ti_stars_beg_max,
-    integertime_t ti_sinks_end_min, integertime_t ti_sinks_end_max,
+    integertime_t ti_stars_beg_max, integertime_t ti_sinks_end_min,
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
-    integertime_t ti_black_holes_end_max, integertime_t ti_black_holes_beg_max,
-    int forcerebuild, long long total_nr_cells, long long total_nr_tasks,
-    float tasks_per_cell, const struct star_formation_history sfh,
-    float runtime) {
+    integertime_t ti_black_holes_beg_max, int forcerebuild,
+    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
+    const struct star_formation_history sfh, float runtime) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
@@ -229,19 +213,14 @@ void collectgroup1_init(
   grp1->b_inhibited = b_inhibited;
   grp1->sink_inhibited = sink_inhibited;
   grp1->ti_hydro_end_min = ti_hydro_end_min;
-  grp1->ti_hydro_end_max = ti_hydro_end_max;
   grp1->ti_hydro_beg_max = ti_hydro_beg_max;
   grp1->ti_gravity_end_min = ti_gravity_end_min;
-  grp1->ti_gravity_end_max = ti_gravity_end_max;
   grp1->ti_gravity_beg_max = ti_gravity_beg_max;
   grp1->ti_stars_end_min = ti_stars_end_min;
-  grp1->ti_stars_end_max = ti_stars_end_max;
   grp1->ti_stars_beg_max = ti_stars_beg_max;
   grp1->ti_black_holes_end_min = ti_black_holes_end_min;
-  grp1->ti_black_holes_end_max = ti_black_holes_end_max;
   grp1->ti_black_holes_beg_max = ti_black_holes_beg_max;
   grp1->ti_sinks_end_min = ti_sinks_end_min;
-  grp1->ti_sinks_end_max = ti_sinks_end_max;
   grp1->ti_sinks_beg_max = ti_sinks_beg_max;
   grp1->forcerebuild = forcerebuild;
   grp1->total_nr_cells = total_nr_cells;
@@ -280,11 +259,6 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.ti_stars_end_min = grp1->ti_stars_end_min;
   mpigrp11.ti_sinks_end_min = grp1->ti_sinks_end_min;
   mpigrp11.ti_black_holes_end_min = grp1->ti_black_holes_end_min;
-  mpigrp11.ti_hydro_end_max = grp1->ti_hydro_end_max;
-  mpigrp11.ti_gravity_end_max = grp1->ti_gravity_end_max;
-  mpigrp11.ti_stars_end_max = grp1->ti_stars_end_max;
-  mpigrp11.ti_sinks_end_max = grp1->ti_sinks_end_max;
-  mpigrp11.ti_black_holes_end_max = grp1->ti_black_holes_end_max;
   mpigrp11.ti_hydro_beg_max = grp1->ti_hydro_beg_max;
   mpigrp11.ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   mpigrp11.ti_stars_beg_max = grp1->ti_stars_beg_max;
@@ -318,11 +292,6 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->ti_stars_end_min = mpigrp12.ti_stars_end_min;
   grp1->ti_sinks_end_min = mpigrp12.ti_sinks_end_min;
   grp1->ti_black_holes_end_min = mpigrp12.ti_black_holes_end_min;
-  grp1->ti_hydro_end_max = mpigrp12.ti_hydro_end_max;
-  grp1->ti_gravity_end_max = mpigrp12.ti_gravity_end_max;
-  grp1->ti_stars_end_max = mpigrp12.ti_stars_end_max;
-  grp1->ti_sinks_end_max = mpigrp12.ti_sinks_end_max;
-  grp1->ti_black_holes_end_max = mpigrp12.ti_black_holes_end_max;
   grp1->ti_hydro_beg_max = mpigrp12.ti_hydro_beg_max;
   grp1->ti_gravity_beg_max = mpigrp12.ti_gravity_beg_max;
   grp1->ti_stars_beg_max = mpigrp12.ti_stars_beg_max;
@@ -374,18 +343,6 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
       min(mpigrp11->ti_sinks_end_min, mpigrp12->ti_sinks_end_min);
   mpigrp11->ti_black_holes_end_min =
       min(mpigrp11->ti_black_holes_end_min, mpigrp12->ti_black_holes_end_min);
-
-  /* Maximum end time. */
-  mpigrp11->ti_hydro_end_max =
-      max(mpigrp11->ti_hydro_end_max, mpigrp12->ti_hydro_end_max);
-  mpigrp11->ti_gravity_end_max =
-      max(mpigrp11->ti_gravity_end_max, mpigrp12->ti_gravity_end_max);
-  mpigrp11->ti_stars_end_max =
-      max(mpigrp11->ti_stars_end_max, mpigrp12->ti_stars_end_max);
-  mpigrp11->ti_sinks_end_max =
-      max(mpigrp11->ti_sinks_end_max, mpigrp12->ti_sinks_end_max);
-  mpigrp11->ti_black_holes_end_max =
-      max(mpigrp11->ti_black_holes_end_max, mpigrp12->ti_black_holes_end_max);
 
   /* Maximum beg time. */
   mpigrp11->ti_hydro_beg_max =
