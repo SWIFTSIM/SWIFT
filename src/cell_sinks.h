@@ -66,9 +66,6 @@ struct cell_sinks {
     /*! Last (integer) time the cell's sink were drifted forward in time. */
     integertime_t ti_old_part;
 
-    /*! Maximum end of (integer) time step in this cell for sink tasks. */
-    integertime_t ti_end_max;
-
     /*! Spin lock for sink formation use. */
     swift_lock_type sink_formation_lock;
 

@@ -45,12 +45,11 @@ struct collectgroup1 {
   struct star_formation_history sfh;
 
   /* Times for the time-step */
-  integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
-  integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
-  integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
-  integertime_t ti_black_holes_end_min, ti_black_holes_end_max,
-      ti_black_holes_beg_max;
-  integertime_t ti_sinks_end_min, ti_sinks_end_max, ti_sinks_beg_max;
+  integertime_t ti_hydro_end_min, ti_hydro_beg_max;
+  integertime_t ti_gravity_end_min, ti_gravity_beg_max;
+  integertime_t ti_stars_end_min, ti_stars_beg_max;
+  integertime_t ti_black_holes_end_min, ti_black_holes_beg_max;
+  integertime_t ti_sinks_end_min, ti_sinks_beg_max;
 
   /* Force the engine to rebuild? */
   int forcerebuild;
@@ -73,16 +72,13 @@ void collectgroup1_init(
     size_t s_updated, size_t b_updated, size_t sink_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
-    integertime_t ti_hydro_end_max, integertime_t ti_hydro_beg_max,
-    integertime_t ti_gravity_end_min, integertime_t ti_gravity_end_max,
+    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
-    integertime_t ti_stars_end_max, integertime_t ti_stars_beg_max,
-    integertime_t ti_sinks_end_min, integertime_t ti_sinks_end_max,
+    integertime_t ti_stars_beg_max, integertime_t ti_sinks_end_min,
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
-    integertime_t ti_black_holes_end_max, integertime_t ti_black_holes_beg_max,
-    int forcerebuild, long long total_nr_cells, long long total_nr_tasks,
-    float tasks_per_cell, const struct star_formation_history sfh,
-    float runtime);
+    integertime_t ti_black_holes_beg_max, int forcerebuild,
+    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
+    const struct star_formation_history sfh, float runtime);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);

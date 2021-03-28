@@ -515,6 +515,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
  * @param t_prep1 The recv_prep1 #task, if it has already been created.
  * @param t_limiter The recv_limiter #task, if it has already been created.
  * @param with_feedback Are we running with stellar feedback?
+ * @param with_black_holes Are we running with black holes?
  * @param with_limiter Are we running with the time-step limiter?
  * @param with_sync Are we running with time-step synchronization?
  */
@@ -522,8 +523,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                                 struct task *t_xv, struct task *t_rho,
                                 struct task *t_gradient, struct task *t_ti,
                                 struct task *t_prep1, struct task *t_limiter,
-                                const int with_feedback, const int with_limiter,
-                                const int with_sync) {
+                                const int with_feedback,
+                                const int with_black_holes,
+                                const int with_limiter, const int with_sync) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -612,8 +614,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 
     /* Make sure the gas density has been computed before the
      * stars compute theirs. */
-    for (struct link *l = c->stars.density; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_rho, l->t);
+    if (with_feedback) {
+      for (struct link *l = c->stars.density; l != NULL; l = l->next) {
+        scheduler_addunlock(s, t_rho, l->t);
+      }
     }
 #ifdef EXTRA_STAR_LOOPS
     if (with_feedback) {
@@ -631,8 +635,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 #endif
     /* Make sure the part have been received before the BHs compute their
      * accretion rates (depends on particles' rho). */
-    for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_rho, l->t);
+    if (with_black_holes) {
+      for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
+        scheduler_addunlock(s, t_rho, l->t);
+      }
     }
   }
 
@@ -642,7 +648,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient,
                                    t_ti, t_prep1, t_limiter, with_feedback,
-                                   with_limiter, with_sync);
+                                   with_black_holes, with_limiter, with_sync);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -3937,6 +3943,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_limiter = (e->policy & engine_policy_timestep_limiter);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
@@ -3953,10 +3960,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_hydro(
-          e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL,
-          /*t_gradient=*/NULL, /*t_ti=*/NULL, /*t_prep1=*/NULL,
-          /*t_limiter=*/NULL, with_feedback, with_limiter, with_sync);
+      engine_addtasks_recv_hydro(e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL,
+                                 /*t_gradient=*/NULL, /*t_ti=*/NULL,
+                                 /*t_prep1=*/NULL,
+                                 /*t_limiter=*/NULL, with_feedback,
+                                 with_black_holes, with_limiter, with_sync);
 
     /* Add the recv tasks for the cells in the proxy that have a stars
      * connection. */

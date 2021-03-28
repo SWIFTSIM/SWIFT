@@ -47,15 +47,10 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->sinks.r_cut_max = c->sinks.r_cut_max;
 
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
-  pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
-  pc->grav.ti_end_max = c->grav.ti_end_max;
   pc->stars.ti_end_min = c->stars.ti_end_min;
-  pc->stars.ti_end_max = c->stars.ti_end_max;
   pc->sinks.ti_end_min = c->sinks.ti_end_min;
-  pc->sinks.ti_end_max = c->sinks.ti_end_max;
   pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
-  pc->black_holes.ti_end_max = c->black_holes.ti_end_max;
 
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
@@ -209,15 +204,10 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->sinks.r_cut_max = pc->sinks.r_cut_max;
 
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
-  c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
-  c->grav.ti_end_max = pc->grav.ti_end_max;
   c->stars.ti_end_min = pc->stars.ti_end_min;
-  c->stars.ti_end_max = pc->stars.ti_end_max;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
-  c->black_holes.ti_end_max = pc->black_holes.ti_end_max;
   c->sinks.ti_end_min = pc->sinks.ti_end_min;
-  c->sinks.ti_end_max = pc->sinks.ti_end_max;
 
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
@@ -348,7 +338,6 @@ int cell_pack_end_step_hydro(struct cell *restrict c,
 
   /* Pack this cell's data. */
   pcells[0].ti_end_min = c->hydro.ti_end_min;
-  pcells[0].ti_end_max = c->hydro.ti_end_max;
   pcells[0].dx_max_part = c->hydro.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -381,7 +370,6 @@ int cell_unpack_end_step_hydro(struct cell *restrict c,
 
   /* Unpack this cell's data. */
   c->hydro.ti_end_min = pcells[0].ti_end_min;
-  c->hydro.ti_end_max = pcells[0].ti_end_max;
   c->hydro.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -414,7 +402,6 @@ int cell_pack_end_step_grav(struct cell *restrict c,
 
   /* Pack this cell's data. */
   pcells[0].ti_end_min = c->grav.ti_end_min;
-  pcells[0].ti_end_max = c->grav.ti_end_max;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -446,7 +433,6 @@ int cell_unpack_end_step_grav(struct cell *restrict c,
 
   /* Unpack this cell's data. */
   c->grav.ti_end_min = pcells[0].ti_end_min;
-  c->grav.ti_end_max = pcells[0].ti_end_max;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -478,7 +464,6 @@ int cell_pack_end_step_stars(struct cell *restrict c,
 
   /* Pack this cell's data. */
   pcells[0].ti_end_min = c->stars.ti_end_min;
-  pcells[0].ti_end_max = c->stars.ti_end_max;
   pcells[0].dx_max_part = c->stars.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -511,7 +496,6 @@ int cell_unpack_end_step_stars(struct cell *restrict c,
 
   /* Unpack this cell's data. */
   c->stars.ti_end_min = pcells[0].ti_end_min;
-  c->stars.ti_end_max = pcells[0].ti_end_max;
   c->stars.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -545,7 +529,6 @@ int cell_pack_end_step_black_holes(
 
   /* Pack this cell's data. */
   pcells[0].ti_end_min = c->black_holes.ti_end_min;
-  pcells[0].ti_end_max = c->black_holes.ti_end_max;
   pcells[0].dx_max_part = c->black_holes.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -579,7 +562,6 @@ int cell_unpack_end_step_black_holes(
 
   /* Unpack this cell's data. */
   c->black_holes.ti_end_min = pcells[0].ti_end_min;
-  c->black_holes.ti_end_max = pcells[0].ti_end_max;
   c->black_holes.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */

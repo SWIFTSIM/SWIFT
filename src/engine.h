@@ -240,9 +240,6 @@ struct engine {
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
-  /* Maximal overall ti_end for the next time-step */
-  integertime_t ti_end_max;
-
   /* Maximal overall ti_beg for the next time-step */
   integertime_t ti_beg_max;
 

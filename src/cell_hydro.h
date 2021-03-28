@@ -139,9 +139,6 @@ struct cell_hydro {
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 
-    /*! Maximum end of (integer) time step in this cell for hydro tasks. */
-    integertime_t ti_end_max;
-
     /*! Max smoothing length of active particles in this cell. */
     float h_max_active;
 
