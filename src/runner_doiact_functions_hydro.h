@@ -1400,7 +1400,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
                               *restrict sort_active_j = NULL;
 
   // MATTHIEU: temporary disable this optimization
-  if (0 && cell_is_all_active_hydro(ci, e)) {
+  if (0 /*&& cell_is_all_active_hydro(ci, e)*/) {
     /* If everybody is active don't bother copying */
     sort_active_i = sort_i;
     count_active_i = count_i;
@@ -1419,7 +1419,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   }
 
   // MATTHIEU: temporary disable this optimization
-  if (0 && cell_is_all_active_hydro(cj, e)) {
+  if (0 /*&& cell_is_all_active_hydro(cj, e)*/) {
     /* If everybody is active don't bother copying */
     sort_active_j = sort_j;
     count_active_j = count_j;
