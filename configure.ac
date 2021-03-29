@@ -2612,7 +2612,7 @@ AC_MSG_RESULT([
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
 
-   Continuous Simulation Data Stream : $with_csds
-   Python enabled                    : $have_python
+   Continuous Sim. Data Stream : $with_csds
+   Python enabled              : $have_python
 
  ------------------------])
