@@ -177,13 +177,10 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
 
   cell->stars.ti_old_part = 8;
   cell->stars.ti_end_min = 8;
-  cell->stars.ti_end_max = 8;
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
-  cell->hydro.ti_end_max = 8;
   cell->grav.ti_old_part = 8;
   cell->grav.ti_end_min = 8;
-  cell->grav.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);

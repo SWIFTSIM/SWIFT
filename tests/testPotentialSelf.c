@@ -141,7 +141,6 @@ int main(int argc, char *argv[]) {
   c.grav.count = 1 + num_tests;
   c.grav.ti_old_part = 8;
   c.grav.ti_end_min = 8;
-  c.grav.ti_end_max = 8;
 
   if (posix_memalign((void **)&c.grav.parts, gpart_align,
                      c.grav.count * sizeof(struct gpart)) != 0)
