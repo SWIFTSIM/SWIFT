@@ -165,21 +165,50 @@ static INLINE void potential_init_backend(
     const struct unit_system* us, const struct space* s,
     struct external_potential* potential) {
 
-  const double kmin = 1.;
-  const double kmax = 3.;
-  const double kforcing = 2.5;
-  const double power_forcing = 0.0017; /* m^2 s^-3 (needs conversion) */
-  const double concentration_factor = 0.2;
-  const int random_seed = 42;
-  const double dtfor = 1.e6;       /* s (needs conversion) */
-  const double starting_time = 0.; /* s (needs conversion) */
+  /* make sure the box is a cube */
+  if (s->dim[0] != s->dim[1] || s->dim[0] != s->dim[2]) {
+    error("Turbulent forcing only works in a cubic box!");
+  }
 
+  /* get dimensionless parameters */
+  const int random_seed = parser_get_opt_param_int(
+      parameter_file, "TurbulentDrivingPotential:random_seed", 42);
+  const double kmin = parser_get_opt_param_double(
+      parameter_file, "TurbulentDrivingPotential:kmin", 2.);
+  const double kmax = parser_get_opt_param_double(
+      parameter_file, "TurbulentDrivingPotential:kmax", 3.);
+  const double kforcing = parser_get_opt_param_double(
+      parameter_file, "TurbulentDrivingPotential:kforcing", 2.5);
+  const double concentration_factor = parser_get_opt_param_double(
+      parameter_file, "TurbulentDrivingPotential:concentration_factor", 0.2);
+
+  /* get parameters with units */
+  const double power_forcing_cgs = parser_get_opt_param_double(
+      parameter_file, "TurbulentDrivingPotential:power_forcing_in_cm2_per_s3",
+      17.);
+  const double dtfor_cgs = parser_get_opt_param_double(
+      parameter_file, "TurbulentDrivingPotential:dt_forcing_in_s", 1.e6);
+  const double starting_time_cgs = parser_get_opt_param_double(
+      parameter_file, "TurbulentDrivingPotential:starting_time_in_s", 0.);
+
+  /* convert units */
+  const float forcing_quantity[5] = {0.0f, 2.0f, -3.0f, 0.0f, 0.0f};
+  const double uf_in_cgs =
+      units_general_cgs_conversion_factor(us, forcing_quantity);
+  const double power_forcing = power_forcing_cgs / uf_in_cgs;
+  const double ut_in_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  const double dtfor = dtfor_cgs / ut_in_cgs;
+  const double starting_time = starting_time_cgs / ut_in_cgs;
+
+  /* pre-compute some constants */
   const double Linv = 1. / s->dim[0];
   const double cinv = 1. / (concentration_factor * concentration_factor);
 
+  /* initialise the random number generator */
   potential->random_generator = gsl_rng_alloc(gsl_rng_ranlxd2);
   gsl_rng_set(potential->random_generator, random_seed);
 
+  /* count the number of k-modes within the forcing shell */
   int num_modes = 0;
   for (double k1 = 0.; k1 <= kmax; k1 += 1.) {
     double k2start;
@@ -208,6 +237,7 @@ static INLINE void potential_init_backend(
     }
   }
 
+  /* allocate forcing arrays */
   potential->k =
       (double*)swift_malloc("turbulent_k", 3 * num_modes * sizeof(double));
   potential->amplitudes =
@@ -217,6 +247,7 @@ static INLINE void potential_init_backend(
   potential->forcing =
       (double*)swift_malloc("turbulent_f", num_modes * sizeof(double));
 
+  /* compute the k-modes, unit vectors and forcing per k-mode */
   int kindex = 0;
   double spectrum_sum = 0.;
   for (double k1 = 0.; k1 <= kmax; k1 += 1.) {
@@ -279,21 +310,24 @@ static INLINE void potential_init_backend(
     }
   }
 
+  /* normalise the forcing */
   const double norm = power_forcing / (spectrum_sum * dtfor);
   for (int i = 0; i < num_modes; ++i) {
     potential->forcing[i] *= norm;
     potential->forcing[i] = sqrt(potential->forcing[i]);
   }
 
-  /* fast-forward the driving to the desired point */
+  /* fast-forward the driving to the desired point in time */
   int num_steps = 0;
   while (num_steps * dtfor < starting_time) {
+    /* 3 random numbers are generated per mode in potential_update() */
     for (int i = 0; i < 3 * num_modes; ++i) {
       gsl_rng_uniform(potential->random_generator);
     }
     ++num_steps;
   }
 
+  /* initialise the final variables */
   potential->number_of_steps = 0;
   potential->dt = dtfor;
   potential->number_of_modes = num_modes;
@@ -308,53 +342,61 @@ static INLINE void potential_print_backend(
     const struct external_potential* potential) {
 
   message("External potential is 'Turbulent driving'.");
+  message("%i modes, dt = %g", potential->number_of_modes, potential->dt);
 }
 
 static INLINE void potential_update(double time,
                                     struct external_potential* potential) {
 
-  /* reset the amplitudes */
-  for (int i = 0; i < 6 * potential->number_of_modes; ++i) {
-    potential->amplitudes[i] = 0.;
-  }
+  /* first, check if we need to do anything */
+  if (potential->number_of_steps * potential->dt < time) {
 
-  while (potential->number_of_steps * potential->dt < time) {
-    for (int i = 0; i < potential->number_of_modes; ++i) {
-
-      const double phi =
-          2. * M_PI * gsl_rng_uniform(potential->random_generator);
-      const double ga = sin(phi);
-      const double gb = cos(phi);
-      const double theta1 =
-          2. * M_PI * gsl_rng_uniform(potential->random_generator);
-      const double theta2 =
-          2. * M_PI * gsl_rng_uniform(potential->random_generator);
-      const double real_rand1 = cos(theta1) * ga;
-      const double imag_rand1 = sin(theta1) * ga;
-      const double real_rand2 = cos(theta2) * gb;
-      const double imag_rand2 = sin(theta2) * gb;
-
-      const double kforce = potential->forcing[i];
-      potential->amplitudes[6 * i + 0] =
-          kforce * (real_rand1 * potential->unit_vectors[6 * i + 0] +
-                    real_rand2 * potential->unit_vectors[6 * i + 3]);
-      potential->amplitudes[6 * i + 1] =
-          kforce * (real_rand1 * potential->unit_vectors[6 * i + 1] +
-                    real_rand2 * potential->unit_vectors[6 * i + 4]);
-      potential->amplitudes[6 * i + 2] =
-          kforce * (real_rand1 * potential->unit_vectors[6 * i + 2] +
-                    real_rand2 * potential->unit_vectors[6 * i + 5]);
-      potential->amplitudes[6 * i + 3] =
-          kforce * (imag_rand1 * potential->unit_vectors[6 * i + 0] +
-                    imag_rand2 * potential->unit_vectors[6 * i + 3]);
-      potential->amplitudes[6 * i + 4] =
-          kforce * (imag_rand1 * potential->unit_vectors[6 * i + 1] +
-                    imag_rand2 * potential->unit_vectors[6 * i + 4]);
-      potential->amplitudes[6 * i + 5] =
-          kforce * (imag_rand1 * potential->unit_vectors[6 * i + 2] +
-                    imag_rand2 * potential->unit_vectors[6 * i + 5]);
+    /* reset the amplitudes */
+    for (int i = 0; i < 6 * potential->number_of_modes; ++i) {
+      potential->amplitudes[i] = 0.;
     }
-    ++potential->number_of_steps;
+
+    /* accumulate contributions to the forcing until we reach the desired point
+       in time */
+    while (potential->number_of_steps * potential->dt < time) {
+      for (int i = 0; i < potential->number_of_modes; ++i) {
+
+        const double phi =
+            2. * M_PI * gsl_rng_uniform(potential->random_generator);
+        const double theta1 =
+            2. * M_PI * gsl_rng_uniform(potential->random_generator);
+        const double theta2 =
+            2. * M_PI * gsl_rng_uniform(potential->random_generator);
+
+        const double ga = sin(phi);
+        const double gb = cos(phi);
+        const double real_rand1 = cos(theta1) * ga;
+        const double imag_rand1 = sin(theta1) * ga;
+        const double real_rand2 = cos(theta2) * gb;
+        const double imag_rand2 = sin(theta2) * gb;
+
+        const double kforce = potential->forcing[i];
+        potential->amplitudes[6 * i + 0] =
+            kforce * (real_rand1 * potential->unit_vectors[6 * i + 0] +
+                      real_rand2 * potential->unit_vectors[6 * i + 3]);
+        potential->amplitudes[6 * i + 1] =
+            kforce * (real_rand1 * potential->unit_vectors[6 * i + 1] +
+                      real_rand2 * potential->unit_vectors[6 * i + 4]);
+        potential->amplitudes[6 * i + 2] =
+            kforce * (real_rand1 * potential->unit_vectors[6 * i + 2] +
+                      real_rand2 * potential->unit_vectors[6 * i + 5]);
+        potential->amplitudes[6 * i + 3] =
+            kforce * (imag_rand1 * potential->unit_vectors[6 * i + 0] +
+                      imag_rand2 * potential->unit_vectors[6 * i + 3]);
+        potential->amplitudes[6 * i + 4] =
+            kforce * (imag_rand1 * potential->unit_vectors[6 * i + 1] +
+                      imag_rand2 * potential->unit_vectors[6 * i + 4]);
+        potential->amplitudes[6 * i + 5] =
+            kforce * (imag_rand1 * potential->unit_vectors[6 * i + 2] +
+                      imag_rand2 * potential->unit_vectors[6 * i + 5]);
+      }
+      ++potential->number_of_steps;
+    }
   }
 }
 
