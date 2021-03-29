@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
-  return potential->dt;
+  return FLT_MAX;
 }
 
 /**
