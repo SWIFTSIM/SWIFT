@@ -572,6 +572,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Retrieve some constants */
   const double a_begin = c->a_begin;
+  const double a_end = c->a_end;
 
   /* Allocate memory for the interpolation tables */
   if (swift_memalign("cosmo.table", (void **)&c->drift_fac_interp_table,
@@ -599,6 +600,10 @@ void cosmology_init_tables(struct cosmology *c) {
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
   if (swift_memalign("cosmo.table", (void **)&c->comoving_distance_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->comoving_distance_inverse_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
@@ -693,6 +698,12 @@ void cosmology_init_tables(struct cosmology *c) {
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->comoving_distance_interp_table_offset = result;
 
+  /* Integrate the comoving distance \int_{a_begin}^{a_end} c dt/a */
+  F.function = &comoving_distance_integrand;
+  gsl_integration_qag(&F, a_begin, a_end, 0, 1.0e-10, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+  c->comoving_distance_start_to_end = result;
+
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
@@ -730,6 +741,41 @@ void cosmology_init_tables(struct cosmology *c) {
     double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
                                         cosmology_table_length;
     c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
+  }
+
+  /*
+   * Inverse comoving distance(a)
+   */
+  const double r_begin = cosmology_get_comoving_distance(c, a_begin);
+  const double r_end = cosmology_get_comoving_distance(c, a_end);
+  const double delta_r = (r_begin - r_end) / cosmology_table_length;
+  
+  i_a = 0;
+  for (int i_r = 0; i_r < cosmology_table_length; i_r++) {
+    
+    /* Current comoving distance from a_begin */
+    double r_interp = delta_r * (i_r + 1);
+
+    /* Find next r in comoving_distance_interp_table */
+    while (i_a < cosmology_table_length &&
+           c->comoving_distance_interp_table[i_a] <= r_interp) {
+      i_a++;
+    }
+
+    /* Find linear interpolation scaling */
+    double scale = 0;
+    if (i_a != cosmology_table_length) {
+      scale = r_interp - c->comoving_distance_interp_table[i_a - 1];
+      scale /= c->comoving_distance_interp_table[i_a] - c->comoving_distance_interp_table[i_a - 1];
+    }
+
+    scale += i_a;
+
+    /* Compute interpolated scale factor */
+    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
+                                        cosmology_table_length;
+    c->comoving_distance_inverse_interp_table[i_r] = exp(log_a) - c->a_begin;
+
   }
 
   /* Free the workspace and temp array */
@@ -1207,6 +1253,26 @@ double cosmology_get_comoving_distance(const struct cosmology *c,
 
   /* Subtract dist from comoving distance from a_begin to a=1 */
   return c->comoving_distance_interp_table_offset - dist;
+}
+
+
+/**
+ * @brief Compute scale factor from a comoving distance (in internal units).
+ *
+ * @param c The current #cosmology.
+ * @param r The comoving distance
+ * @return The scale factor.
+ */
+double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c, double r) {
+
+  /* Get comoving distance from a_begin to a corresponding to input r */
+  const double r_interp = c->comoving_distance_interp_table_offset - r;
+
+  const double a =
+    interp_table(c->comoving_distance_inverse_interp_table, r_interp,
+                 0.0, c->comoving_distance_start_to_end);
+  return a + c->a_begin;
+
 }
 
 
