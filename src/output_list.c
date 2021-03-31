@@ -90,6 +90,8 @@ void output_list_read_file(struct output_list *output_list,
     type = OUTPUT_LIST_AGE;
   } else if (strcasecmp(line, "# Scale Factor") == 0) {
     type = OUTPUT_LIST_SCALE_FACTOR;
+  } else if (strcasecmp(line, "# Comoving Distance") == 0) {
+    type = OUTPUT_LIST_COMOVING_DISTANCE;
   } else if (strcasecmp(line, "# Redshift, Select Output") == 0) {
     type = OUTPUT_LIST_REDSHIFT;
     output_list->select_output_on = 1;
@@ -98,6 +100,9 @@ void output_list_read_file(struct output_list *output_list,
     output_list->select_output_on = 1;
   } else if (strcasecmp(line, "# Scale Factor, Select Output") == 0) {
     type = OUTPUT_LIST_SCALE_FACTOR;
+    output_list->select_output_on = 1;
+  } else if (strcasecmp(line, "# Comoving Distance, Select Output") == 0) {
+    type = OUTPUT_LIST_COMOVING_DISTANCE;
     output_list->select_output_on = 1;
   } else if (strcasecmp(line, "# Redshift, Select Output, Label") == 0) {
     type = OUTPUT_LIST_REDSHIFT;
@@ -111,16 +116,20 @@ void output_list_read_file(struct output_list *output_list,
     type = OUTPUT_LIST_SCALE_FACTOR;
     output_list->select_output_on = 1;
     output_list->alternative_labels_on = 1;
+  } else if (strcasecmp(line, "# Comoving Distance, Select Output, Label") == 0) {
+    type = OUTPUT_LIST_COMOVING_DISTANCE;
+    output_list->select_output_on = 1;
+    output_list->alternative_labels_on = 1;
   } else {
     error("Unable to interpret the header (%s) in file '%s'", line, filename);
   }
 
-  if (!cosmo &&
-      (type == OUTPUT_LIST_SCALE_FACTOR || type == OUTPUT_LIST_REDSHIFT))
+  if (!cosmo && (type == OUTPUT_LIST_SCALE_FACTOR || type == OUTPUT_LIST_REDSHIFT
+                 || type == OUTPUT_LIST_COMOVING_DISTANCE))
     error(
-        "Unable to compute a redshift or a scale factor without cosmology. "
-        "Please change the header in '%s'",
-        filename);
+          "Unable to compute a redshift or a scale factor without cosmology. "
+          "Please change the header in '%s'",
+          filename);
 
   if (!output_list->select_output_on && output_list->alternative_labels_on)
     error(
@@ -161,6 +170,9 @@ void output_list_read_file(struct output_list *output_list,
 
     if (cosmo && type == OUTPUT_LIST_AGE)
       *time = cosmology_get_scale_factor(cosmo, *time);
+
+    if (cosmo && type == OUTPUT_LIST_COMOVING_DISTANCE)
+      *time = cosmology_scale_factor_at_comoving_distance(cosmo, *time);
 
     /* Search to find index for select output - select_output_index is the index
      * in the select_output_names array that corresponds to this select output
@@ -212,6 +224,10 @@ void output_list_read_file(struct output_list *output_list,
     if ((type == OUTPUT_LIST_SCALE_FACTOR) &&
         (output_list->times[i] <= output_list->times[i - 1]))
       error("Output list not having monotonically increasing scale-factors.");
+
+    if ((type == OUTPUT_LIST_COMOVING_DISTANCE) &&
+        (output_list->times[i] <= output_list->times[i - 1]))
+      error("Output list not having monotonically decreasing comoving distance.");
   }
 
   /* set current indice to 0 */
