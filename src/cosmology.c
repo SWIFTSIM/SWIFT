@@ -546,6 +546,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Retrieve some constants */
   const double a_begin = c->a_begin;
+  const double a_end = c->a_end;
 
   /* Allocate memory for the interpolation tables */
   if (swift_memalign("cosmo.table", (void **)&c->drift_fac_interp_table,
@@ -641,6 +642,11 @@ void cosmology_init_tables(struct cosmology *c) {
   gsl_integration_qag(&F, 0., a_begin, 0, 1.0e-10, GSL_workspace_size,
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->time_interp_table_offset = result;
+
+  /* Integrate the time \int_{0}^{a_end} dt */
+  gsl_integration_qag(&F, 0., a_end, 0, 1.0e-10, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+  c->time_interp_table_max = result;
 
   /* Integrate the time \int_{0}^{1} dt */
   gsl_integration_qag(&F, 0., 1, 0, 1.0e-13, GSL_workspace_size,
@@ -1252,7 +1258,7 @@ double cosmology_get_scale_factor(const struct cosmology *c, double t) {
   /* scale factor between time_begin and t */
   const double a =
       interp_table(c->scale_factor_interp_table, t, c->time_interp_table_offset,
-                   c->universe_age_at_present_day);
+                   c->time_interp_table_max);
   return a + c->a_begin;
 }
 
