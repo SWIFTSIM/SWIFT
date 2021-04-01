@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2021 Edo Altamura (edoardo.altamura@manchester.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -94,15 +95,36 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
                                  "feedback events received by the particles.");
 
   list[5] = io_make_output_field(
+      "DensitiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, xparts,
+      tracers_data.density_before_last_AGN_feedback_event,
+      "Physical density (not subgrid) of the gas fetched before the last AGN "
+      "feedback event that hit the particles. -1 if the particles have never "
+      "been heated.");
+
+  list[6] = io_make_output_field(
+      "EntropiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS,
+      0.f, xparts, tracers_data.entropy_before_last_AGN_feedback_event,
+      "Physical entropy (not subgrid) per unit mass of the gas fetched before "
+      "the last AGN feedback event that hit the particles. -1 if the particles "
+      "have never been heated.");
+
+  list[7] = io_make_output_field(
       "DensitiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, xparts,
       tracers_data.density_at_last_AGN_feedback_event,
       "Physical density (not subgrid) of the gas at the last AGN feedback "
       "event that hit the particles. -1 if the particles have never been "
       "heated.");
 
+  list[8] = io_make_output_field(
+      "EntropiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f,
+      xparts, tracers_data.entropy_at_last_AGN_feedback_event,
+      "Physical entropy (not subgrid) per unit mass of the gas at the last AGN "
+      "feedback event that hit the particles. -1 if the particles have never "
+      "been heated.");
+
   if (with_cosmology) {
 
-    list[6] = io_make_output_field(
+    list[9] = io_make_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         xparts, tracers_data.last_AGN_injection_scale_factor,
         "Scale-factors at which the particles were last hit by AGN feedback. "
@@ -110,14 +132,14 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
   } else {
 
-    list[6] = io_make_output_field(
+    list[9] = io_make_output_field(
         "LastAGNFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, xparts,
         tracers_data.last_AGN_injection_time,
         "Times at which the particles were last hit by AGN feedback. -1 if a "
         "particle has never been hit by feedback");
   }
 
-  return 7;
+  return 10;
 }
 
 __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
@@ -165,15 +187,40 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       "particles when the particle was still a gas particle.");
 
   list[5] = io_make_output_field(
+      "DensitiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
+      tracers_data.density_before_last_AGN_feedback_event,
+      "Physical density (not subgrid) of the gas fetched before the last AGN "
+      "feedback "
+      "event that hit the particles when they were still gas particles. -1 if "
+      "the particles have never been heated.");
+
+  list[6] = io_make_output_field(
+      "EntropiesBeforeLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS,
+      0.f, sparts, tracers_data.entropy_before_last_AGN_feedback_event,
+      "Physical entropy (not subgrid) per unit mass of the gas fetched before "
+      "the last AGN "
+      "feedback event that hit the particles when they were still gas "
+      "particles."
+      " -1 if the particles have never been heated.");
+
+  list[7] = io_make_output_field(
       "DensitiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
       tracers_data.density_at_last_AGN_feedback_event,
       "Physical density (not subgrid) of the gas at the last AGN feedback "
       "event that hit the particles when they were still gas particles. -1 if "
       "the particles have never been heated.");
 
+  list[8] = io_make_output_field(
+      "EntropiesAtLastAGNEvent", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f,
+      sparts, tracers_data.entropy_at_last_AGN_feedback_event,
+      "Physical entropy (not subgrid) per unit mass of the gas at the last AGN "
+      "feedback event that hit the particles when they were still gas "
+      "particles."
+      " -1 if the particles have never been heated.");
+
   if (with_cosmology) {
 
-    list[6] = io_make_output_field(
+    list[9] = io_make_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         sparts, tracers_data.last_AGN_injection_scale_factor,
         "Scale-factors at which the particles were last hit by AGN feedback "
@@ -182,7 +229,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
 
   } else {
 
-    list[6] =
+    list[9] =
         io_make_output_field("LastAGNFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME,
                              0.f, sparts, tracers_data.last_AGN_injection_time,
                              "Times at which the particles were last hit by "
@@ -190,7 +237,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
                              "-1 if a particle has never been hit by feedback");
   }
 
-  return 7;
+  return 10;
 }
 
 #endif /* SWIFT_TRACERS_EAGLE_IO_H */
