@@ -89,18 +89,18 @@ void replication_list_init(struct replication_list *replication_list,
 
           /* Find distance to closest possible particle in this replication  */
           double dx, dy, dz;
-          dx = abs(cx) - 0.5*boxsize - 0.5*cell_width;
+          dx = fabs(cx) - 0.5*boxsize - 0.5*cell_width;
           if(dx < 0) dx = 0;
-          dy = abs(cy) - 0.5*boxsize - 0.5*cell_width;
+          dy = fabs(cy) - 0.5*boxsize - 0.5*cell_width;
           if(dy < 0) dy = 0;
-          dz = abs(cz) - 0.5*boxsize - 0.5*cell_width;
+          dz = fabs(cz) - 0.5*boxsize - 0.5*cell_width;
           if(dz < 0) dz = 0;
           double rep_rmin = sqrt(dx*dx+dy*dy+dz*dz);
 
           /* Find distance to most distant possible particle in this replication  */
-          dx = abs(cx) + 0.5*boxsize + 0.5*cell_width;
-          dy = abs(cy) + 0.5*boxsize + 0.5*cell_width;
-          dz = abs(cz) + 0.5*boxsize + 0.5*cell_width;
+          dx = fabs(cx) + 0.5*boxsize + 0.5*cell_width;
+          dy = fabs(cy) + 0.5*boxsize + 0.5*cell_width;
+          dz = fabs(cz) + 0.5*boxsize + 0.5*cell_width;
           double rep_rmax = sqrt(dx*dx+dy*dy+dz*dz);
 
           /* Flag if any point in this replication could be in the lightcone */
@@ -235,7 +235,7 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
     /* Compute minimum possible distance squared from observer to this replication of this cell */
     double cell_rmin2 = 0.0;
     for(int j=0; j<3; j+=1) {
-      double dx = abs(cell_rep_centre[j]) - 0.5*cell_eff_width[j];
+      double dx = fabs(cell_rep_centre[j]) - 0.5*cell_eff_width[j];
       if(dx < 0.0)dx = 0.0;
       cell_rmin2 += dx*dx;
     }
@@ -243,7 +243,7 @@ void replication_list_subset_for_cell(const struct replication_list *rep_in,
     /* Compute maximum possible distance squared from observer to this replication of this cell */
     double cell_rmax2 = 0.0;
     for(int j=0; j<3; j+=1) {
-      double dx = abs(cell_rep_centre[j]) + 0.5*cell_eff_width[j];
+      double dx = fabs(cell_rep_centre[j]) + 0.5*cell_eff_width[j];
       cell_rmax2 += dx*dx;
     }
 

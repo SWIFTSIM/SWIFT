@@ -107,9 +107,8 @@ void lightcone_init(struct lightcone_props *props,
   props->enabled = 1;
 
   /* Which particle types to use */
-  int use_type[swift_type_count];
   for(int i=0; i<swift_type_count; i+=1)
-    use_type[i] = 0;
+    props->use_type[i] = 0;
   props->use_type[swift_type_gas] = parser_get_param_int(params, "Lightcone:use_gas");
   props->use_type[swift_type_dark_matter] = parser_get_param_int(params, "Lightcone:use_dm");
   props->use_type[swift_type_dark_matter_background] = parser_get_param_int(params, "Lightcone:use_dm_background");
@@ -242,7 +241,7 @@ void lightcone_flush_buffers(struct lightcone_props *props,
                              int flush_all, int end_file) {
 
   /* Will flush any buffers with more particles than this */
-  int max_to_buffer = props->max_particles_buffered;
+  size_t max_to_buffer = (size_t) props->max_particles_buffered;
   if(flush_all)max_to_buffer = 0;
 
   /* Count how many types have data to write out */
@@ -264,7 +263,9 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
       /* Get the name of the next file */
       props->current_file += 1;
-      sprintf(fname, "%s_%04d.%d.hdf5", props->basename, props->current_file, engine_rank);
+      if(snprintf(fname, FILENAME_BUFFER_SIZE, "%s_%04d.%d.hdf5",
+                  props->basename, props->current_file, engine_rank) < 0)
+        error("Lightcone output filename truncated");
 
       /* Create the file */
       file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -280,7 +281,9 @@ void lightcone_flush_buffers(struct lightcone_props *props,
     } else {
 
       /* Re-open an existing file */
-      sprintf(fname, "%s_%04d.%d.hdf5", props->basename, props->current_file, engine_rank);
+      if(snprintf(fname, FILENAME_BUFFER_SIZE, "%s_%04d.%d.hdf5",
+                  props->basename, props->current_file, engine_rank) < 0)
+        error("Lightcone output filename truncated");
       file_id = H5Fopen(fname, H5F_ACC_RDWR, H5P_DEFAULT);
       if(file_id < 0)error("Unable to open current lightcone file: %s", fname);
 

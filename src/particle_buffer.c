@@ -63,7 +63,7 @@ void particle_buffer_free(struct particle_buffer *buffer) {
   }
   buffer->first_block = NULL;
   buffer->last_block = NULL;
-  lock_destroy(&buffer->lock);
+  if(lock_destroy(&buffer->lock) != 0)error("Failed to destroy lock on particle buffer");
 }
 
 
@@ -134,7 +134,7 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
            so all initialization must complete before this. */
         __atomic_store_n(&buffer->last_block, new_block, __ATOMIC_SEQ_CST);
       }
-      lock_unlock(&buffer->lock);
+      if(lock_unlock(&buffer->lock) != 0)error("Failed to unlock particle buffer");
       /* Now we have space, will try again */
     }
   }
