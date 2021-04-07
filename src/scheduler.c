@@ -2011,6 +2011,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           t->buff = t->ci->hydro.parts;
 
+        } else if (t->subtype == task_subtype_doxv) {
+
+          t->buff = t->ci->hydro.parts;
+
         } else if (t->subtype == task_subtype_subxv) {
 
           t->buff = ((char *)t->ci->hydro.parts) + (t->sub_offset * sizeof(struct part));
@@ -2098,6 +2102,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
           t->buff = t->ci->hydro.parts;
 
+        } else if (t->subtype == task_subtype_doxv) {
+
+          t->buff = t->ci->hydro.parts;
+
         } else if (t->subtype == task_subtype_subxv) {
 
           t->buff = ((char *)t->ci->hydro.parts) + (t->sub_offset * sizeof(struct part));
@@ -2180,7 +2188,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
   /* Unlock sends and recvs, need scheduler so not in task_unlock. */
   if (t->type == task_type_send) {
-    if (t->subtype != task_subtype_subgpart) {
+    if (t->subtype != task_subtype_subgpart && t->subtype != task_subtype_subxv) {
       if (lock_unlock(&s->send_lock[t->cj->nodeID % scheduler_rdma_max_sends]) != 0) {
         error("Unlocking the MPI send lock failed.\n");
       }
@@ -2666,9 +2674,10 @@ size_t scheduler_mpi_size(struct task *t) {
              t->subtype == task_subtype_limiter) {
     size = t->ci->hydro.count * sizeof(struct part);
 
-  } else if (t->subtype == task_subtype_subxv) {
-    /* Only sending part of a cell. */
-    size = t->sub_size * sizeof(struct part);
+  } else if (t->subtype == task_subtype_subxv||
+             t->subtype == task_subtype_doxv) {
+    /* Never send or receive directly. */
+    return 0;
 
   } else if (t->subtype == task_subtype_subgpart||
              t->subtype == task_subtype_dogpart) {

@@ -1448,10 +1448,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
           struct link *ll = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-          if (ll->t->flags == -1) {
-            /* Look for any subtasks. */
-            scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
-          }
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_doxv);
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
+
           if (ci_active) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
@@ -1474,10 +1473,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) {
 
           struct link *ll = scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
-          if (ll->t->flags == -1) {
-            scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
-                                        task_subtype_subxv, ci_nodeID);
-          }
+          scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
+                                      task_subtype_subxv, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -1524,9 +1521,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           struct link *ll = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-          if (ll->t->flags == -1) {
-            scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
-          }
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_doxv);
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
+
           if (cj_active) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
@@ -1549,10 +1546,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) {
 
           struct link *ll = scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
-          if (ll->t->flags == -1) {
-            scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
-                                        task_subtype_subxv, cj_nodeID);
-          }
+          scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
+                                      task_subtype_subxv, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -1917,9 +1912,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (ci_nodeID != nodeID) {
         if (cj_active) {
           struct link *ll = scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-          if (ll->t->flags == -1) {
-            scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
-          }
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_doxv);
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
+
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
           /* If the local cell is active, more stuff will be needed. */
@@ -1940,10 +1935,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
           /* Is the foreign cell active and will need stuff from us? */
           struct link *ll = scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
-          if (ll->t->flags == -1) {
-            scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
-                                        task_subtype_subxv, ci_nodeID);
-          }
+          scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
+                                      task_subtype_subxv, ci_nodeID);
+
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
@@ -1955,9 +1949,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           struct link *ll = scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-          if (ll->t->flags == -1) {
-            scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
-          }
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_doxv);
+          scheduler_activate_subrecvs(s, ll->t->ci->hydro.subrecv, task_subtype_subxv);
+
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
           /* If the local cell is active, more stuff will be needed. */
@@ -1978,10 +1972,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
           /* Is the foreign cell active and will need stuff from us? */
           struct link *ll = scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
-          if (ll->t->flags == -1) {
-            scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
+          scheduler_activate_subsends(s, ll->t->ci->hydro.subsend,
                                         task_subtype_subxv, cj_nodeID);
-          }
+
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent

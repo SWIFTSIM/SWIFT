@@ -127,6 +127,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "tend_sink",
     "tend_bpart",
     "xv",
+    "doxv",
     "subxv",
     "rho",
     "part_swallow",
@@ -639,8 +640,8 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
     case task_type_send:
       {
 
-        /* subgpart can always run, just moves data. */
-        if (subtype == task_subtype_subgpart) {
+        /* subgpart and subxv can always run, just moves data. */
+        if (subtype == task_subtype_subgpart || subtype == task_subtype_subxv) {
           //message("locking %s/%s", taskID_names[type], subtaskID_names[subtype]);
           return 1;
         }
@@ -660,16 +661,16 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
       {
 #ifdef WITH_MPI
 
-        /* subgpart can always run, just moves data. */
-        if (subtype == task_subtype_subgpart) {
+        /* subgpart and subxv can always run, just moves data. */
+        if (subtype == task_subtype_subgpart || subtype == task_subtype_subxv) {
           //message("locking %s/%s", taskID_names[type], subtaskID_names[subtype]);
           return 1;
         }
 
-        /* dogpart can always run, just processes all data. */
-        if (subtype == task_subtype_dogpart) {
-          return 1;
+        /* dogpart doxv can always run, just processes all data. */
+        if (subtype == task_subtype_dogpart || subtype == task_subtype_doxv) {
           //message("locking %s/%s", taskID_names[type], subtaskID_names[subtype]);
+          return 1;
         }
 
         /* Try to grab one of the locks.*/

@@ -425,7 +425,7 @@ void *runner_main(void *data) {
               dataptr[t->win_offset + 3] = engine_rank;
 
               // For this type the data should already be copied and ready to go.
-              if (t->subtype != task_subtype_gpart) {
+              if (t->subtype != task_subtype_gpart && t->subtype != task_subtype_xv) {
                 memcpy(&dataptr[t->win_offset + scheduler_rdma_header_size],
                        t->buff, t->win_size);
               }
@@ -465,6 +465,16 @@ void *runner_main(void *data) {
             memcpy(dataptr + offset, t->buff, t->sub_size * sizeof(struct gpart));
             //message("running subgpart copy");
           }
+          else if (t->subtype == task_subtype_subxv) {
+
+            /* Get the send buffer for this remote and copy our data chunk. */
+            char *dataptr = infinity_get_send_buffer(sched->send_handle, cj->nodeID);
+            size_t offset = scheduler_rdma_tobytes(scheduler_rdma_header_size) +
+              scheduler_rdma_tobytes(t->main_task->win_offset) +
+              (t->sub_offset *sizeof(struct part));
+            memcpy(dataptr + offset, t->buff, t->sub_size * sizeof(struct part));
+            //message("running subxv copy");
+          }
           else if (t->subtype == task_subtype_tend_part) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_gpart) {
@@ -492,7 +502,7 @@ void *runner_main(void *data) {
           /* Ready to process. So copy to local buffer, unless we are doing
            * this in parts. */
           if (t->flags != -1) {
-            if (t->subtype != task_subtype_gpart) {
+            if (t->subtype != task_subtype_gpart && t->subtype != task_subtype_xv) {
               if (t->rdmabuff == NULL) error("No RDMA data yet!");
               memcpy(t->buff, t->rdmabuff, t->win_size);
             }
@@ -515,10 +525,20 @@ void *runner_main(void *data) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
-          } else if (t->subtype == task_subtype_xv) {
+
+          } else if (t->subtype == task_subtype_doxv) {
             runner_do_recv_part(r, ci, 1, 1);
+          } else if (t->subtype == task_subtype_xv) {
+            /* Does nothing, just unlocks subxv and doxv recvs, already
+             * accepted remove data send. */
+
           } else if (t->subtype == task_subtype_subxv) {
-            /* Nothing to do, xv task will complete the recv. */
+
+            /* Only move our part of the data. */
+            char *ptr1 = ((char *)t->buff);
+            char *ptr2 = ((char *)t->main_task->rdmabuff) + (t->sub_offset * sizeof(struct part));
+            memcpy(ptr1, ptr2, t->sub_size * sizeof(struct part));
+
           } else if (t->subtype == task_subtype_rho) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gradient) {

@@ -124,6 +124,7 @@ enum task_subtypes {
   task_subtype_tend_sink,
   task_subtype_tend_bpart,
   task_subtype_xv,
+  task_subtype_doxv,
   task_subtype_subxv,
   task_subtype_rho,
   task_subtype_part_swallow,
@@ -241,6 +242,7 @@ struct task {
 
   /* The main task with memory offsets, if a sub one. */
   struct task *main_task;
+
 #endif
 
   /*! Rank of a task in the order */

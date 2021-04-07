@@ -91,7 +91,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     if (t_grav == NULL) {
 
       /* Make sure this cell is tagged. */
-      cell_ensure_tagged(ci, s->mpi_split_limit);
+      cell_ensure_tagged(ci);
 
       /* Normal single send. */
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
@@ -111,15 +111,15 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
         /* Needs a direct reference to the main task to access the memory window. */
         tc_grav->main_task = t_grav;
-        
+
         /* Offset into the memory of the main task. */
         tc_grav->sub_offset = offset;
         if (offset + chunk > ci->grav.count) chunk = ci->grav.count - offset;
         tc_grav->sub_size = chunk;
-        
+
         /* Next chunk. */
         offset += chunk;
-        
+
         /* We unlock the main send task and append to the link of subsends. */
         scheduler_addunlock(s, tc_grav, t_grav);
         engine_addlink(e, &ci->grav.subsend, tc_grav);
@@ -198,45 +198,39 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     if (t_xv == NULL) {
 
       /* Make sure this cell is tagged. */
-      cell_ensure_tagged(ci, s->mpi_split_limit);
+      cell_ensure_tagged(ci);
 
-      if (ci->hydro.count * sizeof(struct part) > s->mpi_cell_limit) {
+      /* The main send task. */
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
+                               0, ci, cj);
+      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_xv);
 
-        /* Split the work into a number of subtasks, limited to
-         * s->mpi_split_limit to make it easy to keep track of the additional
-         * MPI tags. */
-        t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, -1, 0, ci, cj);
-        
-        /* Construct the subtasks setting the data limits for each transfer. */
-        int offset = 0;
-        int size = ci->hydro.count / s->mpi_split_limit + 1;
-        for (int k = 0; k < s->mpi_split_limit; k++) {
-          struct task *tc_xv = scheduler_addtask(s, task_type_send,
-                                                 task_subtype_subxv,
-                                                 ci->mpi.tag + k, 0, ci, cj);
-          
-          tc_xv->sub_offset = offset;
-          if (offset + size > ci->hydro.count) size = ci->hydro.count - offset;
-          tc_xv->sub_size = size;
-          scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, tc_xv);
+      /* Decide how many sub copy tasks we need. */
+      int nr_subs =  (ci->hydro.count * sizeof(struct part)) / s->mpi_cell_limit + 1;
+      int offset = 0;
+      int chunk = ci->hydro.count / nr_subs;
 
-          /* Next chunk. */
-          offset += size;
+      for (int k = 0; k < nr_subs; k++) {
+        struct task *tc_xv = scheduler_addtask(s, task_type_send, task_subtype_subxv,
+                                               -1, 0, ci, cj);
 
-          /* We unlock the top send task and append to the link of subsends. */
-          scheduler_addunlock(s, tc_xv, t_xv);
-          engine_addlink(e, &ci->hydro.subsend, tc_xv);
+        /* Needs a direct reference to the main task to access the memory window. */
+        tc_xv->main_task = t_xv;
 
-          /* Like the main task make sure we drift before you send. */
-          scheduler_addunlock(s, ci->hydro.super->hydro.drift, tc_xv);
-        }
+        /* Offset into the memory of the main task. */
+        tc_xv->sub_offset = offset;
+        if (offset + chunk > ci->hydro.count) chunk = ci->hydro.count - offset;
+        tc_xv->sub_size = chunk;
 
-      } else {
+        /* Next chunk. */
+        offset += chunk;
 
-        /* Normal send. */
-        t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
-                                 0, ci, cj);
-        scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_xv);
+        /* We unlock the main send task and append to the link of subsends. */
+        scheduler_addunlock(s, tc_xv, t_xv);
+        engine_addlink(e, &ci->hydro.subsend, tc_xv);
+
+        /* Like the main task make sure we drift before you send. */
+        scheduler_addunlock(s, ci->hydro.super->hydro.drift, tc_xv);
       }
 
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
@@ -370,7 +364,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     if (t_feedback == NULL) {
 
       /* Make sure this cell is tagged. */
-      cell_ensure_tagged(ci, s->mpi_split_limit);
+      cell_ensure_tagged(ci);
 
       /* Create the tasks and their dependencies? */
       t_feedback = scheduler_addtask(s, task_type_send, task_subtype_spart,
@@ -453,7 +447,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
     if (t_rho == NULL) {
 
       /* Make sure this cell is tagged. */
-      cell_ensure_tagged(ci, s->mpi_split_limit);
+      cell_ensure_tagged(ci);
 
       /* Create the tasks and their dependencies? */
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_bpart_rho,
@@ -545,6 +539,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+  struct task *do_xv = NULL;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -557,40 +552,38 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-    /* Create the tasks. */
-    if (c->hydro.count * sizeof(struct part) > s->mpi_cell_limit) {
+    /* Create the send task. */
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag, 0,
+                             c, NULL);
+    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_xv);
 
-      /* Work has been split work into a number of sends. */
-      t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, -1, 0, c, NULL);
+    /* Unlock the task that does the final accept of the data. */
+    do_xv = scheduler_addtask(s, task_type_recv, task_subtype_doxv, -1, 0, c, NULL);
+    engine_addlink(e, &c->hydro.subrecv, do_xv);
+    scheduler_addunlock(s, t_xv, do_xv);
 
-      /* The sends will arrive in chunks, we need a task per chunk. */
-      int offset = 0;
-      int size = c->hydro.count / s->mpi_split_limit + 1;
-      for (int k = 0; k < s->mpi_split_limit; k++) {
-        struct task *tc_xv = scheduler_addtask(s, task_type_recv,
-                                               task_subtype_subxv,
-                                               c->mpi.tag + k, 0,
-                                               c, NULL);
-        tc_xv->sub_offset = offset;
-        if (offset + size > c->hydro.count) size = c->hydro.count - offset;
-        tc_xv->sub_size = size;
-        scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, tc_xv);
+    /* Decide how many sub copy tasks we need. */
+    int nr_subs =  (c->hydro.count * sizeof(struct gpart)) / s->mpi_cell_limit + 1;
+    int offset = 0;
+    int chunk = c->hydro.count / nr_subs;
+    for (int k = 0; k < nr_subs; k++) {
+      struct task *tc_xv = scheduler_addtask(s, task_type_recv, task_subtype_subxv,
+                                             -1, 0, c, NULL);
+      /* Needs a direct reference to the main task. */
+      tc_xv->main_task = t_xv;
 
-        /* Next chunk. */
-        offset += size;
+      tc_xv->sub_offset = offset;
+      if (offset + chunk > c->hydro.count) chunk = c->hydro.count - offset;
+      tc_xv->sub_size = chunk;
 
-        engine_addlink(e, &c->hydro.subrecv, tc_xv);
-        scheduler_addunlock(s, tc_xv, t_xv);
-      }
+      /* Next chunk. */
+      offset += chunk;
 
-    } else {
-
-      /* Normal recv task. */
-      t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag, 0,
-                               c, NULL);
-      scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_xv);
+      /* Task is unlocked by main recv and unlocks the do task. */
+      engine_addlink(e, &c->hydro.subrecv, tc_xv);
+      scheduler_addunlock(s, t_xv, tc_xv);
+      scheduler_addunlock(s, tc_xv, do_xv);
     }
-
 
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
                               0, c, NULL);
@@ -623,6 +616,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 
     /* Add dependencies. */
     if (c->hydro.sorts != NULL) {
+      if (do_xv != NULL) scheduler_addunlock(s, do_xv, c->hydro.sorts);
       scheduler_addunlock(s, t_xv, c->hydro.sorts);
       scheduler_addunlock(s, c->hydro.sorts, t_rho);
     }
@@ -891,6 +885,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+  struct task *do_grav = NULL;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -907,9 +902,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
     scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_grav);
-    
+
     /* Unlock the task that does the final accept of the data. */
-    struct task *do_grav = scheduler_addtask(s, task_type_recv, task_subtype_dogpart,
+    do_grav = scheduler_addtask(s, task_type_recv, task_subtype_dogpart,
                                              -1, 0, c, NULL);
     engine_addlink(e, &c->grav.subrecv, do_grav);
     scheduler_addunlock(s, t_grav, do_grav);
@@ -949,6 +944,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_ti);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
+      /* Also wait for do_grav if just created. */
+      if (do_grav != NULL) scheduler_addunlock(s, do_grav, l->t);
       scheduler_addunlock(s, t_grav, l->t);
       scheduler_addunlock(s, l->t, t_ti);
     }
