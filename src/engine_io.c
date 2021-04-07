@@ -123,7 +123,9 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
         lightcone_flush_buffers(e->lightcone_properties, 
                                 /* flush_all = */ 1,
                                 /* end_file = */ 1);
+#ifdef WITH_MPI
         MPI_Barrier(MPI_COMM_WORLD);
+#endif
       }
 #endif
 
