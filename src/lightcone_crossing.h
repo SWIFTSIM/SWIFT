@@ -180,10 +180,6 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
     const double eps = 1.0e-5;
     if((f < 0.0-eps) || (f > 1.0+eps)) error("Particle interpolated outside time step!");
 
-    /* Compute expansion factor at crossing (approximate, used for debugging) */    
-    //const double ti_cross = ti_old + (ti_current-ti_old)*f;
-    //const double a_cross = c->a_begin * exp(ti_cross * c->time_base);
-
     /* Compute position at crossing */
     const double x_cross[3] = {
       x_start[0] + dt_drift * f * v_full[0],
@@ -197,6 +193,9 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
                              x_cross[2]*x_cross[2]);
     if(r2_cross < props->r2_min || r2_cross > props->r2_max)continue;
 
+    /* Compute expansion factor at crossing */
+    const double a_cross = cosmology_scale_factor_at_comoving_distance(c, sqrt(r2_cross));
+
     /* Need to write out this particle */
     switch (gp->type) {
 
@@ -205,7 +204,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
       const struct part *p = (struct part *) extra1;
       const struct xpart *xp = (struct xpart *) extra2;
       struct lightcone_gas_data data;
-      lightcone_store_gas(gp, p, xp, x_cross, &data);
+      lightcone_store_gas(gp, p, xp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_gas, &data);
  
     } break;
@@ -214,7 +213,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
 
       const struct spart *sp = (struct spart *) extra1;
       struct lightcone_stars_data data;
-      lightcone_store_stars(gp, sp, x_cross, &data);
+      lightcone_store_stars(gp, sp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_stars, &data);
 
     } break;
@@ -223,7 +222,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
 
       const struct bpart *bp = (struct bpart *) extra1;
       struct lightcone_black_hole_data data;
-      lightcone_store_black_hole(gp, bp, x_cross, &data);
+      lightcone_store_black_hole(gp, bp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_black_hole, &data);
 
     } break;
@@ -231,7 +230,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
     case swift_type_dark_matter: {
 
       struct lightcone_dark_matter_data data;
-      lightcone_store_dark_matter(gp, x_cross, &data);
+      lightcone_store_dark_matter(gp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_dark_matter, &data);
  
     } break;
@@ -240,7 +239,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
 
       /* Assumed to have same properties as DM particles */
       struct lightcone_dark_matter_data data;
-      lightcone_store_dark_matter(gp, x_cross, &data);
+      lightcone_store_dark_matter(gp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_dark_matter_background, &data);
             
     } break;
@@ -248,7 +247,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
     case swift_type_neutrino: {
 
       struct lightcone_neutrino_data data;
-      lightcone_store_neutrino(gp, x_cross, &data);
+      lightcone_store_neutrino(gp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_neutrino, &data);
 
     } break;
