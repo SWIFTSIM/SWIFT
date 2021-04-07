@@ -43,6 +43,7 @@ void append_dataset(hid_t loc_id, const char *name, hid_t mem_type_id, hsize_t c
   
   const int max_rank = 2;
   if(rank > max_rank)error("HDF5 dataset has too may dimensions. Increase max_rank.");
+  if(rank < 1)error("HDF5 dataset must be at least one dimensional");
 
   /* If we have zero elements to append, there's nothing to do */
   if(dims[0] == 0)return;
