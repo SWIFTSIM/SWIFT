@@ -57,7 +57,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
 #ifdef WITH_LIGHTCONE
   struct replication_list replication_list;
-  if(c==c->top) {
+  if(e->lightcone_properties->enabled && c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
                                      &replication_list);
@@ -257,7 +257,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     }
 
 #ifdef WITH_LIGHTCONE
-    if(c==c->top) replication_list_clean(&replication_list);
+    if(e->lightcone_properties->enabled && c==c->top)
+      replication_list_clean(&replication_list);
 #endif
 
     /* Now, get the maximal particle motion from its square */
@@ -296,7 +297,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
 #ifdef WITH_LIGHTCONE
   struct replication_list replication_list;
-  if(c==c->top) {
+  if(e->lightcone_properties->enabled && c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
                                      &replication_list);
@@ -423,7 +424,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     }
 
 #ifdef WITH_LIGHTCONE
-    if(c==c->top) replication_list_clean(&replication_list);
+    if(e->lightcone_properties->enabled && c==c->top)
+      replication_list_clean(&replication_list);
 #endif
 
     /* Update the time of the last drift */
@@ -453,7 +455,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
 #ifdef WITH_LIGHTCONE
     struct replication_list replication_list;
-    if(c==c->top) {
+    if(e->lightcone_properties->enabled && c==c->top) {
       replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                        c, e->lightcone_properties->observer_position,
                                        &replication_list);
@@ -615,7 +617,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
     }
 
 #ifdef WITH_LIGHTCONE
-    if(c==c->top) replication_list_clean(&replication_list);
+    if(e->lightcone_properties->enabled && c==c->top)
+      replication_list_clean(&replication_list);
 #endif
 
     /* Now, get the maximal particle motion from its square */
@@ -656,7 +659,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
 #ifdef WITH_LIGHTCONE
   struct replication_list replication_list;
-  if(c==c->top) {
+  if(e->lightcone_properties->enabled && c==c->top) {
     replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
                                      c, e->lightcone_properties->observer_position,
                                      &replication_list);
@@ -812,7 +815,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
     }
 
 #ifdef WITH_LIGHTCONE
-    if(c==c->top) replication_list_clean(&replication_list);
+    if(e->lightcone_properties->enabled && c==c->top)
+      replication_list_clean(&replication_list);
 #endif
 
     /* Now, get the maximal particle motion from its square */

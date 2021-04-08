@@ -88,11 +88,10 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 #endif
 
 #ifdef WITH_LIGHTCONE
-  if(replication_list->nrep > 0)
-    lightcone_check_particle_crosses(e->lightcone_properties, replication_list,
-                                     e->cosmology, gp, gp->x, gp->v_full,
-                                     dt_drift, ti_old, ti_current, cell_loc,
-                                     NULL, NULL);
+  lightcone_check_particle_crosses(e->lightcone_properties, replication_list,
+                                   e->cosmology, gp, gp->x, gp->v_full,
+                                   dt_drift, ti_old, ti_current, cell_loc,
+                                   NULL, NULL);
 #endif
 
   /* Drift... */
@@ -153,10 +152,9 @@ __attribute__((always_inline)) INLINE static void drift_part(
 #endif
 
 #ifdef WITH_LIGHTCONE
-  if(replication_list->nrep > 0)
-    lightcone_check_particle_crosses(lightcone_properties, replication_list,
-                                     cosmo, p->gpart, p->x, xp->v_full, dt_drift,
-                                     ti_old, ti_current, cell_loc, p, xp);
+  lightcone_check_particle_crosses(lightcone_properties, replication_list,
+                                   cosmo, p->gpart, p->x, xp->v_full, dt_drift,
+                                   ti_old, ti_current, cell_loc, p, xp);
 #endif
 
   /* Drift... */
@@ -238,10 +236,9 @@ __attribute__((always_inline)) INLINE static void drift_spart(
 #endif
 
 #ifdef WITH_LIGHTCONE
-  if(replication_list->nrep > 0)
-    lightcone_check_particle_crosses(lightcone_properties, replication_list,
-                                     cosmo, sp->gpart, sp->x, sp->v, dt_drift,
-                                     ti_old, ti_current, cell_loc, sp, NULL);
+  lightcone_check_particle_crosses(lightcone_properties, replication_list,
+                                   cosmo, sp->gpart, sp->x, sp->v, dt_drift,
+                                   ti_old, ti_current, cell_loc, sp, NULL);
 #endif
 
   /* Drift... */
@@ -301,10 +298,9 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
 #endif
 
 #ifdef WITH_LIGHTCONE
-  if(replication_list->nrep > 0)
-    lightcone_check_particle_crosses(lightcone_properties, replication_list,
-                                     cosmo, bp->gpart, bp->x, bp->v, dt_drift,
-                                     ti_old, ti_current, cell_loc, bp, NULL);
+  lightcone_check_particle_crosses(lightcone_properties, replication_list,
+                                   cosmo, bp->gpart, bp->x, bp->v, dt_drift,
+                                   ti_old, ti_current, cell_loc, bp, NULL);
 #endif
 
   /* Drift... */

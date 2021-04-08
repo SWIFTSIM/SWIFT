@@ -54,8 +54,8 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
      const integertime_t ti_current, const double cell_loc[3],
      void *extra1, void *extra2) {
 
-  /* Are we making a lightcone? */
-  if(!props->enabled)return;
+  /* Are we making a lightcone and in the lightcone redshift range? */
+  if(!props->enabled || replication_list->nrep==0)return;
 
   /* Are we using this particle type in the lightcone? */
   if(!props->use_type[gp->type])return;
