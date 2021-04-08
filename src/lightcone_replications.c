@@ -152,6 +152,25 @@ void replication_list_init(struct replication_list *replication_list,
 
 
 /**
+ * @brief Make an empty replication list
+ *
+ * @param replication_list Pointer to the struct to initialise.
+ */
+void replication_list_init_empty(struct replication_list *replication_list) {
+  
+  const int nrep = 0;
+  if(swift_memalign("lightcone_replications", (void **) &replication_list->replication,
+                    SWIFT_STRUCT_ALIGNMENT, sizeof(struct replication)*nrep) != 0) {
+    error("Failed to allocate lightcone replication list");
+  }
+  replication_list->lightcone_rmin = 0.0;
+  replication_list->lightcone_rmax = 0.0;
+  replication_list->nrep = 0;
+
+}
+
+
+/**
  * @brief Deallocate a replication list
  *
  * @param replication_list Pointer to the struct to deallocate.

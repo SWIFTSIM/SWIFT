@@ -58,6 +58,8 @@ void replication_list_init(struct replication_list *replication_list,
                            double observer_position[3],
                            double lightcone_rmin, double lightcone_rmax);
 
+void replication_list_init_empty(struct replication_list *replication_list);
+
 void replication_list_clean(struct replication_list *replication_list);
 
 void replication_list_write(struct replication_list *replication_list, FILE *fd);

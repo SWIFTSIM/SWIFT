@@ -428,11 +428,16 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   lightcone_rmin -= boundary;
   if(lightcone_rmin < 0)lightcone_rmin = 0;
 
-  /* Determine periodic copies we need to search */
-  replication_list_init(&props->replication_list, boxsize,
-                        props->cell_width,
-                        props->observer_position,
-                        lightcone_rmin, lightcone_rmax);
+  if(a_current < props->a_at_z_max || a_old > props->a_at_z_min) {
+    /* Timestep does not overlap the lightcone redshift range */
+    replication_list_init_empty(&props->replication_list);
+  } else {
+    /* Timestep may contribute particles to the lightcone */
+    replication_list_init(&props->replication_list, boxsize,
+                          props->cell_width,
+                          props->observer_position,
+                          lightcone_rmin, lightcone_rmax);
+  }
 
   /* Record that we made the list */
   props->have_replication_list = 1;
