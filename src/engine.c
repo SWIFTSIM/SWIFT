@@ -2159,6 +2159,10 @@ void engine_step(struct engine *e) {
       (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, e->s);
 
+  /* Update the external potential */
+  if ((e->policy & engine_policy_external_gravity))
+    potential_update(e->time, e->external_potential);
+
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
     gravity_props_update(e->gravity_properties, e->cosmology);

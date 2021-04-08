@@ -78,7 +78,17 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
-  return FLT_MAX;
+  /* in principle, we do not want to restrict the time step to the turbulence
+     driving time step, so that the random forcing is sufficiently averaged over
+     time before being used to update the velocities.
+     However, since the forcing time step is explicitly used when applying the
+     forcing, we do need to know how many forcing time steps are taken in
+     between successive integration time steps, to renormalise the force
+     accordingly (we compute dv = sum_i f_t * dt_f, while we need dv/dt_h).
+     There is no exact way of applying the forcing exactly, but we can
+     approximate it fairly well by assuming that 1000 forcing time steps are
+     taken in between successive hydro time steps. This is enforced here. */
+  return 1000.0f * potential->dt;
 }
 
 /**
@@ -126,9 +136,11 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     force[2] += fr[2] * cosxyz - fi[2] * sinxyz;
   }
 
-  g->a_grav[0] = force[0];
-  g->a_grav[1] = force[1];
-  g->a_grav[2] = force[2];
+  /* we assume that the hydro time step is 1000 times larger than the forcing
+     time step and renormalise the force accordingly */
+  g->a_grav[0] = 0.001f * force[0];
+  g->a_grav[1] = 0.001f * force[1];
+  g->a_grav[2] = 0.001f * force[2];
 }
 
 /**
@@ -271,7 +283,7 @@ static INLINE void potential_init_backend(
         const double kk = pwrk1 + pwrk2 + pwrk3;
         const double k = sqrt(kk);
         if (k <= kmax && k >= kmin) {
-          const double kdiff = (k - kforcing);
+          const double kdiff = k - kforcing;
           const double sqrtk12 = sqrt(pwrk1 + pwrk2);
           const double invkk = 1. / kk;
           const double invk = 1. / k;
@@ -292,7 +304,7 @@ static INLINE void potential_init_backend(
             potential->unit_vectors[6 * kindex + 1] = 0.;
             potential->unit_vectors[6 * kindex + 2] = k1 * invsqrtk13;
             potential->unit_vectors[6 * kindex + 3] =
-                k1 * k3 * invsqrtk13 * invk;
+                k1 * k2 * invsqrtk13 * invk;
             potential->unit_vectors[6 * kindex + 4] = -sqrtk13 * invk;
             potential->unit_vectors[6 * kindex + 5] =
                 k2 * k3 * invsqrtk13 * invk;
@@ -376,22 +388,22 @@ static INLINE void potential_update(double time,
         const double imag_rand2 = sin(theta2) * gb;
 
         const double kforce = potential->forcing[i];
-        potential->amplitudes[6 * i + 0] =
+        potential->amplitudes[6 * i + 0] +=
             kforce * (real_rand1 * potential->unit_vectors[6 * i + 0] +
                       real_rand2 * potential->unit_vectors[6 * i + 3]);
-        potential->amplitudes[6 * i + 1] =
+        potential->amplitudes[6 * i + 1] +=
             kforce * (real_rand1 * potential->unit_vectors[6 * i + 1] +
                       real_rand2 * potential->unit_vectors[6 * i + 4]);
-        potential->amplitudes[6 * i + 2] =
+        potential->amplitudes[6 * i + 2] +=
             kforce * (real_rand1 * potential->unit_vectors[6 * i + 2] +
                       real_rand2 * potential->unit_vectors[6 * i + 5]);
-        potential->amplitudes[6 * i + 3] =
+        potential->amplitudes[6 * i + 3] +=
             kforce * (imag_rand1 * potential->unit_vectors[6 * i + 0] +
                       imag_rand2 * potential->unit_vectors[6 * i + 3]);
-        potential->amplitudes[6 * i + 4] =
+        potential->amplitudes[6 * i + 4] +=
             kforce * (imag_rand1 * potential->unit_vectors[6 * i + 1] +
                       imag_rand2 * potential->unit_vectors[6 * i + 4]);
-        potential->amplitudes[6 * i + 5] =
+        potential->amplitudes[6 * i + 5] +=
             kforce * (imag_rand1 * potential->unit_vectors[6 * i + 2] +
                       imag_rand2 * potential->unit_vectors[6 * i + 5]);
       }
