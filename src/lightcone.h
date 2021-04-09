@@ -106,8 +106,7 @@ struct lightcone_props {
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
                     const struct cosmology *cosmo,
-                    struct swift_params *params,
-                    const int restart);
+                    struct swift_params *params);
 
 void lightcone_clean(struct lightcone_props *props);
 

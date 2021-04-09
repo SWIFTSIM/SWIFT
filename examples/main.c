@@ -1287,7 +1287,7 @@ int main(int argc, char *argv[]) {
     bzero(&lightcone_properties, sizeof(struct lightcone_props));
 #ifdef WITH_LIGHTCONE
     if (with_lightcone)
-      lightcone_init(&lightcone_properties, &s, &cosmo, params, restart);
+      lightcone_init(&lightcone_properties, &s, &cosmo, params);
     else
       lightcone_properties.enabled = 0;
 #endif

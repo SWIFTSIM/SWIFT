@@ -54,6 +54,50 @@ static int output_nr = 0;
 /* MPI rank for diagnostic messages */
 extern int engine_rank;
 
+
+static void lightcone_allocate_buffers(struct lightcone_props *props) {
+
+  /* Initialize particle output buffers */
+  const size_t elements_per_block = (size_t) props->buffer_chunk_size;
+
+  if(props->use_type[swift_type_gas]) {
+    particle_buffer_init(&props->buffer[swift_type_gas],
+                         sizeof(struct lightcone_gas_data),
+                         elements_per_block, "lightcone_gas");
+  }
+  
+  if(props->use_type[swift_type_dark_matter]) {
+    particle_buffer_init(&props->buffer[swift_type_dark_matter],
+                         sizeof(struct lightcone_dark_matter_data),
+                         elements_per_block, "lightcone_dm");
+  }
+
+  if(props->use_type[swift_type_dark_matter_background]) {  
+    particle_buffer_init(&props->buffer[swift_type_dark_matter_background],
+                         sizeof(struct lightcone_dark_matter_data),
+                         elements_per_block, "lightcone_dm_bg");
+  }
+
+  if(props->use_type[swift_type_stars]) {  
+    particle_buffer_init(&props->buffer[swift_type_stars],
+                         sizeof(struct lightcone_stars_data),
+                         elements_per_block, "lightcone_stars");
+  }
+
+  if(props->use_type[swift_type_black_hole]) {
+  particle_buffer_init(&props->buffer[swift_type_black_hole],
+                       sizeof(struct lightcone_black_hole_data),
+                       elements_per_block, "lightcone_bh");
+  }
+
+  if(props->use_type[swift_type_neutrino]) {
+    particle_buffer_init(&props->buffer[swift_type_neutrino],
+                         sizeof(struct lightcone_neutrino_data),
+                         elements_per_block, "lightcone_neutrino");
+  }  
+}
+
+
 /**
  * @brief Dump lightcone_props struct to the output stream.
  *
@@ -86,13 +130,12 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 
   restart_read_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
                       NULL, "lightcone_props");
+  lightcone_allocate_buffers(props);
 }
 
 
 /**
  * @brief Initialise the properties of the lightcone code.
- *
- * If restarting, this is called after lightcone_struct_restore().
  *
  * @param props the #lightcone_props structure to fill.
  * @param params the parameter file parser.
@@ -100,8 +143,7 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
                     const struct cosmology *cosmo,
-                    struct swift_params *params,
-                    const int restart) {
+                    struct swift_params *params) {
   
   /* Whether we generate lightcone output */
   props->enabled = 1;
@@ -180,56 +222,18 @@ void lightcone_init(struct lightcone_props *props,
   props->ti_old = 0;
   props->ti_current = 0;
 
-  /* If we're not restarting, initialize various counters */
-  if(!restart) {
-    for(int i=0; i<swift_type_count; i+=1) {
-      props->tot_num_particles_written[i] = 0;
-      props->num_particles_written_to_file[i] = 0;
-    }
-    props->current_file = -1;
+  /* Initialize various counters */
+  for(int i=0; i<swift_type_count; i+=1) {
+    props->tot_num_particles_written[i] = 0;
+    props->num_particles_written_to_file[i] = 0;
   }
-
-  /* Always start a new file initially, whether starting or restarting */
+  props->current_file = -1;
+  
+  /* Always start a new file initially */
   props->start_new_file = 1;
 
-  /* Initialize particle output buffers */
-  const size_t elements_per_block = (size_t) props->buffer_chunk_size;
-
-  if(props->use_type[swift_type_gas]) {
-    particle_buffer_init(&props->buffer[swift_type_gas],
-                         sizeof(struct lightcone_gas_data),
-                         elements_per_block, "lightcone_gas");
-  }
-
-  if(props->use_type[swift_type_dark_matter]) {
-    particle_buffer_init(&props->buffer[swift_type_dark_matter],
-                         sizeof(struct lightcone_dark_matter_data),
-                         elements_per_block, "lightcone_dm");
-  }
-
-  if(props->use_type[swift_type_dark_matter_background]) {  
-    particle_buffer_init(&props->buffer[swift_type_dark_matter_background],
-                         sizeof(struct lightcone_dark_matter_data),
-                         elements_per_block, "lightcone_dm_bg");
-  }
-
-  if(props->use_type[swift_type_stars]) {  
-    particle_buffer_init(&props->buffer[swift_type_stars],
-                         sizeof(struct lightcone_stars_data),
-                         elements_per_block, "lightcone_stars");
-  }
-
-  if(props->use_type[swift_type_black_hole]) {
-  particle_buffer_init(&props->buffer[swift_type_black_hole],
-                       sizeof(struct lightcone_black_hole_data),
-                       elements_per_block, "lightcone_bh");
-  }
-
-  if(props->use_type[swift_type_neutrino]) {
-    particle_buffer_init(&props->buffer[swift_type_neutrino],
-                         sizeof(struct lightcone_neutrino_data),
-                         elements_per_block, "lightcone_neutrino");
-  }
+  /* Allocate lightcone output buffers */
+  lightcone_allocate_buffers(props);
 
 }
 

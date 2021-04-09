@@ -88,10 +88,13 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 #endif
 
 #ifdef WITH_LIGHTCONE
-  lightcone_check_particle_crosses(e->lightcone_properties, replication_list,
-                                   e->cosmology, gp, gp->x, gp->v_full,
-                                   dt_drift, ti_old, ti_current, cell_loc,
-                                   NULL, NULL);
+  if(gp->type == swift_type_dark_matter ||
+     gp->type == swift_type_dark_matter_background ||
+     gp->type == swift_type_neutrino)
+    lightcone_check_particle_crosses(e->lightcone_properties, replication_list,
+                                     e->cosmology, gp, gp->x, gp->v_full,
+                                     dt_drift, ti_old, ti_current, cell_loc,
+                                     NULL, NULL);
 #endif
 
   /* Drift... */
