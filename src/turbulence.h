@@ -24,6 +24,8 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include "engine.h"
+
 #include <float.h>
 #include <gsl/gsl_rng.h>
 
