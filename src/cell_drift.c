@@ -280,8 +280,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
   struct gpart *const gparts = c->grav.parts;
   const struct gravity_props *grav_props = e->gravity_properties;
 
+  /* If making lightcones, get the refined replication list for this cell */
+  struct replication_list *replication_list = NULL;
 #ifdef WITH_LIGHTCONE
-  struct replication_list *replication_list;
   struct replication_list local_replication_list;
   if(e->lightcone_properties->enabled) {
     if(replication_list_in) {
@@ -295,8 +296,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
       replication_list = &local_replication_list;
     }
   }
-#else
-  struct replication_list *replication_list = NULL;
 #endif
 
   /* Drift irrespective of cell flags? */
