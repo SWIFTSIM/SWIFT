@@ -100,6 +100,9 @@ struct cell_hydro {
     /*! Task for star formation */
     struct task *star_formation;
 
+    /*! Task for star formation from sink particles */
+    struct task *star_formation_sink;
+
     /*! Task for sink formation */
     struct task *sink_formation;
 
@@ -135,9 +138,6 @@ struct cell_hydro {
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
-
-    /*! Maximum end of (integer) time step in this cell for hydro tasks. */
-    integertime_t ti_end_max;
 
     /*! Max smoothing length of active particles in this cell. */
     float h_max_active;

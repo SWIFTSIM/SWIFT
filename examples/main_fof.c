@@ -556,8 +556,9 @@ int main(int argc, char *argv[]) {
              sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
              Nnupart, periodic, replicate, /*remap_ids=*/0,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
-             /*with_star_formation=*/0, with_DM_background_particles,
-             with_neutrinos, talking, /*dry_run=*/0, nr_nodes);
+             /*with_star_formation=*/0, /*sink=*/N_total[swift_type_sink],
+             with_DM_background_particles, with_neutrinos, talking,
+             /*dry_run=*/0, nr_nodes);
 
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -647,7 +648,7 @@ int main(int argc, char *argv[]) {
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       &fof_properties, /*los_properties=*/NULL);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
-                nr_threads, with_aff, talking, NULL);
+                nr_threads, nr_threads, with_aff, talking, NULL);
 
   if (myrank == 0) {
     clocks_gettime(&toc);

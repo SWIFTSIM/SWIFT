@@ -24,8 +24,9 @@ if HAVEEAGLECOOLING
 SUBDIRS += examples/Cooling/CoolingRates
 endif
 if HAVELOGGER
-SUBDIRS += logger
+SUBDIRS += csds
 endif
+DIST_SUBDIRS = $(SUBDIRS) examples/Cooling/CoolingRates
 
 # Non-standard files that should be part of the distribution.
 EXTRA_DIST = INSTALL.swift .clang-format format.sh

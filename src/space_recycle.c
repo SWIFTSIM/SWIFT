@@ -129,6 +129,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.prep1_ghost = NULL;
     c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
+    c->hydro.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
     c->stars.prep1_ghost = NULL;
@@ -189,15 +190,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.parts = NULL;
     c->flags = 0;
     c->hydro.ti_end_min = -1;
-    c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
-    c->grav.ti_end_max = -1;
     c->sinks.ti_end_min = -1;
-    c->sinks.ti_end_max = -1;
     c->stars.ti_end_min = -1;
-    c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
-    c->black_holes.ti_end_max = -1;
     c->hydro.rt_in = NULL;
     c->hydro.rt_inject = NULL;
     c->hydro.rt_ghost1 = NULL;

@@ -255,6 +255,9 @@ struct cosmology {
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
 
+  /*! Time between Big Bang and last entry in the table */
+  double time_interp_table_max;
+
   /*! Time at the present-day (a=1) */
   double universe_age_at_present_day;
 };

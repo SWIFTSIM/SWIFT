@@ -115,9 +115,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for hydro tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for hydro tasks */
-    integertime_t ti_end_max;
-
     /*! Maximal integer beginning-of-timestep in this cell for hydro tasks */
     integertime_t ti_beg_max;
 
@@ -147,9 +144,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for gravity tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for gravity tasks */
-    integertime_t ti_end_max;
-
     /*! Maximal integer beginning-of-timestep in this cell for gravity tasks */
     integertime_t ti_beg_max;
 
@@ -176,9 +170,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for stars tasks */
-    integertime_t ti_end_max;
-
     /*! Integer time of the last drift of the #spart in this cell */
     integertime_t ti_old_part;
 
@@ -196,9 +187,6 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for black hole tasks */
     integertime_t ti_end_min;
 
-    /*! Maximal integer end-of-timestep in this cell for black hole tasks */
-    integertime_t ti_end_max;
-
     /*! Integer time of the last drift of the #spart in this cell */
     integertime_t ti_old_part;
 
@@ -215,9 +203,6 @@ struct pcell {
 
     /*! Minimal integer end-of-timestep in this cell for sinks tasks */
     integertime_t ti_end_min;
-
-    /*! Maximal integer end-of-timestep in this cell for sinks tasks */
-    integertime_t ti_end_max;
 
     /*! Integer time of the last drift of the #sink in this cell */
     integertime_t ti_old_part;
@@ -245,9 +230,6 @@ struct pcell_step_hydro {
   /*! Minimal integer end-of-timestep in this cell (hydro) */
   integertime_t ti_end_min;
 
-  /*! Minimal integer end-of-timestep in this cell (hydro) */
-  integertime_t ti_end_max;
-
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
 };
@@ -256,18 +238,12 @@ struct pcell_step_grav {
 
   /*! Minimal integer end-of-timestep in this cell (gravity) */
   integertime_t ti_end_min;
-
-  /*! Minimal integer end-of-timestep in this cell (gravity) */
-  integertime_t ti_end_max;
 };
 
 struct pcell_step_stars {
 
   /*! Minimal integer end-of-timestep in this cell (stars) */
   integertime_t ti_end_min;
-
-  /*! Maximal integer end-of-timestep in this cell (stars) */
-  integertime_t ti_end_max;
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
@@ -277,9 +253,6 @@ struct pcell_step_black_holes {
 
   /*! Minimal integer end-of-timestep in this cell (black_holes) */
   integertime_t ti_end_min;
-
-  /*! Maximal integer end-of-timestep in this cell (black_holes) */
-  integertime_t ti_end_max;
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
@@ -360,11 +333,14 @@ struct cell {
   /*! Pointers to the next level of cells. */
   struct cell *progeny[8];
 
-  /*! Linking pointer for "memory management". */
-  struct cell *next;
+  union {
 
-  /*! Parent cell. */
-  struct cell *parent;
+    /*! Linking pointer for "memory management". */
+    struct cell *next;
+
+    /*! Parent cell. */
+    struct cell *parent;
+  };
 
   /*! Pointer to the top-level cell in a hierarchy */
   struct cell *top;
@@ -555,7 +531,8 @@ void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
-                            const int with_star_formation);
+                            const int with_star_formation,
+                            const int with_star_formation_sink);
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
@@ -573,6 +550,9 @@ void cell_store_pre_drift_values(struct cell *c);
 void cell_set_star_resort_flag(struct cell *c);
 void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
                                         const int with_feedback);
+void cell_activate_star_formation_sink_tasks(struct cell *c,
+                                             struct scheduler *s,
+                                             const int with_feedback);
 void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s);
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
@@ -582,6 +562,7 @@ int cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_star_formation,
+                                       const int with_star_formation_sink,
                                        const int with_timestep_sync);
 void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
@@ -628,6 +609,8 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c);
 struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
                                              const struct part *p,
                                              const struct xpart *xp);
+struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
+                                             const struct sink *s);
 struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
@@ -638,7 +621,7 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
                                        struct part *p, struct xpart *xp);
 void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset);
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts);
+                               struct spart *sparts, struct sink *sinks);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,

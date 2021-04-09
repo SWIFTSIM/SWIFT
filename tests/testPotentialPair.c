@@ -154,7 +154,6 @@ int main(int argc, char *argv[]) {
   ci.grav.ti_old_part = 8;
   ci.grav.ti_old_multipole = 8;
   ci.grav.ti_end_min = 8;
-  ci.grav.ti_end_max = 8;
 
   cj.nodeID = 0;
   cj.width[0] = 1.;
@@ -167,7 +166,6 @@ int main(int argc, char *argv[]) {
   cj.grav.ti_old_part = 8;
   cj.grav.ti_old_multipole = 8;
   cj.grav.ti_end_min = 8;
-  cj.grav.ti_end_max = 8;
 
   /* Allocate multipoles */
   ci.grav.multipole =

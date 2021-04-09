@@ -80,9 +80,6 @@ struct cell_grav {
   /*! Minimum end of (integer) time step in this cell for gravity tasks. */
   integertime_t ti_end_min;
 
-  /*! Maximum end of (integer) time step in this cell for gravity tasks. */
-  integertime_t ti_end_max;
-
   /*! Maximum beginning of (integer) time step in this cell for gravity tasks.
    */
   integertime_t ti_beg_max;

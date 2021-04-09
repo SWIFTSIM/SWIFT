@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2021 Edo Altamura (edoardo.altamura@manchester.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -36,6 +37,31 @@ struct tracers_xpart_data {
     /*! Time at which the maximal temperature was reached */
     float maximum_temperature_time;
   };
+
+  union {
+
+    /*! Scale-factor at which the particle last received energy from AGN */
+    float last_AGN_injection_scale_factor;
+
+    /*! Time at which the particle last received energy from AGN */
+    float last_AGN_injection_time;
+  };
+
+  /*! Density of the gas before the last AGN feedback event
+   * (physical internal units) */
+  float density_before_last_AGN_feedback_event;
+
+  /*! Entropy of the gas before the last AGN feedback event
+   * (physical internal units) */
+  float entropy_before_last_AGN_feedback_event;
+
+  /*! Density of the gas at the last AGN feedback event
+   * (physical internal units) */
+  float density_at_last_AGN_feedback_event;
+
+  /*! Entropy of the gas at the last AGN feedback event
+   * (physical internal units) */
+  float entropy_at_last_AGN_feedback_event;
 
   /*! Total amount of AGN feedback energy received by this particle
    * (physical units) */

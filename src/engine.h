@@ -135,8 +135,11 @@ extern int engine_current_step;
 /* Data structure for the engine. */
 struct engine {
 
-  /* Number of threads on which to run. */
+  /* Number of task threads on which to run. */
   int nr_threads;
+
+  /* Number of threadpool threads on which to run. */
+  int nr_pool_threads;
 
   /* The space with which the runner is associated. */
   struct space *s;
@@ -236,9 +239,6 @@ struct engine {
 
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
-
-  /* Maximal overall ti_end for the next time-step */
-  integertime_t ti_end_max;
 
   /* Maximal overall ti_beg for the next time-step */
   integertime_t ti_beg_max;
@@ -600,8 +600,8 @@ void engine_init(
     struct lightcone_props *lightcone_properties);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
-                   const char *restart_file);
+                   int nr_task_threads, int nr_pool_threads, int with_aff,
+                   int verbose, const char *restart_file);
 void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);

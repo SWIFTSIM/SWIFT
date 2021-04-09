@@ -174,7 +174,12 @@ Parameters:
                                       read from the parameter file. Can be used
                                       more than once {sec:par:value}.
     -r, --restart                     Continue using restart files.
-    -t, --threads=<int>               The number of threads to use on each MPI
+    -t, --threads=<int>               The number of task threads to use on each 
+                                      MPI rank. Defaults to 1 if not specified. 
+    --pool-threads=<int>              The number of threads to use on each MPI 
+                                      rank for the threadpool operations. 
+                                      Defaults to the numbers of task threads 
+                                      if not specified.
                                       rank. Defaults to 1 if not specified.
     -T, --timers=<int>                Print timers every time-step.
     -v, --verbose=<int>               Run in verbose mode, in MPI mode 2 outputs

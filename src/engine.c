@@ -1086,6 +1086,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_sinks) {
     /* 1 drift, 2 kicks, 1 time-step, 1 sink formation */
     n1 += 5;
+    if (e->policy & engine_policy_stars) {
+      /* 1 star formation */
+      n1 += 1;
+    }
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
@@ -1551,6 +1555,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
+        t->type == task_type_star_formation_sink ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
