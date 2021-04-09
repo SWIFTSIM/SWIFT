@@ -214,7 +214,10 @@ void lightcone_init(struct lightcone_props *props,
     const double lightcone_rmin = cosmology_get_comoving_distance(cosmo, props->a_at_z_min);
     const double volume = 4./3.*M_PI*(pow(lightcone_rmax, 3.)-pow(lightcone_rmin, 3.));
     const long long est_nr_output = total_nr_gparts / pow(props->boxsize, 3.0) * volume;
+    const int nr_replications = pow(2*lightcone_rmax/props->boxsize, 3.0);
+    message("comoving distance to lightcone max. redshift: %e", lightcone_rmax);
     message("gparts in lightcone (if uniform box+flat cosmology): %lld", est_nr_output);
+    message("approximate number of replications to search : %d", nr_replications);
   }
 
   /* Initially have no replication list */
