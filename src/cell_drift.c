@@ -55,16 +55,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   struct part *const parts = c->hydro.parts;
   struct xpart *const xparts = c->hydro.xparts;
 
-#ifdef WITH_LIGHTCONE
-  struct replication_list replication_list;
-  if(e->lightcone_properties->enabled && c==c->top) {
-    replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
-                                     c, e->lightcone_properties->observer_position,
-                                     &replication_list);
-    c->replication_list = &replication_list;
-  }
-#endif
-
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
@@ -159,8 +149,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current, e->cosmology, e->hydro_properties,
-                 e->entropy_floor, e->lightcone_properties, c->top->replication_list,
-                 c->loc);
+                 e->entropy_floor);
 
       /* Update the tracers properties */
       tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
@@ -256,11 +245,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       }
     }
 
-#ifdef WITH_LIGHTCONE
-    if(e->lightcone_properties->enabled && c==c->top)
-      replication_list_clean(&replication_list);
-#endif
-
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
@@ -286,7 +270,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
+void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
+                      struct replication_list *replication_list_in) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -296,13 +281,22 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   const struct gravity_props *grav_props = e->gravity_properties;
 
 #ifdef WITH_LIGHTCONE
-  struct replication_list replication_list;
-  if(e->lightcone_properties->enabled && c==c->top) {
-    replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
-                                     c, e->lightcone_properties->observer_position,
-                                     &replication_list);
-    c->replication_list = &replication_list;
+  struct replication_list *replication_list;
+  struct replication_list local_replication_list;
+  if(e->lightcone_properties->enabled) {
+    if(replication_list_in) {
+      /* We're not at the top of the hierarchy, so use the replication list passed in */
+      replication_list = replication_list_in;
+    } else {
+      /* Current call is top of the recursive hierarchy, so compute refined replication list */
+      replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
+                                       c, e->lightcone_properties->observer_position,
+                                       &local_replication_list);
+      replication_list = &local_replication_list;
+    }
   }
+#else
+  struct replication_list *replication_list = NULL;
 #endif
 
   /* Drift irrespective of cell flags? */
@@ -338,7 +332,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
         struct cell *cp = c->progeny[k];
 
         /* Recurse */
-        cell_drift_gpart(cp, e, force);
+        cell_drift_gpart(cp, e, force, replication_list);
       }
     }
 
@@ -366,7 +360,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
-                  c->top->replication_list, c->loc);
+                  replication_list, c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -424,8 +418,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     }
 
 #ifdef WITH_LIGHTCONE
-    if(e->lightcone_properties->enabled && c==c->top)
-      replication_list_clean(&replication_list);
+    /* If we're at the top of the recursive hierarchy, tidy up the refined replication list */
+    if(e->lightcone_properties->enabled && !replication_list_in)
+      replication_list_clean(&local_replication_list);
 #endif
 
     /* Update the time of the last drift */
@@ -452,16 +447,6 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   const integertime_t ti_old_spart = c->stars.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct spart *const sparts = c->stars.parts;
-
-#ifdef WITH_LIGHTCONE
-    struct replication_list replication_list;
-    if(e->lightcone_properties->enabled && c==c->top) {
-      replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
-                                       c, e->lightcone_properties->observer_position,
-                                       &replication_list);
-      c->replication_list = &replication_list;
-    }
-#endif
 
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
@@ -540,9 +525,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       if (spart_is_inhibited(sp, e)) continue;
 
       /* Drift... */
-      drift_spart(sp, dt_drift, ti_old_spart, ti_current, e->cosmology,
-                  e->lightcone_properties, c->top->replication_list,
-                  c->loc);
+      drift_spart(sp, dt_drift, ti_old_spart, ti_current, e->cosmology);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -616,11 +599,6 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       }
     }
 
-#ifdef WITH_LIGHTCONE
-    if(e->lightcone_properties->enabled && c==c->top)
-      replication_list_clean(&replication_list);
-#endif
-
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
     dx_max_sort = sqrtf(dx2_max_sort);
@@ -656,16 +634,6 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct bpart *const bparts = c->black_holes.parts;
-
-#ifdef WITH_LIGHTCONE
-  struct replication_list replication_list;
-  if(e->lightcone_properties->enabled && c==c->top) {
-    replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
-                                     c, e->lightcone_properties->observer_position,
-                                     &replication_list);
-    c->replication_list = &replication_list;
-  }
-#endif
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
@@ -745,9 +713,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       if (bpart_is_inhibited(bp, e)) continue;
 
       /* Drift... */
-      drift_bpart(bp, dt_drift, ti_old_bpart, ti_current, e->cosmology,
-                  e->lightcone_properties, c->top->replication_list,
-                  c->loc);
+      drift_bpart(bp, dt_drift, ti_old_bpart, ti_current, e->cosmology);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -813,11 +779,6 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
         cell_h_max_active = max(cell_h_max_active, bp->h);
       }
     }
-
-#ifdef WITH_LIGHTCONE
-    if(e->lightcone_properties->enabled && c==c->top)
-      replication_list_clean(&replication_list);
-#endif
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);

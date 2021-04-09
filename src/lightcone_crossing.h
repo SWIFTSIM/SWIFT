@@ -48,11 +48,26 @@
  *
  */
 __attribute__((always_inline)) INLINE static void lightcone_check_particle_crosses(
-     struct lightcone_props *props, struct replication_list *replication_list,
-     const struct cosmology *c, const struct gpart *gp, const double *x,
-     const float *v_full, const double dt_drift, const integertime_t ti_old,
-     const integertime_t ti_current, const double cell_loc[3],
-     void *extra1, void *extra2) {
+     const struct engine *e, struct replication_list *replication_list,
+     const struct gpart *gp, const double dt_drift, const integertime_t ti_old,
+     const integertime_t ti_current, const double cell_loc[3]) {
+
+  /* Unpack some variables we need */
+  struct lightcone_props *props = e->lightcone_properties;
+  const struct cosmology *c = e->cosmology;
+  const struct space *s = e->s;
+  const double *x = gp->x;
+  const float *v_full = gp->v_full;
+  const double boxsize = props->boxsize;
+  const double *observer_position = props->observer_position;
+  const int nreps = replication_list->nrep;
+  const struct replication *rep = replication_list->replication;
+
+  /* Handle on the other particle types */
+  const struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
+  const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
 
   /* Are we making a lightcone and in the lightcone redshift range? */
   if(!props->enabled || replication_list->nrep==0)return;
@@ -60,12 +75,6 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
   /* Are we using this particle type in the lightcone? */
   if(!props->use_type[gp->type])return;
   
-  /* Unpack some variables we need */
-  const double boxsize = props->boxsize;
-  const double *observer_position = props->observer_position;
-  const int nreps = replication_list->nrep;
-  const struct replication *rep = replication_list->replication;
-
   /* Consistency check - are our limits on the drift endpoints good? */
   if(ti_old < props->ti_old || ti_current > props->ti_current)
     error("Particle drift is outside the range used to make replication list!");
@@ -201,8 +210,8 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
 
     case swift_type_gas: {
 
-      const struct part *p = (struct part *) extra1;
-      const struct xpart *xp = (struct xpart *) extra2;
+      const struct part *p = &parts[-gp->id_or_neg_offset];
+      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
       struct lightcone_gas_data data;
       lightcone_store_gas(gp, p, xp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_gas, &data);
@@ -211,7 +220,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
 
     case swift_type_stars: {
 
-      const struct spart *sp = (struct spart *) extra1;
+      const struct spart *sp = &sparts[-gp->id_or_neg_offset];
       struct lightcone_stars_data data;
       lightcone_store_stars(gp, sp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_stars, &data);
@@ -219,8 +228,8 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
     } break;
 
     case swift_type_black_hole: {
-
-      const struct bpart *bp = (struct bpart *) extra1;
+      
+      const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
       struct lightcone_black_hole_data data;
       lightcone_store_black_hole(gp, bp, a_cross, x_cross, &data);
       particle_buffer_append(props->buffer+swift_type_black_hole, &data);

@@ -58,7 +58,7 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  cell_drift_gpart(c, r->e, 0);
+  cell_drift_gpart(c, r->e, 0, NULL);
 
   if (timer) TIMER_TOC(timer_drift_gpart);
 }

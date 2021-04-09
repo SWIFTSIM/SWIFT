@@ -449,11 +449,6 @@ struct cell {
   char subtasks_executed[task_type_count];
 #endif
 
-#ifdef WITH_LIGHTCONE
-  /*! List of periodic replications of the cell which could contribute to the lightcone */
-  struct replication_list *replication_list;
-#endif
-
 } SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
@@ -538,7 +533,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
-void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
+void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
+                      struct replication_list *replication_list);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force);
 void cell_drift_sink(struct cell *c, const struct engine *e, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force);

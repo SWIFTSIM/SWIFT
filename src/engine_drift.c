@@ -121,7 +121,7 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_gpart(c, e, /* force the drift=*/1);
+      cell_drift_gpart(c, e, /* force the drift=*/1, /*replication_list=*/NULL);
     }
   }
 }
