@@ -110,6 +110,7 @@ int main(int argc, char *argv[]) {
   struct sink *sinks = NULL;
   struct unit_system us;
   struct los_props los_properties;
+  struct turbulence_driving turbulence;
 
   int nr_nodes = 1, myrank = 0;
 
@@ -1280,6 +1281,9 @@ int main(int argc, char *argv[]) {
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
+    turbulence_init_backend(params, &prog_const, &us, &s, &turbulence);
+    if (myrank == 0) turbulence_print_backend(&turbulence);
+
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -1424,7 +1428,7 @@ int main(int argc, char *argv[]) {
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &feedback_properties,
                 &rt_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry, &fof_properties, &los_properties);
+                &chemistry, &fof_properties, &los_properties, &turbulence);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 

@@ -2198,6 +2198,9 @@ void engine_step(struct engine *e) {
   }
 #endif
 
+  /* Update the turbulence driving and apply it. */
+  turbulence_update(e);
+
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
   if (e->policy & engine_policy_drift_all && !e->forcerebuild)
     engine_drift_all(e, /*drift_mpole=*/1);
@@ -2784,7 +2787,8 @@ void engine_init(
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
-    struct fof_props *fof_properties, struct los_props *los_properties) {
+    struct fof_props *fof_properties, struct los_props *los_properties,
+    struct turbulence_driving *turbulence) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -2993,6 +2997,9 @@ void engine_init(
   } else {
     e->neutrino_mass_conversion_factor = 0.f;
   }
+
+  /* Initialize the turbulence driving */
+  e->turbulence = turbulence;
 }
 
 /**

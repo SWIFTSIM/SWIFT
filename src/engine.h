@@ -46,6 +46,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "turbulence.h"
 #include "units.h"
 #include "velociraptor_interface.h"
 
@@ -539,6 +540,9 @@ struct engine {
   integertime_t ti_next_los;
   int los_output_count;
 
+  /* Turbulence driving */
+  struct turbulence_driving *turbulence;
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run brute force checks only on steps when all gparts active? */
   int force_checks_only_all_active;
@@ -593,7 +597,8 @@ void engine_init(
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
-    struct fof_props *fof_properties, struct los_props *los_properties);
+    struct fof_props *fof_properties, struct los_props *los_properties,
+    struct turbulence_driving *turbulence);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,

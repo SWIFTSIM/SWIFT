@@ -64,6 +64,7 @@ include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += logger_history.h chemistry_logger.h star_formation_particle_logger.h
+include_HEADERS += turbulence.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =
@@ -181,6 +182,7 @@ AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
 AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
 AM_SOURCES += $(CHEMISTRY_LOGGER) $(HYDRO_LOGGER) $(STARS_LOGGER) $(GRAVITY_LOGGER)
 AM_SOURCES += $(STAR_FORMATION_LOGGER)
+AM_SOURCES += turbulence.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 

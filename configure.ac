@@ -1953,6 +1953,26 @@ case "$with_riemann" in
    ;;
 esac
 
+# Turbulence driving
+AC_ARG_WITH([turbulence-driving],
+   [AS_HELP_STRING([--with-turbulence-driving=<driving mode>],
+      [turbulence driving @<:@none, alvelius, default: none@:>@]
+   )],
+   [with_turbulence_driving="$withval"],
+   [with_turbulence_driving="none"]
+)
+case "$with_turbulence_driving" in
+   none)
+      AC_DEFINE([TURBULENCE_DRIVING_NONE], [1], [No turbulence driving])
+   ;;
+   alvelius)
+      AC_DEFINE([TURBULENCE_DRIVING_ALVELIUS], [1], [Alvelius (1999) driving])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown turbulence driving: $with_turbulence_driving])
+   ;;
+esac
+
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
@@ -2584,6 +2604,7 @@ AC_MSG_RESULT([
    No gravity below ID : $no_gravity_below_id
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
+   Turbulence driving  : $with_turbulence_driving
 
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor
