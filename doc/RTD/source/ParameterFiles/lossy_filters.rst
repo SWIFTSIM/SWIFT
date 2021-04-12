@@ -25,6 +25,36 @@ The filters are not applied when using parallel-hdf5.
 
 The available filters are listed below.
 
+N-bit filters for long long integers
+------------------------------------
+
+The N-bit filter takes a `long long` and saves only the most
+significant N bits.
+
+This can be used in cases similar to the particle IDs. For instance,
+if they cover the range :math:`[1, 10^{10}]` then 64-bits is too many
+and a lot of disk space is wasted storing the 0s. In this case
+:math:`\left\lceil{\log_2(10^{10})}\right\rceil + 1 = 35` bits are
+sufficient (The extra "+1" is for the sign bit).
+
+SWIFT implements 5 variants of this filter:
+
+ * ``Nbit36`` stores the 36 most significant bits (Numbers up to
+   :math:`3.4\times10^{10}`, comp. ratio: 1.78)
+ * ``Nbit40`` stores the 40 most significant bits (Numbers up to
+   :math:`5.4\times10^{11}`, comp. ratio: 1.6)
+ * ``Nbit44`` stores the 44 most significant bits (Numbers up to
+   :math:`8.7\times10^{12}`, comp. ratio: 1.45)
+ * ``Nbit48`` stores the 48 most significant bits (Numbers up to
+   :math:`1.4\times10^{14}`, comp. ratio: 1.33)
+ * ``Nbit56`` stores the 56 most significant bits (Numbers up to
+   :math:`3.6\times10^{16}`, comp. ratio: 1.14)
+
+Note that if the data written to disk is requiring more than the N
+bits then part of the information written to the snapshot will
+lost. SWIFT does not apply any verification before applying the
+filter.
+
 Scaling filters for floating-point numbers
 ------------------------------------------
 
