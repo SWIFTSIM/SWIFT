@@ -280,24 +280,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
   struct gpart *const gparts = c->grav.parts;
   const struct gravity_props *grav_props = e->gravity_properties;
 
-  /* If making lightcones, get the refined replication list for this cell */
-  struct replication_list *replication_list = NULL;
-#ifdef WITH_LIGHTCONE
-  struct replication_list local_replication_list;
-  if(e->lightcone_properties->enabled) {
-    if(replication_list_in) {
-      /* We're not at the top of the hierarchy, so use the replication list passed in */
-      replication_list = replication_list_in;
-    } else {
-      /* Current call is top of the recursive hierarchy, so compute refined replication list */
-      replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
-                                       c, e->lightcone_properties->observer_position,
-                                       &local_replication_list);
-      replication_list = &local_replication_list;
-    }
-  }
-#endif
-
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
 
@@ -320,7 +302,28 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
     return;
   }
 
-  /* Ok, we have some particles somewhere in the hierarchy to drift */
+  /* Ok, we have some particles somewhere in the hierarchy to drift.
+     If making lightcones, get the refined replication list for this cell.
+  
+     IMPORTANT: after this point we must not return without freeing the
+     replication list if we allocated it.
+  */
+  struct replication_list *replication_list = NULL;
+#ifdef WITH_LIGHTCONE
+  struct replication_list local_replication_list;
+  if(e->lightcone_properties->enabled) {
+    if(replication_list_in) {
+      /* We're not at the top of the hierarchy, so use the replication list passed in */
+      replication_list = replication_list_in;
+    } else {
+      /* Current call is top of the recursive hierarchy, so compute refined replication list */
+      replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
+                                       c, e->lightcone_properties->observer_position,
+                                       &local_replication_list);
+      replication_list = &local_replication_list;
+    }
+  }
+#endif
 
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_grav_sub_drift))) {
