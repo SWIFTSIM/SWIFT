@@ -419,15 +419,15 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
       }
     }
 
-#ifdef WITH_LIGHTCONE
-    /* If we're at the top of the recursive hierarchy, tidy up the refined replication list */
-    if(e->lightcone_properties->enabled && !replication_list_in)
-      replication_list_clean(&local_replication_list);
-#endif
-
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
   }
+
+#ifdef WITH_LIGHTCONE
+  /* If we're at the top of the recursive hierarchy, tidy up the refined replication list */
+  if(e->lightcone_properties->enabled && !replication_list_in)
+    replication_list_clean(&local_replication_list);
+#endif
 
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift);
