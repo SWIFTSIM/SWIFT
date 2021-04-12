@@ -357,6 +357,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   const int with_grav = (with_self_grav || with_ext_grav);
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
   struct star_formation_history *sfh_top = &data->sfh;
@@ -406,7 +407,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       if (with_black_holes) {
         engine_collect_end_of_step_recurse_black_holes(c, e);
       }
-      engine_collect_end_of_step_recurse_dark_matter(c, e);
+      if (with_sidm) {
+          engine_collect_end_of_step_recurse_dark_matter(c, e);
+      }
 
       /* And aggregate */
       if (c->hydro.ti_end_min > e->ti_current)
@@ -617,12 +620,13 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       error("Failed to get same ti_gravity_end_min, is %lld, should be %lld",
             in_i[1], e->collect_group1.ti_gravity_end_min);
 
-    long long in_ll[4], out_ll[4];
+    long long in_ll[5], out_ll[5];
     out_ll[0] = data.updated;
     out_ll[1] = data.g_updated;
     out_ll[2] = data.s_updated;
     out_ll[3] = data.b_updated;
-    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[4] = data.dm_updated;
+    if (MPI_Allreduce(out_ll, in_ll, 5, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.updated)
@@ -637,12 +641,16 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[3] != (long long)e->collect_group1.b_updated)
       error("Failed to get same b_updated, is %lld, should be %lld", in_ll[3],
             e->collect_group1.b_updated);
+    if (in_ll[4] != (long long)e->collect_group1.dm_updated)
+      error("Failed to get same dm_updated, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.dm_updated);
 
     out_ll[0] = data.inhibited;
     out_ll[1] = data.g_inhibited;
     out_ll[2] = data.s_inhibited;
     out_ll[3] = data.b_inhibited;
-    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[4] = data.b_inhibited;
+    if (MPI_Allreduce(out_ll, in_ll, 5, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.inhibited)
@@ -657,6 +665,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[3] != (long long)e->collect_group1.b_inhibited)
       error("Failed to get same b_inhibited, is %lld, should be %lld", in_ll[3],
             e->collect_group1.b_inhibited);
+    if (in_ll[4] != (long long)e->collect_group1.dm_inhibited)
+      error("Failed to get same dm_inhibited, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.dm_inhibited);
 
     int buff = 0;
     if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,

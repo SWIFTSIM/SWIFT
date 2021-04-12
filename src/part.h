@@ -155,7 +155,7 @@ void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
                                      struct spart *sparts, struct bpart *bparts,
-                                     struct dmpart *dmparts,
+                                     struct dmpart *dmparts, const size_t Ndm,
                                      struct threadpool *tp);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct sink *sinks, struct spart *sparts,

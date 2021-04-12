@@ -430,12 +430,11 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   struct counts_mapper_data mapper_data;
   mapper_data.s = s;
-  double gsize = 0.0;
   double *gcounts = NULL;
+  double gsize = 0.0;
   double hsize = 0.0;
   double ssize = 0.0;
   double dmsize = 0.0;
-  double *dmcounts = NULL;
 
   if (s->nr_gparts > 0) {
     /* Self-gravity gets more efficient with density (see gitlab issue #640)
@@ -484,48 +483,6 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     free(ptrs);
 
 
-    /* CC. Doing the same for dark matter parts */
-    if ((dmcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-      error("Failed to allocate dmcounts buffer.");
-    bzero(dmcounts, sizeof(double) * s->nr_cells);
-    dmsize = (double)sizeof(struct dmpart);
-
-    mapper_data.counts = dmcounts;
-    mapper_data.size = dmsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart, s->dmparts,
-                   s->nr_dmparts, sizeof(struct dmpart), space_splitsize,
-                   &mapper_data);
-
-    /* Get all the counts from all the nodes. */
-    if (MPI_Allreduce(MPI_IN_PLACE, dmcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                      MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to allreduce particle cell dmpart weights.");
-
-    /* Now we need to sort... */
-    double **ptrs = NULL;
-    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
-      error("Failed to allocate pointers buffer.");
-    for (int k = 0; k < s->nr_cells; k++) {
-      ptrs[k] = &dmcounts[k];
-    }
-
-    /* Sort pointers, not counts... */
-    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
-
-    /* Percentile cut keeps 99.8% of cells and clips above. */
-    int cut = ceil(s->nr_cells * 0.998);
-
-    /* And clip. */
-    int nadj = 0;
-    double clip = *ptrs[cut];
-    for (int k = cut + 1; k < s->nr_cells; k++) {
-      *ptrs[k] = clip;
-      nadj++;
-    }
-    if (verbose) message("clipped dark matter part counts of %d cells", nadj);
-    free(ptrs);
-  }
-
   /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
     mapper_data.counts = counts;
@@ -544,10 +501,18 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
                    &mapper_data);
   }
 
+  if (s->nr_dmparts > 0) {
+    dmsize = (double)sizeof(struct dmpart);
+    mapper_data.size = dmsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart, s->dmparts,
+                   s->nr_dmparts, sizeof(struct dmpart), space_splitsize,
+                   &mapper_data);
+  }
+
 
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
    * gparts. */
-  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+  if (s->nr_parts > 0 || s->nr_sparts > 0 || s->nr_dmparts > 0) {
     if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to allreduce particle cell weights.");
@@ -567,19 +532,6 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     }
   }
 
-  /* CC. And also merge with dark matter counts. */
-  double sum = 0.0;
-  if (s->nr_dmparts > 0) {
-    for (int k = 0; k < s->nr_cells; k++) {
-      counts[k] += dmcounts[k];
-      sum += counts[k];
-    }
-    free(dmcounts);
-  } else {
-    for (int k = 0; k < s->nr_cells; k++) {
-      sum += counts[k];
-    }
-  }
 
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if (sum > (double)(IDX_MAX - 10000)) {
@@ -2419,8 +2371,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_dmpart || t->type == task_type_dark_matter_ghost ||
         t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_kick1 || t->type == task_type_sidm_kick || t->type == task_type_kick2 ||
-        t->type == task_type_end_hydro_force ||
+        t->type == task_type_kick1 || t->type == task_type_sidm_kick ||
+        t->type == task_type_kick2 || t->type == task_type_end_hydro_force ||
         t->type == task_type_end_grav_force || t->type == task_type_cooling ||
         t->type == task_type_star_formation || t->type == task_type_timestep ||
         t->type == task_type_init_grav || t->type == task_type_grav_down ||

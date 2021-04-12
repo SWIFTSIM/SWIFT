@@ -873,11 +873,11 @@ void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
 }
 
 /**
- * @brief Load bparts onto a proxy for exchange.
+ * @brief Load dmparts onto a proxy for exchange.
  *
  * @param p The #proxy.
  * @param dmparts Pointer to an array of #dmpart to send.
- * @param N The number of bparts.
+ * @param N The number of dmparts.
  */
 void proxy_dmparts_load(struct proxy *p, const struct dmpart *dmparts, int N) {
     

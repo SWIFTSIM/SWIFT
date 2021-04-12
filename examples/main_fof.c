@@ -147,6 +147,7 @@ int main(int argc, char *argv[]) {
   int with_stars = 0;
   int with_black_holes = 0;
   int with_hydro = 0;
+  int with_sidm = 0;
   int verbose = 0;
   int nr_threads = 1;
   char *output_parameters_filename = NULL;
@@ -173,6 +174,8 @@ int main(int argc, char *argv[]) {
                   0),
       OPT_BOOLEAN(0, "black-holes", &with_black_holes,
                   "Read black holes from the ICs.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "dark matter", &with_sidm,
+                  "Read dark matter from the ICs.", NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
@@ -465,7 +468,7 @@ int main(int argc, char *argv[]) {
   read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                    &Nbpart, &flag_entropy_ICs, with_hydro,
-                   /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
+                   /*with_grav=*/1, with_sinks, with_stars, with_black_holes, with_sidm,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    /*dry_run=*/0);
@@ -473,7 +476,7 @@ int main(int argc, char *argv[]) {
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                  &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                  &Nbpart, &flag_entropy_ICs, with_hydro,
-                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
+                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes, with_sidm,
                  with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                  myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                  /*dry_run=*/0);
@@ -482,7 +485,7 @@ int main(int argc, char *argv[]) {
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                  &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                  &Nbpart, &flag_entropy_ICs, with_hydro,
-                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
+                 /*with_grav=*/1, with_sinks, with_stars, with_black_holes, with_sidm,
                  with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                  nr_threads, /*dry_run=*/0);
 #endif

@@ -479,6 +479,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
     /* Number of gparts sent from this node. */
     int ind_recv = node * nr_nodes + nodeID;
     const size_t count_gparts = g_counts[ind_recv];
+    const size_t count_dmparts = dm_counts[ind_recv];
 
     /* Loop over the gparts received from this node */
     for (size_t k = offset_gparts; k < offset_gparts + count_gparts; k++) {
@@ -517,7 +518,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
       }
         
         /* Does this gpart have a dark matter partner ? */
-      else if (s->gparts[k].type == swift_type_dark_matter) {
+      else if (s->gparts[k].type == swift_type_dark_matter && count_dmparts > 0) {
           
           const ptrdiff_t partner_index =
           offset_dmparts - s->gparts[k].id_or_neg_offset;
@@ -681,7 +682,7 @@ void engine_redistribute(struct engine *e) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_black_hole) {
         s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_dark_matter) {
+      } else if (s->gparts[k].type == swift_type_dark_matter && nr_dmparts > 0 ) {
           s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
 
@@ -694,7 +695,7 @@ void engine_redistribute(struct engine *e) {
       } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
         s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
-      } else if (s->gparts[nr_gparts].type == swift_type_dark_matter) {
+      } else if (s->gparts[nr_gparts].type == swift_type_dark_matter && nr_dmparts > 0 ) {
           s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
           &s->gparts[nr_gparts];
       }
@@ -1003,7 +1004,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts, s->dmparts,
+    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts, s->dmparts, s->nr_dmparts,
                       g_dest, &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1062,7 +1063,7 @@ void engine_redistribute(struct engine *e) {
   /* Get all the dm_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, dm_counts, nr_nodes * nr_nodes, MPI_INT,
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
-      error("Failed to allreduce bparticle transfer counts.");
+      error("Failed to allreduce dmparticle transfer counts.");
 
   /* Report how many particles will be moved. */
   if (e->verbose) {

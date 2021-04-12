@@ -482,6 +482,7 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
  * @param with_sink Are we reading sink particles ?
  * @param with_stars Are we reading star particles ?
  * @param with_black_holes Are we reading black hole particles ?
+ * @param with_sidm Are we reading dark matter particles ?
  * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
@@ -511,7 +512,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     size_t* Ngparts_background, size_t* Nsinks, size_t* Nstars,
                     size_t* Nblackholes, int* flag_entropy, int with_hydro,
                     int with_gravity, int with_sink, int with_stars,
-                    int with_black_holes, int with_cosmology, int cleanup_h,
+                    int with_black_holes, int with_sidm, int with_cosmology, int cleanup_h,
                     int cleanup_sqrt_a, double h, double a, int mpi_rank,
                     int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
                     int dry_run) {
@@ -709,7 +710,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   }
 
   /* Allocate memory to store all gravity  particles */
-  if (with_gravity) {
+  if (with_gravity && with_sidm) {
     *Ndarkmatter = N[swift_type_dark_matter];
     Ndm = *Ndarkmatter;
     if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
@@ -729,6 +730,22 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
+
+  } else if (with_gravity){
+
+      Ndm = N[swift_type_dark_matter];
+      Ndm_background = N[swift_type_dark_matter_background];
+      *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
+                   N[swift_type_dark_matter] +
+                   N[swift_type_dark_matter_background] +
+                   (with_sink ? N[swift_type_sink] : 0) +
+                   (with_stars ? N[swift_type_stars] : 0) +
+                   (with_black_holes ? N[swift_type_black_hole] : 0);
+        *Ngparts_background = Ndm_background;
+        if (swift_memalign("gparts", (void**)gparts, gpart_align,
+                           *Ngparts * sizeof(struct gpart)) != 0)
+          error("Error while allocating memory for gravity particles");
+        bzero(*gparts, *Ngparts * sizeof(struct gpart));
   }
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / */
@@ -779,10 +796,12 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
             break;
 
           case swift_type_dark_matter:
-            if (with_gravity) {
+            if (with_gravity && with_sidm) {
               Nparticles = Ndm;
-              /*darkmatter_read_particles(*gparts, list, &num_fields);*/
               darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
+            } else if (with_gravity){
+              Nparticles = Ndm;
+              darkmatter_read_particles(*gparts, list, &num_fields);
             }
             break;
 
@@ -847,8 +866,11 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     threadpool_init(&tp, n_threads);
 
     /* Prepare the DM particles */
-    /*io_prepare_dm_gparts(&tp, *gparts, Ndm);*/
-    io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
+    if (with_sidm){
+        io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
+    } else {
+        io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    }
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
@@ -938,6 +960,7 @@ void write_output_serial(struct engine* e,
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nblackholes = e->s->nr_bparts;
+  /*const size_t Ndm = e->s->nr_dmparts;*/
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
@@ -948,8 +971,8 @@ void write_output_serial(struct engine* e,
 
   /* Number of particles that we will write
    * Recall that background particles are never inhibited and have no extras */
-  const size_t Ntot_written =
-      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  /*const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;*/
   const size_t Ngas_written =
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
   const size_t Nsinks_written =
@@ -958,10 +981,11 @@ void write_output_serial(struct engine* e,
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
+  /*const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;*/
   const size_t Ndm_written =
-      Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
+          e->s->nr_dmparts - e->s->nr_inhibited_dmparts - e->s->nr_extra_dmparts;
+/*      Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;*/
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -1524,6 +1548,7 @@ void write_output_serial(struct engine* e,
         if (parts_written) swift_free("parts_written", parts_written);
         if (xparts_written) swift_free("xparts_written", xparts_written);
         if (gparts_written) swift_free("gparts_written", gparts_written);
+        if (dmparts_written) swift_free("dmparts_written", dmparts_written);
         if (gpart_group_data_written)
           swift_free("gpart_group_written", gpart_group_data_written);
         if (sparts_written) swift_free("sparts_written", sparts_written);

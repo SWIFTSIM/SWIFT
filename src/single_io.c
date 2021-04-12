@@ -395,6 +395,7 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
  * @param with_sink Are we reading sink particles ?
  * @param with_stars Are we reading star particles ?
  * @param with_black_hole Are we reading black hole particles ?
+ * @param with_sidm Are we reading dark matter particles ?
  * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
@@ -420,7 +421,7 @@ void read_ic_single(const char* fileName,
                     size_t* Ngparts_background, size_t* Nsinks, size_t* Nstars,
                     size_t* Nblackholes, int* flag_entropy, int with_hydro,
                     int with_gravity, int with_sink, int with_stars,
-                    int with_black_holes, int with_cosmology, int cleanup_h,
+                    int with_black_holes, int with_sidm, int with_cosmology, int cleanup_h,
                     int cleanup_sqrt_a, double h, double a, int n_threads,
                     int dry_run) {
 
@@ -593,7 +594,7 @@ void read_ic_single(const char* fileName,
   }
 
   /* Allocate memory to store all gravity particles */
-  if (with_gravity) {
+  if (with_gravity && with_sidm) {
     *Ndarkmatter = N[swift_type_dark_matter];
     Ndm = *Ndarkmatter;
     if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
@@ -613,6 +614,23 @@ void read_ic_single(const char* fileName,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
+
+  } else if (with_gravity) {
+
+      Ndm = N[swift_type_dark_matter];
+      Ndm_background = N[swift_type_dark_matter_background];
+      *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
+                 N[swift_type_dark_matter] +
+                 N[swift_type_dark_matter_background] +
+                 (with_sink ? N[swift_type_sink] : 0) +
+                 (with_stars ? N[swift_type_stars] : 0) +
+                 (with_black_holes ? N[swift_type_black_hole] : 0);
+      *Ngparts_background = Ndm_background;
+      if (swift_memalign("gparts", (void**)gparts, gpart_align,
+                         *Ngparts * sizeof(struct gpart)) != 0)
+          error("Error while allocating memory for gravity particles");
+      bzero(*gparts, *Ngparts * sizeof(struct gpart));
+
   }
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
@@ -651,10 +669,12 @@ void read_ic_single(const char* fileName,
         break;
 
       case swift_type_dark_matter:
-        if (with_gravity) {
+        if (with_gravity && with_sidm) {
           Nparticles = Ndm;
-          /*darkmatter_read_particles(*gparts, list, &num_fields);*/
           darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
+        } else if (with_gravity){
+            Nparticles = Ndm;
+            darkmatter_read_particles(*gparts, list, &num_fields);
         }
         break;
 
@@ -707,13 +727,15 @@ void read_ic_single(const char* fileName,
     struct threadpool tp;
     threadpool_init(&tp, n_threads);
 
-    /* Prepare the DM particles */
-    /*io_prepare_dm_gparts(&tp, *gparts, Ndm);*/
-
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
-      
-    io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
+
+    /* Prepare the DM particles */
+    if (with_sidm) {
+        io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
+    } else {
+        io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    }
 
     /* Duplicate the hydro particles into gparts */
     if (with_hydro)

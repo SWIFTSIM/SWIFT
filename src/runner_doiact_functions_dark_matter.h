@@ -1322,11 +1322,7 @@ void runner_doself2_branch_dark_matter_sidm(struct runner *r, struct cell *c) {
  */
 void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
-    
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cj->nodeID != engine_rank) error("Should be run on a different node");
-#endif
-    
+
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
     const int with_cosmology = e->policy & engine_policy_cosmology;

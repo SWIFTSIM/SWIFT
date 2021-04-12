@@ -203,6 +203,7 @@ struct relink_data {
   struct spart *const sparts;
   struct bpart *const bparts;
   struct dmpart *const dmparts;
+  const size_t Ndm;
 };
 
 /**
@@ -224,11 +225,13 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
   struct dmpart *const dmparts = data->dmparts;
   struct gpart *const gparts = (struct gpart *)map_data;
   struct sink *const sinks = data->sinks;
+  const size_t Ndm = data->Ndm;
+
 
   for (int k = 0; k < count; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-    } else if (gparts[k].type == swift_type_dark_matter) {
+    } else if (gparts[k].type == swift_type_dark_matter && Ndm > 0) {
       dmparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     } else if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
@@ -259,10 +262,10 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
                                      struct spart *sparts, struct bpart *bparts,
-                                     struct dmpart *dmparts,
+                                     struct dmpart *dmparts, const size_t Ndm,
                                      struct threadpool *tp) {
 
-  struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts, dmparts};
+  struct relink_data data = {parts, /*gparts=*/NULL, sinks, sparts, bparts, dmparts, Ndm};
   threadpool_map(tp, part_relink_all_parts_to_gparts_mapper, gparts, N,
                  sizeof(struct gpart), 0, &data);
 }
@@ -298,7 +301,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
     /* We have a real DM particle */
     /* CC. Now I want a DM particle linked! */
-    if (gparts[k].type == swift_type_dark_matter){
+    if (gparts[k].type == swift_type_dark_matter && nr_dmparts > 0){
         
         /* Check that it is linked */
         if (gparts[k].id_or_neg_offset > 0)

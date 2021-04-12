@@ -163,6 +163,7 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_sidm = 0;
   int with_fof = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
@@ -226,6 +227,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
       OPT_BOOLEAN('k', "sinks", &with_sink, "Run with sink particles.", NULL, 0,
+                  0),
+      OPT_BOOLEAN('d', "sidm", &with_sidm, "Run with self-interacting dark matter.", NULL, 0,
                   0),
       OPT_BOOLEAN(
           'u', "fof", &with_fof,
@@ -958,9 +961,12 @@ int main(int argc, char *argv[]) {
     } else
       bzero(&feedback_properties, sizeof(struct feedback_props));
 
+
     /* Initialise sidm properties */
-    bzero(&sidm_properties, sizeof(struct sidm_props));
-    sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
+    if (with_sidm)
+        sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
+    else
+        bzero(&sidm_properties, sizeof(struct sidm_props));
 
       
     /* Initialise the black holes properties */
@@ -1036,7 +1042,7 @@ int main(int argc, char *argv[]) {
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                      &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink,
                      &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                     with_gravity, with_sink, with_stars, with_black_holes,
+                     with_gravity, with_sink, with_stars, with_black_holes, with_sidm,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
                      nr_threads, dry_run);
@@ -1044,7 +1050,7 @@ int main(int argc, char *argv[]) {
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                    &Nbpart, &flag_entropy_ICs, with_hydro, with_gravity,
-                   with_sink, with_stars, with_black_holes, with_cosmology,
+                   with_sink, with_stars, with_black_holes, with_sidm, with_cosmology,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
                    nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    dry_run);
@@ -1053,7 +1059,7 @@ int main(int argc, char *argv[]) {
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nsink, &Nspart,
                    &Nbpart, &flag_entropy_ICs, with_hydro, with_gravity,
-                   with_sink, with_stars, with_black_holes, with_cosmology,
+                   with_sink, with_stars, with_black_holes, with_sidm, with_cosmology,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
                    dry_run);
 #endif
@@ -1100,29 +1106,32 @@ int main(int argc, char *argv[]) {
     /* Get the total number of particles across all nodes. */
     long long N_total[swift_type_count + 1] = {0};
     long long Nbaryons = Ngas + Nspart + Nbpart + Nsink;
-    Ndmpart = Ngpart - Ngpart_background - Nbaryons;
 #if defined(WITH_MPI)
     long long N_long[swift_type_count + 1] = {0};
     N_long[swift_type_gas] = Ngas;
-    /*N_long[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;*/
     N_long[swift_type_dark_matter_background] = Ngpart_background;
     N_long[swift_type_sink] = Nsink;
     N_long[swift_type_stars] = Nspart;
     N_long[swift_type_black_hole] = Nbpart;
-    N_long[swift_type_dark_matter] = Ndmpart;
+    if (with_sidm) {
+        N_long[swift_type_dark_matter] = Ndmpart;
+    } else {
+        N_long[swift_type_dark_matter] = with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
+    }
     N_long[swift_type_count] = Ngpart;
     MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
-    /*N_total[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;*/
     N_total[swift_type_dark_matter_background] = Ngpart_background;
     N_total[swift_type_sink] = Nsink;
     N_total[swift_type_stars] = Nspart;
     N_total[swift_type_black_hole] = Nbpart;
-    N_total[swift_type_dark_matter] = Ndmpart;
+    if (with_sidm) {
+        N_total[swift_type_dark_matter] = Ndmpart;
+    } else {
+        N_total[swift_type_dark_matter] = with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
+    }
     N_total[swift_type_count] = Ngpart;
 #endif
 
@@ -1153,7 +1162,7 @@ int main(int argc, char *argv[]) {
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
                sparts, bparts, dmparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Ndmpart, periodic,
                replicate, remap_ids, generate_gas_in_ics, with_hydro,
-               with_self_gravity, with_star_formation,
+               with_self_gravity, with_star_formation, with_sidm,
                with_DM_background_particles, talking, dry_run, nr_nodes);
       
     /* Initialise the line of sight properties. */
@@ -1204,7 +1213,7 @@ int main(int argc, char *argv[]) {
     N_long[swift_type_gas] = s.nr_parts;
     /*N_long[swift_type_dark_matter] =
         with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons : 0;*/
-    N_total[swift_type_dark_matter] = s.nr_dmparts;
+    N_long[swift_type_dark_matter] = s.nr_dmparts;
     N_long[swift_type_count] = s.nr_gparts;
     N_long[swift_type_stars] = s.nr_sparts;
     N_long[swift_type_sink] = s.nr_sinks;
@@ -1283,8 +1292,8 @@ int main(int argc, char *argv[]) {
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_black_holes) engine_policies |= engine_policy_black_holes;
-    if (with_structure_finding)
-      engine_policies |= engine_policy_structure_finding;
+    if (with_sidm) engine_policies |= engine_policy_sidm;
+    if (with_structure_finding) engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_logger) engine_policies |= engine_policy_logger;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;

@@ -39,7 +39,7 @@ void read_ic_single(const char* fileName,
                     size_t* Ndm_background, size_t* Nsinks, size_t* Nstars,
                     size_t* Nblackholes, int* flag_entropy, int with_hydro,
                     int with_gravity, int with_sinks, int with_stars,
-                    int with_black_holes, int with_cosmology, int cleanup_h,
+                    int with_black_holes, int with_sidm, int with_cosmology, int cleanup_h,
                     int cleanup_sqrt_a, double h, double a, int nr_threads,
                     int dry_run);
 

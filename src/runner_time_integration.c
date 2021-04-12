@@ -185,7 +185,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter_background ||
-           gp->type == swift_type_sink) &&
+           gp->type == swift_type_sink ||
+           dmcount == 0) &&
           // TODO loic remove this
 
           gpart_is_starting(gp, e)) {
@@ -453,7 +454,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter_background ||
-           gp->type == swift_type_sink) &&
+           gp->type == swift_type_sink ||
+           dmcount == 0) &&
           // TODO loic remove this
 
           gpart_is_active(gp, e)) {
@@ -766,7 +768,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
       /* If the g-particle has no counterpart */
       if (gp->type == swift_type_dark_matter_background ||
-          gp->type == swift_type_sink) {
+          gp->type == swift_type_sink ||
+          dmcount == 0) {
         // Loic TODO remove sink
 
         /* need to be updated ? */

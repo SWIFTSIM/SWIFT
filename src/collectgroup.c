@@ -301,27 +301,27 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->g_updated = mpigrp12.g_updated;
   grp1->s_updated = mpigrp12.s_updated;
   grp1->b_updated = mpigrp12.b_updated;
-    grp1->dm_updated = mpigrp12.dm_updated;
+  grp1->dm_updated = mpigrp12.dm_updated;
   grp1->inhibited = mpigrp12.inhibited;
   grp1->g_inhibited = mpigrp12.g_inhibited;
   grp1->s_inhibited = mpigrp12.s_inhibited;
   grp1->b_inhibited = mpigrp12.b_inhibited;
-    grp1->dm_inhibited = mpigrp12.dm_inhibited;
+  grp1->dm_inhibited = mpigrp12.dm_inhibited;
   grp1->ti_hydro_end_min = mpigrp12.ti_hydro_end_min;
   grp1->ti_gravity_end_min = mpigrp12.ti_gravity_end_min;
   grp1->ti_stars_end_min = mpigrp12.ti_stars_end_min;
   grp1->ti_black_holes_end_min = mpigrp12.ti_black_holes_end_min;
-    grp1->ti_dark_matter_end_min = mpigrp12.ti_dark_matter_end_min;
+  grp1->ti_dark_matter_end_min = mpigrp12.ti_dark_matter_end_min;
   grp1->ti_hydro_end_max = mpigrp12.ti_hydro_end_max;
   grp1->ti_gravity_end_max = mpigrp12.ti_gravity_end_max;
   grp1->ti_stars_end_max = mpigrp12.ti_stars_end_max;
   grp1->ti_black_holes_end_max = mpigrp12.ti_black_holes_end_max;
-    grp1->ti_dark_matter_end_max = mpigrp12.ti_dark_matter_end_max;
+  grp1->ti_dark_matter_end_max = mpigrp12.ti_dark_matter_end_max;
   grp1->ti_hydro_beg_max = mpigrp12.ti_hydro_beg_max;
   grp1->ti_gravity_beg_max = mpigrp12.ti_gravity_beg_max;
   grp1->ti_stars_beg_max = mpigrp12.ti_stars_beg_max;
   grp1->ti_black_holes_beg_max = mpigrp12.ti_black_holes_beg_max;
-    grp1->ti_dark_matter_beg_max = mpigrp12.ti_dark_matter_beg_max;
+  grp1->ti_dark_matter_beg_max = mpigrp12.ti_dark_matter_beg_max;
   grp1->forcerebuild = mpigrp12.forcerebuild;
   grp1->total_nr_cells = mpigrp12.total_nr_cells;
   grp1->total_nr_tasks = mpigrp12.total_nr_tasks;
@@ -349,14 +349,14 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   mpigrp11->g_updated += mpigrp12->g_updated;
   mpigrp11->s_updated += mpigrp12->s_updated;
   mpigrp11->b_updated += mpigrp12->b_updated;
-    mpigrp11->dm_updated += mpigrp12->dm_updated;
+  mpigrp11->dm_updated += mpigrp12->dm_updated;
 
   /* Sum of inhibited */
   mpigrp11->inhibited += mpigrp12->inhibited;
   mpigrp11->g_inhibited += mpigrp12->g_inhibited;
   mpigrp11->s_inhibited += mpigrp12->s_inhibited;
   mpigrp11->b_inhibited += mpigrp12->b_inhibited;
-    mpigrp11->dm_inhibited += mpigrp12->dm_inhibited;
+  mpigrp11->dm_inhibited += mpigrp12->dm_inhibited;
 
   /* Minimum end time. */
   mpigrp11->ti_hydro_end_min =

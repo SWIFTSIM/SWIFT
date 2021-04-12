@@ -29,7 +29,7 @@
 #define proxy_buffinit 100
 
 /* Proxy tag arithmetic. */
-#define proxy_tag_shift 8
+#define proxy_tag_shift 9
 #define proxy_tag_count 0
 #define proxy_tag_parts 1
 #define proxy_tag_xparts 2

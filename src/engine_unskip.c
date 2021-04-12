@@ -304,8 +304,12 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
         engine_do_unskip_stars(c, e, with_star_formation);
         break;
       case task_broad_types_dark_matter:
-            engine_do_unskip_dark_matter(c, e);
-            break;
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_sidm))
+            error("Trying to unskip SIDM tasks in a non-sidm run!");
+#endif
+        engine_do_unskip_dark_matter(c, e);
+        break;
       case task_broad_types_black_holes:
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_black_holes))
@@ -339,6 +343,7 @@ void engine_unskip(struct engine *e) {
   const int with_stars = e->policy & engine_policy_stars;
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_black_holes = e->policy & engine_policy_black_holes;
+  const int with_sidm = e->policy & engine_policy_sidm;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -357,10 +362,10 @@ void engine_unskip(struct engine *e) {
         (with_self_grav && cell_is_active_gravity(c, e)) ||
         (with_ext_grav && c->nodeID == nodeID &&
          cell_is_active_gravity(c, e)) ||
-        cell_is_active_dark_matter(c, e) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
-        (with_black_holes && cell_is_active_black_holes(c, e))) {
+        (with_black_holes && cell_is_active_black_holes(c, e)) ||
+        (with_sidm && cell_is_active_dark_matter(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
@@ -388,8 +393,10 @@ void engine_unskip(struct engine *e) {
     data.task_types[multiplier] = task_broad_types_black_holes;
     multiplier++;
   }
-  data.task_types[multiplier] = task_broad_types_dark_matter;
-  multiplier++;
+  if (with_sidm) {
+      data.task_types[multiplier] = task_broad_types_dark_matter;
+      multiplier++;
+  }
 
   /* Should we duplicate the list of active cells to better parallelise the
      unskip over the threads ? */

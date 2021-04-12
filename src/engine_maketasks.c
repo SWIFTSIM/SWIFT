@@ -296,7 +296,7 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.ghost, t_rho);
 
             /* The send_xv task should unlock the super_hydro-cell's ghost task. */
-            scheduler_addunlock(s, t_xv, ci->dark_matter.super->dark_matter.ghost);
+            /*scheduler_addunlock(s, t_xv, ci->dark_matter.super->dark_matter.ghost);*/
 
             /* Drift before you send */
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.drift, t_rho);
@@ -1515,7 +1515,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
-  /*const int with_sidm = (e->policy & engine_policy_sidm);*/
+  const int with_sidm = (e->policy & engine_policy_sidm);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1530,7 +1530,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
       engine_make_hierarchical_tasks_gravity(e, c);
       
     /* Add the dark matter stuff */
-    engine_make_hierarchical_tasks_dark_matter(e, c);
+    if (with_sidm)
+        engine_make_hierarchical_tasks_dark_matter(e, c);
 
   }
 }
@@ -3604,16 +3605,17 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                        /*t_feedback=*/NULL,
                                        /*t_ti=*/NULL);
 
-    /* Add the send tasks for the cells in the proxy that have a dark matter
-     * connection. */
-    if (type & proxy_cell_type_gravity)
-        engine_addtasks_send_dark_matter(e, ci, cj,/*t_xv=*/NULL,/*t_rho=*/NULL,/*t_ti=*/NULL);
-
       /* Add the send tasks for the cells in the proxy that have a gravity
        * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_send_gravity(e, ci, cj, NULL, NULL);
+
+    /* Add the send tasks for the cells in the proxy that have a dark matter
+     * connection. */
+    /*if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_gravity))*/
+    if (e->policy & engine_policy_sidm)
+        engine_addtasks_send_dark_matter(e, ci, cj, NULL, NULL, NULL);
 
   }
 }
@@ -3654,16 +3656,19 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                        /*t_gas_swallow=*/NULL,
                                        /*t_feedback=*/NULL,
                                        /*t_ti=*/NULL);
-    /* Add the recv tasks for the cells in the proxy that have a hydro
-     * connection. */
-    if (type & proxy_cell_type_gravity)
-        engine_addtasks_recv_dark_matter(e, ci,/*t_xv=*/NULL,/*t_rho=*/NULL,/*t_ti=*/NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_ti=*/NULL);
+
+    /* Add the recv tasks for the cells in the proxy that have a hydro
+     * connection. */
+    /*if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_gravity))*/
+    if (e->policy & engine_policy_sidm)
+        engine_addtasks_recv_dark_matter(e, ci, NULL, NULL, NULL);
+
 
   }
 }
@@ -3834,17 +3839,21 @@ void engine_maketasks(struct engine *e) {
   if (e->verbose)
     message("Making gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
-    
 
-    /* Add the dark matter tasks. */
-    threadpool_map(&e->threadpool, engine_make_dark_matter_tasks_mapper, NULL,
-                       s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  tic2 = getticks();
+
+  /* Add the dark matter tasks. */
+  if (e->policy & engine_policy_sidm)
+      threadpool_map(&e->threadpool, engine_make_dark_matter_tasks_mapper, NULL,
+                     s->nr_cells, 1, threadpool_auto_chunk_size, e);
     
-    if (e->verbose)
-        message("Making dark matter tasks took %.3f %s.",
+  if (e->verbose)
+      message("Making dark matter tasks took %.3f %s.",
                 clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
-  /* Add the external gravity tasks. */
+  tic2 = getticks();
+
+    /* Add the external gravity tasks. */
   if (e->policy & engine_policy_external_gravity)
     engine_make_external_gravity_tasks(e);
 
@@ -3933,9 +3942,10 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Adding dependencies for dark matter stuff */
-  threadpool_map(&e->threadpool, engine_make_dark_matter_loops_tasks_mapper,
-                   sched->tasks, sched->nr_tasks, sizeof(struct task),
-                   threadpool_auto_chunk_size, e);
+  if (e->policy & engine_policy_sidm)
+      threadpool_map(&e->threadpool, engine_make_dark_matter_loops_tasks_mapper,
+                         sched->tasks, sched->nr_tasks, sizeof(struct task),
+                         threadpool_auto_chunk_size, e);
     
   if (e->verbose)
     message("Making links of dark matter tasks took %.3f %s.",

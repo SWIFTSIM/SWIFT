@@ -84,8 +84,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    message("Task (type=%s/%s )",taskID_names[t->type],subtaskID_names[t->subtype]);
-
     /* Single-cell task? */
     if (t_type == task_type_self || t_type == task_type_sub_self) {
 
@@ -882,7 +880,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             struct link *l = scheduler_activate_send(
                 s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
-            message("send subtype gpart");
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -894,7 +891,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_gravity)
             scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_gpart,
                                     ci_nodeID);
-          message("send subtype tend gpart");
 
 
         } else if (cj_nodeID != nodeID) {

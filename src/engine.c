@@ -894,7 +894,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_black_hole) {
         s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_dark_matter) {
+      } else if (s->gparts[k].type == swift_type_dark_matter && s->size_dmparts > 0) {
         s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
@@ -1063,7 +1063,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
               &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->bparts - bp;
           bp->gpart = gp;
-      } else if (gp->type == swift_type_dark_matter) {
+      } else if (gp->type == swift_type_dark_matter && count_dmparts > 0) {
           struct dmpart *dmp =
           &s->dmparts[offset_dmparts + count_dmparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->dmparts - dmp;
@@ -1363,7 +1363,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   const int with_hydro = e->policy & engine_policy_hydro;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
-  /*const int with_sidm = e->policy & engine_policy_sidm;*/
+  const int with_sidm = e->policy & engine_policy_sidm;
   struct space *s = e->s;
   ticks tic = getticks();
 
@@ -1381,8 +1381,6 @@ void engine_allocate_foreign_particles(struct engine *e) {
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
         count_gparts_in +=
             cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
-        /*count_dmparts_in +=
-          cell_count_dmparts_for_tasks(e->proxies[k].cells_in[j]);*/
       }
 
       /* For stars, we just use the numbers in the top-level cells */
@@ -1393,7 +1391,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
 
       /* For dark matter, we just use the numbers in the top-level cells */
-      count_dmparts_in += e->proxies[k].cells_in[j]->dark_matter.count;
+      count_dmparts_in += e->proxies[k].cells_in[j]->dark_matter.count + space_extra_dmparts;
     }
   }
 
@@ -1406,6 +1404,10 @@ void engine_allocate_foreign_particles(struct engine *e) {
   if (!with_black_holes && count_bparts_in)
     error(
         "Not running with black holes but about to receive black holes in "
+        "proxies!");
+  if (!with_sidm && count_dmparts_in)
+    error(
+        "Not running with sidm but about to receive dark matter particles in "
         "proxies!");
 
   if (e->verbose)
@@ -1501,9 +1503,6 @@ void engine_allocate_foreign_particles(struct engine *e) {
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts);
         gparts = &gparts[count_gparts];
 
-        /*const size_t count_dmparts = cell_link_foreign_dmparts(e->proxies[k].cells_in[j], dmparts);
-        dmparts = &dmparts[count_dmparts];*/
-
       }
 
       if (with_stars) {
@@ -1525,7 +1524,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
             
         /* For dark matter, we just use the numbers in the top-level cells */
         cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);
-        dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_matter.count];
+        dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_matter.count + space_extra_dmparts];
     }
   }
 
@@ -1687,14 +1686,16 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 #endif
   }
-    /* For dark matter 2 self (density, sidm), 26/2 density pairs,
-       26/2 sidm pairs, 1 drift, 1 ghosts, 2 kicks, 1 time-step,
-       1 end_sidm, 2 extra space */
-    n1 += 37;
-    n2 += 2;
+  if (e->policy & engine_policy_sidm) {
+      /* For dark matter 2 self (density, sidm), 26/2 density pairs,
+       * 26/2 sidm pairs, 1 drift, 1 ghosts, 2 kicks, 1 time-step,
+       * 1 end_sidm, 2 extra space */
+      n1 += 37;
+      n2 += 2;
 #ifdef WITH_MPI
-    n1 += 6;
+      n1 += 6;
 #endif
+  }
 
   if (e->policy & engine_policy_timestep_limiter) {
     n1 += 36;
@@ -2256,7 +2257,6 @@ void engine_skip_drift(struct engine *e) {
  */
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
   space_reset_task_counters(e->s);
@@ -2351,7 +2351,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
-  sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
+  if (e->policy & engine_policy_sidm)
+      sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
 
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
@@ -2738,7 +2739,9 @@ void engine_step(struct engine *e) {
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
-  sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
+  /* Udpate the sidm properties */
+  if (e->policy & engine_policy_sidm)
+      sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
 
   if (e->verbose)
     message("Updating general quantities took %.3f %s",
@@ -3696,7 +3699,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link everything to the gparts. */
   if (s->nr_gparts > 0)
     part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts, s->sinks,
-                                    s->sparts, s->bparts, s->dmparts, &e->threadpool);
+                                    s->sparts, s->bparts, s->dmparts, s->nr_dmparts, &e->threadpool);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -4567,8 +4570,10 @@ void engine_config(int restart, int fof, struct engine *e,
   engine_print_policy(e);
 
   if (!fof) {
-      
-    if (e->nodeID == 0) sidm_props_print(e->sidm_properties);
+
+      if (e->policy & engine_policy_sidm) {
+          if (e->nodeID == 0) sidm_props_print(e->sidm_properties);
+      }
 
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {

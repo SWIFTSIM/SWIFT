@@ -1506,6 +1506,7 @@ with_subgrid_star_formation=none
 with_subgrid_feedback=none
 with_subgrid_task_order=default
 with_subgrid_sink=none
+with_subgrid_sidm=none
 
 case "$with_subgrid" in
    yes)
@@ -2070,6 +2071,36 @@ case "$with_black_holes" in
    ;;
 esac
 
+# Self-interacting dark matter model.
+AC_ARG_WITH([sidm],
+   [AS_HELP_STRING([--with-sidm=<model>],
+      [Dark matter particle model to use @<:@none, tango, default: none@:>@]
+   )],
+   [with_sidm="$withval"],
+   [with_sidm="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_sidm" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-sidm together])
+   else
+      with_sidm="$with_subgrid_sidm"
+   fi
+fi
+
+case "$with_sidm" in
+   none)
+      AC_DEFINE([SIDM_NONE], [1], [No self-interacting dark matter model])
+   ;;
+   tango)
+      AC_DEFINE([SIDM_MODEL], [1], [SIDM model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown sidm model: $with_sidm])
+   ;;
+esac
+
+
 # Sink model.
 AC_ARG_WITH([sink],
    [AS_HELP_STRING([--with-sink=<model>],
@@ -2397,6 +2428,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
+   Dark matter model    : $with_sidm
    Task dependencies    : $with_task_order
 
    Atomic operations in tasks  : $enable_atomics_within_tasks

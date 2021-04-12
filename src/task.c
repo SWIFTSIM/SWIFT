@@ -269,12 +269,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_recv:
       if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
         return task_action_all;
+      else if (t->ci->dark_matter.count > 0 && t->ci->grav.count > 0)
+          return task_action_all;
       else if (t->ci->hydro.count > 0)
         return task_action_part;
-      else if (t->ci->grav.count > 0)
+      /*else if (t->ci->grav.count > 0)
         return task_action_gpart;
       else if (t->ci->dark_matter.count > 0)
-          return task_action_dmpart;
+          return task_action_dmpart;*/
       else {
 #ifdef SWIFT_DEBUG_CHECKS
         error("Task without particles");

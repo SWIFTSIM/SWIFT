@@ -116,6 +116,9 @@ struct space {
   /*! Are we running with some DM background particles? */
   int with_DM_background;
 
+  /*! Are we doing self-interacting DM? */
+  int with_sidm;
+
   /*! Width of the top-level cells. */
   double width[3];
 
@@ -359,7 +362,8 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
-                       struct bpart *bparts, struct dmpart *dmparts, int *ind, int *counts,
+                       struct bpart *bparts, struct dmpart *dmparts,
+                       const size_t Ndm, int *ind, int *counts,
                        int num_bins);
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset);
@@ -377,7 +381,7 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, struct dmpart *dmparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Ndmpart, int periodic, int replicate,
                 int remap_ids, int generate_gas_in_ics, int hydro, int gravity,
-                int star_formation, int DM_background, int verbose, int dry_run,
+                int star_formation, int sidm, int DM_background, int verbose, int dry_run,
                 int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
@@ -409,10 +413,10 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
                                  size_t *count_inhibited_sparts,
                                  size_t *count_extra_sparts, int verbose);
-void space_bparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
+void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
                                  size_t *count_inhibited_bparts,
                                  size_t *count_extra_bparts, int verbose);
-void space_dmparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
+void space_dmparts_get_cell_index(struct space *s, int *dmind, int *cell_counts,
                                  size_t *count_inhibited_dmparts,
                                  size_t *count_extra_dmparts, int verbose);
 void space_sinks_get_cell_index(struct space *s, int *sind, int *cell_counts,
