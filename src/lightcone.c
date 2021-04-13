@@ -55,6 +55,69 @@ static int output_nr = 0;
 extern int engine_rank;
 
 
+/**
+ * @brief Read in shell radii for lightcone healpix maps
+ *
+ * @param radius_file Name of the file to read
+ * @param nr_shells Returns number of shells in the file
+ * @param shell_rmin Returns shell inner raddi
+ * @param shell_rmax Returns shell outer raddi
+ */
+void lightcone_read_shell_radii(char *radius_file, int *nr_shells,
+                                double *shell_rmin, double *shell_rmax) {
+  
+  FILE *fd = fopen(radius_file, "r");
+  if(!fd)error("Failed to open lightcone radius file %s", radius_file);
+
+  /* Count number of lines */
+  size_t len = 0;
+  char *line = NULL;
+  int nr_lines = 0;
+  while (getline(&line, &len, fd) != -1) nr_lines+=1;
+  if(nr_lines >= LIGHTCONE_MAX_SHELLS)
+    error("Too many entries in radius file - increase LIGHTCONE_MAX_SHELLS");
+  rewind(fd);
+
+  /* Check header */
+  if(getline(&line, &len, fd) != -1) {
+    if (strcmp(line, "# Minimum comoving distance, Maximum comoving distance\n") != 0)
+      error("Radius file header line is incorrect");
+  } else {
+    error("Unable to read header in radius file");
+  }
+
+  /* Read lines */
+  for(int i=0; i<nr_lines-1; i+=1) {
+    if(fscanf(fd, "%le, %le\n", &shell_rmin[i], &shell_rmax[i]) != 2)
+      error("Failed to read line from radius file");
+  }
+  fclose(fd);
+  *nr_shells = nr_lines-1;
+  const int nr = *nr_shells;
+  free(line);
+
+  /* Do some sanity checks on the radii */
+  /* All values should be monotonically increasing */
+  for(int i=1; i<nr; i+=1) {
+    if(shell_rmin[i] <= shell_rmin[i-1])error("Minimum radii should be monotonically increasing");
+    if(shell_rmax[i] <= shell_rmax[i-1])error("Maximum radii should be monotonically increasing");
+  }
+
+  /* Maximum radius should be greater than minimum */
+  for(int i=0; i<nr; i+=1)
+    if(shell_rmin[i] >= shell_rmax[i])error("Maximum radius should be greater than minimum");
+
+  /* Shells should not overlap */
+  for(int i=1; i<nr; i+=1)
+    if(shell_rmin[i] < shell_rmax[i-1])error("Shells should not overlap");
+}
+
+
+/**
+ * @brief Allocate I/O buffers for a lightcone
+ *
+ * @param props the #lightcone_props structure
+ */
 static void lightcone_allocate_buffers(struct lightcone_props *props) {
 
   /* Initialize particle output buffers */
@@ -148,7 +211,7 @@ void lightcone_init(struct lightcone_props *props,
   /* Whether we generate lightcone output */
   props->enabled = 1;
 
-  /* Which particle types to use */
+  /* Which particle types we should write out particle data for */
   for(int i=0; i<swift_type_count; i+=1)
     props->use_type[i] = 0;
   props->use_type[swift_type_gas] = parser_get_param_int(params, "Lightcone:use_gas");
@@ -237,6 +300,35 @@ void lightcone_init(struct lightcone_props *props,
 
   /* Allocate lightcone output buffers */
   lightcone_allocate_buffers(props);
+
+  /* 
+     Healpix map parameters for this lightcone
+  */
+  
+  /* Name of the file with radii of spherical shells */
+  parser_get_param_string(params, "Lightcone:radius_file", props->radius_file);
+  
+  /* Healpix nside parameter */
+  props->nside = parser_get_param_double(params, "Lightcone:nside");
+
+  /* Names of the healpix maps to make for this lightcone */
+  char **map_names;
+  parser_get_param_string_array(params, "Lightcone:map_names", &props->nr_maps, &map_names);
+  if(props->nr_maps > LIGHTCONE_MAX_HEALPIX_MAPS)
+    error("Increase LIGHTCONE_MAX_HEALPIX_MAPS!");
+  for(int i=0; i<props->nr_maps; i+=1)
+    strncpy(props->map_names[i], map_names[i], PARSER_MAX_LINE_SIZE);
+  parser_free_param_string_array(props->nr_maps, map_names);
+
+  /* Read in the shell radii for this lightcone */
+  if(engine_rank == 0)
+    lightcone_read_shell_radii(props->radius_file, &props->nr_shells,
+                               props->shell_rmin, props->shell_rmax);
+#ifdef WITH_MPI
+  MPI_Bcast(&props->nr_shells, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&props->shell_rmin, props->nr_shells, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&props->shell_rmax, props->nr_shells, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
 
 }
 

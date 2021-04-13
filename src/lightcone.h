@@ -20,6 +20,9 @@
 #ifndef SWIFT_LIGHTCONE_H
 #define SWIFT_LIGHTCONE_H
 
+#define LIGHTCONE_MAX_HEALPIX_MAPS 10
+#define LIGHTCONE_MAX_SHELLS       200
+
 /* Config parameters. */
 #include "../config.h"
 
@@ -99,6 +102,27 @@ struct lightcone_props {
 
   /*! Whether we should make a new file on the next flush */
   int start_new_file;
+
+  /*! Name of the file with radii of spherical shells */
+  char radius_file[PARSER_MAX_LINE_SIZE];
+
+  /*! Healpix nside parameter */
+  int nside;
+
+  /*! Number of healpix maps we're making from this lightcone */
+  int nr_maps;
+
+  /*! Names of the healpix maps to make for this lightcone */
+  char map_names[LIGHTCONE_MAX_HEALPIX_MAPS][PARSER_MAX_LINE_SIZE];
+
+  /*! Number of shells */
+  int nr_shells;
+
+  /*! Inner radii of shells for this lightcone */
+  double shell_rmin[LIGHTCONE_MAX_SHELLS];
+
+  /*! Outer radii of shells for this lightcone */
+  double shell_rmax[LIGHTCONE_MAX_SHELLS];
 
 };
 
