@@ -1445,6 +1445,8 @@ void cosmology_clean(struct cosmology *c) {
   swift_free("cosmo.table", c->hydro_kick_corr_interp_table);
   swift_free("cosmo.table", c->time_interp_table);
   swift_free("cosmo.table", c->scale_factor_interp_table);
+  swift_free("cosmo.table", c->comoving_distance_interp_table);
+  swift_free("cosmo.table", c->comoving_distance_inverse_interp_table);
   if (c->N_nu > 0) {
     swift_free("cosmo.table", c->neutrino_density_early_table);
     swift_free("cosmo.table", c->neutrino_density_late_table);
