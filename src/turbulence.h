@@ -32,7 +32,7 @@
 #ifdef TURBULENCE_DRIVING_ALVELIUS
 
 /**
- * @brief External Potential Properties
+ * @brief Properties of the Alvelius turbulence driving.
  */
 struct turbulence_driving {
 
@@ -63,6 +63,9 @@ struct turbulence_driving {
 
 #else /* TURBULENCE_DRIVING_NONE */
 
+/**
+ * @brief Empty turbulence driving structure.
+ */
 struct turbulence_driving {};
 
 #endif /* TURBULENCE_DRIVING */
@@ -70,31 +73,12 @@ struct turbulence_driving {};
 void turbulence_accelerate(struct part* restrict p, struct xpart* restrict xp,
                            const struct turbulence_driving* restrict
                                turbulence);
-
-/**
- * @brief Initialises the external potential properties in the internal system
- * of units.
- *
- * Nothing to do here.
- *
- * @param parameter_file The parsed parameter file
- * @param phys_const Physical constants in internal units
- * @param us The current internal system of units
- * @param potential The external potential properties to initialize
- */
 void turbulence_init_backend(struct swift_params* parameter_file,
                              const struct phys_const* phys_const,
                              const struct unit_system* us,
                              const struct space* s,
                              struct turbulence_driving* turbulence);
-
-/**
- * @brief Prints the properties of the external potential to stdout.
- *
- * @param  potential The external potential properties.
- */
 void turbulence_print_backend(const struct turbulence_driving* turbulence);
-
 void turbulence_update(struct engine* restrict e);
 
 #endif /* SWIFT_TURBULENCE_H */

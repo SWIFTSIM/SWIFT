@@ -27,15 +27,21 @@
 #ifdef TURBULENCE_DRIVING_ALVELIUS
 
 /**
- * @brief Initialises the external potential properties in the internal system
- * of units.
+ * @brief Initialises the turbulence driving in the internal system of units.
  *
- * Nothing to do here.
+ * This function reads the parameters from the parameter file and counts the
+ * number of wavevectors within the driving range. It then allocates appropriate
+ * arrays to store the driving information and initialises these, including
+ * the random number generator used to update the stochastic forcing.
+ *
+ * Finally, the state of the random number generator is fast-forwarded to the
+ * desired starting time, making it possible to reproduce the driving even for
+ * a simulation that was restarted from an arbitrary snapshot.
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
- * @param potential The external potential properties to initialize
+ * @param turbulence The turbulence driving structure to initialize
  */
 void turbulence_init_backend(struct swift_params* parameter_file,
                              const struct phys_const* phys_const,
@@ -152,32 +158,32 @@ void turbulence_init_backend(struct swift_params* parameter_file,
           const double sqrtk12 = sqrt(pwrk1 + pwrk2);
           const double invkk = 1. / kk;
           const double invk = 1. / k;
+          /* alias the unit vector arrays for ease of notation */
+          double* u1 = &turbulence->unit_vectors[6 * kindex];
+          double* u2 = &turbulence->unit_vectors[6 * kindex + 3];
           if (sqrtk12 > 0.) {
             const double invsqrtk12 = 1. / sqrtk12;
-            turbulence->unit_vectors[6 * kindex + 0] = k2 * invsqrtk12;
-            turbulence->unit_vectors[6 * kindex + 1] = -k1 * invsqrtk12;
-            turbulence->unit_vectors[6 * kindex + 2] = 0.;
-            turbulence->unit_vectors[6 * kindex + 3] =
-                k1 * k3 * invsqrtk12 * invk;
-            turbulence->unit_vectors[6 * kindex + 4] =
-                k2 * k3 * invsqrtk12 * invk;
-            turbulence->unit_vectors[6 * kindex + 5] = -sqrtk12 * invk;
+            u1[0] = k2 * invsqrtk12;
+            u1[1] = -k1 * invsqrtk12;
+            u1[2] = 0.;
+            u2[0] = k1 * k3 * invsqrtk12 * invk;
+            u2[1] = k2 * k3 * invsqrtk12 * invk;
+            u2[2] = -sqrtk12 * invk;
           } else {
             const double sqrtk13 = sqrt(pwrk1 + pwrk3);
             const double invsqrtk13 = 1. / sqrtk13;
-            turbulence->unit_vectors[6 * kindex + 0] = -k3 * invsqrtk13;
-            turbulence->unit_vectors[6 * kindex + 1] = 0.;
-            turbulence->unit_vectors[6 * kindex + 2] = k1 * invsqrtk13;
-            turbulence->unit_vectors[6 * kindex + 3] =
-                k1 * k2 * invsqrtk13 * invk;
-            turbulence->unit_vectors[6 * kindex + 4] = -sqrtk13 * invk;
-            turbulence->unit_vectors[6 * kindex + 5] =
-                k2 * k3 * invsqrtk13 * invk;
+            u1[0] = -k3 * invsqrtk13;
+            u1[1] = 0.;
+            u1[2] = k1 * invsqrtk13;
+            u2[0] = k1 * k2 * invsqrtk13 * invk;
+            u2[1] = -sqrtk13 * invk;
+            u2[2] = k2 * k3 * invsqrtk13 * invk;
           }
 
-          turbulence->k[3 * kindex + 0] = k1 * Linv;
-          turbulence->k[3 * kindex + 1] = k2 * Linv;
-          turbulence->k[3 * kindex + 2] = k3 * Linv;
+          double* kvec = &turbulence->k[3 * kindex];
+          kvec[0] = k1 * Linv;
+          kvec[1] = k2 * Linv;
+          kvec[2] = k3 * Linv;
           const double gaussian_spectrum = exp(-kdiff * kdiff * cinv) * invkk;
           spectrum_sum += gaussian_spectrum;
           turbulence->forcing[kindex] = gaussian_spectrum;
@@ -211,9 +217,9 @@ void turbulence_init_backend(struct swift_params* parameter_file,
 }
 
 /**
- * @brief Prints the properties of the external potential to stdout.
+ * @brief Prints the properties of the turbulence driving to stdout.
  *
- * @param  potential The external potential properties.
+ * @param turbulence The turbulence driving structure to print
  */
 void turbulence_print_backend(const struct turbulence_driving* turbulence) {
 
@@ -221,9 +227,16 @@ void turbulence_print_backend(const struct turbulence_driving* turbulence) {
   message("%i modes, dt = %g", turbulence->number_of_modes, turbulence->dt);
 }
 
+/**
+ * @brief Updates the turbulence driving for the start of the next time step.
+ *
+ * @param e Engine.
+ */
 void turbulence_update(struct engine* restrict e) {
 
+  /* Get the end of the next time step. */
   const double time = e->time;
+  /* Get the turbulence driving properties used by the engine. */
   struct turbulence_driving* turbulence = e->turbulence;
 
   /* first, check if we need to do anything */
@@ -239,6 +252,7 @@ void turbulence_update(struct engine* restrict e) {
     while (turbulence->number_of_steps * turbulence->dt < time) {
       for (int i = 0; i < turbulence->number_of_modes; ++i) {
 
+        /* generate 3 pseudo-random numbers */
         const double phi =
             2. * M_PI * gsl_rng_uniform(turbulence->random_generator);
         const double theta1 =
@@ -246,6 +260,7 @@ void turbulence_update(struct engine* restrict e) {
         const double theta2 =
             2. * M_PI * gsl_rng_uniform(turbulence->random_generator);
 
+        /* convert these to random phases */
         const double ga = sin(phi);
         const double gb = cos(phi);
         const double real_rand1 = cos(theta1) * ga;
@@ -254,29 +269,25 @@ void turbulence_update(struct engine* restrict e) {
         const double imag_rand2 = sin(theta2) * gb;
 
         const double kforce = turbulence->forcing[i];
-        turbulence->amplitudes[6 * i + 0] +=
-            kforce * (real_rand1 * turbulence->unit_vectors[6 * i + 0] +
-                      real_rand2 * turbulence->unit_vectors[6 * i + 3]);
-        turbulence->amplitudes[6 * i + 1] +=
-            kforce * (real_rand1 * turbulence->unit_vectors[6 * i + 1] +
-                      real_rand2 * turbulence->unit_vectors[6 * i + 4]);
-        turbulence->amplitudes[6 * i + 2] +=
-            kforce * (real_rand1 * turbulence->unit_vectors[6 * i + 2] +
-                      real_rand2 * turbulence->unit_vectors[6 * i + 5]);
-        turbulence->amplitudes[6 * i + 3] +=
-            kforce * (imag_rand1 * turbulence->unit_vectors[6 * i + 0] +
-                      imag_rand2 * turbulence->unit_vectors[6 * i + 3]);
-        turbulence->amplitudes[6 * i + 4] +=
-            kforce * (imag_rand1 * turbulence->unit_vectors[6 * i + 1] +
-                      imag_rand2 * turbulence->unit_vectors[6 * i + 4]);
-        turbulence->amplitudes[6 * i + 5] +=
-            kforce * (imag_rand1 * turbulence->unit_vectors[6 * i + 2] +
-                      imag_rand2 * turbulence->unit_vectors[6 * i + 5]);
+        /* alias the driving arrays for ease of notation */
+        const double* u1 = &turbulence->unit_vectors[6 * i];
+        const double* u2 = &turbulence->unit_vectors[6 * i + 3];
+        double* Areal = &turbulence->amplitudes[6 * i];
+        double* Aimag = &turbulence->amplitudes[6 * i + 3];
+
+        /* update the forcing for this driving time step */
+        Areal[0] += kforce * (real_rand1 * u1[0] + real_rand2 * u2[0]);
+        Areal[1] += kforce * (real_rand1 * u1[1] + real_rand2 * u2[1]);
+        Areal[2] += kforce * (real_rand1 * u1[2] + real_rand2 * u2[2]);
+        Aimag[0] += kforce * (imag_rand1 * u1[0] + imag_rand2 * u2[0]);
+        Aimag[1] += kforce * (imag_rand1 * u1[1] + imag_rand2 * u2[1]);
+        Aimag[2] += kforce * (imag_rand1 * u1[2] + imag_rand2 * u2[2]);
       }
       ++turbulence->number_of_steps;
     }
   }
 
+  /* now accelerate all gas particles using the updated forces */
   const int count = e->s->nr_parts;
   struct part* parts = e->s->parts;
   struct xpart* xparts = e->s->xparts;
@@ -287,41 +298,40 @@ void turbulence_update(struct engine* restrict e) {
   }
 }
 
+/**
+ * @brief Accelerate a particle using the turbulent driving forces.
+ *
+ * @param p Particle.
+ * @param xp Extended particle.
+ * @param turbulence Turbulence driving properties.
+ */
 void turbulence_accelerate(struct part* restrict p, struct xpart* restrict xp,
                            const struct turbulence_driving* restrict
                                turbulence) {
 
+  /* alias the particle position for ease of notation */
   const double* x = p->x;
 
+  /* accumulate force contributions for all driving modes */
   double force[3] = {0., 0., 0.};
   for (int ik = 0; ik < turbulence->number_of_modes; ++ik) {
-    const double fr[3] = {turbulence->amplitudes[6 * ik + 0],
-                          turbulence->amplitudes[6 * ik + 1],
-                          turbulence->amplitudes[6 * ik + 2]};
-    const double fi[3] = {turbulence->amplitudes[6 * ik + 3],
-                          turbulence->amplitudes[6 * ik + 4],
-                          turbulence->amplitudes[6 * ik + 5]};
-    const double k[3] = {turbulence->k[3 * ik + 0], turbulence->k[3 * ik + 1],
-                         turbulence->k[3 * ik + 2]};
 
-    const double cosx = cos(2. * M_PI * k[0] * x[0]);
-    const double cosy = cos(2. * M_PI * k[1] * x[1]);
-    const double cosz = cos(2. * M_PI * k[2] * x[2]);
-    const double sinx = sin(2. * M_PI * k[0] * x[0]);
-    const double siny = sin(2. * M_PI * k[1] * x[1]);
-    const double sinz = sin(2. * M_PI * k[2] * x[2]);
+    /* alias the amplitudes and wave number for ease of notation */
+    const double* fr = &turbulence->amplitudes[6 * ik];
+    const double* fi = &turbulence->amplitudes[6 * ik + 3];
+    const double* k = &turbulence->k[3 * ik];
 
-    const double cosyz = cosy * cosz - siny * sinz;
-    const double sinyz = siny * cosz + cosy * sinz;
-
-    const double cosxyz = cosx * cosyz - sinx * sinyz;
-    const double sinxyz = sinx * cosyz + cosx * sinyz;
+    /* compute the fourier contribution from this wave number */
+    const double kdotx = 2. * M_PI * (k[0] * x[0] + k[1] * x[1] + k[2] * x[2]);
+    const double cosxyz = cos(kdotx);
+    const double sinxyz = sin(kdotx);
 
     force[0] += fr[0] * cosxyz - fi[0] * sinxyz;
     force[1] += fr[1] * cosxyz - fi[1] * sinxyz;
     force[2] += fr[2] * cosxyz - fi[2] * sinxyz;
   }
 
+  /* update both the velocity and drifted velocity */
   p->v[0] += force[0] * turbulence->dt;
   p->v[1] += force[1] * turbulence->dt;
   p->v[2] += force[2] * turbulence->dt;
@@ -333,15 +343,14 @@ void turbulence_accelerate(struct part* restrict p, struct xpart* restrict xp,
 #else /* TURBULENCE_DRIVING_NONE */
 
 /**
- * @brief Initialises the external potential properties in the internal system
- * of units.
+ * @brief Initialises the turbulence driving in the internal system of units.
  *
- * Nothing to do here.
+ * Nothing needs to be done here.
  *
  * @param parameter_file The parsed parameter file
  * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
- * @param potential The external potential properties to initialize
+ * @param turbulence The turbulence driving structure to initialize
  */
 void turbulence_init_backend(struct swift_params* parameter_file,
                              const struct phys_const* phys_const,
@@ -350,14 +359,32 @@ void turbulence_init_backend(struct swift_params* parameter_file,
                              struct turbulence_driving* turbulence) {}
 
 /**
- * @brief Prints the properties of the external potential to stdout.
+ * @brief Prints the properties of the turbulence driving to stdout.
  *
- * @param  potential The external potential properties.
+ * Nothing needs to be done here.
+ *
+ * @param turbulence The turbulence driving structure to print
  */
 void turbulence_print_backend(const struct turbulence_driving* turbulence) {}
 
+/**
+ * @brief Updates the turbulence driving for the start of the next time step.
+ *
+ * Nothing needs to be done here.
+ *
+ * @param e Engine.
+ */
 void turbulence_update(struct engine* restrict e) {}
 
+/**
+ * @brief Accelerate a particle using the turbulent driving forces.
+ *
+ * Nothing needs to be done here.
+ *
+ * @param p Particle.
+ * @param xp Extended particle.
+ * @param turbulence Turbulence driving properties.
+ */
 void turbulence_accelerate(struct part* restrict p, struct xpart* restrict xp,
                            const struct turbulence_driving* restrict
                                turbulence) {}
