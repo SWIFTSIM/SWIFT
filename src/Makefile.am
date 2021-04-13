@@ -398,7 +398,7 @@ nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_fl
 nobase_noinst_HEADERS += sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h sink/Default/sink_properties.h 
 nobase_noinst_HEADERS += sink/Default/sink_iact.h
 nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
-nobase_noinst_HEADERS += neutrino/neutrino.h
+nobase_noinst_HEADERS += neutrino/neutrino.h neutrino/relativity.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c
