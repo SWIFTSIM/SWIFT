@@ -198,6 +198,9 @@ struct cosmology {
   /*! Degeneracy of each massive neutrino species */
   double *deg_nu;
 
+  /*! Scale-factor after which all neutrinos move non-relativistically */
+  double a_nu_nr;
+
   /*! Log of starting expansion factor for neutrino interpolation tables */
   double log_a_long_begin;
 
