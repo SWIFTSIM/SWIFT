@@ -738,7 +738,8 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Initialize the threadpool. */
   threadpool_init(&e->threadpool, nr_pool_threads);
-  if (e->nodeID == 0) message("Using %d threads in the thread-pool", nr_pool_threads);
+  if (e->nodeID == 0)
+    message("Using %d threads in the thread-pool", nr_pool_threads);
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
