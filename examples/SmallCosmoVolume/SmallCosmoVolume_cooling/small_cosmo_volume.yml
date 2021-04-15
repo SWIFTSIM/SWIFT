@@ -53,8 +53,6 @@ Statistics:
 Scheduler:
   max_top_level_cells: 8
   cell_split_size:     50
-  cell_extra_gparts:         100         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts:         100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   
 # Parameters related to the initial conditions
 InitialConditions:
