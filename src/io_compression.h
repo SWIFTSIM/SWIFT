@@ -36,6 +36,11 @@ enum lossy_compression_schemes {
   compression_write_f_mantissa_13, /*!< Conversion to 13-bits mantissa float */
   compression_write_half_float,    /*!< Conversion to IEEE754 half-float */
   compression_write_bfloat_16,     /*!< Conversion to Bfloat16 */
+  compression_write_Nbit_36, /*!< Conversion to 36-bit int (from long long) */
+  compression_write_Nbit_40, /*!< Conversion to 40-bit int (from long long) */
+  compression_write_Nbit_44, /*!< Conversion to 44-bit int (from long long) */
+  compression_write_Nbit_48, /*!< Conversion to 48-bit int (from long long) */
+  compression_write_Nbit_56, /*!< Conversion to 56-bit int (from long long) */
   /* Counter, always leave last */
   compression_level_count,
 };
