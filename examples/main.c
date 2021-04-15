@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
   int with_rt = 0;
   int verbose = 0;
   int nr_threads = 1;
-  int nr_pool_threads = 1;
+  int nr_pool_threads = -1;
   int with_verbose_timers = 0;
   char *output_parameters_filename = NULL;
   char *cpufreqarg = NULL;

@@ -32,6 +32,7 @@
 #include "gravity.h"
 #include "lightcone.h"
 #include "multipole.h"
+#include "neutrino/relativity.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "star_formation.h"
@@ -279,6 +280,10 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
   const integertime_t ti_current = e->ti_current;
   struct gpart *const gparts = c->grav.parts;
   const struct gravity_props *grav_props = e->gravity_properties;
+  const double a = e->cosmology->a;
+  const double c_vel = e->physical_constants->const_speed_light_c;
+  const int with_neutrinos = e->s->with_neutrinos;
+  const int with_relat_drift = with_neutrinos && (a < e->cosmology->a_nu_nr);
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
@@ -360,15 +365,21 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
       /* Ignore inhibited particles */
       if (gpart_is_inhibited(gp, e)) continue;
 
+      /* Relativistic drift correction for neutrinos */
+      double dt_drift_k = dt_drift;
+      if (with_relat_drift && gp->type == swift_type_neutrino) {
+        dt_drift_k *= relativistic_drift_factor(gp->v_full, a, c_vel);
+      }
+
       /* Drift... */
-      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e,
+      drift_gpart(gp, dt_drift_k, ti_old_gpart, ti_current, grav_props, e,
                   replication_list, c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
-      if (fabs(gp->v_full[0] * dt_drift) > e->s->dim[0] ||
-          fabs(gp->v_full[1] * dt_drift) > e->s->dim[1] ||
-          fabs(gp->v_full[2] * dt_drift) > e->s->dim[2]) {
+      if (fabs(gp->v_full[0] * dt_drift_k) > e->s->dim[0] ||
+          fabs(gp->v_full[1] * dt_drift_k) > e->s->dim[1] ||
+          fabs(gp->v_full[2] * dt_drift_k) > e->s->dim[2]) {
         error(
             "Particle drifts by more than a box length! gp->v_full %.5e %.5e "
             "%.5e",

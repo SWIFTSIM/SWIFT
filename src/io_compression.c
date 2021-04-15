@@ -36,7 +36,8 @@
  **/
 const char* lossy_compression_schemes_names[compression_level_count] = {
     "off",     "on",         "DScale1",     "Dscale2",   "DScale3",
-    "DScale6", "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16"};
+    "DScale6", "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",
+    "Nbit36",  "Nbit40",     "Nbit44",      "Nbit48",    "Nbit56"};
 
 /**
  * @brief Returns the lossy compression scheme given its name
@@ -335,6 +336,43 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     h_err = H5Tset_ebias(*h_type, bias);
     if (h_err < 0)
       error("Error while setting type bias properties for field '%s'.",
+            field_name);
+
+    h_err = H5Pset_nbit(*h_prop);
+    if (h_err < 0)
+      error("Error while setting n-bit filter for field '%s'.", field_name);
+  }
+
+  else if (comp == compression_write_Nbit_36 ||
+           comp == compression_write_Nbit_40 ||
+           comp == compression_write_Nbit_44 ||
+           comp == compression_write_Nbit_48 ||
+           comp == compression_write_Nbit_56) {
+
+    int n_bits = 0;
+    if (comp == compression_write_Nbit_36)
+      n_bits = 36;
+    else if (comp == compression_write_Nbit_40)
+      n_bits = 40;
+    else if (comp == compression_write_Nbit_44)
+      n_bits = 44;
+    else if (comp == compression_write_Nbit_48)
+      n_bits = 48;
+    else if (comp == compression_write_Nbit_56)
+      n_bits = 56;
+    else
+      error("Invalid Nbit size");
+
+    H5Tclose(*h_type);
+    *h_type = H5Tcopy(H5T_NATIVE_LLONG);
+    hid_t h_err = H5Tset_precision(*h_type, n_bits);
+    if (h_err < 0)
+      error("Error while setting type precision properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_offset(*h_type, 0);
+    if (h_err < 0)
+      error("Error while setting type offset properties for field '%s'.",
             field_name);
 
     h_err = H5Pset_nbit(*h_prop);

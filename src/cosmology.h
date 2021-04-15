@@ -201,6 +201,9 @@ struct cosmology {
   /*! Speed of light (internal units) */
   double const_speed_light_c;
 
+  /*! Scale-factor after which all neutrinos move non-relativistically */
+  double a_nu_nr;
+
   /*! Log of starting expansion factor for neutrino interpolation tables */
   double log_a_long_begin;
 
