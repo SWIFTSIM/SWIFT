@@ -41,6 +41,10 @@
 #include <chealpix.h>
 #endif
 
+/* HDF5 */
+#ifdef HAVE_HDF5
+#include <hdf5.h>
+#endif
 
 void lightcone_map_init(struct lightcone_map *map, int nside,
                         size_t elements_per_block) {
@@ -280,3 +284,69 @@ void lightcone_map_update_from_buffer(struct lightcone_map *map) {
 #endif
 
 }
+
+/**
+ * @brief Write a lightcone map to a HDF5 file
+ *
+ * @param map the #lightcone_map structure
+ * @param loc a HDF5 file or group identifier to write to
+ * @param name the name of the dataset to create
+ */
+void lightcone_map_write(struct lightcone_map *map, hid_t loc_id, char *name) {
+
+#ifdef HAVE_HDF5
+  
+  /* Create dataspace in memory corresponding to local pixels */
+  const hsize_t mem_dims[1] = {(hsize_t) map->local_nr_pix};
+  hid_t mem_space_id = H5Screate_simple(1, mem_dims, NULL);
+  if(mem_space_id < 0)error("Unable to create memory dataspace");
+  
+  /* Create dataspace in the file corresponding to the full map */
+  const hsize_t file_dims[1] = {(hsize_t) map->total_nr_pix};
+  hid_t file_space_id = H5Screate_simple(1, file_dims, NULL);
+  if(file_space_id < 0)error("Unable to create file dataspace");
+
+  /* Select the part of the dataset in the file to write to */
+#ifdef WITH_MPI
+#ifdef HAVE_PARALLEL_HDF5
+  int comm_rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+  const size_t pixel_offset = map->pix_per_rank * comm_rank;
+  const hsize_t start[1] = {(hsize_t) pixel_offset};
+  const hsize_t count[1] = {(hsize_t) map->local_nr_pix};
+  if(H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL) < 0)
+    error("Unable to select part of file dataspace to write to");
+#else
+  error("Writing lightcone maps with MPI requires parallel HDF5");
+#endif
+#endif
+
+  /* Create the dataset */
+  hid_t dset_id = H5Dcreate(loc_id, name, H5T_NATIVE_DOUBLE, file_space_id,
+                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if(dset_id < 0)error("Unable to create dataset %s", name);
+    
+  /* Set up property list for the write */
+  hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
+#ifdef HAVE_PARALLEL_HDF5
+  if(H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE) < 0)
+    error("Unable to set collective transfer mode");
+#endif
+
+  /* Write the data */
+  if(H5Dwrite(dset_id, H5T_NATIVE_DOUBLE, mem_space_id, file_space_id,
+              h_plist_id, map->data) < 0)
+    error("Unable to write dataset %s", name);
+
+  /* Tidy up */
+  H5Dclose(dset_id);
+  H5Sclose(mem_space_id);
+  H5Sclose(file_space_id);
+  H5Pclose(h_plist_id);
+
+#else
+  error("Writing lightcone maps requires HDF5 (parallel, if using MPI)");
+#endif /* HAVE_HDF5*/
+  
+}
+  
