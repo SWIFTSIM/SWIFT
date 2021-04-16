@@ -203,7 +203,7 @@ void make_healpix_map(struct engine *e) {
 
 void make_healpix_map_mpi(struct engine *e) {
 
-#if defined(HAVE_CHEALPIX) && defined(WITH_MPI)
+#if defined(HAVE_CHEALPIX)
 
   /* Find the particle data */
   const struct space *s = e->s;
@@ -277,10 +277,7 @@ void make_healpix_map_mpi(struct engine *e) {
       vec2pix_ring((long) NSIDE, pos, &ipring);
 
       /* Buffer this contribution to the map */
-      struct lightcone_map_contribution contr;
-      contr.pixel = ipring;
-      contr.value = gparts[i].mass;
-      particle_buffer_append(&map.buffer, &contr);
+      lightcone_map_buffer_update(&map, (size_t) ipring, gparts[i].mass);
 
     }
 
@@ -293,12 +290,14 @@ void make_healpix_map_mpi(struct engine *e) {
   /* Determine name of the output file */
   const int snapnum = e->snapshot_output_count;
   char fname[100];
-  sprintf(fname, "mass_map_%04d.hdf5", snapnum);
+  sprintf(fname, "mass_map_mpi_%04d.hdf5", snapnum);
     
   /* Create the file in MPI mode */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef WITH_MPI
   hid_t h_err = H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
   if (h_err < 0) error("Error setting parallel i/o");
+#endif
   hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
   if(file_id < 0)error("Unable to create HDF5 file for healpix map");
 
@@ -307,11 +306,12 @@ void make_healpix_map_mpi(struct engine *e) {
 
   /* Tidy up */
   H5Fclose(file_id);
-  
+  H5Pclose(plist_id);
+
   /* Deallocate the map */
   lightcone_map_clean(&map);
 
 #else
-  error("Can't make healpix map with MPI because healpix or mpi was not found!");
+  error("Can't make healpix map with MPI because healpix not found!");
 #endif
 }

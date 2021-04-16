@@ -46,7 +46,7 @@ struct lightcone_map_contribution {
 
 
 /**
- * @brief Lightcone healpix map data
+ * @brief Struct to store a single lightcone healpix map
  */
 struct lightcone_map {
 
@@ -69,6 +69,25 @@ struct lightcone_map {
   double *data;
 
 };
+
+
+/**
+ * @brief Add a value to the buffer for a healpix map
+ *
+ * @param map the #lightcone_map to update
+ * @param pixel the pixel index to update
+ * @param value the value to add
+ *
+ */
+__attribute__((always_inline)) INLINE static void lightcone_map_buffer_update(struct lightcone_map *map,
+                                                                              const size_t pixel,
+                                                                              const double value) {
+  struct lightcone_map_contribution contr;
+  contr.pixel = pixel;
+  contr.value = value;
+  particle_buffer_append(&map->buffer, &contr);
+}
+
 
 void lightcone_map_init(struct lightcone_map *map, const int nside,
                         const size_t elements_per_block);

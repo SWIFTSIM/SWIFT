@@ -427,9 +427,7 @@ void engine_check_for_dumps(struct engine *e) {
 #ifdef HAVE_CHEALPIX
 	/* Make a HEALPix map at each snapshot time */
 	make_healpix_map(e);
-#ifdef WITH_MPI
         make_healpix_map_mpi(e);
-#endif
 #endif
         /* Dump... */
         engine_dump_snapshot(e);

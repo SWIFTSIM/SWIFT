@@ -339,7 +339,7 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const ch
     
   /* Set up property list for the write */
   hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef HAVE_PARALLEL_HDF5
+#if defined(WITH_MPI)
   if(H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE) < 0)
     error("Unable to set collective transfer mode");
 #endif
