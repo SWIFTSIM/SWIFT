@@ -23,6 +23,11 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* HDF5 */
+#ifdef HAVE_HDF5
+#include <hdf5.h>
+#endif
+
 /* Local headers */
 #include "particle_buffer.h"
 
@@ -65,18 +70,21 @@ struct lightcone_map {
 
 };
 
-void lightcone_map_init(struct lightcone_map *map, int nside,
-                        size_t elements_per_block);
+void lightcone_map_init(struct lightcone_map *map, const int nside,
+                        const size_t elements_per_block);
 
 void lightcone_map_struct_dump(const struct lightcone_map *map, FILE *stream);
 
 void lightcone_map_struct_restore(struct lightcone_map *map, FILE *stream);
 
-void lightcone_map_allocate_pixels(struct lightcone_map *map);
+void lightcone_map_allocate_pixels(struct lightcone_map *map, const int zero_pixels);
 
 void lightcone_map_free_pixels(struct lightcone_map *map);
 
 void lightcone_map_update_from_buffer(struct lightcone_map *map);
 
+#ifdef HAVE_HDF5
+void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name);
+#endif
 
 #endif /* #ifndef SWIFT_LIGHTCONE_MAPS_H */

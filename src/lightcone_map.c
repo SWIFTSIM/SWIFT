@@ -50,7 +50,7 @@ void lightcone_map_init(struct lightcone_map *map, int nside,
                         size_t elements_per_block) {
   
   int comm_rank, comm_size;
-#ifdef WITH_MPI  
+#ifdef WITH_MPI
   MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
 #else
@@ -90,7 +90,7 @@ void lightcone_map_init(struct lightcone_map *map, int nside,
 
 
 /**
- * @brief Deallocate the lightcone_map struct contents
+ * @brief Deallocate the lightcone_map pixel data
  *
  * @param map the #lightcone_map structure
  */
@@ -101,11 +101,23 @@ void lightcone_map_clean(struct lightcone_map *map) {
 }
 
 
-void lightcone_map_allocate_pixels(struct lightcone_map *map) {
+/**
+ * @brief Allocate (and maybe initialize) the lightcone_map pixel data
+ *
+ * @param map the #lightcone_map structure
+ * @param zero_pixels if true, set allocated pixels to zero
+ */
+void lightcone_map_allocate_pixels(struct lightcone_map *map, const int zero_pixels) {
   
   if(swift_memalign("lightcone_map_pixels", (void **) &map->data,
                     SWIFT_STRUCT_ALIGNMENT, sizeof(double)*map->local_nr_pix) != 0)
     error("Failed to allocate lightcone map pixel data");
+
+  if(zero_pixels) {
+    for(size_t i=0; i<map->local_nr_pix; i+=1)
+      map->data[i] = 0.0;
+  }
+
 }
 
 
@@ -160,7 +172,7 @@ void lightcone_map_struct_restore(struct lightcone_map *map, FILE *stream) {
      map->data from the restart file is not a valid pointer now but we can
      check if it is not null to see if the pixel data block was written out. */
   if(map->data) {
-    lightcone_map_allocate_pixels(map);
+    lightcone_map_allocate_pixels(map, /* zero_pixels = */ 0);
     restart_read_blocks((void *)map->data, sizeof(double), map->local_nr_pix,
                         stream, NULL, "lightcone_map");
   }
@@ -231,7 +243,7 @@ void lightcone_map_update_from_buffer(struct lightcone_map *map) {
     }
   } while(block);
   
-  /* Empty the buffer now that we copied the data from it */
+  /* Empty the particle buffer now that we copied the data from it */
   particle_buffer_empty(&map->buffer);
 
   /* Determine number of elements to receive */
@@ -285,6 +297,7 @@ void lightcone_map_update_from_buffer(struct lightcone_map *map) {
 
 }
 
+#ifdef HAVE_HDF5
 /**
  * @brief Write a lightcone map to a HDF5 file
  *
@@ -292,9 +305,7 @@ void lightcone_map_update_from_buffer(struct lightcone_map *map) {
  * @param loc a HDF5 file or group identifier to write to
  * @param name the name of the dataset to create
  */
-void lightcone_map_write(struct lightcone_map *map, hid_t loc_id, char *name) {
-
-#ifdef HAVE_HDF5
+void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name) {
   
   /* Create dataspace in memory corresponding to local pixels */
   const hsize_t mem_dims[1] = {(hsize_t) map->local_nr_pix};
@@ -343,10 +354,6 @@ void lightcone_map_write(struct lightcone_map *map, hid_t loc_id, char *name) {
   H5Sclose(mem_space_id);
   H5Sclose(file_space_id);
   H5Pclose(h_plist_id);
-
-#else
-  error("Writing lightcone maps requires HDF5 (parallel, if using MPI)");
-#endif /* HAVE_HDF5*/
   
 }
-  
+#endif /* HAVE_HDF5*/
