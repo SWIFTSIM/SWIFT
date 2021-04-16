@@ -23,5 +23,6 @@
 struct engine;
 
 void make_healpix_map(struct engine *e);
+void make_healpix_map_mpi(struct engine *e);
 
 #endif

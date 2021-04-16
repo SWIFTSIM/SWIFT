@@ -45,6 +45,7 @@
 #include "hydro_io.h"
 #include "stars_io.h"
 #include "black_holes_io.h"
+#include "lightcone_map.h"
 
 /* Healpix map resolution */
 #define NSIDE 256
@@ -195,5 +196,122 @@ void make_healpix_map(struct engine *e) {
 
 #else
   error("Can't make healpix map because healpix library was not found!");
+#endif
+}
+
+
+
+void make_healpix_map_mpi(struct engine *e) {
+
+#if defined(HAVE_CHEALPIX) && defined(WITH_MPI)
+
+  /* Find the particle data */
+  const struct space *s = e->s;
+  const size_t nr_gparts = s->nr_gparts;
+  const struct gpart *gparts = s->gparts;
+  const struct part  *parts  = s->parts;
+  const struct xpart *xparts = s->xparts;
+  const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
+
+  /* Get the box size in each dimension */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+
+  /* Decide on centre and radius of spherical shell:
+     For testing, we'll use radius=0.25*BoxSize[0] to 0.5*Boxsize[0]
+     and centre on the centre of the box. */
+  double centre[3];
+  for(int i=0; i<3; i+=1)
+    centre[i] = 0.5*dim[i];
+  double rmin2 = pow(0.25*dim[0], 2.0);
+  double rmax2 = pow(0.5*dim[0], 2.0);
+  
+  /* Allocate storage for the map */
+  struct lightcone_map map;
+  lightcone_map_init(&map, NSIDE, 10000);
+  lightcone_map_allocate_pixels(&map, /* zero_pixels = */ 1);
+
+  /* Loop over particles (should really use threadpool to parallelize)*/
+  for(size_t i=0; i<nr_gparts; i+=1) {
+
+    /* Get position of this particle and store in pos */
+    double pos[3];
+    switch (gparts[i].type) {
+    case swift_type_gas: {
+      const struct part *p = &parts[-gparts[i].id_or_neg_offset];
+      const struct xpart *xp = &xparts[-gparts[i].id_or_neg_offset];
+      convert_part_pos(e, p, xp, pos);
+    } break;
+    case swift_type_stars: {
+      const struct spart *sp = &sparts[-gparts[i].id_or_neg_offset];
+      convert_spart_pos(e, sp, pos);
+    } break;
+    case swift_type_black_hole: {
+      const struct bpart *bp = &bparts[-gparts[i].id_or_neg_offset];
+      convert_bpart_pos(e, bp, pos);
+    } break;
+    case swift_type_dark_matter: {
+      convert_gpart_pos(e, &gparts[i], pos);
+    } break;
+    case swift_type_dark_matter_background: {
+      convert_gpart_pos(e, &gparts[i], pos);
+    } break;
+    default:
+      error("Particle type not handled in healpix map.");
+    }
+
+    /* Get position relative to centre we chose */
+    for(int j=0; j<3; j+=1)
+      pos[j] -= centre[j];
+    
+    /* Find radius */
+    double r2 = 0.0;
+    for(int j=0; j<3; j+=1)
+      r2 += pos[j]*pos[j];
+
+    /* Check particle is in shell */
+    if(r2 > rmin2 && r2 < rmax2) {
+
+      /* Convert position into a healpix pixel index */
+      long ipring;
+      vec2pix_ring((long) NSIDE, pos, &ipring);
+
+      /* Buffer this contribution to the map */
+      struct lightcone_map_contribution contr;
+      contr.pixel = ipring;
+      contr.value = gparts[i].mass;
+      particle_buffer_append(&map.buffer, &contr);
+
+    }
+
+    /* Next particle */
+  }
+  
+  /* Apply buffered updates to the pixel data */
+  lightcone_map_update_from_buffer(&map);
+    
+  /* Determine name of the output file */
+  const int snapnum = e->snapshot_output_count;
+  char fname[100];
+  sprintf(fname, "mass_map_%04d.hdf5", snapnum);
+    
+  /* Create the file in MPI mode */
+  hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+  hid_t h_err = H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+  if (h_err < 0) error("Error setting parallel i/o");
+  hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+  if(file_id < 0)error("Unable to create HDF5 file for healpix map");
+
+  /* Write the data */
+  lightcone_map_write(&map, file_id, "mass_map");
+
+  /* Tidy up */
+  H5Fclose(file_id);
+  
+  /* Deallocate the map */
+  lightcone_map_clean(&map);
+
+#else
+  error("Can't make healpix map with MPI because healpix or mpi was not found!");
 #endif
 }

@@ -73,6 +73,8 @@ struct lightcone_map {
 void lightcone_map_init(struct lightcone_map *map, const int nside,
                         const size_t elements_per_block);
 
+void lightcone_map_clean(struct lightcone_map *map);
+
 void lightcone_map_struct_dump(const struct lightcone_map *map, FILE *stream);
 
 void lightcone_map_struct_restore(struct lightcone_map *map, FILE *stream);
