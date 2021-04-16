@@ -494,6 +494,7 @@ EAGLEStarFormation:
   KS_high_density_exponent:          2.0       # In the PressureLaw model, Slope of the Kennicut-Schmidt law above the high-density threshold.
   gas_fraction:                      0.25      # (Optional) In the PressureLaw model, The gas fraction used internally by the model (Defaults to 1).
   density_direct_H_p_cm3:            1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
+  min_over_density:                  100.0     # The over-density above which star-formation is allowed.
   EOS_entropy_margin_dex:            0.3       # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # When using Z-based SF threshold, reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
