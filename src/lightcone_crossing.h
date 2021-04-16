@@ -52,33 +52,36 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
      const struct gpart *gp, const double dt_drift, const integertime_t ti_old,
      const integertime_t ti_current, const double cell_loc[3]) {
 
-  /* Unpack some variables we need */
+  /* Are we making lightcones? */
   struct lightcone_props *props = e->lightcone_properties;
+  if(!props->enabled)return;
+
+  /* Are there any replications to check at this timestep? */
+  const int nreps = replication_list->nrep;
+  if(nreps==0)return;
+  const struct replication *rep = replication_list->replication;
+
+  /* Are we using this particle type in the lightcone? */
+  if(!props->use_type[gp->type])return;
+
+  /* Consistency check - are our limits on the drift endpoints good? */
+  if(ti_old < props->ti_old || ti_current > props->ti_current)
+    error("Particle drift is outside the range used to make replication list!");
+
+  /* Unpack some variables we need */
   const struct cosmology *c = e->cosmology;
   const struct space *s = e->s;
   const double *x = gp->x;
   const float *v_full = gp->v_full;
   const double boxsize = props->boxsize;
   const double *observer_position = props->observer_position;
-  const int nreps = replication_list->nrep;
-  const struct replication *rep = replication_list->replication;
 
   /* Handle on the other particle types */
   const struct part *parts = s->parts;
   const struct xpart *xparts = s->xparts;
   const struct spart *sparts = s->sparts;
   const struct bpart *bparts = s->bparts;
-
-  /* Are we making a lightcone and in the lightcone redshift range? */
-  if(!props->enabled || replication_list->nrep==0)return;
-
-  /* Are we using this particle type in the lightcone? */
-  if(!props->use_type[gp->type])return;
   
-  /* Consistency check - are our limits on the drift endpoints good? */
-  if(ti_old < props->ti_old || ti_current > props->ti_current)
-    error("Particle drift is outside the range used to make replication list!");
-
   /* Determine expansion factor at start and end of the drift */
   const double a_start = c->a_begin * exp(ti_old     * c->time_base);
   const double a_end   = c->a_begin * exp(ti_current * c->time_base);
