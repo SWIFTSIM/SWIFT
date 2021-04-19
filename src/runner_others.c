@@ -93,6 +93,11 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       struct gpart *restrict gp = &gparts[i];
 
+#ifdef SWIFT_DEBUG_CHECKS
+      if (gp->time_bin == time_bin_not_created)
+        error("Found an extra particle in external gravity.");
+#endif
+
       /* Is this part within the time step? */
       if (gpart_is_active(gp, e)) {
         external_gravity_acceleration(time, potential, constants, gp);

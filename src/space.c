@@ -40,6 +40,7 @@
 #include "space.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "const.h"
 #include "cooling.h"
@@ -907,6 +908,11 @@ void space_collect_sum_gpart_mass(void *restrict map_data, int count,
   double sum_DM = 0., sum_DM_background = 0., sum_nu = 0.;
   long long count_DM = 0, count_DM_background = 0, count_nu = 0;
   for (int i = 0; i < count; ++i) {
+    /* Skip inexistant particles */
+    if (gpart_is_inhibited(&gparts[i], s->e) ||
+        gparts[i].time_bin == time_bin_not_created)
+      continue;
+
     if (gparts[i].type == swift_type_dark_matter) {
       sum_DM += gparts[i].mass;
       count_DM++;
@@ -1407,6 +1413,8 @@ void space_init(struct space *s, struct swift_params *params,
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
+    space_extra_gparts = 0;
+    space_extra_sinks = 0;
   }
 
   const int create_sparts =
@@ -1924,6 +1932,11 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
   /* Sum up the mass in this space */
   double mass = 0.;
   for (size_t i = 0; i < nr_gparts; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts[i].time_bin == time_bin_not_created)
+      error("Found an extra particle when checking cosmology");
+#endif
     mass += gparts[i].mass;
   }
 

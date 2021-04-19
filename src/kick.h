@@ -143,6 +143,10 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
     const integertime_t ti_end_mesh) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Found an extra gpart in the kick");
+  }
+
   if (gp->ti_kick != ti_start)
     error(
         "g-particle has not been kicked to the current time gp->ti_kick=%lld, "
