@@ -16,6 +16,7 @@
 
 /* Define some values, shouldn't need to change these. */
 #define zoom_boost_factor 1.1 // Multiply zoom region by this to give a buffer.
+#define neighbour_cell_delta 1 // How many layers of neighbours do we go out?
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the zoom_region struct.
@@ -344,8 +345,8 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
 
-  const int delta_m = 1;
-  const int delta_p = 1;
+  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
+  const int delta_p = neighbour_cell_delta;
 
   int neighbour_count = 0;
 
@@ -407,42 +408,54 @@ double cell_min_dist2_diff_size(const struct cell *restrict ci,
                                 const struct cell *restrict cj,
                                 const int periodic, const double dim[3]) {
 #ifdef WITH_ZOOM_REGION
-  const double cix = ci->loc[0] + ci->width[0] / 2.;
-  const double ciy = ci->loc[1] + ci->width[1] / 2.;
-  const double ciz = ci->loc[2] + ci->width[2] / 2.;
-  const double ci_diag2 = ci->width[0] / 2. * ci->width[0] / 2. +
-                          ci->width[1] / 2. * ci->width[1] / 2. +
-                          ci->width[2] / 2. * ci->width[2] / 2.;
 
-  const double cjx = cj->loc[0] + cj->width[0] / 2.;
-  const double cjy = cj->loc[1] + cj->width[1] / 2.;
-  const double cjz = cj->loc[2] + cj->width[2] / 2.;
-  const double cj_diag2 = cj->width[0] / 2. * cj->width[0] / 2. +
-                          cj->width[1] / 2. * cj->width[1] / 2. +
-                          cj->width[2] / 2. * cj->width[2] / 2.;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] == cj->width[0]) error("x cells of same size!");
+  if (ci->width[1] == cj->width[1]) error("y cells of same size!");
+  if (ci->width[2] == cj->width[2]) error("z cells of same size!");
+#endif
 
+  const double cix = ci->loc[0] + ci->width[0]/2.;
+  const double ciy = ci->loc[1] + ci->width[1]/2.;
+  const double ciz = ci->loc[2] + ci->width[2]/2.;
+
+  const double cjx = cj->loc[0] + cj->width[0]/2.;
+  const double cjy = cj->loc[1] + cj->width[1]/2.;
+  const double cjz = cj->loc[2] + cj->width[2]/2.;
+
+  const double diag_ci2 = ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] + ci->width[2] * ci->width[2];
+  const double diag_cj2 = cj->width[0] * cj->width[0] + cj->width[1] * cj->width[1] + cj->width[2] * cj->width[2];
+
+  /* Get the distance between the cells */
+  double dx = cix - cjx;
+  double dy = ciy - cjy;
+  double dz = ciz - cjz;
+
+  /* Apply BC */
   if (periodic) {
-
-    const double dx = nearest(cix - cjx, dim[0]);
-    const double dy = nearest(ciy - cjy, dim[1]);
-    const double dz = nearest(ciz - cjz, dim[2]);
-
-    const double dr2 = (dx * dx + dy * dy + dz * dz) - ci_diag2 - cj_diag2;
-    return max(0.0, dr2);
-
-  } else {
-    const double dx = cix - cjx;
-    const double dy = ciy - cjy;
-    const double dz = ciz - cjz;
-
-    const double dr2 = (dx * dx + dy * dy + dz * dz) - ci_diag2 - cj_diag2;
-    return max(0.0, dr2);
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
   }
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  /* Minimal distance between any 2 particles in the two cells */
+  const double dist2 = r2 - (diag_ci2/2. + diag_cj2/2.);
+
+  return dist2; 
 #else
   return 0;
 #endif
 }
 
+/**
+ * @brief Compute pair tasks between natural TL cells and zoom TL cells.
+ *
+ * Loop over the zoom TL cells, then loop over the "neighbours".
+ *
+ * Apply standard MM/max_distance check to see if we need a pair gravity
+ * task between the two cells.
+ */
 void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
                                                              int num_elements,
                                                              void *extra_data) {
@@ -464,6 +477,7 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
 
+    /* Only compute for zoom TL cells. */
     if (cid < s->zoom_props->tl_cell_offset) continue;
 
     /* Get the cell */
@@ -477,6 +491,7 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
       /* Get the cell */
       struct cell *cj = &cells[cjd];
 
+      /* Only considering "neighbours". */
       if (cj->tl_cell_type != tl_cell_neighbour) continue;
 
       /* Avoid duplicates, empty cells and completely foreign pairs */
@@ -574,11 +589,14 @@ double cell_min_dist2(const struct cell *restrict ci,
 #ifdef WITH_ZOOM_REGION
   double dist2;
 
-  if (ci->tl_cell_type <= 1 && cj->tl_cell_type <= 1) {
+  /* Two natural TL cells. */
+  if (ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) {
     dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
+  /* Two zoom TL cells. */
   } else if (ci->tl_cell_type == zoom_tl_cell &&
              cj->tl_cell_type == zoom_tl_cell) {
-    dist2 = cell_min_dist2_same_size(ci, cj, 0, dim);
+    dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
+  /* A mix of natural and zoom TL cells. */
   } else {
     dist2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
   }

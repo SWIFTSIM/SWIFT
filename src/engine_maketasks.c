@@ -1656,7 +1656,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
           /* Minimal distance between any pair of particles */
           const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
+              cell_min_dist2_same_size(ci, cj, s->periodic, dim);
 
           /* Are we beyond the distance where the truncated forces are 0 ?*/
           if (s->periodic && min_radius2 > max_distance2) continue;
