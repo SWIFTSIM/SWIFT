@@ -46,6 +46,7 @@ enum proxy_cell_type {
   proxy_cell_type_none = 0,
   proxy_cell_type_hydro = (1 << 0),
   proxy_cell_type_gravity = (1 << 1),
+  proxy_cell_type_dark_matter = (1 << 2),
 };
 
 /* Data structure for the proxy. */

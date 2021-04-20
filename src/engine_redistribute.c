@@ -571,6 +571,7 @@ void engine_redistribute(struct engine *e) {
   struct spart *sparts = s->sparts;
   struct bpart *bparts = s->bparts;
   struct dmpart *dmparts = s->dmparts;
+  const int with_sidm = s->e->policy & engine_policy_sidm;
   ticks tic = getticks();
 
   size_t nr_parts = s->nr_parts;
@@ -682,7 +683,7 @@ void engine_redistribute(struct engine *e) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_black_hole) {
         s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_dark_matter && nr_dmparts > 0 ) {
+      } else if (s->gparts[k].type == swift_type_dark_matter && with_sidm ) {
           s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
 
@@ -695,7 +696,7 @@ void engine_redistribute(struct engine *e) {
       } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
         s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
-      } else if (s->gparts[nr_gparts].type == swift_type_dark_matter && nr_dmparts > 0 ) {
+      } else if (s->gparts[nr_gparts].type == swift_type_dark_matter && with_sidm ) {
           s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
           &s->gparts[nr_gparts];
       }

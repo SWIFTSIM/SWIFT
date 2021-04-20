@@ -289,14 +289,17 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
 
             t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_dmpart, ci->mpi.tag, 0, ci, cj);
 
-            /* The send_rho task should unlock the super_hydro-cell's kick task. */
+            /* The send_rho task should unlock the super_dark matter-cell's kick task. */
             scheduler_addunlock(s, t_rho, ci->dark_matter.super->dark_matter.sidm_kick);
+
+            /* The send_rho task should unlock the super_dark matter-cell's timestep-sync task. */
+            scheduler_addunlock(s, t_rho, ci->dark_matter.super->dark_matter.timestep_sync);
 
             /* The send_rho task depends on the cell's ghost task. */
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.ghost, t_rho);
 
-            /* The send_xv task should unlock the super_hydro-cell's ghost task. */
-            /*scheduler_addunlock(s, t_xv, ci->dark_matter.super->dark_matter.ghost);*/
+            /* The send_xv task should unlock the super_dark matter-cell's ghost task. */
+            scheduler_addunlock(s, t_xv, ci->dark_matter.super->dark_matter.ghost);
 
             /* Drift before you send */
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.drift, t_rho);
@@ -667,13 +670,14 @@ void engine_addtasks_recv_dark_matter(struct engine *e, struct cell *c,
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_dmpart_xv, c->mpi.tag, 0, c, NULL);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_dmpart_xv, c->mpi.tag,
+                             0, c, NULL);
 
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_dmpart_rho, c->mpi.tag,
                               0, c, NULL);
 
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_dmpart,
-                             c->mpi.tag, 0, c, NULL);
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_dmpart, c->mpi.tag,
+                             0, c, NULL);
 
   }
 
@@ -1079,7 +1083,7 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             c->dark_matter.ghost = scheduler_addtask(s, task_type_dark_matter_ghost, task_subtype_none, 0, 0, c, NULL);
 
             scheduler_addunlock(s, c->dark_matter.sidm_kick, c->super->kick2);
-            
+
             /* Time-step limiter */
             /*if (with_timestep_limiter) {
                 
@@ -1091,11 +1095,12 @@ void engine_make_hierarchical_tasks_dark_matter(struct engine *e, struct cell *c
             
             /* Time-step synchronization */
             c->dark_matter.timestep_sync = scheduler_addtask(s, task_type_timestep_dark_matter_sync,
-                                                     task_subtype_none, 0, 0, c, NULL);
+                                                             task_subtype_none, 0, 0, c, NULL);
                 
             scheduler_addunlock(s, c->super->kick2, c->dark_matter.timestep_sync);
             scheduler_addunlock(s, c->dark_matter.timestep_sync, c->super->timestep);
-            
+
+
             /*if (with_timestep_limiter && with_timestep_sync) {
                 
                 scheduler_addunlock(s, c->dark_matter.timestep_limiter, c->dark_matter.timestep_sync);
@@ -1518,13 +1523,16 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_sidm = (e->policy & engine_policy_sidm);
 
   for (int ind = 0; ind < num_elements; ind++) {
+
     struct cell *c = &((struct cell *)map_data)[ind];
+
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     
     /* Add the hydro stuff */
     if (with_hydro)
       engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
+
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
@@ -3613,8 +3621,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
     /* Add the send tasks for the cells in the proxy that have a dark matter
      * connection. */
-    /*if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_gravity))*/
-    if (e->policy & engine_policy_sidm)
+    if ((e->policy & engine_policy_sidm) &&
+        (type & proxy_cell_type_dark_matter))
         engine_addtasks_send_dark_matter(e, ci, cj, NULL, NULL, NULL);
 
   }
@@ -3665,8 +3673,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
-    /*if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_gravity))*/
-    if (e->policy & engine_policy_sidm)
+    if ((e->policy & engine_policy_sidm) &&
+        (type & proxy_cell_type_dark_matter))
         engine_addtasks_recv_dark_matter(e, ci, NULL, NULL, NULL);
 
 

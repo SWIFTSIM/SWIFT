@@ -144,12 +144,12 @@ __attribute__((always_inline)) INLINE static void dark_matter_reset_predicted_va
 __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     struct dmpart* dmp, const struct cosmology* cosmo, const struct sidm_props* sidm_props,
     const double dt) {
-        
+
     /* Some smoothing length multiples. */
     const float h = dmp->h;
-    const float h_inv = 1.0f / h;                       /* 1/h */
-    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
-    const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+    const float h_inv = 1.0f / h;                        /* 1/h */
+    const float h_inv_dim = pow_dimension(h_inv);        /* 1/h^d */
+    const float h_inv_dim_plus_one = h_inv_dim * h_inv;  /* 1/h^(d+1) */
     
     /* Final operation on the density (add self-contribution). */
     dmp->rho += dmp->mass * dm_kernel_root;
@@ -164,7 +164,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     dmp->density.rho_dh *= h_inv_dim_plus_one;
     dmp->density.wcount *= h_inv_dim;
     dmp->density.wcount_dh *= h_inv_dim_plus_one;
-    /*dmp->velocity_dispersion *= h_inv_dim * rho_inv;
+    /*/*dmp->velocity_dispersion *= h_inv_dim * rho_inv;
     dmp->velocity_ngb[0] *= h_inv_dim * rho_inv;
     dmp->velocity_ngb[1] *= h_inv_dim * rho_inv;
     dmp->velocity_ngb[2] *= h_inv_dim * rho_inv;*/
@@ -194,7 +194,6 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     if (!sidm_props->with_constant_sigma) {
       dmp->sidm_data.sigma = 0.;
     }
-
 }
 
 /**
@@ -234,7 +233,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
  *
  */
 __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmpart *restrict dmp) {
-    
+
     if (dmp->sidm_data.sidm_flag > 0) {
 
 #ifdef SWIFT_DEBUG_CHECKS

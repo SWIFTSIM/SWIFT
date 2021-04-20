@@ -350,11 +350,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     float wi, wj, wi_dx, wj_dx;
     
     const float r = sqrtf(r2);
-    
+
     /* Get the masses. */
     const float mi = pi->mass;
     const float mj = pj->mass;
-    
+
     /* Compute density of pi. */
     const float hi_inv = 1.f / hi;
     const float ui = r * hi_inv;
@@ -377,11 +377,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
     /*pi->velocity_ngb[0] += mj * dvi[0] * wi;
     pi->velocity_ngb[1] += mj * dvi[1] * wi;
     pi->velocity_ngb[2] += mj * dvi[2] * wi;*/
+
     pi->velocity_ngb[0] += dvi[0];
     pi->velocity_ngb[1] += dvi[1];
     pi->velocity_ngb[2] += dvi[2];
 
-    /*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
+
+    /*/*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
     pi->velocity_dispersion += (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);
 
     /* Compute density of pj. */
@@ -398,19 +400,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
                           pi->v_full[1] - pj->v_full[1],
                           pi->v_full[2] - pj->v_full[2]};
 
-    /*pj->velocity_ngb[0] += mi * dvj[0] * wj;
+    /*/*pj->velocity_ngb[0] += mi * dvj[0] * wj;
     pj->velocity_ngb[1] += mi * dvj[1] * wj;
     pj->velocity_ngb[2] += mi * dvj[2] * wj;*/
+
     pj->velocity_ngb[0] += dvj[0];
     pj->velocity_ngb[1] += dvj[1];
     pj->velocity_ngb[2] += dvj[2];
 
-    /*pj->velocity_dispersion += mi * wj * (dvj[0] * dvj[0] + dvj[1] * dvj[1] + dvj[2] * dvj[2]);*/
+    /*/*pj->velocity_dispersion += mi * wj * (dvj[0] * dvj[0] + dvj[1] * dvj[1] + dvj[2] * dvj[2]);*/
     pj->velocity_dispersion += (dvj[0] * dvj[0] + dvj[1] * dvj[1] + dvj[2] * dvj[2]);
 
     /* Increasing counters */
     ++pi->num_neighbours;
     ++pj->num_neighbours;
+
 }
 
 /**
@@ -428,12 +432,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter_density(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
     const struct dmpart* pj, float a, float H) {
-    
+
     float wi, wi_dx;
-    
+
     /* Get the masses. */
     const float mj = pj->mass;
-    
+
     /* Get r and r inverse. */
     const float r = sqrtf(r2);
     
@@ -455,18 +459,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
                           pj->v_full[2] - pi->v_full[2]};
 
     /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
-    /*pi->velocity_ngb[0] += mj * dvi[0] * wi;
+    /*/*pi->velocity_ngb[0] += mj * dvi[0] * wi;
     pi->velocity_ngb[1] += mj * dvi[1] * wi;
     pi->velocity_ngb[2] += mj * dvi[2] * wi;*/
     pi->velocity_ngb[0] += dvi[0];
     pi->velocity_ngb[1] += dvi[1];
     pi->velocity_ngb[2] += dvi[2];
 
-    /*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
+    /*/*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
     pi->velocity_dispersion += (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);
 
     /* Increasing counter */
     ++pi->num_neighbours;
+
 }
 
 /**
@@ -479,11 +484,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
  */
 __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *restrict pi,
                                                                struct dmpart *restrict pj, const integertime_t ti_current,
-                                                               struct sidm_history* sidm_history,
+                                                               /*struct sidm_history* sidm_history,*/
                                                                const struct cosmology* cosmo,
                                                                const struct sidm_props* sidm_props,
                                                                const struct unit_system* us) {
-    
+
     /* Center of Mass Velocity of interacting particles */
     double VCM[3];
     VCM[0] = cosmo->a_inv * (pi->sidm_data.v_full[0] + pj->sidm_data.v_full[0])/2.0;
@@ -551,10 +556,11 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         e[2] = cos(theta);
     }
     
-    double energy_before, energy_after;
+    /*double energy_before, energy_after;
     double energy_prev_i = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
 
     double energy_prev_j = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
+    */
 
     /* I'm doing the kicks here by updating the particle velocities.
      * Note that v_full = a^2 * dx/dt, with x the comoving coordinate.
@@ -577,7 +583,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
     pj->sidm_data.v_full[2] = cosmo->a * pj->sidm_data.v_full[2];
 
     /* Communicating this kick to logger */
-    if (pi->sidm_data.sidm_flag > 0) {
+    /*if (pi->sidm_data.sidm_flag > 0) {
         energy_before = 0.;
         
         energy_after = pi->sidm_data.v_full[0] * pi->sidm_data.v_full[0] + pi->sidm_data.v_full[1] * pi->sidm_data.v_full[1] + pi->sidm_data.v_full[2] * pi->sidm_data.v_full[2];
@@ -608,7 +614,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         energy_after = pj->sidm_data.v_full[0] * pj->sidm_data.v_full[0] + pj->sidm_data.v_full[1] * pj->sidm_data.v_full[1] + pj->sidm_data.v_full[2] * pj->sidm_data.v_full[2];
         
         dark_matter_log_total_kinetic_energy(sidm_history, energy_before, energy_after);
-    }
+    }*/
 
     
     /*! change flag to indicate the particle has been scattered */
@@ -702,21 +708,35 @@ INLINE static double velocity_dependent_sigma_model(float v, const struct sidm_p
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
-    struct dmpart* pj, float a, float H, const double dti, const double dtj,
-    const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
-    struct sidm_history* sidm_history, const struct cosmology* cosmo) {
-    
+    struct dmpart* pj, float a, float H, float time_base, integertime_t t_current,
+    const struct cosmology* cosmo, const int with_cosmology, const struct sidm_props* sidm_props,
+    const struct unit_system* us) {
+/*    struct sidm_history* sidm_history, const struct cosmology* cosmo) {*/
+
     /* Velocities of interacting particles */
+
     double dv[3];
     dv[0] = pi->v_full[0] - pj->v_full[0];
     dv[1] = pi->v_full[1] - pj->v_full[1];
     dv[2] = pi->v_full[2] - pj->v_full[2];
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
-    
+
+    /* Manage time interval of particle i */
+    double dti;
+    if (with_cosmology) {
+        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        const integertime_t ti_begin =
+                get_integer_time_begin(t_current - 1, pi->gpart->time_bin);
+        dti = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+        dti = get_timestep(pi->time_bin, time_base);
+    }
+
     double sigma = 0.;
 
     /* Scattering cross section per unit mass (in internal units) */
+
     if (sidm_props->with_constant_sigma) {
 
       sigma = sidm_props->sigma;
@@ -734,9 +754,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* DM particle mass */
     const double mass_j = pj->mass;
-    
+
     /*float gij = integrate_kernels(r2, hi, hj);
     float normed_gij = norm_for_kernels_integral(hi, hj);*/
+
     float gij = integrate_kernels_analytical(r2, hi, hj) * cosmo->a3_inv;
     float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
 
@@ -746,21 +767,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
-    
+
     /* Draw a random number */
-    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
-    
+    const float rand = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
+
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > rand) {
-        
+
         /* Part j is not within the timestep, let's wake it up for the SIDM kick */
         timestep_sync_dmpart(pj);
-        
-        /* Log the kick */
-        dark_matter_log_num_events(sidm_history, 1);
-        
+
         /* Doing SIDM kick */
-        sidm_do_kick(pi, pj, ti_current, sidm_history, cosmo, sidm_props, us);
+        sidm_do_kick(pi, pj, t_current, cosmo, sidm_props, us);
+
+        /* Log the kick */
+        /*    dark_matter_log_num_events(sidm_history, 1); */
     }
 }
 
@@ -779,10 +800,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
  */
 __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float r2, const float* dx, float hi, float hj, struct dmpart* pi,
-    struct dmpart* pj, float a, float H, const double dti, const double dtj,
-    const integertime_t ti_current, const struct sidm_props* sidm_props, const struct unit_system* us,
-    struct sidm_history* sidm_history, const struct cosmology* cosmo) {
-    
+    struct dmpart* pj, float a, float H, float time_base, integertime_t t_current,
+    const struct cosmology* cosmo, const int with_cosmology, const struct sidm_props* sidm_props,
+    const struct unit_system* us) {
+/*    struct sidm_history* sidm_history, const struct cosmology* cosmo) {*/
+
     /* Velocities of interacting particles */
     double dv[3];
     dv[0] = pi->v_full[0] - pj->v_full[0];
@@ -790,7 +812,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     dv[2] = pi->v_full[2] - pj->v_full[2];
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
-    
+
+    /* Manage time interval of particles i & j */
+    double dti;
+    if (with_cosmology) {
+        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        const integertime_t ti_begin =
+                get_integer_time_begin(t_current - 1, pi->gpart->time_bin);
+        dti = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    } else {
+        dti = get_timestep(pi->time_bin, time_base);
+    }
+
+    /* Same for particle j */
+    double dtj;
+    if (with_cosmology) {
+        const integertime_t tj_step = get_integer_timestep(pj->gpart->time_bin);
+        const integertime_t tj_begin =
+                get_integer_time_begin(t_current - 1, pj->gpart->time_bin);
+        dtj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
+    } else {
+        dtj = get_timestep(pj->time_bin, time_base);
+    }
+
     double sigma = 0.;
 
     /* Scattering cross section per unit mass (in internal units) */
@@ -839,17 +883,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float Probability_SIDM_j = Rate_SIDM_j * dtj;
 
     /* Draw a random number */
-    const float randi = random_unit_interval(pi->id_or_neg_offset, ti_current, random_number_SIDM);
-    const float randj = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM);
+    const float randi = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
+    const float randj = random_unit_interval(pj->id_or_neg_offset, t_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
 
         /* Doing SIDM kick */
-        sidm_do_kick(pi, pj, ti_current, sidm_history, cosmo, sidm_props, us);
-        
+        sidm_do_kick(pi, pj, t_current, cosmo, sidm_props, us);
+
         /* Log the kick */
-        dark_matter_log_num_events(sidm_history, 1);
+        /*dark_matter_log_num_events(sidm_history, 1);*/
     }
 }
 

@@ -1383,6 +1383,7 @@ void space_dither(struct space *s, int verbose) {
 void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   const ticks tic = getticks();
+  const int with_sidm = s->e->policy & engine_policy_sidm;
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1749,7 +1750,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all bparts are in the correct place. */
+  /* Check that all dmparts are in the correct place. */
   size_t check_count_inhibited_dmpart = 0;
   for (size_t k = 0; k < nr_dmparts; k++) {
     if (dm_index[k] == -1 || cells_top[dm_index[k]].nodeID != local_nodeID) {
@@ -1842,7 +1843,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         } else if (s->gparts[k].type == swift_type_black_hole) {
           s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-        } else if (s->gparts[k].type == swift_type_dark_matter && nr_dmparts > 0 ) {
+        } else if (s->gparts[k].type == swift_type_dark_matter && with_sidm ) {
           s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         }
 
@@ -1855,7 +1856,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
           s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
               &s->gparts[nr_gparts];
-        } else if (s->gparts[nr_gparts].type == swift_type_dark_matter && nr_dmparts > 0 ) {
+        } else if (s->gparts[nr_gparts].type == swift_type_dark_matter && with_sidm ) {
           s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
           &s->gparts[nr_gparts];
       }
@@ -1925,6 +1926,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Number of sparts changing after repartition");
     if (s->nr_gparts != nr_gparts)
       error("Number of gparts changing after repartition");
+    if (s->nr_dmparts != nr_dmparts)
+      error("Number of dmparts changing after repartition");
 #endif
   }
 
@@ -2145,7 +2148,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     /* Sort the dmparts according to their cells. */
     if (nr_dmparts > 0)
         space_dmparts_sort(s->dmparts, dm_index, cell_dmpart_counts, s->nr_cells, 0);
-    
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Verify that the dmpart have been sorted correctly. */
     for (size_t k = 0; k < nr_dmparts; k++) {
@@ -2155,14 +2158,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             error("Inhibited particle sorted into a cell!");
         
         /* New cell index */
-        const int new_bind =
+        const int new_dmind =
         cell_getid(s->cdim, dmp->x[0] * s->iwidth[0], dmp->x[1] * s->iwidth[1],
                    dmp->x[2] * s->iwidth[2]);
         
         /* New cell of this dmpart */
-        const struct cell *c = &s->cells_top[new_bind];
+        const struct cell *c = &s->cells_top[new_dmind];
         
-        if (dm_index[k] != new_bind)
+        if (dm_index[k] != new_dmind)
             error("dmpart's new cell index not matching sorted index.");
         
         if (dmp->x[0] < c->loc[0] || dmp->x[0] > c->loc[0] + c->width[0] ||
@@ -2375,6 +2378,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                       nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_dmparts, nr_bparts,
                       verbose);
 #endif
+
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
@@ -3982,6 +3986,7 @@ void space_bparts_sort(struct bpart *bparts, int *restrict ind,
 void space_dmparts_sort(struct dmpart *dmparts, int *restrict ind,
                        int *restrict counts, int num_bins,
                        ptrdiff_t dmparts_offset) {
+
     /* Create the offsets array. */
     size_t *offsets = NULL;
     if (swift_memalign("dmparts_offsets", (void **)&offsets,

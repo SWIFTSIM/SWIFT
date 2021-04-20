@@ -260,41 +260,41 @@ void *runner_main(void *data) {
                   taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
-        case task_type_sub_self:
-          if (t->subtype == task_subtype_density)
-            runner_dosub_self1_density(r, ci, 1);
-#ifdef EXTRA_HYDRO_LOOP
-          else if (t->subtype == task_subtype_gradient)
-            runner_dosub_self1_gradient(r, ci, 1);
-#endif
-          else if (t->subtype == task_subtype_force)
-            runner_dosub_self2_force(r, ci, 1);
-          else if (t->subtype == task_subtype_limiter)
-            runner_dosub_self1_limiter(r, ci, 1);
-          /*else if (t->subtype == task_subtype_dark_matter_limiter)
-            runner_dosub_self1_dm_limiter(r, ci, 1);*/
-          else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_self_stars_density(r, ci, 1);
-          else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_self_stars_feedback(r, ci, 1);
-          else if (t->subtype == task_subtype_dark_matter_density)
-            runner_dosub_self1_dark_matter_density(r, ci);
-          else if (t->subtype == task_subtype_sidm)
-            runner_dosub_self2_dark_matter_sidm(r, ci);
-          else if (t->subtype == task_subtype_bh_density)
-            runner_dosub_self_bh_density(r, ci, 1);
-          else if (t->subtype == task_subtype_bh_swallow)
-            runner_dosub_self_bh_swallow(r, ci, 1);
-          else if (t->subtype == task_subtype_do_gas_swallow)
-            runner_do_gas_swallow_self(r, ci, 1);
-          else if (t->subtype == task_subtype_do_bh_swallow)
-            runner_do_bh_swallow_self(r, ci, 1);
-          else if (t->subtype == task_subtype_bh_feedback)
-            runner_dosub_self_bh_feedback(r, ci, 1);
-          else
-            error("Unknown/invalid task subtype (%s/%s).",
-                  taskID_names[t->type], subtaskID_names[t->subtype]);
-          break;
+            case task_type_sub_self:
+              if (t->subtype == task_subtype_density)
+                runner_dosub_self1_density(r, ci, 1);
+    #ifdef EXTRA_HYDRO_LOOP
+              else if (t->subtype == task_subtype_gradient)
+                runner_dosub_self1_gradient(r, ci, 1);
+    #endif
+              else if (t->subtype == task_subtype_force)
+                runner_dosub_self2_force(r, ci, 1);
+              else if (t->subtype == task_subtype_limiter)
+                runner_dosub_self1_limiter(r, ci, 1);
+              /*else if (t->subtype == task_subtype_dark_matter_limiter)
+                runner_dosub_self1_dm_limiter(r, ci, 1);*/
+              else if (t->subtype == task_subtype_stars_density)
+                runner_dosub_self_stars_density(r, ci, 1);
+              else if (t->subtype == task_subtype_stars_feedback)
+                runner_dosub_self_stars_feedback(r, ci, 1);
+              else if (t->subtype == task_subtype_dark_matter_density)
+                runner_dosub_self1_dark_matter_density(r, ci);
+              else if (t->subtype == task_subtype_sidm)
+                runner_dosub_self2_dark_matter_sidm(r, ci);
+              else if (t->subtype == task_subtype_bh_density)
+                runner_dosub_self_bh_density(r, ci, 1);
+              else if (t->subtype == task_subtype_bh_swallow)
+                runner_dosub_self_bh_swallow(r, ci, 1);
+              else if (t->subtype == task_subtype_do_gas_swallow)
+                runner_do_gas_swallow_self(r, ci, 1);
+              else if (t->subtype == task_subtype_do_bh_swallow)
+                runner_do_bh_swallow_self(r, ci, 1);
+              else if (t->subtype == task_subtype_bh_feedback)
+                runner_dosub_self_bh_feedback(r, ci, 1);
+              else
+                error("Unknown/invalid task subtype (%s/%s).",
+                      taskID_names[t->type], subtaskID_names[t->subtype]);
+              break;
 
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)

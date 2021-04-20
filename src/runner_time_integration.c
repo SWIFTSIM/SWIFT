@@ -1540,15 +1540,15 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_sync_dmparts(struct runner *r, struct cell *c, int force) {
-    
+
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
     const integertime_t ti_current = e->ti_current;
     const int count = c->dark_matter.count;
     struct dmpart *restrict dmparts = c->dark_matter.parts;
-    
+
     TIMER_TIC;
-    
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that we only sync local cells. */
     if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");

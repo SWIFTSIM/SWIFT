@@ -889,10 +889,13 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = e->policy & engine_policy_cosmology;
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
-    
+
+    const int with_cosmology = e->policy & engine_policy_cosmology;
+    const double time_base = e->time_base;
+    const integertime_t t_current = e->ti_current;
+
     TIMER_TIC;
     
     /* Anything to do here? */
@@ -903,7 +906,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
     struct dmpart *restrict dmparts_j = cj->dark_matter.parts;
-    struct sidm_history *sidm_history = &ci->dark_matter.sh;
+    /*struct sidm_history *sidm_history = &ci->dark_matter.sh;*/
     
     /* Cosmological terms */
     const float a = cosmo->a;
@@ -928,7 +931,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
         if (dmpart_is_inhibited(pi, e)) continue;
         
         /* Get i particle time-step */
-        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
         const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
         double dti;
         if (with_cosmology) {
@@ -936,7 +939,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
                                            ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
-        }
+        }*/
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
@@ -955,14 +958,14 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             if (dmpart_is_inhibited(pj, e)) continue;
             
             /* Get j particle time-step */
-            const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
+            /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
             const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
             double dtj;
             if (with_cosmology) {
                 dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
             } else {
                 dtj = get_timestep(pj->time_bin, e->time_base);
-            }
+            }*/
             
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
@@ -981,26 +984,23 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             /* Hit or miss? */
             if (doi && doj) {
                 
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
-                
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                             t_current, cosmo, with_cosmology, sidm_props, us);
+
             } else if (doi) {
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
-                
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                                    t_current, cosmo, with_cosmology, sidm_props, us);
+
             } else if (doj) {
                 
                 dx[0] = -dx[0];
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
                 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
-                
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                                    t_current, cosmo, with_cosmology, sidm_props, us);
+
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1015,19 +1015,21 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
  * @param c The #cell.
  */
 void DOSELF2(struct runner *r, struct cell *restrict c) {
-    
+
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = e->policy & engine_policy_cosmology;
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
-    
-    
+
+    const int with_cosmology = e->policy & engine_policy_cosmology;
+    const double time_base = e->time_base;
+    const integertime_t t_current = e->ti_current;
+
     TIMER_TIC;
     
     struct dmpart *restrict dmparts = c->dark_matter.parts;
     const int count = c->dark_matter.count;
-    struct sidm_history *sidm_history = &c->dark_matter.sh;
+    /*struct sidm_history *sidm_history = &c->dark_matter.sh;*/
     
     
     /* Set up indt. */
@@ -1056,7 +1058,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         if (dmpart_is_inhibited(pi, e)) continue;
         
         /* Get i particle time-step */
-        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
         const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
         double dti;
         if (with_cosmology) {
@@ -1064,7 +1066,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                                            ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
-        }
+        }*/
         
         /* Get the particle position and radius. */
         double pix[3];
@@ -1083,7 +1085,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 const float hj = pj->h;
                 
                 /* Get j particle time-step */
-                const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
+                /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
                 const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
                 double dtj;
                 if (with_cosmology) {
@@ -1091,7 +1093,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                                                    ti_begin_j + ti_step_j);
                 } else {
                     dtj = get_timestep(pj->time_bin, e->time_base);
-                }
+                }*/
                 
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
@@ -1104,9 +1106,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 /* Hit or miss? */
                 if (r2 < hig2 || r2 < hj * hj * dm_kernel_gamma2) {
                     
-                    runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
-                    
-                    /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
+                    runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                                        t_current, cosmo, with_cosmology, sidm_props, us);
                 }
             } /* loop over all other particles. */
         }
@@ -1129,7 +1130,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 const float hj = pj->h;
                 
                 /* Get j particle time-step */
-                const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
+                /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
                 const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
                 double dtj;
                 if (with_cosmology) {
@@ -1137,7 +1138,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                                                    ti_begin_j + ti_step_j);
                 } else {
                     dtj = get_timestep(pj->time_bin, e->time_base);
-                }
+                }*/
                 
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
@@ -1153,15 +1154,16 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                     /* Does pj need to be updated too? */
                     if (dmpart_is_active(pj, e)) {
                         
-                        runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                        
+                        runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                                     t_current, cosmo, with_cosmology, sidm_props, us);
+
                         /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
                         
                     } else {
                         
-                        runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                        
-                        /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
+                        runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                                            t_current, cosmo, with_cosmology, sidm_props, us);
+
                     }
                 }
             } /* loop over all other particles. */
@@ -1183,13 +1185,16 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
  * @param c The #cell.
  */
 void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
-    
+
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = e->policy & engine_policy_cosmology;
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
-    
+
+    const int with_cosmology = e->policy & engine_policy_cosmology;
+    const double time_base = e->time_base;
+    const integertime_t t_current = e->ti_current;
+
     TIMER_TIC;
     
     /* Cosmological terms */
@@ -1198,7 +1203,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     
     const int count = c->dark_matter.count;
     struct dmpart *restrict dmparts = c->dark_matter.parts;
-    struct sidm_history *sidm_history = &c->dark_matter.sh;
+    /*struct sidm_history *sidm_history = &c->dark_matter.sh;*/
     
     /* Loop over the dmparts in ci. */
     for (int pid = 0; pid < count; pid++) {
@@ -1207,7 +1212,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         struct dmpart *restrict pi = &dmparts[pid];
         
         /* Get i particle time-step */
-        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
         const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
         double dti;
         if (with_cosmology) {
@@ -1215,14 +1220,14 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
                                            ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
-        }
+        }*/
         
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
-            (float)(pi->x[1] - c->loc[1]),
-            (float)(pi->x[2] - c->loc[2])};
+                              (float)(pi->x[1] - c->loc[1]),
+                              (float)(pi->x[2] - c->loc[2])};
 
         /* Loop over the dmparts in cj. */
         for (int pjd = pid + 1; pjd < count; pjd++) {
@@ -1235,7 +1240,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             const int pj_active = dmpart_is_active(pj, e);
 
             /* Get j particle time-step */
-            const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
+            /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
             const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
             double dtj;
             if (with_cosmology) {
@@ -1243,12 +1248,12 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
                                                ti_begin_j + ti_step_j);
             } else {
                 dtj = get_timestep(pj->time_bin, e->time_base);
-            }
+            }*/
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-                (float)(pj->x[1] - c->loc[1]),
-                (float)(pj->x[2] - c->loc[2])};
+                                  (float)(pj->x[1] - c->loc[1]),
+                                  (float)(pj->x[2] - c->loc[2])};
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             
@@ -1258,25 +1263,23 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             /* Hit or miss? */
             if (doi && doj) {
                 
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
-                
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                             t_current, cosmo, with_cosmology, sidm_props, us);
+
             } else if (doi) {
-                
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
-                
+
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                                    t_current, cosmo, with_cosmology, sidm_props, us);
+
             } else if (doj) {
                 
                 dx[0] = -dx[0];
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                                    t_current, cosmo, with_cosmology, sidm_props, us);
+
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1325,17 +1328,20 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
     const struct engine *e = r->e;
     const struct cosmology *cosmo = e->cosmology;
-    const int with_cosmology = e->policy & engine_policy_cosmology;
     const struct unit_system *us = e->internal_units;
     const struct sidm_props *sidm_props = e->sidm_properties;
-    
+
+    const int with_cosmology = e->policy & engine_policy_cosmology;
+    const double time_base = e->time_base;
+    const integertime_t t_current = e->ti_current;
+
     TIMER_TIC;
-    
+
     const int count_i = ci->dark_matter.count;
     const int count_j = cj->dark_matter.count;
     struct dmpart *restrict dmparts_i = ci->dark_matter.parts;
     struct dmpart *restrict dmparts_j = cj->dark_matter.parts;
-    struct sidm_history *sidm_history = &ci->dark_matter.sh;
+    /*struct sidm_history *sidm_history = &ci->dark_matter.sh;*/
     
     /* Cosmological terms */
     const float a = cosmo->a;
@@ -1355,51 +1361,54 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         
         /* Get a hold of the ith part in ci. */
         struct dmpart *restrict pi = &dmparts_i[pid];
-        
+
+        /* Skip inhibited particles. */
+        if (dmpart_is_inhibited(pi, e)) continue;
+
         /* Get i particle time-step */
-        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
         const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
         double dti;
         if (with_cosmology) {
-            dti = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                           ti_begin + ti_step);
+            dti = cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
         } else {
             dti = get_timestep(pi->time_bin, e->time_base);
-        }
+        }*/
         
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
-
         const int pi_active = dmpart_is_active(pi, e);
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
-            (float)(pi->x[1] - (cj->loc[1] + shift[1])),
-            (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
+                              (float)(pi->x[1] - (cj->loc[1] + shift[1])),
+                              (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
         
         /* Loop over the parts in cj. */
         for (int pjd = 0; pjd < count_j; pjd++) {
             
             /* Get a pointer to the jth particle. */
             struct dmpart *restrict pj = &dmparts_j[pjd];
-            
+
+            /* Skip inhibited particles. */
+            if (dmpart_is_inhibited(pj, e)) continue;
+
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
             
             /* Get j particle time-step */
-            const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
+            /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
             const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
             double dtj;
             if (with_cosmology) {
-                dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
-                                               ti_begin_j + ti_step_j);
+                dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
             } else {
                 dtj = get_timestep(pj->time_bin, e->time_base);
-            }
+            }*/
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                (float)(pj->x[1] - cj->loc[1]),
-                (float)(pj->x[2] - cj->loc[2])};
+                                  (float)(pj->x[1] - cj->loc[1]),
+                                  (float)(pj->x[2] - cj->loc[2])};
             float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -1409,25 +1418,22 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             /* Hit or miss? */
             if (doi && doj) {
 
-                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
+                runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                             t_current, cosmo, with_cosmology, sidm_props, us);
 
             } else if (doi) {
-                
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, dti, dtj, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_nonsym_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
-                
+
+                 runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                                     t_current, cosmo, with_cosmology, sidm_props, us);
+
             } else if (doj) {
                 
                 dx[0] = -dx[0];
                 dx[1] = -dx[1];
                 dx[2] = -dx[2];
 
-                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, dtj, dti, ti_begin, sidm_props, us, sidm_history, cosmo);
-                
-                /*runner_iact_nonsym_dm_timebin(r2, dx, hj, hi, pj, pi, a, H);*/
+                runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, time_base,
+                                                    t_current, cosmo, with_cosmology, sidm_props, us);
             }
         } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -1459,6 +1465,7 @@ void runner_dopair2_branch_dark_matter_sidm(struct runner *r, struct cell *ci, s
     if (!do_ci && !do_cj) return;
 
     DOPAIR2_NAIVE(r, ci, cj);
+
 /*#ifdef SWIFT_USE_NAIVE_INTERACTIONS
     DOPAIR2_NAIVE(r, ci, cj);
 #else

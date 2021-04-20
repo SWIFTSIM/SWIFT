@@ -527,6 +527,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   struct space *s = e->s;
   ticks tic = getticks();
 
+  const int with_sidm = e->policy & engine_policy_sidm;
+
   /* Re-set the proxies. */
   for (int k = 0; k < e->nr_proxies; k++) {
     e->proxies[k].nr_parts_out = 0;
@@ -863,9 +865,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         struct dmpart *dmparts_new = NULL;
         if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
                            sizeof(struct dmpart) * s->size_dmparts) != 0)
-            error("Failed to allocate new bpart data.");
+            error("Failed to allocate new dmpart data.");
         memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * offset_dmparts);
-        swift_free("bparts", s->dmparts);
+        swift_free("dmparts", s->dmparts);
         s->dmparts = dmparts_new;
         
         /* Reset the links */
@@ -894,7 +896,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_black_hole) {
         s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-      } else if (s->gparts[k].type == swift_type_dark_matter && s->size_dmparts > 0) {
+      /*} else if (s->gparts[k].type == swift_type_dark_matter) {*/
+      } else if (s->gparts[k].type == swift_type_dark_matter && with_sidm) {
         s->dmparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
@@ -1063,7 +1066,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
               &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->bparts - bp;
           bp->gpart = gp;
-      } else if (gp->type == swift_type_dark_matter && count_dmparts > 0) {
+        } else if (gp->type == swift_type_dark_matter && with_sidm) {
+      /*} else if (gp->type == swift_type_dark_matter) {*/
           struct dmpart *dmp =
           &s->dmparts[offset_dmparts + count_dmparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->dmparts - dmp;
@@ -1383,6 +1387,11 @@ void engine_allocate_foreign_particles(struct engine *e) {
             cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
       }
 
+      /*if (e->proxies[k].cells_in_type[j] & proxy_cell_type_dark_matter) {
+        count_dmparts_in +=
+            cell_count_dmparts_for_tasks(e->proxies[k].cells_in[j]);
+      }*/
+
       /* For stars, we just use the numbers in the top-level cells */
       count_sparts_in +=
           e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
@@ -1505,6 +1514,14 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
       }
 
+      /*if (e->proxies[k].cells_in_type[j] & proxy_cell_type_dark_matter) {
+
+        const size_t count_dmparts =
+            cell_link_foreign_dmparts(e->proxies[k].cells_in[j], dmparts);
+        dmparts = &dmparts[count_dmparts];
+
+      }*/
+
       if (with_stars) {
 
         /* For stars, we just use the numbers in the top-level cells */
@@ -1520,11 +1537,12 @@ void engine_allocate_foreign_particles(struct engine *e) {
         bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
       }
         
-      /*if (with_sidm) {*/
+      if (with_sidm) {
             
         /* For dark matter, we just use the numbers in the top-level cells */
         cell_link_dmparts(e->proxies[k].cells_in[j], dmparts);
         dmparts = &dmparts[e->proxies[k].cells_in[j]->dark_matter.count + space_extra_dmparts];
+      }
     }
   }
 
@@ -3332,6 +3350,7 @@ void engine_makeproxies(struct engine *e) {
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
@@ -3442,6 +3461,20 @@ void engine_makeproxies(struct engine *e) {
                   proxy_type |= (int)proxy_cell_type_hydro;
               }
 
+              /* In the sidm case, we care about direct neighbours too */
+              if (with_sidm) {
+
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1)))
+                  proxy_type |= (int)proxy_cell_type_dark_matter;
+              }
+
               /* In the gravity case, check distances using the MAC. */
               if (with_gravity) {
 
@@ -3458,6 +3491,7 @@ void engine_makeproxies(struct engine *e) {
                       abs(k - kkk + cdim[2]) <= 1))) {
 
                   proxy_type |= (int)proxy_cell_type_gravity;
+
                 } else {
 
                   /* We don't have multipoles yet (or there CoMs) so we will
