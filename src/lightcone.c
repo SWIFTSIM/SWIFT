@@ -567,11 +567,11 @@ void lightcone_clean(struct lightcone_props *props) {
  * @param time_min Start of the time step
  * @param time_max End of the time step
  */
-void lightcone_init_replication_list(struct lightcone_props *props,
-                                     const struct cosmology *cosmo,
-                                     const integertime_t ti_old,
-                                     const integertime_t ti_current,
-                                     const double dt_max) {
+void lightcone_prepare_for_step(struct lightcone_props *props,
+                                const struct cosmology *cosmo,
+                                const integertime_t ti_old,
+                                const integertime_t ti_current,
+                                const double dt_max) {
 
   /* Deallocate the old list, if there is one */
   if(props->have_replication_list)replication_list_clean(&props->replication_list);
@@ -646,4 +646,36 @@ void lightcone_init_replication_list(struct lightcone_props *props,
     output_nr += 1;
   }
 #endif
+
+  const int nr_maps   = props->nr_maps;
+  const int nr_shells = props->nr_shells;
+
+  /* Loop over healpix map shells */
+  for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+
+    const double shell_amin = props->shell_amin[shell_nr];
+    const double shell_amax = props->shell_amin[shell_nr];
+    const double step_amin = a_old;
+    const double step_amax = a_current;
+
+    /* If there could be contributions to this shell, ensure pixel data is initialized */
+    if(step_amin <= shell_amax && step_amax >= shell_amin) {
+      for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+        if(!props->map[map_nr][shell_nr]->data)
+          lightcone_map_allocate_pixels(props->map[map_nr][shell_nr],
+                                        /* zero_pixels = */ 1);
+      }
+    }
+
+    /* If this shell is complete, write out the maps and free the pixel buffers */
+    if(step_amin > shell_amax) {
+      for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+        /* TODO: flush output buffer */
+        /* TODO: write out the map */
+        lightcone_map_free_pixels(props->map[map_nr][shell_nr]);
+      }
+    }
+
+  } /* Next shell */
+
 }
