@@ -25,7 +25,7 @@
 #include <hdf5.h>
 
 /* This object's header. */
-#include "lightcone_io.h"
+#include "lightcone_particle_io.h"
 
 /* Local headers */
 #include "error.h"

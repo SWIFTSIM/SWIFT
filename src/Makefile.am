@@ -64,7 +64,7 @@ include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += logger_history.h chemistry_logger.h star_formation_particle_logger.h
-include_HEADERS += lightcone.h lightcone_io.h lightcone_replications.h lightcone_crossing.h
+include_HEADERS += lightcone.h lightcone_particle_io.h lightcone_replications.h lightcone_crossing.h
 include_HEADERS += lightcone_map.h particle_buffer.h exchange_structs.h
 
 # source files for EAGLE cooling
@@ -177,7 +177,7 @@ AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c
 AM_SOURCES += chemistry.c cosmology.c mesh_gravity.c velociraptor_interface.c 
 AM_SOURCES += output_list.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c 
 AM_SOURCES += hashmap.c pressure_floor.c logger_history.c
-AM_SOURCES += lightcone.c lightcone_io.c lightcone_replications.c particle_buffer.c
+AM_SOURCES += lightcone.c lightcone_particle_io.c lightcone_replications.c particle_buffer.c
 AM_SOURCES += lightcone_map.c exchange_structs.c
 AM_SOURCES += $(QLA_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 

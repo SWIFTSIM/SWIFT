@@ -35,7 +35,7 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
-#include "lightcone_io.h"
+#include "lightcone_particle_io.h"
 #include "lightcone_replications.h"
 #include "lock.h"
 #include "parser.h"

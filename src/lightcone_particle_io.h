@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_LIGHTCONE_IO_H
-#define SWIFT_LIGHTCONE_IO_H
+#ifndef SWIFT_LIGHTCONE_PARTICLE_IO_H
+#define SWIFT_LIGHTCONE_PARTICLE_IO_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -27,7 +27,7 @@
 #include <hdf5.h>
 
 /* This object's header. */
-#include "lightcone_io.h"
+#include "lightcone_particle_io.h"
 
 /* Forward declarations */
 struct gpart;
