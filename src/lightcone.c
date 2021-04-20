@@ -180,6 +180,16 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
 
   restart_write_blocks((void *) &tmp, sizeof(struct lightcone_props), 1, stream,
                        "lightcone_props", "lightcone_props");
+
+  /* Dump the lightcone maps */
+  const int nr_maps = props->nr_maps;
+  const int nr_shells = props->nr_shells;
+  for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+    for(int shell_nr=0;shell_nr<nr_shells; shell_nr+=1) {
+      lightcone_map_struct_dump(props->map[map_nr][shell_nr], stream);
+    }
+  }
+
 }
 
 
@@ -191,9 +201,23 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
  */
 void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 
+  /* Restore lightcone struct */
   restart_read_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
                       NULL, "lightcone_props");
+
+  /* Re-allocate particle data buffers */
   lightcone_allocate_buffers(props);
+
+  /* Restore the lightcone maps */
+  const int nr_maps = props->nr_maps;
+  const int nr_shells = props->nr_shells;
+  for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+    for(int shell_nr=0;shell_nr<nr_shells; shell_nr+=1) {
+      props->map[map_nr][shell_nr] = malloc(sizeof(struct lightcone_map));
+      lightcone_map_struct_restore(props->map[map_nr][shell_nr], stream);
+    }
+  }
+
 }
 
 
@@ -330,6 +354,21 @@ void lightcone_init(struct lightcone_props *props,
   MPI_Bcast(&props->shell_rmax, props->nr_shells, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* Initialize lightcone healpix maps */
+  const int nr_maps = props->nr_maps;
+  const int nr_shells = props->nr_shells;
+  for(int map_nr=0; map_nr<LIGHTCONE_MAX_HEALPIX_MAPS; map_nr+=1) {
+    for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1) {
+      if(map_nr < nr_maps && shell_nr < nr_shells) {
+        props->map[map_nr][shell_nr] = malloc(sizeof(struct lightcone_map));
+        lightcone_map_init(props->map[map_nr][shell_nr], props->nside,
+                           props->buffer_chunk_size);
+      } else {
+        props->map[map_nr][shell_nr] = NULL;
+      }
+    }
+  }
+
 }
 
 
@@ -446,6 +485,16 @@ void lightcone_clean(struct lightcone_props *props) {
 
   /* Free replication list, if we have one */
   if(props->have_replication_list)replication_list_clean(&props->replication_list);
+
+  /* Clean lightcone maps and free the structs */
+  const int nr_maps = props->nr_maps;
+  const int nr_shells = props->nr_shells;
+  for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+    for(int shell_nr=0;shell_nr<nr_shells; shell_nr+=1) {
+      lightcone_map_clean(props->map[map_nr][shell_nr]);
+      free(props->map[map_nr][shell_nr]);
+    }
+  }
 
 }
 

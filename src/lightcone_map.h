@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_LIGHTCONE_MAPS_H
-#define SWIFT_LIGHTCONE_MAPS_H
+#ifndef SWIFT_LIGHTCONE_MAP_H
+#define SWIFT_LIGHTCONE_MAP_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -108,4 +108,4 @@ void lightcone_map_update_from_buffer(struct lightcone_map *map);
 void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name);
 #endif
 
-#endif /* #ifndef SWIFT_LIGHTCONE_MAPS_H */
+#endif /* #ifndef SWIFT_LIGHTCONE_MAP_H */

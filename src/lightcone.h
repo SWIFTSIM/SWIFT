@@ -27,6 +27,7 @@
 #include "../config.h"
 
 /* Local headers */
+#include "lightcone_map.h"
 #include "lightcone_replications.h"
 #include "parser.h"
 #include "part_type.h"
@@ -123,6 +124,9 @@ struct lightcone_props {
 
   /*! Outer radii of shells for this lightcone */
   double shell_rmax[LIGHTCONE_MAX_SHELLS];
+
+  /*! Array of pointers to lightcone maps */
+  struct lightcone_map *map[LIGHTCONE_MAX_HEALPIX_MAPS][LIGHTCONE_MAX_SHELLS];
 
 };
 
