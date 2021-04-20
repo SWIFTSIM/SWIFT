@@ -1606,11 +1606,12 @@ int main(int argc, char *argv[]) {
     engine_step(&e);
 
 #ifdef WITH_LIGHTCONE
-    /* Flush any lightcone buffers which have got too large */
+    /* If the lightcone particle buffer on this node has got too large,
+       flush it to disk */
     if(with_lightcone) {
-      lightcone_flush_buffers(&lightcone_properties,
-                              /* flush_all = */ 0,
-                              /* end_file = */ 0);
+      lightcone_flush_particle_buffers(&lightcone_properties,
+                                       /* flush_all = */ 0,
+                                       /* end_file = */ 0);
     }
 #endif
 
@@ -1792,6 +1793,18 @@ int main(int argc, char *argv[]) {
         velociraptor_invoke(&e, /*linked_with_snap=*/0);
     }
 #endif
+
+    /* Write out any remaining lightcone data at the end of the run */
+#ifdef WITH_LIGHTCONE
+    if(e.lightcone_properties->enabled) {
+      lightcone_flush_particle_buffers(e.lightcone_properties,
+                                       /*flush_all=*/1,
+                                       /*end_file=*/1);
+      lightcone_dump_completed_shells(e.lightcone_properties, e.cosmology->a,
+                                      /*dump_all=*/1);
+    }
+#endif
+
   }
 
   /* Remove the stop file if used. Do this anyway, we could have missed the

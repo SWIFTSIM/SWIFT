@@ -371,6 +371,10 @@ void lightcone_init(struct lightcone_props *props,
   props->r2_max = pow(cosmology_get_comoving_distance(cosmo, a_min), 2.0);
   props->r2_min = pow(cosmology_get_comoving_distance(cosmo, a_max), 2.0);
 
+  /* Store initial state of lightcone shells */
+  for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1)
+    props->shell_state[shell_nr] = shell_uninitialized;
+
   /* Estimate number of particles which will be output.
      
      Assumptions:
@@ -401,8 +405,8 @@ void lightcone_init(struct lightcone_props *props,
 /**
  * @brief Flush any buffers which exceed the specified size.
  */
-void lightcone_flush_buffers(struct lightcone_props *props,
-                             int flush_all, int end_file) {
+void lightcone_flush_particle_buffers(struct lightcone_props *props,
+                                      int flush_all, int end_file) {
 
   /* Will flush any buffers with more particles than this */
   size_t max_to_buffer = (size_t) props->max_particles_buffered;
@@ -496,12 +500,97 @@ void lightcone_flush_buffers(struct lightcone_props *props,
 
 
 /**
- * @brief Flush all buffers and deallocate lightcone data.
+ * @brief Flush lightcone map update buffers for one shell
+ */
+void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int shell_nr) {
+
+  const int nr_maps   = props->nr_maps;
+  if(props->shell_state[shell_nr] == shell_current) {
+    for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
+      lightcone_map_update_from_buffer(props->map[map_nr][shell_nr]);
+  }
+}
+
+
+/**
+ * @brief Flush lightcone map update buffers for all shells
+ */
+void lightcone_flush_map_updates(struct lightcone_props *props) {    
+
+  const int nr_shells = props->nr_shells;
+  for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+    lightcone_flush_map_updates_for_shell(props, shell_nr);
+  }
+}
+
+
+/**
+ * @brief Write and deallocate any completed lightcone shells
+ */
+void lightcone_dump_completed_shells(struct lightcone_props *props,
+                                     double a_current, int dump_all) {
+#ifdef HAVE_HDF5
+
+  const int nr_shells = props->nr_shells;
+  const int nr_maps = props->nr_maps;
+
+  for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+
+    /* Will write out this shell if it has been updated but not written
+       out yet and either we advanced past its redshift range or we're
+       dumping all remaining shells at the end of the simulation */
+    if(props->shell_state[shell_nr]==shell_current) {
+      if(props->shell_amax[shell_nr] <= a_current || dump_all) {
+
+        /* Apply any buffered updates for this shell */
+        lightcone_flush_map_updates_for_shell(props, shell_nr);
+
+        /* Get the name of the file to write */
+        char fname[FILENAME_BUFFER_SIZE];
+        if(snprintf(fname, FILENAME_BUFFER_SIZE, "%s.shell_%d.hdf5",
+                    props->basename, shell_nr) < 0)
+          error("Lightcone map output filename truncated");
+        
+        /* Create the output file for this shell */
+        hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef WITH_MPI
+#ifdef HAVE_PARALLEL_HDF5
+        if(H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL) < 0)
+          error("Unable to set HDF5 MPI-IO file access mode");
+#else
+        error("Writing lightcone maps with MPI requires parallel HDF5");
+#endif
+#endif
+        hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+        if(file_id < 0)error("Unable to create file %s", fname);
+
+        /* Write the lightcone maps for this shell */
+        for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
+          lightcone_map_write(props->map[map_nr][shell_nr], file_id, props->map_names[map_nr]);
+
+        /* Close the file */
+        H5Pclose(fapl_id);
+        H5Fclose(file_id);
+
+        /* Free the pixel data associated with this shell */
+        for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
+          lightcone_map_free_pixels(props->map[map_nr][shell_nr]);
+
+        /* Update status of this shell */
+        props->shell_state[shell_nr]==shell_complete;
+      }
+    }
+  }
+#else
+  error("Need HDF5 to write out lightcone maps");
+#endif
+}
+
+
+/**
+ * @brief Deallocate lightcone data.
  */
 void lightcone_clean(struct lightcone_props *props) {
-
-  /* Flush particle buffers */
-  lightcone_flush_buffers(props, /* flush_all = */ 1, /* end_file = */ 1);
 
   /* Deallocate particle buffers */
   for(int i=0; i<swift_type_count; i+=1) {
@@ -513,8 +602,8 @@ void lightcone_clean(struct lightcone_props *props) {
   if(props->have_replication_list)replication_list_clean(&props->replication_list);
 
   /* Clean lightcone maps and free the structs */
-  const int nr_maps = props->nr_maps;
   const int nr_shells = props->nr_shells;
+  const int nr_maps = props->nr_maps;
   for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
     for(int shell_nr=0;shell_nr<nr_shells; shell_nr+=1) {
       lightcone_map_clean(props->map[map_nr][shell_nr]);
@@ -660,22 +749,12 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
 
     /* If there could be contributions to this shell, ensure pixel data is initialized */
     if(step_amin <= shell_amax && step_amax >= shell_amin) {
-      for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
-        if(!props->map[map_nr][shell_nr]->data)
-          lightcone_map_allocate_pixels(props->map[map_nr][shell_nr],
-                                        /* zero_pixels = */ 1);
+      if(props->shell_state[shell_nr] == shell_uninitialized) {
+        for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
+          lightcone_map_allocate_pixels(props->map[map_nr][shell_nr], /* zero_pixels = */ 1);   
+        props->shell_state[shell_nr] = shell_current;
       }
     }
-
-    /* If this shell is complete, write out the maps and free the pixel buffers */
-    if(step_amin > shell_amax) {
-      for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
-        /* TODO: flush output buffer */
-        /* TODO: write out the map */
-        lightcone_map_free_pixels(props->map[map_nr][shell_nr]);
-      }
-    }
-
-  } /* Next shell */
+  }
 
 }

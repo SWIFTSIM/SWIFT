@@ -39,6 +39,12 @@ struct cosmology;
 struct engine;
 struct space;
 
+enum lightcone_shell_state {
+  shell_uninitialized,
+  shell_current,
+  shell_complete,
+};
+
 /**
  * @brief Lightcone data
  */
@@ -140,6 +146,9 @@ struct lightcone_props {
   /*! Array of pointers to lightcone maps */
   struct lightcone_map *map[LIGHTCONE_MAX_HEALPIX_MAPS][LIGHTCONE_MAX_SHELLS];
 
+  /*! Current state of shells */
+  enum lightcone_shell_state shell_state[LIGHTCONE_MAX_SHELLS];
+
 };
 
 
@@ -160,7 +169,12 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
                                 const integertime_t ti_current,
                                 const double dt_max);
 
-void lightcone_flush_buffers(struct lightcone_props *props,
-                               int flush_all, int end_file);
+void lightcone_flush_particle_buffers(struct lightcone_props *props,
+                                      int flush_all, int end_file);
+
+void lightcone_flush_map_updates(struct lightcone_props *props);
+
+void lightcone_dump_completed_shells(struct lightcone_props *props,
+                                     double a_current, int dump_all);
 
 #endif /* SWIFT_LIGHTCONE_H */

@@ -114,14 +114,11 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
 
 #ifdef WITH_LIGHTCONE
-      /* Ensure any lightcone particles have been written out:
-         on dumping restart files we also start a new set of lightcone files
-         so that if we crash and restart we can simply truncate the files
-         to get back to the point where we're restarting. */
       if(e->lightcone_properties->enabled) {
-        lightcone_flush_buffers(e->lightcone_properties, 
-                                /* flush_all = */ 1,
-                                /* end_file = */ 1);
+        /* Empty all lightcone buffers before dumping restart files */
+        lightcone_flush_particle_buffers(e->lightcone_properties, /* flush_all = */ 1, 
+                                         /* end_file = */ 1);
+        lightcone_flush_map_updates(e->lightcone_properties);
 #ifdef WITH_MPI
         MPI_Barrier(MPI_COMM_WORLD);
 #endif
