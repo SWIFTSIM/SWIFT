@@ -116,6 +116,9 @@ struct lightcone_props {
   /*! Whether we should make a new file on the next flush */
   int start_new_file;
 
+  /*! Number of pending map updates to trigger communication */
+  int max_updates_buffered;
+
   /*! Name of the file with radii of spherical shells */
   char radius_file[PARSER_MAX_LINE_SIZE];
 
@@ -175,6 +178,9 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
 void lightcone_flush_map_updates(struct lightcone_props *props);
 
 void lightcone_dump_completed_shells(struct lightcone_props *props,
-                                     double a_current, int dump_all);
+                                     double a_current, int dump_all,
+                                     int need_flush);
+
+int lightcone_trigger_map_update(struct lightcone_props *props);
 
 #endif /* SWIFT_LIGHTCONE_H */

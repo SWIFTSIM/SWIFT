@@ -1801,7 +1801,7 @@ int main(int argc, char *argv[]) {
                                        /*flush_all=*/1,
                                        /*end_file=*/1);
       lightcone_dump_completed_shells(e.lightcone_properties, e.cosmology->a,
-                                      /*dump_all=*/1);
+                                      /*dump_all=*/1, /*need_flush=*/1);
     }
 #endif
 

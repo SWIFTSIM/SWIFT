@@ -29,6 +29,7 @@
 #include "active.h"
 #include "star_formation_logger.h"
 #include "timeline.h"
+#include "lightcone.h"
 
 /**
  * @brief Data collected from the cells at the end of a time-step
@@ -45,6 +46,7 @@ struct end_of_step_data {
   struct engine *e;
   struct star_formation_history sfh;
   float runtime;
+  int flush_lightcone_maps;
 };
 
 /**
@@ -500,6 +502,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   /* Need to use a consistent check of the hours since we started. */
   data.runtime = clocks_get_hours_since_start();
 
+  /* Get flag to determine if lightcone maps buffers should be flushed on this step */
+  data.flush_lightcone_maps = lightcone_trigger_map_update(e->lightcone_properties);
+
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init(&data.sfh);
 
@@ -526,7 +531,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_sinks_end_min, data.ti_sinks_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
-      data.sfh, data.runtime);
+      data.sfh, data.runtime, data.flush_lightcone_maps);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI

@@ -542,6 +542,9 @@ struct engine {
   integertime_t ti_next_los;
   int los_output_count;
 
+  /* Lightcone information */
+  int flush_lightcone_maps;
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run brute force checks only on steps when all gparts active? */
   int force_checks_only_all_active;

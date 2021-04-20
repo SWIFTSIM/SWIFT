@@ -302,6 +302,9 @@ void lightcone_init(struct lightcone_props *props,
   /* 
      Healpix map parameters for this lightcone
   */
+
+  /* Update lightcone pixel data if more than this number of updates are buffered */
+  props->max_updates_buffered = parser_get_opt_param_int(params, "Lightcone:max_updates_buffered", 1000000);
   
   /* Name of the file with radii of spherical shells */
   parser_get_param_string(params, "Lightcone:radius_file", props->radius_file);
@@ -528,7 +531,8 @@ void lightcone_flush_map_updates(struct lightcone_props *props) {
  * @brief Write and deallocate any completed lightcone shells
  */
 void lightcone_dump_completed_shells(struct lightcone_props *props,
-                                     double a_current, int dump_all) {
+                                     double a_current, int dump_all,
+                                     int need_flush) {
 #ifdef HAVE_HDF5
 
   const int nr_shells = props->nr_shells;
@@ -542,8 +546,8 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
     if(props->shell_state[shell_nr]==shell_current) {
       if(props->shell_amax[shell_nr] <= a_current || dump_all) {
 
-        /* Apply any buffered updates for this shell */
-        lightcone_flush_map_updates_for_shell(props, shell_nr);
+        /* Apply any buffered updates for this shell, if we didn't already */
+        if(need_flush)lightcone_flush_map_updates_for_shell(props, shell_nr);
 
         /* Get the name of the file to write */
         char fname[FILENAME_BUFFER_SIZE];
@@ -758,3 +762,27 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
   }
 
 }
+
+
+/**
+ * @brief Determine whether lightcone map buffers should be flushed this step.
+ */
+int lightcone_trigger_map_update(struct lightcone_props *props) {
+  
+  if(props->enabled) {
+    size_t total_updates = 0;
+    const int nr_maps = props->nr_maps;
+    const int nr_shells = props->nr_shells;
+    for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+      if(props->shell_state[shell_nr] == shell_current) {
+        for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+          total_updates += particle_buffer_num_elements(&props->map[map_nr][shell_nr]->buffer);
+        }
+      }
+    }
+    return total_updates >= ((size_t) props->max_updates_buffered);
+  } else {
+    return 0;
+  }
+}
+

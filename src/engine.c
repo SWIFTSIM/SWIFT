@@ -2419,6 +2419,18 @@ void engine_step(struct engine *e) {
   /* OK, we are done with the regular stuff. Time for i/o */
   /********************************************************/
 
+#ifdef WITH_LIGHTCONE
+  if(e->lightcone_properties->enabled) {
+    /* Apply lightcone map updates if buffers are getting large */
+    const int flush = e->flush_lightcone_maps;
+    if(flush)lightcone_flush_map_updates(e->lightcone_properties);  
+    /* Write out any completed lightcone shells */
+    lightcone_dump_completed_shells(e->lightcone_properties,
+                                    e->cosmology->a, /*dump_all=*/0,
+                                    /*need_flush=*/!flush);
+  }
+#endif
+
   /* Create a restart file if needed. */
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
