@@ -293,7 +293,7 @@ void engine_addtasks_send_dark_matter(struct engine *e, struct cell *ci,
             scheduler_addunlock(s, t_rho, ci->dark_matter.super->dark_matter.sidm_kick);
 
             /* The send_rho task should unlock the super_dark matter-cell's timestep-sync task. */
-            scheduler_addunlock(s, t_rho, ci->dark_matter.super->dark_matter.timestep_sync);
+            /*scheduler_addunlock(s, t_rho, ci->dark_matter.super->dark_matter.timestep_sync);*/
 
             /* The send_rho task depends on the cell's ghost task. */
             scheduler_addunlock(s, ci->dark_matter.super->dark_matter.ghost, t_rho);

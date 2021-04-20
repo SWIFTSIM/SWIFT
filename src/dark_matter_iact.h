@@ -725,9 +725,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /* Manage time interval of particle i */
     double dti;
     if (with_cosmology) {
-        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        const integertime_t ti_step = get_integer_timestep(pi->time_bin);
         const integertime_t ti_begin =
-                get_integer_time_begin(t_current - 1, pi->gpart->time_bin);
+                get_integer_time_begin(t_current - 1, pi->time_bin);
         dti = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
     } else {
         dti = get_timestep(pi->time_bin, time_base);
@@ -816,9 +816,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Manage time interval of particles i & j */
     double dti;
     if (with_cosmology) {
-        const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
+        const integertime_t ti_step = get_integer_timestep(pi->time_bin);
         const integertime_t ti_begin =
-                get_integer_time_begin(t_current - 1, pi->gpart->time_bin);
+                get_integer_time_begin(t_current - 1, pi->time_bin);
         dti = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
     } else {
         dti = get_timestep(pi->time_bin, time_base);
@@ -827,9 +827,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Same for particle j */
     double dtj;
     if (with_cosmology) {
-        const integertime_t tj_step = get_integer_timestep(pj->gpart->time_bin);
+        const integertime_t tj_step = get_integer_timestep(pj->time_bin);
         const integertime_t tj_begin =
-                get_integer_time_begin(t_current - 1, pj->gpart->time_bin);
+                get_integer_time_begin(t_current - 1, pj->time_bin);
         dtj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
     } else {
         dtj = get_timestep(pj->time_bin, time_base);
