@@ -87,7 +87,7 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
   const double a_end   = c->a_begin * exp(ti_current * c->time_base);
 
   /* Does this drift overlap the lightcone redshift range? If not, nothing to do. */
-  if((a_start > props->a_at_z_min) || (a_end < props->a_at_z_max))return;
+  if((a_start > props->a_max) || (a_end < props->a_min))return;
 
   /* Find comoving distance to these expansion factors */
   const double comoving_dist_start   = cosmology_get_comoving_distance(c, a_start);
@@ -199,11 +199,11 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
       x_start[2] + dt_drift * f * v_full[2],
     };
 
-    /* Check if particle is in our distance limits at crossing */
+    /* Check if particle is in our distance limits for particle output at crossing */
     const double r2_cross = (x_cross[0]*x_cross[0] +
                              x_cross[1]*x_cross[1] + 
                              x_cross[2]*x_cross[2]);
-    if(r2_cross < props->r2_min || r2_cross > props->r2_max)continue;
+    if(r2_cross < props->r2_min_for_particles || r2_cross > props->r2_max_for_particles)continue;
 
     /* Compute expansion factor at crossing */
     const double a_cross = cosmology_scale_factor_at_comoving_distance(c, sqrt(r2_cross));

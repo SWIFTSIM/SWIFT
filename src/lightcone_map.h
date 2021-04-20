@@ -68,6 +68,12 @@ struct lightcone_map {
   /*! Local healpix map data */
   double *data;
 
+  /*! Minimum expansion factor (i.e. at outer edge of the shell )*/
+  double a_min;
+
+  /*! Maximum expansion factor (i.e. at inner edge of the shell )*/
+  double a_max;
+  
 };
 
 

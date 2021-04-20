@@ -56,12 +56,18 @@ struct lightcone_props {
   /*! Position of the observer in the simulation box */
   double observer_position[3];
 
-  /*! Redshift range the lightcone covers */
-  double z_min, z_max;
+  /*! Redshift range in which we will output particles */
+  double z_min_for_particles, z_max_for_particles;
 
-  /*! Corresponding range in distance squared */
+  /*! Range in distance squared in which we output particles */
+  double r2_min_for_particles, r2_max_for_particles;
+
+  /*! Range in expansion factor covered by particle outputs and healpix maps */
+  double a_min, a_max;
+  
+  /*! Corresponding range in distance squared for a_max and a_min */
   double r2_min, r2_max;
-
+  
   /*! Size of chunks in particle buffer */
   int buffer_chunk_size;
 
@@ -124,6 +130,12 @@ struct lightcone_props {
 
   /*! Outer radii of shells for this lightcone */
   double shell_rmax[LIGHTCONE_MAX_SHELLS];
+
+  /*! Minimum expansion factor for each shell */
+  double shell_amin[LIGHTCONE_MAX_SHELLS];
+
+  /*! Maximum expansion factor for each shell */
+  double shell_amax[LIGHTCONE_MAX_SHELLS];
 
   /*! Array of pointers to lightcone maps */
   struct lightcone_map *map[LIGHTCONE_MAX_HEALPIX_MAPS][LIGHTCONE_MAX_SHELLS];

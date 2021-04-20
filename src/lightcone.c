@@ -248,9 +248,15 @@ void lightcone_init(struct lightcone_props *props,
   /* Base name for output files */
   parser_get_param_string(params, "Lightcone:basename", props->basename);
 
-  /* Redshift range for the lightcone */
-  props->z_min = parser_get_param_double(params, "Lightcone:z_min");
-  props->z_max = parser_get_param_double(params, "Lightcone:z_max");
+  /* Redshift range for particle output */
+  props->z_min_for_particles = parser_get_param_double(params, "Lightcone:z_min_for_particles");
+  props->z_max_for_particles = parser_get_param_double(params, "Lightcone:z_max_for_particles");
+
+  /* Corresponding range in comoving distance squared */
+  const double a_min_for_particles = 1.0/(1.0+props->z_max_for_particles);
+  props->r2_max_for_particles = pow(cosmology_get_comoving_distance(cosmo, a_min_for_particles), 2.0);
+  const double a_max_for_particles = 1.0/(1.0+props->z_min_for_particles);
+  props->r2_min_for_particles = pow(cosmology_get_comoving_distance(cosmo, a_max_for_particles), 2.0);
 
   /* Coordinates of the observer in the simulation box */
   parser_get_param_double_array(params, "Lightcone:observer_position", 3,
@@ -274,38 +280,6 @@ void lightcone_init(struct lightcone_props *props,
   props->cell_width = s->width[0];
   if(s->width[1] != s->width[0] || s->width[2] != s->width[0])
     error("Lightcones require cubic top level cells.");
-
-  /* Store expansion factors at z_min, z_max */
-  props->a_at_z_min = 1.0/(1.0+props->z_min);
-  props->a_at_z_max = 1.0/(1.0+props->z_max);
-
-  /* Find corresponding distance squared */
-  props->r2_max = pow(cosmology_get_comoving_distance(cosmo, props->a_at_z_max), 2.0);
-  props->r2_min = pow(cosmology_get_comoving_distance(cosmo, props->a_at_z_min), 2.0);
-
-  /* Estimate number of particles which will be output.
-
-     Assumptions:
-     - flat cosmology (haven't implemented comoving volume calculation for non-flat)
-     - uniform box
-  */
-  const long long nr_gparts = s->nr_gparts;
-  long long total_nr_gparts;
-#ifdef WITH_MPI
-  MPI_Reduce(&nr_gparts, &total_nr_gparts, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-#else
-  total_nr_gparts = nr_gparts;
-#endif
-  if(engine_rank==0) {
-    const double lightcone_rmax = cosmology_get_comoving_distance(cosmo, props->a_at_z_max);
-    const double lightcone_rmin = cosmology_get_comoving_distance(cosmo, props->a_at_z_min);
-    const double volume = 4./3.*M_PI*(pow(lightcone_rmax, 3.)-pow(lightcone_rmin, 3.));
-    const long long est_nr_output = total_nr_gparts / pow(props->boxsize, 3.0) * volume;
-    const int nr_replications = pow(2*lightcone_rmax/props->boxsize, 3.0);
-    message("comoving distance to lightcone max. redshift: %e", lightcone_rmax);
-    message("gparts in lightcone (if uniform box+flat cosmology): %lld", est_nr_output);
-    message("approximate number of replications to search : %d", nr_replications);
-  }
 
   /* Initially have no replication list */
   props->have_replication_list = 0;
@@ -354,9 +328,19 @@ void lightcone_init(struct lightcone_props *props,
   MPI_Bcast(&props->shell_rmax, props->nr_shells, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 
+  /* Compute expansion factor at shell edges */
+  const int nr_shells = props->nr_shells;
+  for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+    /* Inner edge of the shell */
+    props->shell_amax[shell_nr] = 
+      cosmology_scale_factor_at_comoving_distance(cosmo, props->shell_rmin[shell_nr]);
+    /* Outer edge of the shell */
+    props->shell_amin[shell_nr] = 
+      cosmology_scale_factor_at_comoving_distance(cosmo, props->shell_rmax[shell_nr]);
+  }
+
   /* Initialize lightcone healpix maps */
   const int nr_maps = props->nr_maps;
-  const int nr_shells = props->nr_shells;
   for(int map_nr=0; map_nr<LIGHTCONE_MAX_HEALPIX_MAPS; map_nr+=1) {
     for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1) {
       if(map_nr < nr_maps && shell_nr < nr_shells) {
@@ -367,6 +351,48 @@ void lightcone_init(struct lightcone_props *props,
         props->map[map_nr][shell_nr] = NULL;
       }
     }
+  }
+
+  /* Determine full redshift range to search for lightcone crossings.
+     Find range in expansion factor for particle output. */
+  double a_min = 1.0/(1.0+props->z_max_for_particles);
+  double a_max = 1.0/(1.0+props->z_min_for_particles);
+  /* Then extend the range to include all healpix map shells */
+  for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1) {
+    const double shell_a_min = props->shell_amin[shell_nr];
+    const double shell_a_max = props->shell_amax[shell_nr];
+    if(shell_a_min < a_min)a_min = shell_a_min;
+    if(shell_a_max > a_max)a_max = shell_a_max;
+  }
+  props->a_min = a_min;
+  props->a_max = a_max;
+  
+  /* Store the corresponding comoving distance squared */
+  props->r2_max = pow(cosmology_get_comoving_distance(cosmo, a_min), 2.0);
+  props->r2_min = pow(cosmology_get_comoving_distance(cosmo, a_max), 2.0);
+
+  /* Estimate number of particles which will be output.
+     
+     Assumptions:
+     - flat cosmology (haven't implemented comoving volume calculation for non-flat)
+     - uniform box
+  */
+  const long long nr_gparts = s->nr_gparts;
+  long long total_nr_gparts;
+#ifdef WITH_MPI
+  MPI_Reduce(&nr_gparts, &total_nr_gparts, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  total_nr_gparts = nr_gparts;
+#endif
+  if(engine_rank==0) {
+    const double lightcone_rmax = cosmology_get_comoving_distance(cosmo, a_min_for_particles);
+    const double lightcone_rmin = cosmology_get_comoving_distance(cosmo, a_max_for_particles);
+    const double volume = 4./3.*M_PI*(pow(lightcone_rmax, 3.)-pow(lightcone_rmin, 3.));
+    const long long est_nr_output = total_nr_gparts / pow(props->boxsize, 3.0) * volume;
+    const int nr_replications = pow(2*lightcone_rmax/props->boxsize, 3.0);
+    message("comoving distance to lightcone max. redshift: %e", lightcone_rmax);
+    message("gparts in lightcone (if uniform box+flat cosmology): %lld", est_nr_output);
+    message("approximate number of replications to search : %d", nr_replications);
   }
 
 }
@@ -576,7 +602,7 @@ void lightcone_init_replication_list(struct lightcone_props *props,
   lightcone_rmin -= boundary;
   if(lightcone_rmin < 0)lightcone_rmin = 0;
 
-  if(a_current < props->a_at_z_max || a_old > props->a_at_z_min) {
+  if(a_current < props->a_min || a_old > props->a_max) {
     /* Timestep does not overlap the lightcone redshift range */
     replication_list_init_empty(&props->replication_list);
   } else {
