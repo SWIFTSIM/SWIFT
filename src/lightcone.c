@@ -358,6 +358,8 @@ void lightcone_init(struct lightcone_props *props,
       }
     }
   }
+  if(engine_rank==0)message("there are %d lightcone shells and %d maps per shell",
+                            nr_shells, nr_maps);
 
   /* Determine full redshift range to search for lightcone crossings.
      Find range in expansion factor for particle output. */
@@ -372,7 +374,9 @@ void lightcone_init(struct lightcone_props *props,
   }
   props->a_min = a_min;
   props->a_max = a_max;
-  
+  if(engine_rank==0)message("range in expansion factor to search lightcone: %e to %e",
+                            a_min, a_max);
+
   /* Store the corresponding comoving distance squared */
   props->r2_max = pow(cosmology_get_comoving_distance(cosmo, a_min), 2.0);
   props->r2_min = pow(cosmology_get_comoving_distance(cosmo, a_max), 2.0);
@@ -391,6 +395,7 @@ void lightcone_init(struct lightcone_props *props,
     while(lightcone_map_types[type_nr].update_map) {
       if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
         props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
+        if(engine_rank==0)message("using map type: %s", lightcone_map_types[type_nr].name);
       }
       type_nr += 1;
     }
