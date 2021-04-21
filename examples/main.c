@@ -1605,16 +1605,6 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-#ifdef WITH_LIGHTCONE
-    /* If the lightcone particle buffer on this node has got too large,
-       flush it to disk */
-    if(with_lightcone) {
-      lightcone_flush_particle_buffers(&lightcone_properties,
-                                       /* flush_all = */ 0,
-                                       /* end_file = */ 0);
-    }
-#endif
-
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
 

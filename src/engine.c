@@ -2428,6 +2428,11 @@ void engine_step(struct engine *e) {
     lightcone_dump_completed_shells(e->lightcone_properties,
                                     e->cosmology, /*dump_all=*/0,
                                     /*need_flush=*/!flush);
+    /* If the lightcone particle buffer on this node has got too large,
+       flush it to disk */
+    lightcone_flush_particle_buffers(e->lightcone_properties,
+                                     /* flush_all = */ 0,
+                                     /* end_file = */ 0);
   }
 #endif
 

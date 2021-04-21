@@ -152,6 +152,9 @@ struct lightcone_props {
   /*! Current state of shells */
   enum lightcone_shell_state shell_state[LIGHTCONE_MAX_SHELLS];
 
+  /*! Range of shells that might be updated this step */
+  int shell_nr_min, shell_nr_max;
+
 };
 
 

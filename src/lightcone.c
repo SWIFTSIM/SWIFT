@@ -750,26 +750,48 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
   }
 #endif
 
+  /* Number of shells and maps per shell */
   const int nr_maps   = props->nr_maps;
   const int nr_shells = props->nr_shells;
+
+  /* Range of shells that might be updated this step */
+  int shell_nr_min = nr_shells;
+  int shell_nr_max = -1;
 
   /* Loop over healpix map shells */
   for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
 
     const double shell_amin = props->shell_amin[shell_nr];
-    const double shell_amax = props->shell_amin[shell_nr];
+    const double shell_amax = props->shell_amax[shell_nr];
     const double step_amin = a_old;
     const double step_amax = a_current;
 
-    /* If there could be contributions to this shell, ensure pixel data is initialized */
+    /* Check if this shell might be updated */
     if(step_amin <= shell_amax && step_amax >= shell_amin) {
-      if(props->shell_state[shell_nr] == shell_uninitialized) {
+
+      switch(props->shell_state[shell_nr]) {
+      case shell_uninitialized:
+        /* This shell has not been allocated yet, so allocate it */
         for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
           lightcone_map_allocate_pixels(props->map[map_nr][shell_nr], /* zero_pixels = */ 1);   
         props->shell_state[shell_nr] = shell_current;
+        break;
+      case shell_complete:
+        /* Shell has already been written out and freed - should never happen */
+        error("Lightcone shell has been written out while particles could still contribute");
+        break;
+      case shell_current:
+        /* Already initialized, nothing to do */
+        break;
       }
+
+      /* Record range of shells that might be updated this step */
+      if (shell_nr < shell_nr_min) shell_nr_min = shell_nr;
+      if (shell_nr > shell_nr_max) shell_nr_max = shell_nr;
     }
   }
+  props->shell_nr_min = shell_nr_min;
+  props->shell_nr_max = shell_nr_max;
 
 }
 

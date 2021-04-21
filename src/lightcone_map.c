@@ -97,7 +97,7 @@ void lightcone_map_init(struct lightcone_map *map, int nside,
 void lightcone_map_clean(struct lightcone_map *map) {
   
   particle_buffer_free(&map->buffer);
-  if(map->data)free(map->data);
+  if(map->data)lightcone_map_free_pixels(map);
 }
 
 
