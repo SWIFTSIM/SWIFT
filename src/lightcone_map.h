@@ -30,6 +30,7 @@
 
 /* Local headers */
 #include "particle_buffer.h"
+#include "parser.h"
 
 
 /**
@@ -49,6 +50,9 @@ struct lightcone_map_contribution {
  * @brief Struct to store a single lightcone healpix map
  */
 struct lightcone_map {
+
+  /*! Healpix nside parameter */
+  int nside;
 
   /*! Buffer to store contributions to the healpix map */
   struct particle_buffer buffer;

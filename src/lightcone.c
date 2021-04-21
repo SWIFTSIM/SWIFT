@@ -39,6 +39,7 @@
 #include "lightcone_replications.h"
 #include "lock.h"
 #include "parser.h"
+#include "part_type.h"
 #include "particle_buffer.h"
 #include "periodic.h"
 #include "restart.h"
@@ -230,10 +231,12 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
                     const struct cosmology *cosmo,
-                    struct swift_params *params) {
+                    struct swift_params *params,
+                    const int verbose) {
   
   /* Whether we generate lightcone output */
   props->enabled = 1;
+  props->verbose = verbose;
 
   /* Which particle types we should write out particle data for */
   for(int i=0; i<swift_type_count; i+=1)
@@ -378,6 +381,23 @@ void lightcone_init(struct lightcone_props *props,
   for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1)
     props->shell_state[shell_nr] = shell_uninitialized;
 
+  /* Each type of map has a pointer to an update function. First, null them all. */
+  for(int map_nr=0; map_nr<LIGHTCONE_MAX_HEALPIX_MAPS; map_nr+=1)
+    props->update_map[map_nr] = NULL;
+
+  /* Then, for each requested map type find the update function by matching names */
+  for(int map_nr=0; map_nr<props->nr_maps; map_nr+=1) {
+    int type_nr = 0;
+    while(lightcone_map_types[type_nr].update_map) {
+      if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
+        props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
+      }
+      type_nr += 1;
+    }
+    if(!props->update_map[map_nr])error("Unable to locate lightcone map type %s",
+                                        props->map_names[map_nr]);
+  }
+
   /* Estimate number of particles which will be output.
      
      Assumptions:
@@ -465,6 +485,8 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
       if(props->use_type[ptype]) {
         const size_t num_to_write = particle_buffer_num_elements(&props->buffer[ptype]);
         if(num_to_write >= max_to_buffer && num_to_write > 0) {
+          if(props->verbose)message("dumping %d particles of type %s",
+                                    (int) num_to_write, part_type_names[ptype]);
           switch(ptype) {
           case swift_type_gas:
             lightcone_write_gas(props, file_id, ptype);
@@ -506,6 +528,9 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
  * @brief Flush lightcone map update buffers for one shell
  */
 void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int shell_nr) {
+
+  if(props->verbose && engine_rank==0)
+    message("applying lightcone map updates for shell %d", shell_nr);
 
   const int nr_maps   = props->nr_maps;
   if(props->shell_state[shell_nr] == shell_current) {
@@ -555,6 +580,9 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
        dumping all remaining shells at the end of the simulation */
     if(props->shell_state[shell_nr]==shell_current) {
       if(props->shell_amax[shell_nr] < a_complete || dump_all) {
+
+        if(props->verbose && engine_rank==0)
+          message("writing out completed shell %d", shell_nr);
 
         /* Apply any buffered updates for this shell, if we didn't already */
         if(need_flush)lightcone_flush_map_updates_for_shell(props, shell_nr);
@@ -772,6 +800,8 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
       switch(props->shell_state[shell_nr]) {
       case shell_uninitialized:
         /* This shell has not been allocated yet, so allocate it */
+        if(props->verbose && engine_rank==0)
+          message("allocating pixels for shell %d", shell_nr);
         for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
           lightcone_map_allocate_pixels(props->map[map_nr][shell_nr], /* zero_pixels = */ 1);   
         props->shell_state[shell_nr] = shell_current;
@@ -818,3 +848,103 @@ int lightcone_trigger_map_update(struct lightcone_props *props) {
   }
 }
 
+
+/**
+ * @brief Add a particle to the output buffer
+ */
+void lightcone_buffer_particle(struct lightcone_props *props,
+                               const struct engine *e, const struct gpart *gp,
+                               const double a_cross, const double x_cross[3]) {
+
+  /* Handle on the other particle types */
+  const struct space *s = e->s;
+  const struct part *parts = s->parts;
+  const struct xpart *xparts = s->xparts;
+  const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
+
+  switch (gp->type) {
+  case swift_type_gas: {
+
+    const struct part *p = &parts[-gp->id_or_neg_offset];
+    const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
+    struct lightcone_gas_data data;
+    lightcone_store_gas(gp, p, xp, a_cross, x_cross, &data);
+    particle_buffer_append(props->buffer+swift_type_gas, &data);
+ 
+  } break;
+
+  case swift_type_stars: {
+    
+    const struct spart *sp = &sparts[-gp->id_or_neg_offset];
+    struct lightcone_stars_data data;
+    lightcone_store_stars(gp, sp, a_cross, x_cross, &data);
+    particle_buffer_append(props->buffer+swift_type_stars, &data);
+
+  } break;
+
+  case swift_type_black_hole: {
+      
+    const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
+    struct lightcone_black_hole_data data;
+    lightcone_store_black_hole(gp, bp, a_cross, x_cross, &data);
+    particle_buffer_append(props->buffer+swift_type_black_hole, &data);
+
+  } break;
+
+  case swift_type_dark_matter: {
+
+    struct lightcone_dark_matter_data data;
+    lightcone_store_dark_matter(gp, a_cross, x_cross, &data);
+    particle_buffer_append(props->buffer+swift_type_dark_matter, &data);
+    
+  } break;
+
+  case swift_type_dark_matter_background: {
+
+    /* Assumed to have same properties as DM particles */
+    struct lightcone_dark_matter_data data;
+    lightcone_store_dark_matter(gp, a_cross, x_cross, &data);
+    particle_buffer_append(props->buffer+swift_type_dark_matter_background, &data);
+    
+  } break;
+
+  case swift_type_neutrino: {
+
+    struct lightcone_neutrino_data data;
+    lightcone_store_neutrino(gp, a_cross, x_cross, &data);
+    particle_buffer_append(props->buffer+swift_type_neutrino, &data);
+
+  } break;
+
+  default:
+    error("Particle type not supported in lightcones");
+  }
+  
+}
+
+/**
+ * @brief Buffer a particle's contribution to the healpix map(s)
+ */
+void lightcone_buffer_map_update(struct lightcone_props *props,
+                                 const struct engine *e, const struct gpart *gp,
+                                 const double a_cross, const double x_cross[3]) {
+
+  /* Number of lightcone maps per shell */
+  const int nr_maps = props->nr_maps;
+
+  /* Loop over shells to update */
+  for(int shell_nr=props->shell_nr_min; shell_nr<=props->shell_nr_max; shell_nr+=1) {
+    if(a_cross > props->shell_amin[shell_nr] && a_cross <= props->shell_amax[shell_nr]) {
+  
+      /* Loop over healpix maps to update within this shell */
+      for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+        
+        /* Call the update function associated with this type of map */
+        struct lightcone_map *map = props->map[map_nr][shell_nr];
+        props->update_map[map_nr](map, e, gp, a_cross, x_cross);
+        
+      } /* Next map type */
+    }
+  } /* Next shell */
+}

@@ -28,6 +28,7 @@
 
 /* Local headers */
 #include "lightcone_map.h"
+#include "lightcone_map_types.h"
 #include "lightcone_replications.h"
 #include "parser.h"
 #include "part_type.h"
@@ -39,11 +40,13 @@ struct cosmology;
 struct engine;
 struct space;
 
+
 enum lightcone_shell_state {
   shell_uninitialized,
   shell_current,
   shell_complete,
 };
+
 
 /**
  * @brief Lightcone data
@@ -52,6 +55,9 @@ struct lightcone_props {
 
   /*! Whether we're doing lightcone outputs */
   int enabled;
+
+  /*! Whether to write extra log messages */
+  int verbose;
 
   /*! Which particle types we're doing */
   int use_type[swift_type_count];
@@ -155,13 +161,17 @@ struct lightcone_props {
   /*! Range of shells that might be updated this step */
   int shell_nr_min, shell_nr_max;
 
+  /*! Functions to update healpix map types */
+  map_update_function_t update_map[LIGHTCONE_MAX_HEALPIX_MAPS];
+
 };
 
 
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
                     const struct cosmology *cosmo,
-                    struct swift_params *params);
+                    struct swift_params *params,
+                    const int verbose);
 
 void lightcone_clean(struct lightcone_props *props);
 
@@ -175,8 +185,16 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
                                 const integertime_t ti_current,
                                 const double dt_max);
 
+void lightcone_buffer_particle(struct lightcone_props *props,
+                               const struct engine *e, const struct gpart *gp,
+                               const double a_cross, const double x_cross[3]);
+
 void lightcone_flush_particle_buffers(struct lightcone_props *props,
                                       int flush_all, int end_file);
+
+void lightcone_buffer_map_update(struct lightcone_props *props,
+                                 const struct engine *e, const struct gpart *gp,
+                                 const double a_cross, const double x_cross[3]);
 
 void lightcone_flush_map_updates(struct lightcone_props *props);
 

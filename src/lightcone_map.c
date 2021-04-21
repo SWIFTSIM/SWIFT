@@ -85,7 +85,9 @@ void lightcone_map_init(struct lightcone_map *map, int nside,
 
   /* Record block size so we can re-initialise particle_buffer on restarting */
   map->elements_per_block = elements_per_block;
-
+  
+  /* Store resolution parameter */
+  map->nside = nside;
 }
 
 

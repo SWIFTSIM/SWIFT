@@ -21,10 +21,8 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "black_holes.h"
 #include "cosmology.h"
 #include "gravity.h"
-#include "hydro.h"
 #include "lightcone.h"
 #include "lightcone_particle_io.h"
 #include "lightcone_replications.h"
@@ -70,17 +68,10 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
 
   /* Unpack some variables we need */
   const struct cosmology *c = e->cosmology;
-  const struct space *s = e->s;
   const double *x = gp->x;
   const float *v_full = gp->v_full;
   const double boxsize = props->boxsize;
   const double *observer_position = props->observer_position;
-
-  /* Handle on the other particle types */
-  const struct part *parts = s->parts;
-  const struct xpart *xparts = s->xparts;
-  const struct spart *sparts = s->sparts;
-  const struct bpart *bparts = s->bparts;
   
   /* Determine expansion factor at start and end of the drift */
   const double a_start = c->a_begin * exp(ti_old     * c->time_base);
@@ -199,74 +190,22 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
       x_start[2] + dt_drift * f * v_full[2],
     };
 
-    /* Check if particle is in our distance limits for particle output at crossing */
+    /* Get distance squared at crossing */
     const double r2_cross = (x_cross[0]*x_cross[0] +
                              x_cross[1]*x_cross[1] + 
                              x_cross[2]*x_cross[2]);
-    if(r2_cross < props->r2_min_for_particles || r2_cross > props->r2_max_for_particles)continue;
 
     /* Compute expansion factor at crossing */
     const double a_cross = cosmology_scale_factor_at_comoving_distance(c, sqrt(r2_cross));
 
-    /* Need to write out this particle */
-    switch (gp->type) {
+    /* Add this particle to the particle output buffer if it's in the redshift range */
+    if(r2_cross >= props->r2_min_for_particles &&
+       r2_cross <= props->r2_max_for_particles)
+      lightcone_buffer_particle(props, e, gp, a_cross, x_cross);
 
-    case swift_type_gas: {
-
-      const struct part *p = &parts[-gp->id_or_neg_offset];
-      const struct xpart *xp = &xparts[-gp->id_or_neg_offset];
-      struct lightcone_gas_data data;
-      lightcone_store_gas(gp, p, xp, a_cross, x_cross, &data);
-      particle_buffer_append(props->buffer+swift_type_gas, &data);
- 
-    } break;
-
-    case swift_type_stars: {
-
-      const struct spart *sp = &sparts[-gp->id_or_neg_offset];
-      struct lightcone_stars_data data;
-      lightcone_store_stars(gp, sp, a_cross, x_cross, &data);
-      particle_buffer_append(props->buffer+swift_type_stars, &data);
-
-    } break;
-
-    case swift_type_black_hole: {
-      
-      const struct bpart *bp = &bparts[-gp->id_or_neg_offset];
-      struct lightcone_black_hole_data data;
-      lightcone_store_black_hole(gp, bp, a_cross, x_cross, &data);
-      particle_buffer_append(props->buffer+swift_type_black_hole, &data);
-
-    } break;
-
-    case swift_type_dark_matter: {
-
-      struct lightcone_dark_matter_data data;
-      lightcone_store_dark_matter(gp, a_cross, x_cross, &data);
-      particle_buffer_append(props->buffer+swift_type_dark_matter, &data);
- 
-    } break;
-
-    case swift_type_dark_matter_background: {
-
-      /* Assumed to have same properties as DM particles */
-      struct lightcone_dark_matter_data data;
-      lightcone_store_dark_matter(gp, a_cross, x_cross, &data);
-      particle_buffer_append(props->buffer+swift_type_dark_matter_background, &data);
-            
-    } break;
-
-    case swift_type_neutrino: {
-
-      struct lightcone_neutrino_data data;
-      lightcone_store_neutrino(gp, a_cross, x_cross, &data);
-      particle_buffer_append(props->buffer+swift_type_neutrino, &data);
-
-    } break;
-
-    default:
-      error("Particle type not supported in lightcones");
-    }
+    /* Buffer this particle's contribution to the healpix maps */
+    if(props->shell_nr_max >= props->shell_nr_min)
+      lightcone_buffer_map_update(props, e, gp, a_cross, x_cross);
 
   } /* Next periodic replication*/
 }
