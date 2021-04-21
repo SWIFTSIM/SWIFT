@@ -59,9 +59,6 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
   if(nreps==0)return;
   const struct replication *rep = replication_list->replication;
 
-  /* Are we using this particle type in the lightcone? */
-  if(!props->use_type[gp->type])return;
-
   /* Consistency check - are our limits on the drift endpoints good? */
   if(ti_old < props->ti_old || ti_current > props->ti_current)
     error("Particle drift is outside the range used to make replication list!");
@@ -200,7 +197,8 @@ __attribute__((always_inline)) INLINE static void lightcone_check_particle_cross
 
     /* Add this particle to the particle output buffer if it's in the redshift range */
     if(r2_cross >= props->r2_min_for_particles &&
-       r2_cross <= props->r2_max_for_particles)
+       r2_cross <= props->r2_max_for_particles &&
+       props->use_type[gp->type])
       lightcone_buffer_particle(props, e, gp, a_cross, x_cross);
 
     /* Buffer this particle's contribution to the healpix maps */

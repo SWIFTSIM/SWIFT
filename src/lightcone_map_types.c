@@ -49,6 +49,7 @@ void lightcone_map_total_mass(struct lightcone_map *map, const struct engine *e,
   size_t pixel = (size_t) ipring;
 #else
   error("Need Healpix C API to make lightcone maps");
+  size_t pixel = 0;
 #endif  
 
   /* Handle on the other particle types */

@@ -624,7 +624,7 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
           lightcone_map_free_pixels(props->map[map_nr][shell_nr]);
 
         /* Update status of this shell */
-        props->shell_state[shell_nr]==shell_complete;
+        props->shell_state[shell_nr]=shell_complete;
       }
     }
   }
