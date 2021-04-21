@@ -347,8 +347,8 @@ void lightcone_init(struct lightcone_props *props,
 
   /* Initialize lightcone healpix maps */
   const int nr_maps = props->nr_maps;
-  for(int map_nr=0; map_nr<LIGHTCONE_MAX_HEALPIX_MAPS; map_nr+=1) {
-    for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1) {
+  for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+    for(int shell_nr=0;shell_nr<nr_shells; shell_nr+=1) {
       if(map_nr < nr_maps && shell_nr < nr_shells) {
         props->map[map_nr][shell_nr] = malloc(sizeof(struct lightcone_map));
         lightcone_map_init(props->map[map_nr][shell_nr], props->nside,
@@ -366,7 +366,7 @@ void lightcone_init(struct lightcone_props *props,
   double a_min = 1.0/(1.0+props->z_max_for_particles);
   double a_max = 1.0/(1.0+props->z_min_for_particles);
   /* Then extend the range to include all healpix map shells */
-  for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1) {
+  for(int shell_nr=0;shell_nr<nr_shells; shell_nr+=1) {
     const double shell_a_min = props->shell_amin[shell_nr];
     const double shell_a_max = props->shell_amax[shell_nr];
     if(shell_a_min < a_min)a_min = shell_a_min;
