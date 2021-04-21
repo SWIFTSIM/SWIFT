@@ -1800,7 +1800,7 @@ int main(int argc, char *argv[]) {
       lightcone_flush_particle_buffers(e.lightcone_properties,
                                        /*flush_all=*/1,
                                        /*end_file=*/1);
-      lightcone_dump_completed_shells(e.lightcone_properties, e.cosmology->a,
+      lightcone_dump_completed_shells(e.lightcone_properties, e.cosmology,
                                       /*dump_all=*/1, /*need_flush=*/1);
     }
 #endif

@@ -178,8 +178,9 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
 void lightcone_flush_map_updates(struct lightcone_props *props);
 
 void lightcone_dump_completed_shells(struct lightcone_props *props,
-                                     double a_current, int dump_all,
-                                     int need_flush);
+                                     const struct cosmology *c, 
+                                     const int dump_all,
+                                     const int need_flush);
 
 int lightcone_trigger_map_update(struct lightcone_props *props);
 

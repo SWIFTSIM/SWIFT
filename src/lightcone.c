@@ -531,12 +531,22 @@ void lightcone_flush_map_updates(struct lightcone_props *props) {
  * @brief Write and deallocate any completed lightcone shells
  */
 void lightcone_dump_completed_shells(struct lightcone_props *props,
-                                     double a_current, int dump_all,
-                                     int need_flush) {
+                                     const struct cosmology *c,
+                                     const int dump_all,
+                                     const int need_flush) {
 #ifdef HAVE_HDF5
 
+  /* Get number of shells and maps per shell */
   const int nr_shells = props->nr_shells;
   const int nr_maps = props->nr_maps;
+
+  /* Compute expansion factor corresponding to time props->ti_old,
+     which is the earliest time any particle might have been drifted
+     from on this step. Here we assume that no particle remains to
+     be drifted from any time earlier than this so that any shell
+     whose redshift range is entirely before ti_old can be now be
+     written out and deallocated. */
+  const double a_complete = c->a_begin * exp(props->ti_old * c->time_base);
 
   for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
 
@@ -544,7 +554,7 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
        out yet and either we advanced past its redshift range or we're
        dumping all remaining shells at the end of the simulation */
     if(props->shell_state[shell_nr]==shell_current) {
-      if(props->shell_amax[shell_nr] <= a_current || dump_all) {
+      if(props->shell_amax[shell_nr] < a_complete || dump_all) {
 
         /* Apply any buffered updates for this shell, if we didn't already */
         if(need_flush)lightcone_flush_map_updates_for_shell(props, shell_nr);
