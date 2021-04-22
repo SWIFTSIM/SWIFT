@@ -405,11 +405,12 @@ void engine_split_gas_particles(struct engine *e) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const int with_sidm = e->policy & engine_policy_sidm;
   /* Verify that whatever reallocation happened we are still having correct
    * links */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
-                    s->nr_bparts, e->verbose);
+                    s->nr_bparts, with_sidm, e->verbose);
 #endif
 
   /* We now have enough memory in the part array to accomodate the new

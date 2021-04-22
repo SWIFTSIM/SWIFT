@@ -1922,10 +1922,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     engine_recompute_displacement_constraint(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const int with_sidm = e->policy & engine_policy_sidm;
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts, e->s->dmparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
                     e->s->nr_sinks, e->s->nr_sparts, e->s->nr_dmparts, e->s->nr_bparts,
-                    e->verbose);
+                    with_sidm, e->verbose);
 #endif
 
   /* Initial cleaning up session ? */
@@ -2617,11 +2618,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   clocks_gettime(&time2);
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const int with_sidm = e->policy & engine_policy_sidm;
   space_check_timesteps(e->s);
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts, e->s->dmparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
                     e->s->nr_sinks, e->s->nr_sparts, e->s->nr_dmparts, e->s->nr_bparts,
-                    e->verbose);
+                    with_sidm, e->verbose);
 #endif
 
   /* Gather the max IDs at this stage */
@@ -3736,11 +3738,11 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
                                     s->sparts, s->bparts, s->dmparts, s->nr_dmparts, &e->threadpool);
 
 #ifdef SWIFT_DEBUG_CHECKS
-
+  const int with_sidm = s->e->policy & engine_policy_sidm;
   /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
                     s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
-                    s->nr_bparts, e->verbose);
+                    s->nr_bparts, with_sidm, e->verbose);
 #endif
 
   if (e->verbose)

@@ -293,7 +293,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct dmpart *dmparts,
                        struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sinks, size_t nr_sparts, size_t nr_dmparts, size_t nr_bparts,
-                       int verbose) {
+                       const int with_sidm, int verbose) {
 
   ticks tic = getticks();
 
@@ -301,7 +301,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
     /* We have a real DM particle */
     /* CC. Now I want a DM particle linked! */
-    if (gparts[k].type == swift_type_dark_matter && nr_dmparts > 0){
+    if (gparts[k].type == swift_type_dark_matter && with_sidm){
         
         /* Check that it is linked */
         if (gparts[k].id_or_neg_offset > 0)

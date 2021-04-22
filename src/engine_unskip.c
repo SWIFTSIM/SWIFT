@@ -463,7 +463,8 @@ void engine_unskip_timestep_communications_mapper(void *map_data,
     if (t->type == task_type_send || t->type == task_type_recv) {
 
       if (t->subtype == task_subtype_tend_part ||
-          t->subtype == task_subtype_tend_gpart) {
+          t->subtype == task_subtype_tend_gpart ||
+          t->subtype == task_subtype_tend_dmpart) {
 
         scheduler_activate(s, t);
       }

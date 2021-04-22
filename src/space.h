@@ -451,7 +451,7 @@ void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         const struct hydro_props *hydro_properties,
                         const int periodic, const int with_DM_background,
-                        const double dim[3], const int verbose);
+                        const int with_sidm, const double dim[3], const int verbose);
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
                            int rank);
 void space_reset_task_counters(struct space *s);

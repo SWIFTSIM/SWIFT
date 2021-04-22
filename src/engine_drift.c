@@ -411,6 +411,7 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
   space_synchronize_particle_positions(e->s);
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const int with_sidm = e->policy & engine_policy_sidm;
   /* Check that all cells have been drifted to the current time. */
   space_check_drift_point(
       e->s, e->ti_current,
@@ -418,7 +419,7 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
   part_verify_links(e->s->parts, e->s->gparts, e->s->sinks, e->s->sparts, e->s->dmparts,
                     e->s->bparts, e->s->nr_parts, e->s->nr_gparts,
                     e->s->nr_sinks, e->s->nr_sparts, e->s->nr_dmparts, e->s->nr_bparts,
-                    e->verbose);
+                    with_sidm, e->verbose);
 #endif
 
   if (e->verbose)

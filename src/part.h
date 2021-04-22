@@ -162,7 +162,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct dmpart *dmparts,
                        struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sinks, size_t nr_sparts, size_t nr_dmparts, size_t nr_bparts,
-                       int verbose);
+                       const int with_sidm, int verbose);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
