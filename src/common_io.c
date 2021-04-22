@@ -478,6 +478,16 @@ void io_write_attribute_l(hid_t grp, const char* name, long data) {
 }
 
 /**
+ * @brief Writes a long long value as an attribute
+ * @param grp The group in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void io_write_attribute_ll(hid_t grp, const char* name, long long data) {
+  io_write_attribute(grp, name, LONGLONG, &data, 1);
+}
+
+/**
  * @brief Writes a string value as an attribute
  * @param grp The group in which to write
  * @param name The name of the attribute
