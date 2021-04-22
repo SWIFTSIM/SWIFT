@@ -108,6 +108,7 @@ FOF:
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
   seed_black_holes_enabled:        1           # Enable (1) or disable (0) seeding of black holes in FoF groups
+  dump_catalogue_when_seeding:     1           # Enable (1) or disable (0) dumping a group catalogue when runnning FOF for seeding purposes.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units). When not set to -1, this will overwrite the linking length computed from 'linking_length_ratio'.
   group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Has to be positive.
