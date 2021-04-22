@@ -30,6 +30,7 @@
 
 /* Local headers */
 #include "align.h"
+#include "common_io.h"
 #include "error.h"
 #include "exchange_structs.h"
 #include "memuse.h"
@@ -46,8 +47,9 @@
 #include <hdf5.h>
 #endif
 
-void lightcone_map_init(struct lightcone_map *map, int nside,
-                        size_t elements_per_block) {
+void lightcone_map_init(struct lightcone_map *map, const int nside,
+                        const double r_min, const double r_max,
+                        const size_t elements_per_block) {
   
   int comm_rank, comm_size;
 #ifdef WITH_MPI
@@ -86,8 +88,10 @@ void lightcone_map_init(struct lightcone_map *map, int nside,
   /* Record block size so we can re-initialise particle_buffer on restarting */
   map->elements_per_block = elements_per_block;
   
-  /* Store resolution parameter */
+  /* Store resolution parameter and shell size */
   map->nside = nside;
+  map->r_min = r_min;
+  map->r_max = r_max;
 }
 
 
@@ -339,6 +343,13 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const ch
                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if(dset_id < 0)error("Unable to create dataset %s", name);
     
+  /* Write attributes */
+  io_write_attribute_i(dset_id, "nside", map->nside);
+  io_write_attribute_l(dset_id, "number_of_pixels", map->total_nr_pix);
+  io_write_attribute_s(dset_id, "pixel_ordering_scheme", "ring");
+  io_write_attribute_d(dset_id, "comoving_inner_radius", map->r_min);
+  io_write_attribute_d(dset_id, "comoving_outer_radius", map->r_min);
+
   /* Set up property list for the write */
   hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
 #if defined(WITH_MPI)

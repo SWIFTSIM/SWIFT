@@ -43,6 +43,7 @@ struct lightcone_map_contribution {
   
   /*! Amount to contribute to the pixel */
   double value;
+
 };
 
 
@@ -72,12 +73,12 @@ struct lightcone_map {
   /*! Local healpix map data */
   double *data;
 
-  /*! Minimum expansion factor (i.e. at outer edge of the shell )*/
-  double a_min;
+  /*! Inner radius */
+  double r_min;
 
-  /*! Maximum expansion factor (i.e. at inner edge of the shell )*/
-  double a_max;
-  
+  /*! Outer radius */
+  double r_max;
+
 };
 
 
@@ -100,6 +101,7 @@ __attribute__((always_inline)) INLINE static void lightcone_map_buffer_update(st
 
 
 void lightcone_map_init(struct lightcone_map *map, const int nside,
+                        const double r_min, const double r_max,
                         const size_t elements_per_block);
 
 void lightcone_map_clean(struct lightcone_map *map);

@@ -352,6 +352,7 @@ void lightcone_init(struct lightcone_props *props,
       if(map_nr < nr_maps && shell_nr < nr_shells) {
         props->map[map_nr][shell_nr] = malloc(sizeof(struct lightcone_map));
         lightcone_map_init(props->map[map_nr][shell_nr], props->nside,
+                           props->shell_rmin[shell_nr], props->shell_rmax[shell_nr],
                            props->buffer_chunk_size);
       } else {
         props->map[map_nr][shell_nr] = NULL;
