@@ -2423,6 +2423,8 @@ void engine_step(struct engine *e) {
   if(e->lightcone_properties->enabled) {
     /* Apply lightcone map updates if buffers are getting large */
     const int flush = e->flush_lightcone_maps;
+    if(engine_rank==0 && e->verbose)
+      message("flush lightcone map updates flag: %d", flush);
     if(flush)lightcone_flush_map_updates(e->lightcone_properties);  
     /* Write out any completed lightcone shells */
     lightcone_dump_completed_shells(e->lightcone_properties,

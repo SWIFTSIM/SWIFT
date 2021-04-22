@@ -395,7 +395,8 @@ void lightcone_init(struct lightcone_props *props,
     while(lightcone_map_types[type_nr].update_map) {
       if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
         props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
-        if(engine_rank==0)message("using map type: %s", lightcone_map_types[type_nr].name);
+        if(engine_rank==0)message("lightcone map %d is of type %s", map_nr,
+                                  lightcone_map_types[type_nr].name);
       }
       type_nr += 1;
     }
@@ -534,11 +535,10 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
  */
 void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int shell_nr) {
 
-  if(props->verbose && engine_rank==0)
-    message("applying lightcone map updates for shell %d", shell_nr);
-
   const int nr_maps   = props->nr_maps;
   if(props->shell_state[shell_nr] == shell_current) {
+    if(props->verbose && engine_rank==0)
+      message("applying lightcone map updates for shell %d", shell_nr);
     for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
       lightcone_map_update_from_buffer(props->map[map_nr][shell_nr]);
   }
@@ -587,7 +587,7 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
       if(props->shell_amax[shell_nr] < a_complete || dump_all) {
 
         if(props->verbose && engine_rank==0)
-          message("writing out completed shell %d", shell_nr);
+          message("writing out completed shell %d at a=%f", shell_nr, c->a);
 
         /* Apply any buffered updates for this shell, if we didn't already */
         if(need_flush)lightcone_flush_map_updates_for_shell(props, shell_nr);
@@ -806,7 +806,7 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
       case shell_uninitialized:
         /* This shell has not been allocated yet, so allocate it */
         if(props->verbose && engine_rank==0)
-          message("allocating pixels for shell %d", shell_nr);
+          message("allocating pixels for shell %d at a=%f", shell_nr, cosmo->a);
         for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
           lightcone_map_allocate_pixels(props->map[map_nr][shell_nr], /* zero_pixels = */ 1);   
         props->shell_state[shell_nr] = shell_current;
@@ -942,6 +942,11 @@ void lightcone_buffer_map_update(struct lightcone_props *props,
   for(int shell_nr=props->shell_nr_min; shell_nr<=props->shell_nr_max; shell_nr+=1) {
     if(a_cross > props->shell_amin[shell_nr] && a_cross <= props->shell_amax[shell_nr]) {
   
+      if(props->shell_state[shell_nr] == shell_uninitialized)
+        error("Attempt to update shell which has not been allocated");
+      if(props->shell_state[shell_nr] == shell_complete)
+        error("Attempt to update shell which has been written out");
+
       /* Loop over healpix maps to update within this shell */
       for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
         
