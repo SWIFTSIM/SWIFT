@@ -125,7 +125,7 @@ void lightcone_map_allocate_pixels(struct lightcone_map *map, const int zero_pix
 
 void lightcone_map_free_pixels(struct lightcone_map *map) {
   
-  swift_free("lightcone_map_pixels", (void **) &map->data);
+  swift_free("lightcone_map_pixels", (void *) map->data);
   map->data = NULL;
 
 }
