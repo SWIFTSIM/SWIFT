@@ -95,6 +95,7 @@ void io_write_attribute_d(hid_t grp, const char* name, double data);
 void io_write_attribute_f(hid_t grp, const char* name, float data);
 void io_write_attribute_i(hid_t grp, const char* name, int data);
 void io_write_attribute_l(hid_t grp, const char* name, long data);
+void io_write_attribute_ll(hid_t grp, const char* name, long long data);
 void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
 void io_write_meta_data(hid_t h_file, const struct engine* e,
