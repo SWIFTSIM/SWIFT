@@ -264,6 +264,11 @@ struct task *queue_gettask(struct scheduler *s, struct queue *q,
     /* Try to lock the next task. */
     if (task_lock(s, &qtasks[entries[ind].tid], rid)) break;
 
+#ifdef SWIFT_DEBUG_TASKS
+    /* One more miss. */
+    qtasks[entries[ind].tid].nr_task_locks++;
+#endif
+
     /* Should we de-prioritize this task? */
     if ((1ULL << qtasks[entries[ind].tid].type) &
         queue_lock_fail_reweight_mask) {
@@ -273,11 +278,6 @@ struct task *queue_gettask(struct scheduler *s, struct queue *q,
       /* Send it down the binary heap. */
       if (queue_sift_down(q, ind) != ind) ind -= 1;
     }
-
-#ifdef SWIFT_DEBUG_TASKS
-    /* One more miss. */
-    qtasks[entries[ind].tid].nr_task_locks++;
-#endif
   }
 
   /* Did we get a task? */

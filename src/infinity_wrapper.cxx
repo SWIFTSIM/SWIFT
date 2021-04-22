@@ -412,8 +412,9 @@ void infinity_free_handle(void *qphandle) {
     free(cqps->token_buffers);
   }
   if (cqps->send_buffers != NULL) {
-    // XXX See 0 sized...
-    //for (int k = 0; k < cqps->nr_qps; k++) delete cqps->send_buffers[k];
+    for (int k = 0; k < cqps->nr_qps; k++) {
+      if (cqps->send_buffers_size[k] > 0) delete cqps->send_buffers[k];
+    }
     free(cqps->send_buffers);
     free(cqps->send_buffers_size);
   }
