@@ -348,7 +348,7 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const ch
   io_write_attribute_l(dset_id, "number_of_pixels", map->total_nr_pix);
   io_write_attribute_s(dset_id, "pixel_ordering_scheme", "ring");
   io_write_attribute_d(dset_id, "comoving_inner_radius", map->r_min);
-  io_write_attribute_d(dset_id, "comoving_outer_radius", map->r_min);
+  io_write_attribute_d(dset_id, "comoving_outer_radius", map->r_max);
 
   /* Set up property list for the write */
   hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
