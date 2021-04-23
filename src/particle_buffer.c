@@ -30,15 +30,8 @@ void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
   
   buffer->element_size = element_size;
   buffer->elements_per_block = elements_per_block;
-  buffer->first_block = malloc(sizeof(struct particle_buffer_block));
-  if(!buffer->first_block)error("Failed to allocate particle buffer first block: %s", buffer->name);
-  buffer->first_block->num_elements = 0;  
-  if(swift_memalign(buffer->name, (void **) &buffer->first_block->data,
-                    SWIFT_STRUCT_ALIGNMENT, element_size*elements_per_block) != 0) {
-    error("Failed to allocate particle buffer first block data : %s", buffer->name);
-  }
-  buffer->first_block->next = NULL;
-  buffer->last_block = buffer->first_block;
+  buffer->first_block = NULL;
+  buffer->last_block = NULL;
   lock_init(&buffer->lock);
   strncpy(buffer->name, name, PARTICLE_BUFFER_NAME_LENGTH);
 }
@@ -85,6 +78,39 @@ void particle_buffer_empty(struct particle_buffer *buffer) {
   particle_buffer_init(buffer, element_size, elements_per_block, name);
 }
 
+/**
+ * @brief Allocate a new particle buffer block
+ *
+ * @param buffer The #particle_buffer
+ * @param previous_block The previous final block in the linked list 
+ */
+static struct particle_buffer_block *allocate_block(struct particle_buffer *buffer,
+                                                    struct particle_buffer_block *previous_block) {
+
+  const size_t element_size = buffer->element_size;
+  const size_t elements_per_block = buffer->elements_per_block;
+
+  /* Allocate the struct */
+  struct particle_buffer_block *block = malloc(sizeof(struct particle_buffer_block));
+  if(!block)error("Failed to allocate new particle buffer block: %s", buffer->name);
+
+  /* Allocate data buffer */
+  char *data;
+  if(swift_memalign(buffer->name, (void **) &data, SWIFT_STRUCT_ALIGNMENT,
+                    element_size*elements_per_block) != 0) {
+    error("Failed to allocate particle buffer data block: %s", buffer->name);
+  }
+
+  /* Initalise the struct */
+  block->data = data;
+  block->num_elements = 0;
+  block->next = NULL;
+
+  if(previous_block)previous_block->next = block;
+
+  return block;
+}
+
 
 /**
  * @brief Append an element to a particle buffer.
@@ -105,6 +131,23 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
     /* Find the current block (atomic because last_block may be modified by other threads) */
     struct particle_buffer_block *block = __atomic_load_n(&buffer->last_block, __ATOMIC_SEQ_CST);
 
+    /* It may be that no blocks exist yet */
+    if(!block) {
+      lock_lock(&buffer->lock);
+      /* Check no-one else allocated the first block before we got the lock */
+      if(!buffer->last_block) {
+        block = allocate_block(buffer, NULL);
+        buffer->first_block = block;
+        __atomic_thread_fence(__ATOMIC_SEQ_CST);
+        /* After this store other threads will write to the new block,
+           so all initialization must complete before this. */
+        __atomic_store_n(&buffer->last_block, block, __ATOMIC_SEQ_CST);
+      }
+      if(lock_unlock(&buffer->lock) != 0)error("Failed to unlock particle buffer");
+      /* Now try again */
+      continue;
+    }
+
     /* Find next available index in current block */
     size_t index = __atomic_fetch_add(&block->num_elements, 1, __ATOMIC_SEQ_CST);
 
@@ -118,17 +161,7 @@ void particle_buffer_append(struct particle_buffer *buffer, void *data) {
       /* Check no-one else already did it before we got the lock */
       if(!block->next) {
         /* Allocate and initialize the new block */
-        struct particle_buffer_block *new_block = malloc(sizeof(struct particle_buffer_block));
-        if(!new_block)error("Failed to allocate new particle buffer block: %s", buffer->name);
-        char *new_block_data;
-        if(swift_memalign(buffer->name, (void **) &new_block_data, SWIFT_STRUCT_ALIGNMENT,
-                          element_size*elements_per_block) != 0) {
-          error("Failed to allocate particle buffer data block: %s", buffer->name);
-        }
-        new_block->data = new_block_data;
-        new_block->num_elements = 0;
-        new_block->next = NULL;
-        block->next = new_block;
+        struct particle_buffer_block *new_block = allocate_block(buffer, block);
         __atomic_thread_fence(__ATOMIC_SEQ_CST);
         /* After this store other threads will write to the new block,
            so all initialization must complete before this. */
