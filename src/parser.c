@@ -46,6 +46,9 @@
 
 #define CHUNK 10
 
+/* Alias of long long needed and used only for the preprocessor definitions */
+typedef long long longlong;
+
 /* Private functions. */
 static int is_empty(const char *str);
 static int count_indentation(const char *str);
@@ -601,10 +604,12 @@ PARSER_GET_VALUE(char, "%c", "char");
 PARSER_GET_VALUE(int, "%d", "int");
 PARSER_GET_VALUE(float, "%f", "float");
 PARSER_GET_VALUE(double, "%lf", "double");
+PARSER_GET_VALUE(longlong, "%lld", "long long");
 PARSER_SAVE_VALUE(char, char, "%c");
 PARSER_SAVE_VALUE(int, int, "%d");
 PARSER_SAVE_VALUE(float, float, "%g");
 PARSER_SAVE_VALUE(double, double, "%g");
+PARSER_SAVE_VALUE(longlong, longlong, "%lld");
 PARSER_SAVE_VALUE(string, const char *, "%s");
 
 /**
@@ -656,6 +661,20 @@ float parser_get_param_float(struct swift_params *params, const char *name) {
 double parser_get_param_double(struct swift_params *params, const char *name) {
   double result = 0;
   get_param_double(params, name, NULL, &result);
+  return result;
+}
+
+/**
+ * @brief Retrieve long long parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @return Value of the parameter found
+ */
+long long parser_get_param_longlong(struct swift_params *params,
+                                    const char *name) {
+  long long result = 0;
+  get_param_longlong(params, name, NULL, &result);
   return result;
 }
 
@@ -750,6 +769,23 @@ double parser_get_opt_param_double(struct swift_params *params,
   double result = 0;
   if (get_param_double(params, name, &def, &result)) return result;
   save_param_double(params, name, def);
+  params->data[params->paramCount - 1].is_default = 1;
+  return def;
+}
+
+/**
+ * @brief Retrieve optional long long parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param def Default value of the parameter of not found.
+ * @return Value of the parameter found
+ */
+long long parser_get_opt_param_longlong(struct swift_params *params,
+                                        const char *name, long long def) {
+  long long result = 0;
+  if (get_param_longlong(params, name, &def, &result)) return result;
+  save_param_longlong(params, name, def);
   params->data[params->paramCount - 1].is_default = 1;
   return def;
 }
@@ -877,10 +913,12 @@ PARSER_GET_ARRAY(char, "%c", "char");
 PARSER_GET_ARRAY(int, "%d", "int");
 PARSER_GET_ARRAY(float, "%f", "float");
 PARSER_GET_ARRAY(double, "%lf", "double");
+PARSER_GET_ARRAY(longlong, "%lld", "long long");
 PARSER_SAVE_ARRAY(char, "%c");
 PARSER_SAVE_ARRAY(int, "%d");
 PARSER_SAVE_ARRAY(float, "%g");
 PARSER_SAVE_ARRAY(double, "%g");
+PARSER_SAVE_ARRAY(longlong, "%lld");
 
 /**
  * @brief Retrieve char array parameter from structure.
@@ -1014,6 +1052,42 @@ int parser_get_opt_param_double_array(struct swift_params *params,
                                       double *values) {
   if (get_param_double_array(params, name, 0, nval, values) != 1) {
     save_param_double_array(params, name, nval, values);
+    params->data[params->paramCount - 1].is_default = 1;
+    return 0;
+  }
+  return 1;
+}
+
+/**
+ * @brief Retrieve long long array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals.
+ */
+void parser_get_param_longlong_array(struct swift_params *params,
+                                     const char *name, int nval,
+                                     long long *values) {
+  get_param_longlong_array(params, name, 1, nval, values);
+}
+
+/**
+ * @brief Retrieve optional long long array parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param nval number of values expected.
+ * @param values Values of the parameter found, of size at least nvals. If the
+ *               parameter is not found these values will be returned
+ *               unmodified, so should be set to the default values.
+ * @return whether the parameter has been found.
+ */
+int parser_get_opt_param_longlong_array(struct swift_params *params,
+                                        const char *name, int nval,
+                                        long long *values) {
+  if (get_param_longlong_array(params, name, 0, nval, values) != 1) {
+    save_param_longlong_array(params, name, nval, values);
     params->data[params->paramCount - 1].is_default = 1;
     return 0;
   }

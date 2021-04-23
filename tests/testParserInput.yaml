@@ -17,6 +17,9 @@ IO:
   #Input file
   ic_file:            ic_file.ini
 
+LongLong:
+  bignum: 1152921504606846975  # 2^60-1
+
 Words:
   list: ['xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, once-again]
   nonstdlist: 'xyz', 'ABC', "ab'c", "de:f", "g,hi", "zzz", Hello World, once-again
