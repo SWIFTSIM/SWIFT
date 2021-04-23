@@ -226,7 +226,10 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
  * @brief Initialise the properties of the lightcone code.
  *
  * @param props the #lightcone_props structure to fill.
+ * @param s the #space structure.
+ * @param cosmo the #cosmology structure.
  * @param params the parameter file parser.
+ * @param verbose the verbosity flag
  */
 void lightcone_init(struct lightcone_props *props,
                     const struct space *s,
@@ -434,6 +437,11 @@ void lightcone_init(struct lightcone_props *props,
 
 /**
  * @brief Flush any buffers which exceed the specified size.
+ *
+ * @param props the #lightcone_props structure.
+ * @param flush_all flag to force flush of all buffers
+ * @param end_file if true, subsequent calls write to a new file
+ *
  */
 void lightcone_flush_particle_buffers(struct lightcone_props *props,
                                       int flush_all, int end_file) {
@@ -538,6 +546,10 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
 
 /**
  * @brief Flush lightcone map update buffers for one shell
+ *
+ * @param props the #lightcone_props structure.
+ * @param shell_nr index of the shell to update
+ *
  */
 void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int shell_nr) {
 
@@ -554,10 +566,16 @@ void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int sh
 
 /**
  * @brief Flush lightcone map update buffers for all shells
+ *
+ * @param props the #lightcone_props structure.
+ *
  */
 void lightcone_flush_map_updates(struct lightcone_props *props) {    
 
   ticks tic = getticks();
+
+  /* Report how much memory we're using before flushing buffers */
+  lightcone_report_memory_use(props);
 
   const int nr_shells = props->nr_shells;
   for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
@@ -573,6 +591,12 @@ void lightcone_flush_map_updates(struct lightcone_props *props) {
 
 /**
  * @brief Write and deallocate any completed lightcone shells
+ *
+ * @param props the #lightcone_props structure.
+ * @param c the #cosmology structure
+ * @param dump_all flag to indicate that all shells should be dumped
+ * @param need_flush whether there might be buffered updates to apply
+ *
  */
 void lightcone_dump_completed_shells(struct lightcone_props *props,
                                      const struct cosmology *c,
@@ -605,6 +629,11 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
         if(props->verbose && engine_rank==0)
           message("writing out completed shell %d at a=%f", shell_nr, c->a);
+
+        if(num_shells_written==0) {
+          /* Report how much memory we're using before flushing buffers */
+          lightcone_report_memory_use(props);
+        }
 
         num_shells_written += 1;
 
@@ -660,6 +689,9 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
 /**
  * @brief Deallocate lightcone data.
+ *
+ * @param props the #lightcone_props structure.
+ *
  */
 void lightcone_clean(struct lightcone_props *props) {
 
@@ -721,11 +753,14 @@ void lightcone_clean(struct lightcone_props *props) {
  * Later we use this list to know which periodic copies to check when
  * particles are drifted.
  *
+ * This routine also determines which lightcone healpix maps might be
+ * updated on this time step and allocates the pixel data if necessary.
+ *
  * @param props The #lightcone_props structure
  * @param cosmo The #cosmology structure
- * @param s The #space structure
- * @param time_min Start of the time step
- * @param time_max End of the time step
+ * @param ti_old Beginning of the timestep
+ * @param ti_current End of the timestep
+ * @param dt_max Maximum time step length
  */
 void lightcone_prepare_for_step(struct lightcone_props *props,
                                 const struct cosmology *cosmo,
@@ -862,6 +897,9 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
 
 /**
  * @brief Determine whether lightcone map buffers should be flushed this step.
+ *
+ * @param props The #lightcone_props structure
+ *
  */
 int lightcone_trigger_map_update(struct lightcone_props *props) {
   
@@ -885,6 +923,12 @@ int lightcone_trigger_map_update(struct lightcone_props *props) {
 
 /**
  * @brief Add a particle to the output buffer
+ *
+ * @param props The #lightcone_props structure
+ * @param e The #engine structure
+ * @param gp The #gpart to buffer
+ * @param a_cross Expansion factor of lightcone crossing
+ * @param x_cross Position of the gpart at lightcone crossing
  */
 void lightcone_buffer_particle(struct lightcone_props *props,
                                const struct engine *e, const struct gpart *gp,
@@ -957,8 +1001,16 @@ void lightcone_buffer_particle(struct lightcone_props *props,
   
 }
 
+
 /**
  * @brief Buffer a particle's contribution to the healpix map(s)
+ *
+ * @param props The #lightcone_props structure
+ * @param e The #engine structure
+ * @param gp The #gpart to buffer
+ * @param a_cross Expansion factor of lightcone crossing
+ * @param x_cross Position of the gpart at lightcone crossing
+ *
  */
 void lightcone_buffer_map_update(struct lightcone_props *props,
                                  const struct engine *e, const struct gpart *gp,
@@ -986,4 +1038,51 @@ void lightcone_buffer_map_update(struct lightcone_props *props,
       } /* Next map type */
     }
   } /* Next shell */
+}
+
+
+/**
+ * @brief Compute memory used by lightcones on this rank
+ *
+ * @param props The #lightcone_props structure
+ *
+ */
+void lightcone_report_memory_use(struct lightcone_props *props) {
+  
+  long long memuse_local[3];
+  for(int i=0; i<3; i+=1)
+    memuse_local[i] = 0;
+
+  /* Accumulate memory used by particle buffers */
+  for(int i=0; i<swift_type_count; i+=1)
+    memuse_local[0] += particle_buffer_memory_use(props->buffer+i);
+
+  /* Accumulate memory used by map update buffers and pixel data */
+  const int nr_maps = props->nr_maps;
+  const int nr_shells = props->nr_shells;
+  for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+    for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+      struct lightcone_map *map = props->map[map_nr][shell_nr];
+      memuse_local[1] += particle_buffer_memory_use(&map->buffer);
+      if(map->data)memuse_local[2] += map->local_nr_pix*sizeof(double);
+    }
+  }
+
+  /* Find min and max memory use over all nodes */
+#ifdef WITH_MPI
+  long long memuse_min[3];
+  MPI_Reduce(memuse_local, memuse_min, 3, MPI_LONG_LONG, MPI_MIN, 0, MPI_COMM_WORLD);
+  long long memuse_max[3];
+  MPI_Reduce(memuse_local, memuse_max, 3, MPI_LONG_LONG, MPI_MAX, 0, MPI_COMM_WORLD);
+  if(engine_rank==0) {
+    message("particle buffer bytes:   min=%lld, max=%lld", memuse_min[0], memuse_max[0]);
+    message("map update buffer bytes: min=%lld, max=%lld", memuse_min[1], memuse_max[1]);
+    message("map pixel data bytes:    min=%lld, max=%lld", memuse_min[2], memuse_max[2]);
+  }
+#else
+    message("particle buffer bytes:   %lld", memuse_local[0]);
+    message("map update buffer bytes: %lld", memuse_local[1]);
+    message("map pixel data bytes:    %lld", memuse_local[2]);
+#endif    
+
 }

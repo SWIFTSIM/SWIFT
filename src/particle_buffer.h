@@ -36,4 +36,6 @@ void particle_buffer_iterate(struct particle_buffer *buffer,
 
 size_t particle_buffer_num_elements(struct particle_buffer *buffer);
 
+size_t particle_buffer_memory_use(struct particle_buffer *buffer);
+
 #endif /* SWIFT_PARTICLE_BUFFER_H */

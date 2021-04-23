@@ -205,4 +205,6 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
 int lightcone_trigger_map_update(struct lightcone_props *props);
 
+void lightcone_report_memory_use(struct lightcone_props *props);
+
 #endif /* SWIFT_LIGHTCONE_H */

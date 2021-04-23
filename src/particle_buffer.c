@@ -228,3 +228,23 @@ size_t particle_buffer_num_elements(struct particle_buffer *buffer) {
   }
   return num_elements;
 }
+
+
+/**
+ * @brief Return memory used by a particle buffer.
+ *
+ * @param buffer The #particle_buffer
+ *
+ */
+size_t particle_buffer_memory_use(struct particle_buffer *buffer) {
+
+  size_t num_bytes = 0;
+  struct particle_buffer_block *block = buffer->first_block;
+  while(block) {
+    num_bytes += (buffer->elements_per_block*buffer->element_size);
+    block = block->next;
+  }
+  return num_bytes;
+}
+
+
