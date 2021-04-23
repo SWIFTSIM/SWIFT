@@ -790,7 +790,6 @@ void space_regrid(struct space *s, int verbose) {
 void space_allocate_extras(struct space *s, int verbose) {
 
   const int local_nodeID = s->e->nodeID;
-  const int with_sidm = s->e->policy & engine_policy_sidm;
 
   /* Anything to do here? (Abort if we don't want extras)*/
   if (space_extra_parts == 0 && space_extra_gparts == 0 &&
@@ -1323,7 +1322,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Verify that the links are correct */
+  const int with_sidm = s->e->policy & engine_policy_sidm;
+    /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
       (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0) ||
       (nr_gparts > 0 && nr_dmparts > 0))
