@@ -6872,16 +6872,23 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
   if (verbose) message("Remapping all the IDs");
 
+  const int with_sidm = s->e->policy & engine_policy_sidm;
+
   /* Get the current local number of particles */
   const size_t local_nr_parts = s->nr_parts;
   const size_t local_nr_sinks = s->nr_sinks;
   const size_t local_nr_gparts = s->nr_gparts;
   const size_t local_nr_sparts = s->nr_sparts;
   const size_t local_nr_bparts = s->nr_bparts;
-  const size_t local_nr_dmparts = s->nr_dmparts;
   const size_t local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
-  const size_t local_nr_gparts_dm = local_nr_gparts - local_nr_baryons;
+
+  size_t local_nr_dmparts = 0;
+  if (with_sidm) {
+      local_nr_dmparts = s->nr_dmparts;
+  } else {
+      local_nr_dmparts = local_nr_gparts - local_nr_baryons;
+  }
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -6889,6 +6896,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long offset_sparts = 0;
   long long offset_bparts = 0;
   long long offset_dmparts = 0;
+
 #ifdef WITH_MPI
   MPI_Exscan(&local_nr_parts, &offset_parts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
@@ -6903,7 +6911,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 #endif
 
   /* Total number of particles of each kind */
-  long long total_dmparts = offset_dmparts + local_nr_gparts_dm;
+  long long total_dmparts = offset_dmparts + local_nr_dmparts;
   long long total_parts = offset_parts + local_nr_parts;
   long long total_sinks = offset_sinks + local_nr_sinks;
   long long total_sparts = offset_sparts + local_nr_sparts;
@@ -6940,10 +6948,12 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   for (size_t i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-  for (size_t i = 0; i < local_nr_dmparts; ++i) {
-    s->dmparts[i].id_or_neg_offset = offset_dmparts + i;
+  if (with_sidm) {
+      for (size_t i = 0; i < local_nr_dmparts; ++i) {
+          s->dmparts[i].id_or_neg_offset = offset_dmparts + i;
+      }
   }
-  for (size_t i = 0; i < local_nr_gparts_dm; ++i) {
+  for (size_t i = 0; i < local_nr_dmparts; ++i) {
     if (s->gparts[i].type == swift_type_dark_matter_background ||
         s->gparts[i].type == swift_type_dark_matter)
       s->gparts[i].id_or_neg_offset = offset_dmparts + i;
@@ -7080,10 +7090,6 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
           gp_gas->id_or_neg_offset = -j;
           gp_gas->type = swift_type_gas;
 
-          gp_dm->id_or_neg_offset = -j;
-          gp_dm->type = swift_type_dark_matter;
-
-
           /* Compute positions shift */
           const double d = cbrt(gp_dm->mass * bg_density_inv);
           const double shift_dm = 0.5 * d * mass_ratio;
@@ -7172,11 +7178,14 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
             struct dmpart *dmp = &dmparts[k];
 
             /* Start by copying over the gpart */
-            /*memcpy(gp_dm, &s->gparts[k], sizeof(struct gpart));*/
+            memcpy(gp_dm, &s->gparts[k], sizeof(struct gpart));
             memcpy(dmp, &s->dmparts[k], sizeof(struct dmpart));
 
             /* Set the IDs */
             dmp->id_or_neg_offset = gp_dm->id_or_neg_offset;
+
+            /* Set type correctly */
+            gp_dm->type = swift_type_dark_matter;
 
             /* Set the links correctly */
             dmp->gpart = gp_dm;

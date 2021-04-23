@@ -87,6 +87,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
@@ -186,7 +187,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter_background ||
            gp->type == swift_type_sink ||
-           dmcount == 0) &&
+           (gp->type == swift_type_dark_matter && !with_sidm)) &&
           // TODO loic remove this
 
           gpart_is_starting(gp, e)) {
@@ -356,6 +357,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -455,7 +457,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart and needs to be kicked */
       if ((gp->type == swift_type_dark_matter_background ||
            gp->type == swift_type_sink ||
-           dmcount == 0) &&
+           (gp->type == swift_type_dark_matter && !with_sidm)) &&
           // TODO loic remove this
 
           gpart_is_active(gp, e)) {
@@ -636,6 +638,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const integertime_t ti_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -769,7 +772,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart */
       if (gp->type == swift_type_dark_matter_background ||
           gp->type == swift_type_sink ||
-          dmcount == 0) {
+          (gp->type == swift_type_dark_matter && !with_sidm)) {
         // Loic TODO remove sink
 
         /* need to be updated ? */
