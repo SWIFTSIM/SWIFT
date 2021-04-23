@@ -529,7 +529,7 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
   /* If we need to start a new file next time, record this */
   if(end_file)props->start_new_file = 1;
 
-  if (props->verbose && engine_rank == 0)
+  if (props->verbose && engine_rank == 0 && types_to_flush > 0)
     message("Flushing particle buffers took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
@@ -594,6 +594,7 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
      written out and deallocated. */
   const double a_complete = c->a_begin * exp(props->ti_old * c->time_base);
 
+  int num_shells_written = 0;
   for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
 
     /* Will write out this shell if it has been updated but not written
@@ -604,6 +605,8 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
         if(props->verbose && engine_rank==0)
           message("writing out completed shell %d at a=%f", shell_nr, c->a);
+
+        num_shells_written += 1;
 
         /* Apply any buffered updates for this shell, if we didn't already */
         if(need_flush)lightcone_flush_map_updates_for_shell(props, shell_nr);
@@ -645,7 +648,7 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
     }
   }
 
-  if (props->verbose && engine_rank==0)
+  if (props->verbose && engine_rank==0 && num_shells_written > 0)
     message("Writing completed lightcone shells took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
