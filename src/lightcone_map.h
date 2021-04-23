@@ -114,7 +114,7 @@ void lightcone_map_allocate_pixels(struct lightcone_map *map, const int zero_pix
 
 void lightcone_map_free_pixels(struct lightcone_map *map);
 
-void lightcone_map_update_from_buffer(struct lightcone_map *map);
+void lightcone_map_update_from_buffer(struct lightcone_map *map, const int verbose);
 
 #ifdef HAVE_HDF5
 void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name);

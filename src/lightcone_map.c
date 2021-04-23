@@ -191,7 +191,8 @@ void lightcone_map_struct_restore(struct lightcone_map *map, FILE *stream) {
  *
  * @param map the #lightcone_map structure
  */
-void lightcone_map_update_from_buffer(struct lightcone_map *map) {
+void lightcone_map_update_from_buffer(struct lightcone_map *map,
+                                      const int verbose) {
   
 #ifdef WITH_MPI
 
@@ -220,6 +221,14 @@ void lightcone_map_update_from_buffer(struct lightcone_map *map) {
     
   /* Find total number of updates */
   size_t total_nr_send = particle_buffer_num_elements(&map->buffer);
+  if(verbose) {
+    long long num_updates_local = total_nr_send;
+    long long num_updates_total;
+    MPI_Reduce(&num_updates_local, &num_updates_total, 1, MPI_LONG_LONG,
+               MPI_SUM, 0, MPI_COMM_WORLD);
+    if(comm_rank==0)
+      message("total lightcone map updates to apply: %lld", num_updates_total);
+  }
 
   /* Allocate send buffer */
   struct lightcone_map_contribution *sendbuf = 

@@ -437,6 +437,7 @@ void lightcone_init(struct lightcone_props *props,
  */
 void lightcone_flush_particle_buffers(struct lightcone_props *props,
                                       int flush_all, int end_file) {
+  ticks tic = getticks();
 
   /* Will flush any buffers with more particles than this */
   size_t max_to_buffer = (size_t) props->max_particles_buffered;
@@ -528,6 +529,10 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
   /* If we need to start a new file next time, record this */
   if(end_file)props->start_new_file = 1;
 
+  if (props->verbose && engine_rank == 0)
+    message("Flushing particle buffers took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
 }
 
 
@@ -541,7 +546,8 @@ void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int sh
     if(props->verbose && engine_rank==0)
       message("applying lightcone map updates for shell %d", shell_nr);
     for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
-      lightcone_map_update_from_buffer(props->map[map_nr][shell_nr]);
+      lightcone_map_update_from_buffer(props->map[map_nr][shell_nr],
+                                       props->verbose);
   }
 }
 
@@ -551,10 +557,17 @@ void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int sh
  */
 void lightcone_flush_map_updates(struct lightcone_props *props) {    
 
+  ticks tic = getticks();
+
   const int nr_shells = props->nr_shells;
   for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
     lightcone_flush_map_updates_for_shell(props, shell_nr);
   }
+
+  if (props->verbose && engine_rank==0)
+    message("Applying lightcone map updates took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  
 }
 
 
@@ -566,6 +579,8 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
                                      const int dump_all,
                                      const int need_flush) {
 #ifdef HAVE_HDF5
+
+  ticks tic = getticks();
 
   /* Get number of shells and maps per shell */
   const int nr_shells = props->nr_shells;
@@ -629,6 +644,11 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
       }
     }
   }
+
+  if (props->verbose && engine_rank==0)
+    message("Writing completed lightcone shells took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
 #else
   error("Need HDF5 to write out lightcone maps");
 #endif
@@ -709,6 +729,7 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
                                 const integertime_t ti_old,
                                 const integertime_t ti_current,
                                 const double dt_max) {
+  ticks tic = getticks();
 
   /* Deallocate the old list, if there is one */
   if(props->have_replication_list)replication_list_clean(&props->replication_list);
@@ -828,6 +849,10 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
   }
   props->shell_nr_min = shell_nr_min;
   props->shell_nr_max = shell_nr_max;
+
+  if (props->verbose && engine_rank==0)
+    message("Lightcone timestep preparations took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 }
 
