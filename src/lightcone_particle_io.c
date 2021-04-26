@@ -33,6 +33,147 @@
 #include "lightcone.h"
 #include "particle_buffer.h"
 
+/* Array of output fields */
+static const int max_fields = 20;
+static int num_fields[swift_type_count];
+static struct lightcone_io_props field[swift_type_count][max_fields];
+
+
+/**
+ * @brief Make an array of output fields for each particle type
+ */
+void lightcone_io_make_output_fields(void) {
+  
+  for(int i=0; i<swift_type_count; i+=1)
+    num_fields[i] = 0;
+
+  int n;
+
+  /* Gas */
+#define OFFSET(x) offsetof(struct lightcone_gas_data, x)
+  n = 0;
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  num_fields[swift_type_gas] = n;
+#undef OFFSET
+
+  /* DM */
+#define OFFSET(x) offsetof(struct lightcone_dark_matter_data, x)
+  n = 0;
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  num_fields[swift_type_dark_matter] = n;
+#undef OFFSET
+
+  /* DM background (uses same struct as dark matter) */
+#define OFFSET(x) offsetof(struct lightcone_dark_matter_data, x)
+  n = 0;
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  num_fields[swift_type_dark_matter_background] = n;
+#undef OFFSET
+
+  /* Stars */
+#define OFFSET(x) offsetof(struct lightcone_stars_data, x)
+  n = 0;
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  num_fields[swift_type_stars] = n;
+#undef OFFSET
+
+  /* Black holes */
+#define OFFSET(x) offsetof(struct lightcone_black_hole_data, x)
+  n = 0;
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  num_fields[swift_type_black_hole] = n;
+#undef OFFSET
+
+  /* Neutrinos */
+#define OFFSET(x) offsetof(struct lightcone_neutrino_data, x)
+  n = 0;
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  num_fields[swift_type_neutrino] = n;
+#undef OFFSET
+
+}
+
+
+/**
+ * @brief Store gas properties to write to the lightcone
+ */
+void lightcone_store_gas(const struct gpart *gp, const struct part *p,
+                         const struct xpart *xp, const double a_cross,
+                         const double x_cross[3], struct lightcone_gas_data *data) {
+  data->id = p->id;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+  data->mass = p->mass;
+}
+
+
+/**
+ * @brief Store dark matter properties to write to the lightcone
+ */
+void lightcone_store_dark_matter(const struct gpart *gp, const double a_cross, 
+                                 const double x_cross[3],
+                                 struct lightcone_dark_matter_data *data) {
+  data->id = gp->id_or_neg_offset;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+  data->mass = gp->mass;
+}
+
+
+/**
+ * @brief Store star properties to write to the lightcone
+ */
+void lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
+                           const double a_cross, const double x_cross[3],
+                           struct lightcone_stars_data *data) {
+  data->id = sp->id;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+  data->mass = sp->mass;
+}
+
+
+/**
+ * @brief Store black hole properties to write to the lightcone
+ */
+void lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
+                                const double a_cross, const double x_cross[3],
+                                struct lightcone_black_hole_data *data) {
+  data->id = bp->id;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+  data->mass = bp->mass;
+}
+
+
+/**
+ * @brief Store neutrino properties to write to the lightcone
+ */
+void lightcone_store_neutrino(const struct gpart *gp, const double a_cross,
+                              const double x_cross[3], struct lightcone_neutrino_data *data) {
+  data->id = gp->id_or_neg_offset;
+  data->x[0] = x_cross[0];
+  data->x[1] = x_cross[1];
+  data->x[2] = x_cross[2];
+  data->mass = gp->mass;
+}
+
 
 /**
  * @brief Write data to a HDF5 dataset, appending along first axis if it already exists
@@ -134,286 +275,70 @@ hid_t init_write(struct lightcone_props *props, hid_t file_id, int ptype,
   return group_id;
 }
 
-/**
- * @brief Store gas properties to write to the lightcone
- */
-void lightcone_store_gas(const struct gpart *gp, const struct part *p,
-                         const struct xpart *xp, const double a_cross,
-                         const double x_cross[3], struct lightcone_gas_data *data) {
-  data->id = p->id;
-  data->x[0] = x_cross[0];
-  data->x[1] = x_cross[1];
-  data->x[2] = x_cross[2];
-}
-
 
 /**
- * @brief Append buffered gas particles to the output file.
+ * @brief Append buffered particles to the output file.
  */
-void lightcone_write_gas(struct lightcone_props *props, hid_t file_id,
-                         int ptype) {
+void lightcone_write_particles(struct lightcone_props *props, int ptype, hid_t file_id) {
+  
+  if(num_fields[ptype] > 0) {
 
-  /* Open group and get number and offset of particles to write */
-  size_t num_written, num_to_write;
-  hid_t group_id = init_write(props, file_id, ptype, &num_written, &num_to_write);
-
-  /* Allocate output arrays */
-  double *pos = malloc(3*num_to_write*sizeof(double));
-  long long *id = malloc(num_to_write*sizeof(long long));
-  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
-
-  /* Loop over blocks of buffered particles and copy to output arrays */
-  size_t num_elements;
-  size_t offset = 0;
-  struct particle_buffer_block *block = NULL;
-  struct lightcone_gas_data *data;
-  do {
-    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
-    for(size_t i=0; i<num_elements; i+=1) {
-      id[offset]      = data[i].id;
-      pos[3*offset+0] = data[i].x[0];
-      pos[3*offset+1] = data[i].x[1];
-      pos[3*offset+2] = data[i].x[2];
-      offset += 1;
-    }
-  } while(block);
-
-  /* Write the data */
-  const hsize_t chunk_size = props->hdf5_chunk_size;
-  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
-
-  /* Clean up */
-  free(pos);
-  free(id);
-  H5Gclose(group_id);
-}
-
-
-/**
- * @brief Store dark matter properties to write to the lightcone
- */
-void lightcone_store_dark_matter(const struct gpart *gp, const double a_cross, 
-                                 const double x_cross[3],
-                                 struct lightcone_dark_matter_data *data) {
-  data->id = gp->id_or_neg_offset;
-  data->x[0] = x_cross[0];
-  data->x[1] = x_cross[1];
-  data->x[2] = x_cross[2];
-}
-
-
-/**
- * @brief Append buffered dark matter particles to the output file.
- */
-void lightcone_write_dark_matter(struct lightcone_props *props, hid_t file_id,
-                                 int ptype) {
-
-  /* Open group and get number and offset of particles to write */
-  size_t num_written, num_to_write;
-  hid_t group_id = init_write(props, file_id, ptype, &num_written, &num_to_write);
-
-  /* Allocate output arrays */
-  double *pos = malloc(3*num_to_write*sizeof(double));
-  long long *id = malloc(num_to_write*sizeof(long long));
-  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
-
-  /* Loop over blocks of buffered particles and copy to output arrays */
-  size_t num_elements;
-  size_t offset = 0;
-  struct particle_buffer_block *block = NULL;
-  struct lightcone_dark_matter_data *data;
-  do {
-    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
-    for(size_t i=0; i<num_elements; i+=1) {
-      id[offset]      = data[i].id;
-      pos[3*offset+0] = data[i].x[0];
-      pos[3*offset+1] = data[i].x[1];
-      pos[3*offset+2] = data[i].x[2];
+    /* Open group and get number and offset of particles to write */
+    size_t num_written, num_to_write;
+    hid_t group_id = init_write(props, file_id, ptype, &num_written, &num_to_write);
+    
+    /* Get size of the data struct for this type */
+    const size_t data_struct_size = lightcone_io_struct_size(ptype);
       
-      offset += 1;
-    }
-  } while(block);
+    /* Loop over output fields */
+    for(int field_nr=0; field_nr<num_fields[ptype]; field_nr +=1) {
+        
+      /* Find field info */
+      struct lightcone_io_props *f = &field[ptype][field_nr];
 
-  /* Write the data */
-  const hsize_t chunk_size = props->hdf5_chunk_size;
-  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
+      /* Find offset to the quantity to write in the lightcone data struct */
+      const size_t offset_to_field = f->offset;
 
-  /* Clean up */
-  free(pos);
-  free(id);
-  H5Gclose(group_id);
-}
+      /* Find the HDF5 data type and size */
+      hid_t dtype_id = io_hdf5_type(f->type);
+      size_t type_size = H5Tget_size(dtype_id);
 
+      /* Find size of the data per particle for this field */
+      const size_t field_size = f->dimension*type_size;
 
-/**
- * @brief Store star properties to write to the lightcone
- */
-void lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
-                           const double a_cross, const double x_cross[3],
-                           struct lightcone_stars_data *data) {
-  data->id = sp->id;
-  data->x[0] = x_cross[0];
-  data->x[1] = x_cross[1];
-  data->x[2] = x_cross[2];
-}
+      /* Allocate output buffer */
+      char *outbuf = malloc(num_to_write*field_size);
+      if(!outbuf)error("Unable to allocate lightcone output buffer");
+      char *outptr = outbuf;
 
+      /* Loop over blocks of buffered particles and copy to output array */
+      size_t num_elements;
+      struct particle_buffer_block *block = NULL;
+      char *block_data;
+      do {
+        particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &block_data);
+        for(size_t i=0; i<num_elements; i+=1) {
+          char *src = block_data+i*data_struct_size+offset_to_field;
+          char *dest = outptr;
+          memcpy(dest, src, field_size);
+          outptr += field_size;
+        }
+      } while(block);
 
-/**
- * @brief Append buffered star particles to the output file.
- */
-void lightcone_write_stars(struct lightcone_props *props, hid_t file_id,
-                           int ptype) {
-
-  /* Open group and get number and offset of particles to write */
-  size_t num_written, num_to_write;
-  hid_t group_id = init_write(props, file_id, ptype, &num_written, &num_to_write);
-
-  /* Allocate output arrays */
-  double *pos = malloc(3*num_to_write*sizeof(double));
-  long long *id = malloc(num_to_write*sizeof(long long));
-  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
-
-  /* Loop over blocks of buffered particles and copy to output arrays */
-  size_t num_elements;
-  size_t offset = 0;
-  struct particle_buffer_block *block = NULL;
-  struct lightcone_stars_data *data;
-  do {
-    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
-    for(size_t i=0; i<num_elements; i+=1) {
-      id[offset]      = data[i].id;
-      pos[3*offset+0] = data[i].x[0];
-      pos[3*offset+1] = data[i].x[1];
-      pos[3*offset+2] = data[i].x[2];
-      offset += 1;
-    }
-  } while(block);
-
-  /* Write the data */
-  const hsize_t chunk_size = props->hdf5_chunk_size;
-  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
-
-  /* Clean up */
-  free(pos);
-  free(id);
-  H5Gclose(group_id);
-}
-
-
-/**
- * @brief Store black hole properties to write to the lightcone
- */
-void lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
-                                const double a_cross, const double x_cross[3],
-                                struct lightcone_black_hole_data *data) {
-  data->id = bp->id;
-  data->x[0] = x_cross[0];
-  data->x[1] = x_cross[1];
-  data->x[2] = x_cross[2];
-}
-
-
-/**
- * @brief Append buffered black hole particles to the output file.
- */
-void lightcone_write_black_hole(struct lightcone_props *props, hid_t file_id,
-                           int ptype) {
-
-  /* Open group and get number and offset of particles to write */
-  size_t num_written, num_to_write;
-  hid_t group_id = init_write(props, file_id, ptype, &num_written, &num_to_write);
-
-  /* Allocate output arrays */
-  double *pos = malloc(3*num_to_write*sizeof(double));
-  long long *id = malloc(num_to_write*sizeof(long long));
-  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
-
-  /* Loop over blocks of buffered particles and copy to output arrays */
-  size_t num_elements;
-  size_t offset = 0;
-  struct particle_buffer_block *block = NULL;
-  struct lightcone_black_hole_data *data;
-  do {
-    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
-    for(size_t i=0; i<num_elements; i+=1) {
-      id[offset]      = data[i].id;
-      pos[3*offset+0] = data[i].x[0];
-      pos[3*offset+1] = data[i].x[1];
-      pos[3*offset+2] = data[i].x[2];
-      offset += 1;
-    }
-  } while(block);
-
-  /* Write the data */
-  const hsize_t chunk_size = props->hdf5_chunk_size;
-  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
-
-  /* Clean up */
-  free(pos);
-  free(id);
-  H5Gclose(group_id);
-}
-
-
-/**
- * @brief Store neutrino properties to write to the lightcone
- */
-void lightcone_store_neutrino(const struct gpart *gp, const double a_cross,
-                              const double x_cross[3], struct lightcone_neutrino_data *data) {
-  data->id = gp->id_or_neg_offset;
-  data->x[0] = x_cross[0];
-  data->x[1] = x_cross[1];
-  data->x[2] = x_cross[2];
-}
-
-
-/**
- * @brief Append buffered black hole particles to the output file.
- */
-void lightcone_write_neutrino(struct lightcone_props *props, hid_t file_id,
-                           int ptype) {
-
-  /* Open group and get number and offset of particles to write */
-  size_t num_written, num_to_write;
-  hid_t group_id = init_write(props, file_id, ptype, &num_written, &num_to_write);
-
-  /* Allocate output arrays */
-  double *pos = malloc(3*num_to_write*sizeof(double));
-  long long *id = malloc(num_to_write*sizeof(long long));
-  if(!pos || !id)error("Failed to allocate lightcone I/O buffer");
-
-  /* Loop over blocks of buffered particles and copy to output arrays */
-  size_t num_elements;
-  size_t offset = 0;
-  struct particle_buffer_block *block = NULL;
-  struct lightcone_neutrino_data *data;
-  do {
-    particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &data);
-    for(size_t i=0; i<num_elements; i+=1) {
-      id[offset]      = data[i].id;
-      pos[3*offset+0] = data[i].x[0];
-      pos[3*offset+1] = data[i].x[1];
-      pos[3*offset+2] = data[i].x[2];
-      offset += 1;
-    }
-  } while(block);
-
-  /* Write the data */
-  const hsize_t chunk_size = props->hdf5_chunk_size;
-  hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) 3};
-  append_dataset(group_id, "Coordinates", H5T_NATIVE_DOUBLE, chunk_size, 2, dims, num_written, pos);
-  append_dataset(group_id, "ParticleIDs", H5T_NATIVE_LLONG, chunk_size, 1, dims, num_written, id);
-
-  /* Clean up */
-  free(pos);
-  free(id);
-  H5Gclose(group_id);
+      /* Write the data */
+      const hsize_t chunk_size = props->hdf5_chunk_size;
+      hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) f->dimension};
+      int rank = 1;
+      if(f->dimension > 1)
+        rank = 2;
+      append_dataset(group_id, f->name, dtype_id, chunk_size, rank, dims, num_written, outbuf);
+      
+      /* Free the output buffer */
+      free(outbuf);
+      
+    } /* Next field */
+    
+      /* If all fields are done, we can close the particle type group */
+    H5Gclose(group_id);
+  }
 }
