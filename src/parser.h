@@ -68,6 +68,8 @@ char parser_get_param_char(struct swift_params *params, const char *name);
 int parser_get_param_int(struct swift_params *params, const char *name);
 float parser_get_param_float(struct swift_params *params, const char *name);
 double parser_get_param_double(struct swift_params *params, const char *name);
+long long parser_get_param_longlong(struct swift_params *params,
+                                    const char *name);
 void parser_get_param_string(struct swift_params *params, const char *name,
                              char *retParam);
 
@@ -81,6 +83,8 @@ float parser_get_opt_param_float(struct swift_params *params, const char *name,
                                  float def);
 double parser_get_opt_param_double(struct swift_params *params,
                                    const char *name, double def);
+long long parser_get_opt_param_longlong(struct swift_params *params,
+                                        const char *name, long long def);
 void parser_get_opt_param_string(struct swift_params *params, const char *name,
                                  char *retParam, const char *def);
 void parser_get_param_char_array(struct swift_params *params, const char *name,
@@ -91,7 +95,9 @@ void parser_get_param_float_array(struct swift_params *params, const char *name,
                                   int nval, float *values);
 void parser_get_param_double_array(struct swift_params *params,
                                    const char *name, int nval, double *values);
-
+void parser_get_param_longlong_array(struct swift_params *params,
+                                     const char *name, int nval,
+                                     long long *values);
 int parser_get_opt_param_char_array(struct swift_params *params,
                                     const char *name, int nval, char *values);
 int parser_get_opt_param_int_array(struct swift_params *params,
@@ -101,7 +107,9 @@ int parser_get_opt_param_float_array(struct swift_params *params,
 int parser_get_opt_param_double_array(struct swift_params *params,
                                       const char *name, int nval,
                                       double *values);
-
+int parser_get_opt_param_longlong_array(struct swift_params *params,
+                                        const char *name, int nval,
+                                        long long *values);
 void parser_get_param_string_array(struct swift_params *params,
                                    const char *name, int *nval, char ***values);
 int parser_get_opt_param_string_array(struct swift_params *params,
