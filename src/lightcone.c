@@ -148,6 +148,9 @@ void lightcone_init(struct lightcone_props *props,
   /* Whether we generate lightcone output */
   props->enabled = 1;
 
+  /* Define output quantities */
+  lightcone_io_make_output_fields();
+
   /* Which particle types to use */
   for(int i=0; i<swift_type_count; i+=1)
     props->use_type[i] = 0;
@@ -301,32 +304,12 @@ void lightcone_flush_buffers(struct lightcone_props *props,
       if(props->use_type[ptype]) {
         const size_t num_to_write = particle_buffer_num_elements(&props->buffer[ptype]);
         if(num_to_write >= max_to_buffer && num_to_write > 0) {
-          switch(ptype) {
-          case swift_type_gas:
-            lightcone_write_gas(props, file_id, ptype);
-            break;
-          case swift_type_dark_matter:
-          case swift_type_dark_matter_background:
-            lightcone_write_dark_matter(props, file_id, ptype);
-            break;
-          case swift_type_stars:
-            lightcone_write_stars(props, file_id, ptype);
-            break;
-          case swift_type_black_hole:
-            lightcone_write_black_hole(props, file_id, ptype);
-            break;
-          case swift_type_neutrino:
-            lightcone_write_neutrino(props, file_id, ptype);
-            break;
-          default:
-            /* Don't support this type in lightcones */
-            error("Trying to write out unsupported lightcone particle type");
-          }
+          lightcone_write_particles(props, ptype, file_id);
           particle_buffer_empty(&props->buffer[ptype]);
           props->num_particles_written_to_file[ptype] += num_to_write;          
         }
       }
-    } /* Next particle type */
+    }
 
     /* We're done updating the output file */
     H5Fclose(file_id);
