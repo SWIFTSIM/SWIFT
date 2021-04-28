@@ -78,6 +78,7 @@ Stars:
 # Parameters for the self-gravity scheme
 Gravity:
   mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh.
+  distributed_mesh:              1         # Are we distributing the mesh calculation over MPI (Requires FFTW-MPI)? Defaults to 0.
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.

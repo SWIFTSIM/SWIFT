@@ -39,6 +39,7 @@
 #define gravity_props_default_r_cut_max 4.5f
 #define gravity_props_default_r_cut_min 0.1f
 #define gravity_props_default_rebuild_frequency 0.01f
+#define gravity_props_default_distributed_mesh 0
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
@@ -59,6 +60,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Tree-PM parameters */
   if (periodic) {
     p->mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+    p->distributed_mesh =
+        parser_get_opt_param_int(params, "Gravity:distributed_mesh",
+                                 gravity_props_default_distributed_mesh);
     p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                              gravity_props_default_a_smooth);
     p->r_cut_max_ratio = parser_get_opt_param_float(
@@ -73,6 +77,13 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     if (p->mesh_size % 2 != 0)
       error("The mesh side-length must be an even number.");
 
+#if !defined(WITH_MPI) || !defined(HAVE_MPI_FFTW)
+    if (p->distributed_mesh)
+      error(
+          "Need to use MPI and FFTW MPI library to run with "
+          "distributed_mesh=1.");
+#endif
+
     if (p->a_smooth <= 0.)
       error("The mesh smoothing scale 'a_smooth' must be > 0.");
 
@@ -81,6 +92,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
             (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
   } else {
     p->mesh_size = 0;
+    p->distributed_mesh = 0;
     p->a_smooth = 0.f;
     p->r_s = FLT_MAX;
     p->r_s_inv = 0.f;
@@ -318,6 +330,8 @@ void gravity_props_print(const struct gravity_props *p) {
       p->epsilon_nu_max_physical);
 
   message("Self-gravity mesh side-length: N=%d", p->mesh_size);
+  message("Self-gravity distributed mesh enabled: %d", p->distributed_mesh);
+
   message("Self-gravity mesh smoothing-scale: a_smooth=%f", p->a_smooth);
 
   message("Self-gravity tree cut-off ratio: r_cut_max=%f", p->r_cut_max_ratio);
