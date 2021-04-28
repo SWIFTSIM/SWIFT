@@ -202,7 +202,8 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology,
 
 void io_make_snapshot_subdir(const char* dirname);
 
-void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
+                              char xmf_filename[FILENAME_BUFFER_SIZE],
                               const struct output_list* output_list,
                               const int snapshots_invoke_stf,
                               const int stf_count, const int snap_count,
