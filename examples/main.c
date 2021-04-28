@@ -1788,6 +1788,8 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_LIGHTCONE
     if(e.lightcone_properties->enabled) {
       lightcone_flush_particle_buffers(e.lightcone_properties,
+                                       e.internal_units,
+                                       e.snapshot_units,
                                        /*flush_all=*/1,
                                        /*end_file=*/1);
       lightcone_dump_completed_shells(e.lightcone_properties, e.cosmology,

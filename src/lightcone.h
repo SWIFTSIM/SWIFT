@@ -34,6 +34,7 @@
 #include "part_type.h"
 #include "particle_buffer.h"
 #include "timeline.h"
+#include "units.h"
 
 /* Avoid cyclic inclusions */
 struct cosmology;
@@ -190,6 +191,8 @@ void lightcone_buffer_particle(struct lightcone_props *props,
                                const double a_cross, const double x_cross[3]);
 
 void lightcone_flush_particle_buffers(struct lightcone_props *props,
+                                      const struct unit_system *internal_units,
+                                      const struct unit_system *snapshot_units,
                                       int flush_all, int end_file);
 
 void lightcone_buffer_map_update(struct lightcone_props *props,

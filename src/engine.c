@@ -2431,6 +2431,8 @@ void engine_step(struct engine *e) {
     /* If the lightcone particle buffer on this node has got too large,
        flush it to disk */
     lightcone_flush_particle_buffers(e->lightcone_properties,
+                                     e->internal_units,
+                                     e->snapshot_units,
                                      /* flush_all = */ 0,
                                      /* end_file = */ 0);
   }

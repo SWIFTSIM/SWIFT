@@ -52,54 +52,54 @@ void lightcone_io_make_output_fields(void) {
   /* Gas */
 #define OFFSET(x) offsetof(struct lightcone_gas_data, x)
   n = 0;
-  field[swift_type_gas][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
-  field[swift_type_gas][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
-  field[swift_type_gas][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_gas] = n;
 #undef OFFSET
 
   /* DM */
 #define OFFSET(x) offsetof(struct lightcone_dark_matter_data, x)
   n = 0;
-  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
-  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
-  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_dark_matter] = n;
 #undef OFFSET
 
   /* DM background (uses same struct as dark matter) */
 #define OFFSET(x) offsetof(struct lightcone_dark_matter_data, x)
   n = 0;
-  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
-  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
-  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_dark_matter_background] = n;
 #undef OFFSET
 
   /* Stars */
 #define OFFSET(x) offsetof(struct lightcone_stars_data, x)
   n = 0;
-  field[swift_type_stars][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
-  field[swift_type_stars][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
-  field[swift_type_stars][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_stars] = n;
 #undef OFFSET
 
   /* Black holes */
 #define OFFSET(x) offsetof(struct lightcone_black_hole_data, x)
   n = 0;
-  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
-  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
-  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_black_hole] = n;
 #undef OFFSET
 
   /* Neutrinos */
 #define OFFSET(x) offsetof(struct lightcone_neutrino_data, x)
   n = 0;
-  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id));
-  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x));
-  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Mass",        DOUBLE,   1, OFFSET(mass));
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_neutrino] = n;
 #undef OFFSET
 
@@ -279,7 +279,10 @@ hid_t init_write(struct lightcone_props *props, hid_t file_id, int ptype,
 /**
  * @brief Append buffered particles to the output file.
  */
-void lightcone_write_particles(struct lightcone_props *props, int ptype, hid_t file_id) {
+void lightcone_write_particles(struct lightcone_props *props,
+                               const struct unit_system *internal_units,
+                               const struct unit_system *snapshot_units,
+                               int ptype, hid_t file_id) {
   
   if(num_fields[ptype] > 0) {
 
@@ -293,18 +296,15 @@ void lightcone_write_particles(struct lightcone_props *props, int ptype, hid_t f
     /* Loop over output fields */
     for(int field_nr=0; field_nr<num_fields[ptype]; field_nr +=1) {
         
-      /* Find field info */
+      /* Find output field info */
       struct lightcone_io_props *f = &field[ptype][field_nr];
+      hid_t dtype_id = io_hdf5_type(f->type);           /* HDF5 data type */
+      size_t type_size = io_sizeof_type(f->type);       /* Bytes per value */
+      const size_t field_size = f->dimension*type_size; /* Bytes per particle */
 
-      /* Find offset to the quantity to write in the lightcone data struct */
-      const size_t offset_to_field = f->offset;
-
-      /* Find the HDF5 data type and size */
-      hid_t dtype_id = io_hdf5_type(f->type);
-      size_t type_size = H5Tget_size(dtype_id);
-
-      /* Find size of the data per particle for this field */
-      const size_t field_size = f->dimension*type_size;
+      /* Find unit conversion factor for this quantity */
+      const double conversion_factor =
+        units_conversion_factor(internal_units, snapshot_units, f->units);
 
       /* Allocate output buffer */
       char *outbuf = malloc(num_to_write*field_size);
@@ -318,12 +318,41 @@ void lightcone_write_particles(struct lightcone_props *props, int ptype, hid_t f
       do {
         particle_buffer_iterate(&props->buffer[ptype], &block, &num_elements, (void **) &block_data);
         for(size_t i=0; i<num_elements; i+=1) {
-          char *src = block_data+i*data_struct_size+offset_to_field;
+          char *src = block_data+i*data_struct_size+f->offset;
           char *dest = outptr;
           memcpy(dest, src, field_size);
           outptr += field_size;
         }
       } while(block);
+
+      /* Convert units if necessary */
+      if(conversion_factor != 1.0) {
+        const size_t nr_values = num_to_write*f->dimension;
+        switch(f->type) {
+        case INT: {
+          int *values = (int *) outbuf;
+          for(size_t i=0; i<nr_values;i+=1)
+            values[i] *= conversion_factor;
+        } break;
+        case LONGLONG: {
+          long long *values = (long long *) outbuf;
+          for(size_t i=0; i<nr_values;i+=1)
+            values[i] *= conversion_factor;
+        } break;
+        case FLOAT: {
+          float *values = (float *) outbuf;
+          for(size_t i=0; i<nr_values;i+=1)
+            values[i] *= conversion_factor;
+        } break;
+        case DOUBLE: {
+          double *values = (double *) outbuf;
+          for(size_t i=0; i<nr_values;i+=1)
+            values[i] *= conversion_factor;
+        } break;
+        default:
+          error("Unhandled data type");
+        }
+      }        
 
       /* Write the data */
       const hsize_t chunk_size = props->hdf5_chunk_size;
@@ -338,7 +367,7 @@ void lightcone_write_particles(struct lightcone_props *props, int ptype, hid_t f
       
     } /* Next field */
     
-      /* If all fields are done, we can close the particle type group */
+    /* If all fields are done, we can close the particle type group */
     H5Gclose(group_id);
   }
 }

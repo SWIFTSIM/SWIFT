@@ -34,6 +34,7 @@
 #include "common_io.h"
 #include "error.h"
 #include "part_type.h"
+#include "units.h"
 
 /* Forward declarations */
 struct gpart;
@@ -60,11 +61,18 @@ struct lightcone_io_props {
   /* Offset to this field in the data struct  */
   size_t offset;
 
+  /* Units of this quantity */
+  enum unit_conversion_factor units;
+
+  /* Scale-factor exponent to apply for unit conversion to physical */
+  float scale_factor_exponent;
+
 };
 
 
 inline static struct lightcone_io_props lightcone_io_make_output_field(
-    char *name, enum IO_DATA_TYPE type, int dimension, ptrdiff_t offset) {
+    char *name, enum IO_DATA_TYPE type, int dimension, size_t offset,
+    enum unit_conversion_factor units, float scale_factor_exponent) {
   
   struct lightcone_io_props r;
   bzero(&r, sizeof(struct lightcone_io_props));
@@ -72,6 +80,8 @@ inline static struct lightcone_io_props lightcone_io_make_output_field(
   r.type = type;
   r.dimension = dimension;
   r.offset = offset;
+  r.units = units;
+  r.scale_factor_exponent = scale_factor_exponent;
   return r;
 }
 
@@ -145,7 +155,10 @@ void lightcone_store_neutrino(const struct gpart *gp, const double a_cross,
                               struct lightcone_neutrino_data *data);
 
 
-void lightcone_write_particles(struct lightcone_props *props, int ptype, hid_t file_id);
+void lightcone_write_particles(struct lightcone_props *props,
+                               const struct unit_system *internal_units,
+                               const struct unit_system *snapshot_units,
+                               int ptype, hid_t file_id);
 
 
 inline static size_t lightcone_io_struct_size(int ptype) {
