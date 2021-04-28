@@ -72,7 +72,8 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
     const struct spart* sp, const float time, const struct cosmology* cosmo,
     const int with_cosmology) {
 
-  return (sp->birth_time != -1.) && (sp->count_since_last_enrichment == 0);
+  return 1;  //(sp->birth_time != -1.) && (sp->count_since_last_enrichment ==
+             //0);
 }
 
 /**
