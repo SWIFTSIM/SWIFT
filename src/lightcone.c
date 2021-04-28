@@ -531,6 +531,21 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
       for(int ptype=0; ptype<swift_type_count; ptype+=1)
         props->num_particles_written_to_file[ptype] = 0;    
 
+      /* Write the system of Units used in the spashot */
+      io_write_unit_system(file_id, snapshot_units, "Units");
+
+      /* Write the system of Units used internally */
+      io_write_unit_system(file_id, internal_units, "InternalCodeUnits");
+
+      /* Write the observer position and redshift limits */
+      hid_t group_id = H5Gcreate2(file_id, "Lightcone", H5P_DEFAULT,
+                                  H5P_DEFAULT, H5P_DEFAULT);
+      io_write_attribute(group_id, "observer_position", DOUBLE,
+                         props->observer_position, 3);
+      io_write_attribute_d(group_id, "minimum_redshift", props->z_min_for_particles);
+      io_write_attribute_d(group_id, "maximum redshift", props->z_max_for_particles);
+      H5Gclose(group_id);
+
       /* We no longer need to create a new file */
       props->start_new_file = 0;
 
