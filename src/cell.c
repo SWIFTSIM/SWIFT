@@ -7289,7 +7289,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (p->gpart) {
     p->gpart->time_bin = time_bin_inhibited;
     p->gpart->id_or_neg_offset = p->id;
-    p->gpart->type = swift_type_dark_matter;
+    p->gpart->type = swift_type_sink;
   }
 
   /* Update the space-wide counters */
@@ -7397,7 +7397,7 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   if (sp->gpart) {
     sp->gpart->time_bin = time_bin_inhibited;
     sp->gpart->id_or_neg_offset = sp->id;
-    sp->gpart->type = swift_type_dark_matter;
+    sp->gpart->type = swift_type_sink;
   }
 
   /* Update the space-wide counters */
@@ -7436,7 +7436,7 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   if (bp->gpart) {
     bp->gpart->time_bin = time_bin_inhibited;
     bp->gpart->id_or_neg_offset = bp->id;
-    bp->gpart->type = swift_type_dark_matter;
+    bp->gpart->type = swift_type_sink;
   }
 
   /* Update the space-wide counters */
