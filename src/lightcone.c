@@ -64,9 +64,14 @@ extern int engine_rank;
  * @param shell_rmin Returns shell inner raddi
  * @param shell_rmax Returns shell outer raddi
  */
-void lightcone_read_shell_radii(char *radius_file, int *nr_shells,
-                                double *shell_rmin, double *shell_rmax) {
+void lightcone_read_shell_radii(const struct cosmology *cosmo, char *radius_file,
+                                int *nr_shells, double *shell_rmin,
+                                double *shell_rmax) {
   
+
+  /* Allow shell radii to be specified in several different units */
+  enum shell_units {comoving_distance=0, redshift=1, expansion_factor=2};
+
   FILE *fd = fopen(radius_file, "r");
   if(!fd)error("Failed to open lightcone radius file %s", radius_file);
 
@@ -80,9 +85,17 @@ void lightcone_read_shell_radii(char *radius_file, int *nr_shells,
   rewind(fd);
 
   /* Check header */
+  enum shell_units units;
   if(getline(&line, &len, fd) != -1) {
-    if (strcmp(line, "# Minimum comoving distance, Maximum comoving distance\n") != 0)
-      error("Radius file header line is incorrect");
+    if (strcmp(line, "# Minimum comoving distance, Maximum comoving distance\n") == 0) {
+      units = comoving_distance;
+    } else if (strcmp(line, "# Minimum redshift, Maximum redshift\n") == 0) {
+      units = redshift;
+    } else if (strcmp(line, "# Maximum expansion factor, Minimum expansion factor\n") == 0) {
+      units = expansion_factor;
+    } else {
+      error("Unrecognized header in radius file");
+    }
   } else {
     error("Unable to read header in radius file");
   }
@@ -96,6 +109,31 @@ void lightcone_read_shell_radii(char *radius_file, int *nr_shells,
   *nr_shells = nr_lines-1;
   const int nr = *nr_shells;
   free(line);
+
+  /* Convert units */
+  switch(units) {
+  case comoving_distance:
+    /* Input is already comoving distance */
+    break;
+  case redshift:
+    /* Convert redshift to comoving distance */
+    for(int i=0; i<nr; i+=1) {
+      const double a_at_rmin = 1.0/(1.0+shell_rmin[i]);
+      shell_rmin[i] = cosmology_get_comoving_distance(cosmo, a_at_rmin);
+      const double a_at_rmax = 1.0/(1.0+shell_rmax[i]);
+      shell_rmax[i] = cosmology_get_comoving_distance(cosmo, a_at_rmax);
+    }
+    break;
+  case expansion_factor:
+    /* Convert expansion factor to comoving distance */
+    for(int i=0; i<nr; i+=1) {
+      shell_rmin[i] = cosmology_get_comoving_distance(cosmo, shell_rmin[i]);
+      shell_rmax[i] = cosmology_get_comoving_distance(cosmo, shell_rmax[i]);
+    }
+    break;
+  default:
+    error("unknown unit type");
+  }
 
   /* Do some sanity checks on the radii */
   /* All values should be monotonically increasing */
@@ -332,7 +370,7 @@ void lightcone_init(struct lightcone_props *props,
 
   /* Read in the shell radii for this lightcone */
   if(engine_rank == 0)
-    lightcone_read_shell_radii(props->radius_file, &props->nr_shells,
+    lightcone_read_shell_radii(cosmo, props->radius_file, &props->nr_shells,
                                props->shell_rmin, props->shell_rmax);
 #ifdef WITH_MPI
   MPI_Bcast(&props->nr_shells, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -340,8 +378,16 @@ void lightcone_init(struct lightcone_props *props,
   MPI_Bcast(&props->shell_rmax, props->nr_shells, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Compute expansion factor at shell edges */
+  /* Report shell radii */
   const int nr_shells = props->nr_shells;
+  if(engine_rank==0) {
+    for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+      message("shell %d has inner radius %e and outer radius %e", shell_nr,
+              props->shell_rmin[shell_nr], props->shell_rmax[shell_nr]);
+    }
+  }
+
+  /* Compute expansion factor at shell edges */
   for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
     /* Inner edge of the shell */
     props->shell_amax[shell_nr] = 
@@ -429,10 +475,8 @@ void lightcone_init(struct lightcone_props *props,
     const double lightcone_rmin = cosmology_get_comoving_distance(cosmo, a_max_for_particles);
     const double volume = 4./3.*M_PI*(pow(lightcone_rmax, 3.)-pow(lightcone_rmin, 3.));
     const long long est_nr_output = total_nr_gparts / pow(props->boxsize, 3.0) * volume;
-    const int nr_replications = pow(2*lightcone_rmax/props->boxsize, 3.0);
-    message("comoving distance to lightcone max. redshift: %e", lightcone_rmax);
+    message("comoving distance to max. particle redshift: %e", lightcone_rmax);
     message("gparts in lightcone (if uniform box+flat cosmology): %lld", est_nr_output);
-    message("approximate number of replications to search : %d", nr_replications);
   }
 
 }
