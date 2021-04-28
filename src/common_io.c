@@ -1521,7 +1521,8 @@ void io_make_snapshot_subdir(const char* dirname) {
  * @param default_basename The common part of the default snapshot names.
  * @param basename The common part of the snapshot names.
  */
-void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
+                              char xmf_filename[FILENAME_BUFFER_SIZE],
                               const struct output_list* output_list,
                               const int snapshots_invoke_stf,
                               const int stf_count, const int snap_count,

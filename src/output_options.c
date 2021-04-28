@@ -126,6 +126,7 @@ void output_options_struct_restore(struct output_options* output_options,
                                    FILE* stream) {
   struct swift_params* select_output =
       (struct swift_params*)malloc(sizeof(struct swift_params));
+  bzero(select_output, sizeof(struct swift_params));
   parser_struct_restore(select_output, stream);
 
   output_options->select_output = select_output;
