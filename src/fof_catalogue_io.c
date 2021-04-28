@@ -59,7 +59,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_part_type_names(h_grp);
 
   /* Write out the time-base */
-  if (e->policy | engine_policy_cosmology) {
+  if (e->policy & engine_policy_cosmology) {
     io_write_attribute_d(h_grp, "TimeBase_dloga", e->time_base);
     const double delta_t = cosmology_get_timebase(e->cosmology, e->ti_current);
     io_write_attribute_d(h_grp, "TimeBase_dt", delta_t);
