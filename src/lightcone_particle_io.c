@@ -178,7 +178,9 @@ void lightcone_store_neutrino(const struct gpart *gp, const double a_cross,
 /**
  * @brief Write data to a HDF5 dataset, appending along first axis if it already exists
  */
-void append_dataset(hid_t loc_id, const char *name, hid_t mem_type_id, hsize_t chunk_size,
+void append_dataset(const struct unit_system *snapshot_units,
+                    enum unit_conversion_factor units, float scale_factor_exponent,
+                    hid_t loc_id, const char *name, hid_t mem_type_id, hsize_t chunk_size,
                     const int rank, const hsize_t *dims, const hsize_t num_written,
                     const void *data) {
   
@@ -224,6 +226,30 @@ void append_dataset(hid_t loc_id, const char *name, hid_t mem_type_id, hsize_t c
     dataset_id = H5Dcreate(loc_id, name, mem_type_id, file_space_id, H5P_DEFAULT, prop_id, H5P_DEFAULT);
     if(dataset_id < 0)error("Failed to create new dataset: %s", name);
     H5Pclose(prop_id);
+
+    /* Write unit conversion factors for this data set */
+    char buffer[FIELD_BUFFER_SIZE] = {0};
+    units_cgs_conversion_string(buffer, snapshot_units, units,
+                                scale_factor_exponent);
+    float baseUnitsExp[5];
+    units_get_base_unit_exponents_array(baseUnitsExp, units);
+    io_write_attribute_f(dataset_id, "U_M exponent", baseUnitsExp[UNIT_MASS]);
+    io_write_attribute_f(dataset_id, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
+    io_write_attribute_f(dataset_id, "U_t exponent", baseUnitsExp[UNIT_TIME]);
+    io_write_attribute_f(dataset_id, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
+    io_write_attribute_f(dataset_id, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
+    io_write_attribute_f(dataset_id, "h-scale exponent", 0.f);
+    io_write_attribute_f(dataset_id, "a-scale exponent", scale_factor_exponent);
+    io_write_attribute_s(dataset_id, "Expression for physical CGS units", buffer);
+
+    /* Write the actual number this conversion factor corresponds to */
+    const double factor = units_cgs_conversion_factor(snapshot_units, units);
+    io_write_attribute_d(dataset_id,
+                         "Conversion factor to CGS (not including cosmological corrections)",
+                         factor);
+
+    /* Note that we can't write the conversion factor including cosmological corrections
+       as an attribute because it will be different for each particle. */
 
   } else {
 
@@ -358,9 +384,10 @@ void lightcone_write_particles(struct lightcone_props *props,
       const hsize_t chunk_size = props->hdf5_chunk_size;
       hsize_t dims[] = {(hsize_t) num_to_write, (hsize_t) f->dimension};
       int rank = 1;
-      if(f->dimension > 1)
-        rank = 2;
-      append_dataset(group_id, f->name, dtype_id, chunk_size, rank, dims, num_written, outbuf);
+      if(f->dimension > 1)rank = 2;
+      append_dataset(snapshot_units, f->units, f->scale_factor_exponent,
+                     group_id, f->name, dtype_id, chunk_size,
+                     rank, dims, num_written, outbuf);
       
       /* Free the output buffer */
       free(outbuf);
