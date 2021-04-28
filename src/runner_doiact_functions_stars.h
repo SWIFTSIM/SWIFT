@@ -1194,7 +1194,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
