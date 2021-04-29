@@ -355,7 +355,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
               /* pi->limiter_data.n_limiter_exact, */ 0., N_ngb);
 
       /* Check that we did not go above the threshold.
-       * Note that we ignore particles that saw an inhibted particle as a
+       * Note that we ignore particles that saw an inhibited particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
       if (!found_inhibited && pi->N_density != pi->N_density_exact &&
@@ -366,6 +366,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 h_max_limited);
         wrong_rho++;
       }
+#if defined(SPHENIX_SPH)
       if (check_force && !found_inhibited &&
           (fabsf(pi->n_gradient / pi->n_gradient_exact - 1.f) > rel_tol ||
            fabsf(pi->n_gradient_exact / pi->n_gradient - 1.f) > rel_tol)) {
@@ -373,6 +374,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 pi->n_gradient_exact);
         wrong_gradient++;
       }
+#endif
       if (check_force && !found_inhibited &&
           (fabsf(pi->n_force / pi->n_force_exact - 1.f) > 10. * rel_tol ||
            fabsf(pi->n_force_exact / pi->n_force - 1.f) > 10. * rel_tol)) {
@@ -447,7 +449,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
         wrong_limiter, counter);
 
   if (e->verbose)
-    message("Writting brute-force density files took %.3f %s. ",
+    message("Writing brute-force density files took %.3f %s. ",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #else
