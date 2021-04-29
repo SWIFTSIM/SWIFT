@@ -105,73 +105,92 @@ void lightcone_io_make_output_fields(void) {
 
 }
 
+/*
+  Functions to store particle properties in the lightcone_*_data structs.
+
+  These should determine whether the particle should be included in the
+  lightcone and, if so, copy the needed quantities into the struct and
+  return 1. If the particle should be discarded the function should 
+  return 0.
+  
+ */
 
 /**
  * @brief Store gas properties to write to the lightcone
  */
-void lightcone_store_gas(const struct gpart *gp, const struct part *p,
-                         const struct xpart *xp, const double a_cross,
-                         const double x_cross[3], struct lightcone_gas_data *data) {
+int lightcone_store_gas(const struct gpart *gp, const struct part *p,
+                        const struct xpart *xp, const double a_cross,
+                        const double x_cross[3], struct lightcone_gas_data *data) {
   data->id = p->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = p->mass;
+
+  return 1;
 }
 
 
 /**
  * @brief Store dark matter properties to write to the lightcone
  */
-void lightcone_store_dark_matter(const struct gpart *gp, const double a_cross, 
-                                 const double x_cross[3],
-                                 struct lightcone_dark_matter_data *data) {
+int lightcone_store_dark_matter(const struct gpart *gp, const double a_cross, 
+                                const double x_cross[3],
+                                struct lightcone_dark_matter_data *data) {
   data->id = gp->id_or_neg_offset;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = gp->mass;
+  
+  return 1;
 }
 
 
 /**
  * @brief Store star properties to write to the lightcone
  */
-void lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
-                           const double a_cross, const double x_cross[3],
-                           struct lightcone_stars_data *data) {
+int lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
+                          const double a_cross, const double x_cross[3],
+                          struct lightcone_stars_data *data) {
   data->id = sp->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = sp->mass;
+
+  return 1;
 }
 
 
 /**
  * @brief Store black hole properties to write to the lightcone
  */
-void lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
-                                const double a_cross, const double x_cross[3],
-                                struct lightcone_black_hole_data *data) {
+int lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
+                               const double a_cross, const double x_cross[3],
+                               struct lightcone_black_hole_data *data) {
   data->id = bp->id;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = bp->mass;
+
+  return 1;
 }
 
 
 /**
  * @brief Store neutrino properties to write to the lightcone
  */
-void lightcone_store_neutrino(const struct gpart *gp, const double a_cross,
-                              const double x_cross[3], struct lightcone_neutrino_data *data) {
+int lightcone_store_neutrino(const struct gpart *gp, const double a_cross,
+                             const double x_cross[3], struct lightcone_neutrino_data *data) {
   data->id = gp->id_or_neg_offset;
   data->x[0] = x_cross[0];
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = gp->mass;
+  
+  return 1;
 }
 
 
