@@ -1787,11 +1787,7 @@ int main(int argc, char *argv[]) {
     /* Write out any remaining lightcone data at the end of the run */
 #ifdef WITH_LIGHTCONE
     if(e.lightcone_properties->enabled) {
-      lightcone_flush_particle_buffers(e.lightcone_properties,
-                                       e.internal_units,
-                                       e.snapshot_units,
-                                       /*flush_all=*/1,
-                                       /*end_file=*/1);
+      lightcone_flush_particle_buffers(&e, /*flush_all=*/1, /*end_file=*/1);
       lightcone_dump_completed_shells(e.lightcone_properties, e.cosmology,
                                       e.internal_units, e.snapshot_units,
                                       /*dump_all=*/1, /*need_flush=*/1);

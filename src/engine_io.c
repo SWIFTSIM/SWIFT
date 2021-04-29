@@ -116,11 +116,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #ifdef WITH_LIGHTCONE
       if(e->lightcone_properties->enabled) {
         /* Empty all lightcone buffers before dumping restart files */
-        lightcone_flush_particle_buffers(e->lightcone_properties,
-                                         e->internal_units,
-                                         e->snapshot_units,
-                                         /* flush_all = */ 1, 
-                                         /* end_file = */ 1);
+        lightcone_flush_particle_buffers(e, /* flush_all = */ 1, /* end_file = */ 1);
         lightcone_flush_map_updates(e->lightcone_properties);
 #ifdef WITH_MPI
         MPI_Barrier(MPI_COMM_WORLD);

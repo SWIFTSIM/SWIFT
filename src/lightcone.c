@@ -491,11 +491,13 @@ void lightcone_init(struct lightcone_props *props,
  * @param end_file if true, subsequent calls write to a new file
  *
  */
-void lightcone_flush_particle_buffers(struct lightcone_props *props,
-                                      const struct unit_system *internal_units,
-                                      const struct unit_system *snapshot_units,
-                                      int flush_all, int end_file) {
+void lightcone_flush_particle_buffers(struct engine *e, int flush_all, int end_file) {
+
   ticks tic = getticks();
+  
+  struct lightcone_props *props = e->lightcone_properties;
+  const struct unit_system *internal_units = e->internal_units;
+  const struct unit_system *snapshot_units = e->snapshot_units;
 
   /* Will flush any buffers with more particles than this */
   size_t max_to_buffer = (size_t) props->max_particles_buffered;
@@ -544,7 +546,23 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
       io_write_attribute(group_id, "observer_position", DOUBLE,
                          props->observer_position, 3);
       io_write_attribute_d(group_id, "minimum_redshift", props->z_min_for_particles);
-      io_write_attribute_d(group_id, "maximum redshift", props->z_max_for_particles);
+      io_write_attribute_d(group_id, "maximum_redshift", props->z_max_for_particles);
+
+      /* Write current and max expansion factor so we can identify the final file */
+      io_write_attribute_d(group_id, "a_current", e->cosmology->a);
+      io_write_attribute_d(group_id, "a_end", e->cosmology->a_end);
+
+      /* Record number of MPI ranks so we know how many files there are */
+      int comm_rank = 0;
+      int comm_size = 1;
+#ifdef WITH_MPI
+      MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+      MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+#endif
+      io_write_attribute_i(group_id, "mpi_rank", comm_rank);
+      io_write_attribute_i(group_id, "nr_mpi_ranks", comm_size);
+      io_write_attribute_i(group_id, "file_index", props->current_file);
+
       H5Gclose(group_id);
 
       /* We no longer need to create a new file */
