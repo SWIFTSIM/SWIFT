@@ -481,6 +481,20 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->N_density = 1; /* Self contribution */
+  p->N_force = 0;
+  p->N_density_exact = 0;
+  p->N_force_exact = 0;
+  p->rho_exact = 0.f;
+  p->n_density = 0.f;
+  p->n_density_exact = 0.f;
+  p->n_force = 0.f;
+  p->n_force_exact = 0.f;
+  p->inhibited_exact = 0;
+  p->limited_part = 0;
+#endif
 }
 
 /**
@@ -527,6 +541,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish calculation of the (physical) velocity divergence */
   p->density.div_v *= h_inv_dim_plus_one * a_inv2 * rho_inv;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->n_density += kernel_root;
+  p->n_density *= h_inv_dim;
+#endif
 }
 
 /**
