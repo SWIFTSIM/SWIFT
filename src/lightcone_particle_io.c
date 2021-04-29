@@ -52,7 +52,7 @@ void lightcone_io_make_output_fields(void) {
   /* Gas */
 #define OFFSET(x) offsetof(struct lightcone_gas_data, x)
   n = 0;
-  field[swift_type_gas][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_gas][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_gas][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_gas] = n;
@@ -61,7 +61,7 @@ void lightcone_io_make_output_fields(void) {
   /* DM */
 #define OFFSET(x) offsetof(struct lightcone_dark_matter_data, x)
   n = 0;
-  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_dark_matter] = n;
@@ -70,7 +70,7 @@ void lightcone_io_make_output_fields(void) {
   /* DM background (uses same struct as dark matter) */
 #define OFFSET(x) offsetof(struct lightcone_dark_matter_data, x)
   n = 0;
-  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_dark_matter_background] = n;
@@ -79,7 +79,7 @@ void lightcone_io_make_output_fields(void) {
   /* Stars */
 #define OFFSET(x) offsetof(struct lightcone_stars_data, x)
   n = 0;
-  field[swift_type_stars][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_stars][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_stars][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_stars] = n;
@@ -88,7 +88,7 @@ void lightcone_io_make_output_fields(void) {
   /* Black holes */
 #define OFFSET(x) offsetof(struct lightcone_black_hole_data, x)
   n = 0;
-  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_black_hole] = n;
@@ -97,7 +97,7 @@ void lightcone_io_make_output_fields(void) {
   /* Neutrinos */
 #define OFFSET(x) offsetof(struct lightcone_neutrino_data, x)
   n = 0;
-  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("ParticleID",  LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
   num_fields[swift_type_neutrino] = n;
