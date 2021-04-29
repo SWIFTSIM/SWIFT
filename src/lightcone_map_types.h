@@ -26,6 +26,7 @@
 /* Local headers */
 #include "parser.h"
 #include "part_type.h"
+#include "units.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
@@ -43,6 +44,7 @@ typedef void (*map_update_function_t)(struct lightcone_map *map, const struct en
 struct lightcone_map_type {
   char name[PARSER_MAX_LINE_SIZE];
   map_update_function_t update_map;
+  enum unit_conversion_factor units;
 };
 
 
@@ -51,10 +53,10 @@ void lightcone_map_total_mass(struct lightcone_map *map, const struct engine *e,
                               const double x_cross[3]);
 
 
-/* This associates map names to the appropriate update function */
+/* This associates map names to the appropriate update function and unit info */
 static const struct lightcone_map_type lightcone_map_types[] = {
-  {"TotalMass", lightcone_map_total_mass},
-  {"",          NULL}, /* NULL function indicates end of array */
+  {"TotalMass", lightcone_map_total_mass, UNIT_CONV_MASS},
+  {"",          NULL,                     UNIT_CONV_NO_UNITS}, /* NULL function indicates end of array */
 };
 
 #endif

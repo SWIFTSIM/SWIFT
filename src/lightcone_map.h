@@ -31,7 +31,7 @@
 /* Local headers */
 #include "particle_buffer.h"
 #include "parser.h"
-
+#include "units.h"
 
 /**
  * @brief Struct to store a contribution to a healpix map pixel
@@ -79,6 +79,9 @@ struct lightcone_map {
   /*! Outer radius */
   double r_max;
 
+  /*! Units of this map */
+  enum unit_conversion_factor units;
+
 };
 
 
@@ -102,7 +105,8 @@ __attribute__((always_inline)) INLINE static void lightcone_map_buffer_update(st
 
 void lightcone_map_init(struct lightcone_map *map, const int nside,
                         const double r_min, const double r_max,
-                        const size_t elements_per_block);
+                        const size_t elements_per_block,
+                        enum unit_conversion_factor units);
 
 void lightcone_map_clean(struct lightcone_map *map);
 
@@ -117,7 +121,9 @@ void lightcone_map_free_pixels(struct lightcone_map *map);
 void lightcone_map_update_from_buffer(struct lightcone_map *map, const int verbose);
 
 #ifdef HAVE_HDF5
-void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name);
+void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name,
+                         const struct unit_system *internal_units,
+                         const struct unit_system *snapshot_units);
 #endif
 
 #endif /* #ifndef SWIFT_LIGHTCONE_MAP_H */

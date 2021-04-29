@@ -397,6 +397,26 @@ void lightcone_init(struct lightcone_props *props,
       cosmology_scale_factor_at_comoving_distance(cosmo, props->shell_rmax[shell_nr]);
   }
 
+  /* Each type of map has a pointer to an update function. First, null them all. */
+  for(int map_nr=0; map_nr<LIGHTCONE_MAX_HEALPIX_MAPS; map_nr+=1)
+    props->update_map[map_nr] = NULL;
+
+  /* Then, for each requested map type find the update function by matching names */
+  for(int map_nr=0; map_nr<props->nr_maps; map_nr+=1) {
+    int type_nr = 0;
+    while(lightcone_map_types[type_nr].update_map) {
+      if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
+        props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
+        props->map_units[map_nr] = lightcone_map_types[type_nr].units;
+        if(engine_rank==0)message("lightcone map %d is of type %s", map_nr,
+                                  lightcone_map_types[type_nr].name);
+      }
+      type_nr += 1;
+    }
+    if(!props->update_map[map_nr])error("Unable to locate lightcone map type %s",
+                                        props->map_names[map_nr]);
+  }
+
   /* Initialize lightcone healpix maps */
   const int nr_maps = props->nr_maps;
   for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
@@ -405,7 +425,7 @@ void lightcone_init(struct lightcone_props *props,
         props->map[map_nr][shell_nr] = malloc(sizeof(struct lightcone_map));
         lightcone_map_init(props->map[map_nr][shell_nr], props->nside,
                            props->shell_rmin[shell_nr], props->shell_rmax[shell_nr],
-                           props->buffer_chunk_size);
+                           props->buffer_chunk_size, props->map_units[map_nr]);
       } else {
         props->map[map_nr][shell_nr] = NULL;
       }
@@ -437,25 +457,6 @@ void lightcone_init(struct lightcone_props *props,
   /* Store initial state of lightcone shells */
   for(int shell_nr=0;shell_nr<LIGHTCONE_MAX_SHELLS; shell_nr+=1)
     props->shell_state[shell_nr] = shell_uninitialized;
-
-  /* Each type of map has a pointer to an update function. First, null them all. */
-  for(int map_nr=0; map_nr<LIGHTCONE_MAX_HEALPIX_MAPS; map_nr+=1)
-    props->update_map[map_nr] = NULL;
-
-  /* Then, for each requested map type find the update function by matching names */
-  for(int map_nr=0; map_nr<props->nr_maps; map_nr+=1) {
-    int type_nr = 0;
-    while(lightcone_map_types[type_nr].update_map) {
-      if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
-        props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
-        if(engine_rank==0)message("lightcone map %d is of type %s", map_nr,
-                                  lightcone_map_types[type_nr].name);
-      }
-      type_nr += 1;
-    }
-    if(!props->update_map[map_nr])error("Unable to locate lightcone map type %s",
-                                        props->map_names[map_nr]);
-  }
 
   /* Estimate number of particles which will be output.
      
@@ -644,6 +645,8 @@ void lightcone_flush_map_updates(struct lightcone_props *props) {
  */
 void lightcone_dump_completed_shells(struct lightcone_props *props,
                                      const struct cosmology *c,
+                                     const struct unit_system *internal_units,
+                                     const struct unit_system *snapshot_units,
                                      const int dump_all,
                                      const int need_flush) {
 #ifdef HAVE_HDF5
@@ -705,7 +708,8 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
         /* Write the lightcone maps for this shell */
         for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
-          lightcone_map_write(props->map[map_nr][shell_nr], file_id, props->map_names[map_nr]);
+          lightcone_map_write(props->map[map_nr][shell_nr], file_id, props->map_names[map_nr],
+                              internal_units, snapshot_units);
 
         /* Close the file */
         H5Pclose(fapl_id);

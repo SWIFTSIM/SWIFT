@@ -49,7 +49,8 @@
 
 void lightcone_map_init(struct lightcone_map *map, const int nside,
                         const double r_min, const double r_max,
-                        const size_t elements_per_block) {
+                        const size_t elements_per_block,
+                        enum unit_conversion_factor units) {
   
   int comm_rank, comm_size;
 #ifdef WITH_MPI
@@ -88,10 +89,11 @@ void lightcone_map_init(struct lightcone_map *map, const int nside,
   /* Record block size so we can re-initialise particle_buffer on restarting */
   map->elements_per_block = elements_per_block;
   
-  /* Store resolution parameter and shell size */
+  /* Store resolution parameter, shell size, units */
   map->nside = nside;
   map->r_min = r_min;
   map->r_max = r_max;
+  map->units = units;
 }
 
 
@@ -320,8 +322,20 @@ void lightcone_map_update_from_buffer(struct lightcone_map *map,
  * @param loc a HDF5 file or group identifier to write to
  * @param name the name of the dataset to create
  */
-void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name) {
+void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const char *name,
+                         const struct unit_system *internal_units,
+                         const struct unit_system *snapshot_units) {
+
+  /* Find unit conversion factor for this quantity */
+  const double conversion_factor =
+    units_conversion_factor(internal_units, snapshot_units, map->units);
   
+  /* Convert units if necessary */
+  if(conversion_factor != 1.0) {
+    for(size_t i=0; i<map->local_nr_pix; i+=1)
+      map->data[i] *= conversion_factor;
+  }
+
   /* Create dataspace in memory corresponding to local pixels */
   const hsize_t mem_dims[1] = {(hsize_t) map->local_nr_pix};
   hid_t mem_space_id = H5Screate_simple(1, mem_dims, NULL);
@@ -358,6 +372,26 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id, const ch
   io_write_attribute_s(dset_id, "pixel_ordering_scheme", "ring");
   io_write_attribute_d(dset_id, "comoving_inner_radius", map->r_min);
   io_write_attribute_d(dset_id, "comoving_outer_radius", map->r_max);
+
+  /* Write unit conversion factors for this data set */
+  char buffer[FIELD_BUFFER_SIZE] = {0};
+  units_cgs_conversion_string(buffer, snapshot_units, map->units, 0.f);
+  float baseUnitsExp[5];
+  units_get_base_unit_exponents_array(baseUnitsExp, map->units);
+  io_write_attribute_f(dset_id, "U_M exponent", baseUnitsExp[UNIT_MASS]);
+  io_write_attribute_f(dset_id, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
+  io_write_attribute_f(dset_id, "U_t exponent", baseUnitsExp[UNIT_TIME]);
+  io_write_attribute_f(dset_id, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
+  io_write_attribute_f(dset_id, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
+  io_write_attribute_f(dset_id, "h-scale exponent", 0.f);
+  io_write_attribute_f(dset_id, "a-scale exponent", 0.f);
+  io_write_attribute_s(dset_id, "Expression for physical CGS units", buffer);
+
+  /* Write the actual number this conversion factor corresponds to */
+  const double cgs_factor = units_cgs_conversion_factor(snapshot_units, map->units);
+  io_write_attribute_d(dset_id,
+                       "Conversion factor to CGS (not including cosmological corrections)",
+                       cgs_factor);
 
   /* Set up property list for the write */
   hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);

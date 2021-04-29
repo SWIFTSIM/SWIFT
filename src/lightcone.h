@@ -165,6 +165,9 @@ struct lightcone_props {
   /*! Functions to update healpix map types */
   map_update_function_t update_map[LIGHTCONE_MAX_HEALPIX_MAPS];
 
+  /*! Units for each map */
+  enum unit_conversion_factor map_units[LIGHTCONE_MAX_HEALPIX_MAPS];
+
 };
 
 
@@ -203,6 +206,8 @@ void lightcone_flush_map_updates(struct lightcone_props *props);
 
 void lightcone_dump_completed_shells(struct lightcone_props *props,
                                      const struct cosmology *c, 
+                                     const struct unit_system *internal_units,
+                                     const struct unit_system *snapshot_units,
                                      const int dump_all,
                                      const int need_flush);
 
