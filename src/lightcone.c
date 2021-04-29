@@ -491,14 +491,13 @@ void lightcone_init(struct lightcone_props *props,
  * @param end_file if true, subsequent calls write to a new file
  *
  */
-void lightcone_flush_particle_buffers(struct engine *e, int flush_all, int end_file) {
+void lightcone_flush_particle_buffers(struct lightcone_props *props,
+                                      const struct unit_system *internal_units,
+                                      const struct unit_system *snapshot_units,
+                                      int flush_all, int end_file) {
 
   ticks tic = getticks();
   
-  struct lightcone_props *props = e->lightcone_properties;
-  const struct unit_system *internal_units = e->internal_units;
-  const struct unit_system *snapshot_units = e->snapshot_units;
-
   /* Will flush any buffers with more particles than this */
   size_t max_to_buffer = (size_t) props->max_particles_buffered;
   if(flush_all)max_to_buffer = 0;
@@ -547,10 +546,6 @@ void lightcone_flush_particle_buffers(struct engine *e, int flush_all, int end_f
                          props->observer_position, 3);
       io_write_attribute_d(group_id, "minimum_redshift", props->z_min_for_particles);
       io_write_attribute_d(group_id, "maximum_redshift", props->z_max_for_particles);
-
-      /* Write current and max expansion factor so we can identify the final file */
-      io_write_attribute_d(group_id, "a_current", e->cosmology->a);
-      io_write_attribute_d(group_id, "a_end", e->cosmology->a_end);
 
       /* Record number of MPI ranks so we know how many files there are */
       int comm_rank = 0;
