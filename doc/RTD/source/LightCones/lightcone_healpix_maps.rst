@@ -3,7 +3,7 @@
 
 .. _lightcone_healpix_maps_label:
 
-Light Cone Healpix Maps
+Light Cone HEALPix Maps
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 SWIFT can accumulate particle properties to HEALPix maps as they

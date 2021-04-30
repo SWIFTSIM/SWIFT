@@ -900,6 +900,114 @@ be processed by the ``SpecWizard`` tool
      range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
      range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
 
+
+.. _Parameters_light_cone:
+
+Light Cone Outputs
+---------------------
+
+The ``Lightcone`` section of the parameter file contains all the options related to
+light cone outputs. The parameters are:
+
+* Base name for particle and HEALPix map outputs: ``basename``.
+
+Particles will be written to files ``<basename>_XXXX.Y.hdf5``, where XXXX numbers the files
+written by a single MPI rank and Y is the MPI rank index. HEALPix maps are written to files
+with names ``<basename>.shell_X.hdf5``, where X is the index of the shell.
+
+* Location of the observer in the simulation box, in internal units: ``observer_position``
+
+* Size of in memory chunks used to store particles and map updates: ``buffer_chunk_size``
+
+During each time step buffered particles and HEALPix map updates are stored in a linked
+list of chunks of ``buffer_chunk_size`` elements. Additional chunks are allocated as needed.
+
+* Minimum redshift for particle output: ``z_min_for_particles``
+
+* Maximum redshift for particle output: ``z_max_for_particles``
+
+* Whether to include particles of each type in the particle output: ``use_<type>``
+
+Here, ``<type>`` can be ``gas``, ``dm``, ``dm_background``, ``stars``, ``black_hole`` or ``neutrino``.
+
+* The number of buffered particles which triggers a write to disk: ``max_particles_buffered``
+
+If an MPI rank has at least max_particles_buffered particles which have crossed the lightcone,
+it will write them to disk at the end of the current time step.
+
+* Size of chunks in the particle output file
+
+This sets the HDF5 chunk size. Particle outputs must be chunked because the number of particles
+which will be written out is not known when the file is created.
+
+* HEALPix map resolution: ``nside``
+
+* Name of the file with shell radii: ``radius_file.txt``
+
+This specifies the name of a file with the inner and outer radii of the shells used to make
+HEALPix maps. It should be a text file with a one line header and then two comma separated columns
+of numbers with the inner and outer radii. The units are determined by the header. The header must
+be one of the following:
+
+``# Minimum comoving distance, Maximum comoving distance``,
+``# Minimum redshift, Maximum redshift``, or
+``# Maximum expansion factor, Minimum expansion factor``. Comoving distances are in internal units.
+
+* Number of pending HEALPix map updates before the buffers are flushed: ``max_updates_buffered``
+
+In MPI mode applying updates to the HEALPix maps requires communication and forces synchronisation
+of all MPI ranks, so it is not done every time step. If any MPI rank has at least
+``max_updates_buffered`` pending updates at the end of a time step, then all ranks will apply
+their updates to the HEALPix maps.
+
+* Which types of HEALPix maps to create: ``map_names``
+
+This is a list of strings which specifies what quantities should be accumulated to HEALPix maps.
+The possible values are defined in the lightcone_map_types array in ``lightcone_map_types.h``.
+To add a new type of map it is neccesary to add a new entry to this array with the name of the
+map type, a pointer to a function which calculates the quantity to add, and the units of the 
+quantity. See the pre-defined TotalMass map type and the function lightcone_map_total_mass()
+for an example of how to do this.
+
+The following shows a full set of light cone parameters:
+
+.. code:: YAML
+
+  Lightcone:
+
+    # Common parameters
+    basename: lightcone
+    observer_position: [35.5, 78.12, 12.45]
+    buffer_chunk_size: 100000
+
+    # Particle output parameters
+    z_min_for_particles:    0.0
+    z_max_for_particles:    0.05
+    use_gas:           1
+    use_dm:            1
+    use_dm_background: 0
+    use_stars:         0
+    use_black_hole:    0
+    use_neutrino:      0
+    max_particles_buffered: 100000
+    hdf5_chunk_size:        100000
+
+    # Healpix map parameters
+    nside:                512
+    radius_file:          ./shell_radii.txt
+    max_updates_buffered: 100000
+    map_names:            [TotalMass]
+
+An example of the radius file::
+
+  # Minimum comoving distance, Maximum comoving distance
+  0.0,   50.0
+  50.0,  100.0
+  150.0, 200.0
+  200.0, 400.0
+  400.0, 1000.0
+
+
 .. _Parameters_eos:
 
 Equation of State (EoS)
