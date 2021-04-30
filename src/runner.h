@@ -120,7 +120,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer);
 void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_fft(struct runner *r, int timer);
-void runner_do_logger(struct runner *r, struct cell *c, int timer);
+void runner_do_csds(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_self(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         int timer);

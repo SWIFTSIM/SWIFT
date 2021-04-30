@@ -48,7 +48,7 @@ TASKTYPES = [
     "star_formation",
     "star_formation_in",
     "star_formation_out",
-    "logger",
+    "csds",
     "stars_in",
     "stars_out",
     "stars_ghost_in",

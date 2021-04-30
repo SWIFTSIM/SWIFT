@@ -494,8 +494,8 @@ void *runner_main(void *data) {
         case task_type_end_grav_force:
           runner_do_end_grav_force(r, ci, 1);
           break;
-        case task_type_logger:
-          runner_do_logger(r, ci, 1);
+        case task_type_csds:
+          runner_do_csds(r, ci, 1);
           break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);

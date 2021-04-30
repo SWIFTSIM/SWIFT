@@ -67,11 +67,6 @@ struct gpart {
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
-#endif
-
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
   /* Flag to indicate this particle should be output at subsequent VR
      invocations because it was the most bound in a group at some point */

@@ -88,7 +88,7 @@ const char *taskID_names[task_type_count] = {
     "star_formation_in",
     "star_formation_out",
     "star_formation_sink",
-    "logger",
+    "csds",
     "stars_in",
     "stars_out",
     "stars_ghost_in",
@@ -319,7 +319,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_logger:
+    case task_type_csds:
     case task_type_fof_self:
     case task_type_fof_pair:
     case task_type_timestep:
@@ -530,7 +530,7 @@ void task_unlock(struct task *t) {
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_logger:
+    case task_type_csds:
     case task_type_timestep:
       cell_unlocktree(ci);
       cell_gunlocktree(ci);
@@ -755,7 +755,7 @@ int task_lock(struct task *t) {
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_logger:
+    case task_type_csds:
     case task_type_timestep:
       if (ci->hydro.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;

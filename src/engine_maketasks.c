@@ -966,8 +966,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
-#ifdef WITH_LOGGER
-  const int with_logger = e->policy & engine_policy_logger;
+#ifdef WITH_CSDS
+  const int with_csds = e->policy & engine_policy_csds;
 #endif
 
   /* Are we at the top-level? */
@@ -1012,42 +1012,42 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->kick1, c->grav.neutrino_weight);
       }
 
-#if defined(WITH_LOGGER)
-      struct task *kick2_or_logger;
-      if (with_logger) {
-        /* Add the hydro logger task. */
-        c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
+#if defined(WITH_CSDS)
+      struct task *kick2_or_csds;
+      if (with_csds) {
+        /* Add the hydro csds task. */
+        c->csds = scheduler_addtask(s, task_type_csds, task_subtype_none, 0,
                                       0, c, NULL);
 
         /* Add the kick2 dependency */
-        scheduler_addunlock(s, c->kick2, c->logger);
+        scheduler_addunlock(s, c->kick2, c->csds);
 
         /* Create a variable in order to avoid to many ifdef */
-        kick2_or_logger = c->logger;
+        kick2_or_csds = c->csds;
       } else {
-        kick2_or_logger = c->kick2;
+        kick2_or_csds = c->kick2;
       }
 #else
-      struct task *kick2_or_logger = c->kick2;
+      struct task *kick2_or_csds = c->kick2;
 #endif
 
       /* Add the time-step calculation task and its dependency */
       c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
                                       0, 0, c, NULL);
 
-      scheduler_addunlock(s, kick2_or_logger, c->timestep);
+      scheduler_addunlock(s, kick2_or_csds, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
 
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0) {
-        scheduler_addunlock(s, kick2_or_logger, c->top->hydro.star_formation);
+        scheduler_addunlock(s, kick2_or_csds, c->top->hydro.star_formation);
         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
       }
 
       /* Subgrid tasks: star formation from sinks */
       if (with_star_formation_sink &&
           (c->hydro.count > 0 || c->sinks.count > 0)) {
-        scheduler_addunlock(s, kick2_or_logger,
+        scheduler_addunlock(s, kick2_or_csds,
                             c->top->hydro.star_formation_sink);
         scheduler_addunlock(s, c->top->hydro.star_formation_sink, c->timestep);
       }
@@ -1277,8 +1277,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_star_formation_sink = (with_sinks && with_stars);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
-#ifdef WITH_LOGGER
-  const int with_logger = (e->policy & engine_policy_logger);
+#ifdef WITH_CSDS
+  const int with_csds = (e->policy & engine_policy_csds);
 #endif
 
   /* Are we are the level where we create the stars' resort tasks?
@@ -1449,9 +1449,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                               0, /* implicit = */ 1, c, NULL);
 #endif
 
-#ifdef WITH_LOGGER
-        if (with_logger) {
-          scheduler_addunlock(s, c->super->logger, c->stars.stars_in);
+#ifdef WITH_CSDS
+        if (with_csds) {
+          scheduler_addunlock(s, c->super->csds, c->stars.stars_in);
         } else {
           scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
         }
@@ -1543,9 +1543,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->black_holes.swallow_ghost_2 = scheduler_addtask(
             s, task_type_bh_swallow_ghost3, task_subtype_none, 0, 0, c, NULL);
 
-#ifdef WITH_LOGGER
-        if (with_logger) {
-          scheduler_addunlock(s, c->super->logger,
+#ifdef WITH_CSDS
+        if (with_csds) {
+          scheduler_addunlock(s, c->super->csds,
                               c->black_holes.black_holes_in);
         } else {
           scheduler_addunlock(s, c->super->kick2,

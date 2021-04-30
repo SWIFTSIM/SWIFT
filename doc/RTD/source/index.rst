@@ -33,5 +33,5 @@ difference is the parameter file that will need to be adapted for SWIFT.
    NewOption/index
    Task/index
    AnalysisTools/index
-   Logger/index
+   CSDS/index
    ImplementationDetails/index

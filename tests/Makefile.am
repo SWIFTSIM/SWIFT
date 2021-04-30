@@ -24,7 +24,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testErfc \
-        testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
+        testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
@@ -39,7 +39,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
                  testKernel testFFT testInteractions testMaths testRandom testExp \
                  testSymmetry testThreadpool testRandomSpacing testErfc \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
-                 testRiemannHLLC testMatrixInversion testDump testLogger \
+                 testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
@@ -128,7 +128,7 @@ testThreadpool_SOURCES = testThreadpool.c
 
 testDump_SOURCES = testDump.c
 
-testLogger_SOURCES = testLogger.c
+testCSDS_SOURCES = testCSDS.c
 
 testExp_SOURCES = testExp.c
 

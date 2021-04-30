@@ -1802,8 +1802,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if (c->hydro.cooling_in != NULL) cell_activate_cooling(c, s, e);
-#ifdef WITH_LOGGER
-    if (c->logger != NULL) scheduler_activate(s, c->logger);
+#ifdef WITH_CSDS
+    if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
 
     if (c->top->hydro.star_formation != NULL) {
@@ -1963,8 +1963,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
     if (c->grav.neutrino_weight != NULL)
       scheduler_activate(s, c->grav.neutrino_weight);
-#ifdef WITH_LOGGER
-    if (c->logger != NULL) scheduler_activate(s, c->logger);
+#ifdef WITH_CSDS
+    if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
   }
 
@@ -2381,8 +2381,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
       if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-#ifdef WITH_LOGGER
-      if (c->logger != NULL) scheduler_activate(s, c->logger);
+#ifdef WITH_CSDS
+      if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
     }
   }
@@ -2663,8 +2663,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-#ifdef WITH_LOGGER
-    if (c->logger != NULL) scheduler_activate(s, c->logger);
+#ifdef WITH_CSDS
+    if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
   }
 
@@ -2850,8 +2850,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-#ifdef WITH_LOGGER
-    if (c->logger != NULL) scheduler_activate(s, c->logger);
+#ifdef WITH_CSDS
+    if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
   }
 

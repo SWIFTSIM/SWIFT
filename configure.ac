@@ -92,7 +92,7 @@ AC_ARG_ENABLE([csds],
 )
 
 if test "$with_csds" = "yes"; then
-   AC_DEFINE([WITH_LOGGER], 1, [csds enabled])
+   AC_DEFINE([WITH_CSDS], 1, [csds enabled])
    # Ensure that the submodule is initialized
    ${srcdir}/tools/update-modules csds
    # The csds requires that long long is a 64bit type, let's
@@ -108,8 +108,8 @@ if test "$with_csds" = "yes"; then
    fi
 
 fi
-AM_CONDITIONAL([HAVELOGGER],[test $with_csds = "yes"])
-AM_COND_IF([HAVELOGGER], [AC_CONFIG_FILES([csds/Makefile csds/src/Makefile csds/tests/Makefile])])
+AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
+AM_COND_IF([HAVECSDS], [AC_CONFIG_FILES([csds/Makefile csds/src/Makefile csds/tests/Makefile])])
 
 
 
