@@ -35,8 +35,8 @@ InitialConditions:
   periodic:                     1
   smoothing_length_scaling:     3.33
 
-# Parameters governing the logger snapshot system
-Logger:
+# Parameters governing the CSDS snapshot system
+CSDS:
   delta_step:           10     # Update the particle log every this many updates
   basename:             index  # Common part of the filenames
   initial_buffer_size:  0.01      # (Optional) Buffer size in GB

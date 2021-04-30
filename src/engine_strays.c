@@ -117,12 +117,12 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     proxy_parts_load(&e->proxies[pid], &s->parts[offset_parts + k],
                      &s->xparts[offset_parts + k], 1);
 
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+    if (e->policy & engine_policy_csds) {
       /* Log the particle when leaving a rank. */
-      logger_log_part(e->logger, &s->parts[offset_parts + k],
+      csds_log_part(e->csds, &s->parts[offset_parts + k],
                       &s->xparts[offset_parts + k], e, /* log_all_fields */ 1,
-                      logger_flag_mpi_exit, node_id);
+                      csds_flag_mpi_exit, node_id);
     }
 #endif
   }
@@ -161,11 +161,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     /* Load the spart into the proxy */
     proxy_sparts_load(&e->proxies[pid], &s->sparts[offset_sparts + k], 1);
 
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+    if (e->policy & engine_policy_csds) {
       /* Log the particle when leaving a rank. */
-      logger_log_spart(e->logger, &s->sparts[offset_sparts + k], e,
-                       /* log_all_fields */ 1, logger_flag_mpi_exit, node_id);
+      csds_log_spart(e->csds, &s->sparts[offset_sparts + k], e,
+                       /* log_all_fields */ 1, csds_flag_mpi_exit, node_id);
     }
 #endif
   }
@@ -204,8 +204,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     /* Load the bpart into the proxy */
     proxy_bparts_load(&e->proxies[pid], &s->bparts[offset_bparts + k], 1);
 
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+    if (e->policy & engine_policy_csds) {
       error("Not yet implemented.");
     }
 #endif
@@ -239,14 +239,14 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     /* Load the gpart into the proxy */
     proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
 
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
     /* Write only the dark matter particles */
-    if ((e->policy & engine_policy_logger) &&
+    if ((e->policy & engine_policy_csds) &&
         s->gparts[offset_gparts + k].type == swift_type_dark_matter) {
 
       /* Log the particle when leaving a rank. */
-      logger_log_gpart(e->logger, &s->gparts[offset_gparts + k], e,
-                       /* log_all_fields */ 1, logger_flag_mpi_exit, node_id);
+      csds_log_gpart(e->csds, &s->gparts[offset_gparts + k], e,
+                       /* log_all_fields */ 1, csds_flag_mpi_exit, node_id);
     }
 #endif
   }
@@ -469,26 +469,26 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       memcpy(&s->bparts[offset_bparts + count_bparts], prox->bparts_in,
              sizeof(struct bpart) * prox->nr_bparts_in);
 
-#ifdef WITH_LOGGER
-      if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+      if (e->policy & engine_policy_csds) {
         struct part *parts = &s->parts[offset_parts + count_parts];
         struct xpart *xparts = &s->xparts[offset_parts + count_parts];
         struct spart *sparts = &s->sparts[offset_sparts + count_sparts];
         struct gpart *gparts = &s->gparts[offset_gparts + count_gparts];
 
         /* Log the gas particles */
-        logger_log_parts(e->logger, parts, xparts, prox->nr_parts_in, e,
-                         /* log_all_fields */ 1, logger_flag_mpi_enter,
+        csds_log_parts(e->csds, parts, xparts, prox->nr_parts_in, e,
+                         /* log_all_fields */ 1, csds_flag_mpi_enter,
                          prox->nodeID);
 
         /* Log the stellar particles */
-        logger_log_sparts(e->logger, sparts, prox->nr_sparts_in, e,
-                          /* log_all_fields */ 1, logger_flag_mpi_enter,
+        csds_log_sparts(e->csds, sparts, prox->nr_sparts_in, e,
+                          /* log_all_fields */ 1, csds_flag_mpi_enter,
                           prox->nodeID);
 
         /* Log the gparts */
-        logger_log_gparts(e->logger, gparts, prox->nr_gparts_in, e,
-                          /* log_all_fields */ 1, logger_flag_mpi_enter,
+        csds_log_gparts(e->csds, gparts, prox->nr_gparts_in, e,
+                          /* log_all_fields */ 1, csds_flag_mpi_enter,
                           prox->nodeID);
 
         /* Log the bparts */

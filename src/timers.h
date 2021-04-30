@@ -119,7 +119,7 @@ enum {
   timer_locktree,
   timer_runners,
   timer_step,
-  timer_logger,
+  timer_csds,
   timer_do_stars_sort,
   timer_do_stars_resort,
   timer_fof_self,

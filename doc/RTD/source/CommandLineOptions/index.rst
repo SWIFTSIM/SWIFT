@@ -42,7 +42,7 @@ can be found by typing ``./swift -h``:
     --limiter                         Run with time-step limiter.
     --sync                            Run with time-step synchronization
                                       of particles hit by feedback events.
-    --logger                          Run with the particle logger.
+    --csds                            Run with the Continuous Simulation Data Stream (CSDS).
     -R, --radiation                   Run with radiative transfer. Work in
                                       progress, currently has no effect.
 

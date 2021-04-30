@@ -70,8 +70,8 @@
 #include "gravity_cache.h"
 #include "hydro.h"
 #include "line_of_sight.h"
-#include "logger.h"
-#include "logger_io.h"
+#include "csds.h"
+#include "csds_io.h"
 #include "map.h"
 #include "memuse.h"
 #include "minmax.h"
@@ -122,7 +122,7 @@ const char *engine_policy_names[] = {"none",
                                      "fof search",
                                      "time-step limiter",
                                      "time-step sync",
-                                     "logger",
+                                     "csds",
                                      "line of sight",
                                      "sink",
                                      "rt"};
@@ -1094,9 +1094,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_fof) {
     n1 += 2;
   }
-#if defined(WITH_LOGGER)
+#if defined(WITH_CSDS)
   /* each cell logs its particles */
-  if (e->policy & engine_policy_logger) {
+  if (e->policy & engine_policy_csds) {
     n1 += 1;
   }
 #endif
@@ -1777,20 +1777,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, e->s);
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    /* Mark the first time step in the particle logger file. */
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    /* Mark the first time step in the particle csds file. */
     if (e->policy & engine_policy_cosmology) {
-      logger_log_timestamp(e->logger, e->ti_current, e->cosmology->a,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->cosmology->a,
+                           &e->csds->timestamp_offset);
     } else {
-      logger_log_timestamp(e->logger, e->ti_current, e->time,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->time,
+                           &e->csds->timestamp_offset);
     }
-    /* Make sure that we have enough space in the particle logger file
+    /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    logger_ensure_size(e->logger, s->nr_parts, s->nr_gparts, s->nr_sparts);
-    logger_write_description(e->logger, e);
+    csds_ensure_size(e->csds, s->nr_parts, s->nr_gparts, s->nr_sparts);
+    csds_write_description(e->csds, e);
   }
 #endif
 
@@ -2186,19 +2186,19 @@ void engine_step(struct engine *e) {
     }
   }
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    /* Mark the current time step in the particle logger file. */
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    /* Mark the current time step in the particle csds file. */
     if (e->policy & engine_policy_cosmology) {
-      logger_log_timestamp(e->logger, e->ti_current, e->cosmology->a,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->cosmology->a,
+                           &e->csds->timestamp_offset);
     } else {
-      logger_log_timestamp(e->logger, e->ti_current, e->time,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->time,
+                           &e->csds->timestamp_offset);
     }
-    /* Make sure that we have enough space in the particle logger file
+    /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    logger_ensure_size(e->logger, e->s->nr_parts, e->s->nr_gparts,
+    csds_ensure_size(e->csds, e->s->nr_parts, e->s->nr_gparts,
                        e->s->nr_sparts);
   }
 #endif
@@ -2419,8 +2419,8 @@ void engine_step(struct engine *e) {
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
   engine_check_for_dumps(e);
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
     engine_check_for_index_dump(e);
   }
 #endif
@@ -2898,10 +2898,10 @@ void engine_init(
   e->total_nr_cells = 0;
   e->total_nr_tasks = 0;
 
-#if defined(WITH_LOGGER)
-  if (e->policy & engine_policy_logger) {
-    e->logger = (struct logger_writer *)malloc(sizeof(struct logger_writer));
-    logger_init(e->logger, e, params);
+#if defined(WITH_CSDS)
+  if (e->policy & engine_policy_csds) {
+    e->csds = (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    csds_init(e->csds, e, params);
   }
 #endif
 
@@ -3251,10 +3251,10 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_options_clean(e->output_options);
 
   swift_free("links", e->links);
-#if defined(WITH_LOGGER)
-  if (e->policy & engine_policy_logger) {
-    logger_free(e->logger);
-    free(e->logger);
+#if defined(WITH_CSDS)
+  if (e->policy & engine_policy_csds) {
+    csds_free(e->csds);
+    free(e->csds);
   }
 #endif
   scheduler_clean(&e->sched);
@@ -3317,8 +3317,8 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->output_list_stats) free((void *)e->output_list_stats);
     if (e->output_list_stf) free((void *)e->output_list_stf);
     if (e->output_list_los) free((void *)e->output_list_los);
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) free((void *)e->logger);
+#ifdef WITH_CSDS
+    if (e->policy & engine_policy_csds) free((void *)e->csds);
 #endif
     free(e->s);
   }
@@ -3372,9 +3372,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    logger_struct_dump(e->logger, stream);
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    csds_struct_dump(e->csds, stream);
   }
 #endif
 }
@@ -3526,12 +3526,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   output_options_struct_restore(output_options, stream);
   e->output_options = output_options;
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    struct logger_writer *log =
-        (struct logger_writer *)malloc(sizeof(struct logger_writer));
-    logger_struct_restore(log, stream);
-    e->logger = log;
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    struct csds_writer *log =
+        (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    csds_struct_restore(log, stream);
+    e->csds = log;
   }
 #endif
 

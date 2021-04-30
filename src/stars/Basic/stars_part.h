@@ -99,9 +99,9 @@ struct spart {
   /*! Radiative Transfer data */
   struct rt_spart_data rt_data;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
+#ifdef WITH_CSDS
+  /* Additional data for the particle csds */
+  struct csds_part_data csds_data;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS

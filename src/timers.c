@@ -118,7 +118,7 @@ const char* timers_names[timer_count] = {
     "locktree",
     "runners",
     "step",
-    "logger",
+    "csds",
     "do_stars_sort",
     "do_stars_resort",
     "fof_self",

@@ -23,7 +23,7 @@ SUBDIRS = src argparse examples doc tests tools
 if HAVEEAGLECOOLING
 SUBDIRS += examples/Cooling/CoolingRates
 endif
-if HAVELOGGER
+if HAVECSDS
 SUBDIRS += csds
 endif
 DIST_SUBDIRS = $(SUBDIRS) examples/Cooling/CoolingRates

@@ -183,11 +183,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!part_is_inhibited(p, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
-              logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
-                              logger_flag_delete, /* data */ 0);
+              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                              csds_flag_delete, /* data */ 0);
             }
 #endif
 
@@ -379,11 +379,11 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
             /* Remove the particle entirely */
             if (gp->type == swift_type_dark_matter) {
 
-#ifdef WITH_LOGGER
-              if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+              if (e->policy & engine_policy_csds) {
                 /* Log the particle one last time. */
-                logger_log_gpart(e->logger, gp, e, /* log_all */ 1,
-                                 logger_flag_delete, /* data */ 0);
+                csds_log_gpart(e->csds, gp, e, /* log_all */ 1,
+                                 csds_flag_delete, /* data */ 0);
               }
 #endif
 
@@ -532,11 +532,11 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!spart_is_inhibited(sp, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
-              logger_log_spart(e->logger, sp, e, /* log_all */ 1,
-                               logger_flag_delete, /* data */ 0);
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1,
+                               csds_flag_delete, /* data */ 0);
             }
 #endif
 
@@ -720,8 +720,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!bpart_is_inhibited(bp, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               error("Logging of black hole particles is not yet implemented.");
             }
 #endif
@@ -896,8 +896,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!sink_is_inhibited(sink, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               error("Logging of sink particles is not yet implemented.");
             }
 #endif

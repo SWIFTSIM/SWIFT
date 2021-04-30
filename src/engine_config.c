@@ -463,12 +463,12 @@ void engine_config(int restart, int fof, struct engine *e,
           e->file_timesteps,
           "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
           "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d, "
-          "logger=%d\n",
+          "CSDS=%d\n",
           engine_step_prop_rebuild, engine_step_prop_redistribute,
           engine_step_prop_repartition, engine_step_prop_statistics,
           engine_step_prop_snapshot, engine_step_prop_restarts,
           engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh,
-          engine_step_prop_logger_index);
+          engine_step_prop_csds_index);
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
@@ -649,11 +649,11 @@ void engine_config(int restart, int fof, struct engine *e,
                   MPI_COMM_WORLD);
 #endif
 
-#if defined(WITH_LOGGER)
-    if ((e->policy & engine_policy_logger) && e->nodeID == 0)
+#if defined(WITH_CSDS)
+    if ((e->policy & engine_policy_csds) && e->nodeID == 0)
       message(
           "WARNING: There is currently no way of predicting the output "
-          "size, please use the logger carefully");
+          "size, please use the CSDS carefully");
 #endif
 
     /* Find the time of the first snapshot output */
@@ -894,10 +894,10 @@ void engine_config(int restart, int fof, struct engine *e,
     }
   }
 
-#ifdef WITH_LOGGER
-  if ((e->policy & engine_policy_logger) && !restart) {
-    /* Write the particle logger header */
-    logger_write_file_header(e->logger);
+#ifdef WITH_CSDS
+  if ((e->policy & engine_policy_csds) && !restart) {
+    /* Write the particle csds header */
+    csds_write_file_header(e->csds);
   }
 #endif
 

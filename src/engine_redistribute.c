@@ -983,9 +983,9 @@ void engine_redistribute(struct engine *e) {
   for (int k = 0; k < nr_nodes; k++)
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
   const int initial_redistribute = e->ti_current == 0;
-  if (!initial_redistribute && e->policy & engine_policy_logger) {
+  if (!initial_redistribute && e->policy & engine_policy_csds) {
     /* Log the particles before sending them out */
     size_t part_offset = 0;
     size_t spart_offset = 0;
@@ -1005,17 +1005,17 @@ void engine_redistribute(struct engine *e) {
       }
 
       /* Log the hydro parts. */
-      logger_log_parts(e->logger, &parts[part_offset], &xparts[part_offset],
+      csds_log_parts(e->csds, &parts[part_offset], &xparts[part_offset],
                        counts[c_ind], e, /* log_all_fields */ 1,
-                       logger_flag_mpi_exit, i);
+                       csds_flag_mpi_exit, i);
 
       /* Log the stellar parts. */
-      logger_log_sparts(e->logger, &sparts[spart_offset], s_counts[c_ind], e,
-                        /* log_all_fields */ 1, logger_flag_mpi_exit, i);
+      csds_log_sparts(e->csds, &sparts[spart_offset], s_counts[c_ind], e,
+                        /* log_all_fields */ 1, csds_flag_mpi_exit, i);
 
       /* Log the gparts */
-      logger_log_gparts(e->logger, &gparts[gpart_offset], g_counts[c_ind], e,
-                        /* log_all_fields */ 1, logger_flag_mpi_exit, i);
+      csds_log_gparts(e->csds, &gparts[gpart_offset], g_counts[c_ind], e,
+                        /* log_all_fields */ 1, csds_flag_mpi_exit, i);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
@@ -1083,8 +1083,8 @@ void engine_redistribute(struct engine *e) {
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
 
-#ifdef WITH_LOGGER
-  if (!initial_redistribute && e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+  if (!initial_redistribute && e->policy & engine_policy_csds) {
     size_t part_offset = 0;
     size_t spart_offset = 0;
     size_t gpart_offset = 0;
@@ -1103,17 +1103,17 @@ void engine_redistribute(struct engine *e) {
       }
 
       /* Log the hydro parts. */
-      logger_log_parts(e->logger, &s->parts[part_offset],
+      csds_log_parts(e->csds, &s->parts[part_offset],
                        &s->xparts[part_offset], counts[c_ind], e,
-                       /* log_all_fields */ 1, logger_flag_mpi_enter, i);
+                       /* log_all_fields */ 1, csds_flag_mpi_enter, i);
 
       /* Log the stellar parts. */
-      logger_log_sparts(e->logger, &s->sparts[spart_offset], s_counts[c_ind], e,
-                        /* log_all_fields */ 1, logger_flag_mpi_enter, i);
+      csds_log_sparts(e->csds, &s->sparts[spart_offset], s_counts[c_ind], e,
+                        /* log_all_fields */ 1, csds_flag_mpi_enter, i);
 
       /* Log the gparts */
-      logger_log_gparts(e->logger, &s->gparts[gpart_offset], g_counts[c_ind], e,
-                        /* log_all_fields */ 1, logger_flag_mpi_enter, i);
+      csds_log_gparts(e->csds, &s->gparts[gpart_offset], g_counts[c_ind], e,
+                        /* log_all_fields */ 1, csds_flag_mpi_enter, i);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
