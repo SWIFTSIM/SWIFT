@@ -54,7 +54,6 @@ include_HEADERS += chemistry.h chemistry_io.h chemistry_struct.h cosmology.h res
 include_HEADERS += mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h 
 include_HEADERS += csds_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h
 include_HEADERS += fof.h fof_struct.h fof_io.h fof_catalogue_io.h
-include_HEADERS += csds_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h 
 include_HEADERS += multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h sincos.h 
 include_HEADERS += star_formation_struct.h star_formation.h star_formation_iact.h 
 include_HEADERS += star_formation_logger.h star_formation_logger_struct.h 
