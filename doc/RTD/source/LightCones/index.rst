@@ -17,4 +17,4 @@ and related parameters
    lightcone_particle_output
    lightcone_healpix_maps
    running_with_lightcones
-
+   adding_outputs

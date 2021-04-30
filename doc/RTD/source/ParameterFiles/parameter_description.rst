@@ -915,6 +915,8 @@ Particles will be written to files ``<basename>_XXXX.Y.hdf5``, where XXXX number
 written by a single MPI rank and Y is the MPI rank index. HEALPix maps are written to files
 with names ``<basename>.shell_X.hdf5``, where X is the index of the shell.
 
+See :ref:`lightcone_adding_outputs_label` for information on adding new output quantities.
+
 * Location of the observer in the simulation box, in internal units: ``observer_position``
 
 * Size of in memory chunks used to store particles and map updates: ``buffer_chunk_size``
@@ -952,6 +954,7 @@ be one of the following:
 ``# Minimum comoving distance, Maximum comoving distance``,
 ``# Minimum redshift, Maximum redshift``, or
 ``# Maximum expansion factor, Minimum expansion factor``. Comoving distances are in internal units.
+The shells must be in ascending order of radius and must not overlap.
 
 * Number of pending HEALPix map updates before the buffers are flushed: ``max_updates_buffered``
 
@@ -964,10 +967,7 @@ their updates to the HEALPix maps.
 
 This is a list of strings which specifies what quantities should be accumulated to HEALPix maps.
 The possible values are defined in the lightcone_map_types array in ``lightcone_map_types.h``.
-To add a new type of map it is neccesary to add a new entry to this array with the name of the
-map type, a pointer to a function which calculates the quantity to add, and the units of the 
-quantity. See the pre-defined TotalMass map type and the function lightcone_map_total_mass()
-for an example of how to do this.
+See :ref:`lightcone_adding_outputs_label` if you'd like to add a new map type.
 
 The following shows a full set of light cone parameters:
 
