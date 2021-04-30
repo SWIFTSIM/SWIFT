@@ -235,6 +235,12 @@ INLINE static void gravity_cache_populate(
     z[i] = (float)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts[i].time_bin == time_bin_not_created) {
+      error("Found an extra gpart in the gravity cache");
+    }
+#endif
+
     /* Make a dummy particle out of the inhibted ones */
     if (gparts[i].time_bin == time_bin_inhibited) {
       m[i] = 0.f;
@@ -330,6 +336,12 @@ INLINE static void gravity_cache_populate_no_mpole(
     y[i] = (float)(gparts[i].x[1] - shift[1]);
     z[i] = (float)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts[i].time_bin == time_bin_not_created) {
+      error("Found an extra gpart in the gravity cache");
+    }
+#endif
 
     /* Make a dummy particle out of the inhibted ones */
     if (gparts[i].time_bin == time_bin_inhibited) {

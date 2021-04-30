@@ -514,6 +514,12 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
         const struct gpart *gpj = &s->gparts[j];
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (gpj->time_bin == time_bin_not_created) {
+          error("Found an extra particle in the gravity check.");
+        }
+#endif
+
         /* No self interaction */
         if (gpi == gpj) continue;
 

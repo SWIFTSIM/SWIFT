@@ -695,7 +695,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Perform the FOF search */
-  engine_fof(&e, /*dump_results=*/1, /*seed_black_holes=*/0);
+  engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0, /*seed_black_holes=*/0);
 
   /* Write output. */
   engine_dump_snapshot(&e);

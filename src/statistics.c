@@ -736,9 +736,9 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file, "#      Unit = %e erg\n",
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
   fprintf(file, "# (17) Total gas entropy (physical). \n");
-  fprintf(file, "#      Unit = %e erg * gram**(%.3f) * cm**(%.3f)\n",
-          units_cgs_conversion_factor(us, UNIT_CONV_ENTROPY),
-          hydro_gamma_minus_one, -3.f * hydro_gamma_minus_one);
+  fprintf(file, "#      Unit = %e gram**(%.3f) * cm**(%.3f) * s**(%.3f)\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENTROPY), 2.f - hydro_gamma,
+          3.f * hydro_gamma - 1.f, -2.f);
   fprintf(
       file,
       "# (18) Comoving centre of mass of the simulation (x coordinate). \n");

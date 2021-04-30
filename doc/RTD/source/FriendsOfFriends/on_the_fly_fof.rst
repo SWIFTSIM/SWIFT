@@ -13,6 +13,9 @@ based on physical considerations.
 **In this mode, no group catalogue is written to the disk. The resulting list
 of haloes is only used internally by SWIFT.**
 
+Note that a catalogue can nevertheless be written after every seeding call by
+setting the optional parameter ``dump_catalogue_when_seeding``.
+
 Once the haloes have been identified by the FOF code, SWIFT will iterate
 over the list of groups and will check whether each halo obeys the
 following criteria:

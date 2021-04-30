@@ -108,6 +108,7 @@ FOF:
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
   seed_black_holes_enabled:        1           # Enable (1) or disable (0) seeding of black holes in FoF groups
+  dump_catalogue_when_seeding:     1           # Enable (1) or disable (0) dumping a group catalogue when runnning FOF for seeding purposes.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units). When not set to -1, this will overwrite the linking length computed from 'linking_length_ratio'.
   group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Has to be positive.
@@ -494,6 +495,7 @@ EAGLEStarFormation:
   KS_high_density_exponent:          2.0       # In the PressureLaw model, Slope of the Kennicut-Schmidt law above the high-density threshold.
   gas_fraction:                      0.25      # (Optional) In the PressureLaw model, The gas fraction used internally by the model (Defaults to 1).
   density_direct_H_p_cm3:            1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
+  min_over_density:                  100.0     # The over-density above which star-formation is allowed.
   EOS_entropy_margin_dex:            0.3       # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # When using Z-based SF threshold, reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.

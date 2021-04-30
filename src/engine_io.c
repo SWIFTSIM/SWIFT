@@ -400,7 +400,8 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Do we want FoF group IDs in the snapshot? */
         if (with_fof && e->snapshot_invoke_fof) {
-          engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
+          engine_fof(e, /*dump_results=*/1, /*dump_debug=*/0,
+                     /*seed_black_holes=*/0);
         }
 
         /* Free the foreign particles to get more breathing space.
