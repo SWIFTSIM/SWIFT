@@ -274,6 +274,9 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
     }
   }
 
+  /* Define output quantities */
+  lightcone_io_make_output_fields();
+
 }
 
 
