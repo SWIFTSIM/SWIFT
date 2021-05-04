@@ -1016,8 +1016,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       struct task *kick2_or_csds;
       if (with_csds) {
         /* Add the hydro csds task. */
-        c->csds = scheduler_addtask(s, task_type_csds, task_subtype_none, 0,
-                                      0, c, NULL);
+        c->csds = scheduler_addtask(s, task_type_csds, task_subtype_none, 0, 0,
+                                    c, NULL);
 
         /* Add the kick2 dependency */
         scheduler_addunlock(s, c->kick2, c->csds);
@@ -1545,8 +1545,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
 #ifdef WITH_CSDS
         if (with_csds) {
-          scheduler_addunlock(s, c->super->csds,
-                              c->black_holes.black_holes_in);
+          scheduler_addunlock(s, c->super->csds, c->black_holes.black_holes_in);
         } else {
           scheduler_addunlock(s, c->super->kick2,
                               c->black_holes.black_holes_in);

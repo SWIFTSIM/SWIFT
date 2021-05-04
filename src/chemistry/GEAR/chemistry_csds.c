@@ -23,12 +23,11 @@
 
 #include "chemistry_csds.h"
 
-const char
-    *chemistry_csds_field_names_part[chemistry_csds_field_part_count] = {
-        "ChemistryHydro",
+const char *chemistry_csds_field_names_part[chemistry_csds_field_part_count] = {
+    "ChemistryHydro",
 };
-const char
-    *chemistry_csds_field_names_spart[chemistry_csds_field_spart_count] = {
+const char *chemistry_csds_field_names_spart[chemistry_csds_field_spart_count] =
+    {
         "MetalMassFractions",
 };
 

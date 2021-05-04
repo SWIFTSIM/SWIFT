@@ -54,12 +54,10 @@ extern const char *stars_csds_field_names[stars_csds_field_count];
 INLINE static int stars_csds_writer_populate_mask_data(
     struct mask_data *mask_data) {
   mask_data[stars_csds_field_coordinates] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_coordinates],
-      3 * sizeof(double));
+      stars_csds_field_names[stars_csds_field_coordinates], 3 * sizeof(double));
 
   mask_data[stars_csds_field_velocities] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_velocities],
-      3 * sizeof(float));
+      stars_csds_field_names[stars_csds_field_velocities], 3 * sizeof(float));
 
   mask_data[stars_csds_field_accelerations] = csds_create_mask_entry(
       stars_csds_field_names[stars_csds_field_accelerations],
@@ -73,8 +71,7 @@ INLINE static int stars_csds_writer_populate_mask_data(
       sizeof(float));
 
   mask_data[stars_csds_field_particle_ids] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_particle_ids],
-      sizeof(long long));
+      stars_csds_field_names[stars_csds_field_particle_ids], sizeof(long long));
 
   mask_data[stars_csds_field_birth_scale_factors] = csds_create_mask_entry(
       stars_csds_field_names[stars_csds_field_birth_scale_factors],
@@ -103,32 +100,31 @@ INLINE static void stars_csds_compute_size_and_mask(
   /* Here you can decide your own writing logic */
 
   /* Add the coordinates. */
-  *mask |= csds_add_field_to_mask(masks[stars_csds_field_coordinates],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[stars_csds_field_coordinates], buffer_size);
 
   /* Add the velocities. */
-  *mask |= csds_add_field_to_mask(masks[stars_csds_field_velocities],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[stars_csds_field_velocities], buffer_size);
 
   /* Add the accelerations. */
   *mask |= csds_add_field_to_mask(masks[stars_csds_field_accelerations],
-                                    buffer_size);
+                                  buffer_size);
 
   /* Add the masses. */
-  *mask |=
-      csds_add_field_to_mask(masks[stars_csds_field_masses], buffer_size);
+  *mask |= csds_add_field_to_mask(masks[stars_csds_field_masses], buffer_size);
 
   /* Add the smoothing lengths. */
   *mask |= csds_add_field_to_mask(masks[stars_csds_field_smoothing_lengths],
-                                    buffer_size);
+                                  buffer_size);
 
   /* Add the ID. */
-  *mask |= csds_add_field_to_mask(masks[stars_csds_field_particle_ids],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[stars_csds_field_particle_ids], buffer_size);
 
   /* Add the birth scale factor. */
-  *mask |= csds_add_field_to_mask(
-      masks[stars_csds_field_birth_scale_factors], buffer_size);
+  *mask |= csds_add_field_to_mask(masks[stars_csds_field_birth_scale_factors],
+                                  buffer_size);
 }
 
 /**
@@ -144,27 +140,25 @@ INLINE static void stars_csds_compute_size_and_mask(
  *
  * @return The buffer after the data.
  */
-INLINE static char *stars_csds_write_particle(
-    const struct mask_data *mask_data, const struct spart *p,
-    unsigned int *mask, char *buff) {
+INLINE static char *stars_csds_write_particle(const struct mask_data *mask_data,
+                                              const struct spart *p,
+                                              unsigned int *mask, char *buff) {
 
   /* Write the coordinate. */
-  if (csds_should_write_field(mask_data[stars_csds_field_coordinates],
-                                mask)) {
+  if (csds_should_write_field(mask_data[stars_csds_field_coordinates], mask)) {
     memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Write the velocity. */
-  if (csds_should_write_field(mask_data[stars_csds_field_velocities],
-                                mask)) {
+  if (csds_should_write_field(mask_data[stars_csds_field_velocities], mask)) {
     memcpy(buff, p->v, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Write the acceleration. */
   if (csds_should_write_field(mask_data[stars_csds_field_accelerations],
-                                mask)) {
+                              mask)) {
     memcpy(buff, p->gpart->a_grav, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
@@ -177,21 +171,20 @@ INLINE static char *stars_csds_write_particle(
 
   /* Write the smoothing length. */
   if (csds_should_write_field(mask_data[stars_csds_field_smoothing_lengths],
-                                mask)) {
+                              mask)) {
     memcpy(buff, &p->h, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Write the Id. */
-  if (csds_should_write_field(mask_data[stars_csds_field_particle_ids],
-                                mask)) {
+  if (csds_should_write_field(mask_data[stars_csds_field_particle_ids], mask)) {
     memcpy(buff, &p->id, sizeof(long long));
     buff += sizeof(long long);
   }
 
   /* Write the birth scale factor. */
-  if (csds_should_write_field(
-          mask_data[stars_csds_field_birth_scale_factors], mask)) {
+  if (csds_should_write_field(mask_data[stars_csds_field_birth_scale_factors],
+                              mask)) {
     memcpy(buff, &p->birth_scale_factor, sizeof(float));
     buff += sizeof(float);
   }

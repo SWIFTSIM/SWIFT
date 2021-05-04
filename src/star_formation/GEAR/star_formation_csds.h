@@ -74,8 +74,8 @@ INLINE static void star_formation_csds_compute_size_and_mask(
     const struct mask_data *masks, const struct spart *spart,
     const int write_all, size_t *buffer_size, unsigned int *mask) {
   /* Add the star formation. */
-  *mask |= csds_add_field_to_mask(masks[star_formation_csds_field_all],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[star_formation_csds_field_all], buffer_size);
 }
 
 /**
@@ -96,8 +96,7 @@ INLINE static char *star_formation_csds_write_sparticle(
     const struct mask_data *mask_data, const struct spart *sp,
     unsigned int *mask, char *buff) {
   /* Write the star formation. */
-  if (csds_should_write_field(mask_data[star_formation_csds_field_all],
-                                mask)) {
+  if (csds_should_write_field(mask_data[star_formation_csds_field_all], mask)) {
 
     /* Write the birth density */
     memcpy(buff, &sp->sf_data.birth_density, sizeof(float));

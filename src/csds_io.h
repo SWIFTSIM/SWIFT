@@ -76,7 +76,7 @@ void write_index_array(const struct engine* e, FILE* f, struct io_props* props,
  * @return The new mask_data.
  */
 INLINE static struct mask_data csds_create_mask_entry(const char* name,
-                                                        int size) {
+                                                      int size) {
   struct mask_data mask;
   /* Copy the fields */
   strcpy(mask.name, name);
@@ -97,7 +97,7 @@ INLINE static struct mask_data csds_create_mask_entry(const char* name,
  * @return The mask of the current field.
  */
 INLINE static size_t csds_add_field_to_mask(struct mask_data mask_data,
-                                              size_t* buffer_size) {
+                                            size_t* buffer_size) {
 
   *buffer_size += mask_data.size;
   return mask_data.mask;
@@ -111,7 +111,7 @@ INLINE static size_t csds_add_field_to_mask(struct mask_data mask_data,
  * @param mask The mask used for the current record.
  */
 INLINE static int csds_should_write_field(struct mask_data mask_data,
-                                            unsigned int* mask) {
+                                          unsigned int* mask) {
 
   const int test = mask_data.mask & *mask;
   if (test) {

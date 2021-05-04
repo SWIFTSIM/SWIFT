@@ -19,8 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_NONE_CHEMISTRY_CSDS_H
 #define SWIFT_CHEMISTRY_NONE_CHEMISTRY_CSDS_H
 
-#include "hydro.h"
 #include "csds_io.h"
+#include "hydro.h"
 
 #ifdef WITH_CSDS
 
@@ -107,8 +107,8 @@ INLINE static void chemistry_csds_compute_size_and_mask_part(
     const struct xpart *xpart, const int write_all, size_t *buffer_size,
     unsigned int *mask) {
   /* Add the chemistry. */
-  *mask |= csds_add_field_to_mask(masks[chemistry_csds_field_part_all],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[chemistry_csds_field_part_all], buffer_size);
 }
 
 /**
@@ -154,8 +154,7 @@ INLINE static char *chemistry_csds_write_particle(
     const struct xpart *xp, unsigned int *mask, char *buff) {
 
   /* Write the chemistry. */
-  if (csds_should_write_field(mask_data[chemistry_csds_field_part_all],
-                                mask)) {
+  if (csds_should_write_field(mask_data[chemistry_csds_field_part_all], mask)) {
 
     /* Write the smoothed metal mass fraction */
     memcpy(buff, p->chemistry_data.smoothed_metal_mass_fraction,

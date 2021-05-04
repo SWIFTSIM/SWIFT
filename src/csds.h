@@ -27,10 +27,10 @@
 /* Includes. */
 #include "align.h"
 #include "common_io.h"
+#include "csds_history.h"
 #include "dump.h"
 #include "error.h"
 #include "inline.h"
-#include "csds_history.h"
 #include "timeline.h"
 #include "units.h"
 
@@ -96,7 +96,7 @@ enum csds_special_flags {
   csds_flag_none = 0,        /* No flag */
   csds_flag_change_type = 1, /* Flag for a change of particle type */
   csds_flag_mpi_enter, /* Flag for a particle received from another  MPI rank
-                          */
+                        */
   csds_flag_mpi_exit,  /* Flag for a particle sent to another MPI rank */
   csds_flag_delete,    /* Flag for a deleted particle */
   csds_flag_create,    /* Flag for a created particle */
@@ -193,48 +193,42 @@ struct csds_part_data {
 };
 
 /* Function prototypes. */
-void csds_log_all_particles(struct csds_writer *log,
-                              const struct engine *e);
+void csds_log_all_particles(struct csds_writer *log, const struct engine *e);
 void csds_log_part(struct csds_writer *log, const struct part *p,
-                     struct xpart *xp, const struct engine *e,
-                     const int log_all_fields,
-                     const enum csds_special_flags flag, const int flag_data);
+                   struct xpart *xp, const struct engine *e,
+                   const int log_all_fields, const enum csds_special_flags flag,
+                   const int flag_data);
 void csds_log_parts(struct csds_writer *log, const struct part *p,
-                      struct xpart *xp, int count, const struct engine *e,
-                      const int log_all_fields,
-                      const enum csds_special_flags flag,
-                      const int flag_data);
+                    struct xpart *xp, int count, const struct engine *e,
+                    const int log_all_fields,
+                    const enum csds_special_flags flag, const int flag_data);
 void csds_log_spart(struct csds_writer *log, struct spart *p,
-                      const struct engine *e, const int log_all_fields,
-                      const enum csds_special_flags flag,
-                      const int flag_data);
+                    const struct engine *e, const int log_all_fields,
+                    const enum csds_special_flags flag, const int flag_data);
 void csds_log_sparts(struct csds_writer *log, struct spart *sp, int count,
-                       const struct engine *e, const int log_all_fields,
-                       const enum csds_special_flags flag,
-                       const int flag_data);
+                     const struct engine *e, const int log_all_fields,
+                     const enum csds_special_flags flag, const int flag_data);
 void csds_log_gpart(struct csds_writer *log, struct gpart *p,
-                      const struct engine *e, const int log_all_fields,
-                      const enum csds_special_flags flag,
-                      const int flag_data);
+                    const struct engine *e, const int log_all_fields,
+                    const enum csds_special_flags flag, const int flag_data);
 void csds_log_gparts(struct csds_writer *log, struct gpart *gp, int count,
-                       const struct engine *e, const int log_all_fields,
-                       const enum csds_special_flags flag,
-                       const int flag_data);
+                     const struct engine *e, const int log_all_fields,
+                     const enum csds_special_flags flag, const int flag_data);
 void csds_init(struct csds_writer *log, const struct engine *e,
-                 struct swift_params *params);
+               struct swift_params *params);
 void csds_free(struct csds_writer *log);
-void csds_log_timestamp(struct csds_writer *log, integertime_t t,
-                          double time, size_t *offset);
+void csds_log_timestamp(struct csds_writer *log, integertime_t t, double time,
+                        size_t *offset);
 void csds_ensure_size(struct csds_writer *log, size_t total_nr_parts,
-                        size_t total_nr_gparts, size_t total_nr_sparts);
+                      size_t total_nr_gparts, size_t total_nr_sparts);
 void csds_write_file_header(struct csds_writer *log);
 
 int csds_read_part(const struct csds_writer *log, struct part *p,
-                     size_t *offset, const char *buff);
+                   size_t *offset, const char *buff);
 int csds_read_gpart(const struct csds_writer *log, struct gpart *p,
-                      size_t *offset, const char *buff);
+                    size_t *offset, const char *buff);
 int csds_read_timestamp(const struct csds_writer *log, integertime_t *t,
-                          double *time, size_t *offset, const char *buff);
+                        double *time, size_t *offset, const char *buff);
 void csds_struct_dump(const struct csds_writer *log, FILE *stream);
 void csds_struct_restore(struct csds_writer *log, FILE *stream);
 
@@ -244,8 +238,8 @@ void csds_struct_restore(struct csds_writer *log, FILE *stream);
  * @param flag The special flag to use.
  * @param flag_data The data to write in the record.
  */
-INLINE static uint32_t csds_pack_flags_and_data(
-    enum csds_special_flags flag, int flag_data) {
+INLINE static uint32_t csds_pack_flags_and_data(enum csds_special_flags flag,
+                                                int flag_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (flag & 0xFFFFFF00) {
     error(
@@ -280,8 +274,7 @@ INLINE static void csds_part_data_init(struct csds_part_data *csds) {
  * @return 1 if the particle should be writen, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int csds_should_write(
-    const struct csds_part_data *csds_data,
-    const struct csds_writer *log) {
+    const struct csds_part_data *csds_data, const struct csds_writer *log) {
 
   return (csds_data->steps_since_last_output > log->delta_step);
 }

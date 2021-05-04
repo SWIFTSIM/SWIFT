@@ -133,7 +133,7 @@ void write_index_array(const struct engine* e, FILE* f, struct io_props* props,
  * @param f The opened file to use.
  */
 void csds_write_history(struct csds_history* history, struct engine* e,
-                          FILE* f) {
+                        FILE* f) {
 
   /* Write the number of particles. */
   uint64_t size[swift_type_count];
@@ -383,8 +383,7 @@ void csds_write_index_file(struct csds_writer* log, struct engine* e) {
     }
 
     if (num_fields != 2) {
-      error(
-          "The code expects only two fields per particle type for the CSDS");
+      error("The code expects only two fields per particle type for the CSDS");
     }
 
     /* Write ids */

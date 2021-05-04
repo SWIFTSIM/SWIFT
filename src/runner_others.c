@@ -42,14 +42,14 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "cooling.h"
+#include "csds.h"
+#include "csds_io.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
 #include "fof.h"
 #include "gravity.h"
 #include "hydro.h"
-#include "csds.h"
-#include "csds_io.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "space.h"
@@ -407,7 +407,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 /* Logs all the fields request by the user */
                 // TODO select only the requested fields
                 csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
-                                csds_flag_change_type, swift_type_stars);
+                              csds_flag_change_type, swift_type_stars);
 #endif
               }
 
@@ -464,8 +464,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               }
 
               /* Write the s-particle */
-              csds_log_spart(e->csds, sp, e, /* log_all */ 1,
-                               csds_flag_create, /* data */ 0);
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_create,
+                             /* data */ 0);
 #endif
             } else if (swift_star_formation_model_creates_stars) {
 
@@ -876,7 +876,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
           csds_log_part(e->csds, p, xp, e, /* log_all_fields= */ 0,
-                          csds_flag_none, /* flag_data= */ 0);
+                        csds_flag_none, /* flag_data= */ 0);
         } else
           /* Update counter */
           xp->csds_data.steps_since_last_output += 1;
@@ -901,7 +901,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
           csds_log_gpart(e->csds, gp, e, /* log_all_fields= */ 0,
-                           csds_flag_none, /* flag_data= */ 0);
+                         csds_flag_none, /* flag_data= */ 0);
 
         } else
           /* Update counter */
@@ -922,7 +922,7 @@ void runner_do_csds(struct runner *r, struct cell *c, int timer) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
           csds_log_spart(e->csds, sp, e, /* Log_all_fields= */ 0,
-                           csds_flag_none, /* flag_data= */ 0);
+                         csds_flag_none, /* flag_data= */ 0);
         } else
           /* Update counter */
           sp->csds_data.steps_since_last_output += 1;

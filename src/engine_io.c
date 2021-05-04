@@ -31,10 +31,10 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "csds_io.h"
 #include "distributed_io.h"
 #include "kick.h"
 #include "line_of_sight.h"
-#include "csds_io.h"
 #include "parallel_io.h"
 #include "serial_io.h"
 #include "single_io.h"
@@ -57,8 +57,7 @@ void engine_check_for_index_dump(struct engine *e) {
   const size_t total_nr_parts =
       (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
        e->total_nr_bparts + e->total_nr_DM_background_gparts);
-  const size_t index_file_size =
-      total_nr_parts * sizeof(struct csds_part_data);
+  const size_t index_file_size = total_nr_parts * sizeof(struct csds_part_data);
 
   size_t number_part_history = 0;
   for (int i = 0; i < swift_type_count; i++) {
