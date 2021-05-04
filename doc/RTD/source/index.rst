@@ -29,6 +29,7 @@ difference is the parameter file that will need to be adapted for SWIFT.
    LineOfSights/index
    EquationOfState/index
    ExternalPotentials/index
+   Neutrinos/index
    NewOption/index
    Task/index
    AnalysisTools/index

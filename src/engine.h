@@ -458,6 +458,9 @@ struct engine {
   /* Properties of the sink model */
   const struct sink_props *sink_properties;
 
+  /* Properties of the neutrino model */
+  const struct neutrino_props *neutrino_properties;
+
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
 
@@ -589,7 +592,8 @@ void engine_init(
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, const struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
+    const struct neutrino_props *neutrinos, struct feedback_props *feedback,
+    struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,

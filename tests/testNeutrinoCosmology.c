@@ -18,13 +18,11 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-#include "../config.h"
-
-/* Some standard headers */
 #include <fenv.h>
 #include <math.h>
 
 /* Includes. */
+#include "../config.h"
 #include "swift.h"
 
 #define N_CHECK 20
