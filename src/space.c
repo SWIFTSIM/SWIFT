@@ -1409,7 +1409,8 @@ void space_init(struct space *s, struct swift_params *params,
   last_leaf_cell_id = 1ULL;
 #endif
 
-  /* Do we want any spare particles for on the fly creation? */
+  /* Do we want any spare particles for on the fly creation?
+     This condition should be the same than in engine_config.c */
   if (!(star_formation || with_sink) ||
       !swift_star_formation_model_creates_stars) {
     space_extra_sparts = 0;
