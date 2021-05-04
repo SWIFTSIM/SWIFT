@@ -1006,16 +1006,16 @@ void engine_redistribute(struct engine *e) {
 
       /* Log the hydro parts. */
       csds_log_parts(e->csds, &parts[part_offset], &xparts[part_offset],
-                       counts[c_ind], e, /* log_all_fields */ 1,
-                       csds_flag_mpi_exit, i);
+                     counts[c_ind], e, /* log_all_fields */ 1,
+                     csds_flag_mpi_exit, i);
 
       /* Log the stellar parts. */
       csds_log_sparts(e->csds, &sparts[spart_offset], s_counts[c_ind], e,
-                        /* log_all_fields */ 1, csds_flag_mpi_exit, i);
+                      /* log_all_fields */ 1, csds_flag_mpi_exit, i);
 
       /* Log the gparts */
       csds_log_gparts(e->csds, &gparts[gpart_offset], g_counts[c_ind], e,
-                        /* log_all_fields */ 1, csds_flag_mpi_exit, i);
+                      /* log_all_fields */ 1, csds_flag_mpi_exit, i);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
@@ -1103,17 +1103,17 @@ void engine_redistribute(struct engine *e) {
       }
 
       /* Log the hydro parts. */
-      csds_log_parts(e->csds, &s->parts[part_offset],
-                       &s->xparts[part_offset], counts[c_ind], e,
-                       /* log_all_fields */ 1, csds_flag_mpi_enter, i);
+      csds_log_parts(e->csds, &s->parts[part_offset], &s->xparts[part_offset],
+                     counts[c_ind], e,
+                     /* log_all_fields */ 1, csds_flag_mpi_enter, i);
 
       /* Log the stellar parts. */
       csds_log_sparts(e->csds, &s->sparts[spart_offset], s_counts[c_ind], e,
-                        /* log_all_fields */ 1, csds_flag_mpi_enter, i);
+                      /* log_all_fields */ 1, csds_flag_mpi_enter, i);
 
       /* Log the gparts */
       csds_log_gparts(e->csds, &s->gparts[gpart_offset], g_counts[c_ind], e,
-                        /* log_all_fields */ 1, csds_flag_mpi_enter, i);
+                      /* log_all_fields */ 1, csds_flag_mpi_enter, i);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {

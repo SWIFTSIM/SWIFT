@@ -66,12 +66,10 @@ extern const char *hydro_csds_field_names[hydro_csds_field_count];
 INLINE static int hydro_csds_writer_populate_mask_data(
     struct mask_data *mask_data) {
   mask_data[hydro_csds_field_coordinates] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_coordinates],
-      3 * sizeof(double));
+      hydro_csds_field_names[hydro_csds_field_coordinates], 3 * sizeof(double));
 
   mask_data[hydro_csds_field_velocities] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_velocities],
-      3 * sizeof(float));
+      hydro_csds_field_names[hydro_csds_field_velocities], 3 * sizeof(float));
 
   mask_data[hydro_csds_field_accelerations] = csds_create_mask_entry(
       hydro_csds_field_names[hydro_csds_field_accelerations],
@@ -88,8 +86,7 @@ INLINE static int hydro_csds_writer_populate_mask_data(
       hydro_csds_field_names[hydro_csds_field_entropies], sizeof(float));
 
   mask_data[hydro_csds_field_particle_ids] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_particle_ids],
-      sizeof(long long));
+      hydro_csds_field_names[hydro_csds_field_particle_ids], sizeof(long long));
 
   mask_data[hydro_csds_field_densities] = csds_create_mask_entry(
       hydro_csds_field_names[hydro_csds_field_densities], sizeof(float));
@@ -119,36 +116,35 @@ INLINE static void hydro_csds_compute_size_and_mask(
   /* Here you can decide your own writing logic */
 
   /* Add the coordinates. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_coordinates],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[hydro_csds_field_coordinates], buffer_size);
 
   /* Add the velocities. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_velocities],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[hydro_csds_field_velocities], buffer_size);
 
   /* Add the accelerations. */
   *mask |= csds_add_field_to_mask(masks[hydro_csds_field_accelerations],
-                                    buffer_size);
+                                  buffer_size);
 
   /* Add the masses. */
-  *mask |=
-      csds_add_field_to_mask(masks[hydro_csds_field_masses], buffer_size);
+  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_masses], buffer_size);
 
   /* Add the smoothing lengths. */
   *mask |= csds_add_field_to_mask(masks[hydro_csds_field_smoothing_lengths],
-                                    buffer_size);
+                                  buffer_size);
 
   /* Add the entropies. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_entropies],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[hydro_csds_field_entropies], buffer_size);
 
   /* Add the ID. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_particle_ids],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[hydro_csds_field_particle_ids], buffer_size);
 
   /* Add the density. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_densities],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[hydro_csds_field_densities], buffer_size);
 }
 
 /**
@@ -165,27 +161,26 @@ INLINE static void hydro_csds_compute_size_and_mask(
  *
  * @return The buffer after the data.
  */
-INLINE static char *hydro_csds_write_particle(
-    const struct mask_data *mask_data, const struct part *p,
-    const struct xpart *xp, unsigned int *mask, char *buff) {
+INLINE static char *hydro_csds_write_particle(const struct mask_data *mask_data,
+                                              const struct part *p,
+                                              const struct xpart *xp,
+                                              unsigned int *mask, char *buff) {
 
   /* Write the coordinate. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_coordinates],
-                                mask)) {
+  if (csds_should_write_field(mask_data[hydro_csds_field_coordinates], mask)) {
     memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Write the velocity. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_velocities],
-                                mask)) {
+  if (csds_should_write_field(mask_data[hydro_csds_field_velocities], mask)) {
     memcpy(buff, p->v, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Write the acceleration. */
   if (csds_should_write_field(mask_data[hydro_csds_field_accelerations],
-                                mask)) {
+                              mask)) {
 
     /* Compute the acceleration due to hydro and gravity */
     float *acc = (float *)buff;
@@ -210,28 +205,25 @@ INLINE static char *hydro_csds_write_particle(
 
   /* Write the smoothing length. */
   if (csds_should_write_field(mask_data[hydro_csds_field_smoothing_lengths],
-                                mask)) {
+                              mask)) {
     memcpy(buff, &p->h, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Write the entropy. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_entropies],
-                                mask)) {
+  if (csds_should_write_field(mask_data[hydro_csds_field_entropies], mask)) {
     memcpy(buff, &p->entropy, sizeof(float));
     buff += sizeof(float);
   }
 
   /* Write the Id. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_particle_ids],
-                                mask)) {
+  if (csds_should_write_field(mask_data[hydro_csds_field_particle_ids], mask)) {
     memcpy(buff, &p->id, sizeof(long long));
     buff += sizeof(long long);
   }
 
   /* Write the density. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_densities],
-                                mask)) {
+  if (csds_should_write_field(mask_data[hydro_csds_field_densities], mask)) {
     memcpy(buff, &p->rho, sizeof(float));
     buff += sizeof(float);
   }

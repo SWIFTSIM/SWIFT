@@ -244,7 +244,8 @@ int main(int argc, char *argv[]) {
                   "Run with time-step synchronization of particles hit by "
                   "feedback events.",
                   NULL, 0, 0),
-      OPT_BOOLEAN(0, "csds", &with_csds, "Run with the Continuous Simulation Data Stream (CSDS).",
+      OPT_BOOLEAN(0, "csds", &with_csds,
+                  "Run with the Continuous Simulation Data Stream (CSDS).",
                   NULL, 0, 0),
       OPT_BOOLEAN('R', "radiation", &with_rt,
                   "Run with radiative transfer. Work in progress, currently "
@@ -1733,10 +1734,10 @@ int main(int argc, char *argv[]) {
       /* Write a sentinel timestamp */
       if (e.policy & engine_policy_cosmology) {
         csds_log_timestamp(e.csds, e.ti_current, e.cosmology->a,
-                             &e.csds->timestamp_offset);
+                           &e.csds->timestamp_offset);
       } else {
         csds_log_timestamp(e.csds, e.ti_current, e.time,
-                             &e.csds->timestamp_offset);
+                           &e.csds->timestamp_offset);
       }
     }
 #endif

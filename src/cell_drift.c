@@ -187,7 +187,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
               csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
-                              csds_flag_delete, /* data */ 0);
+                            csds_flag_delete, /* data */ 0);
             }
 #endif
 
@@ -383,7 +383,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
               if (e->policy & engine_policy_csds) {
                 /* Log the particle one last time. */
                 csds_log_gpart(e->csds, gp, e, /* log_all */ 1,
-                                 csds_flag_delete, /* data */ 0);
+                               csds_flag_delete, /* data */ 0);
               }
 #endif
 
@@ -535,8 +535,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 #ifdef WITH_CSDS
             if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
-              csds_log_spart(e->csds, sp, e, /* log_all */ 1,
-                               csds_flag_delete, /* data */ 0);
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
+                             /* data */ 0);
             }
 #endif
 

@@ -60,6 +60,8 @@
 #include "cooling.h"
 #include "cooling_properties.h"
 #include "cosmology.h"
+#include "csds.h"
+#include "csds_io.h"
 #include "cycle.h"
 #include "debug.h"
 #include "equation_of_state.h"
@@ -70,8 +72,6 @@
 #include "gravity_cache.h"
 #include "hydro.h"
 #include "line_of_sight.h"
-#include "csds.h"
-#include "csds_io.h"
 #include "map.h"
 #include "memuse.h"
 #include "minmax.h"
@@ -1782,10 +1782,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     /* Mark the first time step in the particle csds file. */
     if (e->policy & engine_policy_cosmology) {
       csds_log_timestamp(e->csds, e->ti_current, e->cosmology->a,
-                           &e->csds->timestamp_offset);
+                         &e->csds->timestamp_offset);
     } else {
       csds_log_timestamp(e->csds, e->ti_current, e->time,
-                           &e->csds->timestamp_offset);
+                         &e->csds->timestamp_offset);
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
@@ -2191,15 +2191,14 @@ void engine_step(struct engine *e) {
     /* Mark the current time step in the particle csds file. */
     if (e->policy & engine_policy_cosmology) {
       csds_log_timestamp(e->csds, e->ti_current, e->cosmology->a,
-                           &e->csds->timestamp_offset);
+                         &e->csds->timestamp_offset);
     } else {
       csds_log_timestamp(e->csds, e->ti_current, e->time,
-                           &e->csds->timestamp_offset);
+                         &e->csds->timestamp_offset);
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    csds_ensure_size(e->csds, e->s->nr_parts, e->s->nr_gparts,
-                       e->s->nr_sparts);
+    csds_ensure_size(e->csds, e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts);
   }
 #endif
 

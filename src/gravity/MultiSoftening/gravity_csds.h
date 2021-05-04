@@ -19,8 +19,8 @@
 #ifndef SWIFT_MULTISOFTENING_GRAVITY_CSDS_H
 #define SWIFT_MULTISOFTENING_GRAVITY_CSDS_H
 
-#include "gravity_part.h"
 #include "csds_io.h"
+#include "gravity_part.h"
 
 #ifdef WITH_CSDS
 
@@ -95,15 +95,15 @@ INLINE static void gravity_csds_compute_size_and_mask(
 
   /* Add the coordinates. */
   *mask |= csds_add_field_to_mask(masks[gravity_csds_field_coordinates],
-                                    buffer_size);
+                                  buffer_size);
 
   /* Add the velocities. */
-  *mask |= csds_add_field_to_mask(masks[gravity_csds_field_velocities],
-                                    buffer_size);
+  *mask |=
+      csds_add_field_to_mask(masks[gravity_csds_field_velocities], buffer_size);
 
   /* Add the accelerations. */
   *mask |= csds_add_field_to_mask(masks[gravity_csds_field_accelerations],
-                                    buffer_size);
+                                  buffer_size);
 
   /* Add the masses. */
   *mask |=
@@ -111,7 +111,7 @@ INLINE static void gravity_csds_compute_size_and_mask(
 
   /* Add the ID. */
   *mask |= csds_add_field_to_mask(masks[gravity_csds_field_particle_ids],
-                                    buffer_size);
+                                  buffer_size);
 }
 
 /**
@@ -133,21 +133,20 @@ INLINE static char *gravity_csds_write_particle(
 
   /* Write the coordinate. */
   if (csds_should_write_field(mask_data[gravity_csds_field_coordinates],
-                                mask)) {
+                              mask)) {
     memcpy(buff, p->x, 3 * sizeof(double));
     buff += 3 * sizeof(double);
   }
 
   /* Write the velocity. */
-  if (csds_should_write_field(mask_data[gravity_csds_field_velocities],
-                                mask)) {
+  if (csds_should_write_field(mask_data[gravity_csds_field_velocities], mask)) {
     memcpy(buff, p->v_full, 3 * sizeof(float));
     buff += 3 * sizeof(float);
   }
 
   /* Write the acceleration. */
   if (csds_should_write_field(mask_data[gravity_csds_field_accelerations],
-                                mask)) {
+                              mask)) {
     float acc[3] = {
         p->a_grav[0] + p->a_grav_mesh[0],
         p->a_grav[1] + p->a_grav_mesh[1],
@@ -165,7 +164,7 @@ INLINE static char *gravity_csds_write_particle(
 
   /* Write the Id. */
   if (csds_should_write_field(mask_data[gravity_csds_field_particle_ids],
-                                mask)) {
+                              mask)) {
     memcpy(buff, &p->id_or_neg_offset, sizeof(long long));
     buff += sizeof(long long);
   }

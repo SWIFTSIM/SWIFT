@@ -19,8 +19,8 @@
 #ifndef SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 #define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
-#include "fof_struct.h"
 #include "csds.h"
+#include "fof_struct.h"
 
 /* Gravity particle. */
 struct gpart {

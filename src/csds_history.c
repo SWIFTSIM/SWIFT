@@ -44,8 +44,7 @@ void csds_history_init(struct csds_history *hist) {
   lock_init(&hist->lock);
 
   hist->data = (struct csds_index_data *)swift_malloc(
-      "csds_history",
-      sizeof(struct csds_index_data) * CSDS_HISTORY_INIT_SIZE);
+      "csds_history", sizeof(struct csds_index_data) * CSDS_HISTORY_INIT_SIZE);
   if (hist->data == NULL) {
     error("Failed to allocate memory for the csds_history.");
   }
@@ -90,7 +89,7 @@ void csds_history_free(struct csds_history *hist) {
  * @param data The data from the particle.
  */
 void csds_history_log(struct csds_history *hist, const long long id,
-                        const uint64_t last_offset) {
+                      const uint64_t last_offset) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (id < 0) {
@@ -141,8 +140,7 @@ void csds_history_log(struct csds_history *hist, const long long id,
  * @param e The #engine.
  * @param f The file where to write the history.
  */
-void csds_history_write(struct csds_history *hist, struct engine *e,
-                          FILE *f) {
+void csds_history_write(struct csds_history *hist, struct engine *e, FILE *f) {
   /* Generate the structures for writing the index file */
   const int num_fields = 2;
   struct io_props list[2];

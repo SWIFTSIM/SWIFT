@@ -24,9 +24,8 @@
 #include "star_formation_csds.h"
 
 /* Name of each possible mask. */
-const char
-    *star_formation_csds_field_names[star_formation_csds_field_count] = {
-        "StarFormation",
+const char *star_formation_csds_field_names[star_formation_csds_field_count] = {
+    "StarFormation",
 };
 
 #endif  // WITH_CSDS

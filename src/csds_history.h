@@ -75,9 +75,8 @@ void csds_history_init(struct csds_history *hist);
 void csds_history_reset(struct csds_history *hist);
 void csds_history_free(struct csds_history *hist);
 void csds_history_log(struct csds_history *hist, const long long id,
-                        const uint64_t last_offset);
-void csds_history_write(struct csds_history *hist, struct engine *e,
-                          FILE *f);
+                      const uint64_t last_offset);
+void csds_history_write(struct csds_history *hist, struct engine *e, FILE *f);
 
 void csds_history_dump(const struct csds_history *hist, FILE *stream);
 void csds_history_restore(struct csds_history *hist, FILE *stream);
