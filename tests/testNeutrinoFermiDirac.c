@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
   /* We also construct a histogram */
   int bins = 1000;
-  int *histogram1 = calloc(bins, sizeof(int));
+  int *histogram1 = (int *)calloc(bins, sizeof(int));
 
   /* Generate the same numbers again and compute statistics and histogram */
   for (int i = 0; i < N; i++) {
