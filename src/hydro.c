@@ -251,6 +251,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   const size_t nr_parts = s->nr_parts;
 
   const double eta = e->hydro_properties->eta_neighbours;
+  const float h_max = e->hydro_properties->h_max;
   const double N_ngb_target =
       (4. / 3.) * M_PI * pow_dimension(kernel_gamma * eta);
   const double N_ngb_max =
@@ -266,6 +267,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   FILE *file_swift = fopen(file_name_swift, "w");
   fprintf(file_swift, "# Hydro accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
+  fprintf(file_swift, "# h_max= %e\n", h_max);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
           e->hydro_properties->delta_neighbours);
@@ -311,6 +313,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   FILE *file_exact = fopen(file_name_exact, "w");
   fprintf(file_exact, "# Hydro accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
+  fprintf(file_exact, "# h_max= %e\n", h_max);
   fprintf(file_exact, "# periodic= %d\n", s->periodic);
   fprintf(file_exact, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
           e->hydro_properties->delta_neighbours);
@@ -335,7 +338,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     const struct part *pi = &parts[i];
     const long long id = pi->id;
     const int found_inhibited = pi->inhibited_exact;
-    const int h_max_limited = pi->h >= e->hydro_properties->h_max;
+    const int h_max_limited = pi->h >= 0.99 * h_max;
     if (pi->limited_part) continue;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
@@ -401,9 +404,10 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       if (!found_inhibited && !h_max_limited &&
           (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
 
-        message("N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d",
-                id, N_ngb, N_ngb_target, N_ngb_max - N_ngb_target,
-                pi->N_density_exact, pi->N_density);
+        message(
+            "N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d h=%e",
+            id, N_ngb, N_ngb_target, N_ngb_max - N_ngb_target,
+            pi->N_density_exact, pi->N_density, pi->h);
 
         wrong_n_ngb++;
       }
