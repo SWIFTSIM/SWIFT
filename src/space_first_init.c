@@ -30,6 +30,7 @@
 #include "chemistry.h"
 #include "engine.h"
 #include "gravity.h"
+#include "neutrino.h"
 #include "particle_splitting.h"
 #include "pressure_floor.h"
 #include "rt.h"
@@ -205,6 +206,9 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     gravity_first_init_gpart(&gp[k], grav_props);
+
+    if (gp[k].type == swift_type_neutrino)
+      gravity_first_init_neutrino(&gp[k], s->e);
 
 #ifdef WITH_LOGGER
     logger_part_data_init(&gp[k].logger_data);

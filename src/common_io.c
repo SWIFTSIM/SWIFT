@@ -42,6 +42,7 @@
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "neutrino_io.h"
 #include "particle_splitting.h"
 #include "rt_io.h"
 #include "sink_io.h"
@@ -1639,6 +1640,27 @@ void io_select_dm_fields(const struct gpart* const gparts,
     *num_fields +=
         velociraptor_write_gparts(gpart_group_data, list + *num_fields);
   }
+}
+
+/**
+ * @brief Select the fields to write to snapshots for the neutrino particles.
+ *
+ * @param gparts The #gpart's
+ * @param with_fof Are we running FoF?
+ * @param with_stf Are we running with structure finding?
+ * @param e The #engine (to access scheme properties).
+ * @param num_fields (return) The number of fields to write.
+ * @param list (return) The list of fields to write.
+ */
+void io_select_neutrino_fields(
+    const struct gpart* const gparts,
+    const struct velociraptor_gpart_data* gpart_group_data, const int with_fof,
+    const int with_stf, const struct engine* const e, int* const num_fields,
+    struct io_props* const list) {
+
+  darkmatter_write_particles(gparts, list, num_fields);
+
+  *num_fields += neutrino_write_particles(gparts, list + *num_fields);
 }
 
 /**
