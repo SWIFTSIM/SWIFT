@@ -642,7 +642,7 @@ int main(int argc, char *argv[]) {
       engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
       /*hydro_properties=*/NULL, /*entropy_floor=*/NULL, &gravity_properties,
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
-      /*sink_properties=*/NULL,
+      /*sink_properties=*/NULL, /*neutrino_properties=*/NULL,
       /*feedback_properties=*/NULL, /*rt_properties=*/NULL, &mesh,
       /*potential=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,

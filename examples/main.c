@@ -97,6 +97,7 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
   struct sink_props sink_properties;
+  struct neutrino_props neutrino_properties;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
@@ -1268,6 +1269,12 @@ int main(int argc, char *argv[]) {
     /* Do we have neutrino DM particles? */
     const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
+    /* Initialise the neutrino properties if we have neutrino particles */
+    bzero(&neutrino_properties, sizeof(struct neutrino_props));
+    if (with_neutrinos)
+      neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
+                          &cosmo);
+
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
@@ -1422,9 +1429,10 @@ int main(int argc, char *argv[]) {
                 N_total[swift_type_neutrino], engine_policies, talking,
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
-                &black_holes_properties, &sink_properties, &feedback_properties,
-                &rt_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry, &fof_properties, &los_properties);
+                &black_holes_properties, &sink_properties, &neutrino_properties,
+                &feedback_properties, &rt_properties, &mesh, &potential,
+                &cooling_func, &starform, &chemistry, &fof_properties,
+                &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 

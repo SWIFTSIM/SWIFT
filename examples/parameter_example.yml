@@ -638,6 +638,12 @@ EAGLEAGN:
   merger_max_distance_ratio:          3.0        # Maximal distance over which two BHs can merge, in units of the softening length.
   minimum_timestep_Myr:               1.0        # Minimum time-step size for BHs in Mega-years. The time-step size is computed based on the accretion rate and this serves as a minimum. Defaults to FLT_MAX.
 
+# Parameters related to the neutrino particles ----------------------------------
+Neutrino:
+  use_delta_f:                        1          # Use the delta-f method for shot noise reduction
+  generate_ics:                       0          # Automatically generate neutrino velocities at the start of the run
+  neutrino_seed:                      1234       # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
+
 # Parameters related to the sink particles ---------------------------------------
 
 # Default sink particles

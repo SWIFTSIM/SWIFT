@@ -1299,9 +1299,13 @@ void prepare_file(struct engine* e, const char* fileName,
 
       case swift_type_dark_matter:
       case swift_type_dark_matter_background:
-      case swift_type_neutrino:
         io_select_dm_fields(NULL, NULL, with_fof, with_stf, e, &num_fields,
                             list);
+        break;
+
+      case swift_type_neutrino:
+        io_select_neutrino_fields(NULL, NULL, with_fof, with_stf, e,
+                                  &num_fields, list);
         break;
 
       case swift_type_sink:
@@ -1773,8 +1777,8 @@ void write_output_parallel(struct engine* e,
             gpart_group_data_written, Ntot, Ndm_neutrino, with_stf);
 
         /* Select the fields to write */
-        io_select_dm_fields(gparts_written, gpart_group_data_written, with_fof,
-                            with_stf, e, &num_fields, list);
+        io_select_neutrino_fields(gparts_written, gpart_group_data_written,
+                                  with_fof, with_stf, e, &num_fields, list);
 
       } break;
 
