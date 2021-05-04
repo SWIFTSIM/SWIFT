@@ -107,6 +107,7 @@ const char *taskID_names[task_type_count] = {
     "bh_swallow_ghost3",
     "fof_self",
     "fof_pair",
+    "neutrino_weight",
     "sink_in",
     "sink_ghost",
     "sink_out",
@@ -169,7 +170,7 @@ const char *task_category_names[task_category_count] = {
     "black holes", "cooling", "star formation",
     "limiter",     "sync",    "time integration",
     "mpi",         "fof",     "others",
-    "sink",        "RT"};
+    "neutrino",    "sink",    "RT"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -1763,6 +1764,9 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_rt_tchem:
     case task_type_rt_out:
       return task_category_rt;
+
+    case task_type_neutrino_weight:
+      return task_category_neutrino;
 
     case task_type_self:
     case task_type_pair:

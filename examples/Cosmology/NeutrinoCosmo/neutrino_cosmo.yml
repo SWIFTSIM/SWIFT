@@ -43,6 +43,10 @@ InitialConditions:
   file_name:	particles.hdf5
   periodic:	1
 
+Neutrino:
+  use_delta_f: 1   # Use the delta-f method for shot noise reduction
+  generate_ics: 1  # Generate new Fermi-Dirac velocities for the particles
+
 Gravity:
   mesh_side_length:	32
   MAC:			geometric

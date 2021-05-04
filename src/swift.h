@@ -60,6 +60,7 @@
 #include "minmax.h"
 #include "mpiuse.h"
 #include "multipole.h"
+#include "neutrino_properties.h"
 #include "output_list.h"
 #include "output_options.h"
 #include "parallel_io.h"

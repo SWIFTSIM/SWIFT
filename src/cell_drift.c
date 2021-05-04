@@ -31,7 +31,7 @@
 #include "feedback.h"
 #include "gravity.h"
 #include "multipole.h"
-#include "neutrino/relativity.h"
+#include "neutrino.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "star_formation.h"
@@ -281,7 +281,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   const double a = e->cosmology->a;
   const double c_vel = e->physical_constants->const_speed_light_c;
   const int with_neutrinos = e->s->with_neutrinos;
-  const int with_relat_drift = with_neutrinos && (a < e->cosmology->a_nu_nr);
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
@@ -344,7 +343,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* Relativistic drift correction for neutrinos */
       double dt_drift_k = dt_drift;
-      if (with_relat_drift && gp->type == swift_type_neutrino) {
+      if (with_neutrinos && gp->type == swift_type_neutrino) {
         dt_drift_k *= relativistic_drift_factor(gp->v_full, a, c_vel);
       }
 

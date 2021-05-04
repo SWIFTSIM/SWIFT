@@ -85,15 +85,16 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_dark_matter:
     case swift_type_dark_matter_background:
-    case swift_type_neutrino:
       io_select_dm_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
                           &num_fields, list);
       break;
-
+    case swift_type_neutrino:
+      io_select_neutrino_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
+                                &num_fields, list);
+      break;
     case swift_type_stars:
       io_select_star_fields(NULL, with_cosmology, with_fof, with_stf,
-                            /*with_rt=*/1,
-                            /*e=*/NULL, &num_fields, list);
+                            /*with_rt=*/1, /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_sink:
