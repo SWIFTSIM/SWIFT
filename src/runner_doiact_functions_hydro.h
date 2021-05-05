@@ -924,6 +924,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
 
+      /* Skip oneself */
+      if (pi == pj) continue;
+
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
@@ -945,7 +948,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 
       /* Hit or miss? */
-      if (r2 > 0.f && r2 < hig2) {
+      if (r2 < hig2) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
