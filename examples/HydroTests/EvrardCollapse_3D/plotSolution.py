@@ -43,7 +43,6 @@ params = {'axes.labelsize': 10,
 'legend.fontsize': 12,
 'xtick.labelsize': 10,
 'ytick.labelsize': 10,
-'text.usetex': True,
  'figure.figsize' : (9.90,6.45),
 'figure.subplot.left'    : 0.045,
 'figure.subplot.right'   : 0.99,
@@ -53,7 +52,6 @@ params = {'axes.labelsize': 10,
 'figure.subplot.hspace'  : 0.12,
 'lines.markersize' : 6,
 'lines.linewidth' : 3.,
-'text.latex.unicode': True
 }
 rcParams.update(params)
 rc('font',**{'family':'sans-serif','sans-serif':['Times']})
@@ -159,7 +157,7 @@ subplot(236, frameon=False)
 
 text(-0.49, 0.9, "Evrard collapse with $\\gamma=%.3f$ in 3D\nat $t=%.2f$"%(gas_gamma,time), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
-text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
+text(-0.49, 0.5, "$Swift$ %s"%git, fontsize=10)
 text(-0.49, 0.4, scheme, fontsize=10)
 text(-0.49, 0.3, kernel, fontsize=10)
 text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)"%(neighbours, eta), fontsize=10)
