@@ -2419,30 +2419,13 @@ void engine_step(struct engine *e) {
   /* OK, we are done with the regular stuff. Time for i/o */
   /********************************************************/
 
-#ifdef WITH_LIGHTCONE
-  const int nr_lightcones = e->lightcone_array_properties->nr_lightcones;
-  for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
-
-    struct lightcone_props *lc_props = e->lightcone_array_properties->lightcone+lightcone_nr;
-    
-    /* Apply lightcone map updates if buffers are getting large */
-    const int flush = e->flush_lightcone_maps;
-
-    if(flush)lightcone_flush_map_updates(lc_props);
-    /* Write out any completed lightcone shells */
-    lightcone_dump_completed_shells(lc_props,
-                                    e->cosmology,
-                                    e->internal_units,
-                                    e->snapshot_units,
-                                    /*dump_all=*/0,
-                                    /*need_flush=*/!flush);
-    /* If the lightcone particle buffer on this node has got too large,
-       flush it to disk */
-    lightcone_flush_particle_buffers(lc_props,
-                                     e->internal_units,
-                                     e->snapshot_units,
-                                     /* flush_all = */ 0, /* end_file = */ 0);
-  }
+#ifdef WITH_LIGHTCONE 
+  /* Flush lightcone buffers if necessary */
+  const int flush = e->flush_lightcone_maps;
+  lightcone_array_flush(e->lightcone_array_properties,
+                        e->internal_units, e->snapshot_units,
+                        /*flush_map_updates=*/flush, /*flush_particles=*/0,
+                        /*end_file=*/0, /*dump_all_shells=*/0);
 #endif
 
   /* Create a restart file if needed. */

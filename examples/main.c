@@ -1786,16 +1786,10 @@ int main(int argc, char *argv[]) {
 
     /* Write out any remaining lightcone data at the end of the run */
 #ifdef WITH_LIGHTCONE
-    const int nr_lightcones = e.lightcone_array_properties->nr_lightcones;
-    for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
-      struct lightcone_props *lc_props = e.lightcone_properties->lightcone+lightcone_nr;
-      lightcone_flush_particle_buffers(lc_props,
-                                       e.internal_units, e.snapshot_units,
-                                       /*flush_all=*/1, /*end_file=*/1);
-      lightcone_dump_completed_shells(lc_props, e.cosmology,
-                                      e.internal_units, e.snapshot_units,
-                                      /*dump_all=*/1, /*need_flush=*/1);
-    }
+    lightcone_array_flush(e.lightcone_array_properties,
+                          e.internal_units, e.snapshot_units,
+                          /*flush_map_updates=*/1, /*flush_particles=*/1,
+                          /*end_file=*/1, /*dump_all_shells=*/1);
 #endif
 
   }

@@ -72,5 +72,10 @@ void lightcone_array_prepare_for_step(struct lightcone_array_props *props,
 
 int lightcone_array_trigger_map_update(struct lightcone_array_props *props);
 
+void lightcone_array_flush(struct lightcone_array_props *props,
+                           const struct unit_system *internal_units,
+                           const struct unit_system *snapshot_units,
+                           int flush_map_updates, int flush_particles,
+                           int end_file, int dump_all_shells);
 
 #endif /* SWIFT_LIGHTCONE_ARRAY_H */

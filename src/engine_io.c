@@ -114,18 +114,12 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       /* Drift all particles first (may have just been done). */
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
 
-#ifdef WITH_LIGHTCONE
-      const int nr_lightcones = e->lightcone_array_properties->nr_lightcones;
-      for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {  
-        struct lightcone_props *lc_props = e->lightcone_array_properties->lightcone+lightcone_nr;
-
-        /* Empty all lightcone buffers before dumping restart files */
-        lightcone_flush_particle_buffers(lc_props,
-                                         e->internal_units,
-                                         e->snapshot_units,
-                                         /* flush_all = */ 1, /* end_file = */ 1);
-        lightcone_flush_map_updates(lc_props);
-      }
+#ifdef WITH_LIGHTCONE 
+      /* Flush lightcone buffers before dumping restarts */
+      lightcone_array_flush(e->lightcone_array_properties,
+                            e->internal_units, e->snapshot_units,
+                            /*flush_map_updates=*/1, /*flush_particles=*/1,
+                            /*end_file=*/1, /*dump_all_shells=*/0);
 #ifdef WITH_MPI
       MPI_Barrier(MPI_COMM_WORLD);
 #endif

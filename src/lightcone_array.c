@@ -135,3 +135,45 @@ int lightcone_array_trigger_map_update(struct lightcone_array_props *props) {
   }
   return 0;
 }
+
+/**
+ * @brief Flush buffers for all lightcones in the array
+ *
+ * Buffers are flushed if they get large or a flush is forced
+ * by setting one of the input flags.
+ *
+ * props the #lightcone_array_props struct
+ * flush_map_updates force full update of the healpix maps
+ * flush_particles force output of all buffered particles
+ * end_file start a new file next time particles are written out
+ * dump_all_shells immediately output all remaining healpix maps
+ *
+ */
+void lightcone_array_flush(struct lightcone_array_props *props,
+                           const struct unit_system *internal_units,
+                           const struct unit_system *snapshot_units,
+                           int flush_map_updates, int flush_particles,
+                           int end_file, int dump_all_shells) {
+
+  /* Loop over lightcones */
+  const int nr_lightcones = props->nr_lightcones;
+  for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
+
+    /* Get a pointer to this lightcone */
+    struct lightcone_props *lc_props = props->lightcone+lightcone_nr;
+
+    /* Apply lightcone map updates if requested */
+    if(flush_map_updates) lightcone_flush_map_updates(lc_props);
+
+    /* Flush particle buffers if they're large or flag is set */
+    lightcone_flush_particle_buffers(lc_props,
+                                     internal_units, snapshot_units,
+                                     flush_particles, end_file);
+    
+    /* Write out any completed healpix maps */
+    lightcone_dump_completed_shells(lc_props, e.cosmology,
+                                    internal_units, snapshot_units,
+                                    dump_all_shells, /*need_flush=*/!flush_map_updates);
+  }
+
+}
