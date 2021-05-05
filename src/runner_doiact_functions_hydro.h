@@ -938,16 +938,16 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 }
 
 /**
- * @brief Compute the interactions between a cell pair, but only for the
- *      given indices in ci.
+ * @brief Compute the interactions between a cell, but only for the
+ *      given indices in c.
  *
  * @param r The #runner.
- * @param ci The first #cell.
+ * @param i The #cell.
  * @param parts The #part to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  */
-void DOSELF_SUBSET(struct runner *r, const struct cell *ci,
+void DOSELF_SUBSET(struct runner *r, const struct cell *c,
                    struct part *restrict parts, const int *ind,
                    const int count) {
 
@@ -965,16 +965,16 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *ci,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  const int count_i = ci->hydro.count;
-  struct part *restrict parts_j = ci->hydro.parts;
+  const int count_cell = c->hydro.count;
+  struct part *restrict parts_j = c->hydro.parts;
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts[ind[pid]];
-    const float pix[3] = {(float)(pi->x[0] - ci->loc[0]),
-                          (float)(pi->x[1] - ci->loc[1]),
-                          (float)(pi->x[2] - ci->loc[2])};
+    const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
+                          (float)(pi->x[1] - c->loc[1]),
+                          (float)(pi->x[2] - c->loc[2])};
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
@@ -983,7 +983,7 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *ci,
 #endif
 
     /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_i; pjd++) {
+    for (int pjd = 0; pjd < count_cell; pjd++) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
@@ -997,9 +997,9 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *ci,
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
-                            (float)(pj->x[1] - ci->loc[1]),
-                            (float)(pj->x[2] - ci->loc[2])};
+      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+                            (float)(pj->x[1] - c->loc[1]),
+                            (float)(pj->x[2] - c->loc[2])};
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
