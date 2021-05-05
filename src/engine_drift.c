@@ -28,7 +28,7 @@
 /* This object's header. */
 #include "engine.h"
 
-#include "lightcone.h"
+#include "lightcone_array.h"
 
 /**
  * @brief Mapper function to drift *all* the #part to the current time.
@@ -339,9 +339,8 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
 #ifdef WITH_LIGHTCONE
   /* Determine which periodic replications could contribute to the lightcone
      during this time step */
-  if(e->lightcone_properties->enabled)
-    lightcone_prepare_for_step(e->lightcone_properties, e->cosmology,
-                               e->ti_old, e->ti_current, e->dt_max);
+  lightcone_array_prepare_for_step(e->lightcone_array_properties, e->cosmology,
+                                   e->ti_old, e->ti_current, e->dt_max);
 #endif
 
   if (!e->restarting) {

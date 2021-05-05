@@ -37,6 +37,8 @@
 #include "clocks.h"
 #include "collectgroup.h"
 #include "dump.h"
+#include "lightcone.h"
+#include "lightcone_array.h"
 #include "mesh_gravity.h"
 #include "output_options.h"
 #include "parser.h"
@@ -532,7 +534,7 @@ struct engine {
   struct los_props *los_properties;
 
   /* Line of sight properties. */
-  struct lightcone_props *lightcone_properties;
+  struct lightcone_array_props *lightcone_array_properties;
 
   /* Line of sight outputs information. */
   struct output_list *output_list_los;
@@ -600,7 +602,7 @@ void engine_init(
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
     struct fof_props *fof_properties, struct los_props *los_properties,
-    struct lightcone_props *lightcone_properties);
+    struct lightcone_array_props *lightcone_array_properties);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,

@@ -69,6 +69,7 @@
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "lightcone_array.h"
 #include "lightcone.h"
 #include "line_of_sight.h"
 #include "logger.h"
@@ -2148,9 +2149,8 @@ void engine_step(struct engine *e) {
 #ifdef WITH_LIGHTCONE
   /* Determine which periodic replications could contribute to the lightcone
      during this time step */
-  if(e->lightcone_properties->enabled)
-    lightcone_prepare_for_step(e->lightcone_properties, e->cosmology,
-                               e->ti_old, e->ti_current, e->dt_max);
+  lightcone_array_prepare_for_step(e->lightcone_array_properties, e->cosmology,
+                                   e->ti_old, e->ti_current, e->dt_max);
 #endif
 
   /*****************************************************/
@@ -2420,12 +2420,17 @@ void engine_step(struct engine *e) {
   /********************************************************/
 
 #ifdef WITH_LIGHTCONE
-  if(e->lightcone_properties->enabled) {
+  const int nr_lightcones = e->lightcone_array_properties->nr_lightcones;
+  for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
+
+    struct lightcone_props *lc_props = e->lightcone_array_properties->lightcone+lightcone_nr;
+    
     /* Apply lightcone map updates if buffers are getting large */
     const int flush = e->flush_lightcone_maps;
-    if(flush)lightcone_flush_map_updates(e->lightcone_properties);  
+
+    if(flush)lightcone_flush_map_updates(lc_props);
     /* Write out any completed lightcone shells */
-    lightcone_dump_completed_shells(e->lightcone_properties,
+    lightcone_dump_completed_shells(lc_props,
                                     e->cosmology,
                                     e->internal_units,
                                     e->snapshot_units,
@@ -2433,7 +2438,7 @@ void engine_step(struct engine *e) {
                                     /*need_flush=*/!flush);
     /* If the lightcone particle buffer on this node has got too large,
        flush it to disk */
-    lightcone_flush_particle_buffers(e->lightcone_properties, 
+    lightcone_flush_particle_buffers(lc_props,
                                      e->internal_units,
                                      e->snapshot_units,
                                      /* flush_all = */ 0, /* end_file = */ 0);
@@ -2797,7 +2802,7 @@ void engine_unpin(void) {
  * @param chemistry The chemistry information.
  * @param fof_properties The #fof_props of this run.
  * @param los_properties the #los_props of this run.
- * @param lightcone_properties the #lightcone_props of this run.
+ * @param lightcone_array_properties the #lightcone_array_props of this run.
  */
 void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
@@ -2816,7 +2821,7 @@ void engine_init(
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
     struct fof_props *fof_properties, struct los_props *los_properties,
-    struct lightcone_props *lightcone_properties) {
+    struct lightcone_array_props *lightcone_array_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -2912,7 +2917,7 @@ void engine_init(
   e->output_options = output_options;
   e->stf_this_timestep = 0;
   e->los_properties = los_properties;
-  e->lightcone_properties = lightcone_properties;
+  e->lightcone_array_properties = lightcone_array_properties;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
   e->systime_last_step = 0.0;
@@ -3333,7 +3338,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->fof_properties);
 #endif
     free((void *)e->los_properties);
-    free((void *)e->lightcone_properties);
+    free((void *)e->lightcone_array_properties);
 #ifdef WITH_MPI
     free((void *)e->reparttype);
 #endif
@@ -3392,7 +3397,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
-  lightcone_struct_dump(e->lightcone_properties, stream);
+  lightcone_array_struct_dump(e->lightcone_array_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
 
@@ -3535,10 +3540,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
 
-  struct lightcone_props *lightcone_properties =
-      (struct lightcone_props *)malloc(sizeof(struct lightcone_props));
-  lightcone_struct_restore(lightcone_properties, stream);
-  e->lightcone_properties = lightcone_properties;
+  struct lightcone_array_props *lightcone_array_properties =
+      (struct lightcone_array_props *)malloc(sizeof(struct lightcone_array_props));
+  lightcone_array_struct_restore(lightcone_array_properties, stream);
+  e->lightcone_array_properties = lightcone_array_properties;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));

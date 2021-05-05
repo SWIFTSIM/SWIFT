@@ -172,6 +172,7 @@ struct lightcone_props {
 
 
 void lightcone_init(struct lightcone_props *props,
+                    const char *name,
                     const struct space *s,
                     const struct cosmology *cosmo,
                     struct swift_params *params,

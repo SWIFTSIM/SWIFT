@@ -260,6 +260,12 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 }
 
 
+static char *yaml_name(char *buf, const char *str1, const char *str2) {
+  snprintf(buf, PARSER_MAX_LINE_SIZE, "%s:%s", str1, str2);
+  return buf;
+}
+
+
 /**
  * @brief Initialise the properties of the lightcone code.
  *
@@ -270,13 +276,21 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
  * @param verbose the verbosity flag
  */
 void lightcone_init(struct lightcone_props *props,
+                    const char *name,
                     const struct space *s,
                     const struct cosmology *cosmo,
                     struct swift_params *params,
                     const int verbose) {
   
+  /* Macro to generate parameter names given section name */
+  char buf[PARSER_MAX_LINE_SIZE];
+#define YML_NAME(x) yaml_name(buf, name, x)
+
   /* Whether we generate lightcone output */
-  props->enabled = 1;
+  props->enabled = parser_get_opt_param_int(params, YML_NAME("enabled"), 0);
+  if(!props->enabled)return;
+
+  /* Verbose lightcone output - use passed in value of --verbose flag */
   props->verbose = verbose;
 
   /* Define output quantities */
@@ -285,19 +299,19 @@ void lightcone_init(struct lightcone_props *props,
   /* Which particle types we should write out particle data for */
   for(int i=0; i<swift_type_count; i+=1)
     props->use_type[i] = 0;
-  props->use_type[swift_type_gas] = parser_get_param_int(params, "Lightcone:use_gas");
-  props->use_type[swift_type_dark_matter] = parser_get_param_int(params, "Lightcone:use_dm");
-  props->use_type[swift_type_dark_matter_background] = parser_get_param_int(params, "Lightcone:use_dm_background");
-  props->use_type[swift_type_stars] = parser_get_param_int(params, "Lightcone:use_stars");
-  props->use_type[swift_type_black_hole] = parser_get_param_int(params, "Lightcone:use_black_hole");
-  props->use_type[swift_type_neutrino] = parser_get_param_int(params, "Lightcone:use_neutrino");
+  props->use_type[swift_type_gas] = parser_get_param_int(params, YML_NAME("use_gas"));
+  props->use_type[swift_type_dark_matter] = parser_get_param_int(params, YML_NAME("use_dm"));
+  props->use_type[swift_type_dark_matter_background] = parser_get_param_int(params, YML_NAME("use_dm_background"));
+  props->use_type[swift_type_stars] = parser_get_param_int(params, YML_NAME("use_stars"));
+  props->use_type[swift_type_black_hole] = parser_get_param_int(params, YML_NAME("use_black_hole"));
+  props->use_type[swift_type_neutrino] = parser_get_param_int(params, YML_NAME("use_neutrino"));
 
   /* Base name for output files */
-  parser_get_param_string(params, "Lightcone:basename", props->basename);
+  parser_get_param_string(params, YML_NAME("basename"), props->basename);
 
   /* Redshift range for particle output */
-  props->z_min_for_particles = parser_get_param_double(params, "Lightcone:z_min_for_particles");
-  props->z_max_for_particles = parser_get_param_double(params, "Lightcone:z_max_for_particles");
+  props->z_min_for_particles = parser_get_param_double(params, YML_NAME("z_min_for_particles"));
+  props->z_max_for_particles = parser_get_param_double(params, YML_NAME("z_max_for_particles"));
 
   /* Corresponding range in comoving distance squared */
   const double a_min_for_particles = 1.0/(1.0+props->z_max_for_particles);
@@ -306,17 +320,17 @@ void lightcone_init(struct lightcone_props *props,
   props->r2_min_for_particles = pow(cosmology_get_comoving_distance(cosmo, a_max_for_particles), 2.0);
 
   /* Coordinates of the observer in the simulation box */
-  parser_get_param_double_array(params, "Lightcone:observer_position", 3,
+  parser_get_param_double_array(params, YML_NAME("observer_position"), 3,
                                 props->observer_position);
 
   /* Write particles to disk if this many or more are in the buffer */
-  props->max_particles_buffered = parser_get_opt_param_int(params, "Lightcone:max_particles_buffered", 100000);
+  props->max_particles_buffered = parser_get_opt_param_int(params, YML_NAME("max_particles_buffered"), 100000);
 
   /* Chunk size for particles buffered in memory  */
-  props->buffer_chunk_size = parser_get_opt_param_int(params, "Lightcone:buffer_chunk_size", 20000);
+  props->buffer_chunk_size = parser_get_opt_param_int(params, YML_NAME("buffer_chunk_size"), 20000);
 
   /* Chunk size for particles buffered in memory  */
-  props->hdf5_chunk_size = parser_get_opt_param_int(params, "Lightcone:hdf5_chunk_size", 16384);
+  props->hdf5_chunk_size = parser_get_opt_param_int(params, YML_NAME("hdf5_chunk_size"), 16384);
 
   /* Get the size of the simulation box */
   props->boxsize = s->dim[0];
@@ -351,17 +365,17 @@ void lightcone_init(struct lightcone_props *props,
   */
 
   /* Update lightcone pixel data if more than this number of updates are buffered */
-  props->max_updates_buffered = parser_get_opt_param_int(params, "Lightcone:max_updates_buffered", 1000000);
+  props->max_updates_buffered = parser_get_opt_param_int(params, YML_NAME("max_updates_buffered"), 1000000);
   
   /* Name of the file with radii of spherical shells */
-  parser_get_param_string(params, "Lightcone:radius_file", props->radius_file);
+  parser_get_param_string(params, YML_NAME("radius_file"), props->radius_file);
   
   /* Healpix nside parameter */
-  props->nside = parser_get_param_double(params, "Lightcone:nside");
+  props->nside = parser_get_param_double(params, YML_NAME("nside"));
 
   /* Names of the healpix maps to make for this lightcone */
   char **map_names;
-  parser_get_param_string_array(params, "Lightcone:map_names", &props->nr_maps, &map_names);
+  parser_get_param_string_array(params, YML_NAME("map_names"), &props->nr_maps, &map_names);
   if(props->nr_maps > LIGHTCONE_MAX_HEALPIX_MAPS)
     error("Increase LIGHTCONE_MAX_HEALPIX_MAPS!");
   for(int i=0; i<props->nr_maps; i+=1)

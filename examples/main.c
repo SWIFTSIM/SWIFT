@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
   struct entropy_floor_properties entropy_floor;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
-  struct lightcone_props lightcone_properties;
+  struct lightcone_array_props lightcone_array_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -1294,12 +1294,12 @@ int main(int argc, char *argv[]) {
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
     /* Initialise the lightcone properties */
-    bzero(&lightcone_properties, sizeof(struct lightcone_props));
+    bzero(&lightcone_array_properties, sizeof(struct lightcone_array_props));
 #ifdef WITH_LIGHTCONE
     if (with_lightcone)
-      lightcone_init(&lightcone_properties, &s, &cosmo, params, verbose);
+      lightcone_array_init(&lightcone_array_properties, &s, &cosmo, params, verbose);
     else
-      lightcone_properties.enabled = 0;
+      lightcone_array_properties.nr_lightcones = 0;
 #endif
 
     if (myrank == 0) {
@@ -1447,7 +1447,7 @@ int main(int argc, char *argv[]) {
                 &black_holes_properties, &sink_properties, &feedback_properties,
                 &rt_properties, &mesh, &potential, &cooling_func, &starform,
                 &chemistry, &fof_properties, &los_properties,
-                &lightcone_properties);
+                &lightcone_array_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
@@ -1786,11 +1786,13 @@ int main(int argc, char *argv[]) {
 
     /* Write out any remaining lightcone data at the end of the run */
 #ifdef WITH_LIGHTCONE
-    if(e.lightcone_properties->enabled) {
-      lightcone_flush_particle_buffers(e.lightcone_properties,
+    const int nr_lightcones = e.lightcone_array_properties->nr_lightcones;
+    for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
+      struct lightcone_props *lc_props = e.lightcone_properties->lightcone+lightcone_nr;
+      lightcone_flush_particle_buffers(lc_props,
                                        e.internal_units, e.snapshot_units,
                                        /*flush_all=*/1, /*end_file=*/1);
-      lightcone_dump_completed_shells(e.lightcone_properties, e.cosmology,
+      lightcone_dump_completed_shells(lc_props, e.cosmology,
                                       e.internal_units, e.snapshot_units,
                                       /*dump_all=*/1, /*need_flush=*/1);
     }
@@ -1817,7 +1819,7 @@ int main(int argc, char *argv[]) {
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_lightcone) lightcone_clean(e.lightcone_properties);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
   if (with_rt) rt_clean(e.rt_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);

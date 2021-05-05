@@ -34,6 +34,7 @@
 #include "distributed_io.h"
 #include "kick.h"
 #include "lightcone.h"
+#include "lightcone_array.h"
 #include "line_of_sight.h"
 #include "logger_io.h"
 #include "parallel_io.h"
@@ -114,17 +115,20 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
 
 #ifdef WITH_LIGHTCONE
-      if(e->lightcone_properties->enabled) {
+      const int nr_lightcones = e->lightcone_array_properties->nr_lightcones;
+      for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {  
+        struct lightcone_props *lc_props = e->lightcone_array_properties->lightcone+lightcone_nr;
+
         /* Empty all lightcone buffers before dumping restart files */
-        lightcone_flush_particle_buffers(e->lightcone_properties,
+        lightcone_flush_particle_buffers(lc_props,
                                          e->internal_units,
                                          e->snapshot_units,
                                          /* flush_all = */ 1, /* end_file = */ 1);
-        lightcone_flush_map_updates(e->lightcone_properties);
-#ifdef WITH_MPI
-        MPI_Barrier(MPI_COMM_WORLD);
-#endif
+        lightcone_flush_map_updates(lc_props);
       }
+#ifdef WITH_MPI
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
 #endif
 
       restart_write(e, e->restart_file);
