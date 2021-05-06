@@ -65,8 +65,6 @@ struct mask_data {
   } reader;
 };
 
-void write_index_array(const struct engine* e, FILE* f, struct io_props* props,
-                       size_t n_props, size_t N);
 /**
  * @brief Initialize the mask_data with a given field.
  *
@@ -121,76 +119,7 @@ INLINE static int csds_should_write_field(struct mask_data mask_data,
   return test;
 }
 
-void csds_write_index_file(struct csds_writer* log, struct engine* e);
 void csds_write_description(struct csds_writer* log, struct engine* e);
-
-/**
- * @brief Specifies which particle fields to write to a dataset
- *
- * @param parts The particle array.
- * @param xparts The extra particle array.
- * @param list (out) The parameters to write.
- *
- * In this version, we only want the ids and the offset.
- */
-__attribute__((always_inline)) INLINE static int hydro_write_index(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list) {
-
-  /* List what we want to write */
-  list[0] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           parts, id, "Field not used");
-  list[1] =
-      io_make_output_field("Offset", UINT64, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-                           csds_data.last_offset, "Field not used");
-
-  return 2;
-}
-
-/**
- * @brief Specifies which particle fields to write to a dataset
- *
- * @param gparts The gparticle array.
- * @param list (out) The parameters to write.
- *
- * In this version, we only want the ids and the offset.
- */
-__attribute__((always_inline)) INLINE static int darkmatter_write_index(
-    const struct gpart* gparts, struct io_props* list) {
-
-  /* List what we want to write */
-  list[0] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           gparts, id_or_neg_offset, "Field not used");
-  list[1] =
-      io_make_output_field("Offset", UINT64, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
-                           csds_data.last_offset, "Field not used");
-
-  return 2;
-}
-
-/**
- * @brief Specifies which particle fields to write to a dataset
- *
- * @param sparts The sparticle array.
- * @param list (out) The parameters to write.
- *
- * In this version, we only want the ids and the offset.
- */
-__attribute__((always_inline)) INLINE static int stars_write_index(
-    const struct spart* sparts, struct io_props* list) {
-
-  /* List what we want to write */
-  list[0] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           sparts, id, "Field not used");
-  list[1] =
-      io_make_output_field("Offset", UINT64, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
-                           csds_data.last_offset, "Field not used");
-
-  return 2;
-}
 
 #endif
 

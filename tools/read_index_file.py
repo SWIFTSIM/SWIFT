@@ -16,7 +16,7 @@ class DarkMatterParticle():
         self.ids = ids
 
 class LogfileReader():
-    n_type = 6
+    n_type = 7
     swift_type_dark_matter = 1
 
     # dtype for the particle's data
