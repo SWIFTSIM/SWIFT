@@ -31,6 +31,7 @@
 #include "feedback.h"
 #include "gravity.h"
 #include "lightcone.h"
+#include "lightcone_array.h"
 #include "multipole.h"
 #include "neutrino/relativity.h"
 #include "pressure_floor.h"
@@ -311,21 +312,17 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
      If making lightcones, get the refined replication list for this cell.
   
      IMPORTANT: after this point we must not return without freeing the
-     replication list if we allocated it.
+     replication lists if we allocated them.
   */
   struct replication_list *replication_list = NULL;
 #ifdef WITH_LIGHTCONE
-  struct replication_list local_replication_list;
-  if(e->lightcone_properties->enabled) {
+  if(e->lightcone_array_properties->nr_lightcones > 0) {
     if(replication_list_in) {
-      /* We're not at the top of the hierarchy, so use the replication list passed in */
+      /* We're not at the top of the hierarchy, so use the replication lists passed in */
       replication_list = replication_list_in;
     } else {
-      /* Current call is top of the recursive hierarchy, so compute refined replication list */
-      replication_list_subset_for_cell(&e->lightcone_properties->replication_list,
-                                       c, e->lightcone_properties->observer_position,
-                                       &local_replication_list);
-      replication_list = &local_replication_list;
+      /* Current call is top of the recursive hierarchy, so compute refined replication lists */
+      replication_list = lightcone_array_refine_replications(e->lightcone_array_properties, c);
     }
   }
 #endif
@@ -435,9 +432,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
   }
 
 #ifdef WITH_LIGHTCONE
-  /* If we're at the top of the recursive hierarchy, tidy up the refined replication list */
-  if(e->lightcone_properties->enabled && !replication_list_in)
-    replication_list_clean(&local_replication_list);
+  /* If we're at the top of the recursive hierarchy, clean up the refined replication lists */
+  if(e->lightcone_array_properties->nr_lightcones > 0 && !replication_list_in)
+    lightcone_array_free_replications(e->lightcone_array_properties, replication_list);
 #endif
 
   /* Clear the drift flags. */

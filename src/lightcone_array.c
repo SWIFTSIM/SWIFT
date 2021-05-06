@@ -76,11 +76,12 @@ void lightcone_array_init(struct lightcone_array_props *props,
     snprintf(name, PARSER_MAX_LINE_SIZE, "Lightcone%d:enabled", props->nr_lightcones);
     if(parser_get_opt_param_int(params, name, 0)) {      
       snprintf(name, PARSER_MAX_LINE_SIZE, "Lightcone%d", props->nr_lightcones);
-      lightcone_init(props->lightcone+props->lightcone_nr,
+      lightcone_init(props->lightcone+lightcone_nr,
                      name, s, cosmo, params, verbose);
       props->nr_lightcones += 1;
     }
   }
+
 }
 
 void lightcone_array_clean(struct lightcone_array_props *props) {
@@ -94,7 +95,7 @@ void lightcone_array_clean(struct lightcone_array_props *props) {
 void lightcone_array_struct_dump(const struct lightcone_array_props *props, FILE *stream) {
   
   struct lightcone_array_props tmp = *props;
-  tmp.props = NULL;
+  tmp.lightcone = NULL;
   restart_write_blocks((void *) &tmp, sizeof(struct lightcone_array_props), 1, stream,
                        "lightcone_array_props", "lightcone_array_props");
   
@@ -150,6 +151,7 @@ int lightcone_array_trigger_map_update(struct lightcone_array_props *props) {
  *
  */
 void lightcone_array_flush(struct lightcone_array_props *props,
+                           const struct cosmology *cosmo,
                            const struct unit_system *internal_units,
                            const struct unit_system *snapshot_units,
                            int flush_map_updates, int flush_particles,
@@ -171,9 +173,65 @@ void lightcone_array_flush(struct lightcone_array_props *props,
                                      flush_particles, end_file);
     
     /* Write out any completed healpix maps */
-    lightcone_dump_completed_shells(lc_props, e.cosmology,
-                                    internal_units, snapshot_units,
-                                    dump_all_shells, /*need_flush=*/!flush_map_updates);
+    lightcone_dump_completed_shells(lc_props, cosmo, internal_units,
+                                    snapshot_units, dump_all_shells,
+                                    /*need_flush=*/!flush_map_updates);
   }
 
+}
+
+
+/**
+ * @brief Make a refined replication list for each lightcone
+ *
+ * Returns an array of struct #replication_list. Must be freed
+ * with lightcone_array_free_replications().
+ *
+ * props the #lightcone_array_props struct
+ * cell the #cell for which we're making replication lists
+ *
+ */
+struct replication_list *lightcone_array_refine_replications(struct lightcone_array_props *props,
+                                                             const struct cell *cell) {
+
+  /* Get number of lightcones */
+  const int nr_lightcones = props->nr_lightcones;
+
+  /* Allocate a replication list for each lightcone */
+  struct replication_list *lists = malloc(sizeof(struct replication_list)*nr_lightcones);
+
+  /* Loop over lightcones */
+  for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
+
+    /* Make refined replication list for this lightcone */
+    struct lightcone_props *lightcone = props->lightcone+lightcone_nr;
+    replication_list_subset_for_cell(&lightcone->replication_list,
+                                     cell, lightcone->observer_position,
+                                     lists+lightcone_nr);
+  }
+  
+  return lists;
+}
+
+
+/**
+ * @brief Free lists returned by lightcone_array_refine_replications
+ *
+ * props the #lightcone_array_props struct
+ * lists the array of struct #replication_list to free
+ *
+ */
+void lightcone_array_free_replications(struct lightcone_array_props *props,
+                                       struct replication_list *lists) {
+  
+  /* Get number of lightcones */
+  const int nr_lightcones = props->nr_lightcones;
+
+  /* Loop over lightcones and clean replication lists */
+  for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
+    replication_list_clean(lists+lightcone_nr);
+  }
+
+  /* Free replication list array */
+  free(lists);
 }

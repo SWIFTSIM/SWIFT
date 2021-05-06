@@ -117,7 +117,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #ifdef WITH_LIGHTCONE 
       /* Flush lightcone buffers before dumping restarts */
       lightcone_array_flush(e->lightcone_array_properties,
-                            e->internal_units, e->snapshot_units,
+                            e->cosmology, e->internal_units, e->snapshot_units,
                             /*flush_map_updates=*/1, /*flush_particles=*/1,
                             /*end_file=*/1, /*dump_all_shells=*/0);
 #ifdef WITH_MPI

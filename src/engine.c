@@ -2422,7 +2422,7 @@ void engine_step(struct engine *e) {
 #ifdef WITH_LIGHTCONE 
   /* Flush lightcone buffers if necessary */
   const int flush = e->flush_lightcone_maps;
-  lightcone_array_flush(e->lightcone_array_properties,
+  lightcone_array_flush(e->lightcone_array_properties, e->cosmology,
                         e->internal_units, e->snapshot_units,
                         /*flush_map_updates=*/flush, /*flush_particles=*/0,
                         /*end_file=*/0, /*dump_all_shells=*/0);
