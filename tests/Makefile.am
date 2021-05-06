@@ -24,13 +24,14 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testErfc \
-        testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
+        testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
 	testCbrt testCosmology testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology
+        testAtomic testGravitySpeed testNeutrinoCosmology testNeutrinoFermiDirac \
+	testLog
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -38,12 +39,13 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
                  testKernel testFFT testInteractions testMaths testRandom testExp \
                  testSymmetry testThreadpool testRandomSpacing testErfc \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
-                 testRiemannHLLC testMatrixInversion testDump testLogger \
+                 testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
-                 testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology
+                 testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
+		 testNeutrinoFermiDirac testLog
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -71,6 +73,10 @@ testSymmetry_SOURCES = testSymmetry.c
 
 # Added because of issues using memcmp on clang 4.x
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
+
+testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
+
+testNeutrinoFermiDirac_SOURCES = testNeutrinoFermiDirac.c
 
 testTimeIntegration_SOURCES = testTimeIntegration.c
 
@@ -122,7 +128,7 @@ testThreadpool_SOURCES = testThreadpool.c
 
 testDump_SOURCES = testDump.c
 
-testLogger_SOURCES = testLogger.c
+testCSDS_SOURCES = testCSDS.c
 
 testExp_SOURCES = testExp.c
 
@@ -147,6 +153,8 @@ testComovingCooling_SOURCES = testComovingCooling.c
 testFeedback_SOURCES = testFeedback.c
 
 testHashmap_SOURCES = testHashmap.c
+
+testLog_SOURCES = testLog.c
 
 testHydroMPIrules = testHydroMPIrules.c
 

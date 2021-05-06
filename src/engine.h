@@ -81,7 +81,7 @@ enum engine_policy {
   engine_policy_fof = (1 << 20),
   engine_policy_timestep_limiter = (1 << 21),
   engine_policy_timestep_sync = (1 << 22),
-  engine_policy_logger = (1 << 23),
+  engine_policy_csds = (1 << 23),
   engine_policy_line_of_sight = (1 << 24),
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
@@ -103,7 +103,7 @@ enum engine_step_properties {
   engine_step_prop_stf = (1 << 6),
   engine_step_prop_fof = (1 << 7),
   engine_step_prop_mesh = (1 << 8),
-  engine_step_prop_logger_index = (1 << 9),
+  engine_step_prop_csds_index = (1 << 9),
   engine_step_prop_done = (1 << 10),
 };
 
@@ -417,8 +417,8 @@ struct engine {
   int forcerepart;
   struct repartition *reparttype;
 
-  /* The particle logger */
-  struct logger_writer *logger;
+  /* The Continuous Simulation Data Stream (CSDS) */
+  struct csds_writer *csds;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -459,6 +459,9 @@ struct engine {
 
   /* Properties of the sink model */
   const struct sink_props *sink_properties;
+
+  /* Properties of the neutrino model */
+  const struct neutrino_props *neutrino_properties;
 
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
@@ -597,7 +600,8 @@ void engine_init(
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, const struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
+    const struct neutrino_props *neutrinos, struct feedback_props *feedback,
+    struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,

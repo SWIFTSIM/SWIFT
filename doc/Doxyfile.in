@@ -848,7 +848,7 @@ INPUT                  = @top_srcdir@ \
                          @top_srcdir@/src/feedback/GEAR \
                          @top_srcdir@/src/black_holes/EAGLE \
                          @top_srcdir@/src/sink/Default \
-                         @top_srcdir@/logger
+                         @top_srcdir@/csds
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses

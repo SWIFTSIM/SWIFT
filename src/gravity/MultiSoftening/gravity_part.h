@@ -19,8 +19,8 @@
 #ifndef SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 #define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
+#include "csds.h"
 #include "fof_struct.h"
-#include "logger.h"
 
 /* Gravity particle. */
 struct gpart {
@@ -69,9 +69,9 @@ struct gpart {
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
+#ifdef WITH_CSDS
+  /* Additional data for the particle csds */
+  struct csds_part_data csds_data;
 #endif
 
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS

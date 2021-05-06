@@ -127,11 +127,6 @@ struct spart {
   /*! Number of time-steps since the last enrichment step */
   char count_since_last_enrichment;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
-#endif
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

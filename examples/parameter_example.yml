@@ -171,8 +171,8 @@ Snapshots:
   dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
   
 
-# Parameters governing the logger snapshot system
-Logger:
+# Parameters governing the CSDS snapshot system
+CSDS:
   delta_step:           10     # Update the particle log every this many updates
   basename:             index  # Common part of the filenames
   initial_buffer_size:  1      # (Optional) Buffer size in GB
@@ -637,6 +637,12 @@ EAGLEAGN:
   merger_threshold_type:              2          # Type of velocity threshold for BH mergers (0: v_circ at kernel edge, 1: v_esc at actual distance, with softening, 2: v_esc at actual distance, no softening).
   merger_max_distance_ratio:          3.0        # Maximal distance over which two BHs can merge, in units of the softening length.
   minimum_timestep_Myr:               1.0        # Minimum time-step size for BHs in Mega-years. The time-step size is computed based on the accretion rate and this serves as a minimum. Defaults to FLT_MAX.
+
+# Parameters related to the neutrino particles ----------------------------------
+Neutrino:
+  use_delta_f:                        1          # Use the delta-f method for shot noise reduction
+  generate_ics:                       0          # Automatically generate neutrino velocities at the start of the run
+  neutrino_seed:                      1234       # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
 
 # Parameters related to the sink particles ---------------------------------------
 

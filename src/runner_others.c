@@ -42,14 +42,14 @@
 #include "cell.h"
 #include "chemistry.h"
 #include "cooling.h"
+#include "csds.h"
+#include "csds_io.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
 #include "fof.h"
 #include "gravity.h"
 #include "hydro.h"
-#include "logger.h"
-#include "logger_io.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "space.h"
@@ -242,7 +242,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
       /* Only work on active particles */
       if (sink_is_active(s, e)) {
 
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
         error("TODO");
 #endif
 
@@ -402,12 +402,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               } else {
                 /* Convert the gas particle to a star particle */
                 sp = cell_convert_part_to_spart(e, c, p, xp);
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
                 /* Write the particle */
                 /* Logs all the fields request by the user */
                 // TODO select only the requested fields
-                logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
-                                logger_flag_change_type, swift_type_stars);
+                csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                              csds_flag_change_type, swift_type_stars);
 #endif
               }
 
@@ -454,18 +454,18 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                 c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
               }
 
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
               if (spawn_spart) {
-                /* Set to zero the logger data. */
-                logger_part_data_init(&sp->logger_data);
+                /* Set to zero the csds data. */
+                csds_part_data_init(&sp->csds_data);
               } else {
                 /* Copy the properties back to the stellar particle */
-                sp->logger_data = xp->logger_data;
+                sp->csds_data = xp->csds_data;
               }
 
               /* Write the s-particle */
-              logger_log_spart(e->logger, sp, e, /* log_all */ 1,
-                               logger_flag_create, /* data */ 0);
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_create,
+                             /* data */ 0);
 #endif
             } else if (swift_star_formation_model_creates_stars) {
 
@@ -580,7 +580,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
           /* Are we forming a sink particle? */
           if (sink_should_convert_to_sink(p, xp, sink_props, e, dt_sink)) {
 
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
             error("TODO");
 #endif
 
@@ -824,15 +824,15 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Write the required particles through the logger.
+ * @brief Write the required particles through the csds.
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_logger(struct runner *r, struct cell *c, int timer) {
+void runner_do_csds(struct runner *r, struct cell *c, int timer) {
 
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
   TIMER_TIC;
 
   const struct engine *e = r->e;
@@ -845,10 +845,10 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   const int scount = c->stars.count;
 
   if (c->black_holes.count != 0) {
-    error("Black holes are not implemented in the logger.");
+    error("Black holes are not implemented in the csds.");
   }
   if (c->sinks.count != 0) {
-    error("Sink particles are not implemented in the logger.");
+    error("Sink particles are not implemented in the csds.");
   }
 
   /* Anything to do here? */
@@ -859,7 +859,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   /* Recurse? Avoid spending too much time in useless cells. */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_logger(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_csds(r, c->progeny[k], 0);
   } else {
 
     /* Loop over the parts in this cell. */
@@ -872,14 +872,14 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be log */
       if (part_is_active(p, e)) {
 
-        if (logger_should_write(&xp->logger_data, e->logger)) {
+        if (csds_should_write(&xp->csds_data, e->csds)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_part(e->logger, p, xp, e, /* log_all_fields= */ 0,
-                          logger_flag_none, /* flag_data= */ 0);
+          csds_log_part(e->csds, p, xp, e, /* log_all_fields= */ 0,
+                        csds_flag_none, /* flag_data= */ 0);
         } else
           /* Update counter */
-          xp->logger_data.steps_since_last_output += 1;
+          xp->csds_data.steps_since_last_output += 1;
       }
     }
 
@@ -897,15 +897,15 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be log */
       if (gpart_is_active(gp, e)) {
 
-        if (logger_should_write(&gp->logger_data, e->logger)) {
+        if (csds_should_write(&gp->csds_data, e->csds)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_gpart(e->logger, gp, e, /* log_all_fields= */ 0,
-                           logger_flag_none, /* flag_data= */ 0);
+          csds_log_gpart(e->csds, gp, e, /* log_all_fields= */ 0,
+                         csds_flag_none, /* flag_data= */ 0);
 
         } else
           /* Update counter */
-          gp->logger_data.steps_since_last_output += 1;
+          gp->csds_data.steps_since_last_output += 1;
       }
     }
 
@@ -918,22 +918,22 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be log */
       if (spart_is_active(sp, e)) {
 
-        if (logger_should_write(&sp->logger_data, e->logger)) {
+        if (csds_should_write(&sp->csds_data, e->csds)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_spart(e->logger, sp, e, /* Log_all_fields= */ 0,
-                           logger_flag_none, /* flag_data= */ 0);
+          csds_log_spart(e->csds, sp, e, /* Log_all_fields= */ 0,
+                         csds_flag_none, /* flag_data= */ 0);
         } else
           /* Update counter */
-          sp->logger_data.steps_since_last_output += 1;
+          sp->csds_data.steps_since_last_output += 1;
       }
     }
   }
 
-  if (timer) TIMER_TOC(timer_logger);
+  if (timer) TIMER_TOC(timer_csds);
 
 #else
-  error("Logger disabled, please enable it during configuration");
+  error("CSDS disabled, please enable it during configuration");
 #endif
 }
 

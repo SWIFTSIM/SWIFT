@@ -97,6 +97,7 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
   struct sink_props sink_properties;
+  struct neutrino_props neutrino_properties;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
@@ -175,7 +176,7 @@ int main(int argc, char *argv[]) {
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
-  int with_logger = 0;
+  int with_csds = 0;
   int with_sink = 0;
   int with_qla = 0;
   int with_eagle = 0;
@@ -248,7 +249,8 @@ int main(int argc, char *argv[]) {
                   "Run with time-step synchronization of particles hit by "
                   "feedback events.",
                   NULL, 0, 0),
-      OPT_BOOLEAN(0, "logger", &with_logger, "Run with the particle logger.",
+      OPT_BOOLEAN(0, "csds", &with_csds,
+                  "Run with the Continuous Simulation Data Stream (CSDS).",
                   NULL, 0, 0),
       OPT_BOOLEAN('R', "radiation", &with_rt,
                   "Run with radiative transfer. Work in progress, currently "
@@ -399,11 +401,11 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-#if !defined(WITH_LOGGER)
-  if (with_logger) {
+#if !defined(WITH_CSDS)
+  if (with_csds) {
     printf(
-        "Error: the particle logger is not available, please compile with "
-        "--enable-logger.");
+        "Error: the CSDS is not available, please compile with "
+        "--enable-csds.");
     return 1;
   }
 #endif
@@ -1281,6 +1283,12 @@ int main(int argc, char *argv[]) {
     /* Do we have neutrino DM particles? */
     const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
+    /* Initialise the neutrino properties if we have neutrino particles */
+    bzero(&neutrino_properties, sizeof(struct neutrino_props));
+    if (with_neutrinos)
+      neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
+                          &cosmo);
+
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
@@ -1430,7 +1438,7 @@ int main(int argc, char *argv[]) {
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
-    if (with_logger) engine_policies |= engine_policy_logger;
+    if (with_csds) engine_policies |= engine_policy_csds;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
     if (with_sink) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
@@ -1444,10 +1452,10 @@ int main(int argc, char *argv[]) {
                 N_total[swift_type_neutrino], engine_policies, talking,
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
-                &black_holes_properties, &sink_properties, &feedback_properties,
-                &rt_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry, &fof_properties, &los_properties,
-                &lightcone_array_properties);
+                &black_holes_properties, &sink_properties, &neutrino_properties,
+                &feedback_properties, &rt_properties, &mesh, &potential,
+                &cooling_func, &starform, &chemistry, &fof_properties,
+                &los_properties, &lightcone_array_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
@@ -1507,21 +1515,21 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
     /* Split the space. */
     engine_split(&e, &initial_partition);
-    /* Turn off the logger to avoid writing the communications */
-    if (with_logger) e.policy &= ~engine_policy_logger;
+    /* Turn off the csds to avoid writing the communications */
+    if (with_csds) e.policy &= ~engine_policy_csds;
 
     engine_redistribute(&e);
     /* Turn it back on */
-    if (with_logger) e.policy |= engine_policy_logger;
+    if (with_csds) e.policy |= engine_policy_csds;
 #endif
 
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
     /* Write the state of the system before starting time integration. */
-#ifdef WITH_LOGGER
-    if (e.policy & engine_policy_logger) {
-      logger_log_all_particles(e.logger, &e);
+#ifdef WITH_CSDS
+    if (e.policy & engine_policy_csds) {
+      csds_log_all_particles(e.csds, &e);
       engine_dump_index(&e);
     }
 #endif
@@ -1738,20 +1746,20 @@ int main(int argc, char *argv[]) {
     } else {
       engine_print_stats(&e);
     }
-#ifdef WITH_LOGGER
-    if (e.policy & engine_policy_logger) {
-      logger_log_all_particles(e.logger, &e);
+#ifdef WITH_CSDS
+    if (e.policy & engine_policy_csds) {
+      csds_log_all_particles(e.csds, &e);
 
       /* Write a final index file */
       engine_dump_index(&e);
 
       /* Write a sentinel timestamp */
       if (e.policy & engine_policy_cosmology) {
-        logger_log_timestamp(e.logger, e.ti_current, e.cosmology->a,
-                             &e.logger->timestamp_offset);
+        csds_log_timestamp(e.csds, e.ti_current, e.cosmology->a,
+                           &e.csds->timestamp_offset);
       } else {
-        logger_log_timestamp(e.logger, e.ti_current, e.time,
-                             &e.logger->timestamp_offset);
+        csds_log_timestamp(e.csds, e.ti_current, e.time,
+                           &e.csds->timestamp_offset);
       }
     }
 #endif

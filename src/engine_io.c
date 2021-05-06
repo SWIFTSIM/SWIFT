@@ -31,12 +31,12 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "csds_io.h"
 #include "distributed_io.h"
 #include "kick.h"
 #include "lightcone.h"
 #include "lightcone_array.h"
 #include "line_of_sight.h"
-#include "logger_io.h"
 #include "parallel_io.h"
 #include "serial_io.h"
 #include "single_io.h"
@@ -50,17 +50,16 @@
  * @param e The #engine.
  */
 void engine_check_for_index_dump(struct engine *e) {
-#ifdef WITH_LOGGER
+#ifdef WITH_CSDS
   /* Get a few variables */
-  struct logger_writer *log = e->logger;
+  struct csds_writer *log = e->csds;
   const size_t dump_size = log->dump.count;
   const size_t old_dump_size = log->index.dump_size_last_output;
   const float mem_frac = log->index.mem_frac;
   const size_t total_nr_parts =
       (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
        e->total_nr_bparts + e->total_nr_DM_background_gparts);
-  const size_t index_file_size =
-      total_nr_parts * sizeof(struct logger_part_data);
+  const size_t index_file_size = total_nr_parts * sizeof(struct csds_part_data);
 
   size_t number_part_history = 0;
   for (int i = 0; i < swift_type_count; i++) {
@@ -79,7 +78,7 @@ void engine_check_for_index_dump(struct engine *e) {
     log->index.dump_size_last_output = dump_size;
   }
 #else
-  error("This function should not be called without the logger.");
+  error("This function should not be called without the CSDS.");
 #endif
 }
 
@@ -267,7 +266,7 @@ void engine_run_on_dump(struct engine *e) {
  */
 void engine_dump_index(struct engine *e) {
 
-#if defined(WITH_LOGGER)
+#if defined(WITH_CSDS)
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
@@ -281,17 +280,17 @@ void engine_dump_index(struct engine *e) {
   }
 
   /* Dump... */
-  logger_write_index_file(e->logger, e);
+  csds_write_index_file(e->csds, e);
 
   /* Flag that we dumped a snapshot */
-  e->step_props |= engine_step_prop_logger_index;
+  e->step_props |= engine_step_prop_csds_index;
 
   clocks_gettime(&time2);
   if (e->verbose)
     message("writing particle indices took %.3f %s.",
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 #else
-  error("SWIFT was not compiled with the logger");
+  error("SWIFT was not compiled with the CSDS.");
 #endif
 }
 

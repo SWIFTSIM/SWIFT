@@ -1589,3 +1589,24 @@ gparts are active after that snapshot output timestep.
 
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
+
+Neutrinos
+---------
+
+The ``Neutrino`` section of the parameter file controls the behaviour of
+neutrino particles (``PartType6``). This assumes that massive neutrinos have
+been specified in the ``Cosmology`` section described above. Random
+Fermi-Dirac momenta will be generated if ``generate_ics`` is used. The
+:math:`\delta f` method for shot noise reduction can be activated with
+``use_delta_f``. Finally, a random seed for the Fermi-Dirac momenta can
+be set with ``neutrino_seed``.
+
+For mode details on the neutrino implementation, refer to :ref:`Neutrinos`. 
+A complete specification of the model looks like
+
+.. code:: YAML
+
+  Neutrino:
+    generate_ics:  1    # Replace neutrino particle velocities with random Fermi-Dirac momenta at the start
+    use_delta_f:   1    # Use the delta-f method for shot noise reduction
+    neutrino_seed: 1234 # A random seed used for the Fermi-Dirac momenta

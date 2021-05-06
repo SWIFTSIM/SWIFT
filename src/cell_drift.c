@@ -33,7 +33,7 @@
 #include "lightcone.h"
 #include "lightcone_array.h"
 #include "multipole.h"
-#include "neutrino/relativity.h"
+#include "neutrino.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "star_formation.h"
@@ -185,11 +185,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!part_is_inhibited(p, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
-              logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
-                              logger_flag_delete, /* data */ 0);
+              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                            csds_flag_delete, /* data */ 0);
             }
 #endif
 
@@ -284,7 +284,6 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
   const double a = e->cosmology->a;
   const double c_vel = e->physical_constants->const_speed_light_c;
   const int with_neutrinos = e->s->with_neutrinos;
-  const int with_relat_drift = with_neutrinos && (a < e->cosmology->a_nu_nr);
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
@@ -364,7 +363,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 
       /* Relativistic drift correction for neutrinos */
       double dt_drift_k = dt_drift;
-      if (with_relat_drift && gp->type == swift_type_neutrino) {
+      if (with_neutrinos && gp->type == swift_type_neutrino) {
         dt_drift_k *= relativistic_drift_factor(gp->v_full, a, c_vel);
       }
 
@@ -401,11 +400,11 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
             /* Remove the particle entirely */
             if (gp->type == swift_type_dark_matter) {
 
-#ifdef WITH_LOGGER
-              if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+              if (e->policy & engine_policy_csds) {
                 /* Log the particle one last time. */
-                logger_log_gpart(e->logger, gp, e, /* log_all */ 1,
-                                 logger_flag_delete, /* data */ 0);
+                csds_log_gpart(e->csds, gp, e, /* log_all */ 1,
+                               csds_flag_delete, /* data */ 0);
               }
 #endif
 
@@ -560,11 +559,11 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!spart_is_inhibited(sp, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
-              logger_log_spart(e->logger, sp, e, /* log_all */ 1,
-                               logger_flag_delete, /* data */ 0);
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
+                             /* data */ 0);
             }
 #endif
 
@@ -748,8 +747,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!bpart_is_inhibited(bp, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               error("Logging of black hole particles is not yet implemented.");
             }
 #endif
@@ -924,8 +923,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!sink_is_inhibited(sink, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               error("Logging of sink particles is not yet implemented.");
             }
 #endif

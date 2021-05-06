@@ -198,12 +198,6 @@ struct cosmology {
   /*! Degeneracy of each massive neutrino species */
   double *deg_nu;
 
-  /*! Speed of light (internal units) */
-  double const_speed_light_c;
-
-  /*! Scale-factor after which all neutrinos move non-relativistically */
-  double a_nu_nr;
-
   /*! Log of starting expansion factor for neutrino interpolation tables */
   double log_a_long_begin;
 
@@ -218,6 +212,9 @@ struct cosmology {
 
   /*! Log of final expansion factor */
   double log_a_end;
+
+  /*! Speed of light (internal units) */
+  double const_speed_light_c;
 
   /*! Drift factor interpolation table */
   double *drift_fac_interp_table;

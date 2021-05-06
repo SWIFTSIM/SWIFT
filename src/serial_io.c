@@ -1410,8 +1410,8 @@ void write_output_serial(struct engine* e,
                 gpart_group_data_written, Ntot, Ndm_neutrino, with_stf);
 
             /* Select the fields to write */
-            io_select_dm_fields(gparts_written, gpart_group_data_written,
-                                with_fof, with_stf, e, &num_fields, list);
+            io_select_neutrino_fields(gparts_written, gpart_group_data_written,
+                                      with_fof, with_stf, e, &num_fields, list);
 
           } break;
 

@@ -1243,6 +1243,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
+    /* Activate the weighting task for neutrinos */
+    else if (t_type == task_type_neutrino_weight) {
+      if (cell_is_active_gravity(t->ci, e)) {
+        scheduler_activate(s, t);
+      }
+    }
+
     /* Kick ? */
     else if (t_type == task_type_kick1 || t_type == task_type_kick2) {
 
@@ -1258,8 +1265,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
-    /* logger tasks ? */
-    else if (t->type == task_type_logger) {
+    /* csds tasks ? */
+    else if (t->type == task_type_csds) {
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
           cell_is_active_stars(t->ci, e))
         scheduler_activate(s, t);

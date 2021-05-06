@@ -8,8 +8,8 @@ from copy import deepcopy
 from shutil import copyfile
 import os
 from subprocess import call
-sys.path.append("../../../logger/.libs/")
-import liblogger as logger
+sys.path.append("../../../csds/.libs/")
+import libcsds as csds
 
 boxsize = 80.
 large_width = 15
@@ -61,7 +61,7 @@ def doProjection(parts, t, skip):
     global traj, id_foc
 
     # evolve in time the particles
-    interp = logger.moveForwardInTime(basename, parts, t)
+    interp = csds.moveForwardInTime(basename, parts, t)
 
     # Check if some particles where removed
     ind = parts["smoothing_lengths"] == 0
@@ -189,7 +189,7 @@ def doTitle(frames):
         "horizontalalignment": "center",
         "fontweight": "bold"
     }
-    plt.text(0.5, 0.6, "Planetary Impact with the Particle Logger",
+    plt.text(0.5, 0.6, "Planetary Impact with the CSDS",
              **style)
     plt.text(0.5, 0.5, "L. Hausammann, J. Kegerreis and P. Gonnet 2020",
              **style)
@@ -202,8 +202,8 @@ def doTitle(frames):
 
 
 def main():
-    t0, t1 = logger.getTimeLimits(basename)
-    parts = logger.loadSnapshotAtTime(basename, t0)
+    t0, t1 = csds.getTimeLimits(basename)
+    parts = csds.loadSnapshotAtTime(basename, t0)
 
     # Do a few title frames
     init = doTitle(40)

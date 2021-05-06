@@ -895,7 +895,6 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
     c->Omega_nu_0 = 0.;
     c->Omega_nu = 0.;
     c->N_eff = 0.;
-    c->a_nu_nr = 0.;
 
     c->neutrino_density_early_table = NULL;
     c->neutrino_density_late_table = NULL;
@@ -956,15 +955,6 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
     for (int i = 0; i < c->N_nu; i++) {
       M_eV_min = fmin(M_eV_min, c->M_nu_eV[i]);
     }
-
-    /* Time when the relativistic drift correction is below 1% for all nu's */
-    if (c->N_nu > 0 && M_eV_min > 0.) {
-      const double five_sigma_velocity = 20.0 * c->T_nu_0_eV / M_eV_min;
-      const double approx_treshold = 0.14249;  // 1.0 / sqrt(1 + x^2) = 0.99
-      c->a_nu_nr = five_sigma_velocity / approx_treshold;
-    } else {
-      c->a_nu_nr = 0.;
-    }
   }
 
   /* Cold dark matter density */
@@ -1021,7 +1011,6 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->N_nu = 0;
   c->N_ur = 0.;
   c->N_eff = 0.;
-  c->a_nu_nr = 0.;
 
   c->a_begin = 1.;
   c->a_end = 1.;
@@ -1501,7 +1490,6 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "N_eff", c->N_eff);
   io_write_attribute_d(h_grp, "N_ur", c->N_ur);
   io_write_attribute_d(h_grp, "N_nu", c->N_nu);
-  io_write_attribute_d(h_grp, "a_nu_nr", c->a_nu_nr);
   if (c->N_nu > 0) {
     io_write_attribute(h_grp, "M_nu_eV", DOUBLE, c->M_nu_eV, c->N_nu);
     io_write_attribute(h_grp, "deg_nu", DOUBLE, c->deg_nu, c->N_nu);

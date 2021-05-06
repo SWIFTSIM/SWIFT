@@ -409,9 +409,9 @@ struct cell {
    * feedback */
   struct task *timestep_sync;
 
-#ifdef WITH_LOGGER
-  /*! The logger task */
-  struct task *logger;
+#ifdef WITH_CSDS
+  /*! The csds task */
+  struct task *csds;
 #endif
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
