@@ -64,7 +64,7 @@ include_HEADERS += feedback.h feedback_struct.h feedback_properties.h
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
-include_HEADERS += csds_history.h chemistry_csds.h star_formation_csds.h
+include_HEADERS += chemistry_csds.h star_formation_csds.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =
@@ -176,7 +176,7 @@ AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c
 AM_SOURCES += chemistry.c cosmology.c mesh_gravity.c velociraptor_interface.c 
 AM_SOURCES += output_list.c velociraptor_dummy.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
 AM_SOURCES += fof.c fof_catalogue_io.c
-AM_SOURCES += hashmap.c pressure_floor.c csds_history.c
+AM_SOURCES += hashmap.c pressure_floor.c
 AM_SOURCES += runner_neutrino.c
 AM_SOURCES += neutrino/Default/fermi_dirac.c
 AM_SOURCES += $(QLA_COOLING_SOURCES) 
