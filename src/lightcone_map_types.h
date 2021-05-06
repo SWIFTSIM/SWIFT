@@ -52,11 +52,21 @@ void lightcone_map_total_mass(struct lightcone_map *map, const struct engine *e,
                               const struct gpart *gp, const double a_cross,
                               const double x_cross[3]);
 
+void lightcone_map_gas_mass(struct lightcone_map *map, const struct engine *e,
+                            const struct gpart *gp, const double a_cross,
+                            const double x_cross[3]);
+
+void lightcone_map_neutrino_mass(struct lightcone_map *map, const struct engine *e,
+                                 const struct gpart *gp, const double a_cross,
+                                 const double x_cross[3]);
 
 /* This associates map names to the appropriate update function and unit info */
 static const struct lightcone_map_type lightcone_map_types[] = {
-  {"TotalMass", lightcone_map_total_mass, UNIT_CONV_MASS},
-  {"",          NULL,                     UNIT_CONV_NO_UNITS}, /* NULL function indicates end of array */
+  {"TotalMass",    lightcone_map_total_mass,    UNIT_CONV_MASS},
+  {"GasMass",      lightcone_map_gas_mass,      UNIT_CONV_MASS},
+  {"NeutrinoMass", lightcone_map_neutrino_mass, UNIT_CONV_MASS},
+  {"",             NULL,                        UNIT_CONV_NO_UNITS},
+  /* NULL function indicates end of array */
 };
 
 #endif
