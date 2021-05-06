@@ -1007,8 +1007,9 @@ void csds_init(struct csds_writer *log, const struct engine *e,
 #ifdef WITH_MPI
   /* Should be safe, but better to check */
   if (e->nr_nodes >= 1 << 16)
-    error("The special flag does not contain enough bits"
-          "to store the information about the ranks.");
+    error(
+        "The special flag does not contain enough bits"
+        "to store the information about the ranks.");
 #endif
 
   /* read parameters. */
