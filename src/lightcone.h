@@ -54,8 +54,8 @@ enum lightcone_shell_state {
  */
 struct lightcone_props {
 
-  /*! Whether we're doing lightcone outputs */
-  int enabled;
+  /*! Index of this lightcone */
+  int index;
 
   /*! Whether to write extra log messages */
   int verbose;
@@ -172,7 +172,7 @@ struct lightcone_props {
 
 
 void lightcone_init(struct lightcone_props *props,
-                    const char *name,
+                    const char *name, int index,
                     const struct space *s,
                     const struct cosmology *cosmo,
                     struct swift_params *params,

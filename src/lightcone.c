@@ -296,7 +296,7 @@ static char *yaml_name(char *buf, const char *str1, const char *str2) {
  * @param verbose the verbosity flag
  */
 void lightcone_init(struct lightcone_props *props,
-                    const char *name,
+                    const char *name, int index,
                     const struct space *s,
                     const struct cosmology *cosmo,
                     struct swift_params *params,
@@ -306,9 +306,8 @@ void lightcone_init(struct lightcone_props *props,
   char buf[PARSER_MAX_LINE_SIZE];
 #define YML_NAME(x) yaml_name(buf, name, x)
 
-  /* Whether we generate lightcone output */
-  props->enabled = parser_get_opt_param_int(params, YML_NAME("enabled"), 0);
-  if(!props->enabled)return;
+  /* Store index of this lightcone in the .yml file */
+  props->index = index;
 
   /* Verbose lightcone output - use passed in value of --verbose flag */
   props->verbose = verbose;
@@ -416,8 +415,8 @@ void lightcone_init(struct lightcone_props *props,
   const int nr_shells = props->nr_shells;
   if(engine_rank==0) {
     for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
-      message("shell %d has inner radius %e and outer radius %e", shell_nr,
-              props->shell_rmin[shell_nr], props->shell_rmax[shell_nr]);
+      message("lightcone %d: shell %d has inner radius %e and outer radius %e", 
+              index, shell_nr, props->shell_rmin[shell_nr], props->shell_rmax[shell_nr]);
     }
   }
 
@@ -442,8 +441,8 @@ void lightcone_init(struct lightcone_props *props,
       if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
         props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
         props->map_units[map_nr] = lightcone_map_types[type_nr].units;
-        if(engine_rank==0)message("lightcone map %d is of type %s", map_nr,
-                                  lightcone_map_types[type_nr].name);
+        if(engine_rank==0)message("lightcone %d: lightcone map %d is of type %s", 
+                                  index, map_nr, lightcone_map_types[type_nr].name);
       }
       type_nr += 1;
     }
@@ -465,8 +464,8 @@ void lightcone_init(struct lightcone_props *props,
       }
     }
   }
-  if(engine_rank==0)message("there are %d lightcone shells and %d maps per shell",
-                            nr_shells, nr_maps);
+  if(engine_rank==0)message("lightcone %d: there are %d lightcone shells and %d maps per shell",
+                            index, nr_shells, nr_maps);
 
   /* Determine full redshift range to search for lightcone crossings.
      Find range in expansion factor for particle output. */
@@ -481,8 +480,8 @@ void lightcone_init(struct lightcone_props *props,
   }
   props->a_min = a_min;
   props->a_max = a_max;
-  if(engine_rank==0)message("range in expansion factor to search lightcone: %e to %e",
-                            a_min, a_max);
+  if(engine_rank==0)message("lightcone %d: range in expansion factor to search lightcone: %e to %e",
+                            index, a_min, a_max);
 
   /* Store the corresponding comoving distance squared */
   props->r2_max = pow(cosmology_get_comoving_distance(cosmo, a_min), 2.0);
@@ -510,8 +509,8 @@ void lightcone_init(struct lightcone_props *props,
     const double lightcone_rmin = cosmology_get_comoving_distance(cosmo, a_max_for_particles);
     const double volume = 4./3.*M_PI*(pow(lightcone_rmax, 3.)-pow(lightcone_rmin, 3.));
     const long long est_nr_output = total_nr_gparts / pow(props->boxsize, 3.0) * volume;
-    message("comoving distance to max. particle redshift: %e", lightcone_rmax);
-    message("gparts in lightcone (if uniform box+flat cosmology): %lld", est_nr_output);
+    message("lightcone %d: comoving distance to max. particle redshift: %e", index, lightcone_rmax);
+    message("lightcone %d: gparts in lightcone (if uniform box+flat cosmology): %lld", index, est_nr_output);
   }
 
 }
@@ -613,8 +612,8 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
       if(props->use_type[ptype]) {
         const size_t num_to_write = particle_buffer_num_elements(&props->buffer[ptype]);
         if(num_to_write >= max_to_buffer && num_to_write > 0) {
-          if(props->verbose)message("dumping %d particles of type %s",
-                                    (int) num_to_write, part_type_names[ptype]);
+          if(props->verbose)message("lightcone %d: dumping %d particles of type %s",
+                                    props->index, (int) num_to_write, part_type_names[ptype]);
           lightcone_write_particles(props, internal_units, snapshot_units, ptype, file_id);
           particle_buffer_empty(&props->buffer[ptype]);
           props->num_particles_written_to_file[ptype] += num_to_write;          
@@ -630,8 +629,8 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
   if(end_file)props->start_new_file = 1;
 
   if (props->verbose && engine_rank == 0 && types_to_flush > 0)
-    message("Flushing particle buffers took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("lightcone %d: Flushing particle buffers took %.3f %s.",
+            props->index, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 }
 
@@ -648,7 +647,7 @@ void lightcone_flush_map_updates_for_shell(struct lightcone_props *props, int sh
   const int nr_maps   = props->nr_maps;
   if(props->shell_state[shell_nr] == shell_current) {
     if(props->verbose && engine_rank==0)
-      message("applying lightcone map updates for shell %d", shell_nr);
+      message("lightcone %d: applying lightcone map updates for shell %d", props->index, shell_nr);
     for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
       lightcone_map_update_from_buffer(props->map[map_nr][shell_nr],
                                        props->verbose);
@@ -675,8 +674,8 @@ void lightcone_flush_map_updates(struct lightcone_props *props) {
   }
 
   if (props->verbose && engine_rank==0)
-    message("Applying lightcone map updates took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("lightcone %d: Applying lightcone map updates took %.3f %s.",
+            props->index, clocks_from_ticks(getticks() - tic), clocks_getunit());
   
 }
 
@@ -722,7 +721,8 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
       if(props->shell_amax[shell_nr] < a_complete || dump_all) {
 
         if(props->verbose && engine_rank==0)
-          message("writing out completed shell %d at a=%f", shell_nr, c->a);
+          message("lightcone %d: writing out completed shell %d at a=%f",
+                  props->index, shell_nr, c->a);
 
         if(num_shells_written==0) {
           /* Report how much memory we're using before flushing buffers */
@@ -773,8 +773,8 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
   }
 
   if (props->verbose && engine_rank==0 && num_shells_written > 0)
-    message("Writing completed lightcone shells took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("lightcone %d: Writing completed lightcone shells took %.3f %s.",
+            props->index, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #else
   error("Need HDF5 to write out lightcone maps");
@@ -914,8 +914,8 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
   /* Report the size of the list */
 #ifdef DUMP_REPLICATIONS
   if(engine_rank==0) {
-    message("no. of replications to check: %d", props->replication_list.nrep);
-    message("shell to search inner radius=%e, outer radius=%e", lightcone_rmin,
+    message("lightcone %d: no. of replications to check: %d", props->index, props->replication_list.nrep);
+    message("lightcone %d: shell to search inner radius=%e, outer radius=%e", props->index, lightcone_rmin,
             lightcone_rmax);
   }
 #endif
@@ -961,7 +961,7 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
       case shell_uninitialized:
         /* This shell has not been allocated yet, so allocate it */
         if(props->verbose && engine_rank==0)
-          message("allocating pixels for shell %d at a=%f", shell_nr, cosmo->a);
+          message("lightcone %d: allocating pixels for shell %d at a=%f", props->index, shell_nr, cosmo->a);
         for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
           lightcone_map_allocate_pixels(props->map[map_nr][shell_nr], /* zero_pixels = */ 1);   
         props->shell_state[shell_nr] = shell_current;
@@ -984,8 +984,8 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
   props->shell_nr_max = shell_nr_max;
 
   if (props->verbose && engine_rank==0)
-    message("Lightcone timestep preparations took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("lightcone %d: Lightcone timestep preparations took %.3f %s.",
+            props->index, clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 }
 
@@ -998,21 +998,17 @@ void lightcone_prepare_for_step(struct lightcone_props *props,
  */
 int lightcone_trigger_map_update(struct lightcone_props *props) {
   
-  if(props->enabled) {
-    size_t total_updates = 0;
-    const int nr_maps = props->nr_maps;
-    const int nr_shells = props->nr_shells;
-    for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
-      if(props->shell_state[shell_nr] == shell_current) {
-        for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
-          total_updates += particle_buffer_num_elements(&props->map[map_nr][shell_nr]->buffer);
-        }
+  size_t total_updates = 0;
+  const int nr_maps = props->nr_maps;
+  const int nr_shells = props->nr_shells;
+  for(int shell_nr=0; shell_nr<nr_shells; shell_nr+=1) {
+    if(props->shell_state[shell_nr] == shell_current) {
+      for(int map_nr=0; map_nr<nr_maps; map_nr+=1) {
+        total_updates += particle_buffer_num_elements(&props->map[map_nr][shell_nr]->buffer);
       }
     }
-    return total_updates >= ((size_t) props->max_updates_buffered);
-  } else {
-    return 0;
   }
+  return total_updates >= ((size_t) props->max_updates_buffered);
 }
 
 
@@ -1170,14 +1166,14 @@ void lightcone_report_memory_use(struct lightcone_props *props) {
   long long memuse_max[3];
   MPI_Reduce(memuse_local, memuse_max, 3, MPI_LONG_LONG, MPI_MAX, 0, MPI_COMM_WORLD);
   if(engine_rank==0) {
-    message("particle buffer bytes:   min=%lld, max=%lld", memuse_min[0], memuse_max[0]);
-    message("map update buffer bytes: min=%lld, max=%lld", memuse_min[1], memuse_max[1]);
-    message("map pixel data bytes:    min=%lld, max=%lld", memuse_min[2], memuse_max[2]);
+    message("lightcone %d: particle buffer bytes:   min=%lld, max=%lld", props->index, memuse_min[0], memuse_max[0]);
+    message("lightcone %d: map update buffer bytes: min=%lld, max=%lld", props->index, memuse_min[1], memuse_max[1]);
+    message("lightcone %d: map pixel data bytes:    min=%lld, max=%lld", props->index, memuse_min[2], memuse_max[2]);
   }
 #else
-    message("particle buffer bytes:   %lld", memuse_local[0]);
-    message("map update buffer bytes: %lld", memuse_local[1]);
-    message("map pixel data bytes:    %lld", memuse_local[2]);
+    message("lightcone %d: particle buffer bytes:   %lld", props->index, memuse_local[0]);
+    message("lightcone %d: map update buffer bytes: %lld", props->index, memuse_local[1]);
+    message("lightcone %d: map pixel data bytes:    %lld", props->index, memuse_local[2]);
 #endif    
 
 }
