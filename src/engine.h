@@ -352,6 +352,7 @@ struct engine {
 
   /* FOF information */
   int run_fof;
+  int dump_catalogue_when_seeding;
 
   /* Statistics information */
   double a_first_statistics;
@@ -634,7 +635,7 @@ void engine_clean(struct engine *e, const int fof, const int restart);
 int engine_estimate_nr_tasks(const struct engine *e);
 void engine_print_task_counts(const struct engine *e);
 void engine_fof(struct engine *e, const int dump_results,
-                const int seed_black_holes);
+                const int dump_debug_results, const int seed_black_holes);
 void engine_activate_gpart_comms(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */

@@ -217,6 +217,10 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
   /* Don't write out particle buffers - must flush before dumping restart. */
   memset(tmp.buffer, 0, sizeof(struct particle_buffer)*swift_type_count);
 
+  /* Don't write out function pointers */
+  for(int i=0; i<LIGHTCONE_MAX_HEALPIX_MAPS; i+=1)
+    tmp.update_map[i] = NULL;
+
   restart_write_blocks((void *) &tmp, sizeof(struct lightcone_props), 1, stream,
                        "lightcone_props", "lightcone_props");
 
@@ -244,6 +248,19 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
   restart_read_blocks((void *)props, sizeof(struct lightcone_props), 1, stream,
                       NULL, "lightcone_props");
 
+  /* Restore pointers to functions for updating healpix maps */
+  for(int map_nr=0; map_nr<props->nr_maps; map_nr+=1) {
+    int type_nr = 0;
+    while(lightcone_map_types[type_nr].update_map) {
+      if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
+        props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
+      }
+      type_nr += 1;
+    }
+    if(!props->update_map[map_nr])error("Unable to locate lightcone map type %s",
+                                        props->map_names[map_nr]);
+  }
+
   /* Re-allocate particle data buffers */
   lightcone_allocate_buffers(props);
 
@@ -256,6 +273,9 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
       lightcone_map_struct_restore(props->map[map_nr][shell_nr], stream);
     }
   }
+
+  /* Define output quantities */
+  lightcone_io_make_output_fields();
 
 }
 

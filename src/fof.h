@@ -27,6 +27,7 @@
 #include "parser.h"
 
 /* Avoid cyclic inclusions */
+struct cell;
 struct gpart;
 struct space;
 struct engine;
@@ -34,23 +35,6 @@ struct unit_system;
 struct phys_const;
 struct black_holes_props;
 struct cosmology;
-
-/* MPI message required for FOF. */
-struct fof_mpi {
-
-  /* The local particle's root ID.*/
-  size_t group_i;
-
-  /* The local group's size.*/
-  size_t group_i_size;
-
-  /* The foreign particle's root ID.*/
-  size_t group_j;
-
-  /* The local group's size.*/
-  size_t group_j_size;
-
-} SWIFT_STRUCT_ALIGN;
 
 struct fof_props {
 
@@ -102,6 +86,12 @@ struct fof_props {
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
+  /*! Centre of mass of the group a given gpart belongs to. */
+  double *group_centre_of_mass;
+
+  /*! Position of the first particle of a given group. */
+  double *group_first_position;
+
   /*! Index of the part with the maximal density of each group. */
   long long *max_part_density_index;
 
@@ -120,8 +110,7 @@ struct fof_props {
   /*! The links between pairs of particles on this node and a foreign
    * node */
   struct fof_mpi *group_links;
-
-} SWIFT_STRUCT_ALIGN;
+};
 
 /* Store group size and offset into array. */
 struct group_length {
@@ -131,34 +120,51 @@ struct group_length {
 } SWIFT_STRUCT_ALIGN;
 
 #ifdef WITH_MPI
+
+/* MPI message required for FOF. */
+struct fof_mpi {
+
+  /* The local particle's root ID.*/
+  size_t group_i;
+
+  /* The local group's size.*/
+  size_t group_i_size;
+
+  /* The foreign particle's root ID.*/
+  size_t group_j;
+
+  /* The local group's size.*/
+  size_t group_j_size;
+};
+
 /* Struct used to find final group ID when using MPI */
 struct fof_final_index {
   size_t local_root;
   size_t global_root;
-} SWIFT_STRUCT_ALIGN;
+};
 
 /* Struct used to find the total mass of a group when using MPI */
 struct fof_final_mass {
   size_t global_root;
   double group_mass;
+  double first_position[3];
+  double centre_of_mass[3];
   long long max_part_density_index;
   float max_part_density;
-} SWIFT_STRUCT_ALIGN;
+};
 
 /* Struct used to iterate over the hash table and unpack the mass fragments of a
  * group when using MPI */
 struct fof_mass_send_hashmap {
   struct fof_final_mass *mass_send;
   size_t nsend;
-} SWIFT_STRUCT_ALIGN;
-#endif
+};
 
 /* Store local and foreign cell indices that touch. */
 struct cell_pair_indices {
-
   struct cell *local, *foreign;
-
-} SWIFT_STRUCT_ALIGN;
+};
+#endif
 
 /* Function prototypes. */
 void fof_init(struct fof_props *props, struct swift_params *params,
@@ -171,7 +177,8 @@ void fof_search_tree(struct fof_props *props,
                      const struct black_holes_props *bh_props,
                      const struct phys_const *constants,
                      const struct cosmology *cosmo, struct space *s,
-                     const int dump_results, const int seed_black_holes);
+                     const int dump_results, const int dump_debug_results,
+                     const int seed_black_holes);
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
@@ -182,6 +189,7 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          struct cell *restrict ci, struct cell *restrict cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
+
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype fof_mpi_type;

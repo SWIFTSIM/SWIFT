@@ -487,6 +487,16 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
 
+  /* Write out the time-base */
+  if (e->policy & engine_policy_cosmology) {
+    io_write_attribute_d(h_grp, "TimeBase_dloga", e->time_base);
+    const double delta_t = cosmology_get_timebase(e->cosmology, e->ti_current);
+    io_write_attribute_d(h_grp, "TimeBase_dt", delta_t);
+  } else {
+    io_write_attribute_d(h_grp, "TimeBase_dloga", 0);
+    io_write_attribute_d(h_grp, "TimeBase_dt", e->time_base);
+  }
+
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
   struct tm *timeinfo = localtime(&tm);

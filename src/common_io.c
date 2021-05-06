@@ -478,6 +478,16 @@ void io_write_attribute_l(hid_t grp, const char* name, long data) {
 }
 
 /**
+ * @brief Writes a long long value as an attribute
+ * @param grp The group in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void io_write_attribute_ll(hid_t grp, const char* name, long long data) {
+  io_write_attribute(grp, name, LONGLONG, &data, 1);
+}
+
+/**
  * @brief Writes a string value as an attribute
  * @param grp The group in which to write
  * @param name The name of the attribute
@@ -1511,7 +1521,8 @@ void io_make_snapshot_subdir(const char* dirname) {
  * @param default_basename The common part of the default snapshot names.
  * @param basename The common part of the snapshot names.
  */
-void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
+                              char xmf_filename[FILENAME_BUFFER_SIZE],
                               const struct output_list* output_list,
                               const int snapshots_invoke_stf,
                               const int stf_count, const int snap_count,

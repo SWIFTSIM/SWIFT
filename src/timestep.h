@@ -89,6 +89,12 @@ make_integer_timestep(const float new_dt, const timebin_t old_bin,
 __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
     const struct gpart *restrict gp, const struct engine *restrict e) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Trying to compute time step for an extra particle.");
+  }
+#endif
+
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
 
   if (e->policy & engine_policy_external_gravity)

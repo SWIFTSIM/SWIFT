@@ -95,6 +95,7 @@ void io_write_attribute_d(hid_t grp, const char* name, double data);
 void io_write_attribute_f(hid_t grp, const char* name, float data);
 void io_write_attribute_i(hid_t grp, const char* name, int data);
 void io_write_attribute_l(hid_t grp, const char* name, long data);
+void io_write_attribute_ll(hid_t grp, const char* name, long long data);
 void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 
 void io_write_meta_data(hid_t h_file, const struct engine* e,
@@ -201,7 +202,8 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology,
 
 void io_make_snapshot_subdir(const char* dirname);
 
-void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
+                              char xmf_filename[FILENAME_BUFFER_SIZE],
                               const struct output_list* output_list,
                               const int snapshots_invoke_stf,
                               const int stf_count, const int snap_count,

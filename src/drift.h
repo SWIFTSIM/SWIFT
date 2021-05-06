@@ -54,6 +54,10 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
     const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Found an extra gpart in the drift");
+  }
+
   if (gp->ti_drift != ti_old)
     error(
         "g-particle has not been drifted to the current time "
