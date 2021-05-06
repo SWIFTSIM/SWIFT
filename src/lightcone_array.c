@@ -63,7 +63,9 @@ void lightcone_array_init(struct lightcone_array_props *props,
       props->nr_lightcones += 1;
     }
   }
-  message("found %d lightcones to generate", props->nr_lightcones);
+  
+  if(engine_rank==0)
+    message("found %d lightcones to generate", props->nr_lightcones);
   
   /* Allocate array of lightcones */
   props->lightcone = malloc(sizeof(struct lightcone_props)*props->nr_lightcones);
