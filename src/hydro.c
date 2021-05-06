@@ -252,6 +252,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
   const double eta = e->hydro_properties->eta_neighbours;
   const float h_max = e->hydro_properties->h_max;
+  const float h_min = e->hydro_properties->h_min;
   const double N_ngb_target =
       (4. / 3.) * M_PI * pow_dimension(kernel_gamma * eta);
   const double N_ngb_max =
@@ -339,6 +340,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     const long long id = pi->id;
     const int found_inhibited = pi->inhibited_exact;
     const int h_max_limited = pi->h >= 0.99 * h_max;
+    const int h_min_limited = pi->h <= 1.01 * h_min;
     if (pi->limited_part) continue;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
@@ -401,13 +403,13 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       /*   wrong_limiter++; */
       /* } */
 
-      if (!found_inhibited && !h_max_limited &&
+      if (!found_inhibited && !h_max_limited && !h_min_limited &&
           (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
 
         message(
-            "N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d h=%e",
+            "N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d h=%e time_bin=%d",
             id, N_ngb, N_ngb_target, N_ngb_max - N_ngb_target,
-            pi->N_density_exact, pi->N_density, pi->h);
+            pi->N_density_exact, pi->N_density, pi->h, pi->time_bin);
 
         wrong_n_ngb++;
       }
