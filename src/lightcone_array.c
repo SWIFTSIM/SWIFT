@@ -84,6 +84,18 @@ void lightcone_array_init(struct lightcone_array_props *props,
     }
   }
 
+  /* Check lightcones have unique output file names */
+  for(int i=0; i<props->nr_lightcones; i+=1) {
+    for(int j=0; j<props->nr_lightcones; j+=1) {
+      if(i != j) {
+        const struct lightcone_props *lc1 = props->lightcone+i;
+        const struct lightcone_props *lc2 = props->lightcone+j;
+        if(strcmp(lc1->basename, lc2->basename)==0)
+          error("Lightcones must have unique basenames!");
+      }
+    }
+  }
+
 }
 
 void lightcone_array_clean(struct lightcone_array_props *props) {
