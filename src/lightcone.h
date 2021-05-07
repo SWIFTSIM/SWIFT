@@ -20,8 +20,6 @@
 #ifndef SWIFT_LIGHTCONE_H
 #define SWIFT_LIGHTCONE_H
 
-#define LIGHTCONE_MAX_HEALPIX_MAPS 10
-#define LIGHTCONE_MAX_SHELLS       200
 
 /* Config parameters. */
 #include "../config.h"
@@ -46,6 +44,32 @@ enum lightcone_shell_state {
   shell_uninitialized,
   shell_current,
   shell_complete,
+};
+
+
+/**
+ * @brief Information about each lightcone shell
+ */
+struct lightcone_shell {
+
+  /*! State of this shell */
+  enum lightcone_shell_state state;
+
+  /*! Inner radius of shell */
+  double rmin;
+
+  /*! Outer radius of shell */
+  double rmax;
+
+  /*! Minimum expansion factor for this shell */
+  double amin;
+
+  /*! Maximum expansion factor for this shell */
+  double amax;
+
+  /*! Array of lightcone maps for this shell */
+  struct lightcone_map *map;
+
 };
 
 
@@ -132,32 +156,17 @@ struct lightcone_props {
   /*! Healpix nside parameter */
   int nside;
 
-  /*! Number of healpix maps we're making from this lightcone */
-  int nr_maps;
-
   /*! Number of shells */
   int nr_shells;
 
-  /*! Inner radii of shells for this lightcone */
-  double shell_rmin[LIGHTCONE_MAX_SHELLS];
+  /*! Array of lightcone shells */
+  struct lightcone_shell *shell;
 
-  /*! Outer radii of shells for this lightcone */
-  double shell_rmax[LIGHTCONE_MAX_SHELLS];
-
-  /*! Minimum expansion factor for each shell */
-  double shell_amin[LIGHTCONE_MAX_SHELLS];
-
-  /*! Maximum expansion factor for each shell */
-  double shell_amax[LIGHTCONE_MAX_SHELLS];
+  /*! Number of healpix maps we're making for each shell */
+  int nr_maps;
 
   /*! Types of healpix map we're making for each shell */
-  struct lightcone_map_type map_type[LIGHTCONE_MAX_HEALPIX_MAPS];
-
-  /*! Array of pointers to lightcone maps */
-  struct lightcone_map *map[LIGHTCONE_MAX_HEALPIX_MAPS][LIGHTCONE_MAX_SHELLS];
-
-  /*! Current state of shells */
-  enum lightcone_shell_state shell_state[LIGHTCONE_MAX_SHELLS];
+  struct lightcone_map_type *map_type;
 
   /*! Range of shells that might be updated this step */
   int shell_nr_min, shell_nr_max;
