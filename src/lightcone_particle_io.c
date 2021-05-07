@@ -34,7 +34,7 @@
 #include "particle_buffer.h"
 
 /* Array of output fields */
-static const int max_fields = 20;
+#define max_fields 20
 static int num_fields[swift_type_count];
 static struct lightcone_io_props field[swift_type_count][max_fields];
 
