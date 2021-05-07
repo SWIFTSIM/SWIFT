@@ -137,7 +137,7 @@ INLINE static double norm_for_kernels_integral(float hi, float hj) {
 
 
 /**
- * @brief Analytical form of Int[x^2 W1(x/hi) W1(x/hj+r/hj)]dx
+ * @brief Analytical form of Int[4 pi x^2 W1(x/hi) W1(x/hj+r/hj)]dx
  */
 INLINE static double w1w1(float x, float hi, float hj, float r) {
     r /= hj;

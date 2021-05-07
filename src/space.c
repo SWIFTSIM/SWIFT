@@ -1860,7 +1860,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         } else if (s->gparts[nr_gparts].type == swift_type_dark_matter && with_sidm ) {
           s->dmparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
           &s->gparts[nr_gparts];
-      }
+        }
 
         /* Swap the index */
         memswap(&g_index[k], &g_index[nr_gparts], sizeof(int));
@@ -7094,7 +7094,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
           hydro_set_mass(p, gp_gas->mass);
 
           /* Verify that we are not generating a gas particle larger than the
-             threashold for particle splitting */
+             threshold for particle splitting */
           if (particle_splitting && gp_gas->mass > splitting_mass_threshold)
               error("Generating a gas particle above the threshold for splitting");
 
