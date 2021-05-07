@@ -44,45 +44,6 @@
 #include <stdio.h>
 
 /**
- * @brief Check whether an index file has to be written during this
- * step.
- *
- * @param e The #engine.
- */
-void engine_check_for_index_dump(struct engine *e) {
-#ifdef WITH_CSDS
-  /* Get a few variables */
-  struct csds_writer *log = e->csds;
-  const size_t dump_size = log->dump.count;
-  const size_t old_dump_size = log->index.dump_size_last_output;
-  const float mem_frac = log->index.mem_frac;
-  const size_t total_nr_parts =
-      (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
-       e->total_nr_bparts + e->total_nr_DM_background_gparts);
-  const size_t index_file_size = total_nr_parts * sizeof(struct csds_part_data);
-
-  size_t number_part_history = 0;
-  for (int i = 0; i < swift_type_count; i++) {
-    number_part_history +=
-        log->history_new[i].size + log->history_removed[i].size;
-  }
-  const int history_too_large = number_part_history > log->maximal_size_history;
-
-  /* Check if we should write a file */
-  if (mem_frac * (dump_size - old_dump_size) > index_file_size ||
-      history_too_large) {
-    /* Write an index file */
-    engine_dump_index(e);
-
-    /* Update the dump size for last output */
-    log->index.dump_size_last_output = dump_size;
-  }
-#else
-  error("This function should not be called without the CSDS.");
-#endif
-}
-
-/**
  * @brief dump restart files if it is time to do so and dumps are enabled.
  *
  * @param e the engine.
@@ -257,41 +218,6 @@ void engine_run_on_dump(struct engine *e) {
       message("Snapshot dump command returned error code %d", result);
     }
   }
-}
-
-/**
- * @brief Writes an index file with the current state of the engine
- *
- * @param e The #engine.
- */
-void engine_dump_index(struct engine *e) {
-
-#if defined(WITH_CSDS)
-  struct clocks_time time1, time2;
-  clocks_gettime(&time1);
-
-  if (e->verbose) {
-    if (e->policy & engine_policy_cosmology)
-      message("Writing index at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Writing index at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-
-  /* Dump... */
-  csds_write_index_file(e->csds, e);
-
-  /* Flag that we dumped a snapshot */
-  e->step_props |= engine_step_prop_csds_index;
-
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("writing particle indices took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
-#else
-  error("SWIFT was not compiled with the CSDS.");
-#endif
 }
 
 /**

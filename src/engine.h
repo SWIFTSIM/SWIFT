@@ -103,8 +103,7 @@ enum engine_step_properties {
   engine_step_prop_stf = (1 << 6),
   engine_step_prop_fof = (1 << 7),
   engine_step_prop_mesh = (1 << 8),
-  engine_step_prop_csds_index = (1 << 9),
-  engine_step_prop_done = (1 << 10),
+  engine_step_prop_done = (1 << 9),
 };
 
 /* Some constants */
@@ -583,7 +582,6 @@ void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
-void engine_check_for_index_dump(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_dump_snapshot(struct engine *e);
 void engine_run_on_dump(struct engine *e);
@@ -612,7 +610,6 @@ void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
                    int verbose, const char *restart_file);
-void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,

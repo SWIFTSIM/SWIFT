@@ -27,7 +27,6 @@
 /* Includes. */
 #include "align.h"
 #include "common_io.h"
-#include "csds_history.h"
 #include "dump.h"
 #include "error.h"
 #include "inline.h"
@@ -41,7 +40,7 @@ struct part;
 struct engine;
 
 #define csds_major_version 1
-#define csds_minor_version 2
+#define csds_minor_version 3
 /* Size of the strings. */
 #define csds_string_length 200
 
@@ -112,26 +111,6 @@ struct csds_writer {
   /* Csds basename. */
   char base_name[csds_string_length];
 
-  struct {
-    /* The total memory fraction reserved for the index files. */
-    float mem_frac;
-
-    /* Size of the dump since at the last output */
-    size_t dump_size_last_output;
-  } index;
-
-  /* Index file number for the filename. */
-  int index_file_number;
-
-  /* History of the new particles since the last index file. */
-  struct csds_history history_new[swift_type_count];
-
-  /* History of the particles removed since the last index file. */
-  struct csds_history history_removed[swift_type_count];
-
-  /* Maximal number of particle stored in the history. */
-  size_t maximal_size_history;
-
   /*  Dump file (In the reader, the dump is cleaned, therefore it is renamed
    * logfile). */
   struct dump dump;
@@ -193,7 +172,8 @@ struct csds_part_data {
 };
 
 /* Function prototypes. */
-void csds_log_all_particles(struct csds_writer *log, const struct engine *e);
+void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
+                            int first_log);
 void csds_log_part(struct csds_writer *log, const struct part *p,
                    struct xpart *xp, const struct engine *e,
                    const int log_all_fields, const enum csds_special_flags flag,
@@ -237,22 +217,25 @@ void csds_struct_restore(struct csds_writer *log, FILE *stream);
  *
  * @param flag The special flag to use.
  * @param flag_data The data to write in the record.
+ * @param type The type of the particle.
  */
 INLINE static uint32_t csds_pack_flags_and_data(enum csds_special_flags flag,
-                                                int flag_data) {
+                                                int flag_data,
+                                                enum part_type type) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (flag & 0xFFFFFF00) {
     error(
         "The special flag in the particle CSDS cannot be larger than 1 "
         "byte.");
   }
-  if (flag_data & ~0xFFFFFF) {
+  if (flag_data & ~0xFFFF) {
     error(
         "The data for the special flag in the particle CSDS cannot be larger "
-        "than 3 bytes.");
+        "than 2 bytes.");
   }
 #endif
-  return ((uint32_t)flag << (3 * 8)) | (flag_data & 0xFFFFFF);
+  return ((uint32_t)flag << (3 * 8)) | ((flag_data & 0xFFFF) << 8) |
+         (type & 0xFF);
 }
 
 /**
@@ -262,7 +245,7 @@ INLINE static uint32_t csds_pack_flags_and_data(enum csds_special_flags flag,
  */
 INLINE static void csds_part_data_init(struct csds_part_data *csds) {
   csds->last_offset = 0;
-  csds->steps_since_last_output = INT_MAX;
+  csds->steps_since_last_output = 0;
 }
 
 /**
