@@ -219,7 +219,7 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
 
   /* Don't write out function pointers */
   for(int i=0; i<LIGHTCONE_MAX_HEALPIX_MAPS; i+=1)
-    tmp.update_map[i] = NULL;
+    tmp.map_type[i].update_map = NULL;
 
   restart_write_blocks((void *) &tmp, sizeof(struct lightcone_props), 1, stream,
                        "lightcone_props", "lightcone_props");
@@ -252,13 +252,13 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
   for(int map_nr=0; map_nr<props->nr_maps; map_nr+=1) {
     int type_nr = 0;
     while(lightcone_map_types[type_nr].update_map) {
-      if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
-        props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
+      if(strcmp(lightcone_map_types[type_nr].name, props->map_type[map_nr].name)==0) {
+        props->map_type[map_nr].update_map = lightcone_map_types[type_nr].update_map;
       }
       type_nr += 1;
     }
-    if(!props->update_map[map_nr])error("Unable to locate lightcone map type %s",
-                                        props->map_names[map_nr]);
+    if(!props->map_type[map_nr].update_map)error("Unable to locate lightcone map type %s",
+                                                 props->map_type[map_nr].name);
   }
 
   /* Re-allocate particle data buffers */
@@ -400,7 +400,7 @@ void lightcone_init(struct lightcone_props *props,
   if(props->nr_maps > LIGHTCONE_MAX_HEALPIX_MAPS)
     error("Increase LIGHTCONE_MAX_HEALPIX_MAPS!");
   for(int i=0; i<props->nr_maps; i+=1)
-    strncpy(props->map_names[i], map_names[i], PARSER_MAX_LINE_SIZE);
+    strncpy(props->map_type[i].name, map_names[i], PARSER_MAX_LINE_SIZE);
   parser_free_param_string_array(props->nr_maps, map_names);
 
   /* Read in the shell radii for this lightcone */
@@ -434,22 +434,22 @@ void lightcone_init(struct lightcone_props *props,
 
   /* Each type of map has a pointer to an update function. First, null them all. */
   for(int map_nr=0; map_nr<LIGHTCONE_MAX_HEALPIX_MAPS; map_nr+=1)
-    props->update_map[map_nr] = NULL;
+    props->map_type[map_nr].update_map = NULL;
 
   /* Then, for each requested map type find the update function by matching names */
   for(int map_nr=0; map_nr<props->nr_maps; map_nr+=1) {
     int type_nr = 0;
     while(lightcone_map_types[type_nr].update_map) {
-      if(strcmp(lightcone_map_types[type_nr].name, props->map_names[map_nr])==0) {
-        props->update_map[map_nr] = lightcone_map_types[type_nr].update_map;
-        props->map_units[map_nr] = lightcone_map_types[type_nr].units;
+      if(strcmp(lightcone_map_types[type_nr].name, props->map_type[map_nr].name)==0) {
+        props->map_type[map_nr].update_map = lightcone_map_types[type_nr].update_map;
+        props->map_type[map_nr].units = lightcone_map_types[type_nr].units;
         if(engine_rank==0)message("lightcone %d: lightcone map %d is of type %s", 
                                   index, map_nr, lightcone_map_types[type_nr].name);
       }
       type_nr += 1;
     }
-    if(!props->update_map[map_nr])error("Unable to locate lightcone map type %s",
-                                        props->map_names[map_nr]);
+    if(!props->map_type[map_nr].update_map)error("Unable to locate lightcone map type %s",
+                                                 props->map_type[map_nr].name);
   }
 
   /* Initialize lightcone healpix maps */
@@ -460,7 +460,7 @@ void lightcone_init(struct lightcone_props *props,
         props->map[map_nr][shell_nr] = malloc(sizeof(struct lightcone_map));
         lightcone_map_init(props->map[map_nr][shell_nr], props->nside,
                            props->shell_rmin[shell_nr], props->shell_rmax[shell_nr],
-                           props->buffer_chunk_size, props->map_units[map_nr]);
+                           props->buffer_chunk_size, props->map_type[map_nr].units);
       } else {
         props->map[map_nr][shell_nr] = NULL;
       }
@@ -764,7 +764,7 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
         /* Write the lightcone maps for this shell */
         for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
-          lightcone_map_write(props->map[map_nr][shell_nr], file_id, props->map_names[map_nr],
+          lightcone_map_write(props->map[map_nr][shell_nr], file_id, props->map_type[map_nr].name,
                               internal_units, snapshot_units);
 
         /* Close the file */
@@ -1133,7 +1133,7 @@ void lightcone_buffer_map_update(struct lightcone_props *props,
         
         /* Call the update function associated with this type of map */
         struct lightcone_map *map = props->map[map_nr][shell_nr];
-        props->update_map[map_nr](map, e, gp, a_cross, x_cross);
+        props->map_type[map_nr].update_map(map, e, gp, a_cross, x_cross);
         
       } /* Next map type */
     }

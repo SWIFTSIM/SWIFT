@@ -135,9 +135,6 @@ struct lightcone_props {
   /*! Number of healpix maps we're making from this lightcone */
   int nr_maps;
 
-  /*! Names of the healpix maps to make for this lightcone */
-  char map_names[LIGHTCONE_MAX_HEALPIX_MAPS][PARSER_MAX_LINE_SIZE];
-
   /*! Number of shells */
   int nr_shells;
 
@@ -153,6 +150,9 @@ struct lightcone_props {
   /*! Maximum expansion factor for each shell */
   double shell_amax[LIGHTCONE_MAX_SHELLS];
 
+  /*! Types of healpix map we're making for each shell */
+  struct lightcone_map_type map_type[LIGHTCONE_MAX_HEALPIX_MAPS];
+
   /*! Array of pointers to lightcone maps */
   struct lightcone_map *map[LIGHTCONE_MAX_HEALPIX_MAPS][LIGHTCONE_MAX_SHELLS];
 
@@ -161,12 +161,6 @@ struct lightcone_props {
 
   /*! Range of shells that might be updated this step */
   int shell_nr_min, shell_nr_max;
-
-  /*! Functions to update healpix map types */
-  map_update_function_t update_map[LIGHTCONE_MAX_HEALPIX_MAPS];
-
-  /*! Units for each map */
-  enum unit_conversion_factor map_units[LIGHTCONE_MAX_HEALPIX_MAPS];
 
 };
 
