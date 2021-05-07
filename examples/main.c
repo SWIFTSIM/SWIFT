@@ -1800,6 +1800,7 @@ int main(int argc, char *argv[]) {
                           e.internal_units, e.snapshot_units,
                           /*flush_map_updates=*/1, /*flush_particles=*/1,
                           /*end_file=*/1, /*dump_all_shells=*/1);
+    lightcone_array_write_index(e.lightcone_array_properties);
 #endif
 
   }

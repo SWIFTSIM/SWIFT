@@ -249,3 +249,22 @@ void lightcone_array_free_replications(struct lightcone_array_props *props,
   /* Free replication list array */
   free(lists);
 }
+
+
+/**
+ * @brief Write the index file for each lightcone
+ *
+ * props the #lightcone_array_props struct
+ *
+ */
+void lightcone_array_write_index(struct lightcone_array_props *props) {
+  
+  /* Get number of lightcones */
+  const int nr_lightcones = props->nr_lightcones;
+
+  /* Loop over lightcones and clean replication lists */
+  for(int lightcone_nr=0; lightcone_nr<nr_lightcones; lightcone_nr+=1) {
+    lightcone_write_index(props->lightcone+lightcone_nr);
+  }
+
+}

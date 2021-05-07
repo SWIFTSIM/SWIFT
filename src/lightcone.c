@@ -281,7 +281,9 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
 
 
 static char *yaml_name(char *buf, const char *str1, const char *str2) {
-  snprintf(buf, PARSER_MAX_LINE_SIZE, "%s:%s", str1, str2);
+  int len = snprintf(buf, PARSER_MAX_LINE_SIZE, "%s:%s", str1, str2);
+  if((len < 0) || (len >= PARSER_MAX_LINE_SIZE))
+    error("Failed to generate parameter name");
   return buf;
 }
 
@@ -516,6 +518,14 @@ void lightcone_init(struct lightcone_props *props,
 }
 
 
+static void particle_file_name(char *buf, int len, char *basename,
+                               int current_file, int comm_rank) {
+  
+  int ret = snprintf(buf, len, "%s_%04d.%d.hdf5", basename, current_file, comm_rank);
+  if((ret < 0) || (ret >= len))error("Lightcone particle file name truncation or output error");
+}
+
+
 /**
  * @brief Flush any buffers which exceed the specified size.
  *
@@ -554,9 +564,8 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
 
       /* Get the name of the next file */
       props->current_file += 1;
-      if(snprintf(fname, FILENAME_BUFFER_SIZE, "%s_%04d.%d.hdf5",
-                  props->basename, props->current_file, engine_rank) < 0)
-        error("Lightcone output filename truncated");
+      particle_file_name(fname, FILENAME_BUFFER_SIZE, props->basename,
+                         props->current_file, engine_rank);
 
       /* Create the file */
       file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -599,9 +608,8 @@ void lightcone_flush_particle_buffers(struct lightcone_props *props,
     } else {
 
       /* Re-open an existing file */
-      if(snprintf(fname, FILENAME_BUFFER_SIZE, "%s_%04d.%d.hdf5",
-                  props->basename, props->current_file, engine_rank) < 0)
-        error("Lightcone output filename truncated");
+      particle_file_name(fname, FILENAME_BUFFER_SIZE, props->basename,
+                         props->current_file, engine_rank);
       file_id = H5Fopen(fname, H5F_ACC_RDWR, H5P_DEFAULT);
       if(file_id < 0)error("Unable to open current lightcone file: %s", fname);
 
@@ -736,9 +744,10 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
         /* Get the name of the file to write */
         char fname[FILENAME_BUFFER_SIZE];
-        if(snprintf(fname, FILENAME_BUFFER_SIZE, "%s.shell_%d.hdf5",
-                    props->basename, shell_nr) < 0)
-          error("Lightcone map output filename truncated");
+        int len = snprintf(fname, FILENAME_BUFFER_SIZE, "%s.shell_%d.hdf5",
+                           props->basename, shell_nr);
+        if((len < 0) || (len >= FILENAME_BUFFER_SIZE))
+          error("Lightcone map output filename truncation or output error");
         
         /* Create the output file for this shell */
         hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -1176,4 +1185,51 @@ void lightcone_report_memory_use(struct lightcone_props *props) {
     message("lightcone %d: map pixel data bytes:    %lld", props->index, memuse_local[2]);
 #endif    
 
+}
+
+
+/**
+ * @brief Write out number of files per rank for this lightcone
+ *
+ * @param props The #lightcone_props structure
+ *
+ */
+void lightcone_write_index(struct lightcone_props *props) {
+
+  int comm_size = 1;
+#ifdef WITH_MPI
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+#endif
+
+  /* Collect current file index on each rank */
+  int *current_file_on_rank = malloc(sizeof(int)*comm_size);
+#ifdef WITH_MPI
+  MPI_Gather(&props->current_file, 1, MPI_INT,
+             current_file_on_rank, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#else
+  current_file_on_rank[0] = props->current_file;
+#endif
+
+  if(engine_rank == 0) {
+
+    /* Get the name of the index file */
+    char fname[FILENAME_BUFFER_SIZE];
+    int len = snprintf(fname, FILENAME_BUFFER_SIZE, "%s_index.hdf5", props->basename);
+    if((len < 0) || (len >= FILENAME_BUFFER_SIZE))error("Failed to generate lightcone index filename");
+
+    /* Create the file */
+    hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    /* Write number of MPI ranks and number of files */
+    hid_t group_id = H5Gcreate2(file_id, "Lightcone", H5P_DEFAULT,
+                                H5P_DEFAULT, H5P_DEFAULT);
+    io_write_attribute_i(group_id, "nr_mpi_ranks", comm_size);
+    io_write_attribute(group_id, "final_file_on_rank", INT,
+                       current_file_on_rank, comm_size);
+
+    H5Gclose(group_id);
+    H5Fclose(file_id);
+  }
+
+  free(current_file_on_rank);
 }

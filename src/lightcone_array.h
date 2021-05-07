@@ -85,4 +85,6 @@ struct replication_list *lightcone_array_refine_replications(struct lightcone_ar
 void lightcone_array_free_replications(struct lightcone_array_props *props,
                                        struct replication_list *lists);
 
+void lightcone_array_write_index(struct lightcone_array_props *props);
+
 #endif /* SWIFT_LIGHTCONE_ARRAY_H */
