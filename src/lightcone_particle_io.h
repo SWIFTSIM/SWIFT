@@ -43,6 +43,7 @@ struct xpart;
 struct spart;
 struct bpart;
 struct lightcone_props;
+struct engine;
 
 /*
  * Struct to describe an output field in the lightcone
@@ -95,9 +96,10 @@ struct lightcone_gas_data {
   double mass;
 };
 
-int lightcone_store_gas(const struct gpart *gp, const struct part *p,
-                         const struct xpart *xp, const double a_cross,
-                         const double x_cross[3], struct lightcone_gas_data *data);
+int lightcone_store_gas(const struct engine *e,
+                        const struct gpart *gp, const struct part *p,
+                        const struct xpart *xp, const double a_cross,
+                        const double x_cross[3], struct lightcone_gas_data *data);
 
 
 /**
@@ -109,7 +111,8 @@ struct lightcone_dark_matter_data {
   double mass;
 };
 
-int lightcone_store_dark_matter(const struct gpart *gp, const double a_cross,
+int lightcone_store_dark_matter(const struct engine *e,
+                                const struct gpart *gp, const double a_cross,
                                 const double x_cross[3], struct lightcone_dark_matter_data *data);
 
 
@@ -122,7 +125,8 @@ struct lightcone_stars_data {
   double mass;
 };
 
-int lightcone_store_stars(const struct gpart *gp, const struct spart *sp,
+int lightcone_store_stars(const struct engine *e,
+                          const struct gpart *gp, const struct spart *sp,
                           const double a_cross, const double x_cross[3],
                           struct lightcone_stars_data *data);
 
@@ -136,7 +140,8 @@ struct lightcone_black_hole_data {
   double mass;
 };
 
-int lightcone_store_black_hole(const struct gpart *gp, const struct bpart *bp,
+int lightcone_store_black_hole(const struct engine *e,
+                               const struct gpart *gp, const struct bpart *bp,
                                const double a_cross, const double x_cross[3],
                                struct lightcone_black_hole_data *data);
 
@@ -150,7 +155,8 @@ struct lightcone_neutrino_data {
   double mass;
 };
 
-int lightcone_store_neutrino(const struct gpart *gp, const double a_cross,
+int lightcone_store_neutrino(const struct engine *e,
+                             const struct gpart *gp, const double a_cross,
                              const double x_cross[3],
                              struct lightcone_neutrino_data *data);
 
