@@ -39,6 +39,35 @@
 #include "star_formation.h"
 #include "tracers.h"
 
+
+#ifdef WITH_LIGHTCONE
+/**
+ * @brief Compute refined lightcone replication list for a cell
+ *
+ * Returns a pointer to the new list, which must be freed later.
+ *
+ * @param e The #engine
+ * @param c The #cell
+ * @param replication_list_in The input replication_list struct
+ */
+static struct replication_list *refine_replications(const struct engine *e,
+                                                    const struct cell *c,
+                                                    struct replication_list *replication_list_in) {
+  struct replication_list *replication_list;
+  if(e->lightcone_array_properties->nr_lightcones > 0) {
+    if(replication_list_in) {
+      /* We're not at the top of the hierarchy, so use the replication lists passed in */
+      replication_list = replication_list_in;
+    } else {
+      /* Current call is top of the recursive hierarchy, so compute refined replication lists */
+      replication_list = lightcone_array_refine_replications(e->lightcone_array_properties, c);
+    }
+  }
+  return replication_list;
+}
+#endif
+
+
 /**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *
@@ -46,7 +75,8 @@
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_part(struct cell *c, const struct engine *e, int force) {
+void cell_drift_part(struct cell *c, const struct engine *e, int force,
+                     struct replication_list *replication_list_in) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -84,7 +114,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     return;
   }
 
-  /* Ok, we have some particles somewhere in the hierarchy to drift */
+  /* Ok, we have some particles somewhere in the hierarchy to drift
+     
+     IMPORTANT: after this point we must not return without freeing the
+     replication lists if we allocated them.
+  */
+  struct replication_list *replication_list = NULL;
+#ifdef WITH_LIGHTCONE
+  replication_list = refine_replications(e, c, replication_list_in);
+#endif
 
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_hydro_sub_drift))) {
@@ -95,7 +133,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         struct cell *cp = c->progeny[k];
 
         /* Collect */
-        cell_drift_part(cp, e, force);
+        cell_drift_part(cp, e, force, replication_list);
 
         /* Update */
         dx_max = max(dx_max, cp->hydro.dx_max_part);
@@ -150,8 +188,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
-                 ti_old_part, ti_current, e->cosmology, e->hydro_properties,
-                 e->entropy_floor);
+                 ti_old_part, ti_current, e, replication_list, c->loc);
 
       /* Update the tracers properties */
       tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
@@ -261,6 +298,12 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     c->hydro.ti_old_part = ti_current;
   }
 
+#ifdef WITH_LIGHTCONE
+  /* If we're at the top of the recursive hierarchy, clean up the refined replication lists */
+  if(e->lightcone_array_properties->nr_lightcones > 0 && !replication_list_in)
+    lightcone_array_free_replications(e->lightcone_array_properties, replication_list);
+#endif
+
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift);
 }
@@ -315,15 +358,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
   */
   struct replication_list *replication_list = NULL;
 #ifdef WITH_LIGHTCONE
-  if(e->lightcone_array_properties->nr_lightcones > 0) {
-    if(replication_list_in) {
-      /* We're not at the top of the hierarchy, so use the replication lists passed in */
-      replication_list = replication_list_in;
-    } else {
-      /* Current call is top of the recursive hierarchy, so compute refined replication lists */
-      replication_list = lightcone_array_refine_replications(e->lightcone_array_properties, c);
-    }
-  }
+  replication_list = refine_replications(e, c, replication_list_in);
 #endif
 
   /* Are we not in a leaf ? */
@@ -447,7 +482,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
+void cell_drift_spart(struct cell *c, const struct engine *e, int force,
+                      struct replication_list *replication_list_in) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -484,7 +520,15 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
     return;
   }
 
-  /* Ok, we have some particles somewhere in the hierarchy to drift */
+  /* Ok, we have some particles somewhere in the hierarchy to drift
+     
+     IMPORTANT: after this point we must not return without freeing the
+     replication lists if we allocated them.
+  */
+  struct replication_list *replication_list = NULL;
+#ifdef WITH_LIGHTCONE
+  replication_list = refine_replications(e, c, replication_list_in);
+#endif
 
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_stars_sub_drift))) {
@@ -495,7 +539,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
         struct cell *cp = c->progeny[k];
 
         /* Recurse */
-        cell_drift_spart(cp, e, force);
+        cell_drift_spart(cp, e, force, replication_list);
 
         /* Update */
         dx_max = max(dx_max, cp->stars.dx_max_part);
@@ -534,7 +578,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       if (spart_is_inhibited(sp, e)) continue;
 
       /* Drift... */
-      drift_spart(sp, dt_drift, ti_old_spart, ti_current);
+      drift_spart(sp, dt_drift, ti_old_spart, ti_current,
+                  e, replication_list, c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -622,6 +667,12 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
     c->stars.ti_old_part = ti_current;
   }
 
+#ifdef WITH_LIGHTCONE
+  /* If we're at the top of the recursive hierarchy, clean up the refined replication lists */
+  if(e->lightcone_array_properties->nr_lightcones > 0 && !replication_list_in)
+    lightcone_array_free_replications(e->lightcone_array_properties, replication_list);
+#endif
+
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_stars_drift | cell_flag_do_stars_sub_drift);
 }
@@ -633,7 +684,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
  * @param e The #engine (to get ti_current).
  * @param force Drift the particles irrespective of the #cell flags.
  */
-void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
+void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
+                      struct replication_list *replication_list_in) {
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
@@ -671,7 +723,15 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
     return;
   }
 
-  /* Ok, we have some particles somewhere in the hierarchy to drift */
+  /* Ok, we have some particles somewhere in the hierarchy to drift
+
+     IMPORTANT: after this point we must not return without freeing the
+     replication lists if we allocated them.
+  */
+  struct replication_list *replication_list = NULL;
+#ifdef WITH_LIGHTCONE
+  replication_list = refine_replications(e, c, replication_list_in);
+#endif
 
   /* Are we not in a leaf ? */
   if (c->split && (force || cell_get_flag(c, cell_flag_do_bh_sub_drift))) {
@@ -682,7 +742,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
         struct cell *cp = c->progeny[k];
 
         /* Recurse */
-        cell_drift_bpart(cp, e, force);
+        cell_drift_bpart(cp, e, force, replication_list);
 
         /* Update */
         dx_max = max(dx_max, cp->black_holes.dx_max_part);
@@ -722,7 +782,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       if (bpart_is_inhibited(bp, e)) continue;
 
       /* Drift... */
-      drift_bpart(bp, dt_drift, ti_old_bpart, ti_current);
+      drift_bpart(bp, dt_drift, ti_old_bpart, ti_current,
+                  e, replication_list, c->loc);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -800,6 +861,12 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
     /* Update the time of the last drift */
     c->black_holes.ti_old_part = ti_current;
   }
+
+#ifdef WITH_LIGHTCONE
+  /* If we're at the top of the recursive hierarchy, clean up the refined replication lists */
+  if(e->lightcone_array_properties->nr_lightcones > 0 && !replication_list_in)
+    lightcone_array_free_replications(e->lightcone_array_properties, replication_list);
+#endif
 
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift);
