@@ -407,7 +407,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
           (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
 
         message(
-            "N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d h=%e time_bin=%d",
+            "N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d h=%e "
+            "time_bin=%d",
             id, N_ngb, N_ngb_target, N_ngb_max - N_ngb_target,
             pi->N_density_exact, pi->N_density, pi->h, pi->time_bin);
 
