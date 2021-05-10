@@ -398,9 +398,9 @@ void *runner_main(void *data) {
             runner_dosub_pair_stars_density(r, ci, cj, /*below_h_max=*/0, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dosub_pair_stars_prep1(r, ci, cj, /*below_h_max=*/01);
+            runner_dosub_pair_stars_prep1(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dosub_pair_stars_prep2(r, ci, cj, /*below_h_max=*/01);
+            runner_dosub_pair_stars_prep2(r, ci, cj, /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_pair_stars_feedback(r, ci, cj, /*below_h_max=*/0, 1);
