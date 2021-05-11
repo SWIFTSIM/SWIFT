@@ -764,12 +764,12 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid(s, &ci, &cj, shift);
 
   /* Should we even bother? */
-  const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter);
-  const int do_j = cell_get_flag(cj, cell_flag_do_hydro_limiter);
-  const int do_sub_i = cell_get_flag(ci, cell_flag_do_hydro_sub_limiter);
-  const int do_sub_j = cell_get_flag(cj, cell_flag_do_hydro_sub_limiter);
+  /* const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter); */
+  /* const int do_j = cell_get_flag(cj, cell_flag_do_hydro_limiter); */
+  /* const int do_sub_i = cell_get_flag(ci, cell_flag_do_hydro_sub_limiter); */
+  /* const int do_sub_j = cell_get_flag(cj, cell_flag_do_hydro_sub_limiter); */
 
-  if (!do_i && !do_j && !do_sub_i && !do_sub_j) return;
+  /* if (!do_i && !do_j && !do_sub_i && !do_sub_j) return; */
   if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
@@ -858,10 +858,10 @@ void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
   TIMER_TIC;
 
   /* Should we even bother? */
-  const int do_i = cell_get_flag(c, cell_flag_do_hydro_limiter);
-  const int do_sub_i = cell_get_flag(c, cell_flag_do_hydro_sub_limiter);
+  /* const int do_i = cell_get_flag(c, cell_flag_do_hydro_limiter); */
+  /* const int do_sub_i = cell_get_flag(c, cell_flag_do_hydro_sub_limiter); */
 
-  if (!do_i && !do_sub_i) return;
+  /* if (!do_i && !do_sub_i) return; */
   if (!cell_is_starting_hydro(c, r->e)) return;
   if (c->hydro.count == 0) return;
 
