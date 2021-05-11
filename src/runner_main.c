@@ -246,7 +246,8 @@ void *runner_main(void *data) {
             runner_doself2_branch_force(r, ci, /*limit_h_min=*/0,
                                         /*limit_h_max=*/0);
           else if (t->subtype == task_subtype_limiter)
-            runner_doself1_branch_limiter(r, ci);
+            runner_doself1_branch_limiter(r, ci, /*limit_h_min=*/0,
+                                          /*limit_h_max=*/0);
           else if (t->subtype == task_subtype_grav)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
@@ -307,7 +308,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_force(r, ci, cj, /*limit_h_min=*/0,
                                         /*limit_h_max=*/0);
           else if (t->subtype == task_subtype_limiter)
-            runner_dopair1_branch_limiter(r, ci, cj);
+            runner_dopair1_branch_limiter(r, ci, cj, /*limit_h_min=*/0,
+                                          /*limit_h_max=*/0);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -363,7 +365,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_self1_limiter(r, ci, 1);
+            runner_dosub_self1_limiter(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(r, ci, /*below_h_max=*/0, 1);
 #ifdef EXTRA_STAR_LOOPS
@@ -411,7 +413,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_pair1_limiter(r, ci, cj, 1);
+            runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, /*below_h_max=*/0, 1);
 #ifdef EXTRA_STAR_LOOPS
