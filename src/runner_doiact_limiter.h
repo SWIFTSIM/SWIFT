@@ -92,8 +92,8 @@
 #define _TIMER_DOSUB_PAIR(f) PASTE(timer_dosub_pair, f)
 #define TIMER_DOSUB_PAIR _TIMER_DOSUB_PAIR(FUNCTION)
 
-void DOSELF1_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
-                    const int limit_max_h);
+void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h);
 
 void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
                     const int limit_min_h, const int limit_max_h);

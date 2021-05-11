@@ -870,35 +870,37 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-/* #if !defined(SWIFT_USE_NAIVE_INTERACTIONS) */
-/*   /\* Get the sorting index. *\/ */
-/*   int sid = 0; */
-/*   for (int k = 0; k < 3; k++) */
-/*     sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0) */
-/*                          ? 0 */
-/*                          : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1); */
+  /* #if !defined(SWIFT_USE_NAIVE_INTERACTIONS) */
+  /*   /\* Get the sorting index. *\/ */
+  /*   int sid = 0; */
+  /*   for (int k = 0; k < 3; k++) */
+  /*     sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0) */
+  /*                          ? 0 */
+  /*                          : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 :
+   * 1); */
 
-/*   /\* Switch the cells around? *\/ */
-/*   const int flipped = runner_flip[sid]; */
-/*   sid = sortlistID[sid]; */
+  /*   /\* Switch the cells around? *\/ */
+  /*   const int flipped = runner_flip[sid]; */
+  /*   sid = sortlistID[sid]; */
 
-/*   /\* Has the cell cj been sorted? *\/ */
-/*   if (!(cj->hydro.sorted & (1 << sid)) || */
-/*       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin) */
-/*     error("Interacting unsorted cells."); */
-/* #endif */
+  /*   /\* Has the cell cj been sorted? *\/ */
+  /*   if (!(cj->hydro.sorted & (1 << sid)) || */
+  /*       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin) */
+  /*     error("Interacting unsorted cells."); */
+  /* #endif */
 
-/* #if defined(SWIFT_USE_NAIVE_INTERACTIONS) */
+  /* #if defined(SWIFT_USE_NAIVE_INTERACTIONS) */
   DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
-/* #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) */
-/*   if (sort_is_face(sid)) */
-/*     runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid, */
-/*                                      flipped, shift); */
-/*   else */
-/*     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift); */
-/* #else */
-/*   DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift); */
-/* #endif */
+  /* #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) */
+  /*   if (sort_is_face(sid)) */
+  /*     runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid,
+   */
+  /*                                      flipped, shift); */
+  /*   else */
+  /*     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift); */
+  /* #else */
+  /*   DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift); */
+  /* #endif */
 }
 
 /**
