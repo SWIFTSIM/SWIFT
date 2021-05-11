@@ -176,15 +176,14 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
       pi->N_density_exact = N_density_exact;
       pi->N_gradient_exact = N_gradient_exact;
       pi->N_force_exact = N_force_exact;
-      /* pi->limiter_data.N_limiter_exact = N_limiter_exact; */
+      pi->limiter_data.N_limiter_exact = N_limiter_exact;
 
       pi->rho_exact = rho_exact * pow_dimension(hi_inv);
       pi->n_density_exact = n_density_exact * pow_dimension(hi_inv);
       pi->n_gradient_exact = n_gradient_exact;
       pi->n_force_exact = n_force_exact;
-      /* pi->limiter_data.n_limiter_exact = */
-      /*     n_limiter_exact * pow_dimension(hi_inv); */
-      /* pi->limiter_data.n_limiter *= pow_dimension(hi_inv); */
+      pi->limiter_data.n_limiter_exact =
+          n_limiter_exact * pow_dimension(hi_inv);
 
       counter++;
     }
@@ -250,6 +249,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   const struct part *parts = s->parts;
   const size_t nr_parts = s->nr_parts;
 
+  const int with_limiter = e->policy & engine_policy_timestep_limiter;
   const double eta = e->hydro_properties->eta_neighbours;
   const float h_max = e->hydro_properties->h_max;
   const float h_min = e->hydro_properties->h_min;
@@ -387,21 +387,19 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 pi->n_force_exact);
         wrong_n_force++;
       }
-      /* if (check_force && !found_inhibited && */
-      /*     (fabsf(pi->limiter_data.n_limiter /
-       * pi->limiter_data.n_limiter_exact - */
-      /*            1.f) > rel_tol || */
-      /*      fabsf(pi->limiter_data.n_limiter_exact /
-       * pi->limiter_data.n_limiter - */
-      /*            1.f) > rel_tol)) { */
-      /*   message( */
-      /*       "LIMITER: id=%lld swift=%e exact=%e N_limiter=%d " */
-      /*       "N_limiter_exact=%d", */
-      /*       id, pi->limiter_data.n_limiter, pi->limiter_data.n_limiter_exact,
-       */
-      /*       pi->limiter_data.N_limiter, pi->limiter_data.N_limiter_exact); */
-      /*   wrong_limiter++; */
-      /* } */
+      if (with_limiter && check_force && !found_inhibited && !h_max_limited &&
+          !h_min_limited &&
+          (fabsf(pi->limiter_data.n_limiter / pi->limiter_data.n_limiter_exact -
+                 1.f) > rel_tol ||
+           fabsf(pi->limiter_data.n_limiter_exact / pi->limiter_data.n_limiter -
+                 1.f) > rel_tol)) {
+        message(
+            "LIMITER: id=%lld swift=%e exact=%e N_limiter=%d "
+            "N_limiter_exact=%d",
+            id, pi->limiter_data.n_limiter, pi->limiter_data.n_limiter_exact,
+            pi->limiter_data.N_limiter, pi->limiter_data.N_limiter_exact);
+        wrong_limiter++;
+      }
 
       if (!found_inhibited && !h_max_limited && !h_min_limited &&
           (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
