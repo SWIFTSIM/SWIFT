@@ -100,6 +100,14 @@
 /*! Minimal value for the diffusion alpha in variable schemes. */
 #define hydro_props_default_diffusion_alpha_min 0.0f
 
+/*! Select the conduction velocity you wish to use.
+ *  Acceptable values:
+ *  + sphenix_conduction_velocity_dv_dr
+ *  + sphenix_conduction_velocity_dv
+ *  + sphenix_conduction_velocity_dv_cross_dr
+ */
+#define sphenix_conduction_velocity_dv_cross_dr 1
+
 /* Structs that store the relevant variables */
 
 /*! Artificial viscosity parameters */

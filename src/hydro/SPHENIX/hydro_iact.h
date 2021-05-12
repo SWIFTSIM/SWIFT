@@ -374,10 +374,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
+  float dv[3];
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+
   /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
@@ -443,9 +446,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float alpha_diff =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);
+
+#ifdef sphenix_conduction_velocity_dv_dr
   const float v_diff = alpha_diff * 0.5f *
                        (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
+#endif
+
+#ifdef sphenix_conduction_velocity_dv
+  const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+  const float v_diff =
+      alpha_diff * 0.5f *
+      (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) + dv_norm);
+#endif
+
+#ifdef sphenix_conduction_velocity_dv_cross_dr
+  float curlvr[3];
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  const float curlvr_norm =
+      curlvr[0] * curlvr[0] + curlvr[1] * curlvr[1] + curlvr[2] * curlvr[2];
+
+  const float v_diff = alpha_diff * 0.5f *
+                       (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
+                        fabsf(curlvr_norm * r_inv));
+#endif
+
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
       v_diff * (pi->u - pj->u) * (f_ij * wi_dr / rhoi + f_ji * wj_dr / rhoj);
@@ -525,10 +553,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
+  float dv[3];
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+
   /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
@@ -589,9 +620,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float alpha_diff =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);
+
+#ifdef sphenix_conduction_velocity_dv_dr
   const float v_diff = alpha_diff * 0.5f *
                        (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
+#endif
+
+#ifdef sphenix_conduction_velocity_dv
+  const float dv_norm = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+  const float v_diff =
+      alpha_diff * 0.5f *
+      (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) + dv_norm);
+#endif
+
+#ifdef sphenix_conduction_velocity_dv_cross_dr
+  float curlvr[3];
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  const float curlvr_norm =
+      curlvr[0] * curlvr[0] + curlvr[1] * curlvr[1] + curlvr[2] * curlvr[2];
+
+  const float v_diff = alpha_diff * 0.5f *
+                       (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
+                        fabsf(curlvr_norm * r_inv));
+#endif
+
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
       v_diff * (pi->u - pj->u) * (f_ij * wi_dr / rhoi + f_ji * wj_dr / rhoj);
