@@ -31,7 +31,7 @@ Statistics:
 
 # Parameters controlling restarts
 Restarts:
-    enable: 0                           # Whether to enable dumping restarts at fixed intervals.
+    enable: 1                           # Whether to enable dumping restarts at fixed intervals.
 
 # Parameters for the hydrodynamics scheme
 SPH:
