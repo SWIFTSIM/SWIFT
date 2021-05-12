@@ -1789,7 +1789,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    csds_ensure_size(e->csds, s->nr_parts, s->nr_gparts, s->nr_sparts);
+    csds_ensure_size(e->csds, e);
     csds_write_description(e->csds, e);
   }
 #endif
@@ -2198,7 +2198,7 @@ void engine_step(struct engine *e) {
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    csds_ensure_size(e->csds, e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts);
+    csds_ensure_size(e->csds, e);
   }
 #endif
 
