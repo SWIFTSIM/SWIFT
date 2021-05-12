@@ -142,7 +142,10 @@ void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
                             int first_log) {
 
   /* Ensure that enough space is available. */
-  csds_ensure_size(log, e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts);
+  csds_ensure_size(log, e);
+
+  /* csds_ensure_size is tracked separately. */
+  ticks tic = getticks();
 
   /* some constants. */
   const struct space *s = e->s;
@@ -183,6 +186,10 @@ void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
 
   if (e->total_nr_bparts > 0) error("Not implemented");
   if (e->total_nr_sinks > 0) error("Not implemented");
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -717,30 +724,33 @@ void csds_log_timestamp(struct csds_writer *log, integertime_t timestamp,
  * and ensure that enough space is available in the buffer.
  *
  * @param log The #csds_writer
- * @param total_nr_parts total number of part
- * @param total_nr_gparts total number of gpart
- * @param total_nr_sparts total number of spart
+ * @param e The #engine.
  */
-void csds_ensure_size(struct csds_writer *log, size_t total_nr_parts,
-                      size_t total_nr_gparts, size_t total_nr_sparts) {
+void csds_ensure_size(struct csds_writer *log, const struct engine *e) {
+
+  ticks tic = getticks();
 
   /* count part memory */
   size_t limit = 0;
 
   /* count part memory */
-  limit += total_nr_parts;
+  limit += e->s->nr_parts;
 
   /* count gpart memory */
-  limit += total_nr_gparts;
+  limit += e->s->nr_gparts;
 
   /* count spart memory. */
-  limit += total_nr_sparts;
+  limit += e->s->nr_sparts;
 
   // TODO improve estimate with the size of each particle
   limit *= log->max_record_size;
 
   /* ensure enough space in dump */
   dump_ensure(&log->dump, limit, log->buffer_scale * limit);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /** @brief Generate the name of the dump files
@@ -1004,6 +1014,8 @@ void csds_init_masks(struct csds_writer *log, const struct engine *e) {
 void csds_init(struct csds_writer *log, const struct engine *e,
                struct swift_params *params) {
 
+  ticks tic = getticks();
+
 #ifdef WITH_MPI
   /* Should be safe, but better to check */
   if (e->nr_nodes >= 1 << 16)
@@ -1044,6 +1056,10 @@ void csds_init(struct csds_writer *log, const struct engine *e,
 
   /* init dump. */
   dump_init(&log->dump, csds_name_file, buffer_size);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**

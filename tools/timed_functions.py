@@ -66,4 +66,7 @@ labels = [
     ["engine_launch: \(fof\)", 2],
     ["engine_launch: \(fof comms\)", 2],
     ["do_line_of_sight:", 0],
+    ["csds_log_all_particles:", 0],
+    ["csds_ensure_size:", 0],
+    ["csds_init:", 0],
 ]
