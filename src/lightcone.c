@@ -71,7 +71,7 @@ void lightcone_read_shell_radii(const struct cosmology *cosmo, char *radius_file
   
 
   /* Allow shell radii to be specified in several different units */
-  enum shell_units {comoving_distance=0, redshift=1, expansion_factor=2};
+  enum shell_units {not_known=0, comoving_distance=1, redshift=2, expansion_factor=3};
 
   FILE *fd = fopen(radius_file, "r");
   if(!fd)error("Failed to open lightcone radius file %s", radius_file);
@@ -87,7 +87,7 @@ void lightcone_read_shell_radii(const struct cosmology *cosmo, char *radius_file
   struct lightcone_shell *shell = malloc(sizeof(struct lightcone_shell)*(nr_lines-1));
 
   /* Check header */
-  enum shell_units units = UNIT_CONV_NO_UNITS;
+  enum shell_units units = not_known;
   if(getline(&line, &len, fd) != -1) {
     if (strcmp(line, "# Minimum comoving distance, Maximum comoving distance\n") == 0) {
       units = comoving_distance;
