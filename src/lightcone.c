@@ -87,7 +87,7 @@ void lightcone_read_shell_radii(const struct cosmology *cosmo, char *radius_file
   struct lightcone_shell *shell = malloc(sizeof(struct lightcone_shell)*(nr_lines-1));
 
   /* Check header */
-  enum shell_units units;
+  enum shell_units units = UNIT_CONV_NO_UNITS;
   if(getline(&line, &len, fd) != -1) {
     if (strcmp(line, "# Minimum comoving distance, Maximum comoving distance\n") == 0) {
       units = comoving_distance;

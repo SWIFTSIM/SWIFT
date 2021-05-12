@@ -62,6 +62,8 @@ static struct replication_list *refine_replications(const struct engine *e,
       /* Current call is top of the recursive hierarchy, so compute refined replication lists */
       replication_list = lightcone_array_refine_replications(e->lightcone_array_properties, c);
     }
+  } else {
+    replication_list = NULL;
   }
   return replication_list;
 }
