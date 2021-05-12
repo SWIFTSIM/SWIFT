@@ -198,6 +198,7 @@ enum task_categories {
   task_category_neutrino,
   task_category_sink,
   task_category_rt,
+  task_category_csds,
   task_category_count
 };
 
