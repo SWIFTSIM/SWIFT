@@ -46,11 +46,11 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
   /* Anything to do here? */
   if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
-  
+
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
-  
+
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
@@ -119,7 +119,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
       const int doi = pi_active && (r2 < hig2) && (hi >= h_min) && (hi < h_max);
       const int doj = pj_active && (r2 < hjg2) && (hj >= h_min) && (hj < h_max);
-      
+
       /* Hit or miss? */
       if (doi) {
 

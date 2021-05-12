@@ -54,7 +54,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
     ticks tic = getticks();
 
     /* Dump when the time has arrived, or we are told to. */
-    int dump = ((tic > e->restart_next) || force);
+    int dump = ((tic > e->restart_next) || force) || (e->step % 50 == 0);
 
 #ifdef WITH_MPI
     /* Synchronize this action from rank 0 (ticks may differ between

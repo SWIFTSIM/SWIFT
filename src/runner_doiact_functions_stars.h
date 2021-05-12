@@ -1032,27 +1032,33 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-/* #ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS */
-  DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
-/* #else */
-/*   /\* Get the sorting index. *\/ */
-/*   int sid = 0; */
-/*   for (int k = 0; k < 3; k++) */
-/*     sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0) */
-/*                          ? 0 */
-/*                          : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1); */
+  /* Get the sorting index. */
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
+                         ? 0
+                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
 
-/*   /\* Switch the cells around? *\/ */
-/*   const int flipped = runner_flip[sid]; */
-/*   sid = sortlistID[sid]; */
+  /* Switch the cells around? */
+  const int flipped = runner_flip[sid];
+  sid = sortlistID[sid];
 
-/*   /\* Has the cell cj been sorted? *\/ */
-/*   if (!(cj->hydro.sorted & (1 << sid)) || */
-/*       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin) */
-/*     error("Interacting unsorted cells."); */
+  const int is_sorted =
+      (cj->hydro.sorted & (1 << sid)) &&
+      (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
-/*   DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift); */
-/* #endif */
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  const int force_naive = 1;
+#else
+  const int force_naive = 0;
+#endif
+
+  /* Can we use the sorted interactions or do we default to naive? */
+  if (force_naive || !is_sorted) {
+    DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
+  } else {
+    DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
+  }
 }
 /**
  * @brief Determine which version of DOSELF1_STARS needs to be called depending
