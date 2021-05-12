@@ -170,7 +170,8 @@ const char *task_category_names[task_category_count] = {
     "black holes", "cooling", "star formation",
     "limiter",     "sync",    "time integration",
     "mpi",         "fof",     "others",
-    "neutrino",    "sink",    "RT"};
+    "neutrino",    "sink",    "RT",
+    "CSDS"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -1694,6 +1695,9 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_cooling:
       return task_category_cooling;
+
+    case task_type_csds:
+      return task_category_csds;
 
     case task_type_star_formation:
     case task_type_star_formation_sink:

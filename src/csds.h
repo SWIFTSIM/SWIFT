@@ -199,8 +199,7 @@ void csds_init(struct csds_writer *log, const struct engine *e,
 void csds_free(struct csds_writer *log);
 void csds_log_timestamp(struct csds_writer *log, integertime_t t, double time,
                         size_t *offset);
-void csds_ensure_size(struct csds_writer *log, size_t total_nr_parts,
-                      size_t total_nr_gparts, size_t total_nr_sparts);
+void csds_ensure_size(struct csds_writer *log, const struct engine *e);
 void csds_write_file_header(struct csds_writer *log);
 
 int csds_read_part(const struct csds_writer *log, struct part *p,
