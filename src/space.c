@@ -1933,6 +1933,8 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
   /* Sum up the mass in this space */
   double mass = 0.;
   for (size_t i = 0; i < nr_gparts; ++i) {
+    /* Skip neutrino particles, which are not included in cosmo.Omega_m */
+    if (gparts[i].type == swift_type_neutrino) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[i].time_bin == time_bin_not_created)
@@ -1963,21 +1965,14 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     const double rho_crit0 = cosmo->critical_density * H0 * H0 / (H * H);
 
     /* Compute the mass density */
-    const double Omega_sim = (total_mass / volume) / rho_crit0;
+    const double Omega_particles = (total_mass / volume) / rho_crit0;
 
-    /* The density required to match the cosmology */
-    double Omega_cosmo;
-    if (s->with_neutrinos)
-      Omega_cosmo = cosmo->Omega_m + cosmo->Omega_nu_0;
-    else
-      Omega_cosmo = cosmo->Omega_m;
-
-    if (fabs(Omega_sim - Omega_cosmo) > 1e-3)
+    if (fabs(Omega_particles - cosmo->Omega_m) > 1e-3)
       error(
           "The matter content of the simulation does not match the cosmology "
-          "in the parameter file cosmo.Omega_m=%e Omega_particles=%e. Are you "
-          "running with neutrinos? Then account for cosmo.Omega_nu_0=%e too.",
-          cosmo->Omega_m, Omega_sim, cosmo->Omega_nu_0);
+          "in the parameter file cosmo.Omega_m=%e, Omega_particles=%e. Neither "
+          "quantity includes neutrinos.",
+          cosmo->Omega_m, Omega_particles);
   }
 }
 
