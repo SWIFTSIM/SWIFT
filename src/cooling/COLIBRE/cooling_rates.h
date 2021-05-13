@@ -427,7 +427,6 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
  * @param log_T_cgs Log base 10 of temperature in K
  * @param redshift Current redshift
  * @param n_H_cgs Hydrogen number density in cgs
- * @param ZZsol Metallicity relative to the solar value from the tables
  * @param n_H_index Index along the Hydrogen number density dimension
  * @param d_n_H Offset between Hydrogen density and table[n_H_index]
  * @param met_index Index along the metallicity dimension
@@ -436,13 +435,13 @@ __attribute__((always_inline)) INLINE static float colibre_convert_temp_to_u(
  * @param d_red Offset between redshift and table[red_index]
  * @param cooling #cooling_function_data structure
  *
- * @return linear electron density in cm-3 (NOT the electron fraction)
+ * @return mean particle mass
  */
 INLINE static float colibre_meanparticlemass_temperature(
     const double log_T_cgs, const double redshift, const double n_H_cgs,
-    const float ZZsol, const int n_H_index, const float d_n_H,
-    const int met_index, const float d_met, const int red_index,
-    const float d_red, const struct cooling_function_data *cooling) {
+    const int n_H_index, const float d_n_H, const int met_index,
+    const float d_met, const int red_index, const float d_red,
+    const struct cooling_function_data *cooling) {
 
   /* Get index of T along the temperature axis */
   int T_index;
