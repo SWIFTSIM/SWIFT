@@ -1183,8 +1183,10 @@ void lightcone_report_memory_use(struct lightcone_props *props) {
     memuse_local[i] = 0;
 
   /* Accumulate memory used by particle buffers */
-  for(int i=0; i<swift_type_count; i+=1)
-    memuse_local[0] += particle_buffer_memory_use(props->buffer+i);
+  for(int i=0; i<swift_type_count; i+=1) {
+    if(props->use_type[i])
+      memuse_local[0] += particle_buffer_memory_use(props->buffer+i);
+  }
 
   /* Accumulate memory used by map update buffers and pixel data */
   const int nr_maps = props->nr_maps;
