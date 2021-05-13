@@ -96,6 +96,11 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
     f_th = (f_E_max - (f_E_max - f_E_min) / (1. + Z_term)) *
            (delta_E_n - (delta_E_n - 1.) / (1. + n_term));
 
+  } else if (props->SNII_energy_scaling == SNII_scaling_independent_transposed) {
+    const double delta_E_n = props->SNII_delta_E_n;
+    f_th = (delta_E_n - (delta_E_n - f_E_min) / (1. + n_term)) *
+           (f_E_max - (f_E_max - 1.) / (1. + Z_term));
+
   } else if (props->SNII_energy_scaling == SNII_scaling_separable) {
     /* Separable scaling between fixed fE_min and fE_max */
     f_th = f_E_max - (f_E_max - f_E_min) / ((1. + Z_term) * (1. + n_term));
@@ -532,6 +537,10 @@ void feedback_props_init(struct feedback_props* fp,
     fp->SNII_energy_scaling = SNII_scaling_independent;
     fp->SNII_delta_E_n = parser_get_param_double(
         params, "EAGLEFeedback:SNII_energy_fraction_delta_E_n");
+  } else if (strcmp(energy_fraction, "IndependentTranspose") == 0) {
+    fp->SNII_energy_scaling = SNII_scaling_independent_transposed;
+    fp->SNII_delta_E_n = parser_get_param_double(
+        params, "EAGLEFeedback:SNII_energy_fraction_delta_E_n");
   } else {
     error(
         "Invalid value of "
@@ -585,11 +594,6 @@ void feedback_props_init(struct feedback_props* fp,
     fp->n_Z = 1.0 / (M_LN10 *
                      parser_get_param_double(
                          params, "EAGLEFeedback:SNII_energy_fraction_sigma_Z"));
-  }
-
-  /* Check that it makes sense. */
-  if (fp->f_E_max < fp->f_E_min) {
-    error("Can't have the maximal energy fraction smaller than the minimal!");
   }
 
   /* Are we using the stars' birth properties or at feedback time? */

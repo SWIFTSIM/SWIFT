@@ -42,7 +42,8 @@ enum SNII_feedback_models {
 enum SNII_energy_scalings {
   SNII_scaling_EAGLE,      /*< Energy scaling as in EAGLE-Ref */
   SNII_scaling_separable,  /*< Separable Z and n dependence */
-  SNII_scaling_independent /*< Independent Z and n dependence */
+  SNII_scaling_independent /*< Independent Z and n dependence, with Z major */
+  SNII_scaling_independent_transposed /*< Independent Z and n, with n major */
 };
 
 /**
