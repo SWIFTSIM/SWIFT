@@ -426,7 +426,7 @@ double cooling_get_ycompton(const struct phys_const *phys_const,
   /* Convert back to internal units */
   const double n_e = n_e_cgs / cooling->number_density_to_cgs;
 
-  return cooling->y_compton_factor * exp10(log10_T) * m * n_e;
+  return cooling->y_compton_factor * exp10(log10_T) * m * n_e / rho_phys;
 }
 
 /**
