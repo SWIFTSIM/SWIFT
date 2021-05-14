@@ -18,13 +18,13 @@ r_cut_ratio = 4.5
 params = {
     "axes.labelsize": 9,
     "axes.titlesize": 10,
-    "font.size": 10,
+    "font.size": 8,
+    "font.family": "STIXGeneral",
+    "mathtext.fontset": "stix",
     "legend.fontsize": 10,
     "xtick.labelsize": 7,
     "ytick.labelsize": 7,
     "figure.figsize": (3.15, 3.15),
-    "text.latex.unicode": True,
-    "text.usetex": True,
 }
 rcParams.update(params)
 
