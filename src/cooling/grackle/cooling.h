@@ -152,6 +152,13 @@ float cooling_get_temperature(
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, const struct xpart* restrict xp);
+
+INLINE static double cooling_get_electron_pressure(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,
+    const struct xpart* xp);
+
 float cooling_timestep(const struct cooling_function_data* restrict cooling,
                        const struct phys_const* restrict phys_const,
                        const struct cosmology* restrict cosmo,

@@ -270,6 +270,95 @@ float cooling_get_temperature(const struct phys_const *phys_const,
 }
 
 /**
+ * @brief Compute the electron pressure of a #part based on the cooling
+ * function.
+ *
+ * Returns the total electron pressure of the particle, P_e * V, in code units.
+ * Note that particles above a density threshold of 0.1 cm^(-3) are ignored and
+ * will return an electron pressure of zero.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double cooling_get_electron_pressure(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling->Redshifts == NULL)
+    error(
+        "Cooling function has not been initialised. Did you forget the "
+        "--temperature runtime flag?");
+#endif
+
+  /* Get quantities in physical frame */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the Hydrogen mass fraction */
+  float const *metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get density in Hydrogen number density */
+  const double n_H = rho_phys * XH / phys_const->const_proton_mass;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+
+  /* Do not include high-density particles */
+  if (n_H_cgs > 0.1) return 0.;
+
+  /* Get this particle's metallicity ratio to solar.
+   *
+   * Note that we do not need the individual element's ratios that
+   * the function also computes. */
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
+
+  /* Convert to CGS */
+  const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+  const double log_u_cgs = log10(u_cgs);
+
+  /* Compute hydrogen number density, metallicity and redshift indices and
+   * offsets */
+  float d_red, d_met, d_n_H, d_U;
+  int red_index, met_index, n_H_index, U_index;
+
+  get_index_1d(cooling->Redshifts, colibre_cooling_N_redshifts, cosmo->z,
+               &red_index, &d_red);
+  get_index_1d(cooling->Metallicity, colibre_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
+  get_index_1d(cooling->nH, colibre_cooling_N_density, log10(n_H_cgs),
+               &n_H_index, &d_n_H);
+  get_index_1d(cooling->Therm, colibre_cooling_N_internalenergy, log_u_cgs,
+               &U_index, &d_U);
+
+  /* n_e / n_H */
+  const double electron_fraction = interpolation4d_plus_summation(
+      cooling->table.Uelectron_fraction, abundance_ratio, element_H,
+      colibre_cooling_N_electrontypes - 4, red_index, U_index, met_index,
+      n_H_index, d_red, d_U, d_met, d_n_H, colibre_cooling_N_redshifts,
+      colibre_cooling_N_internalenergy, colibre_cooling_N_metallicity,
+      colibre_cooling_N_density, colibre_cooling_N_electrontypes);
+
+  const double num_H = p->mass * XH / phys_const->const_proton_mass;
+
+  /* Interpolate the temperature */
+  const double log_10_T =
+      colibre_convert_u_to_temp(log_u_cgs, cosmo->z, n_H_index, d_n_H,
+                                met_index, d_met, red_index, d_red, cooling);
+
+  return num_H * electron_fraction * phys_const->const_boltzmann_k *
+         exp10(log_10_T);
+}
+
+/**
  * @brief Bisection integration scheme
  *
  * @param u_ini_cgs Internal energy at beginning of hydro step in CGS.

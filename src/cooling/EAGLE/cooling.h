@@ -56,6 +56,12 @@ float cooling_timestep(const struct cooling_function_data *restrict cooling,
                        const struct part *restrict p,
                        const struct xpart *restrict xp);
 
+double cooling_get_electron_pressure(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
+
 void cooling_first_init_part(
     const struct phys_const *restrict phys_const,
     const struct unit_system *restrict us,
