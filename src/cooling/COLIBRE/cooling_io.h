@@ -142,6 +142,15 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
   *ret = hydro_get_mass(p) * X_H * H2_frac * 2.f;
 }
 
+INLINE static void convert_part_y_compton(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, double* ret) {
+
+  *ret = cooling_get_ycompton(e->physical_constants, e->hydro_properties,
+                              e->internal_units, e->cosmology, e->cooling_func,
+                              p, xp);
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -204,7 +213,13 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "floor, by extrapolating to the equilibrium curve assuming constant "
       "pressure.");
 
-  return 6;
+  list[6] = io_make_output_field_convert_part(
+      "ComptonYParameters", DOUBLE, 1, UNIT_CONV_AREA, 0.f, parts, xparts,
+      convert_part_y_compton,
+      "Compton y parameters in the physical frame computed based on the "
+      "cooling tables.");
+
+  return 7;
 }
 
 #endif /* SWIFT_COOLING_COLIBRE_IO_H */
