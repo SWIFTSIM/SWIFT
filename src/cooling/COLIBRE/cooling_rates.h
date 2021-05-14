@@ -465,7 +465,6 @@ INLINE static float colibre_meanparticlemass_temperature(
  * @param log_u_cgs Log base 10 of internal energy in cgs [erg g-1]
  * @param redshift Current redshift
  * @param n_H_cgs Hydrogen number density in cgs
- * @param ZZsol Metallicity relative to the solar value from the tables
  * @param abundance_ratio Abundance ratio for each element x relative to solar
  * @param n_H_index Index along the Hydrogen number density dimension
  * @param d_n_H Offset between Hydrogen density and table[n_H_index]
@@ -479,7 +478,6 @@ INLINE static float colibre_meanparticlemass_temperature(
  */
 INLINE static float colibre_electron_density(
     const double log_u_cgs, const double redshift, const double n_H_cgs,
-    const float ZZsol,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const int n_H_index, const float d_n_H, const int met_index,
     const float d_met, const int red_index, const float d_red,
