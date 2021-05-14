@@ -372,7 +372,7 @@ double cooling_get_electron_pressure(
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
  */
-double coolin_get_ycompton(const struct phys_const *phys_const,
+double cooling_get_ycompton(const struct phys_const *phys_const,
                            const struct hydro_props *hydro_props,
                            const struct unit_system *us,
                            const struct cosmology *cosmo,
