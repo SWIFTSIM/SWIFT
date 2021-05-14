@@ -30,11 +30,12 @@ import math
 params = {
     "axes.labelsize": 9,
     "axes.titlesize": 10,
-    "font.size": 10,
+    "font.size": 8,
+    "font.family": "STIXGeneral",
+    "mathtext.fontset": "stix",
     "legend.fontsize": 10,
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
     "figure.subplot.left": 0.12,
     "figure.subplot.right": 0.99,
@@ -44,10 +45,8 @@ params = {
     "figure.subplot.hspace": 0.0,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 # Parameters
 r_min = 0.0

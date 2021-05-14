@@ -31,13 +31,14 @@ import math
 params = {
     "axes.labelsize": 9,
     "axes.titlesize": 10,
-    "font.size": 10,
+    "font.size": 8,
+    "font.family": "STIXGeneral",
+    "mathtext.fontset": "stix",
     "legend.fontsize": 10,
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
-    "figure.subplot.left": 0.14,
+    "figure.subplot.left": 0.15,
     "figure.subplot.right": 0.99,
     "figure.subplot.bottom": 0.1,
     "figure.subplot.top": 0.99,
@@ -45,10 +46,8 @@ params = {
     "figure.subplot.hspace": 0.0,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 colors = ["#4477AA", "#CC6677", "#DDCC77", "#117733"]
 
 
@@ -202,13 +201,13 @@ plot(r_rs, 1.0 - corr_short_swift, "-", lw=1.4, color=colors[3])
 plot(r_rs, 1.0 - corr_short_swift2, ":", lw=1.4, color=colors[3])
 plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 plot([1.0, 1.0], [-1e5, 1e5], "k-.", alpha=0.5, lw=0.5)
-plot([-1, -1], [-1, -1], "k-", lw=1.2, label="${\\textrm{Exact}~e^x}$")
+plot([-1, -1], [-1, -1], "k-", lw=1.2, label="${\mathrm{Exact}~e^x}$")
 plot(
     [-1, -1],
     [-1, -1],
     "k:",
     lw=1.2,
-    label="${6^\\textrm{th}~\\textrm{order~series}~e^x}$",
+    label="${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
 )
 
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
@@ -269,19 +268,19 @@ plot(r_rs, eta_short_swift, "-", lw=1.4, color=colors[3])
 plot(r_rs, eta_short_swift2, ":", lw=1.4, color=colors[3])
 plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 plot([1.0, 1.0], [-1e5, 1e5], "k-.", alpha=0.5, lw=0.5)
-plot([-1, -1], [-1, -1], "k-", lw=1.2, label="${\\textrm{Exact}~e^x}$")
+plot([-1, -1], [-1, -1], "k-", lw=1.2, label="${\\rm{Exact}~e^x}$")
 plot(
     [-1, -1],
     [-1, -1],
     "k:",
     lw=1.2,
-    label="${6^\\textrm{th}~\\textrm{order~series}~e^x}$",
+    label="${6^\mathrm{th}~\mathrm{order~series}~e^x}$",
 )
 
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
 ylim(3e-3, 1.5)
-ylabel("$|\\mathbf{f}_s(r)|\\times r^2$", labelpad=-2)
+ylabel("$|\mathbf{f}_s(r)|\\times r^2$", labelpad=-2)
 
 legend(
     loc="center left", frameon=False, handletextpad=0.3, handlelength=1.6, fontsize=7
@@ -299,7 +298,7 @@ plot(r_rs, np.ones(np.size(r)) * 0.01, "k-.", alpha=0.5, lw=0.5)
 
 xlim(1.1 * r_min / r_s, 0.9 * r_max / r_s)
 ylim(3e-3, 1.5)
-ylabel("$1 - |\\mathbf{f}_s(r)|\\times r^2$", labelpad=-3)
+ylabel("$1 - |\mathbf{f}_s(r)|\\times r^2$", labelpad=-3)
 yticks([1e-2, 1e-1, 1], ["$0.01$", "$0.1$", "$1$"])
 xlabel("$r / r_s$", labelpad=1)
 
