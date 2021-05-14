@@ -362,7 +362,7 @@ double cooling_get_electron_pressure(
  * @brief Compute the y-Compton contribution of a #part based on the cooling
  * function.
  *
- * This is the integrand of eq. (1) of McCarthy et al. (2017).
+ * This is eq. (2) of McCarthy et al. (2017).
  *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
