@@ -359,6 +359,77 @@ double cooling_get_electron_pressure(
 }
 
 /**
+ * @brief Compute the y-Compton contribution of a #part based on the cooling
+ * function.
+ *
+ * This is the integrand of eq. (1) of McCarthy et al. (2017).
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double coolin_get_ycompton(const struct phys_const *phys_const,
+                           const struct hydro_props *hydro_props,
+                           const struct unit_system *us,
+                           const struct cosmology *cosmo,
+                           const struct cooling_function_data *cooling,
+                           const struct part *p, const struct xpart *xp) {
+
+  /* Get quantities in physical frame */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+  const double m = hydro_get_mass(p);
+
+  /* Get the Hydrogen mass fraction */
+  float const *metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get this particle's metallicity ratio to solar. */
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
+
+  /* Convert to CGS */
+  const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+  const double log10_u_cgs = log10(u_cgs);
+
+  /* Get density in Hydrogen number density */
+  const double n_H = rho_phys * XH / phys_const->const_proton_mass;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+
+  /* compute hydrogen number density, metallicity and redshift indices and
+   * offsets  */
+  float d_red, d_met, d_n_H;
+  int red_index, met_index, n_H_index;
+
+  get_index_1d(cooling->Redshifts, colibre_cooling_N_redshifts, cosmo->z,
+               &red_index, &d_red);
+  get_index_1d(cooling->Metallicity, colibre_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
+  get_index_1d(cooling->nH, colibre_cooling_N_density, log10(n_H_cgs),
+               &n_H_index, &d_n_H);
+
+  /* Compute the log10 of the temperature by interpolating the table */
+  const double log10_T =
+      colibre_convert_u_to_temp(log10_u_cgs, cosmo->z, n_H_index, d_n_H,
+                                met_index, d_met, red_index, d_red, cooling);
+
+  /* Compute the electron density in CGS by interpolating the table */
+  const double n_e_cgs = colibre_electron_density(
+      log10_u_cgs, cosmo->z, n_H_cgs, abundance_ratio, n_H_index, d_n_H,
+      met_index, d_met, red_index, d_red, cooling);
+
+  /* Convert back to internal units */
+  const double n_e = n_e_cgs / cooling->number_density_to_cgs;
+
+  return cooling->y_compton_factor * exp10(log10_T) * m * n_e;
+}
+
+/**
  * @brief Bisection integration scheme
  *
  * @param u_ini_cgs Internal energy at beginning of hydro step in CGS.
@@ -1395,6 +1466,12 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->compton_rate_cgs = compton_coefficient_cgs * cooling->T_CMB_0 *
                               cooling->T_CMB_0 * cooling->T_CMB_0 *
                               cooling->T_CMB_0;
+
+  /* Pre-factor for the Compton y terms */
+  cooling->y_compton_factor =
+      phys_const->const_thomson_cross_section * phys_const->const_boltzmann_k /
+      (phys_const->const_speed_light_c * phys_const->const_speed_light_c *
+       phys_const->const_electron_mass);
 
   /* Threshold in dt / t_cool above which we
    * are in the rapid cooling regime. If negative,

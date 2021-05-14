@@ -186,6 +186,9 @@ struct cooling_function_data {
   /*! Compton rate in cgs units */
   double compton_rate_cgs;
 
+  /*! sigma_T * k_B / (m_e * c^2) in internal units */
+  double y_compton_factor;
+
   /*! Minimal temperature allowed for the gas particles */
   double Tmin;
 
