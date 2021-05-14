@@ -159,6 +159,13 @@ INLINE static double cooling_get_electron_pressure(
     const struct cooling_function_data* cooling, const struct part* p,
     const struct xpart* xp);
 
+double coolin_get_ycompton(const struct phys_const* phys_const,
+                           const struct hydro_props* hydro_props,
+                           const struct unit_system* us,
+                           const struct cosmology* cosmo,
+                           const struct cooling_function_data* cooling,
+                           const struct part* p, const struct xpart* xp);
+
 float cooling_timestep(const struct cooling_function_data* restrict cooling,
                        const struct phys_const* restrict phys_const,
                        const struct cosmology* restrict cosmo,
