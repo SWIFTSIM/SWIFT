@@ -29,7 +29,10 @@ If perturbed initial conditions are not needed, the initial momenta can
 be generated internally by specifying ``Neutrino:generate_ics`` in the
 parameter file. This will assign ``PartType6`` particles to each
 neutrino mass specified in the cosmology and generate new velocities
-based on the homogeneous (unperturbed) Fermi-Dirac distribution.
+based on the homogeneous (unperturbed) Fermi-Dirac distribution. In
+this case, placeholder neutrino particles should be provided in the
+initial conditions with arbitrary masses and velocities, distributed
+uniformly in the box.
 
 Relativistic Drift
 ------------------
