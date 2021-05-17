@@ -425,8 +425,10 @@ void lightcone_init(struct lightcone_props *props,
   char **map_names;
   parser_get_param_string_array(params, YML_NAME("map_names"), &props->nr_maps, &map_names);
   props->map_type = malloc(props->nr_maps*sizeof(struct lightcone_map_type));
-  for(int i=0; i<props->nr_maps; i+=1)
-    strncpy(props->map_type[i].name, map_names[i], PARSER_MAX_LINE_SIZE);
+  for(int i=0; i<props->nr_maps; i+=1) {
+    int len = snprintf(props->map_type[i].name, PARSER_MAX_LINE_SIZE, "%s", map_names[i]);
+    if(len >= PARSER_MAX_LINE_SIZE || len < 0) error("Map type name truncated or encoding error");
+  }
   parser_free_param_string_array(props->nr_maps, map_names);
 
   /* Read in the shell radii for this lightcone */

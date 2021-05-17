@@ -33,7 +33,10 @@ void particle_buffer_init(struct particle_buffer *buffer, size_t element_size,
   buffer->first_block = NULL;
   buffer->last_block = NULL;
   lock_init(&buffer->lock);
-  strncpy(buffer->name, name, PARTICLE_BUFFER_NAME_LENGTH);
+
+  int len = snprintf(buffer->name, PARTICLE_BUFFER_NAME_LENGTH, "%s", name);
+  if(len >= PARTICLE_BUFFER_NAME_LENGTH || len < 0)
+    error("Buffer name truncated or encoding error");
 }
 
 
