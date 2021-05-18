@@ -67,6 +67,7 @@ SPH:
 Stars:
   resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
   h_tolerance:           7e-3
+  luminosity_filename:   ./photometry
 
 # Parameters related to the initial conditions
 InitialConditions:

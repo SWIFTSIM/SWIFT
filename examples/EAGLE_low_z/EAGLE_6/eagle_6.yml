@@ -80,6 +80,7 @@ Stars:
   h_tolerance:           7e-3
   overwrite_birth_time:  1
   birth_time:            0.33333  # Pretend all the stars were born at z = 2
+  luminosity_filename:   ./photometry
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
