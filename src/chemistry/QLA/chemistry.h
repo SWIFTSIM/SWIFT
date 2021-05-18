@@ -372,7 +372,7 @@ chemistry_get_metal_mass_fraction_for_star_formation(const struct part* p) {
 }
 
 /**
- * @brief Returns the total metallicity (metal mass fraction) of the
+ * @brief Returns the total metal mass of the
  * gas particle to be used in the stats related routines.
  *
  * No metallicity treatment here -> return 0.
@@ -386,7 +386,7 @@ chemistry_get_total_metal_mass_for_stats(const struct part* restrict p) {
 }
 
 /**
- * @brief Returns the total metallicity (metal mass fraction) of the
+ * @brief Returns the total metal mass of the
  * star particle to be used in the stats related routines.
  *
  * No metallicity treatment here -> return 0.
@@ -400,7 +400,7 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
 }
 
 /**
- * @brief Returns the total metallicity (metal mass fraction) of the
+ * @brief Returns the total metal mass of the
  * black hole particle to be used in the stats related routines.
  *
  * No metallicity treatment here -> return 0.
@@ -409,6 +409,21 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * star particle to be used in the luminosity calculations.
+ *
+ * No metallicity treatment here -> return 0.
+ *
+ * @param sp Pointer to the star particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_star_total_metal_mass_fraction_for_luminosity(
+    const struct spart* restrict sp) {
 
   return 0.f;
 }
