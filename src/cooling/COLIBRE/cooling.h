@@ -75,6 +75,14 @@ float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct cooling_function_data *cooling,
                               const struct part *p, const struct xpart *xp);
 
+float cooling_get_electron_density(const struct phys_const *phys_const,
+                                   const struct hydro_props *hydro_props,
+                                   const struct unit_system *us,
+                                   const struct cosmology *cosmo,
+                                   const struct cooling_function_data *cooling,
+                                   const struct part *p,
+                                   const struct xpart *xp);
+
 double cooling_get_electron_pressure(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,

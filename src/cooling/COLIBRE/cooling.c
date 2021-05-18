@@ -270,6 +270,72 @@ float cooling_get_temperature(const struct phys_const *phys_const,
 }
 
 /**
+ * @brief Compute the electron number density of a #part based on the cooling
+ * function.
+ *
+ * The electron density returned is in physical internal units.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+float cooling_get_electron_density(const struct phys_const *phys_const,
+                                   const struct hydro_props *hydro_props,
+                                   const struct unit_system *us,
+                                   const struct cosmology *cosmo,
+                                   const struct cooling_function_data *cooling,
+                                   const struct part *p,
+                                   const struct xpart *xp) {
+
+  /* Get quantities in physical frame */
+  const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Get the Hydrogen mass fraction */
+  float const *metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+
+  /* Get this particle's metallicity ratio to solar. */
+  float abundance_ratio[colibre_cooling_N_elementtypes];
+  const float logZZsol = abundance_ratio_to_solar(p, cooling, abundance_ratio);
+
+  /* Convert to CGS */
+  const double u_cgs = u_phys * cooling->internal_energy_to_cgs;
+  const double log10_u_cgs = log10(u_cgs);
+
+  /* Get density in Hydrogen number density */
+  const double n_H = rho_phys * XH / phys_const->const_proton_mass;
+  const double n_H_cgs = n_H * cooling->number_density_to_cgs;
+
+  /* compute hydrogen number density, metallicity and redshift indices and
+   * offsets  */
+  float d_red, d_met, d_n_H;
+  int red_index, met_index, n_H_index;
+
+  get_index_1d(cooling->Redshifts, colibre_cooling_N_redshifts, cosmo->z,
+               &red_index, &d_red);
+  get_index_1d(cooling->Metallicity, colibre_cooling_N_metallicity, logZZsol,
+               &met_index, &d_met);
+  get_index_1d(cooling->nH, colibre_cooling_N_density, log10(n_H_cgs),
+               &n_H_index, &d_n_H);
+
+  /* Compute the electron density in CGS by interpolating the table */
+  const double n_e_cgs = colibre_electron_density(
+      log10_u_cgs, cosmo->z, n_H_cgs, abundance_ratio, n_H_index, d_n_H,
+      met_index, d_met, red_index, d_red, cooling);
+
+  /* Convert back to internal units */
+  const double n_e = n_e_cgs / cooling->number_density_to_cgs;
+
+  return n_e;
+}
+
+/**
  * @brief Compute the electron pressure of a #part based on the cooling
  * function.
  *
