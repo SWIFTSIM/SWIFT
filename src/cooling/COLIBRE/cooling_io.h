@@ -142,6 +142,15 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
   *ret = hydro_get_mass(p) * X_H * H2_frac * 2.f;
 }
 
+INLINE static void convert_part_e_density(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+
+  *ret = cooling_get_electron_density(e->physical_constants,
+                                      e->hydro_properties, e->internal_units,
+                                      e->cosmology, e->cooling_func, p, xp);
+}
+
 INLINE static void convert_part_y_compton(const struct engine* e,
                                           const struct part* p,
                                           const struct xpart* xp, double* ret) {
@@ -214,12 +223,18 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "pressure.");
 
   list[6] = io_make_output_field_convert_part(
+      "ElectronNumberDensities", FLOAT, 1, UNIT_CONV_NUMBER_DENSITY, 0.f, parts,
+      xparts, convert_part_e_density,
+      "Electron number densities in the physical frame computed based on the "
+      "cooling tables.");
+
+  list[7] = io_make_output_field_convert_part(
       "ComptonYParameters", DOUBLE, 1, UNIT_CONV_AREA, 0.f, parts, xparts,
       convert_part_y_compton,
       "Compton y parameters in the physical frame computed based on the "
       "cooling tables.");
 
-  return 7;
+  return 8;
 }
 
 #endif /* SWIFT_COOLING_COLIBRE_IO_H */
