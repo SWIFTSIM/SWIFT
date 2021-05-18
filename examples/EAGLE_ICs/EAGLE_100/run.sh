@@ -7,7 +7,7 @@ then
     ./getIC.sh
 fi
 
-# Grab the cooling and yield tables if they are not present.
+# Grab the cooling, yield, and photometry tables if they are not present.
 if [ ! -e yieldtables ]
 then
     echo "Fetching EAGLE yield tables..."
@@ -18,6 +18,12 @@ if [ ! -e coolingtables ]
 then
     echo "Fetching EAGLE cooling tables..."
     ../getEagleCoolingTable.sh
+fi
+
+if [ ! -e photometry ]
+then
+    echo "Fetching EAGLE photometry tables..."
+    ../getEaglePhotometryTable.sh
 fi
 
 # The following run-time options are broken down by line as:
