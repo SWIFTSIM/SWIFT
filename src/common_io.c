@@ -544,7 +544,6 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
   tracers_write_flavour(h_grp);
   feedback_write_flavour(e->feedback_props, h_grp);
   rt_write_flavour(h_grp, e->rt_props);
-  H5Gclose(h_grp_columns);
   H5Gclose(h_grp);
 
   /* Print the gravity parameters */
@@ -561,9 +560,11 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
     h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating stars group");
-    stars_props_print_snapshot(h_grp, e->stars_properties);
+    stars_props_print_snapshot(h_grp, h_grp_columns, e->stars_properties);
     H5Gclose(h_grp);
   }
+
+  H5Gclose(h_grp_columns);
 
   /* Print the cosmological model  */
   h_grp =
