@@ -126,6 +126,18 @@ enum engine_step_properties {
  */
 extern int engine_rank;
 
+/* NUMA node of the main thread? */
+extern int engine_numa_node;
+
+/* The ids of the runners in pinned order. */
+extern int *engine_cpuids;
+
+/* The ids of the cpus in affinity mask order. */
+extern int *engine_cpumask;
+
+/* The ids of the cpus in main thread NUMA node. */
+extern int *engine_mainmask;
+
 /**
  * @brief The current step as a global variable (for messages).
  */
@@ -645,6 +657,7 @@ void engine_split_gas_particles(struct engine *e);
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);
 #endif
+void engine_numa_policies(int rank, int verbose);
 
 /* Struct dump/restore support. */
 void engine_struct_dump(struct engine *e, FILE *stream);

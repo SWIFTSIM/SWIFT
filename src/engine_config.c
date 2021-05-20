@@ -28,6 +28,7 @@
 
 #ifdef HAVE_LIBNUMA
 #include <numa.h>
+#include <numaif.h>
 #endif
 
 /* This object's header. */
@@ -47,6 +48,18 @@
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
 extern int engine_max_parts_per_cooling;
+
+/* NUMA node of the main thread? */
+int engine_numa_node = -1;
+
+/* The ids of the runners in pinned order. */
+int *engine_cpuids = NULL;
+
+/* The ids of the cpus in affinity mask order. */
+int *engine_cpumask = NULL;
+
+/* The ids of the cpus in main thread NUMA node. */
+int *engine_mainmask = NULL;
 
 /* Particle cache size. */
 #define CACHE_SIZE 512
@@ -261,23 +274,46 @@ void engine_config(int restart, int fof, struct engine *e,
     free(buf);
   }
 
-  int *cpuid = NULL;
+  /* Find the cores that our affinity mask allows. Could be used elsewhere, so
+   * we always do this. */
+  engine_cpumask = (int *)malloc(nr_affinity_cores * sizeof(int));
+  engine_cpuids = (int *)malloc(nr_affinity_cores * sizeof(int));
+
+  int skip = 0;
   cpu_set_t cpuset;
+  for (int k = 0; k < nr_affinity_cores; k++) {
+    int c;
+    for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
+      ;
+    engine_cpuids[k] = c;
+    engine_cpumask[k] = c;
+    skip = c + 1;
+  }
 
   if (with_aff) {
 
-    cpuid = (int *)malloc(nr_affinity_cores * sizeof(int));
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+    /* Keep track of the NUMA node of the main thread. */
+    engine_numa_node = numa_node_of_cpu(sched_getcpu());
 
-    int skip = 0;
+    /* Just the cores of the main thread NUMA region (which will have most of
+     * the memory). */
+    engine_mainmask = (int *)malloc(nr_affinity_cores * sizeof(int));
+    skip = 0;
+    int maxcpus = numa_num_possible_cpus();
     for (int k = 0; k < nr_affinity_cores; k++) {
       int c;
-      for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
-        ;
-      cpuid[k] = c;
+      for (c = skip; c < maxcpus; c++) {
+        if (numa_node_of_cpu(c) == engine_numa_node) {
+          message("numa_node_of_cpu[%d] == %d", numa_node_of_cpu(c), engine_numa_node);
+          break;
+        }
+      }
+      engine_mainmask[k] = c;
+      message("engine_mainmask[%d] = %d", k, c);
       skip = c + 1;
     }
 
-#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
     if ((e->policy & engine_policy_cputight) != engine_policy_cputight) {
 
       if (numa_available() >= 0) {
@@ -287,7 +323,7 @@ void engine_config(int restart, int fof, struct engine *e,
         int *nodes = (int *)malloc(nr_affinity_cores * sizeof(int));
         int nnodes = 0;
         for (int i = 0; i < nr_affinity_cores; i++) {
-          nodes[i] = numa_node_of_cpu(cpuid[i]);
+          nodes[i] = numa_node_of_cpu(engine_cpuids[i]);
           if (nodes[i] > nnodes) nnodes = nodes[i];
         }
         nnodes += 1;
@@ -315,9 +351,9 @@ void engine_config(int restart, int fof, struct engine *e,
           done = 1;
           for (int i = 1; i < nr_affinity_cores; i++) {
             if (core_indices[i] < core_indices[i - 1]) {
-              int t = cpuid[i - 1];
-              cpuid[i - 1] = cpuid[i];
-              cpuid[i] = t;
+              int t = engine_cpuids[i - 1];
+              engine_cpuids[i - 1] = engine_cpuids[i];
+              engine_cpuids[i] = t;
 
               t = core_indices[i - 1];
               core_indices[i - 1] = core_indices[i];
@@ -332,6 +368,7 @@ void engine_config(int restart, int fof, struct engine *e,
         free(core_indices);
       }
     }
+
 #endif
   } else {
     if (nodeID == 0) message("no processor affinity used");
@@ -353,7 +390,7 @@ void engine_config(int restart, int fof, struct engine *e,
 #else
     printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
 #endif
-    for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
+    for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", engine_cpuids[i]);
     printf("].\n");
 #endif
   }
@@ -846,16 +883,16 @@ void engine_config(int restart, int fof, struct engine *e,
 
       /* Set a reasonable queue ID. */
       int coreid = k % nr_affinity_cores;
-      e->runners[k].cpuid = cpuid[coreid];
+      e->runners[k].cpuid = engine_cpuids[coreid];
 
       if (nr_queues < e->nr_threads)
-        e->runners[k].qid = cpuid[coreid] * nr_queues / nr_affinity_cores;
+        e->runners[k].qid = engine_cpuids[coreid] * nr_queues / nr_affinity_cores;
       else
         e->runners[k].qid = k;
 
       /* Set the cpu mask to zero | e->id. */
       CPU_ZERO(&cpuset);
-      CPU_SET(cpuid[coreid], &cpuset);
+      CPU_SET(engine_cpuids[coreid], &cpuset);
 
       /* Apply this mask to the runner's pthread. */
       if (pthread_setaffinity_np(e->runners[k].thread, sizeof(cpu_set_t),
@@ -904,15 +941,7 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
 #endif
 
-    /* Free the affinity stuff */
-#if defined(HAVE_SETAFFINITY)
-  if (with_aff) {
-    free(cpuid);
-  }
-#endif
-
 #ifdef SWIFT_DUMPER_THREAD
-
   /* Start the dumper thread.*/
   engine_dumper_init(e);
 #endif

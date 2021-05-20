@@ -45,6 +45,7 @@
 
 #ifdef HAVE_LIBNUMA
 #include <numa.h>
+#include <numaif.h>
 #endif
 
 /* This object's header. */
@@ -2728,6 +2729,57 @@ void engine_unpin(void) {
 #endif
 }
 
+/** 
+ * @brief Define a NUMA memory placement policy of interleave across the
+ * available NUMA nodes rather than having memory in the local node, which
+ * means we have a lot of memory associated with the main thread NUMA node, so
+ * we don't make good use of the overall memory bandwidth between nodes.
+ *
+ * @param rank the MPI rank, if relevant.
+ * @param verbose whether to make a report about the selected NUMA nodes.
+ */
+void engine_numa_policies(int rank, int verbose) {
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+
+  /* Get our affinity mask (on entry), that defines what NUMA nodes we should
+   * use. */
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+
+  /* Now convert the affinity mask into NUMA nodemask. */
+  unsigned long nodemask = 0L;
+  int nnuma = numa_num_configured_nodes();
+  int usednodes[256];
+  for (int i = 0; i < 256; i++) usednodes[i] = -1;
+  for (unsigned long i = 0; i < CPU_SETSIZE; i++) {
+
+    /* If in the affinity mask we set NUMA node of CPU bit. */
+    if (CPU_ISSET(i, entry_affinity)) {
+      int numanode = numa_node_of_cpu(i);
+      nodemask |= (1<<numanode);
+      usednodes[numanode] = numanode;
+    }
+  }
+
+  char report[1024];
+  int len = sprintf(report, "NUMA nodes in use: [");
+  for (int i = 0; i < nnuma; i++) {
+    if (usednodes[i] >= 0) {
+      len += sprintf(&report[len], "%d ", usednodes[i]);
+    } else {
+      len += sprintf(&report[len], ". ");
+    }
+  }
+  sprintf(&report[len], "]");
+  printf("[%04d] %s\n", rank, report);
+  fflush(stdout);
+
+  /* And set. */
+  set_mempolicy(MPOL_INTERLEAVE, &nodemask, nnuma);
+
+#endif
+}
+
 /**
  * @brief init an engine struct with the necessary properties for the
  *        simulation.
@@ -3318,6 +3370,9 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 #endif
     free(e->s);
   }
+  if (engine_cpuids != NULL) free(engine_cpuids);
+  if (engine_cpumask != NULL) free(engine_cpumask);
+
 }
 
 /**

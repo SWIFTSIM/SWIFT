@@ -36,6 +36,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "clocks.h"
+#include "engine.h"
 #include "error.h"
 #include "minmax.h"
 
@@ -139,8 +140,7 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
     /* Compute the desired chunk size. */
     ptrdiff_t chunk_size;
     if (tp->map_data_chunk == threadpool_uniform_chunk_size) {
-      chunk_size = ((tid + 1) * tp->map_data_size / tp->num_threads) -
-                   (tid * tp->map_data_size / tp->num_threads);
+      chunk_size = tp->map_data_size / tp->num_threads;
     } else {
       chunk_size =
           (tp->map_data_size - tp->map_data_count) / (2 * tp->num_threads);
@@ -239,10 +239,26 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
     error("Failed to allocate thread array.");
   }
 
+  /* Number of core available in the entry mask. */
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+  const int nr_affinity_cores = CPU_COUNT(entry_affinity);
+
   /* Create and start the threads. */
   for (int k = 0; k < num_threads - 1; k++) {
     if (pthread_create(&tp->threads[k], NULL, &threadpool_runner, tp) != 0)
       error("Failed to create threadpool runner thread.");
+
+    if (engine_cpumask != NULL) {
+      /* Use affinities as allowed by the affinity mask. */
+      cpu_set_t cpuset;
+      CPU_ZERO(&cpuset);
+      int j = (k % nr_affinity_cores);
+      //message("cpumask[%d/%d] = %d", j, k, engine_cpumask[j]);
+      CPU_SET(engine_cpumask[j], &cpuset);
+
+      int err = pthread_setaffinity_np(tp->threads[k], sizeof(cpuset), &cpuset);
+      if (err != 0) message("failed to set threadpool affinity");
+    }
   }
 
   /* Wait for all the threads to be up and running. */

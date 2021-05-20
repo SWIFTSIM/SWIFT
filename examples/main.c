@@ -615,6 +615,10 @@ int main(int argc, char *argv[]) {
   if (with_aff &&
       ((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
     engine_pin();
+
+  /* Also set the NUMA memory policy. */
+  engine_numa_policies(myrank, verbose);
+
 #endif
 
   /* Genesis 1.1: And then, there was time ! */
