@@ -788,6 +788,12 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
         hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
         if(file_id < 0)error("Unable to create file %s", fname);
 
+        /* Write the system of Units used in the spashot */
+        io_write_unit_system(file_id, snapshot_units, "Units");
+
+        /* Write the system of Units used internally */
+        io_write_unit_system(file_id, internal_units, "InternalCodeUnits");
+
         /* Write the lightcone maps for this shell */
         for(int map_nr=0; map_nr<nr_maps; map_nr+=1)
           lightcone_map_write(&(props->shell[shell_nr].map[map_nr]), file_id, props->map_type[map_nr].name,
