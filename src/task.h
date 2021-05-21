@@ -243,6 +243,9 @@ struct task {
   /* The main task with memory offsets, if a sub one. */
   struct task *main_task;
 
+  /* First exchanges need to send the full particles. */
+  int sendfull;
+
 #endif
 
   /*! Rank of a task in the order */

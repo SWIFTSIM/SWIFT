@@ -34,4 +34,16 @@
 #error "Invalid choice of gravity variant"
 #endif
 
+/* What we send between nodes. */
+struct reduced_gpart {
+  double x[3];
+  float mass;
+#ifdef SWIFT_DEBUG_CHECKS
+  integertime_t ti_drift;
+  int id;
+#endif
+};
+
+
+
 #endif /* SWIFT_GRAVITY_IO_H */

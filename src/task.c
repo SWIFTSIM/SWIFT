@@ -678,19 +678,27 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
         volatile scheduler_rdma_blocktype *dataptr =
           infinity_check_ready(s->recv_handle, ci->nodeID, t->win_offset);
         if (dataptr != NULL) {
+
           /* Message from our remote and subtype waiting, does it match our tag
            * and size? */
+
+          // Need win_size, so moved from scheduler...
+          if (t->flags != -1) {
+            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
+                                  t->ci->nodeID, t->flags, t->sendfull);
+          }
+
           if (t->flags == (int)dataptr[2] && t->win_size == dataptr[1] &&
               ci->nodeID == (int)dataptr[3]) {
             
-            //#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
             if (s->space->e->verbose) {
               message(
                       "Accepted from %d subtype %d tag %lld size %zu"
                       " offset %zu",
                       ci->nodeID, subtype, t->flags, t->win_size, t->win_offset);
             }
-            //#endif
+#endif
             /* Ready to process. */
             t->rdmabuff = (void *)&dataptr[scheduler_rdma_header_size];
             

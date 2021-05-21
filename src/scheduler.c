@@ -44,6 +44,7 @@
 #include "cycle.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity_io.h"
 #include "infinity_wrapper.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
@@ -1264,6 +1265,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 #ifdef WITH_MPI
   t->rdmabuff = NULL;
   //t->rdmalockind = -1;
+  t->sendfull = 1;
 #endif
 #ifdef SWIFT_DEBUG_TASKS
   t->rid = -1;
@@ -1914,7 +1916,7 @@ void scheduler_start(struct scheduler *s) {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
 
-  scheduler_dump_queues(s->space->e);
+  //scheduler_dump_queues(s->space->e);
 
   /* Clear the list of active tasks. */
   s->active_count = 0;
@@ -2046,10 +2048,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         }
 
         /* And log, if logging enabled. */
-        if (t->flags != -1) {
-          mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
-                                t->ci->nodeID, t->flags, -1);
-        }
+        //if (t->flags != -1) {
+        //  mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
+        //                        t->ci->nodeID, t->flags, -1);
+        //}
 
         qid = -1;
       }
@@ -2685,7 +2687,12 @@ size_t scheduler_mpi_size(struct task *t) {
     return 0;
 
   } else if (t->subtype == task_subtype_gpart) {
-    size = t->ci->grav.count * sizeof(struct gpart);
+
+    if (t->sendfull) {
+      size = t->ci->grav.count * sizeof(struct gpart);
+    } else {
+      size = t->ci->grav.count * sizeof(struct reduced_gpart);
+    }
 
   } else if (t->subtype == task_subtype_spart) {
     size = t->ci->stars.count * sizeof(struct spart);
@@ -2743,7 +2750,7 @@ void scheduler_rdma_init_communications(struct scheduler *s, int verbose) {
   infinity_open_communications(s->nr_ranks,
                                s->recv_mpicache->window_sizes,
                                s->send_mpicache->window_sizes,
-                               &s->recv_handle, &s->send_handle, 
+                               &s->recv_handle, &s->send_handle,
                                verbose);
 
 #endif

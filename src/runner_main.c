@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "engine.h"
+#include "gravity_io.h"
 #include "infinity_wrapper.h"
 #include "mpiuse.h"
 #include "scheduler.h"
@@ -408,8 +409,8 @@ void *runner_main(void *data) {
             if (t->flags != -1) {
               // XXX log actual time used in call, not how long we are queued.
               mpiuse_log_allocation(t->type, t->subtype, &t->buff, 1, t->win_size,
-                                    cj->nodeID, t->flags, r->cpuid);
-
+                                    cj->nodeID, t->flags, t->sendfull);
+              
               /* Need space for the data and the headers. */
               scheduler_rdma_blocktype datasize =
                 scheduler_rdma_toblocks(t->win_size) + scheduler_rdma_header_size;
@@ -435,7 +436,7 @@ void *runner_main(void *data) {
                 message(
                         "Sending message to %d from %d subtype %d tag %zu size %zu"
                         " (cf %lld %zu) offsets %zu",
-                        cj->nodeID, ci->nodeID, t->subtype, dataptr[t->win_offset+2], 
+                        cj->nodeID, ci->nodeID, t->subtype, dataptr[t->win_offset+2],
                         dataptr[t->win_offset+1], t->flags, t->win_size, t->win_offset);
 #endif
               infinity_send_data(sched->send_handle, cj->nodeID,
@@ -454,16 +455,40 @@ void *runner_main(void *data) {
 #endif
             }
           }
-          
+
           if (t->subtype == task_subtype_subgpart) {
 
             /* Get the send buffer for this remote and copy our data chunk. */
-            char *dataptr = infinity_get_send_buffer(sched->send_handle, cj->nodeID);
+            char *rdmaptr = infinity_get_send_buffer(sched->send_handle, cj->nodeID);
             size_t offset = scheduler_rdma_tobytes(scheduler_rdma_header_size) +
-              scheduler_rdma_tobytes(t->main_task->win_offset) +
-              (t->sub_offset *sizeof(struct gpart));
-            memcpy(dataptr + offset, t->buff, t->sub_size * sizeof(struct gpart));
-            //message("running subgpart copy");
+              scheduler_rdma_tobytes(t->main_task->win_offset);
+
+            if (t->sendfull) {
+              //message("sending sendfull");
+              offset += (t->sub_offset * sizeof(struct gpart));
+              memcpy(rdmaptr + offset, t->buff, t->sub_size * sizeof(struct gpart));
+            } else {
+              //message("sending not sendfull");
+
+              /* Only sending position and mass, so need to pack them into
+               * suitable strides. */
+              offset += (t->sub_offset * sizeof(struct reduced_gpart));
+
+              struct gpart *gp = (struct gpart*) t->buff;
+              struct reduced_gpart *rgp = (struct reduced_gpart *) (rdmaptr + offset);
+              for (int i = 0; i < t->sub_size; i++) {
+                memcpy(rgp[i].x, gp[i].x, sizeof(struct reduced_gpart));
+                //rgp[i].x[0] = gp[i].x[0];
+                //rgp[i].x[1] = gp[i].x[1];
+                //rgp[i].x[2] = gp[i].x[2];
+                //rgp[i].mass = gp[i].mass;
+#ifdef SWIFT_DEBUG_CHECKS
+                rgp[i].ti_drift = gp[i].ti_drift;
+                rgp[i].id = i;
+#endif
+              }
+            }
+
           }
           else if (t->subtype == task_subtype_subxv) {
 
@@ -471,7 +496,7 @@ void *runner_main(void *data) {
             char *dataptr = infinity_get_send_buffer(sched->send_handle, cj->nodeID);
             size_t offset = scheduler_rdma_tobytes(scheduler_rdma_header_size) +
               scheduler_rdma_tobytes(t->main_task->win_offset) +
-              (t->sub_offset *sizeof(struct part));
+              (t->sub_offset * sizeof(struct part));
             memcpy(dataptr + offset, t->buff, t->sub_size * sizeof(struct part));
             //message("running subxv copy");
           }
@@ -493,8 +518,11 @@ void *runner_main(void *data) {
 
           /* And log deactivation, if logging enabled. */
           if (t->flags != -1) {
-            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, t->sendfull);
           }
+
+          /* Only sendfull once, reduced_gparts parts next time. */
+          t->sendfull = 0;
 
           break;
 
@@ -565,11 +593,35 @@ void *runner_main(void *data) {
 
           } else if (t->subtype == task_subtype_subgpart) {
 
-            /* Only move our part of the data. */
-            char *ptr1 = ((char *)t->buff);
-            char *ptr2 = ((char *)t->main_task->rdmabuff) + (t->sub_offset * sizeof(struct gpart));
-            memcpy(ptr1, ptr2, t->sub_size * sizeof(struct gpart));
-            
+            char *rdmaptr = t->main_task->rdmabuff;
+
+            if (t->sendfull) {
+              //message("expecting sendfull");
+              /* Being sent full gparts, but only our chunk... */
+              char *dataptr = rdmaptr + (t->sub_offset * sizeof(struct gpart));
+              memcpy(t->buff, dataptr, t->sub_size * sizeof(struct gpart));
+
+            } else {
+              //message("expecting not sendfull");
+              /* Expecting partial updates. */
+              struct gpart *gp = (struct gpart*) t->buff;
+              struct reduced_gpart *rgp = (struct reduced_gpart *)
+                (rdmaptr + (t->sub_offset * sizeof(struct reduced_gpart)));
+              for (int i = 0; i < t->sub_size; i++) {
+                memcpy(gp[i].x, rgp[i].x, sizeof(struct reduced_gpart));
+                //gp[i].x[0] = rgp[i].x[0];
+                //gp[i].x[1] = rgp[i].x[1];
+                //gp[i].x[2] = rgp[i].x[2];
+                //gp[i].mass = rgp[i].mass;
+#ifdef SWIFT_DEBUG_CHECKS
+                gp[i].ti_drift = rgp[i].ti_drift;
+                message("ti_drift = %lld", gp[i].ti_drift);
+                if (rgp[i].id != i)
+                  message("index misaligned: %d != %d", rgp[i].id, i);
+#endif
+              }
+            }
+
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_rho) {
@@ -587,8 +639,11 @@ void *runner_main(void *data) {
 
           /* And log deactivation, if logging enabled. */
           if (t->flags != -1) {
-            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, r->cpuid);
+            mpiuse_log_allocation(t->type, t->subtype, &t->buff, 0, 0, 0, 0, t->sendfull);
           }
+
+          /* Not expecting full sends again until next rebuild. */
+          t->sendfull = 0;
 
           break;
 #endif

@@ -99,7 +99,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_grav);
 
       /* Decide how many sub copy tasks we need. */
-      int nr_subs =  (ci->grav.count * sizeof(struct gpart)) / s->mpi_cell_limit + 1;
+      int nr_subs = (ci->grav.count * sizeof(struct gpart)) / s->mpi_cell_limit + 1;
       int offset = 0;
       int chunk = ci->grav.count / nr_subs;
       //if (nr_subs < 1) error("no send sub to copy data");
@@ -563,7 +563,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     scheduler_addunlock(s, t_xv, do_xv);
 
     /* Decide how many sub copy tasks we need. */
-    int nr_subs =  (c->hydro.count * sizeof(struct gpart)) / s->mpi_cell_limit + 1;
+    int nr_subs = (c->hydro.count * sizeof(struct part)) / s->mpi_cell_limit + 1;
     int offset = 0;
     int chunk = c->hydro.count / nr_subs;
     for (int k = 0; k < nr_subs; k++) {

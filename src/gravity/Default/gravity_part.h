@@ -33,6 +33,9 @@ struct gpart {
   /*! Particle position. */
   double x[3];
 
+  /*! Particle mass. */
+  float mass;
+
   /*! Particle velocity. */
   float v_full[3];
 
@@ -51,9 +54,6 @@ struct gpart {
   float potential_mesh;
 
 #endif
-
-  /*! Particle mass. */
-  float mass;
 
   /*! Norm of the acceleration at the previous step. */
   float old_a_grav_norm;
