@@ -178,7 +178,9 @@ void engine_dump_snapshot(struct engine *e) {
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 
   /* Run the post-dump command if required */
-  engine_run_on_dump(e);
+  if (e->nodeID == 0) {
+    engine_run_on_dump(e);
+  }
 }
 
 /**
