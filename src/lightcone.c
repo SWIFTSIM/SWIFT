@@ -222,10 +222,6 @@ void lightcone_struct_dump(const struct lightcone_props *props, FILE *stream) {
   /* Don't write out particle buffers - must flush before dumping restart. */
   memset(tmp.buffer, 0, sizeof(struct particle_buffer)*swift_type_count);
 
-  /* Don't write out function pointers */
-  for(int i=0; i<props->nr_maps; i+=1)
-    tmp.map_type[i].update_map = NULL;
-
   /* Don't write array pointers */
   tmp.shell = NULL;
   tmp.map_type = NULL;
