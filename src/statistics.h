@@ -50,9 +50,6 @@ struct statistics {
   /*! External potential energy (internal units)*/
   double E_pot_ext;
 
-  /*! Potential energy (internal units)*/
-  double E_pot;
-
   /*! Radiated energy (internal units) */
   double E_rad;
 
