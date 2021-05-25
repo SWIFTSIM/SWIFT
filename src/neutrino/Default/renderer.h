@@ -39,5 +39,11 @@ void renderer_init(struct swift_params *params, const struct unit_system *us,
                    const struct cosmology *c, const struct neutrino_props *np,
                    struct neutrino_renderer *rend);
 void renderer_clean(struct neutrino_renderer *rend);
+void renderer_compute(const struct cosmology *c,
+                      const struct neutrino_props *np,
+                      struct neutrino_renderer *rend, struct pm_mesh *mesh,
+                      int verbose);
+void renderer_struct_dump(const struct neutrino_renderer *rend, FILE *stream);
+void renderer_struct_restore(struct neutrino_renderer *rend, FILE *stream);
 
 #endif /* SWIFT_DEFAULT_RENDERER_H */
