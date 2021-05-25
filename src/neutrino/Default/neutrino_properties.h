@@ -34,6 +34,9 @@ struct neutrino_props {
 
   /* Random seed for the neutrino weighting task */
   long long neutrino_seed;
+
+  /* Whether to use the linear respose method */
+  char use_linear_response;
 };
 
 /**
@@ -55,6 +58,8 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
   np->generate_ics = parser_get_param_int(params, "Neutrino:generate_ics");
   np->neutrino_seed =
       parser_get_opt_param_longlong(params, "Neutrino:neutrino_seed", 0);
+  np->use_linear_response =
+      parser_get_opt_param_int(params, "Neutrino:use_linear_response", 0);
 }
 
 /**

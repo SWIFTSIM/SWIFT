@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct sink_props sink_properties;
   struct neutrino_props neutrino_properties;
+  struct neutrino_renderer renderer;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
@@ -1270,6 +1271,12 @@ int main(int argc, char *argv[]) {
       neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
                           &cosmo);
 
+    /* Initialize the neutrino renderer if used */
+    bzero(&renderer, sizeof(struct neutrino_renderer));
+    if (neutrino_properties.use_linear_response)
+      renderer_init(params, &us, &prog_const, &cosmo, &neutrino_properties,
+                    &renderer);
+
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
@@ -1425,9 +1432,9 @@ int main(int argc, char *argv[]) {
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &feedback_properties, &rt_properties, &mesh, &potential,
-                &cooling_func, &starform, &chemistry, &fof_properties,
-                &los_properties);
+                &renderer, &feedback_properties, &rt_properties, &mesh,
+                &potential, &cooling_func, &starform, &chemistry,
+                &fof_properties, &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
@@ -1779,6 +1786,7 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
+  if (e.neutrino_properties->use_linear_response) renderer_clean(e.neutrino_renderer);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
