@@ -58,6 +58,7 @@
 #include "stars_io.h"
 #include "tools.h"
 #include "units.h"
+#include "version.h"
 #include "xmf.h"
 
 /**
@@ -1097,6 +1098,7 @@ void write_output_serial(struct engine* e,
     io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
     io_write_attribute_s(h_grp, "Code", "SWIFT");
     io_write_attribute_s(h_grp, "RunName", e->run_name);
+    io_write_attribute_s(h_grp, "System", hostname());
 
     /* Write out the particle types */
     io_write_part_type_names(h_grp);
