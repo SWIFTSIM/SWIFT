@@ -58,6 +58,7 @@
 #include "stars_io.h"
 #include "tools.h"
 #include "units.h"
+#include "version.h"
 #include "xmf.h"
 
 /* Are we timing the i/o? */
@@ -441,6 +442,12 @@ void write_output_distributed(struct engine* e,
   io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+
+  /* We write rank 0's hostname so that it is uniform across all files. */
+  char systemname[256] = {0};
+  if (mpi_rank == 0) sprintf(systemname, "%s", hostname());
+  MPI_Bcast(systemname, 256, MPI_CHAR, 0, comm);
+  io_write_attribute_s(h_grp, "System", systemname);
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
