@@ -75,6 +75,7 @@
 #include "profiler.h"
 #include "queue.h"
 #include "random.h"
+#include "renderer.h"
 #include "restart.h"
 #include "rt.h"
 #include "rt_properties.h"

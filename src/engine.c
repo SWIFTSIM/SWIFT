@@ -2779,8 +2779,8 @@ void engine_init(
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos, struct feedback_props *feedback,
-    struct rt_props *rt, struct pm_mesh *mesh,
+    const struct neutrino_props *neutrinos, struct neutrino_renderer *renderer,
+    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
@@ -2872,6 +2872,7 @@ void engine_init(
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
   e->neutrino_properties = neutrinos;
+  e->neutrino_renderer = renderer;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
