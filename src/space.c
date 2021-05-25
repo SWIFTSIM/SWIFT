@@ -1749,6 +1749,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
         "Cannot generate gas from ICs if the initial temperature is set to 0. "
         "Need to set 'SPH:initial_temperature' to a sensible value.");
 
+  if (cosmo->Omega_b == 0.)
+    error("Cannot generate gas from ICs if Omega_b is set to 0.");
+
   if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
@@ -1816,7 +1819,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   const double bg_density = cosmo->Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;
 
-  message("%zd", current_nr_gparts);
+  // message("%zd", current_nr_gparts);
 
   /* Update the particle properties */
   size_t j = 0;
