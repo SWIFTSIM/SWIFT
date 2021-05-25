@@ -921,22 +921,34 @@ parameter sets the thermal energy per unit mass.
 
    EoS:
      isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
-
-     planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EoS
-     planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EoS
-     planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EoS
-     planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EoS
-                               # (Optional) Table file paths
-     planetary_HM80_HHe_table_file:            ./EoSTables/HM80_HHe.txt
-     planetary_HM80_ice_table_file:            ./EoSTables/HM80_ice.txt
-     planetary_HM80_rock_table_file:           ./EoSTables/HM80_rock.txt
-     planetary_SESAME_iron_table_file:         ./EoSTables/SESAME_iron_2140.txt
-     planetary_SESAME_basalt_table_file:       ./EoSTables/SESAME_basalt_7530.txt
-     planetary_SESAME_water_table_file:        ./EoSTables/SESAME_water_7154.txt
-     planetary_SS08_water_table_file:          ./EoSTables/SS08_water.txt
+     # Select which planetary EoS material(s) to enable for use.
+     planetary_use_idg_def:    0               # Default ideal gas, material ID 0
+     planetary_use_Til_iron:       1           # Tillotson iron, material ID 100
+     planetary_use_Til_granite:    1           # Tillotson granite, material ID 101
+     planetary_use_Til_water:      0           # Tillotson water, material ID 102
+     planetary_use_Til_basalt:     0           # Tillotson basalt, material ID 103
+     planetary_use_HM80_HHe:   0               # Hubbard & MacFarlane (1980) hydrogen-helium atmosphere, material ID 200
+     planetary_use_HM80_ice:   0               # Hubbard & MacFarlane (1980) H20-CH4-NH3 ice mix, material ID 201
+     planetary_use_HM80_rock:  0               # Hubbard & MacFarlane (1980) SiO2-MgO-FeS-FeO rock mix, material ID 202
+     planetary_use_SESAME_iron:    0           # SESAME iron 2140, material ID 300
+     planetary_use_SESAME_basalt:  0           # SESAME basalt 7530, material ID 301
+     planetary_use_SESAME_water:   0           # SESAME water 7154, material ID 302
+     planetary_use_SS08_water:     0           # Senft & Stewart (2008) SESAME-like water, material ID 303
+     planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
+     planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
+     planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+     # Tablulated EoS file paths.
+     planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
+     planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
+     planetary_HM80_rock_table_file:   ./EoSTables/HM80_rock.txt
+     planetary_SESAME_iron_table_file:     ./EoSTables/SESAME_iron_2140.txt
+     planetary_SESAME_basalt_table_file:   ./EoSTables/SESAME_basalt_7530.txt
+     planetary_SESAME_water_table_file:    ./EoSTables/SESAME_water_7154.txt
+     planetary_SS08_water_table_file:      ./EoSTables/SS08_water.txt
      planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
      planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
      planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+
 
 .. _Parameters_fof:
 
