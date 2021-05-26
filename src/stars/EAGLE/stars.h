@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_STARS_H
 
 #include <float.h>
+#include "exp10.h"
 
 /**
  * @brief Computes the time-step length of a given star particle from stars
