@@ -48,4 +48,4 @@ PhysicalConstants:
 
 # Parameters related to the equation of state
 EoS:
-    planetary_use_idg:  1               # Whether to initialise the ideal gas EOS
+    planetary_use_idg_def:    1               # Default ideal gas, material ID 0
