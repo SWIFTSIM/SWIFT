@@ -66,7 +66,7 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (c->grav.count == 0) return;
-  if (!cell_is_starting_gravity(c, e) && !cell_is_active_gravity(c, e)) return;
+  if (!cell_is_starting_gravity(c, e)) return;
   if (!with_cosmology)
     error("Phase space weighting without cosmology not implemented.");
 
@@ -90,8 +90,9 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct gpart *restrict gp = &gparts[k];
 
-      /* Only act on neutrinos */
-      if (gp->type != swift_type_neutrino) continue;
+      /* Only act on neutrinos that needed to be kicked */
+      if (!(gp->type == swift_type_neutrino && gpart_is_starting(gp, e)))
+        continue;
 
       /* Use a particle id dependent seed */
       const long long seed = gp->id_or_neg_offset + neutrino_seed;
