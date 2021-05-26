@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_STARS_H
 
 #include <float.h>
+
 #include "exp10.h"
 
 /**
