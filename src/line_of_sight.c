@@ -33,6 +33,7 @@
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
 #include "periodic.h"
+#include "version.h"
 
 #include <stdio.h>
 #include <stdlib.h>
