@@ -55,6 +55,14 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
 
+  /* We write rank 0's hostname so that it is uniform across all files. */
+  char systemname[256] = {0};
+  if (e->nodeID == 0) sprintf(systemname, "%s", hostname());
+#ifdef WITH_MPI
+  MPI_Bcast(systemname, 256, MPI_CHAR, 0, comm);
+#endif
+  io_write_attribute_s(h_grp, "System", systemname);
+
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
 
