@@ -2322,6 +2322,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
+        if (with_cooling)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                              t_star_density);
+
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_star_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
@@ -2377,6 +2381,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_black_holes && bcount_i > 0) {
+
+        if (with_cooling)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                              t_bh_density);
 
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
@@ -2644,6 +2652,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         if (with_feedback) {
 
+          if (with_cooling)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_star_density);
+
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
@@ -2702,6 +2714,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+          if (with_cooling)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_bh_density);
 
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
@@ -2794,6 +2810,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_feedback) {
 
+            if (with_cooling)
+              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                  t_star_density);
+
             scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                                 t_star_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.drift,
@@ -2853,6 +2873,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+            if (with_cooling)
+              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                  t_bh_density);
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_density);
@@ -3096,6 +3120,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
+        if (with_cooling)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                              t_star_density);
+
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_star_density);
         scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
@@ -3158,6 +3186,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_black_holes && bcount_i > 0) {
+
+        if (with_cooling)
+          scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                              t_bh_density);
 
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
@@ -3439,6 +3471,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         if (with_feedback) {
 
+          if (with_cooling)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_star_density);
+
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
@@ -3497,6 +3533,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+          if (with_cooling)
+            scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
+                                t_bh_density);
 
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
@@ -3589,6 +3629,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           if (with_feedback) {
 
+            if (with_cooling)
+              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                  t_star_density);
+
             scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                                 t_star_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.drift,
@@ -3647,6 +3691,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+            if (with_cooling)
+              scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                  t_bh_density);
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_density);
