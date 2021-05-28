@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "chemistry.h"
+#include "dark_matter.h"
 #include "engine.h"
 #include "gravity.h"
 #include "pressure_floor.h"
@@ -166,6 +167,34 @@ void space_init_bparts(struct space *s, int verbose) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
+
+void space_init_dmparts_mapper(void *restrict map_data, int dmcount,
+                               void *restrict extra_data) {
+
+    struct dmpart *restrict dmparts = (struct dmpart *)map_data;
+    for (int k = 0; k < dmcount; k++) dark_matter_init_dmpart(&dmparts[k]);
+}
+
+/**
+ * @brief Calls the #dmpart initialisation function on all particles in the
+ * space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_init_dmparts(struct space *s, int verbose) {
+
+    const ticks tic = getticks();
+
+    if (s->nr_dmparts > 0)
+        threadpool_map(&s->e->threadpool, space_init_dmparts_mapper, s->dmparts,
+                       s->nr_dmparts, sizeof(struct dmpart),
+                       threadpool_auto_chunk_size, /*extra_data=*/NULL);
+    if (verbose)
+        message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+                clocks_getunit());
+}
+
 
 void space_init_sinks_mapper(void *restrict map_data, int sink_count,
                              void *restrict extra_data) {

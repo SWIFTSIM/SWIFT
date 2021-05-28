@@ -48,6 +48,7 @@ enum task_broad_types {
   task_broad_types_sinks,
   task_broad_types_black_holes,
   task_broad_types_rt,
+  task_broad_types_dark_matter,
   task_broad_types_count,
 };
 
@@ -216,6 +217,39 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
 }
 
 /**
+ * @brief Unskip any dark maatter tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void engine_do_unskip_dark_matter(struct cell *c, struct engine *e) {
+    
+    /* Early abort (are we below the level where tasks are)? */
+    if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+    
+    /* Ignore empty cells. */
+    if (c->dark_matter.count == 0) return;
+    
+    /* Skip inactive cells. */
+    if (!cell_is_active_dark_matter(c, e)) return;
+    
+    /* Recurse */
+    if (c->split) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                struct cell *cp = c->progeny[k];
+                engine_do_unskip_dark_matter(cp, e);
+            }
+        }
+    }
+    
+    /* Unskip any active tasks. */
+    const int forcerebuild = cell_unskip_dark_matter_tasks(c, &e->sched);
+    if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+
+/**
  * @brief Unskip any gravity tasks associated with active cells.
  *
  * @param c The cell.
@@ -356,6 +390,13 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 #endif
         engine_do_unskip_sinks(c, e);
         break;
+      case task_broad_types_dark_matter:
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_sidm))
+            error("Trying to unskip SIDM tasks in a non-sidm run!");
+#endif
+        engine_do_unskip_dark_matter(c, e);
+        break;
       case task_broad_types_black_holes:
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_black_holes))
@@ -398,6 +439,7 @@ void engine_unskip(struct engine *e) {
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_black_holes = e->policy & engine_policy_black_holes;
   const int with_rt = e->policy & engine_policy_rt;
+  const int with_sidm = e->policy & engine_policy_sidm;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -420,7 +462,8 @@ void engine_unskip(struct engine *e) {
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
         (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && rt_should_do_unskip_cell(c, e))) {
+        (with_rt && rt_should_do_unskip_cell(c, e)) ||
+        (with_sidm && cell_is_active_dark_matter(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
@@ -453,8 +496,12 @@ void engine_unskip(struct engine *e) {
     multiplier++;
   }
   if (with_rt) {
-    data.task_types[multiplier] = task_broad_types_rt;
-    multiplier++;
+      data.task_types[multiplier] = task_broad_types_rt;
+      multiplier++;
+  }
+  if (with_sidm) {
+      data.task_types[multiplier] = task_broad_types_dark_matter;
+      multiplier++;
   }
 
   /* Should we duplicate the list of active cells to better parallelise the
@@ -522,7 +569,8 @@ void engine_unskip_timestep_communications_mapper(void *map_data,
     if (t->type == task_type_send || t->type == task_type_recv) {
 
       if (t->subtype == task_subtype_tend_part ||
-          t->subtype == task_subtype_tend_gpart) {
+          t->subtype == task_subtype_tend_gpart ||
+          t->subtype == task_subtype_tend_dmpart) {
 
         scheduler_activate(s, t);
       }

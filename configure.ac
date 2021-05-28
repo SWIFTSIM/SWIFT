@@ -2225,6 +2225,34 @@ case "$with_black_holes" in
    ;;
 esac
 
+# Self-interacting dark matter model.
+with_sidm = "yes"
+
+AC_ARG_WITH([sidm],
+   [AS_HELP_STRING([--with-sidm=<model>],
+      [Dark matter particle model to use @<:@none, yes, default: yes@:>@]
+   )],
+   [with_sidm="$withval"],
+   [with_sidm="none"]
+)
+
+
+case "$with_sidm" in
+   none)
+      AC_DEFINE([SIDM_MODEL], [1], [SIDM model])
+   ;;
+   no)
+      AC_DEFINE([SIDM_NONE], [1], [No self-interacting dark matter model])
+   ;;
+   yes)
+      AC_DEFINE([SIDM_MODEL], [1], [SIDM model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown sidm model: $with_sidm])
+   ;;
+esac
+
+
 # Sink model.
 AC_ARG_WITH([sink],
    [AS_HELP_STRING([--with-sink=<model>],
@@ -2596,6 +2624,7 @@ AC_MSG_RESULT([
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt$rt_extra_msg
+   Dark matter model    : $with_sidm
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers

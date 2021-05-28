@@ -735,6 +735,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_dmparts = s->nr_dmparts;
   const int nr_cells = s->nr_cells;
   const struct cell *cells_top = s->cells_top;
 

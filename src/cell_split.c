@@ -54,20 +54,23 @@
  */
 void cell_split(struct cell *c, const ptrdiff_t parts_offset,
                 const ptrdiff_t sparts_offset, const ptrdiff_t bparts_offset,
-                const ptrdiff_t sinks_offset, struct cell_buff *restrict buff,
+                ptrdiff_t dmparts_offset, const ptrdiff_t sinks_offset,
+                struct cell_buff *restrict buff,
                 struct cell_buff *restrict sbuff,
                 struct cell_buff *restrict bbuff,
                 struct cell_buff *restrict gbuff,
+                struct cell_buff *dmbuff,
                 struct cell_buff *restrict sinkbuff) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
-            sink_count = c->sinks.count;
+            dmcount = c->dark_matter.count, sink_count = c->sinks.count;
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
+  struct dmpart *dmparts = c->dark_matter.parts;
   struct sink *sinks = c->sinks.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
@@ -96,6 +99,11 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     if (bbuff[k].x[0] != bparts[k].x[0] || bbuff[k].x[1] != bparts[k].x[1] ||
         bbuff[k].x[2] != bparts[k].x[2])
       error("Inconsistent bbuff contents.");
+  }
+  for (int k = 0; k < dmcount; k++) {
+        if (dmbuff[k].x[0] != dmparts[k].x[0] || dmbuff[k].x[1] != dmparts[k].x[1] ||
+            dmbuff[k].x[2] != dmparts[k].x[2])
+            error("Inconsistent bbuff contents.");
   }
   for (int k = 0; k < sink_count; k++) {
     if (sinkbuff[k].x[0] != sinks[k].x[0] ||
@@ -331,6 +339,60 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
   }
 
+  /* Now do the same song and dance for the dmparts. */
+  for (int k = 0; k < 8; k++) bucket_count[k] = 0;
+
+    /* Fill the buffer with the indices. */
+    for (int k = 0; k < dmcount; k++) {
+        const int bid = (dmbuff[k].x[0] > pivot[0]) * 4 +
+                        (dmbuff[k].x[1] > pivot[1]) * 2 + (dmbuff[k].x[2] > pivot[2]);
+        bucket_count[bid]++;
+        dmbuff[k].ind = bid;
+    }
+
+    /* Set the buffer offsets. */
+    bucket_offset[0] = 0;
+    for (int k = 1; k <= 8; k++) {
+        bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+        bucket_count[k - 1] = 0;
+    }
+
+    /* Run through the buckets, and swap particles to their correct spot. */
+    for (int bucket = 0; bucket < 8; bucket++) {
+        for (int k = bucket_offset[bucket] + bucket_count[bucket];
+             k < bucket_offset[bucket + 1]; k++) {
+            int bid = dmbuff[k].ind;
+            if (bid != bucket) {
+                struct dmpart dmpart = dmparts[k];
+                struct cell_buff temp_buff = dmbuff[k];
+                while (bid != bucket) {
+                    int j = bucket_offset[bid] + bucket_count[bid]++;
+                    while (dmbuff[j].ind == bid) {
+                        j++;
+                        bucket_count[bid]++;
+                    }
+                    memswap(&dmparts[j], &dmpart, sizeof(struct dmpart));
+                    memswap(&dmbuff[j], &temp_buff, sizeof(struct cell_buff));
+                    if (dmparts[j].gpart)
+                        dmparts[j].gpart->id_or_neg_offset = -(j + dmparts_offset);
+                    bid = temp_buff.ind;
+                }
+                dmparts[k] = dmpart;
+                dmbuff[k] = temp_buff;
+                if (dmparts[k].gpart)
+                    dmparts[k].gpart->id_or_neg_offset = -(k + dmparts_offset);
+            }
+            bucket_count[bid]++;
+        }
+    }
+
+    /* Store the counts and offsets. */
+    for (int k = 0; k < 8; k++) {
+        c->progeny[k]->dark_matter.count = bucket_count[k];
+        c->progeny[k]->dark_matter.count_total = c->progeny[k]->dark_matter.count;
+        c->progeny[k]->dark_matter.parts = &c->dark_matter.parts[bucket_offset[k]];
+    }
+
   /* Now do the same song and dance for the sinks. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
@@ -426,6 +488,9 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
           } else if (gparts[j].type == swift_type_stars) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
+          } else if (gparts[j].type == swift_type_dark_matter && dmcount > 0) {
+              dmparts[-gparts[j].id_or_neg_offset - dmparts_offset].gpart =
+                      &gparts[j];
           } else if (gparts[j].type == swift_type_sink) {
             sinks[-gparts[j].id_or_neg_offset - sinks_offset].gpart =
                 &gparts[j];
@@ -440,8 +505,9 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
         if (gparts[k].type == swift_type_gas) {
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_stars) {
-          sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
-              &gparts[k];
+          sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart = &gparts[k];
+        } else if (gparts[k].type == swift_type_dark_matter && dmcount > 0) {
+            dmparts[-gparts[k].id_or_neg_offset - dmparts_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_sink) {
           sinks[-gparts[k].id_or_neg_offset - sinks_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_black_hole) {
@@ -627,6 +693,64 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
 }
 
 /**
+ * @brief Re-arrange the #spart in a top-level cell such that all the extra
+ * ones for on-the-fly creation are located at the end of the array.
+ *
+ * @param c The #cell to sort.
+ * @param sparts_offset The offset between the first #spart in the array and
+ * the first #spart in the global array in the space structure (for
+ * re-linking).
+ */
+void cell_reorder_extra_dmparts(struct cell *c, const ptrdiff_t dmparts_offset) {
+    struct dmpart *dmparts = c->dark_matter.parts;
+    const int count_real = c->dark_matter.count;
+
+    if (c->depth != 0 || c->nodeID != engine_rank)
+        error("This function should only be called on local top-level cells!");
+
+    int first_not_extra = count_real;
+
+    /* Find extra particles */
+    for (int i = 0; i < count_real; ++i) {
+        if (dmparts[i].time_bin == time_bin_not_created) {
+            /* Find the first non-extra particle after the end of the
+             real particles */
+            while (dmparts[first_not_extra].time_bin == time_bin_not_created) {
+                ++first_not_extra;
+            }
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (first_not_extra >= count_real + space_extra_dmparts)
+                error("Looking for extra particles beyond this cell's range!");
+#endif
+
+            /* Swap everything, including g-part pointer */
+            memswap_unaligned(&dmparts[i], &dmparts[first_not_extra], sizeof(struct dmpart));
+            if (dmparts[i].gpart)
+                dmparts[i].gpart->id_or_neg_offset = -(i + dmparts_offset);
+            dmparts[first_not_extra].gpart = NULL;
+#ifdef SWIFT_DEBUG_CHECKS
+            if (dmparts[first_not_extra].time_bin != time_bin_not_created)
+                error("Incorrect swap occured!");
+#endif
+        }
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int i = 0; i < c->dark_matter.count_total; ++i) {
+        if (dmparts[i].time_bin == time_bin_not_created && i < c->dark_matter.count) {
+            error("Extra particle before the end of the regular array");
+        }
+        if (dmparts[i].time_bin != time_bin_not_created && i >= c->dark_matter.count) {
+            error("Regular particle after the end of the regular array");
+        }
+    }
+#endif
+}
+
+
+
+/**
  * @brief Re-arrange the #gpart in a top-level cell such that all the extra
  * ones for on-the-fly creation are located at the end of the array.
  *
@@ -683,3 +807,5 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
   }
 #endif
 }
+
+

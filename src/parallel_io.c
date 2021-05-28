@@ -44,6 +44,7 @@
 #include "engine.h"
 #include "error.h"
 #include "gravity_io.h"
+#include "dark_matter_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
 #include "hydro_properties.h"
@@ -354,6 +355,7 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       props.sparts += max_chunk_size;                 /* spart* on the spart */
       props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      props.dmparts += max_chunk_size;                 /* dmpart* on the dmpart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -681,6 +683,7 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
       props.sparts += max_chunk_size;                 /* spart* on the spart */
       props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      props.dmparts += max_chunk_size;                 /* dmpart* on the dmpart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -719,7 +722,9 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
  * @param sinks (output) The array of #sink read from the file.
  * @param sparts (output) The array of #spart read from the file.
  * @param bparts (output) The array of #bpart read from the file.
+ * @param dmparts (output) The array of #dmpart read from the file.
  * @param Ngas (output) The number of particles read from the file.
+ * @param Ndarkmatter (output) The number of dark matter particles read from the file.
  * @param Ngparts (output) The number of particles read from the file.
  * @param Ngparts_background (output) The number of background DM particles read
  * from the file.
@@ -734,6 +739,7 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
  * @param with_sink Are we running with sink ?
  * @param with_stars Are we running with stars ?
  * @param with_black_holes Are we running with black holes ?
+ * @param with_sidm Are we running with self-interacting dark matter ?
  * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
@@ -751,11 +757,12 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
                       struct sink** sinks, struct spart** sparts,
-                      struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
+                      struct bpart** bparts, struct dmpart** dmparts, size_t* Ngas,
+                      size_t* Ndarkmatter, size_t* Ngparts,
                       size_t* Ngparts_background, size_t* Nnuparts,
                       size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
                       int* flag_entropy, int with_hydro, int with_gravity,
-                      int with_sink, int with_stars, int with_black_holes,
+                      int with_sink, int with_stars, int with_black_holes, int with_sidm
                       int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
                       double h, double a, int mpi_rank, int mpi_size,
                       MPI_Comm comm, MPI_Info info, int n_threads, int dry_run,
@@ -776,7 +783,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0;
+  *Nblackholes = 0, *Nsinks = 0, *Nnuparts = 0, *Ndarkmatter = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -943,6 +950,15 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   }
 
   /* Allocate memory to store gravity particles */
+  if (with_gravity && with_sidm) {
+      *Ndarkmatter = N[swift_type_dark_matter];
+      Ndm = *Ndarkmatter;
+      if (swift_memalign("dmparts", (void**)dmparts, dmpart_align,
+                         *Ndarkmatter * sizeof(struct dmpart)) != 0)
+          error("Error while allocating memory for dark matter particles");
+      bzero(*dmparts, *Ndarkmatter * sizeof(struct dmpart));
+  }
+
   if (with_gravity) {
     Ndm = N[swift_type_dark_matter];
     Ndm_background = N[swift_type_dark_matter_background];
@@ -960,6 +976,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
   }
+
+
 
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
    * (1024.*1024.)); */
@@ -997,9 +1015,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         break;
 
       case swift_type_dark_matter:
-        if (with_gravity) {
+        if (with_sidm) {
           Nparticles = Ndm;
-          darkmatter_read_particles(*gparts, list, &num_fields);
+          darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
+        } else if (with_gravity) {
+            Nparticles = Ndm;
+            darkmatter_read_particles(*gparts, list, &num_fields);
         }
         break;
 
@@ -1073,7 +1094,11 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     threadpool_init(&tp, n_threads);
 
     /* Prepare the DM particles */
-    io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    if (with_sidm){
+        io_duplicate_darkmatter_gparts(&tp, *dmparts, *gparts, *Ndarkmatter);
+    } else {
+        io_prepare_dm_gparts(&tp, *gparts, Ndm);
+    }
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
@@ -1135,11 +1160,14 @@ void prepare_file(struct engine* e, const char* fileName,
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
+
   struct output_options* output_options = e->output_options;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
+  const int with_sidm = e->policy & engine_policy_sidm;
+
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1297,10 +1325,17 @@ void prepare_file(struct engine* e, const char* fileName,
                                &num_fields, list);
         break;
 
-      case swift_type_dark_matter:
       case swift_type_dark_matter_background:
         io_select_dm_fields(NULL, NULL, with_fof, with_stf, e, &num_fields,
                             list);
+        break;
+
+      case swift_type_dark_matter:
+        if (with_sidm){
+            io_select_dark_matter_fields(NULL, NULL, with_fof, with_stf, e, &num_fields, list);
+        } else {
+            io_select_dm_fields(NULL, NULL, with_fof, with_stf, e, &num_fields, list);
+        }
         break;
 
       case swift_type_neutrino:
@@ -1401,6 +1436,7 @@ void write_output_parallel(struct engine* e,
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
   const struct bpart* bparts = e->s->bparts;
+  const struct dmpart* dmparts = e->s->dmparts;
   const struct sink* sinks = e->s->sinks;
   struct output_options* output_options = e->output_options;
   struct output_list* output_list = e->output_list_snapshots;
@@ -1410,6 +1446,7 @@ void write_output_parallel(struct engine* e,
   const int with_fof = e->policy & engine_policy_fof;
   const int with_DM_background = e->s->with_DM_background;
   const int with_neutrinos = e->s->with_neutrinos;
+  const int with_sidm = e->policy & engine_policy_sidm;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1424,16 +1461,21 @@ void write_output_parallel(struct engine* e,
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nsinks = e->s->nr_sinks;
   const size_t Nblackholes = e->s->nr_bparts;
-  // const size_t Nbaryons = Ngas + Nstars;
-  // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
+  const size_t Nbaryons = Ngas + Nstars + Nblackholes + Nsinks;
 
   size_t Ndm_background = 0;
+  size_t Ndm = 0;
   if (with_DM_background) {
     Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
   }
   size_t Ndm_neutrino = 0;
   if (with_neutrinos) {
     Ndm_neutrino = io_count_dm_neutrino_gparts(gparts, Ntot);
+  }
+  if (with_sidm) {
+      Ndm = e->s->nr_dmparts;
+  } else {
+      Ndm = Ntot > 0 ? Ntot - Nbaryons - Ndm_background - Ndm_neutrino : 0;
   }
 
   /* Number of particles that we will write */
@@ -1449,10 +1491,12 @@ void write_output_parallel(struct engine* e,
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
   const size_t Nbaryons_written =
       Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
-  const size_t Ndm_written =
-      Ntot_written > 0
-          ? Ntot_written - Nbaryons_written - Ndm_background - Ndm_neutrino
-          : 0;
+  size_t Ndm_written = 0;
+  if (with_sidm) {
+      Ndm_written = e->s->nr_dmparts - e->s->nr_inhibited_dmparts - e->s->nr_extra_dmparts;
+  } else {
+      Ndm_written = Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background - Ndm_neutrino : 0;
+  }
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {
@@ -1636,6 +1680,7 @@ void write_output_parallel(struct engine* e,
     struct spart* sparts_written = NULL;
     struct bpart* bparts_written = NULL;
     struct sink* sinks_written = NULL;
+    struct dmpart* dmparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1682,40 +1727,64 @@ void write_output_parallel(struct engine* e,
 
           /* This is a DM-only run without inhibited particles */
           Nparticles = Ntot;
-
-          /* Select the fields to write */
-          io_select_dm_fields(gparts, e->s->gpart_group_data, with_fof,
-                              with_stf, e, &num_fields, list);
-
+          if (with_sidm) {
+              /* Select the fields to write */
+              io_select_dark_matter_fields(dmparts, e->s->gpart_group_data, with_fof, with_stf, e, &num_fields, list);
+          } else {
+              /* Select the fields to write */
+              io_select_dm_fields(gparts, e->s->gpart_group_data, with_fof, with_stf, e, &num_fields, list);
+          }
         } else {
 
           /* Ok, we need to fish out the particles we want */
           Nparticles = Ndm_written;
 
-          /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written,
-                             gpart_align,
-                             Ndm_written * sizeof(struct gpart)) != 0)
-            error("Error while allocating temporary memory for gparts");
+          if (with_sidm) {
 
-          if (with_stf) {
-            if (swift_memalign(
-                    "gpart_group_written", (void**)&gpart_group_data_written,
-                    gpart_align,
-                    Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
-              error(
-                  "Error while allocating temporary memory for gparts STF "
-                  "data");
+              /* Allocate temporary array */
+              if (swift_memalign("dmparts_written", (void**)&dmparts_written,
+                                 dmpart_align, Ndm_written * sizeof(struct dmpart)) != 0)
+                error("Error while allocating temporary memory for gparts");
+
+              if (with_stf) {
+                if (swift_memalign(
+                        "gpart_group_written", (void**)&gpart_group_data_written,
+                        gpart_align, Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+                  error("Error while allocating temporary memory for gparts STF data");
+              }
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_dmparts_to_write(dmparts, dmparts_written, Ndm, Ndm_written);
+
+              /* Select the fields to write */
+              io_select_dark_matter_fields(dmparts, gpart_group_data_written, with_fof, with_stf, e, &num_fields, list);
+
+          } else {
+
+              /* Allocate temporary array */
+              if (swift_memalign("gparts_written", (void**)&gparts_written,
+                                 gpart_align,
+                                 Ndm_written * sizeof(struct gpart)) != 0)
+                error("Error while allocating temporary memory for gparts");
+
+              if (with_stf) {
+                if (swift_memalign(
+                        "gpart_group_written", (void**)&gpart_group_data_written,
+                        gpart_align, Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
+                  error(
+                      "Error while allocating temporary memory for gparts STF "
+                      "data");
+              }
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_gparts_to_write(
+                      gparts, e->s->gpart_group_data, gparts_written,
+                      gpart_group_data_written, Ntot, Ndm_written, with_stf);
+
+              /* Select the fields to write */
+              io_select_dm_fields(gparts_written, gpart_group_data_written, with_fof, with_stf, e, &num_fields, list);
+
           }
-
-          /* Collect the non-inhibited DM particles from gpart */
-          io_collect_gparts_to_write(gparts, e->s->gpart_group_data,
-                                     gparts_written, gpart_group_data_written,
-                                     Ntot, Ndm_written, with_stf);
-
-          /* Select the fields to write */
-          io_select_dm_fields(gparts_written, gpart_group_data_written,
-                              with_fof, with_stf, e, &num_fields, list);
         }
       } break;
 
@@ -1912,6 +1981,7 @@ void write_output_parallel(struct engine* e,
     if (sparts_written) swift_free("sparts_written", sparts_written);
     if (bparts_written) swift_free("bparts_written", bparts_written);
     if (sinks_written) swift_free("sinks_written", sinks_written);
+    if (dmparts_written) swift_free("dmparts_written", dmparts_written);
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);

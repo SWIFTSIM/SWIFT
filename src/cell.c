@@ -294,6 +294,39 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
 }
 
 /**
+ * @brief Link the cells recursively to the given #dmpart array.
+ *
+ * @param c The #cell.
+ * @param dmparts The #dmpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_dmparts(struct cell *c, struct dmpart *dmparts) {
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank)
+        error("Linking foreign particles in a local cell!");
+    
+    if (c->dark_matter.parts != NULL)
+        error("Linking bparts into a cell that was already linked");
+#endif
+    
+    c->dark_matter.parts = dmparts;
+
+    /* Fill the progeny recursively, depth-first. */
+    if (c->split) {
+        int offset = 0;
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL)
+                offset += cell_link_dmparts(c->progeny[k], &dmparts[offset]);
+        }
+    }
+    
+    /* Return the total number of linked particles. */
+    return c->dark_matter.count;
+}
+
+/**
  * @brief Recurse down foreign cells until reaching one with hydro
  * tasks; then trigger the linking of the #part array from that
  * level.
@@ -392,6 +425,57 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 #endif
 }
 
+
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts) {
+#ifdef WITH_MPI
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank)
+        error("Linking foreign particles in a local cell!");
+#endif
+    
+    /* Do we have a gravity task at this level? */
+    if (cell_get_recv(c, task_subtype_dmpart_xv) != NULL) {
+        
+        /* Recursively attach the gparts */
+        const int counts = cell_link_dmparts(c, dmparts);
+#ifdef SWIFT_DEBUG_CHECKS
+        if (counts != c->dark_matter.count)
+            error("Something is wrong with the foreign counts");
+#endif
+        return counts;
+    } else {
+        c->dark_matter.parts = dmparts;
+    }
+    
+    /* Go deeper to find the level where the tasks are */
+    if (c->split) {
+        int count = 0;
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                count += cell_link_foreign_dmparts(c->progeny[k], &dmparts[count]);
+            }
+        }
+        return count;
+    } else {
+        return 0;
+    }
+    
+#else
+    error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
 /**
  * @brief Recursively nullify all the particle pointers in a cell hierarchy.
  *
@@ -413,6 +497,7 @@ void cell_unlink_foreign_particles(struct cell *c) {
   c->hydro.parts = NULL;
   c->stars.parts = NULL;
   c->black_holes.parts = NULL;
+  c->dark_matter.parts = NULL;
 
   if (c->split) {
     for (int k = 0; k < 8; k++) {
@@ -499,6 +584,45 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
 #endif
 }
 
+
+/**
+ * @brief Recursively count the number of #dmpart in foreign cells that
+ * are in cells with SIDM-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_dmparts_for_tasks(const struct cell *c) {
+#ifdef WITH_MPI
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->nodeID == engine_rank)
+        error("Counting foreign particles in a local cell!");
+#endif
+    
+    /* Do we have a dark matter task at this level? */
+    if (cell_get_recv(c, task_subtype_dmpart_xv) != NULL) {
+        return c->dark_matter.count;
+    }
+    
+    if (c->split) {
+        int count = 0;
+        for (int k = 0; k < 8; ++k) {
+            if (c->progeny[k] != NULL) {
+                count += cell_count_dmparts_for_tasks(c->progeny[k]);
+            }
+        }
+        return count;
+    } else {
+        return 0;
+    }
+    
+#else
+    error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
 /**
  * @brief Sanitizes the smoothing length values of cells by setting large
  * outliers to more sensible values.
@@ -512,12 +636,16 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
 void cell_sanitize(struct cell *c, int treated) {
   const int count = c->hydro.count;
   const int scount = c->stars.count;
+  const int dmcount = c->dark_matter.count;
   struct part *parts = c->hydro.parts;
   struct spart *sparts = c->stars.parts;
+  struct dmpart *dmparts = c->dark_matter.parts;
   float h_max = 0.f;
   float h_max_active = 0.f;
   float stars_h_max = 0.f;
   float stars_h_max_active = 0.f;
+  float dark_matter_h_max = 0.f;
+  float dark_matter_h_max_active = 0.f;
 
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
@@ -533,6 +661,10 @@ void cell_sanitize(struct cell *c, int treated) {
       if (sparts[i].h == 0.f || sparts[i].h > upper_h_max)
         sparts[i].h = upper_h_max;
     }
+    for (int i = 0; i < dmcount; ++i) {
+      if (dmparts[i].h == 0.f || dmparts[i].h > upper_h_max)
+        dmparts[i].h = upper_h_max;
+    }
   }
 
   /* Recurse and gather the new h_max values */
@@ -546,8 +678,9 @@ void cell_sanitize(struct cell *c, int treated) {
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
         h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
-        stars_h_max_active =
-            max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
+        stars_h_max_active = max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
+        dark_matter_h_max = max(dark_matter_h_max, c->progeny[k]->dark_matter.h_max);
+        dark_matter_h_max_active = max(dark_matter_h_max_active, c->progeny[k]->dark_matter.h_max_active);
       }
     }
   } else {
@@ -559,6 +692,9 @@ void cell_sanitize(struct cell *c, int treated) {
       stars_h_max = max(stars_h_max, sparts[i].h);
     for (int i = 0; i < scount; ++i)
       stars_h_max_active = max(stars_h_max_active, sparts[i].h);
+    for (int i = 0; i < dmcount; ++i) dark_matter_h_max = max(dark_matter_h_max, dmparts[i].h);
+    for (int i = 0; i < dmcount; ++i)
+        dark_matter_h_max_active = max(dark_matter_h_max_active, dmparts[i].h);
   }
 
   /* Record the change */
@@ -566,6 +702,8 @@ void cell_sanitize(struct cell *c, int treated) {
   c->hydro.h_max_active = h_max_active;
   c->stars.h_max = stars_h_max;
   c->stars.h_max_active = stars_h_max_active;
+  c->dark_matter.h_max = dark_matter_h_max;
+  c->dark_matter.h_max_active = dark_matter_h_max_active;
 }
 
 /**
@@ -596,6 +734,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->black_holes.do_gas_swallow = NULL;
   c->black_holes.do_bh_swallow = NULL;
   c->black_holes.feedback = NULL;
+  c->dark_matter.density = NULL;
+  c->dark_matter.sidm = NULL;
 }
 
 /**
@@ -642,6 +782,7 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
  * @param data The current time on the integer time-line
  */
 void cell_check_gpart_drift_point(struct cell *c, void *data) {
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   const integertime_t ti_drift = *(integertime_t *)data;
@@ -739,6 +880,43 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
             c->stars.parts[i].ti_drift, ti_drift);
 #else
   error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+
+/**
+ * @brief Checks that the #gpart in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_dmpart_drift_point(struct cell *c, void *data) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+    const integertime_t ti_drift = *(integertime_t *)data;
+
+    /* Only check local cells */
+    if (c->nodeID != engine_rank) return;
+
+    /* Only check cells with content */
+    if (c->dark_matter.count == 0) return;
+
+    if (c->dark_matter.ti_old_part != ti_drift)
+        error(
+              "Cell in an incorrect time-zone! c->dark_matter.ti_old_part=%lld "
+              "ti_drift=%lld",
+              c->dark_matter.ti_old_part, ti_drift);
+
+    for (int i = 0; i < c->dark_matter.count; ++i)
+        if (c->dark_matter.parts[i].ti_drift != ti_drift &&
+            c->dark_matter.parts[i].time_bin != time_bin_inhibited)
+            error("DM-part in an incorrect time-zone! dmp->ti_drift=%lld ti_drift=%lld",
+                  c->dark_matter.parts[i].ti_drift, ti_drift);
+#else
+    error("Calling debugging code without debugging flag activated.");
 #endif
 }
 
@@ -1046,7 +1224,8 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
                          cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift |
                          cell_flag_do_stars_drift |
                          cell_flag_do_stars_sub_drift |
-                         cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
+                         cell_flag_do_dark_matter_drift |
+                         cell_flag_do_dark_matter_sub_drift);
 }
 
 /**
@@ -1058,6 +1237,15 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Clear the limiter flags on the given cell.
+ */
+void cell_clear_dm_limiter_flags(struct cell *c, void *data) {
+    cell_clear_flag(c,
+                    cell_flag_do_dark_matter_limiter | cell_flag_do_dark_matter_sub_limiter);
+}
+
+
+/**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
@@ -1067,10 +1255,11 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
  * @param with_grav Are we running with gravity on?
  */
 void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
-                    const int with_grav) {
+                    const int with_grav, const int with_sidm) {
   /* Are we in a cell which is either the hydro or gravity super? */
   if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
-                        (with_grav && c->grav.super != NULL)))
+                        (with_grav && c->grav.super != NULL) ||
+                        (with_sidm && c->dark_matter.super != NULL)))
     super = c;
 
   /* Set the super-cell */
@@ -1080,7 +1269,28 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_set_super(c->progeny[k], super, with_hydro, with_grav);
+        cell_set_super(c->progeny[k], super, with_hydro, with_grav, with_sidm);
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
+void cell_set_super_dark_matter(struct cell *c, struct cell *super_dark_matter) {
+    /* Are we in a cell with some kind of self/pair task ? */
+    if (super_dark_matter == NULL && c->dark_matter.density != NULL) super_dark_matter = c;
+    
+    /* Set the super-cell */
+    c->dark_matter.super = super_dark_matter;
+    
+    /* Recurse */
+    if (c->split)
+        for (int k = 0; k < 8; k++)
+            if (c->progeny[k] != NULL)
+                cell_set_super_dark_matter(c->progeny[k], super_dark_matter);
 }
 
 /**
@@ -1139,6 +1349,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
+  const int with_sidm = (e->policy & engine_policy_sidm);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1154,8 +1365,11 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
 
+    /* Super-pointer for dark matter */
+    if (with_sidm) cell_set_super_dark_matter(c, NULL);
+
     /* Super-pointer for common operations */
-    cell_set_super(c, NULL, with_hydro, with_grav);
+    cell_set_super(c, NULL, with_hydro, with_grav, with_sidm);
   }
 }
 
@@ -1233,26 +1447,27 @@ void cell_clear_stars_sort_flags(struct cell *c, const int clear_unused_flags) {
  */
 void cell_clear_hydro_sort_flags(struct cell *c, const int clear_unused_flags) {
 
-  /* Clear the flags that have not been reset by the sort task? */
-  if (clear_unused_flags) {
-    c->hydro.do_sort = 0;
-    c->hydro.requires_sorts = 0;
-    cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
-  }
+    /* Clear the flags that have not been reset by the sort task? */
+    if (clear_unused_flags) {
+        c->hydro.do_sort = 0;
+        c->hydro.requires_sorts = 0;
+        cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
+    }
 
-  /* Indicate that the cell is not sorted and cancel the pointer sorting
-   * arrays.
-   */
-  c->hydro.sorted = 0;
-  cell_free_hydro_sorts(c);
+    /* Indicate that the cell is not sorted and cancel the pointer sorting
+     * arrays.
+     */
+    c->hydro.sorted = 0;
+    cell_free_hydro_sorts(c);
 
-  /* Recurse if possible */
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_clear_hydro_sort_flags(c->progeny[k], clear_unused_flags);
-  }
+    /* Recurse if possible */
+    if (c->split) {
+        for (int k = 0; k < 8; k++)
+            if (c->progeny[k] != NULL)
+                cell_clear_hydro_sort_flags(c->progeny[k], clear_unused_flags);
+    }
 }
+
 
 /**
  * @brief Recursively checks that all particles in a cell have a time-step
@@ -1261,9 +1476,9 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
                           const timebin_t max_bin) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
+    if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->sinks.ti_end_min == 0 && c->nr_tasks > 0)
+      c->dark_matter.ti_end_min == 0 && c->sinks.ti_end_min == 0 && c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {
@@ -1338,7 +1553,7 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   }
 
 #else
-  error("Calling debugging code without debugging flag activated.");
+    error("Calling debugging code without debugging flag activated.");
 #endif
 }
 
@@ -1346,7 +1561,7 @@ void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  /* Recurse */
+    /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; ++k)
       if (c->progeny[k] != NULL)
@@ -1377,7 +1592,7 @@ void cell_check_spart_pos(const struct cell *c,
   }
 
 #else
-  error("Calling a degugging function outside debugging mode.");
+    error("Calling a degugging function outside debugging mode.");
 #endif
 }
 
@@ -1392,7 +1607,7 @@ void cell_check_spart_pos(const struct cell *c,
 void cell_check_sort_flags(const struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  const int do_hydro_sub_sort = cell_get_flag(c, cell_flag_do_hydro_sub_sort);
+    const int do_hydro_sub_sort = cell_get_flag(c, cell_flag_do_hydro_sub_sort);
   const int do_stars_sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
 
   if (do_hydro_sub_sort)
@@ -1412,6 +1627,7 @@ void cell_check_sort_flags(const struct cell *c) {
   }
 #endif
 }
+
 
 /**
  * @brief Can we use the MM interactions fo a given pair of cells?

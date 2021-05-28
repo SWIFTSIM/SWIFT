@@ -32,6 +32,7 @@
 #include "engine.h"
 #include "multipole.h"
 #include "star_formation_logger.h"
+#include "dark_matter_logger.h"
 #include "threadpool.h"
 
 /**
@@ -55,12 +56,14 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sbuff,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
+                           struct cell_buff *restrict dmbuff,
                            struct cell_buff *restrict sink_buff) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
+  const int dmcount = c->dark_matter.count;
   const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
@@ -73,6 +76,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   float black_holes_h_max_active = 0.f;
   float sinks_h_max = 0.f;
   float sinks_h_max_active = 0.f;
+  float dark_matter_h_max = 0.f;
+  float dark_matter_h_max_active = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -83,18 +88,22 @@ void space_split_recursive(struct space *s, struct cell *c,
                 ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+  integertime_t ti_dark_matter_end_min = max_nr_timesteps,
+                ti_dark_matter_end_max = 0, ti_dark_matter_beg_max = 0;
+
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct sink *sinks = c->sinks.parts;
+  struct dmpart *dmparts = c->dark_matter.parts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
-                               bbuff == NULL && sink_buff == NULL);
+                               bbuff == NULL && sink_buff == NULL && dmbuff == NULL);
   if (allocate_buffer) {
     if (count > 0) {
       if (swift_memalign("tempbuff", (void **)&buff, SWIFT_STRUCT_ALIGNMENT,
@@ -160,7 +169,23 @@ void space_split_recursive(struct space *s, struct cell *c,
         bbuff[k].x[2] = bparts[k].x[2];
       }
     }
-    if (sink_count > 0) {
+      if (dmcount > 0) {
+          if (swift_memalign("tempdmbuff", (void **)&dmbuff, SWIFT_STRUCT_ALIGNMENT,
+                             sizeof(struct cell_buff) * dmcount) != 0)
+              error("Failed to allocate temporary indices.");
+          for (int k = 0; k < dmcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+              if (dmparts[k].time_bin == time_bin_inhibited)
+                  error("Inhibited particle present in space_split()");
+              if (dmparts[k].time_bin == time_bin_not_created)
+                  error("Extra particle present in space_split()");
+#endif
+              dmbuff[k].x[0] = dmparts[k].x[0];
+              dmbuff[k].x[1] = dmparts[k].x[1];
+              dmbuff[k].x[2] = dmparts[k].x[2];
+          }
+      }
+      if (sink_count > 0) {
       if (swift_memalign("temp_sink_buff", (void **)&sink_buff,
                          SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * sink_count) != 0)
@@ -205,17 +230,20 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.count = 0;
       cp->sinks.count = 0;
       cp->black_holes.count = 0;
+      cp->dark_matter.count = 0;
       cp->hydro.count_total = 0;
       cp->grav.count_total = 0;
       cp->sinks.count_total = 0;
       cp->stars.count_total = 0;
       cp->black_holes.count_total = 0;
+      cp->dark_matter.count_total = 0;
       cp->hydro.ti_old_part = c->hydro.ti_old_part;
       cp->grav.ti_old_part = c->grav.ti_old_part;
       cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
       cp->stars.ti_old_part = c->stars.ti_old_part;
       cp->sinks.ti_old_part = c->sinks.ti_old_part;
       cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
+      cp->dark_matter.ti_old_part = c->dark_matter.ti_old_part;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];
@@ -242,14 +270,19 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->black_holes.h_max = 0.f;
       cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
+      cp->dark_matter.h_max = 0.f;
+      cp->dark_matter.h_max_active = 0.f;
+      cp->dark_matter.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
       cp->top = c->top;
       cp->super = NULL;
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
+      cp->dark_matter.super = NULL;
       cp->flags = 0;
       star_formation_logger_init(&cp->stars.sfh);
+      dark_matter_logger_init(&c->dark_matter.sh);
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
@@ -260,13 +293,13 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
-               c->black_holes.parts - s->bparts, c->sinks.parts - s->sinks,
-               buff, sbuff, bbuff, gbuff, sink_buff);
+               c->black_holes.parts - s->bparts, c->dark_matter.parts - s->dmparts,
+               c->sinks.parts - s->sinks, buff, sbuff, bbuff, gbuff, dmbuff, sink_buff);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,
                      *progeny_sbuff = sbuff, *progeny_bbuff = bbuff,
-                     *progeny_sink_buff = sink_buff;
+                     *progeny_dmbuff = dmbuff, *progeny_sink_buff = sink_buff;
 
     for (int k = 0; k < 8; k++) {
 
@@ -275,7 +308,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* Remove any progeny with zero particles. */
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
-          cp->black_holes.count == 0 && cp->sinks.count == 0) {
+          cp->black_holes.count == 0 && cp->sinks.count == 0 && cp->dark_matter.count == 0) {
 
         space_recycle(s, cp);
         c->progeny[k] = NULL;
@@ -284,13 +317,14 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff);
+                              progeny_gbuff, progeny_dmbuff, progeny_sink_buff);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
         progeny_gbuff += cp->grav.count;
         progeny_sbuff += cp->stars.count;
         progeny_bbuff += cp->black_holes.count;
+        progeny_dmbuff += cp->dark_matter.count;
         progeny_sink_buff += cp->sinks.count;
 
         /* Update the cell-wide properties */
@@ -304,6 +338,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
         sinks_h_max_active =
             max(sinks_h_max_active, cp->sinks.r_cut_max_active);
+        dark_matter_h_max = max(dark_matter_h_max, cp->dark_matter.h_max);
+        dark_matter_h_max_active = max(dark_matter_h_max_active, cp->dark_matter.h_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -317,8 +353,11 @@ void space_split_recursive(struct space *s, struct cell *c,
             min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
         ti_black_holes_beg_max =
             max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+        ti_dark_matter_end_min = min(ti_dark_matter_end_min, cp->dark_matter.ti_end_min);
+        ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, cp->dark_matter.ti_beg_max);
 
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+        dark_matter_logger_add(&c->dark_matter.sh, &cp->dark_matter.sh);
 
         /* Increase the depth */
         maxdepth = max(maxdepth, cp->maxdepth);
@@ -457,7 +496,12 @@ void space_split_recursive(struct space *s, struct cell *c,
     ti_black_holes_end_max = 0;
     ti_black_holes_beg_max = 0;
 
-    /* parts: Get dt_min/dt_max and h_max. */
+    ti_dark_matter_end_min = max_nr_timesteps;
+    ti_dark_matter_end_max = 0;
+    ti_dark_matter_beg_max = 0;
+
+
+      /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (parts[k].time_bin == time_bin_not_created)
@@ -598,7 +642,33 @@ void space_split_recursive(struct space *s, struct cell *c,
       bparts[k].x_diff[2] = 0.f;
     }
 
-    /* Construct the multipole and the centre of mass*/
+      /* dmparts: Get dt_min/dt_max */
+      for (int k = 0; k < dmcount; k++) {
+#ifdef SWIFT_DEBUG_CHECKS
+          if (dmparts[k].time_bin == time_bin_not_created)
+              error("Extra b-particle present in space_split()");
+          if (dmparts[k].time_bin == time_bin_inhibited)
+              error("Inhibited b-particle present in space_split()");
+#endif
+
+          /* When does this particle's time-step start and end? */
+          const timebin_t time_bin = dmparts[k].time_bin;
+          const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+          const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+
+          ti_dark_matter_end_min = min(ti_dark_matter_end_min, ti_end);
+          ti_dark_matter_end_max = max(ti_dark_matter_end_max, ti_end);
+          ti_dark_matter_beg_max = max(ti_dark_matter_beg_max, ti_beg);
+
+          dark_matter_h_max = max(dark_matter_h_max, dmparts[k].h);
+
+          /* Reset x_diff */
+          dmparts[k].x_diff[0] = 0.f;
+          dmparts[k].x_diff[1] = 0.f;
+          dmparts[k].x_diff[2] = 0.f;
+      }
+
+      /* Construct the multipole and the centre of mass*/
     if (s->with_self_gravity) {
       if (gcount > 0) {
 
@@ -649,6 +719,10 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
   c->black_holes.h_max_active = black_holes_h_max_active;
+  c->dark_matter.ti_end_min = ti_dark_matter_end_min;
+  c->dark_matter.ti_beg_max = ti_dark_matter_beg_max;
+  c->dark_matter.h_max = dark_matter_h_max;
+  c->dark_matter.h_max_active = dark_matter_h_max_active;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
@@ -664,6 +738,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   else if (s->nr_bparts > 0)
     c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) *
                s->nr_queues / s->nr_bparts;
+  else if (s->nr_dmparts > 0)
+    c->owner = ((c->dark_matter.parts - s->dmparts) % s->nr_dmparts) *
+               s->nr_queues / s->nr_dmparts;
   else if (s->nr_gparts > 0)
     c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
                s->nr_gparts;
@@ -679,6 +756,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (gbuff != NULL) swift_free("tempgbuff", gbuff);
     if (sbuff != NULL) swift_free("tempsbuff", sbuff);
     if (bbuff != NULL) swift_free("tempbbuff", bbuff);
+    if (dmbuff != NULL) swift_free("tempdmbuff", dmbuff);
     if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
   }
 }
@@ -701,7 +779,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, NULL);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

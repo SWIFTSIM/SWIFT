@@ -44,7 +44,6 @@ params = {
     "figure.subplot.hspace": 0.0,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
 rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
@@ -261,6 +260,7 @@ xticks(
         "$%.1f$" % (1.0 / epsilon),
         "",
         "$%.1f$" % (2.0 / epsilon),
+        ""
     ],
 )
 xlabel("$r/H$", labelpad=-2.0)

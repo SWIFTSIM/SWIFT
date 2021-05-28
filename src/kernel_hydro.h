@@ -43,7 +43,6 @@
 
 /* ------------------------------------------------------------------------- */
 #if defined(CUBIC_SPLINE_KERNEL)
-
 /* Coefficients for the kernel. */
 #define kernel_name "Cubic spline (M4)"
 #define kernel_degree 3 /*!< Degree of the polynomial */

@@ -39,6 +39,7 @@ struct gpart;
 struct velociraptor_gpart_data;
 struct spart;
 struct bpart;
+struct dmpart;
 struct xpart;
 struct sink;
 struct io_props;
@@ -150,6 +151,10 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
                                 struct bpart* restrict bparts_written,
                                 const size_t Nbparts,
                                 const size_t Nbparts_written);
+void io_collect_dmparts_to_write(const struct dmpart* restrict dmparts,
+                                struct dmpart* restrict dmparts_written,
+                                const size_t Ndmparts,
+                                const size_t Ndmparts_written);
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
                                 const struct velociraptor_gpart_data* vr_data,
                                 struct gpart* restrict gparts_written,
@@ -185,6 +190,9 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
                                struct spart* const sparts,
                                struct gpart* const gparts, size_t Nstars,
                                size_t Ndm);
+void io_duplicate_darkmatter_gparts(struct threadpool* tp,
+                               struct dmpart* const dmparts,
+                               struct gpart* const gparts, size_t Ndarkmatter);
 void io_duplicate_sinks_gparts(struct threadpool* tp, struct sink* const sinks,
                                struct gpart* const gparts, size_t Nsinks,
                                size_t Ndm);
@@ -195,10 +203,10 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
 
 void io_prepare_output_fields(struct output_options* output_options,
                               const int with_cosmology, const int with_fof,
-                              const int with_stf, int verbose);
+                              const int with_stf, const int with_sidm, int verbose);
 
 void io_write_output_field_parameter(const char* filename, int with_cosmology,
-                                     int with_fof, int with_stf);
+                                     int with_fof, int with_stf, int with_sidm);
 
 void io_make_snapshot_subdir(const char* dirname);
 
@@ -220,6 +228,12 @@ void io_select_hydro_fields(const struct part* const parts,
                             const int with_stf, const int with_rt,
                             const struct engine* const e, int* const num_fields,
                             struct io_props* const list);
+
+void io_select_dark_matter_fields(const struct dmpart* const dmparts,
+                                  const struct velociraptor_gpart_data* gpart_group_data,
+                                  const int with_fof, const int with_stf,
+                                  const struct engine* const e, int* const num_fields,
+                                  struct io_props* const list);
 
 void io_select_dm_fields(const struct gpart* const gparts,
                          const struct velociraptor_gpart_data* gpart_group_data,

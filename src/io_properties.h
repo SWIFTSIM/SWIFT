@@ -86,7 +86,17 @@ typedef void (*conversion_func_sink_int)(const struct engine*,
 typedef void (*conversion_func_sink_double)(const struct engine*,
                                             const struct sink*, double*);
 typedef void (*conversion_func_sink_long_long)(const struct engine*,
-                                               const struct sink*, long long*);
+                                               const struct sink*,
+                                               long long*);
+typedef void (*conversion_func_dmpart_float)(const struct engine*,
+                                            const struct dmpart*, float*);
+typedef void (*conversion_func_dmpart_int)(const struct engine*,
+                                          const struct dmpart*, int*);
+typedef void (*conversion_func_dmpart_double)(const struct engine*,
+                                             const struct dmpart*, double*);
+typedef void (*conversion_func_dmpart_long_long)(const struct engine*,
+                                                const struct dmpart*,
+                                                long long*);
 
 /**
  * @brief The properties of a given dataset for i/o
@@ -142,6 +152,7 @@ struct io_props {
   const struct gpart* gparts;
   const struct spart* sparts;
   const struct bpart* bparts;
+  const struct dmpart* dmparts;
   const struct sink* sinks;
 
   /* Are we converting? */
@@ -170,6 +181,12 @@ struct io_props {
   conversion_func_bpart_int convert_bpart_i;
   conversion_func_bpart_double convert_bpart_d;
   conversion_func_bpart_long_long convert_bpart_l;
+
+  /* Conversion function for dmpart */
+  conversion_func_dmpart_float convert_dmpart_f;
+  conversion_func_dmpart_int convert_dmpart_i;
+  conversion_func_dmpart_double convert_dmpart_d;
+  conversion_func_dmpart_long_long convert_dmpart_l;
 
   /* Conversion function for sink */
   conversion_func_sink_float convert_sink_f;
@@ -851,6 +868,187 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
   r.convert_spart_l = functionPtr;
 
   return r;
+}
+
+/**
+ * @brief Constructs an #io_props (with conversion) from its parameters
+ */
+#define io_make_output_field_convert_dmpart(name, type, dim, units, a_exponent, \
+                                            dmpart, convert, desc)               \
+  io_make_output_field_convert_dmpart_##type(name, type, dim, units,            \
+                                             a_exponent, sizeof(dmpart[0]),      \
+                                             dmpart, convert, desc)
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param spartSize The size in byte of the particle
+ * @param sparts The particle array
+ * @param functionPtr The function used to convert a s-particle to a float
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_dmpart_INT(
+ const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+ enum unit_conversion_factor units, float a_exponent, size_t dmpartSize,
+ const struct dmpart* dmparts, conversion_func_dmpart_int functionPtr,
+ const char description[DESCRIPTION_BUFFER_SIZE]) {
+    
+    struct io_props r;
+    bzero(&r, sizeof(struct io_props));
+    
+    strcpy(r.name, name);
+    if (strlen(description) == 0) {
+        sprintf(r.description, "No description given");
+    } else {
+        strcpy(r.description, description);
+    }
+    r.type = type;
+    r.dimension = dimension;
+    r.importance = UNUSED;
+    r.units = units;
+    r.scale_factor_exponent = a_exponent;
+    r.partSize = dmpartSize;
+    r.dmparts = dmparts;
+    r.conversion = 1;
+    r.convert_dmpart_i = functionPtr;
+    
+    return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param spartSize The size in byte of the particle
+ * @param sparts The particle array
+ * @param functionPtr The function used to convert a g-particle to a float
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_dmpart_FLOAT(
+ const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+ enum unit_conversion_factor units, float a_exponent, size_t dmpartSize,
+ const struct dmpart* dmparts, conversion_func_dmpart_float functionPtr,
+ const char description[DESCRIPTION_BUFFER_SIZE]) {
+    
+    struct io_props r;
+    bzero(&r, sizeof(struct io_props));
+    
+    strcpy(r.name, name);
+    if (strlen(description) == 0) {
+        sprintf(r.description, "No description given");
+    } else {
+        strcpy(r.description, description);
+    }
+    r.type = type;
+    r.dimension = dimension;
+    r.importance = UNUSED;
+    r.units = units;
+    r.scale_factor_exponent = a_exponent;
+    r.partSize = dmpartSize;
+    r.dmparts = dmparts;
+    r.conversion = 1;
+    r.convert_dmpart_f = functionPtr;
+    
+    return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param spartSize The size in byte of the particle
+ * @param sparts The particle array
+ * @param functionPtr The function used to convert a s-particle to a double
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_dmpart_DOUBLE(
+ const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+ enum unit_conversion_factor units, float a_exponent, size_t dmpartSize,
+ const struct dmpart* dmparts, conversion_func_dmpart_double functionPtr,
+ const char description[DESCRIPTION_BUFFER_SIZE]) {
+    
+    struct io_props r;
+    bzero(&r, sizeof(struct io_props));
+    
+    strcpy(r.name, name);
+    if (strlen(description) == 0) {
+        sprintf(r.description, "No description given");
+    } else {
+        strcpy(r.description, description);
+    }
+    r.type = type;
+    r.dimension = dimension;
+    r.importance = UNUSED;
+    r.units = units;
+    r.scale_factor_exponent = a_exponent;
+    r.partSize = dmpartSize;
+    r.dmparts = dmparts;
+    r.conversion = 1;
+    r.convert_dmpart_d = functionPtr;
+    
+    return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param spartSize The size in byte of the particle
+ * @param sparts The particle array
+ * @param functionPtr The function used to convert a s-particle to a double
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_dmpart_LONGLONG(
+ const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+ enum unit_conversion_factor units, float a_exponent, size_t dmpartSize,
+ const struct dmpart* dmparts, conversion_func_dmpart_long_long functionPtr,
+ const char description[DESCRIPTION_BUFFER_SIZE]) {
+    
+    struct io_props r;
+    bzero(&r, sizeof(struct io_props));
+    
+    strcpy(r.name, name);
+    if (strlen(description) == 0) {
+        sprintf(r.description, "No description given");
+    } else {
+        strcpy(r.description, description);
+    }
+    r.type = type;
+    r.dimension = dimension;
+    r.importance = UNUSED;
+    r.units = units;
+    r.scale_factor_exponent = a_exponent;
+    r.partSize = dmpartSize;
+    r.dmparts = dmparts;
+    r.conversion = 1;
+    r.convert_dmpart_l = functionPtr;
+    
+    return r;
 }
 
 /**

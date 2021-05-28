@@ -51,7 +51,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   /* Anything to do here? (Abort if we don't want extras)*/
   if (space_extra_parts == 0 && space_extra_gparts == 0 &&
       space_extra_sparts == 0 && space_extra_bparts == 0 &&
-      space_extra_sinks == 0)
+      space_extra_dmparts == 0 && space_extra_sinks == 0)
     return;
 
   /* The top-level cells */
@@ -65,6 +65,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
   size_t nr_bparts = s->nr_bparts;
+  size_t nr_dmparts = s->nr_dmparts;
   size_t nr_sinks = s->nr_sinks;
 
   /* The current number of actual particles */
@@ -72,6 +73,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t nr_actual_gparts = nr_gparts - s->nr_extra_gparts;
   size_t nr_actual_sparts = nr_sparts - s->nr_extra_sparts;
   size_t nr_actual_bparts = nr_bparts - s->nr_extra_bparts;
+  size_t nr_actual_dmparts = nr_dmparts - s->nr_extra_dmparts;
   size_t nr_actual_sinks = nr_sinks - s->nr_extra_sinks;
 
   /* The number of particles we allocated memory for (MPI overhead) */
@@ -79,6 +81,7 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
   size_t size_bparts = s->size_bparts;
+  size_t size_dmparts = s->size_dmparts;
   size_t size_sinks = s->size_sinks;
 
   int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
@@ -99,21 +102,22 @@ void space_allocate_extras(struct space *s, int verbose) {
   const size_t expected_num_extra_gparts = nr_local_cells * space_extra_gparts;
   const size_t expected_num_extra_sparts = nr_local_cells * space_extra_sparts;
   const size_t expected_num_extra_bparts = nr_local_cells * space_extra_bparts;
+  const size_t expected_num_extra_dmparts = nr_local_cells * space_extra_dmparts;
   const size_t expected_num_extra_sinks = nr_local_cells * space_extra_sinks;
 
   if (verbose) {
-    message("Currently have %zd/%zd/%zd/%zd/%zd real particles.",
+    message("Currently have %zd/%zd/%zd/%zd/%zd/%zd real particles.",
             nr_actual_parts, nr_actual_gparts, nr_actual_sinks,
-            nr_actual_sparts, nr_actual_bparts);
-    message("Currently have %zd/%zd/%zd/%zd/%zd spaces for extra particles.",
+            nr_actual_sparts, nr_actual_bparts, nr_actual_dmparts);
+    message("Currently have %zd/%zd/%zd/%zd/%zd/%zd spaces for extra particles.",
             s->nr_extra_parts, s->nr_extra_gparts, s->nr_extra_sinks,
-            s->nr_extra_sparts, s->nr_extra_bparts);
+            s->nr_extra_sparts, s->nr_extra_bparts, s->nr_extra_dmparts);
     message(
-        "Requesting space for future %zd/%zd/%zd/%zd/%zd "
-        "part/gpart/sinks/sparts/bparts.",
+        "Requesting space for future %zd/%zd/%zd/%zd/%zd/%zd "
+        "part/gpart/sinks/sparts/bparts/dmparts.",
         expected_num_extra_parts, expected_num_extra_gparts,
         expected_num_extra_sinks, expected_num_extra_sparts,
-        expected_num_extra_bparts);
+        expected_num_extra_bparts, expected_num_extra_dmparts);
   }
 
   if (expected_num_extra_parts < s->nr_extra_parts)
@@ -136,6 +140,9 @@ void space_allocate_extras(struct space *s, int verbose) {
     error(
         "Reduction in top-level cells number not handled. Please set a lower "
         "h_max or reduce the number of top level cells.");
+  if (expected_num_extra_dmparts < s->nr_extra_dmparts)
+    error("Reduction in top-level cells number not handled. Please set a lower "
+          "h_max or reduce the number of top level cells.");
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
    * ? */
@@ -494,6 +501,88 @@ void space_allocate_extras(struct space *s, int verbose) {
     s->nr_extra_sparts = expected_num_extra_sparts;
   }
 
+    /* Do we have enough space for the extra dmparts (i.e. we haven't used up any)
+     * ? */
+    if (nr_actual_dmparts + expected_num_extra_dmparts > nr_dmparts) {
+
+        /* Ok... need to put some more in the game */
+
+        /* Do we need to reallocate? */
+        if (nr_actual_dmparts + expected_num_extra_dmparts > size_dmparts) {
+
+            size_dmparts = (nr_actual_dmparts + expected_num_extra_dmparts) *
+                          engine_redistribute_alloc_margin;
+
+            if (verbose)
+                message("Re-allocating dmparts array from %zd to %zd", s->size_dmparts,
+                        size_dmparts);
+
+            /* Create more space for parts */
+            struct dmpart *dmparts_new = NULL;
+            if (swift_memalign("dmparts", (void **)&dmparts_new, dmpart_align,
+                               sizeof(struct dmpart) * size_dmparts) != 0)
+                error("Failed to allocate new dmpart data");
+            memcpy(dmparts_new, s->dmparts, sizeof(struct dmpart) * s->size_dmparts);
+            swift_free("dmparts", s->dmparts);
+            s->dmparts = dmparts_new;
+
+            /* Update the counter */
+            s->size_dmparts = size_dmparts;
+        }
+
+        /* Turn some of the allocated spares into particles we can use */
+        for (size_t i = nr_dmparts; i < nr_actual_dmparts + expected_num_extra_dmparts;
+             ++i) {
+            bzero(&s->dmparts[i], sizeof(struct dmpart));
+            s->dmparts[i].time_bin = time_bin_not_created;
+            s->dmparts[i].id_or_neg_offset = -42;
+        }
+
+        /* Put the spare particles in their correct cell */
+        size_t local_cell_id = 0;
+        int current_cell = local_cells[local_cell_id];
+        int count_in_cell = 0;
+        size_t count_extra_dmparts = 0;
+        for (size_t i = 0; i < nr_actual_dmparts + expected_num_extra_dmparts; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (current_cell == s->nr_cells)
+                error("Cell counter beyond the maximal nr. cells.");
+#endif
+
+            if (s->dmparts[i].time_bin == time_bin_not_created) {
+
+                /* We want the extra particles to be at the centre of their cell */
+                s->dmparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
+                s->dmparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
+                s->dmparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+                ++count_in_cell;
+                count_extra_dmparts++;
+            }
+
+            /* Once we have reached the number of extra spart per cell, we move to the
+             * next */
+            if (count_in_cell == space_extra_dmparts) {
+                ++local_cell_id;
+
+                if (local_cell_id == nr_local_cells) break;
+
+                current_cell = local_cells[local_cell_id];
+                count_in_cell = 0;
+            }
+        }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (count_extra_dmparts != expected_num_extra_dmparts)
+            error("Constructed the wrong number of extra dmparts (%zd vs. %zd)",
+                  count_extra_dmparts, expected_num_extra_dmparts);
+#endif
+
+        /* Update the counters */
+        s->nr_dmparts = nr_actual_dmparts + expected_num_extra_dmparts;
+        s->nr_extra_dmparts = expected_num_extra_dmparts;
+    }
+
   /* Do we have enough space for the extra bparts (i.e. we haven't used up any)
    * ? */
   if (nr_actual_bparts + expected_num_extra_bparts > nr_bparts) {
@@ -577,12 +666,14 @@ void space_allocate_extras(struct space *s, int verbose) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const int with_sidm = s->e->policy & engine_policy_sidm;
   /* Verify that the links are correct */
   if ((nr_gparts > 0 && nr_parts > 0) || (nr_gparts > 0 && nr_sparts > 0) ||
-      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0))
-    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_bparts,
-                      verbose);
+      (nr_gparts > 0 && nr_bparts > 0) || (nr_gparts > 0 && nr_sinks > 0) ||
+      (nr_gparts > 0 && nr_dmparts > 0))
+    part_verify_links(s->parts, s->gparts, s->sinks, s->sparts,  s->dmparts, s->bparts,
+                      nr_parts, nr_gparts, nr_sinks, nr_sparts, nr_dmparts, nr_bparts,
+                      with_sidm, verbose);
 #endif
 
   /* Free the list of local cells */

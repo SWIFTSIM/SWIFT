@@ -62,6 +62,7 @@ void engine_makeproxies(struct engine *e) {
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
@@ -167,6 +168,20 @@ void engine_makeproxies(struct engine *e) {
                      (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
                       abs(k - kkk + cdim[2]) <= 1)))
                   proxy_type |= (int)proxy_cell_type_hydro;
+              }
+
+              /* In the sidm case, we care about direct neighbours too */
+              if (with_sidm) {
+
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1)))
+                  proxy_type |= (int)proxy_cell_type_dark_matter;
               }
 
               /* In the gravity case, check distances using the MAC. */

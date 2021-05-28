@@ -38,7 +38,10 @@
 #include "cell_hydro.h"
 #include "cell_sinks.h"
 #include "cell_stars.h"
+#include "cell_dark_matter.h"
 #include "kernel_hydro.h"
+#include "kernel_dark_matter.h"
+#include "lock.h"
 #include "multipole_struct.h"
 #include "part.h"
 #include "periodic.h"
@@ -190,6 +193,26 @@ struct pcell {
     integertime_t ti_old_part;
 
   } black_holes;
+    
+    /*! Dark matter variables */
+    struct {
+        
+        /*! Number of #spart in this cell. */
+        int count;
+        
+        /*! Maximal smoothing length. */
+        float h_max;
+        
+        /*! Minimal integer end-of-timestep in this cell for stars tasks */
+        integertime_t ti_end_min;
+        
+        /*! Maximal integer end-of-timestep in this cell for stars tasks */
+        integertime_t ti_end_max;
+        
+        /*! Integer time of the last drift of the #spart in this cell */
+        integertime_t ti_old_part;
+        
+    } dark_matter;
 
   /*! Sink variables */
   struct {
@@ -257,6 +280,18 @@ struct pcell_step_black_holes {
   float dx_max_part;
 };
 
+struct pcell_step_dark_matter {
+    
+    /*! Minimal integer end-of-timestep in this cell (dark_matter) */
+    integertime_t ti_end_min;
+    
+    /*! Maximal integer end-of-timestep in this cell (dark_matter) */
+    integertime_t ti_end_max;
+    
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+};
+
 /**
  * @brief Cell information to propagate the new counts of star particles.
  */
@@ -313,7 +348,13 @@ enum cell_flags {
   cell_flag_do_hydro_sync = (1UL << 17),
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
-  cell_flag_unskip_pair_grav_processed = (1UL << 20)
+  cell_flag_unskip_pair_grav_processed = (1UL << 20),
+  cell_flag_do_dark_matter_drift = (1UL << 21),
+  cell_flag_do_dark_matter_sub_drift = (1UL << 22),
+  cell_flag_do_dark_matter_sync = (1UL << 23),
+  cell_flag_do_dark_matter_sub_sync = (1UL << 24),
+  cell_flag_do_dark_matter_limiter = (1UL << 25),
+  cell_flag_do_dark_matter_sub_limiter = (1UL << 26)
 };
 
 /**
@@ -359,6 +400,9 @@ struct cell {
   /*! Stars variables */
   struct cell_stars stars;
 
+  /*! Dark matter variables */
+  struct cell_dark_matter dark_matter;
+
   /*! Black hole variables */
   struct cell_black_holes black_holes;
 
@@ -394,7 +438,7 @@ struct cell {
 
   /*! The first kick task */
   struct task *kick1;
-
+    
   /*! The second kick task */
   struct task *kick2;
 
@@ -456,9 +500,9 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
+                ptrdiff_t bparts_offset, ptrdiff_t dmparts_offset, ptrdiff_t sinks_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff,
+                struct cell_buff *bbuff, struct cell_buff *gbuff, struct cell_buff *dmbuff,
                 struct cell_buff *sinkbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
@@ -471,6 +515,8 @@ int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
 int cell_sink_locktree(struct cell *c);
 void cell_sink_unlocktree(struct cell *c);
+int cell_dmlocktree(struct cell *c);
+void cell_dmunlocktree(struct cell *c);
 int cell_blocktree(struct cell *c);
 void cell_bunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
@@ -488,7 +534,9 @@ int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
 int cell_unpack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
+int cell_unpack_end_step_dark_matter(struct cell *c, struct pcell_step_dark_matter *pcell);
 int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
+int cell_pack_end_step_dark_matter(struct cell *c, struct pcell_step_dark_matter *pcell);
 int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
 int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
@@ -505,11 +553,14 @@ int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
+int cell_link_dmparts(struct cell *c, struct dmpart *dmparts);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
+int cell_link_foreign_dmparts(struct cell *c, struct dmpart *dmparts);
 void cell_unlink_foreign_particles(struct cell *c);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
+int cell_count_dmparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current,
                           const struct gravity_props *const grav_props);
@@ -521,6 +572,7 @@ void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_sink_drift_point(struct cell *c, void *data);
+void cell_check_dmpart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
@@ -530,12 +582,14 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force);
 void cell_drift_sink(struct cell *c, const struct engine *e, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force);
+void cell_drift_dmpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
@@ -564,6 +618,8 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
+void cell_activate_subcell_dark_matter_tasks(struct cell *ci, struct cell *cj,
+                                             struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
@@ -575,12 +631,17 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_sink(struct cell *c, struct scheduler *s);
 void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
+void cell_activate_drift_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_sync_part(struct cell *c, struct scheduler *s);
+void cell_activate_sync_dmpart(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
+void cell_activate_dark_matter_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
+void cell_activate_dm_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
+void cell_clear_dm_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
@@ -598,6 +659,8 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
                       struct sink *sink);
 void cell_remove_bpart(const struct engine *e, struct cell *c,
                        struct bpart *bp);
+void cell_remove_dmpart(const struct engine *e, struct cell *c,
+                        struct dmpart *dmp);
 struct spart *cell_add_spart(struct engine *e, struct cell *c);
 struct gpart *cell_add_gpart(struct engine *e, struct cell *c);
 struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
@@ -605,6 +668,8 @@ struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
                                              const struct xpart *xp);
 struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
                                              const struct sink *s);
+struct dmpart *cell_convert_part_to_dmpart(struct engine *e, struct cell *c,
+                                           struct part *p, struct xpart *xp);
 struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
@@ -618,6 +683,7 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
                                struct spart *sparts, struct sink *sinks);
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
+void cell_reorder_extra_dmparts(struct cell *c, const ptrdiff_t dmparts_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
@@ -704,6 +770,23 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair dark_matter task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split ? */
+    /* If so, is the cut-off radius plus the max distance the parts have moved */
+    /* smaller than the sub-cell sizes ? */
+    /* Note: We use the _old values as these might have been updated by a drift */
+    return c->split && ((dm_kernel_gamma * c->dark_matter.h_max_old +
+                         c->dark_matter.dx_max_part_old) < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a sub-self hydro task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -714,6 +797,19 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self dark matter task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split and not smaller than the smoothing length? */
+    return c->split && (dm_kernel_gamma * c->dark_matter.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -865,6 +961,41 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
+
+/**
+ * @brief Can a pair hydro task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split ? */
+    /* If so, is the cut-off radius with some leeway smaller than */
+    /* the sub-cell sizes ? */
+    /* Note that since tasks are create after a rebuild no need to take */
+    /* into account any part motion (i.e. dx_max == 0 here) */
+    return c->split &&
+    (space_stretch * dm_kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a self hydro task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_dark_matter_task(const struct cell *c) {
+    
+    /* Is the cell split ? */
+    /* If so, is the cut-off radius with some leeway smaller than */
+    /* the sub-cell sizes ? */
+    /* Note: No need for more checks here as all the sub-pairs and sub-self */
+    /* tasks will be created. So no need to check for h_max */
+    return c->split &&
+    (space_stretch * dm_kernel_gamma * c->dark_matter.h_max < 0.5f * c->dmin);
+}
+
 /**
  * @brief Can a pair gravity task associated with a cell be split into smaller
  * sub-tasks.
@@ -989,6 +1120,28 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
     return 1;
   }
   return 0;
+}
+
+/**
+ * @brief Have dark matter particles in a pair of cells moved too much and require a
+ * rebuild?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_dark_matter_pair(const struct cell *ci,
+                                       const struct cell *cj) {
+    
+    /* Is the cut-off radius plus the max distance the parts in both cells have */
+    /* moved larger than the cell size ? */
+    /* Note ci->dmin == cj->dmin */
+    if (dm_kernel_gamma * max(ci->dark_matter.h_max, cj->dark_matter.h_max) +
+        ci->dark_matter.dx_max_part + cj->dark_matter.dx_max_part >
+        cj->dmin) {
+        return 1;
+    }
+    return 0;
 }
 
 /**
@@ -1130,6 +1283,31 @@ cell_get_hydro_sorts(const struct cell *c, const int sid) {
   /* Return the corresponding array */
   return &c->hydro.sort[j * (c->hydro.count + 1)];
 }
+
+/**
+ * @brief Returns the array of sorted indices for the DM particles of a given
+ * cell along agiven direction.
+ *
+ * @param c The #cell.
+ * @param sid the direction id.
+ */
+__attribute__((always_inline)) INLINE static struct sort_entry *
+cell_get_dark_matter_sorts(const struct cell *c, const int sid) {
+    
+    /* We need to find at what position in the meta-array of
+     sorts where the corresponding sid has been allocated since
+     there might be gaps as we only allocated the directions that
+     are in use.
+     We create a mask with all the bits before the sid's one set to 1
+     and apply it on the list of allocated directions. We then count
+     the number of bits that are in the results to obtain the position
+     of the correspondin sid in the meta-array */
+    const int j = intrinsics_popcount(c->dark_matter.sort_allocated & ((1 << sid) - 1));
+    
+    /* Return the corresponding array */
+    return &c->dark_matter.sort[j * (c->dark_matter.count + 1)];
+}
+
 
 /**
  * @brief Allocate stars sort memory for cell.

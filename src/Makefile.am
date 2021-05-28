@@ -41,8 +41,8 @@ noinst_LTLIBRARIES += libgrav_mpi.la
 endif
 
 # List required headers
-include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h 
-include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h 
+include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h
+include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h cell_dark_matter.h
 include_HEADERS += engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h 
 include_HEADERS += common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h 
 include_HEADERS += partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h 
@@ -56,15 +56,16 @@ include_HEADERS += csds_io.h tracers_io.h tracers.h tracers_struct.h star_format
 include_HEADERS += fof.h fof_struct.h fof_io.h fof_catalogue_io.h
 include_HEADERS += multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h sincos.h 
 include_HEADERS += star_formation_struct.h star_formation.h star_formation_iact.h 
-include_HEADERS += star_formation_logger.h star_formation_logger_struct.h 
+include_HEADERS += star_formation_logger.h star_formation_logger_struct.h
 include_HEADERS += pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h 
 include_HEADERS += velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h 
-include_HEADERS += black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h 
-include_HEADERS += feedback.h feedback_struct.h feedback_properties.h 
+include_HEADERS += black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h
+include_HEADERS += feedback.h feedback_struct.h feedback_properties.h
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += chemistry_csds.h star_formation_csds.h
+include_HEADERS += dark_matter_logger.h dark_matter_logger_struct.h
 
 # source files for EAGLE cooling
 QLA_COOLING_SOURCES =
@@ -149,14 +150,15 @@ GRAVITY_CSDS += gravity/MultiSoftening/gravity_csds.c
 endif
 
 # Common source files
-AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
+AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
 AM_SOURCES += space_cell_index.c space_recycle.c 
-AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c 
+AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c runner_doiact_dark_matter_limiter.c
 AM_SOURCES += runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c 
 AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c 
 AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c runner_doiact_sinks.c 
 AM_SOURCES += runner_doiact_rt.c runner_doiact_sinks_merger.c
+AM_SOURCES += runner_doiact_dark_matter.c
 AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c 
 AM_SOURCES += cell_unskip.c 
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c 
@@ -172,14 +174,15 @@ AM_SOURCES += threadpool.c cooling.c star_formation.c
 AM_SOURCES += hydro.c stars.c
 AM_SOURCES += statistics.c profiler.c dump.c csds.c part_type.c 
 AM_SOURCES += gravity_properties.c gravity.c multipole.c 
-AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c 
+AM_SOURCES += dark_matter_properties.c
+AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c
 AM_SOURCES += chemistry.c cosmology.c mesh_gravity.c velociraptor_interface.c 
 AM_SOURCES += output_list.c velociraptor_dummy.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
 AM_SOURCES += fof.c fof_catalogue_io.c
 AM_SOURCES += hashmap.c pressure_floor.c
 AM_SOURCES += runner_neutrino.c
 AM_SOURCES += neutrino/Default/fermi_dirac.c
-AM_SOURCES += $(QLA_COOLING_SOURCES) 
+AM_SOURCES += $(QLA_COOLING_SOURCES)
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
 AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
@@ -187,14 +190,17 @@ AM_SOURCES += $(CHEMISTRY_CSDS) $(HYDRO_CSDS) $(STARS_CSDS) $(GRAVITY_CSDS)
 AM_SOURCES += $(STAR_FORMATION_CSDS)
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h
+nobase_noinst_HEADERS += kernel_gravity.h kernel_dark_matter.h
 nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
-nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h 
-nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
+nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h
+nobase_noinst_HEADERS += runner_doiact_grav.h runner_doiact_dark_matter.h
+nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h
+nobase_noinst_HEADERS += runner_doiact_functions_dark_matter.h runner_doiact_functions_dark_matter_limiter.h runner_doiact_dark_matter_limiter.h
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h 
 nobase_noinst_HEADERS += runner_doiact_rt.h runner_doiact_functions_rt.h runner_doiact_sinks.h runner_doiact_functions_sinks.h
 nobase_noinst_HEADERS += runner_doiact_sinks_merger.h runner_doiact_functions_sinks_merger.h
-nobase_noinst_HEADERS += kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h 
+nobase_noinst_HEADERS += kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h
 nobase_noinst_HEADERS += timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h 
 nobase_noinst_HEADERS += dump.h csds.h sign.h csds_io.h hashmap.h gravity.h gravity_io.h gravity_csds.h  gravity_cache.h output_options.h
 nobase_noinst_HEADERS += gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h 
@@ -203,7 +209,8 @@ nobase_noinst_HEADERS += gravity/MultiSoftening/gravity.h gravity/MultiSoftening
 nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h 
 nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_csds.h 
 nobase_noinst_HEADERS += equation_of_state.h 
-nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h 
+nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h
+nobase_noinst_HEADERS += dark_matter.h dark_matter_iact.h dark_matter_properties.h dark_matter_io.h dark_matter_part.h
 nobase_noinst_HEADERS += hydro.h hydro_io.h hydro_csds.h hydro_parameters.h 
 nobase_noinst_HEADERS += hydro/None/hydro.h hydro/None/hydro_iact.h hydro/None/hydro_io.h 
 nobase_noinst_HEADERS += hydro/None/hydro_debug.h hydro/None/hydro_part.h 
@@ -405,6 +412,10 @@ nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
 nobase_noinst_HEADERS += neutrino.h neutrino_properties.h neutrino_io.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino.h neutrino/Default/relativity.h neutrino/Default/fermi_dirac.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino_properties.h neutrino/Default/neutrino_io.h
+nobase_noinst_HEADERS += dark_matter/Default/dark_matter.h dark_matter/Default/dark_matter_iact.h
+nobase_noinst_HEADERS += dark_matter/Default/dark_matter_io.h
+nobase_noinst_HEADERS += dark_matter/Default/dark_matter_logger.h dark_matter/Default/dark_matter_logger_struct.h
+nobase_noinst_HEADERS += dark_matter/Default/dark_matter_properties.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c

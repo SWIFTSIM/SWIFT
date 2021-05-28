@@ -44,9 +44,12 @@
 #include "atomic.h"
 #include "const.h"
 #include "cooling.h"
+#include "dark_matter.h"
+#include "debug.h"
 #include "engine.h"
 #include "error.h"
 #include "kernel_hydro.h"
+#include "kernel_dark_matter.h"
 #include "lock.h"
 #include "minmax.h"
 #include "proxy.h"
@@ -67,6 +70,8 @@ int space_subsize_pair_stars = space_subsize_pair_stars_default;
 int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
+int space_subsize_pair_dark_matter = space_subsize_pair_dark_matter_default;
+int space_subsize_self_dark_matter = space_subsize_self_dark_matter_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 
@@ -79,6 +84,9 @@ int space_extra_sparts = space_extra_sparts_default;
 /*! Number of extra #bpart we allocate memory for per top-level cell */
 int space_extra_bparts = space_extra_bparts_default;
 
+/*! Number of extra #dmpart we allocate memory for per top-level cell */
+int space_extra_dmparts = space_extra_dmparts_default;
+
 /*! Number of extra #gpart we allocate memory for per top-level cell */
 int space_extra_gparts = space_extra_gparts_default;
 
@@ -86,6 +94,7 @@ int space_extra_gparts = space_extra_gparts_default;
 int space_extra_sinks = space_extra_sinks_default;
 
 /*! Maximum number of particles per ghost */
+int engine_max_dmparts_per_ghost = engine_max_dmparts_per_ghost_default;
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 int engine_max_parts_per_cooling = engine_max_parts_per_cooling_default;
@@ -141,6 +150,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
   }
+  if (s->dmparts_foreign != NULL) {
+      swift_free("dmparts_foreign", s->dmparts_foreign);
+      s->size_dmparts_foreign = 0;
+      s->dmparts_foreign = NULL;
+  }
   if (clear_cell_pointers) {
     for (int k = 0; k < s->e->nr_proxies; k++) {
       for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
@@ -166,14 +180,14 @@ void space_reorder_extra_parts_mapper(void *map_data, int num_cells,
 void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
                                        void *extra_data) {
 
-  int *local_cells = (int *)map_data;
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
+    int *local_cells = (int *) map_data;
+    struct space *s = (struct space *) extra_data;
+    struct cell *cells_top = s->cells_top;
 
-  for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells[ind]];
-    cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks);
-  }
+    for (int ind = 0; ind < num_cells; ind++) {
+        struct cell *c = &cells_top[local_cells[ind]];
+        cell_reorder_extra_gparts(c, s->parts, s->sparts, s->sinks);
+    }
 }
 
 void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
@@ -187,6 +201,19 @@ void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
     struct cell *c = &cells_top[local_cells[ind]];
     cell_reorder_extra_sparts(c, c->stars.parts - s->sparts);
   }
+}
+
+void space_reorder_extra_dmparts_mapper(void *map_data, int num_cells,
+                                       void *extra_data) {
+
+    int *local_cells = (int *)map_data;
+    struct space *s = (struct space *)extra_data;
+    struct cell *cells_top = s->cells_top;
+
+    for (int ind = 0; ind < num_cells; ind++) {
+        struct cell *c = &cells_top[local_cells[ind]];
+        cell_reorder_extra_dmparts(c, c->dark_matter.parts - s->dmparts);
+    }
 }
 
 void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
@@ -232,7 +259,13 @@ void space_reorder_extras(struct space *s, int verbose) {
                    s->local_cells_top, s->nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
-  /* Re-order the black hole particles */
+  /* Re-order the dark matter particles */
+  if (space_extra_dmparts)
+        threadpool_map(&s->e->threadpool, space_reorder_extra_dmparts_mapper,
+                       s->local_cells_top, s->nr_local_cells, sizeof(int),
+                       threadpool_auto_chunk_size, s);
+
+    /* Re-order the black hole particles */
   if (space_extra_bparts)
     error("Missing implementation of BH extra reordering");
 
@@ -402,9 +435,9 @@ static void rec_map_cells_pre(struct cell *c, int full,
 
   /* Recurse. */
   if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        rec_map_cells_pre(c->progeny[k], full, fun, data);
+      for (int k = 0; k < 8; k++)
+          if (c->progeny[k] != NULL)
+              rec_map_cells_pre(c->progeny[k], full, fun, data);
 }
 
 /**
@@ -499,8 +532,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
         lock_init(&cells[j]->sinks.lock) != 0 ||
-        lock_init(&cells[j]->sinks.sink_formation_lock) != 0 ||
         lock_init(&cells[j]->black_holes.lock) != 0 ||
+        lock_init(&cells[j]->dark_matter.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0 ||
         lock_init(&cells[j]->grav.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
@@ -546,7 +579,7 @@ void space_list_useful_top_level_cells(struct space *s) {
 
     const int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
-        (c->black_holes.count > 0) || (c->sinks.count > 0) ||
+        (c->black_holes.count > 0) || (c->sinks.count > 0) || (c->dark_matter.count > 0) ||
         (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f);
 
     if (has_particles) {
@@ -675,6 +708,41 @@ void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
   }
 }
 
+void space_synchronize_dmpart_positions_mapper(void *map_data, int nr_dmparts,
+                                              void *extra_data) {
+    /* Unpack the data */
+    struct dmpart *dmparts = (struct dmpart *)map_data;
+    
+    for (int k = 0; k < nr_dmparts; k++) {
+        
+        /* Get the particle */
+        struct dmpart *dmp = &dmparts[k];
+        
+        /* Skip unimportant particles */
+        if (dmp->time_bin == time_bin_not_created ||
+            dmp->time_bin == time_bin_inhibited)
+            continue;
+        
+        /* Get its gravity friend */
+        struct gpart *gp = dmp->gpart;
+        
+#ifdef SWIFT_DEBUG_CHECKS
+        if (gp == NULL) error("Unlinked particle!");
+#endif
+        
+        /* Synchronize positions, velocities and masses */
+        gp->x[0] = dmp->x[0];
+        gp->x[1] = dmp->x[1];
+        gp->x[2] = dmp->x[2];
+        
+        gp->v_full[0] = dmp->v_full[0];
+        gp->v_full[1] = dmp->v_full[1];
+        gp->v_full[2] = dmp->v_full[2];
+        
+        gp->mass = dmp->mass;
+    }
+}
+
 void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
                                              void *extra_data) {
   /* Unpack the data */
@@ -710,14 +778,6 @@ void space_synchronize_sink_positions_mapper(void *map_data, int nr_sinks,
   }
 }
 
-/**
- * @brief Make sure the baryon particles are at the same position and
- * have the same velocity and mass as their #gpart friends.
- *
- * We copy the baryon particle properties to the #gpart type-by-type.
- *
- * @param s The #space.
- */
 void space_synchronize_particle_positions(struct space *s) {
 
   const ticks tic = getticks();
@@ -737,6 +797,12 @@ void space_synchronize_particle_positions(struct space *s) {
                    s->bparts, s->nr_bparts, sizeof(struct bpart),
                    threadpool_auto_chunk_size, /*extra_data=*/NULL);
 
+  if (s->nr_gparts > 0 && s->nr_dmparts > 0)
+    threadpool_map(&s->e->threadpool, space_synchronize_dmpart_positions_mapper,
+                   s->dmparts, s->nr_dmparts, sizeof(struct dmpart),
+                   threadpool_auto_chunk_size, /*extra_data=*/NULL);
+
+    
   if (s->nr_gparts > 0 && s->nr_sinks > 0)
     threadpool_map(&s->e->threadpool, space_synchronize_sink_positions_mapper,
                    s->sinks, s->nr_sinks, sizeof(struct sink),
@@ -751,52 +817,52 @@ void space_convert_rt_star_quantities_mapper(void *restrict map_data,
                                              int scount,
                                              void *restrict extra_data) {
 
-  struct spart *restrict sparts = (struct spart *)map_data;
-  const struct engine *restrict e = (struct engine *)extra_data;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
+    struct spart *restrict sparts = (struct spart *)map_data;
+    const struct engine *restrict e = (struct engine *)extra_data;
+    const int with_cosmology = (e->policy & engine_policy_cosmology);
 
-  for (int k = 0; k < scount; k++) {
+    for (int k = 0; k < scount; k++) {
 
-    struct spart *restrict sp = &sparts[k];
-    rt_reset_spart(sp);
+        struct spart *restrict sp = &sparts[k];
+        rt_reset_spart(sp);
 
-    /* If we're running with star controlled injection, we don't
-     * need to compute the stellar emission rates here now. */
-    if (!e->rt_props->hydro_controlled_injection) continue;
+        /* If we're running with star controlled injection, we don't
+         * need to compute the stellar emission rates here now. */
+        if (!e->rt_props->hydro_controlled_injection) continue;
 
-    /* get star's age and time step for stellar emission rates */
-    const integertime_t ti_begin =
-        get_integer_time_begin(e->ti_current - 1, sp->time_bin);
-    const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+        /* get star's age and time step for stellar emission rates */
+        const integertime_t ti_begin =
+                get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+        const integertime_t ti_step = get_integer_timestep(sp->time_bin);
 
-    /* Get particle time-step */
-    double dt_star;
-    if (with_cosmology) {
-      dt_star =
-          cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
-    } else {
-      dt_star = get_timestep(sp->time_bin, e->time_base);
+        /* Get particle time-step */
+        double dt_star;
+        if (with_cosmology) {
+            dt_star =
+                    cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
+        } else {
+            dt_star = get_timestep(sp->time_bin, e->time_base);
+        }
+
+        /* Calculate age of the star at current time */
+        const double star_age_end_of_step =
+                stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
+
+        rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
+                                         dt_star);
     }
-
-    /* Calculate age of the star at current time */
-    const double star_age_end_of_step =
-        stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
-
-    rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
-                                     dt_star);
-  }
 }
 
 void space_convert_rt_hydro_quantities_mapper(void *restrict map_data,
                                               int count,
                                               void *restrict extra_data) {
 
-  struct part *restrict parts = (struct part *)map_data;
+    struct part *restrict parts = (struct part *)map_data;
 
-  for (int k = 0; k < count; k++) {
-    struct part *restrict p = &parts[k];
-    rt_reset_part(p);
-  }
+    for (int k = 0; k < count; k++) {
+        struct part *restrict p = &parts[k];
+        rt_reset_part(p);
+    }
 }
 
 /**
@@ -825,41 +891,41 @@ void space_convert_rt_hydro_quantities_mapper(void *restrict map_data,
  */
 void space_convert_rt_quantities(struct space *s, int verbose) {
 
-  const ticks tic = getticks();
+    const ticks tic = getticks();
 
-  if (s->nr_parts > 0)
-    /* Particle loop. Reset hydro particle values so we don't inject too much
-     * radiation into the gas */
-    threadpool_map(&s->e->threadpool, space_convert_rt_hydro_quantities_mapper,
-                   s->parts, s->nr_parts, sizeof(struct part),
-                   threadpool_auto_chunk_size, /*extra_data=*/s->e);
+    if (s->nr_parts > 0)
+        /* Particle loop. Reset hydro particle values so we don't inject too much
+         * radiation into the gas */
+        threadpool_map(&s->e->threadpool, space_convert_rt_hydro_quantities_mapper,
+                       s->parts, s->nr_parts, sizeof(struct part),
+                       threadpool_auto_chunk_size, /*extra_data=*/s->e);
 
-  if (s->nr_sparts > 0)
-    /* Star particle loop. Hydro controlled injection requires star particles
-     * to have their emission rated computed and ready for interactions. */
-    threadpool_map(&s->e->threadpool, space_convert_rt_star_quantities_mapper,
-                   s->sparts, s->nr_sparts, sizeof(struct spart),
-                   threadpool_auto_chunk_size, /*extra_data=*/s->e);
+    if (s->nr_sparts > 0)
+        /* Star particle loop. Hydro controlled injection requires star particles
+         * to have their emission rated computed and ready for interactions. */
+        threadpool_map(&s->e->threadpool, space_convert_rt_star_quantities_mapper,
+                       s->sparts, s->nr_sparts, sizeof(struct spart),
+                       threadpool_auto_chunk_size, /*extra_data=*/s->e);
 
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    if (verbose)
+        message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+                clocks_getunit());
 }
 
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
-  struct space *s = (struct space *)extra_data;
-  const struct cosmology *cosmo = s->e->cosmology;
-  const struct hydro_props *hydro_props = s->e->hydro_properties;
-  struct part *restrict parts = (struct part *)map_data;
-  const ptrdiff_t index = parts - s->parts;
-  struct xpart *restrict xparts = s->xparts + index;
+    struct space *s = (struct space *)extra_data;
+    const struct cosmology *cosmo = s->e->cosmology;
+    const struct hydro_props *hydro_props = s->e->hydro_properties;
+    struct part *restrict parts = (struct part *)map_data;
+    const ptrdiff_t index = parts - s->parts;
+    struct xpart *restrict xparts = s->xparts + index;
 
-  /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
-   * creation */
-  for (int k = 0; k < count; k++)
-    if (parts[k].time_bin <= num_time_bins)
-      hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+    /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
+     * creation */
+    for (int k = 0; k < count; k++)
+        if (parts[k].time_bin <= num_time_bins)
+            hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
 }
 
 /**
@@ -871,114 +937,114 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
  */
 void space_convert_quantities(struct space *s, int verbose) {
 
-  const ticks tic = getticks();
+    const ticks tic = getticks();
 
-  if (s->nr_parts > 0)
-    threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
-                   s);
+    if (s->nr_parts > 0)
+        threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
+                       s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                       s);
 
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    if (verbose)
+        message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+                clocks_getunit());
 }
 
 void space_collect_sum_part_mass(void *restrict map_data, int count,
                                  void *restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct part *parts = (const struct part *)map_data;
+    struct space *s = (struct space *)extra_data;
+    const struct part *parts = (const struct part *)map_data;
 
-  /* Local collection */
-  double sum = 0.;
-  for (int i = 0; i < count; ++i) sum += hydro_get_mass(&parts[i]);
+    /* Local collection */
+    double sum = 0.;
+    for (int i = 0; i < count; ++i) sum += hydro_get_mass(&parts[i]);
 
-  /* Store back */
-  atomic_add_d(&s->initial_mean_mass_particles[0], sum);
-  atomic_add(&s->initial_count_particles[0], count);
+    /* Store back */
+    atomic_add_d(&s->initial_mean_mass_particles[0], sum);
+    atomic_add(&s->initial_count_particles[0], count);
 }
 
 void space_collect_sum_gpart_mass(void *restrict map_data, int count,
                                   void *restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct gpart *gparts = (const struct gpart *)map_data;
+    struct space *s = (struct space *)extra_data;
+    const struct gpart *gparts = (const struct gpart *)map_data;
 
-  /* Local collection */
-  double sum_DM = 0., sum_DM_background = 0., sum_nu = 0.;
-  long long count_DM = 0, count_DM_background = 0, count_nu = 0;
-  for (int i = 0; i < count; ++i) {
-    /* Skip inexistant particles */
-    if (gpart_is_inhibited(&gparts[i], s->e) ||
-        gparts[i].time_bin == time_bin_not_created)
-      continue;
+    /* Local collection */
+    double sum_DM = 0., sum_DM_background = 0., sum_nu = 0.;
+    long long count_DM = 0, count_DM_background = 0, count_nu = 0;
+    for (int i = 0; i < count; ++i) {
+        /* Skip inexistant particles */
+        if (gpart_is_inhibited(&gparts[i], s->e) ||
+            gparts[i].time_bin == time_bin_not_created)
+            continue;
 
-    if (gparts[i].type == swift_type_dark_matter) {
-      sum_DM += gparts[i].mass;
-      count_DM++;
+        if (gparts[i].type == swift_type_dark_matter) {
+            sum_DM += gparts[i].mass;
+            count_DM++;
+        }
+        if (gparts[i].type == swift_type_dark_matter_background) {
+            sum_DM_background += gparts[i].mass;
+            count_DM_background++;
+        }
+        if (gparts[i].type == swift_type_neutrino) {
+            sum_nu += gparts[i].mass;
+            count_nu++;
+        }
     }
-    if (gparts[i].type == swift_type_dark_matter_background) {
-      sum_DM_background += gparts[i].mass;
-      count_DM_background++;
-    }
-    if (gparts[i].type == swift_type_neutrino) {
-      sum_nu += gparts[i].mass;
-      count_nu++;
-    }
-  }
 
-  /* Store back */
-  atomic_add_d(&s->initial_mean_mass_particles[1], sum_DM);
-  atomic_add(&s->initial_count_particles[1], count_DM);
-  atomic_add_d(&s->initial_mean_mass_particles[2], sum_DM_background);
-  atomic_add(&s->initial_count_particles[2], count_DM_background);
-  atomic_add_d(&s->initial_mean_mass_particles[6], sum_nu);
-  atomic_add(&s->initial_count_particles[6], count_nu);
+    /* Store back */
+    atomic_add_d(&s->initial_mean_mass_particles[1], sum_DM);
+    atomic_add(&s->initial_count_particles[1], count_DM);
+    atomic_add_d(&s->initial_mean_mass_particles[2], sum_DM_background);
+    atomic_add(&s->initial_count_particles[2], count_DM_background);
+    atomic_add_d(&s->initial_mean_mass_particles[6], sum_nu);
+    atomic_add(&s->initial_count_particles[6], count_nu);
 }
 
 void space_collect_sum_sink_mass(void *restrict map_data, int count,
                                  void *restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct sink *sinks = (const struct sink *)map_data;
+    struct space *s = (struct space *)extra_data;
+    const struct sink *sinks = (const struct sink *)map_data;
 
-  /* Local collection */
-  double sum = 0.;
-  for (int i = 0; i < count; ++i) sum += sinks[i].mass;
+    /* Local collection */
+    double sum = 0.;
+    for (int i = 0; i < count; ++i) sum += sinks[i].mass;
 
-  /* Store back */
-  atomic_add_d(&s->initial_mean_mass_particles[3], sum);
-  atomic_add(&s->initial_count_particles[3], count);
+    /* Store back */
+    atomic_add_d(&s->initial_mean_mass_particles[3], sum);
+    atomic_add(&s->initial_count_particles[3], count);
 }
 
 void space_collect_sum_spart_mass(void *restrict map_data, int count,
                                   void *restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct spart *sparts = (const struct spart *)map_data;
+    struct space *s = (struct space *)extra_data;
+    const struct spart *sparts = (const struct spart *)map_data;
 
-  /* Local collection */
-  double sum = 0.;
-  for (int i = 0; i < count; ++i) sum += sparts[i].mass;
+    /* Local collection */
+    double sum = 0.;
+    for (int i = 0; i < count; ++i) sum += sparts[i].mass;
 
-  /* Store back */
-  atomic_add_d(&s->initial_mean_mass_particles[4], sum);
-  atomic_add(&s->initial_count_particles[4], count);
+    /* Store back */
+    atomic_add_d(&s->initial_mean_mass_particles[4], sum);
+    atomic_add(&s->initial_count_particles[4], count);
 }
 
 void space_collect_sum_bpart_mass(void *restrict map_data, int count,
                                   void *restrict extra_data) {
 
-  struct space *s = (struct space *)extra_data;
-  const struct bpart *bparts = (const struct bpart *)map_data;
+    struct space *s = (struct space *)extra_data;
+    const struct bpart *bparts = (const struct bpart *)map_data;
 
-  /* Local collection */
-  double sum = 0.;
-  for (int i = 0; i < count; ++i) sum += bparts[i].mass;
+    /* Local collection */
+    double sum = 0.;
+    for (int i = 0; i < count; ++i) sum += bparts[i].mass;
 
-  /* Store back */
-  atomic_add_d(&s->initial_mean_mass_particles[5], sum);
-  atomic_add(&s->initial_count_particles[5], count);
+    /* Store back */
+    atomic_add_d(&s->initial_mean_mass_particles[5], sum);
+    atomic_add(&s->initial_count_particles[5], count);
 }
 
 /**
@@ -986,46 +1052,46 @@ void space_collect_sum_bpart_mass(void *restrict map_data, int count,
  */
 void space_collect_mean_masses(struct space *s, int verbose) {
 
-  /* Init counters */
-  for (int i = 0; i < swift_type_count; ++i)
-    s->initial_mean_mass_particles[i] = 0.;
-  for (int i = 0; i < swift_type_count; ++i) s->initial_count_particles[i] = 0;
+    /* Init counters */
+    for (int i = 0; i < swift_type_count; ++i)
+        s->initial_mean_mass_particles[i] = 0.;
+    for (int i = 0; i < swift_type_count; ++i) s->initial_count_particles[i] = 0;
 
-  /* Collect each particle type */
-  threadpool_map(&s->e->threadpool, space_collect_sum_part_mass, s->parts,
-                 s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
-                 s);
-  threadpool_map(&s->e->threadpool, space_collect_sum_gpart_mass, s->gparts,
-                 s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                 s);
-  threadpool_map(&s->e->threadpool, space_collect_sum_spart_mass, s->sparts,
-                 s->nr_sparts, sizeof(struct spart), threadpool_auto_chunk_size,
-                 s);
-  threadpool_map(&s->e->threadpool, space_collect_sum_sink_mass, s->sinks,
-                 s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
-                 s);
-  threadpool_map(&s->e->threadpool, space_collect_sum_bpart_mass, s->bparts,
-                 s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
-                 s);
+    /* Collect each particle type */
+    threadpool_map(&s->e->threadpool, space_collect_sum_part_mass, s->parts,
+                   s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                   s);
+    threadpool_map(&s->e->threadpool, space_collect_sum_gpart_mass, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                   s);
+    threadpool_map(&s->e->threadpool, space_collect_sum_spart_mass, s->sparts,
+                   s->nr_sparts, sizeof(struct spart), threadpool_auto_chunk_size,
+                   s);
+    threadpool_map(&s->e->threadpool, space_collect_sum_sink_mass, s->sinks,
+                   s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
+                   s);
+    threadpool_map(&s->e->threadpool, space_collect_sum_bpart_mass, s->bparts,
+                   s->nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                   s);
 
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, s->initial_mean_mass_particles, swift_type_count,
+    MPI_Allreduce(MPI_IN_PLACE, s->initial_mean_mass_particles, swift_type_count,
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, s->initial_count_particles, swift_type_count,
                 MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  /* Get means
-   *
-   * Note: the Intel compiler vectorizes this loop and creates FPEs from
-   * the masked bit of the vector... Silly ICC... */
+    /* Get means
+     *
+     * Note: the Intel compiler vectorizes this loop and creates FPEs from
+     * the masked bit of the vector... Silly ICC... */
 #if defined(__ICC)
 #pragma novector
 #endif
-  for (int i = 0; i < swift_type_count; ++i)
-    if (s->initial_count_particles[i] > 0)
-      s->initial_mean_mass_particles[i] /=
-          (double)s->initial_count_particles[i];
+    for (int i = 0; i < swift_type_count; ++i)
+        if (s->initial_count_particles[i] > 0)
+            s->initial_mean_mass_particles[i] /=
+                    (double)s->initial_count_particles[i];
 }
 
 /**
@@ -1041,11 +1107,13 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  * @param sinks Array of sink particles.
  * @param sparts Array of stars particles.
  * @param bparts Array of black hole particles.
+ * @param dmparts Array of dark matter particles.
  * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
  * @param Nsink The number of sink particles in the space.
  * @param Nspart The number of stars particles in the space.
  * @param Nbpart The number of black hole particles in the space.
+ * @param Ndmpart The number of dark matter particles in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param replicate How many replications along each direction do we want?
  * @param remap_ids Are we remapping the IDs from 1 to N?
@@ -1068,10 +1136,10 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
-                struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
+                struct bpart *bparts, struct dmpart *dmparts, size_t Npart, size_t Ngpart, size_t Nsink,
+                size_t Nspart, size_t Nbpart, size_t Ndmpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
-                int hydro, int self_gravity, int star_formation, int with_sink,
+                int hydro, int self_gravity, int star_formation, int sidm, int with_sink,
                 int DM_background, int neutrinos, int verbose, int dry_run,
                 int nr_nodes) {
 
@@ -1089,42 +1157,50 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_sink = with_sink;
   s->with_DM_background = DM_background;
   s->with_neutrinos = neutrinos;
+  s->with_sidm = sidm;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
   s->nr_bparts = Nbpart;
+  s->nr_dmparts = Ndmpart;
   s->nr_sinks = Nsink;
   s->nr_nuparts = Nnupart;
   s->size_parts = Npart;
   s->size_gparts = Ngpart;
   s->size_sparts = Nspart;
   s->size_bparts = Nbpart;
+  s->size_dmparts = Ndmpart;
   s->size_sinks = Nsink;
   s->nr_inhibited_parts = 0;
   s->nr_inhibited_gparts = 0;
   s->nr_inhibited_sparts = 0;
   s->nr_inhibited_bparts = 0;
+  s->nr_inhibited_dmparts = 0;
   s->nr_inhibited_sinks = 0;
   s->nr_extra_parts = 0;
   s->nr_extra_gparts = 0;
   s->nr_extra_sparts = 0;
   s->nr_extra_bparts = 0;
+  s->nr_extra_dmparts = 0;
   s->nr_extra_sinks = 0;
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
   s->bparts = bparts;
+  s->dmparts = dmparts;
   s->sinks = sinks;
   s->min_part_mass = FLT_MAX;
   s->min_gpart_mass = FLT_MAX;
   s->min_sink_mass = FLT_MAX;
   s->min_spart_mass = FLT_MAX;
   s->min_bpart_mass = FLT_MAX;
+  s->min_dmpart_mass = FLT_MAX;
   s->sum_part_vel_norm = 0.f;
   s->sum_gpart_vel_norm = 0.f;
   s->sum_sink_vel_norm = 0.f;
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
+  s->sum_dmpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* do a quick check that the box size has valid values */
@@ -1145,20 +1221,22 @@ void space_init(struct space *s, struct swift_params *params,
   if (remap_ids) {
     space_remap_ids(s, nr_nodes, verbose);
   }
-
+    
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background,
+    space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background, sidm,
                        neutrinos, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
+    dmparts = s->dmparts;
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
+    Ndmpart = s->nr_dmparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                        Nsink, Nspart, Nbpart, 1);
+      part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Npart, Ngpart,
+                        Nsink, Nspart, Ndmpart, Nbpart, sidm, 1);
 #endif
   }
 
@@ -1177,16 +1255,18 @@ void space_init(struct space *s, struct swift_params *params,
     gparts = s->gparts;
     sparts = s->sparts;
     bparts = s->bparts;
+    dmparts = s->dmparts;
     sinks = s->sinks;
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
     Nspart = s->nr_sparts;
     Nbpart = s->nr_bparts;
+    Ndmpart = s->nr_dmparts;
     Nsink = s->nr_sinks;
-
+            
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sinks, sparts, bparts, Npart, Ngpart,
-                      Nsink, Nspart, Nbpart, 1);
+    part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Npart, Ngpart,
+                      Nsink, Nspart, Ndmpart, Nbpart, sidm, 1);
 #endif
   }
 
@@ -1236,6 +1316,8 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_parts", space_extra_parts_default);
   space_extra_sparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+  space_extra_dmparts = parser_get_opt_param_int(
+      params, "Scheduler:cell_extra_dmparts", space_extra_dmparts_default);
   space_extra_gparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
   space_extra_bparts = parser_get_opt_param_int(
@@ -1243,6 +1325,9 @@ void space_init(struct space *s, struct swift_params *params,
   space_extra_sinks = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
 
+  engine_max_dmparts_per_ghost =
+    parser_get_opt_param_int(params, "Scheduler:engine_max_dmparts_per_ghost",
+                             engine_max_dmparts_per_ghost_default);
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
                                engine_max_parts_per_ghost_default);
@@ -1284,6 +1369,13 @@ void space_init(struct space *s, struct swift_params *params,
   if (s->initial_bpart_h != -1.f) {
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
+    
+  /* Read in imposed dark matter smoothing length */
+  s->initial_dmpart_h = parser_get_opt_param_float(
+      params, "SIDM:h_sidm", -1.f);
+  if (s->initial_dmpart_h != -1.f) {
+        message("Imposing a DM smoothing length of %e", s->initial_dmpart_h);
+  }
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1310,6 +1402,11 @@ void space_init(struct space *s, struct swift_params *params,
       bparts[k].x[0] += shift[0];
       bparts[k].x[1] += shift[1];
       bparts[k].x[2] += shift[2];
+    }
+    for (size_t k = 0; k < Ndmpart; k++) {
+      dmparts[k].x[0] += shift[0];
+      dmparts[k].x[1] += shift[1];
+      dmparts[k].x[2] += shift[2];
     }
     for (size_t k = 0; k < Nsink; k++) {
       sinks[k].x[0] += shift[0];
@@ -1375,6 +1472,20 @@ void space_init(struct space *s, struct swift_params *params,
           if (bparts[k].x[j] < 0 || bparts[k].x[j] >= s->dim[j])
             error("Not all b-particles are within the specified domain.");
     }
+      
+      /* Same for the dmparts */
+      if (periodic) {
+          for (size_t k = 0; k < Ndmpart; k++)
+              for (int j = 0; j < 3; j++) {
+                  while (dmparts[k].x[j] < 0) dmparts[k].x[j] += s->dim[j];
+                  while (dmparts[k].x[j] >= s->dim[j]) dmparts[k].x[j] -= s->dim[j];
+              }
+      } else {
+          for (size_t k = 0; k < Ndmpart; k++)
+              for (int j = 0; j < 3; j++)
+                  if (dmparts[k].x[j] < 0 || dmparts[k].x[j] >= s->dim[j])
+                      error("Not all DM-particles are within the specified domain.");
+      }
 
     /* Same for the sinks */
     if (periodic) {
@@ -1470,13 +1581,14 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_dmparts = s->nr_dmparts;
   const size_t nr_sinks = s->nr_sinks;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;
   s->size_sparts = s->nr_sparts = nr_sparts * factor;
   s->size_bparts = s->nr_bparts = nr_bparts * factor;
+  s->size_dmparts = s->nr_dmparts = nr_dmparts * factor;
   s->size_sinks = s->nr_sinks = nr_sinks * factor;
 
   /* Allocate space for new particles */
@@ -1484,6 +1596,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
+  struct dmpart *dmparts = NULL;
   struct sink *sinks = NULL;
 
   if (swift_memalign("parts", (void **)&parts, part_align,
@@ -1506,6 +1619,10 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_bparts * sizeof(struct bpart)) != 0)
     error("Failed to allocate new bpart array.");
 
+    if (swift_memalign("dmparts", (void **)&dmparts, dmpart_align,
+                       s->nr_dmparts * sizeof(struct dmpart)) != 0)
+        error("Failed to allocate new DMpart array.");
+
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
     for (int j = 0; j < replicate; ++j) {
@@ -1519,6 +1636,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                nr_sparts * sizeof(struct spart));
         memcpy(bparts + offset * nr_bparts, s->bparts,
                nr_bparts * sizeof(struct bpart));
+        memcpy(dmparts + offset * nr_dmparts, s->dmparts,
+               nr_dmparts * sizeof(struct dmpart));
         memcpy(gparts + offset * nr_gparts, s->gparts,
                nr_gparts * sizeof(struct gpart));
         memcpy(sinks + offset * nr_sinks, s->sinks,
@@ -1547,6 +1666,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           bparts[n].x[1] += shift[1];
           bparts[n].x[2] += shift[2];
         }
+        for (size_t n = offset * nr_dmparts; n < (offset + 1) * nr_dmparts; ++n) {
+          dmparts[n].x[0] += shift[0];
+          dmparts[n].x[1] += shift[1];
+          dmparts[n].x[2] += shift[2];
+        }
         for (size_t n = offset * nr_sinks; n < (offset + 1) * nr_sinks; ++n) {
           sinks[n].x[0] += shift[0];
           sinks[n].x[1] += shift[1];
@@ -1555,18 +1679,30 @@ void space_replicate(struct space *s, int replicate, int verbose) {
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
            first DM (unassociated gpart), then gas, then sinks, then stars */
+          
+          if (nr_dmparts > 0 && nr_gparts > 0) {
+              const size_t offset_dmpart = offset * nr_dmparts;
+              const size_t offset_gpart = offset * nr_gparts;
+              
+              for (size_t n = 0; n < nr_dmparts; ++n) {
+                  dmparts[offset_dmpart + n].gpart = &gparts[offset_gpart + n];
+                  gparts[offset_gpart + n].id_or_neg_offset = -(offset_dmpart + n);
+              }
+          }
+
         if (nr_parts > 0 && nr_gparts > 0) {
           const size_t offset_part = offset * nr_parts;
-          const size_t offset_gpart = offset * nr_gparts + nr_dm;
+          const size_t offset_gpart = offset * nr_gparts + nr_dmparts;
 
           for (size_t n = 0; n < nr_parts; ++n) {
             parts[offset_part + n].gpart = &gparts[offset_gpart + n];
             gparts[offset_gpart + n].id_or_neg_offset = -(offset_part + n);
           }
         }
+          
         if (nr_sinks > 0 && nr_gparts > 0) {
           const size_t offset_sink = offset * nr_sinks;
-          const size_t offset_gpart = offset * nr_gparts + nr_dm + nr_parts;
+          const size_t offset_gpart = offset * nr_gparts + nr_dmparts + nr_parts;
 
           for (size_t n = 0; n < nr_sinks; ++n) {
             sinks[offset_sink + n].gpart = &gparts[offset_gpart + n];
@@ -1576,7 +1712,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
         if (nr_sparts > 0 && nr_gparts > 0) {
           const size_t offset_spart = offset * nr_sparts;
           const size_t offset_gpart =
-              offset * nr_gparts + nr_dm + nr_parts + nr_sinks;
+              offset * nr_gparts + nr_dmparts + nr_parts + nr_sinks;
 
           for (size_t n = 0; n < nr_sparts; ++n) {
             sparts[offset_spart + n].gpart = &gparts[offset_gpart + n];
@@ -1586,7 +1722,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
         if (nr_bparts > 0 && nr_gparts > 0) {
           const size_t offset_bpart = offset * nr_bparts;
           const size_t offset_gpart =
-              offset * nr_gparts + nr_dm + nr_parts + nr_sinks + nr_sparts;
+              offset * nr_gparts + nr_dmparts + nr_parts + nr_sinks + nr_sparts;
 
           for (size_t n = 0; n < nr_bparts; ++n) {
             bparts[offset_bpart + n].gpart = &gparts[offset_gpart + n];
@@ -1602,11 +1738,13 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
+  swift_free("dmparts", s->dmparts);
   swift_free("sinks", s->sinks);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
   s->bparts = bparts;
+  s->dmparts = dmparts;
   s->sinks = sinks;
 
   /* Finally, update the domain size */
@@ -1615,10 +1753,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   s->dim[2] *= replicate;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  const int with_sidm = s->e->policy & engine_policy_sidm;
   /* Verify that everything is correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, verbose);
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
+                    s->nr_bparts, with_sidm, verbose);
 #endif
 }
 
@@ -1634,8 +1773,6 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  */
 void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
-  if (verbose) message("Remapping all the IDs");
-
   /* Get the current local number of particles */
   const size_t local_nr_parts = s->nr_parts;
   const size_t local_nr_sinks = s->nr_sinks;
@@ -1646,6 +1783,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
   const size_t local_nr_dm =
       local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons : 0;
+  const size_t local_nr_dmparts = s->nr_dmparts;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1653,6 +1791,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long offset_sparts = 0;
   long long offset_bparts = 0;
   long long offset_dm = 0;
+
 #ifdef WITH_MPI
   MPI_Exscan(&local_nr_parts, &offset_parts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
@@ -1704,12 +1843,18 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   for (size_t i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
+  for (size_t i = 0; i < local_nr_dmparts; ++i) {
+      s->dmparts[i].id_or_neg_offset = offset_dm + i;
+  }
   for (size_t i = 0; i < local_nr_dm; ++i) {
-    if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background ||
+    if (s->gparts[i].type == swift_type_dark_matter_background ||
+        s->gparts[i].type == swift_type_dark_matter ||
         s->gparts[i].type == swift_type_neutrino)
       s->gparts[i].id_or_neg_offset = offset_dm + i;
   }
+
+  if (verbose) message("Remapping all the IDs");
+
 }
 
 /**
@@ -1734,6 +1879,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                         const struct hydro_props *hydro_properties,
                         const int periodic, const int with_background,
+                        const int with_sidm,
                         const int with_neutrinos, const double dim[3],
                         const int verbose) {
 
@@ -1826,89 +1972,163 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
     if (s->gparts[i].type == swift_type_dark_matter_background ||
         s->gparts[i].type == swift_type_neutrino) {
 
-      memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
+          memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
 
-    } else {
+      } else {
 
-      /* For the zoom DM particles, there is a lot of work to do */
+          /* For the zoom DM particles, there is a lot of work to do */
 
-      struct part *p = &parts[j];
-      struct gpart *gp_gas = &gparts[current_nr_gparts + j];
-      struct gpart *gp_dm = &gparts[i];
+          struct part *p = &parts[j];
+          struct gpart *gp_gas = &gparts[current_nr_gparts + j];
+          struct gpart *gp_dm = &gparts[i];
 
-      /* Start by copying over the gpart */
-      memcpy(gp_gas, &s->gparts[i], sizeof(struct gpart));
-      memcpy(gp_dm, &s->gparts[i], sizeof(struct gpart));
+          /* Start by copying over the gpart */
+          memcpy(gp_gas, &s->gparts[i], sizeof(struct gpart));
+          memcpy(gp_dm, &s->gparts[i], sizeof(struct gpart));
 
-      /* Set the IDs */
-      p->id = gp_gas->id_or_neg_offset * 2 + 1;
-      gp_dm->id_or_neg_offset *= 2;
+          /* Set the IDs */
+          p->id = gp_gas->id_or_neg_offset * 2 + 1;
+          gp_dm->id_or_neg_offset *= 2;
 
-      if (gp_dm->id_or_neg_offset < 0)
-        error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
-              gp_dm->id_or_neg_offset, p->id);
+          if (gp_dm->id_or_neg_offset < 0)
+              error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
+                    gp_dm->id_or_neg_offset, p->id);
 
-      if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
+          if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
 
-      /* Set the links correctly */
-      p->gpart = gp_gas;
-      gp_gas->id_or_neg_offset = -j;
-      gp_gas->type = swift_type_gas;
+          /* Set the links correctly */
+          p->gpart = gp_gas;
 
-      /* Compute positions shift */
-      const double d = cbrt(gp_dm->mass * bg_density_inv);
-      const double shift_dm = 0.5 * d * mass_ratio;
-      const double shift_gas = 0.5 * d * (1. - mass_ratio);
+          gp_gas->id_or_neg_offset = -j;
+          gp_gas->type = swift_type_gas;
 
-      /* Set the masses */
-      gp_dm->mass *= (1. - mass_ratio);
-      gp_gas->mass *= mass_ratio;
-      hydro_set_mass(p, gp_gas->mass);
+          /* Compute positions shift */
+          const double d = cbrt(gp_dm->mass * bg_density_inv);
+          const double shift_dm = 0.5 * d * mass_ratio;
+          const double shift_gas = 0.5 * d * (1. - mass_ratio);
 
-      /* Verify that we are not generating a gas particle larger than the
-         threashold for particle splitting */
-      if (particle_splitting && gp_gas->mass > splitting_mass_threshold)
-        error("Generating a gas particle above the threshold for splitting");
+          /* Set the masses */
+          gp_dm->mass *= (1. - mass_ratio);
+          gp_gas->mass *= mass_ratio;
+          hydro_set_mass(p, gp_gas->mass);
 
-      /* Set the new positions */
-      gp_dm->x[0] += shift_dm;
-      gp_dm->x[1] += shift_dm;
-      gp_dm->x[2] += shift_dm;
-      gp_gas->x[0] -= shift_gas;
-      gp_gas->x[1] -= shift_gas;
-      gp_gas->x[2] -= shift_gas;
+          /* Verify that we are not generating a gas particle larger than the
+             threshold for particle splitting */
+          if (particle_splitting && gp_gas->mass > splitting_mass_threshold)
+              error("Generating a gas particle above the threshold for splitting");
 
-      /* Make sure the positions are identical between linked particles */
-      p->x[0] = gp_gas->x[0];
-      p->x[1] = gp_gas->x[1];
-      p->x[2] = gp_gas->x[2];
+          /* Set the new positions */
+          gp_dm->x[0] += shift_dm;
+          gp_dm->x[1] += shift_dm;
+          gp_dm->x[2] += shift_dm;
+          gp_gas->x[0] -= shift_gas;
+          gp_gas->x[1] -= shift_gas;
+          gp_gas->x[2] -= shift_gas;
 
-      /* Box-wrap the whole thing to be safe */
-      if (periodic) {
-        gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
-        gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
-        gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
-        gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
-        gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
-        gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
-        p->x[0] = box_wrap(p->x[0], 0., dim[0]);
-        p->x[1] = box_wrap(p->x[1], 0., dim[1]);
-        p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+          /* Make sure the positions are identical between linked particles */
+          p->x[0] = gp_gas->x[0];
+          p->x[1] = gp_gas->x[1];
+          p->x[2] = gp_gas->x[2];
+
+          /* Box-wrap the whole thing to be safe */
+          if (periodic) {
+              gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
+              gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
+              gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
+              gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
+              gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
+              gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
+              p->x[0] = box_wrap(p->x[0], 0., dim[0]);
+              p->x[1] = box_wrap(p->x[1], 0., dim[1]);
+              p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+          }
+
+          /* Also copy the velocities */
+          p->v[0] = gp_gas->v_full[0];
+          p->v[1] = gp_gas->v_full[1];
+          p->v[2] = gp_gas->v_full[2];
+
+          /* Set the smoothing length to the mean inter-particle separation */
+          p->h = d;
+
+          /* Note that the thermodynamic properties (u, S, ...) will be set later */
+
+          /* Move on to the next free gas slot */
+          ++j;
       }
+  }
 
-      /* Also copy the velocities */
-      p->v[0] = gp_gas->v_full[0];
-      p->v[1] = gp_gas->v_full[1];
-      p->v[2] = gp_gas->v_full[2];
+  /* If we are running with self-interacting dark matter we need to
+   * create the dmpart type */
+  if (with_sidm){
 
-      /* Set the smoothing length to the mean inter-particle separation */
-      p->h = d;
+    /* New particle count for dm */
+    s->size_dmparts = s->nr_dmparts = nr_zoom_gparts;
 
-      /* Note that the thermodynamic properties (u, S, ...) will be set later */
+    /* Allocate space for new particles */
+    struct dmpart *dmparts = NULL;
 
-      /* Move on to the next free gas slot */
-      ++j;
+    if (swift_memalign("dmparts", (void **) &dmparts, dmpart_align,
+                           s->nr_dmparts * sizeof(struct dmpart)) != 0)
+            error("Failed to allocate new dmpart array.");
+
+    /* And zero the parts */
+    bzero(dmparts, s->nr_dmparts * sizeof(struct dmpart));
+
+    /* Update the particle properties */
+    for (size_t k = 0; k < current_nr_gparts; ++k) {
+
+        /* For the background DM particles, just copy the data */
+        if (s->gparts[k].type == swift_type_dark_matter_background || s->gparts[k].type == swift_type_neutrino) {
+
+            memcpy(&gparts[k], &s->gparts[k], sizeof(struct gpart));
+
+        } else {
+
+            /* For the zoom DM particles, there is a lot of work to do */
+            struct gpart *gp_dm = &gparts[k];
+            struct dmpart *dmp = &dmparts[k];
+
+            /* Set the IDs correctly */
+            dmp->id_or_neg_offset = gp_dm->id_or_neg_offset;
+
+            /* Start by copying over the gpart */
+            /*memcpy(gp_dm, &s->gparts[k], sizeof(struct gpart));*/
+            memcpy(dmp, &s->dmparts[k], sizeof(struct dmpart));
+
+            /* Set the links correctly */
+            dmp->gpart = gp_dm;
+
+            /* Set the IDs and type correctly for gpart */
+            gp_dm->id_or_neg_offset = -k;
+            gp_dm->type = swift_type_dark_matter;
+
+            /* Compute positions shift */
+            const double d = cbrt(gp_dm->mass * bg_density_inv);
+
+            /* Set the masses and positions */
+            dmp->mass = gp_dm->mass;
+            dmp->x[0] = gp_dm->x[0];
+            dmp->x[1] = gp_dm->x[1];
+            dmp->x[2] = gp_dm->x[2];
+
+            /* Box-wrap the whole thing to be safe */
+            if (periodic) {
+                dmp->x[0] = box_wrap(dmp->x[0], 0., dim[0]);
+                dmp->x[1] = box_wrap(dmp->x[1], 0., dim[1]);
+                dmp->x[2] = box_wrap(dmp->x[2], 0., dim[2]);
+            }
+
+            /* Also copy the velocities */
+            dmp->v_full[0] = gp_dm->v_full[0];
+            dmp->v_full[1] = gp_dm->v_full[1];
+            dmp->v_full[2] = gp_dm->v_full[2];
+            dmp->h = d;
+        }
     }
+
+    swift_free("dmparts", s->dmparts);
+    s->dmparts = dmparts;
   }
 
   /* Replace the content of the space */
@@ -1993,10 +2213,9 @@ long long space_get_max_parts_id(struct space *s) {
   long long max_id = -1;
   for (size_t i = 0; i < s->nr_parts; ++i) max_id = max(max_id, s->parts[i].id);
   for (size_t i = 0; i < s->nr_sinks; ++i) max_id = max(max_id, s->sinks[i].id);
-  for (size_t i = 0; i < s->nr_sparts; ++i)
-    max_id = max(max_id, s->sparts[i].id);
-  for (size_t i = 0; i < s->nr_bparts; ++i)
-    max_id = max(max_id, s->bparts[i].id);
+  for (size_t i = 0; i < s->nr_sparts; ++i) max_id = max(max_id, s->sparts[i].id);
+  for (size_t i = 0; i < s->nr_bparts; ++i) max_id = max(max_id, s->bparts[i].id);
+  for (size_t i = 0; i < s->nr_dmparts; ++i) max_id = max(max_id, s->dmparts[i].id_or_neg_offset);
   for (size_t i = 0; i < s->nr_gparts; ++i)
     if (s->gparts[i].type == swift_type_dark_matter ||
         s->gparts[i].type == swift_type_dark_matter_background ||
@@ -2034,6 +2253,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_dmpart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else
@@ -2273,11 +2493,13 @@ void space_clean(struct space *s) {
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
+  swift_free("dmparts", s->dmparts);
   swift_free("sinks", s->sinks);
 #ifdef WITH_MPI
   swift_free("parts_foreign", s->parts_foreign);
   swift_free("sparts_foreign", s->sparts_foreign);
   swift_free("gparts_foreign", s->gparts_foreign);
+  swift_free("dmparts_foreign", s->dmparts_foreign);
   swift_free("bparts_foreign", s->bparts_foreign);
 #endif
 
@@ -2310,6 +2532,10 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_subsize_pair_stars", "space_subsize_pair_stars");
   restart_write_blocks(&space_subsize_self_stars, sizeof(int), 1, stream,
                        "space_subsize_self_stars", "space_subsize_self_stars");
+  restart_write_blocks(&space_subsize_pair_dark_matter, sizeof(int), 1, stream,
+                       "space_subsize_pair_dark_matter", "space_subsize_pair_dark_matter");
+  restart_write_blocks(&space_subsize_self_dark_matter, sizeof(int), 1, stream,
+                       "space_subsize_self_dark_matter", "space_subsize_self_dark_matter");
   restart_write_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream,
                        "space_subsize_pair_grav", "space_subsize_pair_grav");
   restart_write_blocks(&space_subsize_self_grav, sizeof(int), 1, stream,
@@ -2326,9 +2552,14 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_extra_dmparts, sizeof(int), 1, stream,
+                       "space_extra_dmparts", "space_extra_dmparts");
   restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                        "space_expected_max_nr_strays",
                        "space_expected_max_nr_strays");
+  restart_write_blocks(&engine_max_dmparts_per_ghost, sizeof(int), 1, stream,
+                       "engine_max_dmparts_per_ghost",
+                       "engine_max_dmparts_per_ghost");
   restart_write_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream,
                        "engine_max_parts_per_ghost",
                        "engine_max_parts_per_ghost");
@@ -2363,6 +2594,9 @@ void space_struct_dump(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0)
     restart_write_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                          "bparts", "bparts");
+  if (s->nr_dmparts > 0)
+    restart_write_blocks(s->dmparts, s->nr_dmparts, sizeof(struct dmpart), stream,
+                         "dmparts", "dmparts");
 }
 
 /**
@@ -2389,6 +2623,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_subsize_pair_stars");
   restart_read_blocks(&space_subsize_self_stars, sizeof(int), 1, stream, NULL,
                       "space_subsize_self_stars");
+  restart_read_blocks(&space_subsize_pair_dark_matter, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_dark_matter");
+  restart_read_blocks(&space_subsize_self_dark_matter, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_dark_matter");
   restart_read_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream, NULL,
                       "space_subsize_pair_grav");
   restart_read_blocks(&space_subsize_self_grav, sizeof(int), 1, stream, NULL,
@@ -2405,8 +2643,12 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_sparts");
   restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
                       "space_extra_bparts");
+  restart_read_blocks(&space_extra_dmparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_dmparts");
   restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
                       NULL, "space_expected_max_nr_strays");
+  restart_read_blocks(&engine_max_dmparts_per_ghost, sizeof(int), 1, stream, NULL,
+                      "engine_max_dmparts_per_ghost");
   restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
                       "engine_max_parts_per_ghost");
   restart_read_blocks(&engine_max_sparts_per_ghost, sizeof(int), 1, stream,
@@ -2436,6 +2678,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_sparts_foreign = 0;
   s->bparts_foreign = NULL;
   s->size_bparts_foreign = 0;
+  s->dmparts_foreign = NULL;
+  s->size_dmparts_foreign = 0;
 #endif
 
   /* More things to read. */
@@ -2495,6 +2739,15 @@ void space_struct_restore(struct space *s, FILE *stream) {
     restart_read_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                         NULL, "bparts");
   }
+    s->dmparts = NULL;
+    if (s->nr_dmparts > 0) {
+        if (swift_memalign("dmparts", (void **)&s->dmparts, dmpart_align,
+                           s->size_dmparts * sizeof(struct dmpart)) != 0)
+            error("Failed to allocate restore dmpart array.");
+        
+        restart_read_blocks(s->dmparts, s->nr_dmparts, sizeof(struct dmpart), stream,
+                            NULL, "dmparts");
+    }
 
   /* Need to reconnect the gravity parts to their hydro, star and BH particles.
    * Note that we can't use the threadpool here as we have not restored it yet.
@@ -2515,12 +2768,17 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Re-link the bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
+    
+    /* Re-link the dmparts. */
+  if (s->nr_dmparts > 0 && s->nr_gparts > 0)
+    part_relink_dmparts_to_gparts(s->gparts, s->nr_gparts, s->dmparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, 1);
+  const int with_sidm = s->e->policy & engine_policy_sidm;
+  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->dmparts, s->bparts,
+                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts, s->nr_dmparts,
+                    s->nr_bparts, with_sidm, 1);
 #endif
 }
 

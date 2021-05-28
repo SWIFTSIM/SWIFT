@@ -52,6 +52,19 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
 }
 
 /**
+ * @brief Check that the #part in a #cell have been drifted to the current time.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_are_dmpart_drifted(
+    const struct cell *c, const struct engine *e) {
+    
+    return (c->dark_matter.ti_old_part == e->ti_current);
+}
+
+/**
  * @brief Check that the #gpart in a #cell have been drifted to the current
  * time.
  *
@@ -269,6 +282,28 @@ __attribute__((always_inline)) INLINE static int cell_is_active_black_holes(
 }
 
 /**
+ * @brief Does a cell contain any DM-particle finishing their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_active_dark_matter(
+        const struct cell *c, const struct engine *e) {
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->dark_matter.ti_end_min < e->ti_current)
+        error(
+              "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
+              "e->ti_current=%lld (t=%e, a=%e)",
+              c->dark_matter.ti_end_min, c->dark_matter.ti_end_min * e->time_base,
+              e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
+#endif
+    
+    return (c->dark_matter.ti_end_min == e->ti_current);
+}
+
+/**
  * @brief Is this particle finishing its time-step now ?
  *
  * @param p The #part.
@@ -411,6 +446,33 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
 }
 
 /**
+ * @brief Is this DM-particle finishing its time-step now ?
+ *
+ * @param bp The #DMpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #DMpart is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int dmpart_is_active(
+    const struct dmpart *dmp, const struct engine *e) {
+    
+    const timebin_t max_active_bin = e->max_active_bin;
+    const timebin_t dmpart_bin = dmp->time_bin;
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    const integertime_t ti_current = e->ti_current;
+    const integertime_t ti_end = get_integer_time_end(ti_current, dmp->time_bin);
+    
+    if (ti_end < ti_current)
+        error(
+              "b-particle in an impossible time-zone! bp->ti_end=%lld "
+              "e->ti_current=%lld",
+              ti_end, ti_current);
+#endif
+    
+    return (dmpart_bin <= max_active_bin);
+}
+
+/**
  * @brief Has this particle been inhibited?
  *
  * @param p The #part.
@@ -470,6 +532,20 @@ __attribute__((always_inline)) INLINE static int bpart_is_inhibited(
   return bp->time_bin == time_bin_inhibited;
 }
 
+
+/**
+ * @brief Has this dark matter particle been inhibited?
+ *
+ * @param bp The #dmpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is inhibited, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int dmpart_is_inhibited(
+    const struct dmpart *dmp, const struct engine *e) {
+    return dmp->time_bin == time_bin_inhibited;
+}
+
+
 /* Are cells / particles active for kick1 tasks ? */
 
 /**
@@ -492,6 +568,30 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_hydro(
 #endif
 
   return (c->hydro.ti_beg_max == e->ti_current);
+}
+
+/* Are cells / particles active for kick1 tasks ? */
+
+/**
+ * @brief Does a cell contain any particle starting their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_starting_dark_matter(
+     const struct cell *c, const struct engine *e) {
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->dark_matter.ti_beg_max > e->ti_current)
+        error(
+              "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
+              "e->ti_current=%lld (t=%e, a=%e)",
+              c->dark_matter.ti_beg_max, c->dark_matter.ti_beg_max * e->time_base, e->ti_current,
+              e->ti_current * e->time_base, e->cosmology->a);
+#endif
+    
+    return (c->dark_matter.ti_beg_max == e->ti_current);
 }
 
 /**
@@ -692,6 +792,32 @@ __attribute__((always_inline)) INLINE static int bpart_is_starting(
 #endif
 
   return (bpart_bin <= max_active_bin);
+}
+
+/**
+ * @brief Is this DM-particle starting its time-step now ?
+ *
+ * @param bp The #dmpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #dmpart is active, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int dmpart_is_starting(
+    const struct dmpart *dmp, const struct engine *e) {
+    
+    const timebin_t max_active_bin = e->max_active_bin;
+    const timebin_t dmpart_bin = dmp->time_bin;
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    const integertime_t ti_current = e->ti_current;
+    const integertime_t ti_beg =
+    get_integer_time_begin(ti_current + 1, dmp->time_bin);
+    
+    if (ti_beg > ti_current)
+        error("s-particle in an impossible time-zone! dmp->ti_beg=%lld "
+              "e->ti_current=%lld",ti_beg, ti_current);
+#endif
+    
+    return (dmpart_bin <= max_active_bin);
 }
 
 /**

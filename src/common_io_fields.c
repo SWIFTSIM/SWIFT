@@ -71,7 +71,7 @@ int io_get_param_ptype(const char* name) {
  */
 int io_get_ptype_fields(const int ptype, struct io_props* list,
                         const int with_cosmology, const int with_fof,
-                        const int with_stf) {
+                        const int with_stf, const int with_sidm) {
 
   int num_fields = 0;
 
@@ -84,6 +84,15 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
       break;
 
     case swift_type_dark_matter:
+        if (with_sidm) {
+            io_select_dark_matter_fields(NULL, NULL, with_fof, with_stf,
+                                         /*e=*/NULL, &num_fields, list);
+
+        } else {
+            io_select_dm_fields(NULL, NULL, with_fof, with_stf,/*e=*/NULL, &num_fields, list);
+
+        }
+
     case swift_type_dark_matter_background:
       io_select_dm_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
                           &num_fields, list);
@@ -126,7 +135,7 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
  */
 void io_prepare_output_fields(struct output_options* output_options,
                               const int with_cosmology, const int with_fof,
-                              const int with_stf, int verbose) {
+                              const int with_stf, const int with_sidm, int verbose) {
 
   const int MAX_NUM_PTYPE_FIELDS = 100;
 
@@ -139,7 +148,7 @@ void io_prepare_output_fields(struct output_options* output_options,
 
   for (int ptype = 0; ptype < swift_type_count; ptype++)
     ptype_num_fields_total[ptype] = io_get_ptype_fields(
-        ptype, field_list[ptype], with_cosmology, with_fof, with_stf);
+        ptype, field_list[ptype], with_cosmology, with_fof, with_stf, with_sidm);
 
   /* Check for whether we have a `Default` section */
   int have_default = 0;
@@ -326,7 +335,7 @@ void io_prepare_output_fields(struct output_options* output_options,
  * @param with_stf Using Velociraptor STF?
  */
 void io_write_output_field_parameter(const char* filename, int with_cosmology,
-                                     int with_fof, int with_stf) {
+                                     int with_fof, int with_stf, int with_sidm) {
 
   FILE* file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
@@ -341,7 +350,7 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology,
 
     struct io_props list[100];
     int num_fields =
-        io_get_ptype_fields(ptype, list, with_cosmology, with_fof, with_stf);
+        io_get_ptype_fields(ptype, list, with_cosmology, with_fof, with_stf, with_sidm);
 
     if (num_fields == 0) continue;
 

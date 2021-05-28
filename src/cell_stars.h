@@ -34,7 +34,7 @@
  */
 struct cell_stars {
 
-  /* If we are not using stars, compact as much of the unecessary variables
+  /* If we are not using stars, compact as much of the unnecessary variables
      into an anonymous union to save memory in the cell structure. */
 #ifdef STARS_NONE
   union {

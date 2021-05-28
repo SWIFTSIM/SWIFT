@@ -83,8 +83,10 @@ enum engine_policy {
   engine_policy_line_of_sight = (1 << 24),
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
+  engine_policy_sidm = (1 << 27),
 };
-#define engine_maxpolicy 27
+
+#define engine_maxpolicy 28
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -113,6 +115,7 @@ enum engine_step_properties {
 #define engine_foreign_alloc_margin 1.05
 #define engine_default_energy_file_name "statistics"
 #define engine_default_timesteps_file_name "timesteps"
+#define engine_max_dmparts_per_ghost_default 1000
 #define engine_max_parts_per_ghost_default 1000
 #define engine_max_sparts_per_ghost_default 1000
 #define engine_max_parts_per_cooling_default 10000
@@ -236,6 +239,15 @@ struct engine {
   /* Maximal sinks ti_beg for the next time-step */
   integertime_t ti_sinks_beg_max;
 
+  /* Minimal dark_matter ti_end for the next time-step */
+  integertime_t ti_dark_matter_end_min;
+    
+  /* Maximal dark_matter ti_end for the next time-step */
+  integertime_t ti_dark_matter_end_max;
+    
+  /* Maximal dark_matter ti_beg for the next time-step */
+  integertime_t ti_dark_matter_beg_max;
+
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
@@ -243,7 +255,7 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates, b_updates, sink_updates;
+  long long updates, g_updates, s_updates, b_updates, sink_updates, dm_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;
@@ -251,9 +263,13 @@ struct engine {
   long long s_updates_since_rebuild;
   long long sink_updates_since_rebuild;
   long long b_updates_since_rebuild;
+  long long dm_updates_since_rebuild;
 
   /* Star formation logger information */
   struct star_formation_history_accumulator sfh;
+
+  /* SIDM history logger information */
+  struct sidm_history_accumulator dm;
 
   /* Properties of the previous step */
   int step_props;
@@ -264,6 +280,7 @@ struct engine {
   long long total_nr_sparts;
   long long total_nr_sinks;
   long long total_nr_bparts;
+  long long total_nr_dmparts;
   long long total_nr_DM_background_gparts;
   long long total_nr_neutrino_gparts;
 
@@ -279,6 +296,7 @@ struct engine {
   long long nr_inhibited_sparts;
   long long nr_inhibited_sinks;
   long long nr_inhibited_bparts;
+  long long nr_inhibited_dmparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Total number of particles removed from the system since the last rebuild */
@@ -286,6 +304,7 @@ struct engine {
   long long count_inhibited_gparts;
   long long count_inhibited_sparts;
   long long count_inhibited_bparts;
+  long long count_inhibited_dmparts;
 #endif
 
   /* Maximal ID of the parts (used for the generation of new IDs when splitting)
@@ -370,6 +389,9 @@ struct engine {
 
   /* File handle for the SFH logger file */
   FILE *sfh_logger;
+
+  /* File handle for the SIDM history logger file */
+  FILE *dm_logger;
 
   /* The current step number. */
   int step;
@@ -481,6 +503,9 @@ struct engine {
   /* Properties of the radiative transfer model */
   struct rt_props *rt_props;
 
+  /* Properties of the sidm model */
+  struct sidm_props *sidm_properties;
+
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
@@ -582,7 +607,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
 void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
     struct output_options *output_options, long long Ngas, long long Ngparts,
-    long long Nsinks, long long Nstars, long long Nblackholes,
+    long long Nsinks, long long Nstars, long long Nblackholes, long long Ndarkmatter,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
     struct repartition *reparttype, const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
@@ -591,7 +616,7 @@ void engine_init(
     struct gravity_props *gravity, const struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos, struct feedback_props *feedback,
-    struct rt_props *rt, struct pm_mesh *mesh,
+    struct rt_props *rt, struct pm_mesh *mesh, struct sidm_props *sidm,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
@@ -613,7 +638,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             size_t *Ngpart, const size_t offset_sparts,
                             const int *ind_spart, size_t *Nspart,
                             const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart);
+                            size_t *Nbpart,
+                            const size_t offset_dmparts, const int *ind_dmpart,
+                            size_t *Ndmpart);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);

@@ -916,6 +916,188 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
   }   /* iterate over the current task. */
 }
 
+
+/**
+ * @brief Split a dark matter task if too large.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_dark_matter(struct task *t, struct scheduler *s) {
+    /* Note this is not very clean as the scheduler should not really
+     access the engine... */
+    
+    /* Iterate on this task until we're done with it. */
+    int redo = 1;
+    while (redo) {
+        /* Reset the redo flag. */
+        redo = 0;
+        
+        /* Is this a non-empty self-task? */
+        const int is_self = (t->type == task_type_self) && (t->ci != NULL) && (t->ci->dark_matter.count > 0);
+        
+        /* Is this a non-empty pair-task? */
+        const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) && (t->cj != NULL) &&
+                            (t->ci->dark_matter.count > 0) && (t->cj->dark_matter.count > 0);
+        
+        /* Empty task? */
+        if (!is_self && !is_pair) {
+            t->type = task_type_none;
+            t->subtype = task_subtype_none;
+            t->ci = NULL;
+            t->cj = NULL;
+            t->skip = 1;
+            break;
+        }
+        
+        /* Self-interaction? */
+        if (t->type == task_type_self) {
+            /* Get a handle on the cell involved. */
+            struct cell *ci = t->ci;
+            
+            /* Foreign task? */
+            if (ci->nodeID != s->nodeID) {
+                t->skip = 1;
+                break;
+            }
+            
+            /* Is this cell even split and the task does not violate h ? */
+            if (cell_can_split_self_dark_matter_task(ci)) {
+                /* Make a sub? */
+                if (scheduler_dosub && ci->dark_matter.count < space_subsize_self_dark_matter) {
+                    /* convert to a self-subtask. */
+                    t->type = task_type_sub_self;
+                    
+                    /* Otherwise, make tasks explicitly. */
+                } else {
+                    /* Take a step back (we're going to recycle the current task)... */
+                    redo = 1;
+                    
+                    /* Add the self tasks. */
+                    int first_child = 0;
+                    while (ci->progeny[first_child] == NULL) first_child++;
+                    
+                    t->ci = ci->progeny[first_child];
+                    cell_set_flag(t->ci, cell_flag_has_tasks);
+                    
+                    for (int k = first_child + 1; k < 8; k++) {
+                        /* Do we have a non-empty progenitor? */
+                        if (ci->progeny[k] != NULL &&
+                            (ci->progeny[k]->dark_matter.count)) {
+                                scheduler_splittask_dark_matter(scheduler_addtask(s, task_type_self, t->subtype, 0, 0, ci->progeny[k], NULL),s);
+                            }
+                    }
+                    
+                    /* Make a task for each pair of progeny */
+                    for (int j = 0; j < 8; j++) {
+                        /* Do we have a non-empty progenitor? */
+                        if (ci->progeny[j] != NULL && ci->progeny[j]->dark_matter.count) {
+                                for (int k = j + 1; k < 8; k++) {
+                                    /* Do we have a second non-empty progenitor? */
+                                    if (ci->progeny[k] != NULL && ci->progeny[k]->dark_matter.count) {
+                                            scheduler_splittask_dark_matter(scheduler_addtask(s, task_type_pair, t->subtype,
+                                                                                        sub_sid_flag[j][k], 0, ci->progeny[j],
+                                                                                        ci->progeny[k]), s);
+                                    }
+                                }
+                            }
+                        }
+                }
+                
+            } /* Cell is split */
+            
+        } /* Self interaction */
+        
+        /* Pair interaction? */
+        else if (t->type == task_type_pair) {
+            /* Get a handle on the cells involved. */
+            struct cell *ci = t->ci;
+            struct cell *cj = t->cj;
+            
+            /* Foreign task? */
+            if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+                t->skip = 1;
+                break;
+            }
+            
+            /* Get the sort ID, use space_getsid and not t->flags
+             to make sure we get ci and cj swapped if needed. */
+            double shift[3];
+            const int sid = space_getsid(s->space, &ci, &cj, shift);
+            
+#ifdef SWIFT_DEBUG_CHECKS
+            if (sid != t->flags)
+                error("Got pair task with incorrect flags: sid=%d flags=%lld", sid,
+                      t->flags);
+#endif
+            
+            /* Should this task be split-up? */
+            if (cell_can_split_pair_dark_matter_task(ci) &&
+                cell_can_split_pair_dark_matter_task(cj)) {
+                
+                const int h_count_i = ci->dark_matter.count;
+                const int h_count_j = cj->dark_matter.count;
+                
+                int do_sub_dark_matter = 1;
+                if (h_count_i > 0 && h_count_j > 0) {
+                    
+                    /* Note: Use division to avoid integer overflow. */
+                    do_sub_dark_matter = h_count_i * sid_scale[sid] < space_subsize_pair_dark_matter / h_count_j;
+                }
+                
+                /* Replace by a single sub-task? */
+                /*if (scheduler_dosub && do_sub_dark_matter && !sort_is_corner(sid)) {*/
+                if (scheduler_dosub && do_sub_dark_matter) {
+
+                    /* Make this task a sub task. */
+                    t->type = task_type_sub_pair;
+                    
+                    /* Otherwise, split it. */
+                } else {
+                    /* Take a step back (we're going to recycle the current task)... */
+                    redo = 1;
+                    
+                    /* Loop over the sub-cell pairs for the current sid and add new tasks
+                     * for them. */
+                    struct cell_split_pair *csp = &cell_split_pairs[sid];
+                    
+                    t->ci = ci->progeny[csp->pairs[0].pid];
+                    t->cj = cj->progeny[csp->pairs[0].pjd];
+                    if (t->ci != NULL) cell_set_flag(t->ci, cell_flag_has_tasks);
+                    if (t->cj != NULL) cell_set_flag(t->cj, cell_flag_has_tasks);
+                    
+                    t->flags = csp->pairs[0].sid;
+                    for (int k = 1; k < csp->count; k++) {
+                        scheduler_splittask_dark_matter(scheduler_addtask(s, task_type_pair, t->subtype,
+                                                                    csp->pairs[k].sid, 0,
+                                                                    ci->progeny[csp->pairs[k].pid],
+                                                                    cj->progeny[csp->pairs[k].pjd]), s);
+                    }
+                }
+                
+                /* Otherwise, break it up if it is too large? */
+            } else if (scheduler_doforcesplit && ci->split && cj->split &&
+                       (ci->dark_matter.count > space_maxsize / cj->dark_matter.count)) {
+                
+                /* Replace the current task. */
+                t->type = task_type_none;
+                
+                for (int j = 0; j < 8; j++)
+                    if (ci->progeny[j] != NULL && ci->progeny[j]->dark_matter.count)
+                        for (int k = 0; k < 8; k++)
+                            if (cj->progeny[k] != NULL && cj->progeny[k]->dark_matter.count) {
+                                struct task *tl =
+                                scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
+                                                  ci->progeny[j], cj->progeny[k]);
+                                scheduler_splittask_dark_matter(tl, s);
+                                tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
+                            }
+            }
+        } /* pair interaction? */
+    }   /* iterate over the current task. */
+}
+
+
 /**
  * @brief Split a gravity task if too large.
  *
@@ -1179,6 +1361,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
+    } else if (t->subtype == task_subtype_dark_matter_density) {
+      scheduler_splittask_dark_matter(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
@@ -1210,6 +1394,8 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
     message("space_subsize_pair_stars= %d", space_subsize_pair_stars);
     message("space_subsize_self_grav= %d", space_subsize_self_grav);
     message("space_subsize_pair_grav= %d", space_subsize_pair_grav);
+    message("space_subsize_self_dark_matter= %d", space_subsize_self_dark_matter);
+    message("space_subsize_pair_dark_matter= %d", space_subsize_pair_dark_matter);
   }
 
   if (fof_tasks) {
@@ -1299,7 +1485,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
   bzero(counts, sizeof(int) * s->nr_tasks);
   for (int k = 0; k < s->nr_unlocks; k++) {
     counts[s->unlock_ind[k]] += 1;
-
+      
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
       error(
@@ -1315,8 +1501,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Compute the offset for each unlock block. */
   int *offsets;
-  if ((offsets = (int *)swift_malloc("offsets",
-                                     sizeof(int) * (s->nr_tasks + 1))) == NULL)
+  if ((offsets = (int *)swift_malloc("offsets", sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
   for (int k = 0; k < s->nr_tasks; k++) {
@@ -1338,7 +1523,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
     unlocks[offsets[ind]] = s->unlocks[k];
     offsets[ind] += 1;
   }
-
+    
   /* Swap the unlocks. */
   swift_free("unlocks", s->unlocks);
   s->unlocks = unlocks;
@@ -1513,6 +1698,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float sink_count_j = (t->cj != NULL) ? t->cj->sinks.count : 0.f;
     const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
     const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
+    const float dmcount_i = (t->ci != NULL) ? t->ci->dark_matter.count : 0.f;
+    const float dmcount_j = (t->cj != NULL) ? t->cj->dark_matter.count : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1535,6 +1722,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
+        else if (t->subtype == task_subtype_dark_matter_density ||
+                 t->subtype == task_subtype_sidm)
+          cost = 1.f * (wscale * dmcount_i) * dmcount_i;
         else if (t->subtype == task_subtype_stars_density ||
                  t->subtype == task_subtype_stars_prep1 ||
                  t->subtype == task_subtype_stars_prep2 ||
@@ -1575,6 +1765,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
+
+        } else if (t->subtype == task_subtype_dark_matter_density ||
+                   t->subtype == task_subtype_sidm){
+            if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+                cost = 3.f * ( wscale * dmcount_i ) * dmcount_j * sid_scale[t->flags];
+            else
+                cost = 2.f * wscale * (dmcount_i * dmcount_j + dmcount_j * dmcount_i) *
+                sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
@@ -1657,15 +1855,22 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_prep1 ||
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
-          if (t->ci->nodeID != nodeID) {
-            cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
-          } else if (t->cj->nodeID != nodeID) {
-            cost = 3.f * (wscale * scount_i) * count_j * sid_scale[t->flags];
+            if (t->ci->nodeID != nodeID) {
+                cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
+            } else if (t->cj->nodeID != nodeID) {
+                cost = 3.f * (wscale * scount_i) * count_j * sid_scale[t->flags];
+            } else {
+                cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
+                       sid_scale[t->flags];
+            }
+        } else if (t->subtype == task_subtype_dark_matter_density ||
+            t->subtype == task_subtype_sidm){
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * dmcount_i) * dmcount_j * sid_scale[t->flags];
           } else {
-            cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
+            cost = 2.f * wscale * (dmcount_i * dmcount_j + dmcount_j * dmcount_i) *
                    sid_scale[t->flags];
           }
-
         } else if (t->subtype == task_subtype_sink_compute_formation ||
                    t->subtype == task_subtype_sink_accretion) {
           if (t->ci->nodeID != nodeID) {
@@ -1679,7 +1884,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    (sink_count_i * count_j + sink_count_j * count_i) *
                    sid_scale[t->flags];
           }
-
         } else if (t->subtype == task_subtype_sink_merger) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * sink_count_i) * sink_count_j *
@@ -1737,11 +1941,17 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
+
         } else if (t->subtype == task_subtype_sink_compute_formation ||
                    t->subtype == task_subtype_sink_accretion) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_merger) {
           cost = 1.f * (wscale * sink_count_i) * sink_count_i;
+
+        } else if (t->subtype == task_subtype_dark_matter_density ||
+                   t->subtype == task_subtype_sidm){
+          cost = 1.f * (wscale * dmcount_i) * dmcount_i;
+
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
@@ -1775,6 +1985,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_stars_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
         break;
+      case task_type_dark_matter_ghost:
+        if (t->ci == t->ci->dark_matter.super) cost = wscale * dmcount_i;
+        break;
       case task_type_bh_density_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
@@ -1795,6 +2008,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_drift_bpart:
         cost = wscale * bcount_i;
+        break;
+      case task_type_drift_dmpart:
+        cost = wscale * dmcount_i;
         break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
@@ -1837,31 +2053,37 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_kick1:
         cost =
-            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
+            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i + dmcount_i);
         break;
       case task_type_kick2:
         cost =
-            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
+            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i + dmcount_i);
         break;
       case task_type_timestep:
         cost =
-            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
+            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i + dmcount_i);
+        break;
+      case task_type_sidm_kick:
+        cost = wscale * dmcount_i;
         break;
       case task_type_timestep_limiter:
         cost = wscale * count_i;
+        break;
+      case task_type_timestep_dark_matter_sync:
+        cost = wscale * dmcount_i;
         break;
       case task_type_timestep_sync:
         cost = wscale * count_i;
         break;
       case task_type_send:
-        if (count_i < 1e5)
-          cost = 10.f * (wscale * count_i) * count_i;
+        if (gcount_i < 1e5)
+          cost = 10.f * (wscale * gcount_i) * gcount_i;
         else
           cost = 2e9;
         break;
       case task_type_recv:
-        if (count_i < 1e5)
-          cost = 5.f * (wscale * count_i) * count_i;
+        if (gcount_i < 1e5)
+          cost = 5.f * (wscale * gcount_i) * gcount_i;
         else
           cost = 1e9;
         break;
@@ -2004,6 +2226,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_external_grav)
           qid = t->ci->grav.super->owner;
+        else if (t->subtype == task_subtype_sidm ||
+            t->subtype == task_subtype_dark_matter_density)
+          qid = t->ci->dark_matter.super->owner;
         else
           qid = t->ci->hydro.super->owner;
         break;
@@ -2014,6 +2239,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_drift_gpart:
         qid = t->ci->grav.super->owner;
+        break;
+      case task_type_drift_dmpart:
+      case task_type_dark_matter_ghost:
+      case task_type_sidm_kick:
+      case task_type_timestep_dark_matter_sync:
+        qid = t->ci->dark_matter.super->owner;
         break;
       case task_type_kick1:
       case task_type_kick2:
@@ -2060,6 +2291,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = size =
               t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
           buff = t->buff = malloc(count);
+            
+        } else if (t->subtype == task_subtype_tend_dmpart) {
+                
+            count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_dark_matter);
+            buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
@@ -2068,6 +2304,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_bpart_merger) {
+
           count = size =
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
@@ -2082,7 +2319,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct part);
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
-
+        
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
@@ -2097,6 +2334,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct spart);
           type = spart_mpi_type;
           buff = t->ci->stars.parts;
+            
+        } else if (t->subtype == task_subtype_dmpart_xv ||
+                   t->subtype == task_subtype_dmpart_rho) {
+            
+            count = t->ci->dark_matter.count;
+            size = count * sizeof(struct dmpart);
+            type = dmpart_mpi_type;
+            buff = t->ci->dark_matter.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
                    t->subtype == task_subtype_bpart_swallow ||
@@ -2160,6 +2405,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
           buff = t->buff = malloc(size);
           cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)buff);
+            
+        } else if (t->subtype == task_subtype_tend_dmpart) {
+            
+            size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step_dark_matter);
+            buff = t->buff = malloc(size);
+            cell_pack_end_step_dark_matter(t->ci, (struct pcell_step_dark_matter *)buff);
 
         } else if (t->subtype == task_subtype_tend_spart) {
 
@@ -2208,6 +2459,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count * sizeof(struct gpart);
           type = gpart_mpi_type;
           buff = t->ci->grav.parts;
+            
+        } else if (t->subtype == task_subtype_dmpart_xv ||
+                   t->subtype == task_subtype_dmpart_rho) {
+            
+            count = t->ci->dark_matter.count;
+            size = count * sizeof(struct dmpart);
+            type = dmpart_mpi_type;
+            buff = t->ci->dark_matter.parts;
 
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {

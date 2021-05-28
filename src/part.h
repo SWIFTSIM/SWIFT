@@ -43,6 +43,7 @@ struct threadpool;
 #define spart_align 128
 #define gpart_align 128
 #define bpart_align 128
+#define dmpart_align 128
 #define sink_align 128
 
 /* Import the right hydro particle definition */
@@ -131,6 +132,9 @@ struct threadpool;
 #error "Invalid choice of sink particle"
 #endif
 
+/* Import the right dark mater particle definition */
+#include "./dark_matter_part.h"
+
 void part_relink_gparts_to_parts(struct part *parts, const size_t N,
                                  const ptrdiff_t offset);
 void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
@@ -139,29 +143,36 @@ void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
                                   const ptrdiff_t offset);
 void part_relink_gparts_to_sinks(struct sink *sinks, const size_t N,
                                  const ptrdiff_t offset);
+void part_relink_gparts_to_dmparts(struct dmpart *dmparts, const size_t N,
+                                  const ptrdiff_t offset);
 void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
                                  struct part *parts);
 void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
                                   struct spart *sparts);
 void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
                                   struct bpart *bparts);
+void part_relink_dmparts_to_gparts(struct gpart *gparts, const size_t N,
+                                  struct dmpart *dmparts);
 void part_relink_sinks_to_gparts(struct gpart *gparts, const size_t N,
                                  struct sink *sinks);
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct sink *sinks,
                                      struct spart *sparts, struct bpart *bparts,
+                                     struct dmpart *dmparts, const size_t Ndm,
                                      struct threadpool *tp);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct sink *sinks, struct spart *sparts,
+                       struct dmpart *dmparts,
                        struct bpart *bparts, size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sinks, size_t nr_sparts, size_t nr_bparts,
-                       int verbose);
+                       size_t nr_sinks, size_t nr_sparts, size_t nr_dmparts, size_t nr_bparts,
+                       const int with_sidm, int verbose);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype part_mpi_type;
 extern MPI_Datatype xpart_mpi_type;
 extern MPI_Datatype gpart_mpi_type;
+extern MPI_Datatype dmpart_mpi_type;
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype bpart_mpi_type;
 extern MPI_Datatype lospart_mpi_type;

@@ -104,24 +104,6 @@
   })
 
 /**
- * @brief Minimum of five numbers
- *
- * This macro evaluates its arguments exactly once.
- */
-#define min5(x, y, z, w, u)                           \
-  ({                                                  \
-    const __typeof__(x) _x = (x);                     \
-    const __typeof__(y) _y = (y);                     \
-    const __typeof__(z) _z = (z);                     \
-    const __typeof__(w) _w = (w);                     \
-    const __typeof__(u) _u = (u);                     \
-    const __typeof__(x) _temp1 = min(_x, _y);         \
-    const __typeof__(x) _temp2 = min(_z, _w);         \
-    const __typeof__(x) _temp3 = min(_temp1, _temp2); \
-    min(_temp3, _u);                                  \
-  })
-
-/**
  * @brief Maximum of five numbers
  *
  * This macro evaluates its arguments exactly once.
@@ -138,5 +120,64 @@
     const __typeof__(x) _temp3 = max(_temp1, _temp2); \
     max(_temp3, _u);                                  \
   })
+
+/**
+ * @brief Minimum of five numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define min5(x, y, z, w, u)                           \
+({                                                  \
+  const __typeof__(x) _x = (x);                     \
+  const __typeof__(y) _y = (y);                     \
+  const __typeof__(z) _z = (z);                     \
+  const __typeof__(w) _w = (w);                     \
+  const __typeof__(u) _u = (u);                     \
+  const __typeof__(x) _temp1 = min(_x, _y);         \
+  const __typeof__(x) _temp2 = min(_z, _w);         \
+  const __typeof__(x) _temp3 = min(_temp1, _temp2); \
+  min(_temp3, _u);                                  \
+})
+
+/**
+ * @brief Maximum of six numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define max6(x, y, z, w, u, v)                        \
+  ({                                                  \
+    const __typeof__(x) _x = (x);                     \
+    const __typeof__(y) _y = (y);                     \
+    const __typeof__(z) _z = (z);                     \
+    const __typeof__(w) _w = (w);                     \
+    const __typeof__(u) _u = (u);                     \
+    const __typeof__(v) _v = (v);                     \
+    const __typeof__(x) _temp1 = max(_x, _y);         \
+    const __typeof__(x) _temp2 = max(_z, _w);         \
+    const __typeof__(x) _temp3 = max(_u, _v);         \
+    const __typeof__(x) _temp4 = max(_temp1, _temp2); \
+    max(_temp3, _temp4);                                  \
+  })
+
+
+/**
+ * @brief Minimum of six numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define min6(x, y, z, w, u, v)                      \
+({                                                  \
+  const __typeof__(x) _x = (x);                     \
+  const __typeof__(y) _y = (y);                     \
+  const __typeof__(z) _z = (z);                     \
+  const __typeof__(w) _w = (w);                     \
+  const __typeof__(u) _u = (u);                     \
+  const __typeof__(v) _v = (v);                     \
+  const __typeof__(x) _temp1 = min(_x, _y);         \
+  const __typeof__(x) _temp2 = min(_z, _w);         \
+  const __typeof__(x) _temp3 = min(_u, _v);         \
+  const __typeof__(x) _temp4 = min(_temp1, _temp2); \
+  min(_temp3, _temp4);                                  \
+})
 
 #endif /* SWIFT_MINMAX_H */

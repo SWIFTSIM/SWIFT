@@ -92,17 +92,20 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int periodic = e->s->periodic;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+  struct dmpart *restrict dmparts = c->dark_matter.parts;
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
+  const int dmcount = c->dark_matter.count;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -111,7 +114,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
   /* Anything to do here? */
   if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e) &&
       !cell_is_starting_stars(c, e) && !cell_is_starting_sinks(c, e) &&
-      !cell_is_starting_black_holes(c, e))
+      !cell_is_starting_black_holes(c, e) && !cell_is_starting_dark_matter(c, e))
     return;
 
   /* Recurse? */
@@ -207,9 +210,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
 #endif
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if ((gp->type == swift_type_dark_matter ||
-           gp->type == swift_type_dark_matter_background ||
-           gp->type == swift_type_neutrino) &&
+      if ((gp->type == swift_type_dark_matter_background ||
+           gp->type == swift_type_neutrino ||
+           (gp->type == swift_type_dark_matter && !with_sidm)) &&
           gpart_is_starting(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
@@ -237,6 +240,46 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
                    ti_begin_mesh, ti_end_mesh);
       }
     }
+
+      
+      /* Loop over the dmparts in this cell. */
+      for (int k = 0; k < dmcount; k++) {
+          
+          /* Get a handle on the part. */
+          struct dmpart *restrict dmp = &dmparts[k];
+          
+          /* If the DM particle has no counterpart and needs to be kicked */
+          if (dmpart_is_starting(dmp, e)) {
+              
+              const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
+              const integertime_t ti_begin =
+              get_integer_time_begin(ti_current + 1, dmp->time_bin);
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              const integertime_t ti_end =
+              get_integer_time_end(ti_current + 1, dmp->time_bin);
+              
+              if (ti_begin != ti_current)
+                  error(
+                        "DM-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+                        "ti_step=%lld time_bin=%d ti_current=%lld",
+                        ti_end, ti_begin, ti_step, dmp->time_bin, ti_current);
+#endif
+              
+              /* Time interval for this half-kick */
+              double dt_kick_grav;
+              if (with_cosmology) {
+                  dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                                ti_begin + ti_step / 2);
+              } else {
+                  dt_kick_grav = (ti_step / 2) * time_base;
+              }
+              
+              /* do the kick */
+              kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+              
+        }
+      }
 
     /* Loop over the stars particles in this cell. */
     for (int k = 0; k < scount; k++) {
@@ -364,17 +407,20 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int periodic = e->s->periodic;
+  const int with_sidm = (e->policy & engine_policy_sidm);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
+  const int dmcount = c->dark_matter.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+  struct dmpart *restrict dmparts = c->dark_matter.parts;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -383,7 +429,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
-      !cell_is_active_black_holes(c, e))
+      !cell_is_active_black_holes(c, e) && !cell_is_active_dark_matter(c, e))
     return;
 
   /* Recurse? */
@@ -478,9 +524,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 #endif
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if ((gp->type == swift_type_dark_matter ||
-           gp->type == swift_type_dark_matter_background ||
-           gp->type == swift_type_neutrino) &&
+      if ((gp->type == swift_type_dark_matter_background ||
+           gp->type == swift_type_neutrino ||
+           (gp->type == swift_type_dark_matter && !with_sidm)) &&
           gpart_is_active(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
@@ -510,6 +556,48 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
         gravity_reset_predicted_values(gp);
       }
     }
+      
+      /* Loop over the DM-particles in this cell. */
+      for (int k = 0; k < dmcount; k++) {
+          
+          /* Get a handle on the part. */
+          struct dmpart *restrict dmp = &dmparts[k];
+          
+          /* If the g-particle has no counterpart and needs to be kicked */
+          if (dmpart_is_active(dmp, e)) {
+              
+              const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
+              const integertime_t ti_begin = get_integer_time_begin(ti_current, dmp->time_bin);
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              if (ti_begin + ti_step != ti_current)
+                  error("Particle in wrong time-bin");
+#endif
+              
+              /* Time interval for this half-kick */
+              double dt_kick_grav;
+              if (with_cosmology) {
+                  dt_kick_grav = cosmology_get_grav_kick_factor(
+                                                                cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+              } else {
+                  dt_kick_grav = (ti_step / 2) * time_base;
+              }
+              
+              /* Finish the time-step with a second half-kick */
+              kick_dmpart(dmp, dt_kick_grav, ti_begin + ti_step / 2,
+                         ti_begin + ti_step);
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              /* Check that kick and the drift are synchronized */
+              if (dmp->ti_drift != dmp->ti_kick)
+                  error("Error integrating g-part in time.");
+#endif
+              
+              /* Prepare the values to be drifted */
+              dark_matter_reset_predicted_values(dmp);
+              
+          }
+      }
 
     /* Loop over the particles in this cell. */
     for (int k = 0; k < scount; k++) {
@@ -642,34 +730,38 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   const struct phys_const *phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_sidm = (e->policy & engine_policy_sidm);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int sink_count = c->sinks.count;
   const int bcount = c->black_holes.count;
+  const int dmcount = c->dark_matter.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
   struct sink *restrict sinks = c->sinks.parts;
   struct bpart *restrict bparts = c->black_holes.parts;
+  struct dmpart *restrict dmparts = c->dark_matter.parts;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
-      !cell_is_active_black_holes(c, e)) {
+      !cell_is_active_black_holes(c, e) && !cell_is_active_dark_matter(c, e)) {
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
     c->sinks.updated = 0;
     c->black_holes.updated = 0;
+    c->dark_matter.updated = 0;
     return;
   }
 
   int updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
-      b_updated = 0;
+      b_updated = 0, dm_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -680,6 +772,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
                 ti_sinks_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+  integertime_t ti_dark_matter_end_min = max_nr_timesteps, ti_dark_matter_end_max = 0, ti_dark_matter_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -776,9 +869,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
-      if (gp->type == swift_type_dark_matter ||
-          gp->type == swift_type_dark_matter_background ||
-          gp->type == swift_type_neutrino) {
+      if (gp->type == swift_type_dark_matter_background ||
+          gp->type == swift_type_neutrino ||
+          (gp->type == swift_type_dark_matter && !with_sidm)) {
 
         /* need to be updated ? */
         if (gpart_is_active(gp, e)) {
@@ -830,6 +923,65 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         }
       }
     }
+      
+      /* Loop over the dm-particles in this cell. */
+      for (int k = 0; k < dmcount; k++) {
+          
+          /* Get a handle on the part. */
+          struct dmpart *restrict dmp = &dmparts[k];
+          
+          /* If the g-particle has no counterpart */
+          if (dmpart_is_active(dmp, e)) {
+                  
+#ifdef SWIFT_DEBUG_CHECKS
+                  /* Current end of time-step */
+                  const integertime_t ti_end =
+                  get_integer_time_end(ti_current, dmp->time_bin);
+                  
+                  if (ti_end != ti_current)
+                      error("Computing time-step of rogue particle.");
+#endif
+                  
+                  /* Get new time-step */
+                  const integertime_t ti_new_step = get_dmpart_timestep(dmp, e);
+                  
+                  /* Update particle */
+                  dmp->time_bin = get_time_bin(ti_new_step);
+                  dmp->gpart->time_bin = get_time_bin(ti_new_step);
+              
+                  /* Number of updated g-particles */
+                  dm_updated++;
+                  g_updated++;
+
+                  /* What is the next sync-point ? */
+                  ti_dark_matter_end_min = min(ti_current + ti_new_step, ti_dark_matter_end_min);
+                  ti_dark_matter_end_max = max(ti_current + ti_new_step, ti_dark_matter_end_max);
+                  ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+                  ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+
+                  /* What is the next starting point for this cell ? */
+                  ti_dark_matter_beg_max = max(ti_current, ti_dark_matter_beg_max);
+                  ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+              
+              } else { /* dmpart is inactive */
+                  
+                  if (!dmpart_is_inhibited(dmp, e)) {
+                      
+                      const integertime_t ti_end = get_integer_time_end(ti_current, dmp->time_bin);
+                      const integertime_t ti_beg = get_integer_time_begin(ti_current + 1, dmp->time_bin);
+
+                      /* What is the next sync-point ? */
+                      ti_dark_matter_end_min = min(ti_end, ti_dark_matter_end_min);
+                      ti_dark_matter_end_max = max(ti_end, ti_dark_matter_end_max);
+                      ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+                      ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+                      
+                      /* What is the next starting point for this cell ? */
+                      ti_dark_matter_beg_max = max(ti_beg, ti_dark_matter_beg_max);
+                      ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+                  }
+              }
+          }
 
     /* Loop over the star particles in this cell. */
     for (int k = 0; k < scount; k++) {
@@ -1037,6 +1189,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         sink_updated += cp->sinks.updated;
         s_updated += cp->stars.updated;
         b_updated += cp->black_holes.updated;
+        dm_updated += cp->dark_matter.updated;
 
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
@@ -1049,6 +1202,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         ti_sinks_end_min = min(cp->sinks.ti_end_min, ti_sinks_end_min);
         ti_sinks_beg_max = max(cp->sinks.ti_beg_max, ti_sinks_beg_max);
+
+        ti_dark_matter_end_min = min(cp->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        ti_dark_matter_beg_max = max(cp->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
 
         ti_black_holes_end_min =
             min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
@@ -1064,6 +1220,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   c->stars.updated = s_updated;
   c->sinks.updated = sink_updated;
   c->black_holes.updated = b_updated;
+  c->dark_matter.updated = dm_updated;
 
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -1075,6 +1232,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   c->sinks.ti_beg_max = ti_sinks_beg_max;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->dark_matter.ti_end_min = ti_dark_matter_end_min;
+  c->dark_matter.ti_beg_max = ti_dark_matter_beg_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min == e->ti_current &&
@@ -1233,6 +1392,129 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
   if (timer) TIMER_TOC(timer_do_limiter);
 }
 
+
+/**
+ * @brief Apply the time-step limiter to all awaken particles in a cell
+ * hierarchy.
+ *
+ * @param r The task #runner.
+ * @param c The #cell.
+ * @param force Limit the particles irrespective of the #cell flags.
+ * @param timer Are we timing this ?
+ */
+void runner_do_dm_limiter(struct runner *r, struct cell *c, int force) {
+    
+    const struct engine *e = r->e;
+    const int count = c->dark_matter.count;
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
+    
+    TIMER_TIC;
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we only limit local cells. */
+    if (c->nodeID != engine_rank) error("Limiting dt of a foreign cell is nope.");
+#endif
+    
+    integertime_t ti_dark_matter_end_min = max_nr_timesteps, ti_dark_matter_beg_max = 0;
+    integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+    
+    /* Limit irrespective of cell flags? */
+    force = (force || cell_get_flag(c, cell_flag_do_dark_matter_limiter));
+    
+    /* Early abort? */
+    if (c->dark_matter.count == 0) {
+        
+        /* Clear the limiter flags. */
+        cell_clear_flag(
+                        c, cell_flag_do_dark_matter_limiter | cell_flag_do_dark_matter_sub_limiter);
+        return;
+    }
+    
+    /* Loop over the progeny ? */
+    if (c->split && (force || cell_get_flag(c, cell_flag_do_dark_matter_sub_limiter))) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                struct cell *restrict cp = c->progeny[k];
+                
+                /* Recurse */
+                runner_do_dm_limiter(r, cp, force);
+                
+                /* And aggregate */
+                ti_dark_matter_end_min = min(cp->dark_matter.ti_end_min, ti_dark_matter_end_min);
+                ti_dark_matter_beg_max = max(cp->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+                ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+                ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+            }
+        }
+        
+        /* Store the updated values */
+        c->dark_matter.ti_end_min = min(c->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        c->dark_matter.ti_beg_max = max(c->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+        c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+        c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+        
+    } else if (!c->split && force) {
+        
+        ti_dark_matter_end_min = c->dark_matter.ti_end_min;
+        ti_dark_matter_beg_max = c->dark_matter.ti_beg_max;
+        ti_gravity_end_min = c->grav.ti_end_min;
+        ti_gravity_beg_max = c->grav.ti_beg_max;
+        
+        /* Loop over the DM particles in this cell. */
+        for (int k = 0; k < count; k++) {
+            
+            /* Get a handle on the part. */
+            struct dmpart *restrict p = &dmparts[k];
+            
+            /* Avoid inhibited particles */
+            if (dmpart_is_inhibited(p, e)) continue;
+            
+            /* Bip, bip, bip... wake-up time */
+            if (p->limiter_data.wakeup != time_bin_not_awake) {
+                
+                /* Apply the limiter and get the new end of time-step */
+                const integertime_t ti_end_new = timestep_limit_dmpart(p, e);
+                const timebin_t new_bin = p->time_bin;
+                const integertime_t ti_beg_new = ti_end_new - get_integer_timestep(new_bin);
+                
+                /* Mark this particle has not needing synchronization */
+                p->limiter_data.to_be_synchronized = 0;
+                
+                /* What is the next sync-point ? */
+                ti_dark_matter_end_min = min(ti_end_new, ti_dark_matter_end_min);
+
+                /* What is the next starting point for this cell ? */
+                ti_dark_matter_beg_max = max(ti_beg_new, ti_dark_matter_beg_max);
+                
+                /* Also limit the gpart counter-part */
+                if (p->gpart != NULL) {
+                    
+                    /* Register the time-bin */
+                    p->gpart->time_bin = p->time_bin;
+                    
+                    /* What is the next sync-point ? */
+                    ti_gravity_end_min = min(ti_end_new, ti_gravity_end_min);
+
+                    /* What is the next starting point for this cell ? */
+                    ti_gravity_beg_max = max(ti_beg_new, ti_gravity_beg_max);
+                }
+            }
+        }
+        
+        /* Store the updated values */
+        c->dark_matter.ti_end_min = min(c->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        c->dark_matter.ti_beg_max = max(c->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+        c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+        c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+    }
+    
+    /* Clear the limiter flags. */
+    cell_clear_flag(c,
+                    cell_flag_do_dark_matter_limiter | cell_flag_do_dark_matter_sub_limiter);
+}
+
+
+
 /**
  * @brief Apply the time-step synchronization proceduere to all flagged
  * particles in a cell hierarchy.
@@ -1383,4 +1665,142 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
   if (timer) TIMER_TOC(timer_do_sync);
+}
+
+
+/**
+ * @brief Apply the time-step synchronization procedure to all flagged
+ * particles in a cell hierarchy.
+ *
+ * @param r The task #runner.
+ * @param c The #cell.
+ * @param force Limit the particles irrespective of the #cell flags.
+ * @param timer Are we timing this ?
+ */
+void runner_do_sync_dmparts(struct runner *r, struct cell *c, int force) {
+
+    const struct engine *e = r->e;
+    const struct cosmology *cosmo = e->cosmology;
+    const integertime_t ti_current = e->ti_current;
+    const int count = c->dark_matter.count;
+    struct dmpart *restrict dmparts = c->dark_matter.parts;
+
+    TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we only sync local cells. */
+    if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
+#endif
+    
+    integertime_t ti_dark_matter_end_min = max_nr_timesteps, ti_dark_matter_beg_max = 0;
+    integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
+    
+    /* Limit irrespective of cell flags? */
+    force = (force || cell_get_flag(c, cell_flag_do_dark_matter_sync));
+
+    
+    /* Early abort? */
+    if (c->dark_matter.count == 0) {
+        /* Clear the sync flags. */
+        cell_clear_flag(c, cell_flag_do_dark_matter_sync | cell_flag_do_dark_matter_sub_sync);
+        return;
+    }
+    
+    /* Loop over the progeny ? */
+    if (c->split && (force || cell_get_flag(c, cell_flag_do_dark_matter_sub_sync))) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                struct cell *restrict cp = c->progeny[k];
+                
+                /* Recurse */
+                runner_do_sync_dmparts(r, cp, force);
+                
+                /* And aggregate */
+                ti_dark_matter_end_min = min(cp->dark_matter.ti_end_min, ti_dark_matter_end_min);
+                ti_dark_matter_beg_max = max(cp->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+
+                ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+                ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+            }
+        }
+        
+        /* Store the updated values */
+        c->dark_matter.ti_end_min = min(c->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        c->dark_matter.ti_beg_max = max(c->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+
+        c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+        c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+        
+    } else if (!c->split && force) {
+        
+        ti_dark_matter_end_min = c->dark_matter.ti_end_min;
+        ti_dark_matter_beg_max = c->dark_matter.ti_beg_max;
+        
+        ti_gravity_end_min = c->grav.ti_end_min;
+        ti_gravity_beg_max = c->grav.ti_beg_max;
+        
+        /* Loop over the gas particles in this cell. */
+        for (int k = 0; k < count; k++) {
+            
+            /* Get a handle on the part. */
+            struct dmpart *restrict p = &dmparts[k];
+            
+            /* Avoid inhibited particles */
+            if (dmpart_is_inhibited(p, e)) continue;
+            
+            /* If the particle is active no need to sync it */
+            if (dmpart_is_active(p, e)) p->limiter_data.to_be_synchronized = 0;
+            
+            if (p->limiter_data.to_be_synchronized == 1) {
+                
+                /* Finish this particle's time-step? */
+                timestep_process_sync_dmpart(p, e, cosmo);
+                
+                /* Get new time-step */
+                integertime_t ti_new_step = get_dmpart_timestep(p, e);
+                timebin_t new_time_bin = get_time_bin(ti_new_step);
+                
+                /* Limit the time-bin to what is allowed in this step */
+                new_time_bin = min(new_time_bin, e->max_active_bin);
+                ti_new_step = get_integer_timestep(new_time_bin);
+                
+                /* Update particle */
+                p->time_bin = new_time_bin;
+                if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
+                
+                /* What is the next sync-point ? */
+                ti_dark_matter_end_min = min(ti_current + ti_new_step, ti_dark_matter_end_min);
+
+                /* What is the next starting point for this cell ? */
+                ti_dark_matter_beg_max = max(ti_current, ti_dark_matter_beg_max);
+
+                /* Also limit the gpart counter-part */
+                if (p->gpart != NULL) {
+                    
+                    /* Register the time-bin */
+                    p->gpart->time_bin = p->time_bin;
+                    
+                    /* What is the next sync-point ? */
+                    ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+
+                    /* What is the next starting point for this cell ? */
+                    ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+                }
+                
+                /* Done. Remove flag */
+                p->limiter_data.to_be_synchronized = 0;
+            }
+        }
+        
+        /* Store the updated values */
+        c->dark_matter.ti_end_min = min(c->dark_matter.ti_end_min, ti_dark_matter_end_min);
+        c->dark_matter.ti_beg_max = max(c->dark_matter.ti_beg_max, ti_dark_matter_beg_max);
+
+        c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+        c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+    }
+    
+    /* Clear the sync flags. */
+    cell_clear_flag(c, cell_flag_do_dark_matter_sync | cell_flag_do_dark_matter_sub_sync);
+
 }

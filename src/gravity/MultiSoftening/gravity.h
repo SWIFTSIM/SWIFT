@@ -217,7 +217,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
 /**
  * @brief Finishes the gravity calculation.
  *
- * Multiplies the forces and accelerations by the appropiate constants.
+ * Multiplies the forces and accelerations by the appropriate constants.
  * Applies cosmological correction for periodic BCs.
  *
  * No need to apply the potential normalisation correction for periodic
@@ -254,7 +254,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (with_self_gravity && gp->old_a_grav_norm == 0.f)
-    error("Old acceleration is 0!");
+    error("Old acceleration of %lld is 0!", gp->id_or_neg_offset);
 #endif
 
   /* Let's get physical... */

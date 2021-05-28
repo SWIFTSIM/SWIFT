@@ -397,6 +397,14 @@ static void ACCUMULATE_SIZES_MAPPER(gpart);
  * @brief Accumulate the sized counts of particles per cell.
  * Threadpool helper for accumulating the counts of particles per cell.
  *
+ * dmpart version.
+ */
+static void ACCUMULATE_SIZES_MAPPER(dmpart);
+
+/**
+ * @brief Accumulate the sized counts of particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
  * spart version.
  */
 static void ACCUMULATE_SIZES_MAPPER(spart);
@@ -422,10 +430,11 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   struct counts_mapper_data mapper_data;
   mapper_data.s = s;
-  double gsize = 0.0;
   double *gcounts = NULL;
+  double gsize = 0.0;
   double hsize = 0.0;
   double ssize = 0.0;
+  double dmsize = 0.0;
 
   if (s->nr_gparts > 0) {
     /* Self-gravity gets more efficient with density (see gitlab issue #640)
@@ -472,7 +481,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     }
     if (verbose) message("clipped gravity part counts of %d cells", nadj);
     free(ptrs);
-  }
+
 
   /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
@@ -492,9 +501,18 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
                    &mapper_data);
   }
 
+  if (s->nr_dmparts > 0) {
+    dmsize = (double)sizeof(struct dmpart);
+    mapper_data.size = dmsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart, s->dmparts,
+                   s->nr_dmparts, sizeof(struct dmpart), space_splitsize,
+                   &mapper_data);
+  }
+
+
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
    * gparts. */
-  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+  if (s->nr_parts > 0 || s->nr_sparts > 0 || s->nr_dmparts > 0) {
     if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to allreduce particle cell weights.");
@@ -513,6 +531,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
       sum += counts[k];
     }
   }
+
 
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if (sum > (double)(IDX_MAX - 10000)) {
@@ -1429,8 +1448,9 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_dmpart || t->type == task_type_dark_matter_ghost ||
         t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_kick1 || t->type == task_type_sidm_kick || t->type == task_type_kick2 ||
         t->type == task_type_end_hydro_force ||
         t->type == task_type_end_grav_force || t->type == task_type_cooling ||
         t->type == task_type_star_formation || t->type == task_type_timestep ||
@@ -2349,9 +2369,10 @@ static void check_weights(struct task *tasks, int nr_tasks,
 
     /* Different weights for different tasks. */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_dmpart || t->type == task_type_dark_matter_ghost ||
         t->type == task_type_ghost || t->type == task_type_extra_ghost ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_end_hydro_force ||
+        t->type == task_type_kick1 || t->type == task_type_sidm_kick ||
+        t->type == task_type_kick2 || t->type == task_type_end_hydro_force ||
         t->type == task_type_end_grav_force || t->type == task_type_cooling ||
         t->type == task_type_star_formation || t->type == task_type_timestep ||
         t->type == task_type_init_grav || t->type == task_type_grav_down ||

@@ -138,6 +138,167 @@ void cell_recursively_shift_gparts(struct cell *c,
   }
 }
 
+
+/**
+ * @brief Recursively update the pointer and counter for #gpart/#dmpart after the
+ * addition of a new particle.
+ *
+ * @param c The cell we are working on.
+ * @param progeny_list The list of the progeny index at each level for the
+ * leaf-cell where the particle was added.
+ * @param main_branch Are we in a cell directly above the leaf where the new
+ * particle was added?
+ */
+void cell_recursively_shift_dmparts(struct cell *c,
+                                    const int progeny_list[space_cell_maxdepth],
+                                    const int main_branch) {
+    if (c->split) {
+        /* No need to recurse in progenies located before the insestion point */
+        const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
+
+        for (int k = first_progeny; k < 8; ++k) {
+            if (c->progeny[k] != NULL)
+                cell_recursively_shift_dmparts(c->progeny[k], progeny_list,
+                                               main_branch && (k == first_progeny));
+        }
+    }
+
+    /* When directly above the leaf with the new particle: increase the particle
+     * count */
+    /* When after the leaf with the new particle: shift by one position */
+    if (main_branch) {
+        c->dark_matter.count++;
+    } else {
+        c->dark_matter.parts++;
+    }
+}
+
+
+/**
+ * @brief "Add" a #dmpart in a given #cell.
+ *
+ * This function will add a #dmpart at the start of the current cell's array by
+ * shifting all the #dmpart in the top-level cell by one position. All the
+ * pointers and cell counts are updated accordingly.
+ *
+ * @param e The #engine.
+ * @param c The leaf-cell in which to add the #spart.
+ *
+ * @return A pointer to the newly added #dmpart. The dmpart has a been zeroed
+ * and given a position within the cell as well as set to the minimal active
+ * time bin.
+ */
+struct dmpart *cell_add_dmpart(struct engine *e, struct cell *const c) {
+    /* Perform some basic consitency checks */
+    if (c->nodeID != engine_rank) error("Adding dmpart on a foreign node");
+    if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+    if (c->split) error("Addition of dmpart performed above the leaf level");
+
+    /* Progeny number at each level */
+    int progeny[space_cell_maxdepth];
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int i = 0; i < space_cell_maxdepth; ++i) progeny[i] = -1;
+#endif
+
+    /* Get the top-level this leaf cell is in and compute the progeny indices at
+     each level */
+    struct cell *top = c;
+    while (top->parent != NULL) {
+        /* What is the progeny index of the cell? */
+        for (int k = 0; k < 8; ++k) {
+            if (top->parent->progeny[k] == top) {
+                progeny[(int)top->parent->depth] = k;
+            }
+        }
+
+        /* Check that the cell was indeed drifted to this point to avoid future
+         * issues */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (top->dark_matter.super != NULL && top->dark_matter.count > 0 &&
+            top->dark_matter.ti_old_part != e->ti_current) {
+            error("Cell had not been correctly drifted");
+        }
+#endif
+
+        /* Climb up */
+        top = top->parent;
+    }
+
+    /* Lock the top-level cell as we are going to operate on it */
+    lock_lock(&top->dark_matter.lock);
+
+    /* Are there any extra particles left? */
+    if (top->dark_matter.count == top->dark_matter.count_total) {
+
+        /* Release the local lock before exiting. */
+        if (lock_unlock(&top->dark_matter.lock) != 0)
+            error("Failed to unlock the top-level cell.");
+
+        atomic_inc(&e->forcerebuild);
+        return NULL;
+    }
+
+    /* Number of particles to shift in order to get a free space. */
+    const size_t n_copy = &top->dark_matter.parts[top->dark_matter.count] - c->dark_matter.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->dark_matter.parts + n_copy > top->dark_matter.parts + top->dark_matter.count)
+        error("Copying beyond the allowed range");
+#endif
+
+    if (n_copy > 0) {
+
+        memmove(&c->dark_matter.parts[1], &c->dark_matter.parts[0],
+                n_copy * sizeof(struct dmpart));
+
+        /* Update the dmpart->gpart links (shift by 1) */
+        for (size_t i = 0; i < n_copy; ++i) {
+#ifdef SWIFT_DEBUG_CHECKS
+            if (c->dark_matter.parts[i + 1].gpart == NULL) {
+                error("Incorrectly linked dmpart!");
+            }
+#endif
+            c->dark_matter.parts[i + 1].gpart->id_or_neg_offset--;
+        }
+    }
+
+    /* Recursively shift all the dmparts to get a free spot at the start of the
+     * current cell*/
+    cell_recursively_shift_dmparts(top, progeny, /* main_branch=*/1);
+
+    /* Make sure the gravity will be recomputed for this particle in the next
+     * step
+     */
+    struct cell *top2 = c;
+    while (top2->parent != NULL) {
+        top2->dark_matter.ti_old_part = e->ti_current;
+        top2 = top2->parent;
+    }
+    top2->dark_matter.ti_old_part = e->ti_current;
+
+    /* Release the lock */
+    if (lock_unlock(&top->dark_matter.lock) != 0)
+        error("Failed to unlock the top-level cell.");
+
+    /* We now have an empty spart as the first particle in that cell */
+    struct dmpart *dmp = &c->dark_matter.parts[0];
+    bzero(dmp, sizeof(struct dmpart));
+
+    /* Set it to the current time-bin */
+    dmp->time_bin = e->min_active_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Specify it was drifted to this point */
+    dmp->ti_drift = e->ti_current;
+#endif
+
+    /* Register that we used one of the free slots. */
+    const size_t one = 1;
+    atomic_sub(&e->s->nr_extra_dmparts, one);
+
+    return dmp;
+}
+
 /**
  * @brief "Add" a #spart in a given #cell.
  *
@@ -570,7 +731,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (p->gpart) {
     p->gpart->time_bin = time_bin_inhibited;
     p->gpart->id_or_neg_offset = p->id;
-    p->gpart->type = swift_type_dark_matter;
+    p->gpart->type = swift_type_sink;
   }
 
   /* Update the space-wide counters */
@@ -620,6 +781,42 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
 }
 
 /**
+ * @brief "Remove" a dark matter particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param dmp The #dmpart to remove.
+ */
+void cell_remove_dmpart(const struct engine *e, struct cell *c,
+                        struct dmpart *dmp) {
+
+    /* Quick cross-check */
+    if (c->nodeID != e->nodeID)
+        error("Can't remove a particle in a foreign cell.");
+
+    /* Don't remove a particle twice */
+    if (dmp->time_bin == time_bin_inhibited) return;
+
+    /* Quick cross-check */
+    if (c->nodeID != e->nodeID)
+        error("Can't remove a particle in a foreign cell.");
+
+    /* Mark the particle as inhibited */
+    dmp->time_bin = time_bin_inhibited;
+
+    /* Update the space-wide counters */
+    const size_t one = 1;
+    atomic_add(&e->s->nr_inhibited_dmparts, one);
+
+    /* Un-link the dmpart */
+    dmp->gpart = NULL;
+}
+
+
+/**
  * @brief "Remove" a star particle from the calculation.
  *
  * The particle is inhibited and will officially be removed at the next
@@ -643,7 +840,7 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   if (sp->gpart) {
     sp->gpart->time_bin = time_bin_inhibited;
     sp->gpart->id_or_neg_offset = sp->id;
-    sp->gpart->type = swift_type_dark_matter;
+    sp->gpart->type = swift_type_neutrino;
   }
 
   /* Update the space-wide counters */
@@ -682,7 +879,7 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   if (bp->gpart) {
     bp->gpart->time_bin = time_bin_inhibited;
     bp->gpart->id_or_neg_offset = bp->id;
-    bp->gpart->type = swift_type_dark_matter;
+    bp->gpart->type = swift_type_neutrino;
   }
 
   /* Update the space-wide counters */
@@ -720,7 +917,7 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
   if (sink->gpart) {
     sink->gpart->time_bin = time_bin_inhibited;
     sink->gpart->id_or_neg_offset = sink->id;
-    sink->gpart->type = swift_type_dark_matter;
+    sink->gpart->type = swift_type_neutrino;
   }
 
   /* Update the space-wide counters */
@@ -905,6 +1102,161 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
   /* Here comes the Sun! */
   return sp;
 }
+
+/**
+ * @brief Add a new #dmpart based on a #part.
+ * The part and xpart are not changed.
+ *
+ * @param e The #engine.
+ * @param c The #cell from which to remove the #part.
+ * @param p The #part to remove (must be inside c).
+ * @param xp The extended data of the #part.
+ *
+ * @return A fresh #dmpart with new ID, but same position, velocity and
+ * time-bin as the original #part.
+ */
+struct dmpart *cell_convert_part_to_dmpart(struct engine *e, struct cell *c,
+                                           struct part *p, struct xpart *xp) {
+    /* Quick cross-check */
+    if (c->nodeID != e->nodeID)
+        error("Can't spawn a particle in a foreign cell.");
+
+    if (p->gpart == NULL)
+        error("Trying to create a new dmpart from a part without gpart friend!");
+
+    /* Create a fresh (empty) dmpart */
+    struct dmpart *dmp = cell_add_dmpart(e, c);
+
+    message("Creating fresh dmpart");
+
+    /* Did we run out of free dmpart slots? */
+    if (dmp == NULL) return NULL;
+
+    /* Copy over the distance since rebuild */
+    dmp->x_diff[0] = xp->x_diff[0];
+    dmp->x_diff[1] = xp->x_diff[1];
+    dmp->x_diff[2] = xp->x_diff[2];
+
+    /* Get a handle */
+    struct gpart *gp = p->gpart;
+
+    /* Mark the particle as inhibited */
+    p->time_bin = time_bin_inhibited;
+
+    /* Un-link the part */
+    p->gpart = NULL;
+
+    /* Mark the gpart as dark matter */
+    gp->type = swift_type_dark_matter;
+
+    /* Assign an ID to the new dmpart. */
+    dmp->id_or_neg_offset = space_get_new_unique_id(e->s);
+
+    /* Re-link things */
+    dmp->gpart = gp;
+
+    /* Update the space-wide counters */
+    atomic_inc(&e->s->nr_inhibited_parts);
+
+    /* Synchronize clocks */
+    dmp->time_bin = gp->time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    dmp->ti_kick = p->ti_kick;
+    dmp->ti_drift = p->ti_drift;
+#endif
+
+    /* Synchronize masses, positions and velocities */
+    dmp->mass = hydro_get_mass(p);
+    dmp->x[0] = p->x[0];
+    dmp->x[1] = p->x[1];
+    dmp->x[2] = p->x[2];
+    dmp->v_full[0] = xp->v_full[0];
+    dmp->v_full[1] = xp->v_full[1];
+    dmp->v_full[2] = xp->v_full[2];
+
+    /* Set a smoothing length */
+    dmp->h = p->h;
+
+    /* Here comes the dark sun! */
+    return dmp;
+}
+
+/**
+ * @brief Add a new #dmpart based on a #spart.
+ *
+ * @param e The #engine.
+ * @param c The #cell from which to remove the #part.
+ * @param sp The #spart to remove (must be inside c).
+ *
+ * @return A fresh #dmpart with new ID, but same position, velocity and
+ * time-bin as the original #spart.
+ */
+struct dmpart *cell_convert_spart_to_dmpart(struct engine *e, struct cell *c,
+                                            struct spart *sp) {
+    /* Quick cross-check */
+    if (c->nodeID != e->nodeID)
+        error("Can't spawn a particle in a foreign cell.");
+
+    if (sp->gpart == NULL)
+        error("Trying to create a new dmpart from a spart without gpart friend!");
+
+    /* Create a fresh (empty) dmpart */
+    struct dmpart *dmp = cell_add_dmpart(e, c);
+
+    /* Did we run out of free dmpart slots? */
+    if (dmp == NULL) return NULL;
+
+    /* Copy over the distance since rebuild */
+    dmp->x_diff[0] = sp->x_diff[0];
+    dmp->x_diff[1] = sp->x_diff[1];
+    dmp->x_diff[2] = sp->x_diff[2];
+
+    /* Get a handle */
+    struct gpart *gp = sp->gpart;
+
+    /* Mark the particle as inhibited */
+    sp->time_bin = time_bin_inhibited;
+
+    /* Un-link the part */
+    sp->gpart = NULL;
+
+    /* Mark the gpart as dark matter */
+    gp->type = swift_type_dark_matter;
+
+    /* Assign an ID to the new dmpart. */
+    dmp->id_or_neg_offset = space_get_new_unique_id(e->s);
+
+    /* Re-link things */
+    dmp->gpart = gp;
+
+    /* Update the space-wide counters */
+    atomic_inc(&e->s->nr_inhibited_sparts);
+
+    /* Synchronize clocks */
+    dmp->time_bin = gp->time_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    dmp->ti_kick = sp->ti_kick;
+    dmp->ti_drift = sp->ti_drift;
+#endif
+
+    /* Synchronize masses, positions and velocities */
+    dmp->mass = sp->mass;
+    dmp->x[0] = sp->x[0];
+    dmp->x[1] = sp->x[1];
+    dmp->x[2] = sp->x[2];
+    dmp->v_full[0] = sp->v[0];
+    dmp->v_full[1] = sp->v[1];
+    dmp->v_full[2] = sp->v[2];
+
+    /* Set a smoothing length */
+    dmp->h = sp->h;
+
+    /* Here comes the dark sun! */
+    return dmp;
+}
+
 
 /**
  * @brief Add a new #spart based on a #part and link it to a new #gpart.

@@ -100,6 +100,7 @@ int main(int argc, char *argv[]) {
   struct neutrino_props neutrino_properties;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
+  struct sidm_props sidm_properties;
   struct entropy_floor_properties entropy_floor;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
@@ -108,6 +109,7 @@ int main(int argc, char *argv[]) {
   struct space s;
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
+  struct dmpart *dmparts = NULL;
   struct sink *sinks = NULL;
   struct unit_system us;
   struct los_props los_properties;
@@ -164,6 +166,7 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_sidm = 0;
   int with_fof = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
@@ -229,6 +232,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
       OPT_BOOLEAN('k', "sinks", &with_sink, "Run with sink particles.", NULL, 0,
+                  0),
+      OPT_BOOLEAN('d', "sidm", &with_sidm, "Run with self-interacting dark matter.", NULL, 0,
                   0),
       OPT_BOOLEAN(
           'u', "fof", &with_fof,
@@ -375,7 +380,7 @@ int main(int argc, char *argv[]) {
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
     io_write_output_field_parameter(output_parameters_filename, with_cosmology,
-                                    with_fof, with_structure_finding);
+                                    with_fof, with_structure_finding, with_sidm);
     printf("End of run.\n");
     return 0;
   }
@@ -699,6 +704,7 @@ int main(int argc, char *argv[]) {
     message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
     message("sizeof(bpart)       is %4zi bytes.", sizeof(struct bpart));
     message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(dmpart)       is %4zi bytes.", sizeof(struct dmpart));
     message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
     message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
     message("sizeof(task)        is %4zi bytes.", sizeof(struct task));
@@ -959,7 +965,7 @@ int main(int argc, char *argv[]) {
 
     /* Prepare and verify the selection of outputs */
     io_prepare_output_fields(output_options, with_cosmology, with_fof,
-                             with_structure_finding, e.verbose);
+                             with_structure_finding, with_sidm, e.verbose);
 
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
@@ -1069,6 +1075,12 @@ int main(int argc, char *argv[]) {
     } else
       bzero(&rt_properties, sizeof(struct rt_props));
 
+    /* Initialise sidm properties */
+    if (with_sidm)
+        sidm_props_init(&sidm_properties, &prog_const, &us, params, &cosmo);
+    else
+        bzero(&sidm_properties, sizeof(struct sidm_props));
+
     /* Initialise the black holes properties */
     if (with_black_holes) {
 #ifdef BLACK_HOLES_NONE
@@ -1146,7 +1158,7 @@ int main(int argc, char *argv[]) {
 
     /* Get ready to read particles of all kinds */
     size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nnupart = 0;
-    size_t Nspart = 0, Nbpart = 0, Nsink = 0;
+    size_t Nspart = 0, Nbpart = 0, Nsink = 0, Ndmpart = 0;
     double dim[3] = {0., 0., 0.};
 
     if (myrank == 0) clocks_gettime(&tic);
@@ -1154,26 +1166,26 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                     &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
+                     &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nnupart,
                      &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                     with_gravity, with_sink, with_stars, with_black_holes,
+                     with_gravity, with_sink, with_stars, with_black_holes, with_sidm,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
                      nr_threads, dry_run, remap_ids);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
+                   &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nnupart,
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sink, with_stars, with_black_holes,
+                   with_gravity, with_sink, with_stars, with_black_holes, with_sidm,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    dry_run, remap_ids);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
-                   &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
+                   &bparts, &dmparts, &Ngas, &Ndmpart, &Ngpart, &Ngpart_background, &Nnupart,
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sink, with_stars, with_black_holes,
+                   with_gravity, with_sink, with_stars, with_black_holes, with_sidm,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    nr_threads, dry_run, remap_ids);
 #endif
@@ -1202,10 +1214,10 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_black_hole) error("Linking problem");
     }
-    if (!with_hydro && !dry_run) {
+    /*if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
-    }
+    }*/
     if (!with_sink && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_sink) error("Linking problem");
@@ -1213,8 +1225,8 @@ int main(int argc, char *argv[]) {
 
     /* Check that the other links are correctly set */
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, bparts, Ngas, Ngpart,
-                        Nsink, Nspart, Nbpart, /*verbose=*/1);
+      part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Ngas, Ngpart,
+                        Nsink, Nspart, Ndmpart, Nbpart, with_sidm, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */
@@ -1223,25 +1235,31 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
     long long N_long[swift_type_count + 1] = {0};
     N_long[swift_type_gas] = Ngas;
-    N_long[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
     N_long[swift_type_dark_matter_background] = Ngpart_background;
     N_long[swift_type_sink] = Nsink;
     N_long[swift_type_stars] = Nspart;
     N_long[swift_type_black_hole] = Nbpart;
     N_long[swift_type_neutrino] = Nnupart;
+    if (with_sidm) {
+        N_long[swift_type_dark_matter] = Ndmpart;
+    } else {
+        N_long[swift_type_dark_matter] = with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
+    }
     N_long[swift_type_count] = Ngpart;
     MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
-    N_total[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
     N_total[swift_type_dark_matter_background] = Ngpart_background;
     N_total[swift_type_sink] = Nsink;
     N_total[swift_type_stars] = Nspart;
     N_total[swift_type_black_hole] = Nbpart;
     N_total[swift_type_neutrino] = Nnupart;
+    if (with_sidm) {
+        N_total[swift_type_dark_matter] = Ndmpart;
+    } else {
+        N_total[swift_type_dark_matter] = with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
+    }
     N_total[swift_type_count] = Ngpart;
 #endif
 
@@ -1279,9 +1297,9 @@ int main(int argc, char *argv[]) {
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
-               sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart,
+               sparts, bparts, dmparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Ndmpart, Nnupart,
                periodic, replicate, remap_ids, generate_gas_in_ics, with_hydro,
-               with_self_gravity, with_star_formation, with_sink,
+               with_self_gravity, with_star_formation, with_sidm, with_sink,
                with_DM_background_particles, with_neutrinos, talking, dry_run,
                nr_nodes);
 
@@ -1364,6 +1382,7 @@ int main(int argc, char *argv[]) {
       message("%zi sinks in %i cells.", s.nr_sinks, s.tot_cells);
       message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
       message("%zi bparts in %i cells.", s.nr_bparts, s.tot_cells);
+      message("%zi dmparts in %i cells.", s.nr_dmparts, s.tot_cells);
       message("maximum depth is %d.", s.maxdepth);
       fflush(stdout);
     }
@@ -1413,8 +1432,8 @@ int main(int argc, char *argv[]) {
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_black_holes) engine_policies |= engine_policy_black_holes;
-    if (with_structure_finding)
-      engine_policies |= engine_policy_structure_finding;
+    if (with_sidm) engine_policies |= engine_policy_sidm;
+    if (with_structure_finding) engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_csds) engine_policies |= engine_policy_csds;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
@@ -1426,12 +1445,13 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
                 N_total[swift_type_count], N_total[swift_type_sink],
                 N_total[swift_type_stars], N_total[swift_type_black_hole],
+                N_total[swift_type_dark_matter],
                 N_total[swift_type_dark_matter_background],
                 N_total[swift_type_neutrino], engine_policies, talking,
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &feedback_properties, &rt_properties, &mesh, &potential,
+                &feedback_properties, &rt_properties, &mesh, &sidm_properties, &potential,
                 &cooling_func, &starform, &chemistry, &fof_properties,
                 &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
@@ -1702,6 +1722,8 @@ int main(int argc, char *argv[]) {
       star_formation_logger_write_to_log_file(
           e.sfh_logger, e.time, e.cosmology->a, e.cosmology->z, e.sfh, e.step);
     }
+    /* Write the self-interacting DM information to the DM logger */
+    dark_matter_write_to_log_file(e.dm_logger, e.time, e.cosmology->a, e.cosmology->z, e.dm, e.step);
   }
 
   /* Write final output. */

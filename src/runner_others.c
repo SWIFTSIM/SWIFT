@@ -44,6 +44,8 @@
 #include "cooling.h"
 #include "csds.h"
 #include "csds_io.h"
+#include "dark_matter.h"
+#include "dark_matter_logger.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
@@ -59,6 +61,103 @@
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
+
+
+/**
+ * @brief Performs the kicks in momentum space from DM-DM interactions on all the active particles in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+void runner_do_sidm_kick(struct runner *r, struct cell *c) {
+
+    const struct engine *e = r->e;
+    const int periodic = e->s->periodic;
+    const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+    /*const struct cosmology *cosmo = e->cosmology;
+    const int with_cosmology = (e->policy & engine_policy_cosmology);*/
+    const float dark_matter_h_max = e->sidm_properties->h_max;
+    const float dark_matter_h_min = e->sidm_properties->h_min;
+    /*const integertime_t ti_current = e->ti_current;
+    const double time_base = e->time_base;*/
+
+    float dx_max = 0.f, dx2_max = 0.f;
+    float cell_h_max = 0.f;
+
+    /* Anything to do here? */
+    if (c->dark_matter.count == 0) return;
+    
+    /* Reset the logger */
+    /*dark_matter_logger_init(&c->dark_matter.sh);*/
+    
+    /* Recurse? */
+    if (c->split) {
+        for (int k = 0; k < 8; k++) {
+            if (c->progeny[k] != NULL) {
+                
+                /* Load the child cell */
+                struct cell *restrict cp = c->progeny[k];
+                runner_do_sidm_kick(r, cp);
+                
+                /* Update current cell using child cells */
+                /*dark_matter_logger_add(&c->dark_matter.sh, &cp->dark_matter.sh);*/
+            }
+        }
+    } else {
+        
+        struct dmpart *restrict dmparts = c->dark_matter.parts;
+        const int count = c->dark_matter.count;
+        
+        /* Loop over the gparts in this cell. */
+        for (int k = 0; k < count; k++) {
+            
+            /* Get a handle on the part. */
+            struct dmpart *restrict dmp = &dmparts[k];
+            
+            /* Is this part within the time step? */
+            if (dmpart_is_active(dmp, e)) {
+            
+                /* Do the SIDM kick */
+                sidm_kick_to_dmpart(dmp);
+                
+                /* In non-periodic BC runs, remove particles that crossed the border due to the kick */
+                if (!periodic) {
+                    
+                    /* Did the particle leave the box?  */
+                    if ((dmp->x[0] > dim[0]) || (dmp->x[0] < 0.) ||  // x
+                        (dmp->x[1] > dim[1]) || (dmp->x[1] < 0.) ||  // y
+                        (dmp->x[2] > dim[2]) || (dmp->x[2] < 0.)) {  // z
+                        
+                        lock_lock(&e->s->lock);
+                        
+                        if (lock_unlock(&e->s->lock) != 0)
+                            error("Failed to unlock the space!");
+                        
+                        continue;
+                    }
+                }
+                
+                /* Limit h to within the allowed range */
+                dmp->h = min(dmp->h, dark_matter_h_max);
+                dmp->h = max(dmp->h, dark_matter_h_min);
+                
+                /* Compute (square of) motion since last cell construction */
+                const float dx2 = dmp->x_diff[0] * dmp->x_diff[0] + dmp->x_diff[1] * dmp->x_diff[1] + dmp->x_diff[2] * dmp->x_diff[2];
+                dx2_max = max(dx2_max, dx2);
+                
+                /* Maximal smoothing length */
+                cell_h_max = max(cell_h_max, dmp->h);
+            }
+        }
+        
+        /* Now, get the maximal particle motion from its square */
+        dx_max = sqrtf(dx2_max);
+        
+        /* Store the values */
+        c->dark_matter.h_max = cell_h_max;
+        c->dark_matter.dx_max_part = dx_max;
+    }
+}
 
 /**
  * @brief Calculate gravity acceleration from external potential
@@ -415,7 +514,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* We are in a model where spart don't exist
                * --> convert the part to a DM gpart */
-              cell_convert_part_to_gpart(e, c, p, xp);
+              /*cell_convert_part_to_gpart(e, c, p, xp);*/
+              cell_convert_part_to_dmpart(e, c, p, xp);
             }
 
             /* Did we get a star? (Or did we run out of spare ones?) */

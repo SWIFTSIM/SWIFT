@@ -42,6 +42,7 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
   const size_t nr_sinks = s->nr_sinks;
+  const size_t nr_dmparts = s->nr_dmparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -103,6 +104,31 @@ void space_regrid(struct space *s, int verbose) {
       }
     }
   }
+
+    if (nr_dmparts > 0) {
+        /* Can we use the list of local non-empty top-level cells? */
+        if (s->local_cells_with_particles_top != NULL) {
+            for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
+                const struct cell *c = &s->cells_top[s->local_cells_with_particles_top[k]];
+                if (c->dark_matter.h_max > h_max) {
+                    h_max = c->dark_matter.h_max;
+                }
+            }
+            /* Can we instead use all the top-level cells? */
+        } else if (s->cells_top != NULL) {
+            for (int k = 0; k < s->nr_cells; k++) {
+                const struct cell *c = &s->cells_top[k];
+                if (c->nodeID == engine_rank && c->dark_matter.h_max > h_max) {
+                    h_max = c->dark_matter.h_max;
+                }
+            }
+            /* Last option: run through the particles */
+        } else {
+            for (size_t k = 0; k < nr_dmparts; k++) {
+                if (s->dmparts[k].h > h_max) h_max = s->dmparts[k].h;
+            }
+        }
+    }
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */
@@ -276,6 +302,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for sink formation.");
       if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
         error("Failed to init spinlock for black holes.");
+      if (lock_init(&s->cells_top[k].dark_matter.lock) != 0)
+        error("Failed to init spinlock for dark matter.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
         error("Failed to init spinlock for star formation (spart).");
     }
@@ -299,15 +327,18 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.count = 0;
           c->stars.count = 0;
           c->sinks.count = 0;
+          c->dark_matter.count = 0;
           c->top = c;
           c->super = c;
           c->hydro.super = c;
           c->grav.super = c;
+          c->dark_matter.super = c;
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
           c->stars.ti_old_part = ti_current;
           c->sinks.ti_old_part = ti_current;
           c->black_holes.ti_old_part = ti_current;
+          c->dark_matter.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;

@@ -64,6 +64,9 @@ enum random_number_type {
   random_number_BH_feedback = 1640531371LL,
   random_number_BH_swallow = 4947009007LL,
   random_number_BH_reposition = 59969537LL,
+  random_number_SIDM = 2189989727LL,
+  random_number_SIDM_theta = 1640531371LL,
+  random_number_SIDM_phi = 4947009007LL
 };
 
 #ifndef __APPLE__

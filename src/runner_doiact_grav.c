@@ -2219,7 +2219,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
         (cell_is_active_gravity(cj, e) && cj->nodeID == nodeID)))
     return;
-
+    
 #ifdef SWIFT_DEBUG_CHECKS
 
   const int gcount_i = ci->grav.count;
@@ -2308,7 +2308,7 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
 
     /* We have two leaves. Go P-P. */
     runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 1, /*allow_mpoles=*/1);
-
+      
   } else {
 
     /* Alright, we'll have to split and recurse. */

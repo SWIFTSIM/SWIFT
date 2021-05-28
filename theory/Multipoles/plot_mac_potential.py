@@ -23,7 +23,7 @@ params = {
     "xtick.labelsize": 7,
     "ytick.labelsize": 7,
     "figure.figsize": (3.15, 3.15),
-    "text.latex.unicode": True,
+#    "text.latex.unicode": True,
     "text.usetex": True,
 }
 rcParams.update(params)

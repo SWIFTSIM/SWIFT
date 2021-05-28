@@ -31,6 +31,7 @@
 #include "engine.h"
 #include "gravity.h"
 #include "neutrino.h"
+#include "dark_matter.h"
 #include "particle_splitting.h"
 #include "pressure_floor.h"
 #include "rt.h"
@@ -490,4 +491,99 @@ void space_first_init_sinks(struct space *s, int verbose) {
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+void space_first_init_dmparts_mapper(void *restrict map_data, int count,
+                                     void *restrict extra_data) {
+
+    struct dmpart *restrict dmp = (struct dmpart *)map_data;
+    const struct space *restrict s = (struct space *)extra_data;
+    const struct engine *e = s->e;
+    const struct gravity_props *grav_props = s->e->gravity_properties;
+    const struct sidm_props *sidm_props = s->e->sidm_properties;
+    const float initial_h = s->initial_dmpart_h;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    const ptrdiff_t delta = dmp - s->dmparts;
+#endif
+
+    const struct cosmology *cosmo = e->cosmology;
+    const float a_factor_vel = cosmo->a;
+    const float sidm_h_min_ratio = e->sidm_properties->h_min_ratio;
+
+    /* Check that the smoothing lengths are non-zero */
+    for (int k = 0; k < count; k++) {
+
+        /* Imposed smoothing length from parameter file */
+        if (initial_h != -1.f) {
+            dmp[k].h = initial_h;
+        }
+
+        const struct gpart *gp = dmp[k].gpart;
+        const float softening = gravity_get_softening(gp, grav_props);
+        dmp->h = max(dmp->h, softening * sidm_h_min_ratio);
+    }
+
+
+    /* Convert velocities to internal units */
+    for (int k = 0; k < count; k++) {
+        dmp[k].v_full[0] *= a_factor_vel;
+        dmp[k].v_full[1] *= a_factor_vel;
+        dmp[k].v_full[2] *= a_factor_vel;
+
+#ifdef HYDRO_DIMENSION_2D
+        dmp[k].x[2] = 0.f;
+        dmp[k].v_full[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+        dmp[k].x[1] = dmp[k].x[2] = 0.f;
+        dmp[k].v_full[1] = dmp[k].v_full[2] = 0.f;
+#endif
+    }
+
+    /* Check that the smoothing lengths are non-zero */
+    for (int k = 0; k < count; k++) {
+        if (dmp[k].h <= 0.)
+            error("Invalid value of smoothing length for dmpart %lld h=%e", dmp[k].id_or_neg_offset,
+                  dmp[k].h);
+    }
+
+    /* Initialise the rest */
+    for (int k = 0; k < count; k++) {
+
+        dark_matter_first_init_dmpart(&dmp[k], sidm_props);
+
+        dmp[k].limiter_data.min_ngb_time_bin = num_time_bins + 1;
+        dmp[k].limiter_data.wakeup = time_bin_not_awake;
+        dmp[k].limiter_data.to_be_synchronized = 0;
+
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (dmp[k].gpart && dmp[k].gpart->id_or_neg_offset != -(k + delta))
+            error("Invalid gpart -> dmpart link");
+
+        /* Initialise the time-integration check variables */
+        dmp[k].ti_drift = 0;
+        dmp[k].ti_kick = 0;
+
+#endif
+    }
+}
+
+/**
+ * @brief Initialises all the DM-particles by setting them into a valid state
+ *
+ * Calls dark_matter_first_init_dmpart() on all the particles
+ */
+void space_first_init_dmparts(struct space *s, int verbose) {
+    const ticks tic = getticks();
+    if (s->nr_dmparts > 0)
+        threadpool_map(&s->e->threadpool, space_first_init_dmparts_mapper, s->dmparts,
+                       s->nr_dmparts, sizeof(struct dmpart),
+                       threadpool_auto_chunk_size, s);
+
+    if (verbose)
+        message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+                clocks_getunit());
 }

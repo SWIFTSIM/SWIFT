@@ -46,11 +46,13 @@ struct index_data {
   size_t count_inhibited_gpart;
   size_t count_inhibited_spart;
   size_t count_inhibited_bpart;
+  size_t count_inhibited_dmpart;
   size_t count_inhibited_sink;
   size_t count_extra_part;
   size_t count_extra_gpart;
   size_t count_extra_spart;
   size_t count_extra_bpart;
+  size_t count_extra_dmpart;
   size_t count_extra_sink;
 };
 
@@ -570,6 +572,135 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 }
 
 /**
+ * @brief #threadpool mapper function to compute the DM-particle cell indices.
+ *
+ * @param map_data Pointer towards the DM-particles.
+ * @param nr_dmparts The number of DM-particles to treat.
+ * @param extra_data Pointers to the space and index list
+ */
+void space_dmparts_get_cell_index_mapper(void *map_data, int nr_dmparts,
+                                         void *extra_data) {
+
+    /* Unpack the data */
+    struct dmpart *restrict dmparts = (struct dmpart *)map_data;
+    struct index_data *data = (struct index_data *)extra_data;
+    struct space *s = data->s;
+    int *const ind = data->ind + (ptrdiff_t)(dmparts - s->dmparts);
+
+    /* Get some constants */
+    const double dim_x = s->dim[0];
+    const double dim_y = s->dim[1];
+    const double dim_z = s->dim[2];
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    const double ih_x = s->iwidth[0];
+    const double ih_y = s->iwidth[1];
+    const double ih_z = s->iwidth[2];
+
+    /* Init the local count buffer. */
+    int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
+    if (cell_counts == NULL)
+        error("Failed to allocate temporary cell count buffer.");
+
+    /* Init the local collectors */
+    float min_mass = FLT_MAX;
+    float sum_vel_norm = 0.f;
+    size_t count_inhibited_dmpart = 0;
+    size_t count_extra_dmpart = 0;
+
+    for (int k = 0; k < nr_dmparts; k++) {
+
+        /* Get the particle */
+        struct dmpart *restrict dmp = &dmparts[k];
+
+        double old_pos_x = dmp->x[0];
+        double old_pos_y = dmp->x[1];
+        double old_pos_z = dmp->x[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!s->periodic && dmp->time_bin != time_bin_inhibited) {
+            if (old_pos_x < 0. || old_pos_x > dim_x)
+                error("Particle outside of volume along X.");
+            if (old_pos_y < 0. || old_pos_y > dim_y)
+                error("Particle outside of volume along Y.");
+            if (old_pos_z < 0. || old_pos_z > dim_z)
+                error("Particle outside of volume along Z.");
+        }
+#endif
+
+        /* Put it back into the simulation volume */
+        double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+        double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+        double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+
+        /* Treat the case where a particle was wrapped back exactly onto
+         * the edge because of rounding issues (more accuracy around 0
+         * than around dim) */
+        if (pos_x == dim_x) pos_x = 0.0;
+        if (pos_y == dim_y) pos_y = 0.0;
+        if (pos_z == dim_z) pos_z = 0.0;
+
+        /* Get its cell index */
+        const int index =
+                cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+            error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
+                  cdim[1], cdim[2], pos_x, pos_y, pos_z);
+
+        if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
+            pos_y < 0. || pos_z < 0.)
+            error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
+                  pos_z);
+#endif
+
+        /* Is this particle to be removed? */
+        if (dmp->time_bin == time_bin_inhibited) {
+            ind[k] = -1;
+            ++count_inhibited_dmpart;
+        } else if (dmp->time_bin == time_bin_not_created) {
+            /* Is this a place-holder for on-the-fly creation? */
+            ind[k] = index;
+            cell_counts[index]++;
+            ++count_extra_dmpart;
+
+        } else {
+            /* List its top-level cell index */
+            ind[k] = index;
+            cell_counts[index]++;
+
+            /* Compute minimal mass */
+            min_mass = min(min_mass, dmp->mass);
+
+            /* Compute sum of velocity norm */
+            sum_vel_norm +=
+                    dmp->v_full[0] * dmp->v_full[0] + dmp->v_full[1] * dmp->v_full[1] + dmp->v_full[2] * dmp->v_full[2];
+
+            /* Update the position */
+            dmp->x[0] = pos_x;
+            dmp->x[1] = pos_y;
+            dmp->x[2] = pos_z;
+        }
+    }
+
+    /* Write the counts back to the global array. */
+    for (int k = 0; k < s->nr_cells; k++)
+        if (cell_counts[k]) atomic_add(&data->cell_counts[k], cell_counts[k]);
+    free(cell_counts);
+
+    /* Write the count of inhibited and extra dmparts */
+    if (count_inhibited_dmpart)
+        atomic_add(&data->count_inhibited_dmpart, count_inhibited_dmpart);
+    if (count_extra_dmpart)
+        atomic_add(&data->count_extra_dmpart, count_extra_dmpart);
+
+    /* Write back the minimal part mass and velocity sum */
+    atomic_min_f(&s->min_dmpart_mass, min_mass);
+    atomic_add_f(&s->sum_dmpart_vel_norm, sum_vel_norm);
+}
+
+
+/**
  * @brief #threadpool mapper function to compute the sink-particle cell indices.
  *
  * @param map_data Pointer towards the sink-particles.
@@ -729,11 +860,13 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   data.count_inhibited_spart = 0;
   data.count_inhibited_bpart = 0;
   data.count_inhibited_sink = 0;
+  data.count_inhibited_dmpart = 0;
   data.count_extra_part = 0;
   data.count_extra_gpart = 0;
   data.count_extra_spart = 0;
   data.count_extra_bpart = 0;
   data.count_extra_sink = 0;
+  data.count_extra_dmpart = 0;
 
   threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
@@ -780,11 +913,13 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   data.count_inhibited_spart = 0;
   data.count_inhibited_bpart = 0;
   data.count_inhibited_sink = 0;
+  data.count_inhibited_dmpart = 0;
   data.count_extra_part = 0;
   data.count_extra_gpart = 0;
   data.count_extra_spart = 0;
   data.count_extra_bpart = 0;
   data.count_extra_sink = 0;
+  data.count_extra_dmpart = 0;
 
   threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
                  s->gparts, s->nr_gparts, sizeof(struct gpart),
@@ -831,11 +966,13 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   data.count_inhibited_spart = 0;
   data.count_inhibited_sink = 0;
   data.count_inhibited_bpart = 0;
+  data.count_inhibited_dmpart = 0;
   data.count_extra_part = 0;
   data.count_extra_gpart = 0;
   data.count_extra_spart = 0;
   data.count_extra_bpart = 0;
   data.count_extra_sink = 0;
+  data.count_extra_dmpart = 0;
 
   threadpool_map(&s->e->threadpool, space_sparts_get_cell_index_mapper,
                  s->sparts, s->nr_sparts, sizeof(struct spart),
@@ -880,11 +1017,13 @@ void space_sinks_get_cell_index(struct space *s, int *sink_ind,
   data.count_inhibited_spart = 0;
   data.count_inhibited_bpart = 0;
   data.count_inhibited_sink = 0;
+  data.count_inhibited_dmpart = 0;
   data.count_extra_part = 0;
   data.count_extra_gpart = 0;
   data.count_extra_spart = 0;
   data.count_extra_bpart = 0;
   data.count_extra_sink = 0;
+  data.count_extra_dmpart = 0;
 
   threadpool_map(&s->e->threadpool, space_sinks_get_cell_index_mapper, s->sinks,
                  s->nr_sinks, sizeof(struct sink), threadpool_auto_chunk_size,
@@ -931,11 +1070,13 @@ void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
   data.count_inhibited_spart = 0;
   data.count_inhibited_bpart = 0;
   data.count_inhibited_sink = 0;
+  data.count_inhibited_dmpart = 0;
   data.count_extra_part = 0;
   data.count_extra_gpart = 0;
   data.count_extra_spart = 0;
   data.count_extra_bpart = 0;
   data.count_extra_sink = 0;
+  data.count_extra_dmpart = 0;
 
   threadpool_map(&s->e->threadpool, space_bparts_get_cell_index_mapper,
                  s->bparts, s->nr_bparts, sizeof(struct bpart),
@@ -948,3 +1089,58 @@ void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
+
+/**
+ * @brief Computes the cell index of all the DM-particles.
+ *
+ * Also computes the minimal mass of all #dmpart.
+ *
+ * @param s The #space.
+ * @param bind The array of indices to fill.
+ * @param cell_counts The cell counters to update.
+ * @param count_inhibited_dmparts (return) The number of #dmpart to remove.
+ * @param count_extra_dmparts (return) The number of #dmpart for on-the-fly
+ * creation.
+ * @param verbose Are we talkative ?
+ */
+void space_dmparts_get_cell_index(struct space *s, int *dmind, int *cell_counts,
+                                  size_t *count_inhibited_dmparts,
+                                  size_t *count_extra_dmparts, int verbose) {
+
+    const ticks tic = getticks();
+
+    /* Re-set the counters */
+    s->min_dmpart_mass = FLT_MAX;
+    s->sum_dmpart_vel_norm = 0.f;
+
+    /* Pack the extra information */
+    struct index_data data;
+    data.s = s;
+    data.ind = dmind;
+    data.cell_counts = cell_counts;
+    data.count_inhibited_part = 0;
+    data.count_inhibited_gpart = 0;
+    data.count_inhibited_spart = 0;
+    data.count_inhibited_bpart = 0;
+    data.count_inhibited_dmpart = 0;
+    data.count_inhibited_sink = 0;
+    data.count_extra_part = 0;
+    data.count_extra_gpart = 0;
+    data.count_extra_spart = 0;
+    data.count_extra_bpart = 0;
+    data.count_extra_dmpart = 0;
+    data.count_extra_sink = 0;
+
+    threadpool_map(&s->e->threadpool, space_dmparts_get_cell_index_mapper,
+                   s->dmparts, s->nr_dmparts, sizeof(struct dmpart),
+                   threadpool_auto_chunk_size, &data);
+
+    *count_inhibited_dmparts = data.count_inhibited_dmpart;
+    *count_extra_dmparts = data.count_extra_dmpart;
+
+    if (verbose)
+        message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+                clocks_getunit());
+}
+
+
