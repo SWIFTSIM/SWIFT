@@ -41,7 +41,8 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
-    'sphinx.ext.graphviz'
+    'sphinx.ext.graphviz',
+    "breathe",
 ]
 
 graphviz_dot_args=[
@@ -168,3 +169,9 @@ texinfo_documents = [
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+# -- Breathe
+breathe_projects = { "swift": "../../xml" }
+
+breathe_default_project = "swift"
+
