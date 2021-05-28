@@ -171,7 +171,6 @@ texinfo_documents = [
 todo_include_todos = True
 
 # -- Breathe
-breathe_projects = { "swift": "../../xml" }
+breathe_projects = { "SWIFT": "../../xml" }
 
-breathe_default_project = "swift"
-
+breathe_default_project = "SWIFT"
