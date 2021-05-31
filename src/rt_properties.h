@@ -33,8 +33,8 @@
 #include "./rt/none/rt_properties.h"
 #elif defined(RT_DEBUG)
 #include "./rt/debug/rt_properties.h"
-#elif defined(RT_M1)
-#include "./rt/M1closure/rt_properties.h"
+#elif defined(RT_GEAR)
+#include "./rt/GEAR/rt_properties.h"
 #else
 #error "Invalid choice of radiation scheme"
 #endif

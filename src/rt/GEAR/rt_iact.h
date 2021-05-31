@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_IACT_M1CLOSURE_H
-#define SWIFT_RT_IACT_M1CLOSURE_H
+#ifndef SWIFT_RT_IACT_GEAR_H
+#define SWIFT_RT_IACT_GEAR_H
 
 /**
- * @file src/rt/M1closure/rt_iact.h
- * @brief Main header file for the M1 closure radiative transfer scheme particle
- * interactions.
+ * @file src/rt/GEAR/rt_iact.h
+ * @brief Main header file for the GEAR M1 closure radiative transfer scheme
+ * particle interactions.
  */
 
 /**
@@ -113,4 +113,4 @@ runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
                                struct part *restrict pi,
                                struct part *restrict pj, float a, float H) {}
 
-#endif /* SWIFT_RT_IACT_M1CLOSURE_H */
+#endif /* SWIFT_RT_IACT_GEAR_H */
