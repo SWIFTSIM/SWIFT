@@ -62,9 +62,7 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
     const struct rt_props* rtp) {
 
   /* Only the master print */
-  if (engine_rank != 0) {
-    return;
-  }
+  if (engine_rank != 0) return;
 
   message("Radiative transfer scheme: '%s'", RT_IMPLEMENTATION);
 
@@ -79,10 +77,15 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
  * @brief Initialize the global properties of the RT scheme.
  *
  * @param rtp The #rt_props.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
  * @param params The parsed parameters.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void rt_props_init(
-    struct rt_props* rtp, struct swift_params* params) {
+    struct rt_props* rtp, const struct phys_const* phys_const,
+    const struct unit_system* us, struct swift_params* params,
+    struct cosmology* cosmo) {
 
   rtp->do_all_parts_have_stars_checks =
       parser_get_opt_param_int(params, "DebugRT:all_parts_have_stars", 0);

@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_M1_H
-#define SWIFT_RT_M1_H
+#ifndef SWIFT_RT_GEAR_H
+#define SWIFT_RT_GEAR_H
 
 #include "rt_properties.h"
 
 /**
- * @file src/rt/M1closure/rt.h
- * @brief Main header file for the M1 Closure radiative transfer scheme.
+ * @file src/rt/GEAR/rt.h
+ * @brief Main header file for the GEAR M1 Closure radiative transfer scheme.
  */
 
 /**
@@ -48,7 +48,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @brief First initialisation of the RT hydro particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+  /* Don't reset conserved quantities here! ICs will be overwritten */
+}
 
 /**
  * @brief Initialisation of the RT density loop related star particle data.
@@ -159,4 +162,4 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
 __attribute__((always_inline)) INLINE static void rt_clean(
     struct rt_props* props) {}
 
-#endif /* SWIFT_RT_M1_H */
+#endif /* SWIFT_RT_GEAR_H */
