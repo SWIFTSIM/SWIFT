@@ -1703,6 +1703,7 @@ void engine_skip_drift(struct engine *e) {
  */
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
   space_reset_task_counters(e->s);
@@ -2185,10 +2186,10 @@ void engine_step(struct engine *e) {
     }
 
     /* Write the self-interacting DM information to the file */
-    dark_matter_write_to_log_file(e->dm_logger, e->time,
+    /*dark_matter_write_to_log_file(e->dm_logger, e->time,
                                   e->cosmology->a, e->cosmology->z,
                                   e->dm, e->step);
-    fflush(e->dm_logger);
+    fflush(e->dm_logger);*/
 
     if (!e->restarting)
       fprintf(
@@ -2407,6 +2408,7 @@ void engine_step(struct engine *e) {
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
+  message("engine launch done");
 
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
@@ -2468,6 +2470,7 @@ void engine_step(struct engine *e) {
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+  message("Doing debug checks");
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
   space_check_sort_flags(e->s);
@@ -2475,6 +2478,7 @@ void engine_step(struct engine *e) {
 
   /* Verify that all the unskip flags for the gravity have been cleaned */
   space_check_unskip_flags(e->s);
+  message("Done");
 #endif
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined RT_DEBUG

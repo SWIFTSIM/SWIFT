@@ -1722,8 +1722,12 @@ int main(int argc, char *argv[]) {
       star_formation_logger_write_to_log_file(
           e.sfh_logger, e.time, e.cosmology->a, e.cosmology->z, e.sfh, e.step);
     }
-    /* Write the self-interacting DM information to the DM logger */
-    dark_matter_write_to_log_file(e.dm_logger, e.time, e.cosmology->a, e.cosmology->z, e.dm, e.step);
+
+    if (e.policy & engine_policy_sidm) {
+        /* Write the self-interacting DM information to the DM logger */
+        dark_matter_write_to_log_file(e.dm_logger, e.time, e.cosmology->a, e.cosmology->z, e.dm, e.step);
+    }
+
   }
 
   /* Write final output. */
