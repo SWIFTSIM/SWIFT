@@ -5,6 +5,4 @@ Doxygen Documentation
    :maxdepth: 2
 
    filelist.rst
-   namespacelist.rst
    structlist.rst
-   union.rst
