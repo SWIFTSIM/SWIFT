@@ -433,6 +433,16 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
 
+    case UNIT_CONV_RADIATION_FLUX:
+    case UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_TIME] = -3.f;
+      break;
+
+    case UNIT_CONV_INV_TIME:
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+
     default:
       error("Invalid choice of pre-defined units");
       break;

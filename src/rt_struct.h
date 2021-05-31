@@ -32,8 +32,8 @@
 #include "./rt/none/rt_struct.h"
 #elif defined(RT_DEBUG)
 #include "./rt/debug/rt_struct.h"
-#elif defined(RT_M1)
-#include "./rt/M1closure/rt_struct.h"
+#elif defined(RT_GEAR)
+#include "./rt/GEAR/rt_struct.h"
 #else
 #error "Invalid choice of radiation scheme"
 #endif

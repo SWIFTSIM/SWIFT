@@ -54,6 +54,7 @@
 #include "part.h"
 #include "part_type.h"
 #include "particle_splitting.h"
+#include "rt_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
@@ -994,6 +995,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
           Nparticles = *Ngas;
           hydro_read_particles(*parts, list, &num_fields);
           num_fields += chemistry_read_particles(*parts, list + num_fields);
+          num_fields += rt_read_particles(*parts, list + num_fields);
         }
         break;
 
@@ -1032,6 +1034,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
           stars_read_particles(*sparts, list, &num_fields);
           num_fields +=
               star_formation_read_particles(*sparts, list + num_fields);
+          num_fields += rt_read_stars(*sparts, list + num_fields);
         }
         break;
 
