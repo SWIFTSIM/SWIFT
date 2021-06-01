@@ -56,6 +56,7 @@ void lightcone_io_make_output_fields(void) {
   field[swift_type_gas][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_gas][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_gas][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
+  field[swift_type_gas][n++] = lightcone_io_make_output_field("ExpansionFactor", DOUBLE, 1, OFFSET(a), UNIT_CONV_NO_UNITS, 0.0);
   num_fields[swift_type_gas] = n;
 #undef OFFSET
 
@@ -65,6 +66,7 @@ void lightcone_io_make_output_fields(void) {
   field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
+  field[swift_type_dark_matter][n++] = lightcone_io_make_output_field("ExpansionFactor", DOUBLE, 1, OFFSET(a), UNIT_CONV_NO_UNITS, 0.0);
   num_fields[swift_type_dark_matter] = n;
 #undef OFFSET
 
@@ -74,6 +76,7 @@ void lightcone_io_make_output_fields(void) {
   field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
+  field[swift_type_dark_matter_background][n++] = lightcone_io_make_output_field("ExpansionFactor", DOUBLE, 1, OFFSET(a), UNIT_CONV_NO_UNITS, 0.0);
   num_fields[swift_type_dark_matter_background] = n;
 #undef OFFSET
 
@@ -83,6 +86,7 @@ void lightcone_io_make_output_fields(void) {
   field[swift_type_stars][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_stars][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_stars][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
+  field[swift_type_stars][n++] = lightcone_io_make_output_field("ExpansionFactor", DOUBLE, 1, OFFSET(a), UNIT_CONV_NO_UNITS, 0.0);
   num_fields[swift_type_stars] = n;
 #undef OFFSET
 
@@ -92,6 +96,7 @@ void lightcone_io_make_output_fields(void) {
   field[swift_type_black_hole][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_black_hole][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
+  field[swift_type_black_hole][n++] = lightcone_io_make_output_field("ExpansionFactor", DOUBLE, 1, OFFSET(a), UNIT_CONV_NO_UNITS, 0.0);
   num_fields[swift_type_black_hole] = n;
 #undef OFFSET
 
@@ -101,6 +106,7 @@ void lightcone_io_make_output_fields(void) {
   field[swift_type_neutrino][n++] = lightcone_io_make_output_field("ParticleIDs", LONGLONG, 1, OFFSET(id),   UNIT_CONV_NO_UNITS, 0.0);
   field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Coordinates", DOUBLE,   3, OFFSET(x),    UNIT_CONV_LENGTH, 1.0);
   field[swift_type_neutrino][n++] = lightcone_io_make_output_field("Masses",      DOUBLE,   1, OFFSET(mass), UNIT_CONV_MASS, 0.0);
+  field[swift_type_neutrino][n++] = lightcone_io_make_output_field("ExpansionFactor", DOUBLE, 1, OFFSET(a), UNIT_CONV_NO_UNITS, 0.0);
   num_fields[swift_type_neutrino] = n;
 #undef OFFSET
 
@@ -128,6 +134,7 @@ int lightcone_store_gas(const struct engine *e,
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = p->mass;
+  data->a = a_cross;
 
   return 1;
 }
@@ -145,6 +152,7 @@ int lightcone_store_dark_matter(const struct engine *e,
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = gp->mass;
+  data->a = a_cross;
   
   return 1;
 }
@@ -162,6 +170,7 @@ int lightcone_store_stars(const struct engine *e,
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = sp->mass;
+  data->a = a_cross;
 
   return 1;
 }
@@ -179,6 +188,7 @@ int lightcone_store_black_hole(const struct engine *e,
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = bp->mass;
+  data->a = a_cross;
 
   return 1;
 }
@@ -195,6 +205,7 @@ int lightcone_store_neutrino(const struct engine *e,
   data->x[1] = x_cross[1];
   data->x[2] = x_cross[2];
   data->mass = gp->mass;
+  data->a = a_cross;
   
   return 1;
 }

@@ -94,6 +94,7 @@ struct lightcone_gas_data {
   long long id;
   double x[3];
   double mass;
+  double a;
 };
 
 int lightcone_store_gas(const struct engine *e,
@@ -109,6 +110,7 @@ struct lightcone_dark_matter_data {
   long long id;
   double x[3];
   double mass;
+  double a;
 };
 
 int lightcone_store_dark_matter(const struct engine *e,
@@ -123,6 +125,7 @@ struct lightcone_stars_data {
   long long id;
   double x[3];
   double mass;
+  double a;
 };
 
 int lightcone_store_stars(const struct engine *e,
@@ -138,6 +141,7 @@ struct lightcone_black_hole_data {
   long long id;
   double x[3];
   double mass;
+  double a;
 };
 
 int lightcone_store_black_hole(const struct engine *e,
@@ -153,6 +157,7 @@ struct lightcone_neutrino_data {
   long long id;
   double x[3];
   double mass;
+  double a;
 };
 
 int lightcone_store_neutrino(const struct engine *e,
