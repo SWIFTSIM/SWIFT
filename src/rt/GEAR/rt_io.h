@@ -27,35 +27,6 @@
  * scheme IO routines.
  */
 
-
-
-/**
- * @brief Specifies which particle fields to read from a dataset
- *
- * @param parts The particle array.
- * @param list The list of i/o properties to read.
- *
- * @return Returns the number of fields to read.
- */
-INLINE static int rt_read_particles(const struct part* parts, struct io_props* list) {
-  return 0;
-}
-
-/**
- * @brief Specifies which particle fields to read from a dataset
- *
- * @param sparts The star particle array.
- * @param list The list of i/o properties to read.
- *
- * @return Returns the number of fields to read.
- */
-INLINE static int rt_read_stars(const struct spart* sparts, struct io_props* list) {
-  return 0;
-}
-
-
-
-
 /**
  * @brief Specifies which particle fields to read from a dataset
  *
