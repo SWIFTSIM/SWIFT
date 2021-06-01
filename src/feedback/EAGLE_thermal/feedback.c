@@ -220,10 +220,11 @@ INLINE static void compute_SNII_feedback(
       number_of_SN_events = ngb_gas_N;
     }
 
-#ifdef SWIFT_DEBUG_CHECKS
+/*#ifdef SWIFT_DEBUG_CHECKS
+ * CC. This test is faulty.
     if (f_E < feedback_props->f_E_min || f_E > feedback_props->f_E_max)
       error("f_E is not in the valid range! f_E=%f sp->id=%lld", f_E, sp->id);
-#endif
+#endif*/
 
     /* If we have more heating events than the maximum number of
      * rays (eagle_feedback_number_of_rays), then we cannot

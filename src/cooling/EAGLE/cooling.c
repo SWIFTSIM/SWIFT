@@ -788,6 +788,7 @@ double compute_subgrid_density(
  */
 float cooling_get_subgrid_temperature(const struct part *p,
                                       const struct xpart *xp) {
+  /*CC. This error is faulty when running with EAGLE cooling + EAGLE SF.*/
   error("This cooling model does not use subgrid quantities!");
   return -1.f;
 }
