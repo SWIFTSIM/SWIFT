@@ -110,6 +110,7 @@ enum unit_conversion_factor {
   UNIT_CONV_INV_TIME,
   UNIT_CONV_RADIATION_FLUX,
   UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
+  UNIT_CONV_GASOLINE_DIFF_RATE
 };
 
 void units_init_cgs(struct unit_system*);
