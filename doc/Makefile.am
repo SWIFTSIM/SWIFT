@@ -15,10 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-doxyfile.stamp: 
+doxyfile.stamp:
 if HAVE_DOXYGEN
 	@DX_ENV@ @DX_DOXYGEN@ Doxyfile
 	echo `date` > doxyfile.stamp
+	sed -i "/master_doc = .\/*/c\master_doc = 'index_doxygen'" RTD/source/conf.py
+	sed -i "/^#.*breathe/s/^#//" source/conf.py
+	breathe-apidoc -f -g struct,file xml/ -o "RTD/source/Doxygen/" -p SWIFT
+else
+	sed -i "/master_doc = .\/*/c\master_doc = 'index'" RTD/source/conf.py
+	sed -i "s/^[^\#]*breathe.*/\#&/" source/conf.py
 endif
 
 CLEANFILES = doxyfile.stamp
