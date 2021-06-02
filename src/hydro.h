@@ -75,6 +75,10 @@
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"
 #define SPH_IMPLEMENTATION "SPHENIX (Borrow+ 2020)"
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro.h"
+#include "./hydro/Gasoline/hydro_iact.h"
+#define SPH_IMPLEMENTATION "Gasoline-2 (Wadsley+ 2017)"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro.h"
 #include "./hydro/AnarchyPU/hydro_iact.h"

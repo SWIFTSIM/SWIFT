@@ -16,45 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_CSDS_H
-#define SWIFT_HYDRO_CSDS_H
 
-/* Config parameters. */
 #include "../config.h"
 
-/* Local includes */
+#ifdef WITH_CSDS
+
+/* Include the particles */
 #include "align.h"
-#include "csds.h"
-#include "part_type.h"
-#include "timeline.h"
+#include "hydro_part.h"
 
-/* Import the right function */
-#if defined(MINIMAL_SPH)
-#error TODO
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_csds.h"
-#elif defined(HOPKINS_PE_SPH)
-#error TODO
-#elif defined(HOPKINS_PU_SPH)
-#error TODO
-#elif defined(HOPKINS_PU_SPH_MONAGHAN)
-#error TODO
-#elif defined(PHANTOM_SPH)
-#error TODO
-#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
-#error TODO
-#elif defined(SHADOWFAX_SPH)
-#error TODO
-#elif defined(PLANETARY_SPH)
-#error TODO
-#elif defined(SPHENIX_SPH)
-#include "./hydro/SPHENIX/hydro_csds.h"
-#elif defined(GASOLINE_SPH)
-#error TODO
-#elif defined(ANARCHY_PU_SPH)
-#error TODO
-#else
-#error "Invalid choice of SPH variant"
-#endif
+/* Include the header */
+#include "hydro_csds.h"
 
-#endif /* SWIFT_HYDRO_CSDS_H */
+const char *hydro_csds_field_names[hydro_csds_field_count] = {
+    "Coordinates", "Velocities",       "Accelerations",
+    "Masses",      "SmoothingLengths", "InternalEnergies",
+    "ParticleIDs", "Densities",        "SecondaryFields",
+};
+
+#endif  // WITH_CSDS
