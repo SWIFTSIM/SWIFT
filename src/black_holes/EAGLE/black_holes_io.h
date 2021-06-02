@@ -152,7 +152,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 42;
+  *num_fields = 43;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
