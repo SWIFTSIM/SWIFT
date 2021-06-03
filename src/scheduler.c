@@ -145,6 +145,7 @@ enum task_dependency_level {
   task_dependency_level_super,
   task_dependency_level_super_hydro,
   task_dependency_level_super_grav,
+  task_dependency_level_super_dark_matter,
   task_dependency_level_none,
 };
 
@@ -172,7 +173,10 @@ struct task_dependency {
   /* Is the taks_in at the hydro.super level? */
   int task_in_is_hydro_super;
 
-  /* Dependent task */
+  /* Is the taks_in at the dark_matter.super level? */
+  int task_in_is_dark_matter_super;
+
+    /* Dependent task */
   /* ID of the dependent task */
   int type_out[MAX_NUMBER_DEP];
 
@@ -191,7 +195,10 @@ struct task_dependency {
   /* Is the taks_out at the hydro.super level? */
   int task_out_is_hydro_super[MAX_NUMBER_DEP];
 
-  /* Statistics */
+  /* Is the taks_out at the dark_matter.super level? */
+  int task_out_is_dark_matter_super[MAX_NUMBER_DEP];
+
+    /* Statistics */
   /* number of link between the two task type */
   int number_link[MAX_NUMBER_DEP];
 
@@ -208,7 +215,7 @@ struct task_dependency {
  */
 void task_dependency_define(MPI_Datatype *tstype) {
   /* Define the variables */
-  const int count = 14;
+  const int count = 16;
   int blocklens[count];
   MPI_Datatype types[count];
   MPI_Aint disps[count];
@@ -231,26 +238,30 @@ void task_dependency_define(MPI_Datatype *tstype) {
   blocklens[4] = 1;
   disps[5] = offsetof(struct task_dependency, task_in_is_grav_super);
   blocklens[5] = 1;
+  disps[6] = offsetof(struct task_dependency, task_in_is_dark_matter_super);
+  blocklens[6] = 1;
 
   /* Task out */
-  disps[6] = offsetof(struct task_dependency, type_out);
-  blocklens[6] = MAX_NUMBER_DEP;
-  disps[7] = offsetof(struct task_dependency, subtype_out);
+  disps[7] = offsetof(struct task_dependency, type_out);
   blocklens[7] = MAX_NUMBER_DEP;
-  disps[8] = offsetof(struct task_dependency, implicit_out);
+  disps[8] = offsetof(struct task_dependency, subtype_out);
   blocklens[8] = MAX_NUMBER_DEP;
-  disps[9] = offsetof(struct task_dependency, task_out_is_top);
+  disps[9] = offsetof(struct task_dependency, implicit_out);
   blocklens[9] = MAX_NUMBER_DEP;
-  disps[10] = offsetof(struct task_dependency, task_out_is_hydro_super);
+  disps[10] = offsetof(struct task_dependency, task_out_is_top);
   blocklens[10] = MAX_NUMBER_DEP;
-  disps[11] = offsetof(struct task_dependency, task_out_is_grav_super);
+  disps[11] = offsetof(struct task_dependency, task_out_is_hydro_super);
   blocklens[11] = MAX_NUMBER_DEP;
+  disps[12] = offsetof(struct task_dependency, task_out_is_grav_super);
+  blocklens[12] = MAX_NUMBER_DEP;
+  disps[13] = offsetof(struct task_dependency, task_out_is_dark_matter_super);
+  blocklens[13] = MAX_NUMBER_DEP;
 
   /* statistics */
-  disps[12] = offsetof(struct task_dependency, number_link);
-  blocklens[12] = MAX_NUMBER_DEP;
-  disps[13] = offsetof(struct task_dependency, number_rank);
-  blocklens[13] = MAX_NUMBER_DEP;
+  disps[14] = offsetof(struct task_dependency, number_link);
+  blocklens[14] = MAX_NUMBER_DEP;
+  disps[15] = offsetof(struct task_dependency, number_rank);
+  blocklens[15] = MAX_NUMBER_DEP;
 
   /* define it for MPI */
   MPI_Type_create_struct(count, blocklens, disps, types, tstype);
@@ -350,6 +361,8 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
           min(out[i].task_in_is_hydro_super, in[i].task_in_is_hydro_super);
       out[i].task_in_is_grav_super =
           min(out[i].task_in_is_grav_super, in[i].task_in_is_grav_super);
+      out[i].task_in_is_dark_matter_super =
+          min(out[i].task_in_is_dark_matter_super, in[i].task_in_is_dark_matter_super);
 
       /* Get the task out level */
       out[i].task_out_is_top[j] =
@@ -358,6 +371,8 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
                                               in[i].task_out_is_hydro_super[j]);
       out[i].task_out_is_grav_super[j] = min(out[i].task_out_is_grav_super[j],
                                              in[i].task_out_is_grav_super[j]);
+      out[i].task_out_is_dark_matter_super[j] = min(out[i].task_out_is_dark_matter_super[j],
+                                             in[i].task_out_is_dark_matter_super[j]);
     }
   }
 
@@ -398,6 +413,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     task_dep[i].task_in_is_top = 1;
     task_dep[i].task_in_is_grav_super = 1;
     task_dep[i].task_in_is_hydro_super = 1;
+    task_dep[i].task_in_is_dark_matter_super = 1;
 
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
       /* Use number_link as indicator of the existance of a relation */
@@ -407,6 +423,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
       task_dep[i].task_out_is_top[j] = 1;
       task_dep[i].task_out_is_grav_super[j] = 1;
       task_dep[i].task_out_is_hydro_super[j] = 1;
+      task_dep[i].task_out_is_dark_matter_super[j] = 1;
     }
   }
 
@@ -439,6 +456,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     const int is_grav_super =
         (cj == NULL || (cj != NULL && cj == cj->grav.super)) &&
         (ci == NULL || (ci != NULL && ci == ci->grav.super));
+    const int is_dark_matter_super =
+        (cj == NULL || (cj != NULL && cj == cj->dark_matter.super)) &&
+        (ci == NULL || (ci != NULL && ci == ci->dark_matter.super));
 
     /* Are we dealing with a task at the top level? */
     if (!(is_ci_top && is_cj_top)) {
@@ -451,6 +471,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     /* At the gravity level? */
     if (!is_grav_super) {
       cur->task_in_is_grav_super = 0;
+    }
+    /* At the gravity level? */
+    if (!is_dark_matter_super) {
+      cur->task_in_is_dark_matter_super = 0;
     }
 
     /* and their dependencies */
@@ -473,6 +497,9 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
       const int is_b_grav_super =
           (cj_b == NULL || (cj_b != NULL && cj_b == cj_b->grav.super)) &&
           (ci_b == NULL || (ci_b != NULL && ci_b == ci_b->grav.super));
+      const int is_b_dark_matter_super =
+          (cj_b == NULL || (cj_b != NULL && cj_b == cj_b->dark_matter.super)) &&
+          (ci_b == NULL || (ci_b != NULL && ci_b == ci_b->dark_matter.super));
 
       int k = 0;
       while (k < MAX_NUMBER_DEP) {
@@ -499,6 +526,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
           if (!is_b_grav_super) {
             cur->task_out_is_grav_super[k] = 0;
           }
+          /* At the dark matter level? */
+          if (!is_b_dark_matter_super) {
+            cur->task_out_is_dark_matter_super[k] = 0;
+          }
 
           break;
         }
@@ -521,6 +552,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
           /* At the gravity level? */
           if (!is_b_grav_super) {
             cur->task_out_is_grav_super[k] = 0;
+          }
+          /* At the dark matter level? */
+          if (!is_b_dark_matter_super) {
+            cur->task_out_is_dark_matter_super[k] = 0;
           }
           break;
         }
@@ -608,12 +643,15 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
         const int task_in_is_top = task_dep[i].task_in_is_top;
         const int task_in_is_grav_super = task_dep[i].task_in_is_grav_super;
         const int task_in_is_hydro_super = task_dep[i].task_in_is_hydro_super;
+        const int task_in_is_dark_matter_super = task_dep[i].task_in_is_dark_matter_super;
 
         const int task_out_is_top = task_dep[i].task_out_is_top[j];
         const int task_out_is_grav_super =
             task_dep[i].task_out_is_grav_super[j];
         const int task_out_is_hydro_super =
             task_dep[i].task_out_is_hydro_super[j];
+        const int task_out_is_dark_matter_super =
+            task_dep[i].task_out_is_dark_matter_super[j];
 
         /* text to write */
         char ta_name[200];
@@ -636,11 +674,13 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
         task_get_group_name(ta_type, ta_subtype, ta_cluster);
         task_get_group_name(tb_type, tb_subtype, tb_cluster);
 
-        fprintf(f, "%s,%s,%d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d\n", ta_name,
+        fprintf(f, "%s,%s,%d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", ta_name,
                 tb_name, ta_implicit, tb_implicit, ta_mpi, tb_mpi, ta_cluster,
                 tb_cluster, count, number_rank, task_in_is_top,
-                task_in_is_hydro_super, task_in_is_grav_super, task_out_is_top,
-                task_out_is_hydro_super, task_out_is_grav_super);
+                task_in_is_hydro_super, task_in_is_grav_super,
+                task_in_is_dark_matter_super, task_out_is_top,
+                task_out_is_hydro_super, task_out_is_grav_super,
+                task_out_is_dark_matter_super);
       }
     }
     /* Close the file */
