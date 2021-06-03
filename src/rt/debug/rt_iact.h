@@ -46,11 +46,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   struct rt_spart_data *restrict sd = &(si->rt_data);
   struct rt_part_data *restrict pd = &(pj->rt_data);
 
-  sd->iact_hydro_inject += 1;
-  sd->radiation_emitted_tot += 1ULL;
+  sd->debug_iact_hydro_inject += 1;
+  sd->debug_radiation_emitted_tot += 1ULL;
 
-  pd->iact_stars_inject += 1;
-  pd->radiation_absorbed_tot += 1ULL;
+  pd->debug_iact_stars_inject += 1;
+  pd->debug_radiation_absorbed_tot += 1ULL;
 }
 
 /**
@@ -73,45 +73,45 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
-  if (pi->rt_data.injection_done != 1)
+  if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do iact transport when "
         "finalise injection count is %d",
-        pi->rt_data.injection_done);
+        pi->rt_data.debug_injection_done);
 
-  if (pi->rt_data.calls_iact_gradient == 0)
+  if (pi->rt_data.debug_calls_iact_gradient == 0)
     error(
         "Called iact transport on particle "
         "with iact gradient count 0");
 
-  if (pi->rt_data.gradients_done != 1)
+  if (pi->rt_data.debug_gradients_done != 1)
     error(
         "Trying to do iact transport when "
         "rt_finalise_gradient count is %d",
-        pi->rt_data.gradients_done);
+        pi->rt_data.debug_gradients_done);
 
-  pi->rt_data.calls_iact_transport += 1;
+  pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
 
-    if (pj->rt_data.injection_done != 1)
+    if (pj->rt_data.debug_injection_done != 1)
       error(
           "Trying to do iact transport when "
           "finalise injection count is %d",
-          pj->rt_data.injection_done);
+          pj->rt_data.debug_injection_done);
 
-    if (pj->rt_data.calls_iact_gradient == 0)
+    if (pj->rt_data.debug_calls_iact_gradient == 0)
       error(
           "Called iact transport on particle "
           "with iact gradient count 0");
 
-    if (pj->rt_data.gradients_done != 1)
+    if (pj->rt_data.debug_gradients_done != 1)
       error(
           "Trying to do iact transport when "
           "rt_finalise_gradient count is %d",
-          pj->rt_data.gradients_done);
+          pj->rt_data.debug_gradients_done);
 
-    pj->rt_data.calls_iact_transport += 1;
+    pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 }
 

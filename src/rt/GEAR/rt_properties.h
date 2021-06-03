@@ -38,6 +38,29 @@ struct rt_props {
    * Includes 0 as leftmost edge, doesn't include infinity as
    * rightmost bin edge*/
   float photon_groups[RT_NGROUPS];
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* Do extended tests where we assume that all parts
+   * have spart neighbours? */
+  /* skip this for GEAR */
+  /* int debug_do_all_parts_have_stars_checks; */
+
+  /* radiation emitted by stars this step. This is not really a property,
+   * but a placeholder to sum up a global variable */
+  int debug_radiation_emitted_this_step;
+
+  /* total radiation emitted by stars. This is not really a property,
+   * but a placeholder to sum up a global variable */
+  unsigned long long debug_radiation_emitted_tot;
+
+  /* radiation absorbed by gas this step. This is not really a property,
+   * but a placeholder to sum up a global variable */
+  int debug_radiation_absorbed_this_step;
+
+  /* total radiation absorbed by gas. This is not really a property,
+   * but a placeholder to sum up a global variable */
+  unsigned long long debug_radiation_absorbed_tot;
+#endif
 };
 
 /**

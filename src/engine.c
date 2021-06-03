@@ -2387,7 +2387,7 @@ void engine_step(struct engine *e) {
   space_check_unskip_flags(e->s);
 #endif
 
-#if defined(SWIFT_DEBUG_CHECKS) && defined RT_DEBUG
+#if defined(SWIFT_RT_DEBUG_CHECKS)
   /* if we're running the debug RT scheme, do some checks after every step */
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);

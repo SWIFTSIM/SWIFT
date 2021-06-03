@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_IACT_GEAR_H
 #define SWIFT_RT_IACT_GEAR_H
 
+#include "rt_gradients.h"
+
 /**
  * @file src/rt/GEAR/rt_iact.h
  * @brief Main header file for the GEAR M1 closure radiative transfer scheme
@@ -39,10 +41,88 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {}
+    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  struct rt_spart_data *restrict sd = &(si->rt_data);
+  struct rt_part_data *restrict pd = &(pj->rt_data);
+
+  sd->debug_iact_hydro_inject += 1;
+  sd->debug_radiation_emitted_tot += 1ULL;
+
+  pd->debug_iact_stars_inject += 1;
+  pd->debug_radiation_absorbed_tot += 1ULL;
+#endif
+}
 
 /**
  * @brief Flux calculation between particle i and particle j
+ *
+ * This method calls runner_iact_rt_fluxes_common with mode 1.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param mode 0 if non-symmetric interaction, 1 if symmetric
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H, int mode) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (pi->rt_data.debug_injection_done != 1)
+    error(
+        "Trying to do iact transport when "
+        "finalise injection count is %d",
+        pi->rt_data.debug_injection_done);
+
+  if (pi->rt_data.debug_calls_iact_gradient == 0)
+    error(
+        "Called iact transport on particle "
+        "with iact gradient count 0");
+
+  if (pi->rt_data.debug_gradients_done != 1)
+    error(
+        "Trying to do iact transport when "
+        "rt_finalise_gradient count is %d",
+        pi->rt_data.debug_gradients_done);
+
+  pi->rt_data.debug_calls_iact_transport_interaction += 1;
+
+  if (mode == 1) {
+
+    if (pj->rt_data.debug_injection_done != 1)
+      error(
+          "Trying to do iact transport when "
+          "finalise injection count is %d",
+          pj->rt_data.debug_injection_done);
+
+    if (pj->rt_data.debug_calls_iact_gradient == 0)
+      error(
+          "Called iact transport on particle "
+          "with iact gradient count 0");
+
+    if (pj->rt_data.debug_gradients_done != 1)
+      error(
+          "Trying to do iact transport when "
+          "rt_finalise_gradient count is %d",
+          pj->rt_data.debug_gradients_done);
+
+    pj->rt_data.debug_calls_iact_transport_interaction += 1;
+  }
+#endif
+}
+
+/**
+ * @brief Flux calculation between particle i and particle j
+ *
+ * This method calls runner_iact_rt_fluxes_common with mode 1.
  *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
@@ -56,7 +136,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, float a, float H) {
+
+  runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 1);
+}
 
 /**
  * @brief Flux calculation between particle i and particle j: non-symmetric
@@ -75,7 +158,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
                                 struct part *restrict pi,
-                                struct part *restrict pj, float a, float H) {}
+                                struct part *restrict pj, float a, float H) {
+
+  runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 0);
+}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j
@@ -92,7 +178,10 @@ runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, float a, float H) {
+
+  rt_gradients_collect(r2, dx, hi, hj, pi, pj);
+}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j:
@@ -111,6 +200,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
                                struct part *restrict pi,
-                               struct part *restrict pj, float a, float H) {}
+                               struct part *restrict pj, float a, float H) {
+
+  rt_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
+}
 
 #endif /* SWIFT_RT_IACT_GEAR_H */

@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_STELLAR_EMISSION_RATE_DEBUG_H
-#define SWIFT_RT_STELLAR_EMISSION_RATE_DEBUG_H
+#ifndef SWIFT_RT_STELLAR_EMISSION_RATE_GEAR_H
+#define SWIFT_RT_STELLAR_EMISSION_RATE_GEAR_H
 
 /**
- * @file src/rt/debug/rt_stellar_emission_rate.h
- * @brief Main header file for the debug radiative transfer scheme
+ * @file src/rt/GEAR/rt_stellar_emission_rate.h
+ * @brief Main header file for the GEAR M1 closure radiative transfer scheme
  * stellar radiation emission rates related functions.
  */
 
@@ -37,7 +37,9 @@
 __attribute__((always_inline)) INLINE static void rt_set_stellar_emission_rate(
     struct spart *restrict sp, double age_beg, double age_end) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
   sp->rt_data.debug_emission_rate_set += 1;
+#endif
 }
 
-#endif /* SWIFT_RT_STELLAR_EMISSION_RATE_DEBUG_H */
+#endif /* SWIFT_RT_STELLAR_EMISSION_RATE_GEAR_H */

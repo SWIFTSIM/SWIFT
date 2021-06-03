@@ -29,33 +29,38 @@ struct rt_part_data {
 
   /* data to store during entire run */
   unsigned long long
-      radiation_absorbed_tot; /* how much radiation this part received from
-                                 stars during total lifetime */
+      debug_radiation_absorbed_tot; /* how much radiation this part received
+                                    from stars during total lifetime */
 
   /* data to store during one time step */
-  int iact_stars_inject;    /* how many stars this particle interacted with */
-  int calls_iact_gradient;  /* calls from gradient interaction loop */
-  int calls_iact_transport; /* calls from transport interaction loop */
-  int injection_check;      /* called in a self/rt_injection task? */
+  int debug_iact_stars_inject;    /* how many stars this partinteracted with */
+  int debug_calls_iact_gradient;  /* calls from gradient interaction loop */
+  int debug_calls_iact_transport; /* calls from transport interaction loop */
+  int debug_injection_check;      /* called in a self/rt_injection task? */
+  /* calls from gradient interaction loop in actual function */
+  int debug_calls_iact_gradient_interaction;
+  /* calls from transport interaction loop in actual function */
+  int debug_calls_iact_transport_interaction;
 
-  int injection_done;  /* calls from ghost1 tasks */
-  int gradients_done;  /* finalised computing gradients? */
-  int transport_done;  /* transport step done? */
-  int thermochem_done; /* thermochemistry done? */
+  int debug_injection_done;  /* calls from ghost1 tasks */
+  int debug_gradients_done;  /* finalised computing gradients? */
+  int debug_transport_done;  /* transport step done? */
+  int debug_thermochem_done; /* thermochemistry done? */
 };
 
 /* Additional RT data in star particle struct */
 struct rt_spart_data {
 
   /* data to store during entire run */
-  unsigned long long radiation_emitted_tot; /* how much radiation this star
-                                               emitted during total lifetime */
+  unsigned long long
+      debug_radiation_emitted_tot; /* how much radiation this star emitted
+                                      during total lifetime */
 
   /* data to store during one time step */
-  int iact_hydro_inject; /* how many hydro particles this particle interacted
-                            with */
-  int emission_rate_set; /* stellar photon emisison rate has been computed */
-  int injection_check;   /* called in a self/rt_injection task? */
+  int debug_iact_hydro_inject; /* how many hydro particles this particle
+                                  interacted with */
+  int debug_emission_rate_set; /* stellar photon emisison rate computed? */
+  int debug_injection_check;   /* called in a self/rt_injection task? */
 };
 
 #endif /* SWIFT_RT_STRUCT_DEBUG_H */

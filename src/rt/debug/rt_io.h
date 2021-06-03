@@ -60,40 +60,52 @@ INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
 
   list[0] =
-      io_make_output_field("RTStarIact", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
-                           rt_data.iact_stars_inject,
+      io_make_output_field("RTDebugStarIact", INT, 1, UNIT_CONV_NO_UNITS, 0,
+                           parts, rt_data.debug_iact_stars_inject,
                            "number of interactions between this hydro particle"
                            " and any star particle during injection step");
   list[1] =
-      io_make_output_field("RTInjectionDone", INT, 1, UNIT_CONV_NO_UNITS, 0,
-                           parts, rt_data.injection_done,
+      io_make_output_field("RTDebugInjectionDone", INT, 1, UNIT_CONV_NO_UNITS,
+                           0, parts, rt_data.debug_injection_done,
                            "How many times rt_injection_update_photon_density "
                            "has been called");
-  list[2] =
-      io_make_output_field("RTCallsIactGradient", INT, 1, UNIT_CONV_NO_UNITS, 0,
-                           parts, rt_data.calls_iact_gradient,
-                           "number of calls to this particle during the"
-                           "gradient interaction loop");
-  list[3] =
-      io_make_output_field("RTCallsIactTransport", INT, 1, UNIT_CONV_NO_UNITS,
-                           0, parts, rt_data.calls_iact_transport,
-                           "number of calls to this particle during the"
-                           "transport interaction loop");
+  list[2] = io_make_output_field(
+      "RTDebugCallsIactGradient", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
+      rt_data.debug_calls_iact_gradient,
+      "number of calls to this particle during the gradient interaction loop");
+  list[3] = io_make_output_field("RTDebugCallsIactTransport", INT, 1,
+                                 UNIT_CONV_NO_UNITS, 0, parts,
+                                 rt_data.debug_calls_iact_transport,
+                                 "number of calls to this particle during the"
+                                 "transport interaction loop");
   list[4] = io_make_output_field(
-      "RTGradientsDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
-      rt_data.gradients_done, "How many times finalise_gradients was called");
-  list[5] = io_make_output_field(
-      "RTTransportDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
-      rt_data.transport_done, "How many times finalise_transport was called");
-  list[6] = io_make_output_field(
-      "RTThermochemistryDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
-      rt_data.thermochem_done, "How many times rt_tchem was called");
-  list[7] = io_make_output_field(
-      "RTRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
-      rt_data.radiation_absorbed_tot,
+      "RTDebugCallsIactGradientInteractions", INT, 1, UNIT_CONV_NO_UNITS, 0,
+      parts, rt_data.debug_calls_iact_gradient_interaction,
+      "number of calls to this particle during the gradient interaction loop "
+      "from the actual interaction function");
+  list[5] = io_make_output_field("RTDebugCallsIactTransportInteractions", INT,
+                                 1, UNIT_CONV_NO_UNITS, 0, parts,
+                                 rt_data.debug_calls_iact_transport_interaction,
+                                 "number of calls to this particle during the "
+                                 "transport interaction loop from the actual "
+                                 "interaction function");
+  list[6] =
+      io_make_output_field("RTDebugGradientsDone", INT, 1, UNIT_CONV_NO_UNITS,
+                           0, parts, rt_data.debug_gradients_done,
+                           "How many times finalise_gradients was called");
+  list[7] =
+      io_make_output_field("RTDebugTransportDone", INT, 1, UNIT_CONV_NO_UNITS,
+                           0, parts, rt_data.debug_transport_done,
+                           "How many times finalise_transport was called");
+  list[8] = io_make_output_field(
+      "RTDebugThermochemistryDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
+      rt_data.debug_thermochem_done, "How many times rt_tchem was called");
+  list[9] = io_make_output_field(
+      "RTDebugRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
+      rt_data.debug_radiation_absorbed_tot,
       "Radiation absorbed by this part during its lifetime");
 
-  return 8;
+  return 10;
 }
 
 /**
@@ -103,18 +115,16 @@ INLINE static int rt_write_particles(const struct part* parts,
 INLINE static int rt_write_stars(const struct spart* sparts,
                                  struct io_props* list) {
 
-  list[0] = io_make_output_field("RTHydroIact", INT, 1, UNIT_CONV_NO_UNITS, 0,
-                                 sparts, rt_data.iact_hydro_inject,
+  list[0] = io_make_output_field("RTDebugHydroIact", INT, 1, UNIT_CONV_NO_UNITS,
+                                 0, sparts, rt_data.debug_iact_hydro_inject,
                                  "number of interactions between this hydro "
                                  "particle and any star particle");
-  list[1] =
-      io_make_output_field("RTEmissionRateSet", INT, 1, UNIT_CONV_NO_UNITS, 0,
-                           sparts, rt_data.emission_rate_set,
-                           "Stellar photon "
-                           "emission rates set?");
+  list[1] = io_make_output_field(
+      "RTDebugEmissionRateSet", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts,
+      rt_data.debug_emission_rate_set, "Stellar photon emission rates set?");
   list[2] = io_make_output_field(
-      "RTRadEmittedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, sparts,
-      rt_data.radiation_emitted_tot,
+      "RTDebugRadEmittedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, sparts,
+      rt_data.debug_radiation_emitted_tot,
       "Total radiation emitted during the lifetime of this star");
 
   return 3;
