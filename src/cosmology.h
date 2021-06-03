@@ -198,6 +198,9 @@ struct cosmology {
   /*! Degeneracy of each massive neutrino species */
   double *deg_nu;
 
+  /*! Sum of massive neutrino degeneracies */
+  double deg_nu_tot;
+
   /*! Log of starting expansion factor for neutrino interpolation tables */
   double log_a_long_begin;
 
