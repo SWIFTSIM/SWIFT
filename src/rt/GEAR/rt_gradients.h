@@ -16,12 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_GRADIENTS_DEBUG_H
-#define SWIFT_RT_GRADIENTS_DEBUG_H
+#ifndef SWIFT_RT_GRADIENTS_GEAR_H
+#define SWIFT_RT_GRADIENTS_GEAR_H
 
 /**
- * @file src/rt/debug/rt_gradients.h
- * @brief Main header file for the debug radiative transfer scheme gradients
+ * @file src/rt/GEAR/rt_gradients.h
+ * @brief Main header file for the GEAR M1 closure radiative transfer scheme
+ * gradients
  */
 
 /**
@@ -38,6 +39,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do symmetric iact gradient when finalise injection count is "
@@ -53,6 +55,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
 
   pj->rt_data.debug_calls_iact_gradient_interaction += 1;
+#endif
 }
 
 /**
@@ -69,6 +72,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do nonsym iact gradients when finalise injection count is "
@@ -76,6 +80,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
         pi->rt_data.debug_injection_done, pi->id);
 
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
+#endif
 }
 
-#endif /* SWIFT_RT_GRADIENT_DEBUG_H */
+#endif /* SWIFT_RT_GRADIENT_GEAR_H */
