@@ -53,18 +53,12 @@ INLINE static double neutrino_mass_factor(
   const double prefactor = (1.5 * M_ZETA_3) / (M_PI * M_PI);
   const double T_nu = cosmo->T_nu_0;
 
-  /* Count the number of neutrino flavours according to multiplicity */
-  double flavours = 0.;
-  for (int i = 0; i < cosmo->N_nu; i++) {
-    flavours += cosmo->deg_nu[i];
-  }
-
   /* Compute the comoving number density per flavour */
   const double kThc = k_b * T_nu / (hbar * c);
   const double n = prefactor * kThc * kThc * kThc;
 
-  /* Compute the conversion factor */
-  const double mass_factor = nr_nuparts / (flavours * n * volume);
+  /* Compute the conversion factor per flavour */
+  const double mass_factor = nr_nuparts / (n * volume);
 
   /* Convert to eV */
   const double mass_factor_eV = mass_factor / eV_mass;
@@ -91,6 +85,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
   /* Retrieve physical and cosmological constants */
   const double c_vel = e->physical_constants->const_speed_light_c;
   const double *m_eV_array = e->cosmology->M_nu_eV;
+  const double *deg_array = e->cosmology->deg_nu;
   const int N_nu = e->cosmology->N_nu;
   const double T_eV = e->cosmology->T_nu_0_eV;
   const double inv_fac = c_vel * T_eV;
@@ -103,8 +98,9 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
   /* Compute the initial dimensionless momentum from the seed */
   const double pi = neutrino_seed_to_fermi_dirac(seed);
 
-  /* The neutrino mass (we cycle based on the neutrino seed) */
+  /* The neutrino mass and degeneracy (we cycle based on the neutrino seed) */
   const double m_eV = neutrino_seed_to_mass(N_nu, m_eV_array, seed);
+  const double deg = neutrino_seed_to_degeneracy(N_nu, deg_array, seed);
 
   /* Compute the initial direction of the momentum vector from the seed */
   double n[3];
@@ -122,7 +118,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
   }
   /* Otherwise, set the mass based on the mass factor */
   else {
-    gp->mass = m_eV * inv_mass_factor;
+    gp->mass = deg * m_eV * inv_mass_factor;
   }
 }
 

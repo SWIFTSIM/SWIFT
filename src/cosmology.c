@@ -801,6 +801,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
     c->Omega_nu_0 = 0.;
     c->Omega_nu = 0.;
     c->N_eff = 0.;
+    c->deg_nu_tot = 0.;
 
     c->neutrino_density_early_table = NULL;
     c->neutrino_density_late_table = NULL;
@@ -846,6 +847,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
       N_nu_tot_deg += c->deg_nu[i];
     }
     c->N_eff = c->N_ur + N_nu_tot_deg * pow(c->T_nu_0 / c->T_CMB_0, 4) / dec_4;
+    c->deg_nu_tot = N_nu_tot_deg;
 
     /* Initialise the neutrino density interpolation tables if necessary */
     c->neutrino_density_early_table = NULL;
@@ -855,12 +857,6 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
     /* Retrieve the present-day total density due to massive neutrinos */
     c->Omega_nu_0 = cosmology_get_neutrino_density(c, 1);
     c->Omega_nu = c->Omega_nu_0;  // will be updated
-
-    /* Find the smallest neutrino mass */
-    double M_eV_min = FLT_MAX;
-    for (int i = 0; i < c->N_nu; i++) {
-      M_eV_min = fmin(M_eV_min, c->M_nu_eV[i]);
-    }
   }
 
   /* Cold dark matter density */
@@ -917,6 +913,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->N_nu = 0;
   c->N_ur = 0.;
   c->N_eff = 0.;
+  c->deg_nu_tot = 0.;
 
   c->a_begin = 1.;
   c->a_end = 1.;
@@ -1352,6 +1349,7 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
     io_write_attribute(h_grp, "M_nu_eV", DOUBLE, c->M_nu_eV, c->N_nu);
     io_write_attribute(h_grp, "deg_nu", DOUBLE, c->deg_nu, c->N_nu);
   }
+  io_write_attribute_d(h_grp, "deg_nu_tot", c->deg_nu_tot);
   io_write_attribute_d(h_grp, "T_CMB_0 [internal units]", c->T_CMB_0);
   io_write_attribute_d(h_grp, "T_CMB_0 [K]", c->T_CMB_0_K);
   io_write_attribute_d(h_grp, "w_0", c->w_0);

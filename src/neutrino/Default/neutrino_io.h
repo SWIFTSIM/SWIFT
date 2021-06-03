@@ -80,8 +80,9 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
 
   double micro_mass;
 
-  /* When we are running with the delta-f method, resample the mass */
-  if (e->neutrino_properties->use_delta_f) {
+  /* Resample if running with the delta-f method or neutrino ic generation */
+  if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->generate_ics) {
 
     /* Use a particle id dependent seed (sum of global seed and ID) */
     const long long neutrino_seed = e->neutrino_properties->neutrino_seed;
@@ -93,10 +94,12 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
 
     micro_mass = neutrino_seed_to_mass(N_nu, m_eV_array, seed);  // eV
   } else {
-    /* Otherwise, simply use the mass implied by the conversion factor */
+    /* Otherwise, simply use the mass implied by the conversion factor and
+     * total degeneracy */
+    const double deg_nu_tot = e->cosmology->deg_nu_tot;
     const double mass_factor = e->neutrino_mass_conversion_factor;
 
-    micro_mass = gp->mass * mass_factor;  // eV
+    micro_mass = gp->mass * mass_factor / deg_nu_tot;  // eV
   }
 
   /* Convert units and store the answer */
