@@ -19,7 +19,10 @@
 #ifndef SWIFT_RT_GEAR_H
 #define SWIFT_RT_GEAR_H
 
+#include "rt_debugging.h"
 #include "rt_properties.h"
+#include "rt_stellar_emission_rate.h"
+#include "rt_thermochemistry.h"
 
 /**
  * @file src/rt/GEAR/rt.h
@@ -42,7 +45,25 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * the zeroth time step is finished.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* reset this here as well as in the rt_debugging_checks_end_of_step()
+   * routine to test task dependencies are done right */
+  p->rt_data.debug_iact_stars_inject = 0;
+
+  p->rt_data.debug_calls_iact_gradient = 0;
+  p->rt_data.debug_calls_iact_transport = 0;
+  p->rt_data.debug_injection_check = 0;
+  p->rt_data.debug_calls_iact_gradient_interaction = 0;
+  p->rt_data.debug_calls_iact_transport_interaction = 0;
+
+  p->rt_data.debug_injection_done = 0;
+  p->rt_data.debug_gradients_done = 0;
+  p->rt_data.debug_transport_done = 0;
+  p->rt_data.debug_thermochem_done = 0;
+#endif
+}
 
 /**
  * @brief First initialisation of the RT hydro particle data.
@@ -51,6 +72,11 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p) {
 
   /* Don't reset conserved quantities here! ICs will be overwritten */
+  rt_init_part(p);
+  rt_reset_part(p);
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  p->rt_data.debug_radiation_absorbed_tot = 0ULL;
+#endif
 }
 
 /**
@@ -69,13 +95,30 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
  * the zeroth time step is finished.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* reset this here as well as in the rt_debugging_checks_end_of_step()
+   * routine to test task dependencies are done right */
+  sp->rt_data.debug_iact_hydro_inject = 0;
+
+  sp->rt_data.debug_emission_rate_set = 0;
+  sp->rt_data.debug_injection_check = 0;
+#endif
+}
 
 /**
  * @brief First initialisation of the RT star particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+  rt_init_spart(sp);
+  rt_reset_spart(sp);
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  sp->rt_data.debug_radiation_emitted_tot = 0ULL;
+#endif
+}
 
 /**
  * @brief Split the RT data of a particle into n pieces
@@ -84,7 +127,9 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
-                                                                double n) {}
+                                                                double n) {
+  error("RT can't run with split particles for now.");
+}
 
 /**
  * @brief Exception handle a hydro part not having any neighbours in ghost task
@@ -92,7 +137,10 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
-    struct part* p){};
+    struct part* p) {
+
+  message("WARNING: found particle without neighbours");
+};
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -112,7 +160,12 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void
 rt_injection_update_photon_density(struct part* restrict p,
-                                   struct rt_props* props) {}
+                                   struct rt_props* props) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  p->rt_data.debug_injection_done += 1;
+#endif
+}
 
 /**
  * @brief Compute the photon emission rates for this stellar particle
@@ -128,7 +181,22 @@ rt_injection_update_photon_density(struct part* restrict p,
  */
 __attribute__((always_inline)) INLINE static void
 rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
-                                 double star_age, double dt) {}
+                                 double star_age, double dt) {
+
+  /* Skip initial fake time-step */
+  if (dt == 0.0l) return;
+
+  if (time == 0.l) {
+    /* if function is called before the first actual step, time is still
+     * at zero unless specified otherwise in parameter file.*/
+    star_age = dt;
+  }
+
+  /* now get the emission rates */
+  double star_age_begin_of_step = star_age - dt;
+  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
+  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age);
+}
 
 /**
  * @brief finishes up the gradient computation
@@ -136,7 +204,29 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_gradient(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.debug_injection_done != 1)
+    error(
+        "Called finalise gradient on particle "
+        "where injection count = %d",
+        p->rt_data.debug_injection_done);
+
+  if (p->rt_data.debug_calls_iact_gradient == 0)
+    error(
+        "Called finalise gradient on particle "
+        "with iact gradient count = %d",
+        p->rt_data.debug_calls_iact_gradient);
+  if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
+    message(
+        "WARNING: Called finalise gradient on particle "
+        "with iact gradient count from rt_iact = %d",
+        p->rt_data.debug_calls_iact_gradient_interaction);
+
+  p->rt_data.debug_gradients_done += 1;
+#endif
+}
 
 /**
  * @brief finishes up the transport step
@@ -144,7 +234,41 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient(
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.debug_injection_done != 1)
+    error(
+        "Trying to do finalise_transport when "
+        "injection count is %d",
+        p->rt_data.debug_injection_done);
+
+  if (p->rt_data.debug_gradients_done != 1)
+    error(
+        "Trying to do finalise_transport when "
+        "rt_finalise_gradient count is %d",
+        p->rt_data.debug_gradients_done);
+
+  if (p->rt_data.debug_calls_iact_gradient == 0)
+    error(
+        "Called finalise transport on particle "
+        "with iact gradient count = %d",
+        p->rt_data.debug_calls_iact_gradient);
+
+  if (p->rt_data.debug_calls_iact_transport == 0)
+    error(
+        "Called finalise transport on particle "
+        "with iact transport count = %d",
+        p->rt_data.debug_calls_iact_transport);
+  if (p->rt_data.debug_calls_iact_transport_interaction == 0)
+    message(
+        "WARNING: Called finalise transport on particle "
+        "with iact transport count from rt_iact = %d",
+        p->rt_data.debug_calls_iact_transport_interaction);
+
+  p->rt_data.debug_transport_done += 1;
+#endif
+}
 
 /**
  * @brief Do the thermochemistry on a particle.
@@ -152,7 +276,10 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+  rt_do_thermochemistry(p);
+}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.
