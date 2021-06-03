@@ -16,14 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_DEBUGGING_DEBUG_H
-#define SWIFT_RT_DEBUGGING_DEBUG_H
+#ifndef SWIFT_RT_DEBUGGING_GEAR_H
+#define SWIFT_RT_DEBUGGING_GEAR_H
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
 
 #include "rt_properties.h"
 
 /**
- * @file src/rt/debug/rt_debugging.h
- * @brief Main header file for the debug radiative transfer scheme
+ * @file src/rt/GEAR/rt_debugging.h
+ * @brief Main header file for the GEAR radiative transfer scheme
  * extra debugging functions.
  */
 
@@ -137,8 +139,9 @@ __attribute__((always_inline)) INLINE static void
 rt_debugging_check_injection_part(struct part *restrict p,
                                   struct rt_props *props) {
 
-  if (props->debug_do_all_parts_have_stars_checks)
-    p->rt_data.debug_injection_check += 1;
+  /* skip this for GEAR */
+  /* if (props->do_all_parts_have_stars_checks) */
+  /*   p->rt_data.debug_injection_check += 1; */
 }
 
 /**
@@ -154,8 +157,9 @@ __attribute__((always_inline)) INLINE static void
 rt_debugging_check_injection_spart(struct spart *restrict s,
                                    struct rt_props *props) {
 
-  if (props->debug_do_all_parts_have_stars_checks)
-    s->rt_data.debug_injection_check += 1;
+  /* skip this for GEAR */
+  /* if (props->do_all_parts_have_stars_checks) */
+  /*   s->rt_data.debug_injection_check += 1; */
 }
 
 /**
@@ -179,4 +183,5 @@ rt_debugging_count_transport_call(struct part *restrict p) {
 
   p->rt_data.debug_calls_iact_transport += 1;
 }
-#endif /* SWIFT_RT_DEBUGGING_DEBUG_H */
+#endif /* SWIFT_RT_DEBUG_CHECKS */
+#endif /* SWIFT_RT_DEBUGGING_GEAR_H */

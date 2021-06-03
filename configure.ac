@@ -2447,14 +2447,21 @@ case "$with_rt" in
           # only works with those.
           AC_MSG_ERROR([GEAR-RT: Cannot work with non-integer photon groups])
       fi
+
+      if test "$enable_debugging_checks" = "yes"; then
+          AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
+      fi
+
    ;;
    debug)
       AC_DEFINE([RT_DEBUG], [1], [debugging scheme])
+      AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
    ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])
    ;;
 esac
+
 
 AC_ARG_ENABLE([rt-hydro-controlled-injection],
     [AS_HELP_STRING([--enable-rt-hydro-controlled-injection],

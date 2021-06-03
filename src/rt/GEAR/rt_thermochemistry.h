@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_THERMOCHEMISTRY_DEBUG_H
-#define SWIFT_RT_THERMOCHEMISTRY_DEBUG_H
+#ifndef SWIFT_RT_THERMOCHEMISTRY_GEAR_H
+#define SWIFT_RT_THERMOCHEMISTRY_GEAR_H
 
 /**
- * @file src/rt/debug/rt_thermochemistry.h
- * @brief Main header file for the debug radiative transfer scheme
+ * @file src/rt/GEAR/rt_thermochemistry.h
+ * @brief Main header file for the GEAR M1 closure radiative transfer scheme
  * thermochemistry related functions.
  */
 
@@ -34,6 +34,7 @@
 __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     struct part *restrict p) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
   if (!p->rt_data.debug_injection_done)
     error("Trying to do thermochemistry when injection step hasn't been done");
   if (!p->rt_data.debug_gradients_done)
@@ -42,6 +43,7 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     error("Trying to do thermochemistry when transport step hasn't been done");
 
   p->rt_data.debug_thermochem_done += 1;
+#endif
 }
 
 #endif /* SWIFT_RT_THERMOCHEMISTRY_DEBUG_H */
