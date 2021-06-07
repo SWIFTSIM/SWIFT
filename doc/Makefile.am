@@ -19,12 +19,12 @@ doxyfile.stamp:
 if HAVE_DOXYGEN
 	@DX_ENV@ @DX_DOXYGEN@ Doxyfile
 	echo `date` > doxyfile.stamp
-	sed -i "/master_doc = .\/*/c\master_doc = 'index_doxygen'" RTD/source/conf.py
-	sed -i "/^#.*breathe/s/^#//" source/conf.py
-	breathe-apidoc -f -g struct,file xml/ -o "RTD/source/Doxygen/" -p SWIFT
+	sed -i "/^#.*breathe/s/^#//" @srcdir@/RTD/source/conf.py
+	cp @srcdir@/RTD/source/index_doxygen.rst @srcdir@/RTD/source/index.rst
+	breathe-apidoc -f -g struct,file xml/ -o "@srcdir@/RTD/source/Doxygen/" -p SWIFT
 else
-	sed -i "/master_doc = .\/*/c\master_doc = 'index'" RTD/source/conf.py
-	sed -i "s/^[^\#]*breathe.*/\#&/" source/conf.py
+	cp @srcdir@/RTD/source/index_no_doxygen.rst @srcdir@/RTD/source/index.rst
+	sed -i "s/^[^\#]*breathe.*/\#&/" @srcdir@/RTD/source/conf.py
 endif
 
 CLEANFILES = doxyfile.stamp
@@ -32,6 +32,6 @@ CLEANFILES = doxyfile.stamp
 all-local: doxyfile.stamp
 
 clean-local:
-	rm -rf html/ latex/ man/
+	rm -rf html/ latex/ man/ xml/
 
 distclean: clean
