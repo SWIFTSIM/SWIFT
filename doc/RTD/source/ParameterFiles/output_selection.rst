@@ -145,7 +145,7 @@ selection:
      basename: bh
      subdir: snip
 
-This will put the outputs corresponding to the ``BlackHolesOnly`` selection into
+This will put the outputs corresponding to this "BlackHolesOnly" selection into
 a sub-directory called ``snip`` and have the files themselves called
 ``bh_0000.hdf5`` where the number corresponds to the global number of
 snapshots. The counter is global and not reset for each type of selection.
@@ -154,6 +154,19 @@ default values specified in the ``Snapshots`` section of the main parameter file
 The sub-directories are created when writing the first snapshot of a given
 category; the onus is hence on the user to ensure correct writing permissions
 ahead of that time.
+
+Finally, it is possible to specify individual sub-sampling ratios for each
+output selection:
+
+.. code:: YAML
+
+   Default:
+     subsample: [0, 1, 0, 0, 0, 0, 1]  # Sub-sample the DM and neutrinos
+     subsmple_fractions: [0, 0.01, 0, 0, 0, 0, 0.1]
+
+If these keywords are omitted then the code will use the default values
+specified in the ``Snapshots`` section of the main parameter file.
+
 
 Combining Output Lists and Output Selection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -187,6 +200,8 @@ cousins. To do this, we will define two top-level sections in our
     Element_Mass_Fractions_Gas: off
     Densities_Gas: FMantissa9
     basename: snip
+    subsample: [0, 1, 0, 0, 0, 0, 1]  # Sub-sample the DM and neutrinos
+    subsmple_fractions: [0, 0.01, 0, 0, 0, 0, 0.1]
     ...
 
 To then select which outputs are 'snapshots' and which are 'snipshots', you
