@@ -25,8 +25,357 @@
 
 /* Local includes. */
 #include "cell.h"
+#include "random.h"
 #include "timeline.h"
 #include "units.h"
+
+static long long cell_count_non_inhibited_gas(const struct cell* c,
+                                              const int subsample,
+                                              const float subsample_ratio,
+                                              const int snap_num) {
+  const int total_count = c->hydro.count;
+  struct part* parts = c->hydro.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((parts[i].time_bin != time_bin_inhibited) &&
+        (parts[i].time_bin != time_bin_not_created)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(parts[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+        if (r > subsample_ratio) continue;
+      }
+
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_dark_matter(
+    const struct cell* c, const int subsample, const float subsample_ratio,
+    const int snap_num) {
+
+  const int total_count = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r =
+            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
+                                 random_number_snapshot_sampling);
+        if (r > subsample_ratio) continue;
+      }
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_background_dark_matter(
+    const struct cell* c, const int subsample, const float subsample_ratio,
+    const int snap_num) {
+
+  const int total_count = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter_background)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r =
+            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
+                                 random_number_snapshot_sampling);
+        if (r > subsample_ratio) continue;
+      }
+
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_stars(const struct cell* c,
+                                                const int subsample,
+                                                const float subsample_ratio,
+                                                const int snap_num) {
+  const int total_count = c->stars.count;
+  struct spart* sparts = c->stars.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((sparts[i].time_bin != time_bin_inhibited) &&
+        (sparts[i].time_bin != time_bin_not_created)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(sparts[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+        if (r > subsample_ratio) continue;
+      }
+
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_black_holes(
+    const struct cell* c, const int subsample, const float subsample_ratio,
+    const int snap_num) {
+  const int total_count = c->black_holes.count;
+  struct bpart* bparts = c->black_holes.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((bparts[i].time_bin != time_bin_inhibited) &&
+        (bparts[i].time_bin != time_bin_not_created)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(bparts[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+        if (r > subsample_ratio) continue;
+      }
+
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_sinks(const struct cell* c,
+                                                const int subsample,
+                                                const float subsample_ratio,
+                                                const int snap_num) {
+  const int total_count = c->sinks.count;
+  struct sink* sinks = c->sinks.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((sinks[i].time_bin != time_bin_inhibited) &&
+        (sinks[i].time_bin != time_bin_not_created)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(sinks[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+        if (r > subsample_ratio) continue;
+      }
+
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_neutrinos(const struct cell* c,
+                                                    const int subsample,
+                                                    const float subsample_ratio,
+                                                    const int snap_num) {
+
+  const int total_count = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_neutrino)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r =
+            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
+                                 random_number_snapshot_sampling);
+        if (r > subsample_ratio) continue;
+      }
+
+      ++count;
+    }
+  }
+  return count;
+}
+
+/**
+ * @brief Count the number of local non-inhibited gas particles to write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+long long io_count_gas_to_write(const struct space* s, const int subsample,
+                                const float subsample_ratio,
+                                const int snap_num) {
+
+  long long count = 0;
+  for (int i = 0; i < s->nr_local_cells; ++i) {
+
+    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
+    count +=
+        cell_count_non_inhibited_gas(c, subsample, subsample_ratio, snap_num);
+  }
+  return count;
+}
+
+/**
+ * @brief Count the number of local non-inhibited dark matter particles to
+ * write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+long long io_count_dark_matter_to_write(const struct space* s,
+                                        const int subsample,
+                                        const float subsample_ratio,
+                                        const int snap_num) {
+
+  long long count = 0;
+  for (int i = 0; i < s->nr_local_cells; ++i) {
+
+    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
+    count += cell_count_non_inhibited_dark_matter(c, subsample, subsample_ratio,
+                                                  snap_num);
+  }
+  return count;
+}
+
+/**
+ * @brief Count the number of local non-inhibited background dark matter
+ * particles to write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+long long io_count_background_dark_matter_to_write(const struct space* s,
+                                                   const int subsample,
+                                                   const float subsample_ratio,
+                                                   const int snap_num) {
+
+  long long count = 0;
+  for (int i = 0; i < s->nr_local_cells; ++i) {
+
+    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
+    count += cell_count_non_inhibited_background_dark_matter(
+        c, subsample, subsample_ratio, snap_num);
+  }
+  return count;
+}
+
+/**
+ * @brief Count the number of local non-inhibited stars particles to write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+long long io_count_stars_to_write(const struct space* s, const int subsample,
+                                  const float subsample_ratio,
+                                  const int snap_num) {
+
+  long long count = 0;
+  for (int i = 0; i < s->nr_local_cells; ++i) {
+
+    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
+    count +=
+        cell_count_non_inhibited_stars(c, subsample, subsample_ratio, snap_num);
+  }
+  return count;
+}
+
+/**
+ * @brief Count the number of local non-inhibited sinks particles to write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+long long io_count_sinks_to_write(const struct space* s, const int subsample,
+                                  const float subsample_ratio,
+                                  const int snap_num) {
+
+  long long count = 0;
+  for (int i = 0; i < s->nr_local_cells; ++i) {
+
+    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
+    count +=
+        cell_count_non_inhibited_sinks(c, subsample, subsample_ratio, snap_num);
+  }
+  return count;
+}
+
+/**
+ * @brief Count the number of local non-inhibited black holes particles to
+ * write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+long long io_count_black_holes_to_write(const struct space* s,
+                                        const int subsample,
+                                        const float subsample_ratio,
+                                        const int snap_num) {
+
+  long long count = 0;
+  for (int i = 0; i < s->nr_local_cells; ++i) {
+
+    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
+    count += cell_count_non_inhibited_black_holes(c, subsample, subsample_ratio,
+                                                  snap_num);
+  }
+  return count;
+}
+
+/**
+ * @brief Count the number of local non-inhibited neutrinos particles to write.
+ *
+ * Takes into account downsampling.
+ *
+ * @param s The #space.
+ * @param subsample Are we subsampling?
+ * @param subsample_ratio The fraction of particle to keep when subsampling.
+ * @param snap_num The snapshot number to use as random seed.
+ */
+long long io_count_neutrinos_to_write(const struct space* s,
+                                      const int subsample,
+                                      const float subsample_ratio,
+                                      const int snap_num) {
+
+  long long count = 0;
+  for (int i = 0; i < s->nr_local_cells; ++i) {
+
+    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
+    count += cell_count_non_inhibited_neutrinos(c, subsample, subsample_ratio,
+                                                snap_num);
+  }
+  return count;
+}
 
 #if defined(HAVE_HDF5)
 
@@ -36,101 +385,6 @@
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif
-
-static long long cell_count_non_inhibited_gas(const struct cell* c) {
-  const int total_count = c->hydro.count;
-  struct part* parts = c->hydro.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((parts[i].time_bin != time_bin_inhibited) &&
-        (parts[i].time_bin != time_bin_not_created)) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_dark_matter(const struct cell* c) {
-  const int total_count = c->grav.count;
-  struct gpart* gparts = c->grav.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((gparts[i].time_bin != time_bin_inhibited) &&
-        (gparts[i].time_bin != time_bin_not_created) &&
-        (gparts[i].type == swift_type_dark_matter)) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_background_dark_matter(
-    const struct cell* c) {
-  const int total_count = c->grav.count;
-  struct gpart* gparts = c->grav.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((gparts[i].time_bin != time_bin_inhibited) &&
-        (gparts[i].time_bin != time_bin_not_created) &&
-        (gparts[i].type == swift_type_dark_matter_background)) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_stars(const struct cell* c) {
-  const int total_count = c->stars.count;
-  struct spart* sparts = c->stars.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((sparts[i].time_bin != time_bin_inhibited) &&
-        (sparts[i].time_bin != time_bin_not_created)) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
-  const int total_count = c->black_holes.count;
-  struct bpart* bparts = c->black_holes.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((bparts[i].time_bin != time_bin_inhibited) &&
-        (bparts[i].time_bin != time_bin_not_created)) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_sinks(const struct cell* c) {
-  const int total_count = c->sinks.count;
-  struct sink* sinks = c->sinks.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((sinks[i].time_bin != time_bin_inhibited) &&
-        (sinks[i].time_bin != time_bin_not_created)) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_neutrinos(const struct cell* c) {
-  const int total_count = c->grav.count;
-  struct gpart* gparts = c->grav.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((gparts[i].time_bin != time_bin_inhibited) &&
-        (gparts[i].time_bin != time_bin_not_created) &&
-        (gparts[i].type == swift_type_neutrino)) {
-      ++count;
-    }
-  }
-  return count;
-}
 
 /**
  * @brief Write a single 1D array to a hdf5 group.
@@ -190,10 +444,32 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
   H5Sclose(h_space);
 }
 
+/**
+ * @brief Compute and write the top-level cell counts and offsets meta-data.
+ *
+ * @param h_grp the hdf5 group to write to.
+ * @param cdim The number of top-level cells along each axis.
+ * @param dim The box size.
+ * @param cells_top The top-level cells.
+ * @param nr_cells The number of top-level cells.
+ * @param distributed Is this a distributed snapshot?
+ * @param subsample Are we subsampling the different particle types?
+ * @param subsample_fraction The fraction of particles to keep when subsampling.
+ * @param snap_num The snapshot number used as subsampling random seed.
+ * @param global_counts The total number of particles across all nodes.
+ * @param global_offsets The offsets of this node into the global list of
+ * particles.
+ * @param numFields The number of fields to write for each particle type.
+ * @param internal_units The internal unit system.
+ * @param snapshot_units The snapshot unit system.
+ */
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const int distributed,
+                           const int subsample[swift_type_count],
+                           const float subsample_fraction[swift_type_count],
+                           const int snap_num,
                            const long long global_counts[swift_type_count],
                            const long long global_offsets[swift_type_count],
                            const int num_fields[swift_type_count],
@@ -288,14 +564,34 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       centres[i * 3 + 2] = box_wrap(centres[i * 3 + 2], 0.0, dim[2]);
 
       /* Count real particles that will be written */
-      count_part[i] = cell_count_non_inhibited_gas(&cells_top[i]);
-      count_gpart[i] = cell_count_non_inhibited_dark_matter(&cells_top[i]);
+      count_part[i] = cell_count_non_inhibited_gas(
+          &cells_top[i], subsample[swift_type_gas],
+          subsample_fraction[swift_type_gas], snap_num);
+
+      count_gpart[i] = cell_count_non_inhibited_dark_matter(
+          &cells_top[i], subsample[swift_type_dark_matter],
+          subsample_fraction[swift_type_dark_matter], snap_num);
+
       count_background_gpart[i] =
-          cell_count_non_inhibited_background_dark_matter(&cells_top[i]);
-      count_spart[i] = cell_count_non_inhibited_stars(&cells_top[i]);
-      count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
-      count_sink[i] = cell_count_non_inhibited_sinks(&cells_top[i]);
-      count_nupart[i] = cell_count_non_inhibited_neutrinos(&cells_top[i]);
+          cell_count_non_inhibited_background_dark_matter(
+              &cells_top[i], subsample[swift_type_dark_matter_background],
+              subsample_fraction[swift_type_dark_matter_background], snap_num);
+
+      count_spart[i] = cell_count_non_inhibited_stars(
+          &cells_top[i], subsample[swift_type_stars],
+          subsample_fraction[swift_type_stars], snap_num);
+
+      count_bpart[i] = cell_count_non_inhibited_black_holes(
+          &cells_top[i], subsample[swift_type_black_hole],
+          subsample_fraction[swift_type_black_hole], snap_num);
+
+      count_sink[i] = cell_count_non_inhibited_sinks(
+          &cells_top[i], subsample[swift_type_sink],
+          subsample_fraction[swift_type_sink], snap_num);
+
+      count_nupart[i] = cell_count_non_inhibited_neutrinos(
+          &cells_top[i], subsample[swift_type_neutrino],
+          subsample_fraction[swift_type_neutrino], snap_num);
 
       /* Offsets including the global offset of all particles on this MPI rank
        * Note that in the distributed case, the global offsets are 0 such that
