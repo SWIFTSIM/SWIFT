@@ -1315,7 +1315,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 /* If the local cell is active, receive data from the foreign cell. */
                 /*if (ci_active_dark_matter) {*/
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart_xv);
-
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_dmpart_rho);
 
                 /* We also want the ti_end values from foreign cell. */

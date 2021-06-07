@@ -343,7 +343,7 @@ __attribute__((always_inline)) INLINE static void kick_dmpart(
     
 #ifdef SWIFT_DEBUG_CHECKS
     if (dmp->ti_kick != ti_start)
-        error(
+        message(
               "dm-particle has not been kicked to the current time dmp->ti_kick=%lld, "
               "ti_start=%lld, ti_end=%lld id=%lld",
               dmp->ti_kick, ti_start, ti_end, dmp->id_or_neg_offset);
@@ -361,7 +361,7 @@ __attribute__((always_inline)) INLINE static void kick_dmpart(
     dmp->gpart->v_full[1] = dmp->v_full[1];
     dmp->gpart->v_full[2] = dmp->v_full[2];
 
-    /* Kick extra and complete SIDM kick */
+    /* Kick aditional variables and complete SIDM kick */
     /*dark_matter_kick_extra(dmp, dt_kick_grav);*/
 }
 

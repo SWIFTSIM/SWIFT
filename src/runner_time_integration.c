@@ -248,7 +248,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
           /* Get a handle on the part. */
           struct dmpart *restrict dmp = &dmparts[k];
           
-          /* If the DM particle has no counterpart and needs to be kicked */
+          /* If the DM particle needs to be kicked */
           if (dmpart_is_starting(dmp, e)) {
               
               const integertime_t ti_step = get_integer_timestep(dmp->time_bin);

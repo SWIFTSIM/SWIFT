@@ -2378,10 +2378,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_dmpart_xv ||
                    t->subtype == task_subtype_dmpart_rho) {
             
-            count = t->ci->dark_matter.count;
-            size = count * sizeof(struct dmpart);
-            type = dmpart_mpi_type;
-            buff = t->ci->dark_matter.parts;
+          count = t->ci->dark_matter.count;
+          size = count * sizeof(struct dmpart);
+          type = dmpart_mpi_type;
+          buff = t->ci->dark_matter.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
                    t->subtype == task_subtype_bpart_swallow ||
@@ -2412,7 +2412,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                         subtaskMPI_comms[t->subtype], &t->req);
 
         if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit irecv for particle data.");
+            message("%s %s\n", taskID_names[t->type],subtaskID_names[t->subtype]);
+            mpi_error(err, "Failed to emit irecv for particle data.");
         }
 
         /* And log, if logging enabled. */

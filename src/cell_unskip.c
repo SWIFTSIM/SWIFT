@@ -2986,7 +2986,6 @@ int cell_unskip_dark_matter_tasks(struct cell *c, struct scheduler *s) {
             if (ci_nodeID != nodeID) {
 
                 scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_xv);
-
                 scheduler_activate_recv(s, ci->mpi.recv, task_subtype_dmpart_rho);
 
                 /* If the foreign cell is active, we want its ti_end values. */
