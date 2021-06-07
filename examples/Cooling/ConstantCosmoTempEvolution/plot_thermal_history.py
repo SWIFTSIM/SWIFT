@@ -84,8 +84,8 @@ for index, data in enumerate(snap_data):
 # first calculate rho_bar_0 from snapshot metadata
 data = snap_data[0]
 cosmology = data.metadata.cosmology
-H0 = cosmology["H0 [internal units]"] / (data.units.time)
-Omega_bar = cosmology["Omega_b"]
+H0 = unyt.unyt_quantity.from_astropy(cosmology.H0)
+Omega_bar = unyt.unyt_quantity(cosmology.Ob0)
 
 ### now calculate rho_bar_0 and divide through
 rho_bar_0 = 3.0 * H0 ** 2 / (8.0 * np.pi * unyt.G) * Omega_bar
