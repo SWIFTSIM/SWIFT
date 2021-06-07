@@ -315,6 +315,8 @@ struct engine {
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   char snapshot_subdir[PARSER_MAX_LINE_SIZE];
   char snapshot_dump_command[PARSER_MAX_LINE_SIZE];
+  int snapshot_subsample[swift_type_count];
+  float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
   int snapshot_compression;

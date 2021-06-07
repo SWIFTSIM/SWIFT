@@ -127,6 +127,8 @@ const char *engine_policy_names[] = {"none",
                                      "sink",
                                      "rt"};
 
+const int engine_default_snapshot_subsample[swift_type_count] = {0};
+
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
@@ -2825,6 +2827,11 @@ void engine_init(
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   parser_get_opt_param_string(params, "Snapshots:subdir", e->snapshot_subdir,
                               engine_default_snapshot_subdir);
+  parser_get_opt_param_int_array(params, "Snapshots:subsample",
+                                 swift_type_count, e->snapshot_subsample);
+  parser_get_opt_param_float_array(params, "Snapshots:subsample_fraction",
+                                   swift_type_count,
+                                   e->snapshot_subsample_fraction);
   e->snapshot_run_on_dump =
       parser_get_opt_param_int(params, "Snapshots:run_on_dump", 0);
   if (e->snapshot_run_on_dump) {

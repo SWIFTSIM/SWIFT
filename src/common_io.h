@@ -34,6 +34,7 @@
 
 /* Avoid cyclic inclusion problems */
 struct cell;
+struct space;
 struct part;
 struct gpart;
 struct velociraptor_gpart_data;
@@ -110,6 +111,9 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const int distributed,
+                           const int subsample[swift_type_count],
+                           const float subsample_fraction[swift_type_count],
+                           const int snap_num,
                            const long long global_counts[swift_type_count],
                            const long long global_offsets[swift_type_count],
                            const int num_fields[swift_type_count],
@@ -132,42 +136,85 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 size_t io_sizeof_type(enum IO_DATA_TYPE type);
 int io_is_double_precision(enum IO_DATA_TYPE type);
 
+long long io_count_gas_to_write(const struct space* s, const int subsample,
+                                const float subsample_ratio,
+                                const int snap_num);
+
+long long io_count_dark_matter_to_write(const struct space* s,
+                                        const int subsample,
+                                        const float subsample_ratio,
+                                        const int snap_num);
+
+long long io_count_background_dark_matter_to_write(const struct space* s,
+                                                   const int subsample,
+                                                   const float subsample_ratio,
+                                                   const int snap_num);
+
+long long io_count_stars_to_write(const struct space* s, const int subsample,
+                                  const float subsample_ratio,
+                                  const int snap_num);
+
+long long io_count_sinks_to_write(const struct space* s, const int subsample,
+                                  const float subsample_ratio,
+                                  const int snap_num);
+
+long long io_count_black_holes_to_write(const struct space* s,
+                                        const int subsample,
+                                        const float subsample_ratio,
+                                        const int snap_num);
+
+long long io_count_neutrinos_to_write(const struct space* s,
+                                      const int subsample,
+                                      const float subsample_ratio,
+                                      const int snap_num);
+
 void io_collect_parts_to_write(const struct part* restrict parts,
                                const struct xpart* restrict xparts,
                                struct part* restrict parts_written,
                                struct xpart* restrict xparts_written,
-                               const size_t Nparts,
+                               const int subsample, const float subsample_ratio,
+                               const int snap_num, const size_t Nparts,
                                const size_t Nparts_written);
 void io_collect_sinks_to_write(const struct sink* restrict sinks,
                                struct sink* restrict sinks_written,
-                               const size_t Nsinks,
+                               const int subsample, const float subsample_ratio,
+                               const int snap_num, const size_t Nsinks,
                                const size_t Nsinks_written);
 void io_collect_sparts_to_write(const struct spart* restrict sparts,
                                 struct spart* restrict sparts_written,
+                                const int subsample,
+                                const float subsample_ratio, const int snap_num,
                                 const size_t Nsparts,
                                 const size_t Nsparts_written);
 void io_collect_bparts_to_write(const struct bpart* restrict bparts,
                                 struct bpart* restrict bparts_written,
+                                const int subsample,
+                                const float subsample_ratio, const int snap_num,
                                 const size_t Nbparts,
                                 const size_t Nbparts_written);
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
                                 const struct velociraptor_gpart_data* vr_data,
                                 struct gpart* restrict gparts_written,
                                 struct velociraptor_gpart_data* vr_data_written,
+                                const int subsample,
+                                const float subsample_ratio, const int snap_num,
                                 const size_t Ngparts,
                                 const size_t Ngparts_written, int with_stf);
 void io_collect_gparts_background_to_write(
     const struct gpart* restrict gparts,
     const struct velociraptor_gpart_data* vr_data,
     struct gpart* restrict gparts_written,
-    struct velociraptor_gpart_data* vr_data_written, const size_t Ngparts,
+    struct velociraptor_gpart_data* vr_data_written, const int subsample,
+    const float subsample_ratio, const int snap_num, const size_t Ngparts,
     const size_t Ngparts_written, int with_stf);
 void io_collect_gparts_neutrino_to_write(
     const struct gpart* restrict gparts,
     const struct velociraptor_gpart_data* vr_data,
     struct gpart* restrict gparts_written,
-    struct velociraptor_gpart_data* vr_data_written, const size_t Ngparts,
+    struct velociraptor_gpart_data* vr_data_written, const int subsample,
+    const float subsample_ratio, const int snap_num, const size_t Ngparts,
     const size_t Ngparts_written, int with_stf);
+
 void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm);
 void io_prepare_dm_background_gparts(struct threadpool* tp,
