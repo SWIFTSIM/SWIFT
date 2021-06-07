@@ -173,4 +173,10 @@ todo_include_todos = True
 # -- Breathe
 breathe_projects = { "SWIFT": "../../xml" }
 
+breathe_domain_by_extension = {
+    "h" : "c",
+    "c": "c"
+}
+
+
 breathe_default_project = "SWIFT"
