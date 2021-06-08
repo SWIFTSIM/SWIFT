@@ -7,7 +7,7 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1             # Kelvin
 
 Cosmology:                      # WMAP9 cosmology
-  Omega_m:        0.276
+  Omega_cdm:      0.2305
   Omega_lambda:   0.724
   Omega_b:        0.0455
   h:              0.703
