@@ -34,7 +34,7 @@ void test_params_init(struct swift_params *params, int testnr) {
     /* One doubly degenerate light neutrino (total 0.10 eV) and one massless */
     case 0:
       parser_init("", params);
-      parser_set_param(params, "Cosmology:Omega_m:0.3122688651165");
+      parser_set_param(params, "Cosmology:Omega_cdm:0.263069938");
       parser_set_param(params, "Cosmology:Omega_lambda:6.853646e-01");
       parser_set_param(params, "Cosmology:Omega_b:0.049198926683");
       parser_set_param(params, "Cosmology:h:0.6737");
@@ -49,7 +49,7 @@ void test_params_init(struct swift_params *params, int testnr) {
     /* Three very massive neutrinos */
     case 1:
       parser_init("", params);
-      parser_set_param(params, "Cosmology:Omega_m:0.291188231748");
+      parser_set_param(params, "Cosmology:Omega_cdm:0.241989232");
       parser_set_param(params, "Cosmology:Omega_lambda:0.685365");
       parser_set_param(params, "Cosmology:Omega_b:0.049199");
       parser_set_param(params, "Cosmology:h:0.6737");
@@ -61,7 +61,7 @@ void test_params_init(struct swift_params *params, int testnr) {
     /* One light massive neutrino (0.05 eV) + two massless */
     case 2:
       parser_init("", params);
-      parser_set_param(params, "Cosmology:Omega_m:0.3110861814103");
+      parser_set_param(params, "Cosmology:Omega_cdm:0.261887181");
       parser_set_param(params, "Cosmology:Omega_lambda:0.685365");
       parser_set_param(params, "Cosmology:Omega_b:0.049199");
       parser_set_param(params, "Cosmology:h:0.6737");
@@ -75,7 +75,7 @@ void test_params_init(struct swift_params *params, int testnr) {
     /* Three very massive neutrinos (same as 1), but starting earlier */
     case 3:
       parser_init("", params);
-      parser_set_param(params, "Cosmology:Omega_m:0.291188231748");
+      parser_set_param(params, "Cosmology:Omega_cdm:0.241989232");
       parser_set_param(params, "Cosmology:Omega_lambda:0.685365");
       parser_set_param(params, "Cosmology:Omega_b:0.049199");
       parser_set_param(params, "Cosmology:h:0.6737");
