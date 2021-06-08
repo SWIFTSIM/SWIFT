@@ -112,10 +112,16 @@ void engine_fof(struct engine *e, const int dump_results,
   ticks tic = getticks();
 
   /* Compute number of DM particles */
-  const long long total_nr_baryons =
-      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dmparts =
-      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
+  const int with_sidm = (e->policy & engine_policy_sidm);
+  const long long total_nr_dmparts;
+  if (with_sidm){
+      total_nr_dmparts = e->total_nr_dmparts;
+  } else {
+      const long long total_nr_baryons =
+              e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
+      total_nr_dmparts =
+              e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
+  }
 
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
