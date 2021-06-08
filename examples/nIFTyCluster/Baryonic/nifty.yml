@@ -13,7 +13,7 @@ InternalUnitSystem:
 Cosmology:
   a_begin:        0.015151515 # z_ini = 65
   a_end:          1.0
-  Omega_m:        0.27
+  Omega_cdm:      0.2231
   Omega_lambda:   0.73
   Omega_b:        0.0469
   h:              0.7
