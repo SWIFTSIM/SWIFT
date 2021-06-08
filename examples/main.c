@@ -1321,11 +1321,6 @@ int main(int argc, char *argv[]) {
       pm_mesh_init_no_mesh(&mesh, s.dim);
     }
 
-    /* Check that the matter content matches the cosmology given in the
-     * parameter file. */
-    if (with_cosmology && with_self_gravity && !dry_run)
-      space_check_cosmology(&s, &cosmo, myrank);
-
     /* Also update the total counts (in case of changes due to replication) */
     Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts + s.nr_sinks;
     Nnupart = s.nr_nuparts;
@@ -1502,6 +1497,13 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
+
+    /* Check that the matter content matches the cosmology given in the
+     * parameter file. */
+    if (with_cosmology && with_self_gravity && !dry_run) {
+      const int check_neutrinos = !neutrino_properties.use_delta_f;
+      space_check_cosmology(&s, &cosmo, with_hydro, myrank, check_neutrinos);
+    }
 
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_CSDS

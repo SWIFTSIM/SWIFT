@@ -11,9 +11,9 @@ Cosmology:
   h:              0.6777        # Reduced Hubble constant
   a_begin:        0.5        # Initial scale-factor of the simulation (z = 1.0)
   a_end:          0.5061559     # Final scale factor of the simulation (~ 100 myr)
-  Omega_m:        0.307         # Matter density parameter
+  Omega_cdm:      0.2587481     # Cold Dark Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
 
 # Parameters governing the time integration
 TimeIntegration:

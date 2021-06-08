@@ -33,9 +33,9 @@ parameters:
 .. code:: YAML
 
    Cosmology:    # Planck13
-     Omega_m:        0.307
+     Omega_cdm:      0.2587481
      Omega_lambda:   0.693
-     Omega_b:        0.0455
+     Omega_b:        0.0482519
      h:              0.6777
      a_begin:        0.0078125     # z = 127
 
@@ -146,7 +146,7 @@ cosmological model. The expanded :math:`\Lambda\rm{CDM}` parameters governing th
 background evolution of the Universe need to be specified here. These are:
 
 * The reduced Hubble constant: :math:`h`: ``h``,
-* The matter density parameter :math:`\Omega_m`: ``Omega_m``,
+* The cold dark matter density parameter :math:`\Omega_cdm`: ``Omega_cdm``,
 * The cosmological constant density parameter :math:`\Omega_\Lambda`: ``Omega_lambda``,
 * The baryon density parameter :math:`\Omega_b`: ``Omega_b``,
 * The radiation density parameter :math:`\Omega_r`: ``Omega_r``.
@@ -202,18 +202,18 @@ use the following parameters:
 
 .. code:: YAML
 
-   Cosmology:
+   Cosmology:        # Planck13 (EAGLE flavour)
      a_begin:        0.0078125     # z = 127
      a_end:          1.0           # z = 0
      h:              0.6777
-     Omega_m:        0.307
+     Omega_cdm:      0.2587481
      Omega_lambda:   0.693
      Omega_b:        0.0482519
      Omega_r:        0.            # (Optional)
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
 
-When running a non-cosmological simulation (i.e. without the ``-c`` run-time
+When running a non-cosmological simulation (i.e. without the ``--cosmology`` run-time
 flag) this section of the YAML file is entirely ignored.
 
 .. _Parameters_gravity:
