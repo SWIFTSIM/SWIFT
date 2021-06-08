@@ -135,8 +135,8 @@ struct cosmology {
   /*! Hubble time 1/H0 */
   double Hubble_time;
 
-  /*! Matter density parameter */
-  double Omega_m;
+  /*! Cold Dark Matter density parameter */
+  double Omega_cdm;
 
   /*! Baryon density parameter */
   double Omega_b;
@@ -158,9 +158,6 @@ struct cosmology {
 
   /*! Ultra-relativistic species (e.g. massless neutrinos) density parameter */
   double Omega_ur;
-
-  /*! Cold dark matter density parameter */
-  double Omega_cdm;
 
   /*! Curvature density parameter */
   double Omega_k;
