@@ -2412,6 +2412,12 @@ void engine_step(struct engine *e) {
     error("Obtained a time-step of size 0");
 #endif
 
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds && e->verbose)
+    message("The CSDS currently uses %f GB of storage",
+            e->collect_group1.csds_file_size_gb);
+#endif
+
   /********************************************************/
   /* OK, we are done with the regular stuff. Time for i/o */
   /********************************************************/
