@@ -113,7 +113,7 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* Compute number of DM particles */
   const int with_sidm = (e->policy & engine_policy_sidm);
-  const long long total_nr_dmparts;
+  long long total_nr_dmparts;
   if (with_sidm){
       total_nr_dmparts = e->total_nr_dmparts;
   } else {
