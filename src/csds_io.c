@@ -102,6 +102,19 @@ void csds_write_description(struct csds_writer* log, struct engine* e) {
   fprintf(f, "  NumberGParts: %li\n", e->s->nr_gparts);
   fprintf(f, "\n");
 
+  /* Write the cosmology */
+  fprintf(f, "Cosmology:\n");
+  fprintf(f, "  Omega_cdm: %g\n", e->cosmology->Omega_cdm);
+  fprintf(f, "  Omega_lambda: %g\n", e->cosmology->Omega_lambda);
+  fprintf(f, "  Omega_b: %g\n", e->cosmology->Omega_b);
+  fprintf(f, "  Omega_r: %g\n", e->cosmology->Omega_r);
+  fprintf(f, "  Omega_k: %g\n", e->cosmology->Omega_k);
+  fprintf(f, "  Omega_nu_0: %g\n", e->cosmology->Omega_nu_0);
+  fprintf(f, "  w_0: %g\n", e->cosmology->w_0);
+  fprintf(f, "  w_a: %g\n", e->cosmology->w_a);
+  fprintf(f, "  Hubble0: %g\n", e->cosmology->H0);
+  fprintf(f, "\n");
+
   /* Write unit system */
   const struct unit_system* us = e->internal_units;
   fprintf(f, "InternalUnitSystem:\n");
