@@ -115,7 +115,13 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
       const float log_m1 = log_mass_min + (j - 1) * step_size;
       const float m1 = exp10(log_m1);
       const float log_m2 = log_mass_min + j * step_size;
-      const float m2 = exp10(log_m2);
+      float m2 = exp10(log_m2);
+
+      /* Ensure that we stay within the limits */
+      if (m2 > imf->mass_max) {
+        m2 = imf->mass_max;
+      }
+
       const float dm = m2 - m1;
       const float imf_1 = imf->coef[i] * pow(m1, imf->exp[i]);
 
