@@ -124,6 +124,18 @@ void lightcone_io_make_output_fields(void) {
 
 /**
  * @brief Store gas properties to write to the lightcone
+ *
+ * If the particle should be included in the lightcone output this function
+ * copies its information to the lightcone_gas_data struct and returns 1.
+ * If the particle should not be output the function returns 0.
+ *
+ * @param e the #engine structure
+ * @param gp the #gpart which crossed the lightcone
+ * @param p the #part associated with this #gpart
+ * @param xp the #xpart associated with this #gpart
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ * @param the #lightcone_gas_data struct to update
  */
 int lightcone_store_gas(const struct engine *e,
                         const struct gpart *gp, const struct part *p,
@@ -142,6 +154,16 @@ int lightcone_store_gas(const struct engine *e,
 
 /**
  * @brief Store dark matter properties to write to the lightcone
+ *
+ * If the particle should be included in the lightcone output this function
+ * copies its information to the lightcone_dark_matter_data struct and returns
+ * 1. If the particle should not be output the function returns 0.
+ *
+ * @param e the #engine structure
+ * @param gp the #gpart which crossed the lightcone
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ * @param the #lightcone_dark_matter_data struct to update
  */
 int lightcone_store_dark_matter(const struct engine *e,
                                 const struct gpart *gp, const double a_cross, 
@@ -160,6 +182,17 @@ int lightcone_store_dark_matter(const struct engine *e,
 
 /**
  * @brief Store star properties to write to the lightcone
+ *
+ * If the particle should be included in the lightcone output this function
+ * copies its information to the lightcone_star_data struct and returns
+ * 1. If the particle should not be output the function returns 0.
+ *
+ * @param e the #engine structure
+ * @param gp the #gpart which crossed the lightcone
+ * @param sp the #spart associated with the #gpart
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ * @param the #lightcone_stars_data struct to update
  */
 int lightcone_store_stars(const struct engine *e,
                           const struct gpart *gp, const struct spart *sp,
@@ -178,6 +211,17 @@ int lightcone_store_stars(const struct engine *e,
 
 /**
  * @brief Store black hole properties to write to the lightcone
+ *
+ * If the particle should be included in the lightcone output this function
+ * copies its information to the lightcone_black_hole_data struct and returns
+ * 1. If the particle should not be output the function returns 0.
+ *
+ * @param e the #engine structure
+ * @param gp the #gpart which crossed the lightcone
+ * @param bp the #bpart associated with the #gpart
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ * @param the #lightcone_black_hole_data struct to update
  */
 int lightcone_store_black_hole(const struct engine *e,
                                const struct gpart *gp, const struct bpart *bp,
@@ -196,6 +240,16 @@ int lightcone_store_black_hole(const struct engine *e,
 
 /**
  * @brief Store neutrino properties to write to the lightcone
+ *
+ * If the particle should be included in the lightcone output this function
+ * copies its information to the lightcone_neutrino_data struct and returns
+ * 1. If the particle should not be output the function returns 0.
+ *
+ * @param e the #engine structure
+ * @param gp the #gpart which crossed the lightcone
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ * @param the #lightcone_neutrino_data struct to update
  */
 int lightcone_store_neutrino(const struct engine *e,
                              const struct gpart *gp, const double a_cross,

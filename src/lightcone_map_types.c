@@ -37,7 +37,15 @@
 #include <chealpix.h>
 #endif
 
-
+/**
+ * @brief Make a healpix map of projected mass in each pixel
+ *
+ * @param map the #lightcone_map structure
+ * @param e the #engine structure
+ * @param gp the #gpart to add to the map
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ */
 void lightcone_map_total_mass(struct lightcone_map *map, const struct engine *e,
                               const struct gpart *gp, const double a_cross,
                               const double x_cross[3]) {
@@ -84,6 +92,15 @@ void lightcone_map_total_mass(struct lightcone_map *map, const struct engine *e,
 }
 
 
+/**
+ * @brief Make a healpix map of projected gas mass in each pixel
+ *
+ * @param map the #lightcone_map structure
+ * @param e the #engine structure
+ * @param gp the #gpart to add to the map
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ */
 void lightcone_map_gas_mass(struct lightcone_map *map, const struct engine *e,
                             const struct gpart *gp, const double a_cross,
                             const double x_cross[3]) {
@@ -114,6 +131,15 @@ void lightcone_map_gas_mass(struct lightcone_map *map, const struct engine *e,
 }
 
 
+/**
+ * @brief Make a healpix map of projected neutrino mass in each pixel
+ *
+ * @param map the #lightcone_map structure
+ * @param e the #engine structure
+ * @param gp the #gpart to add to the map
+ * @param a_cross expansion factor at which the particle crosses the lightcone
+ * @param x_cross comoving coordinates at which the particle crosses the lightcone
+ */
 void lightcone_map_neutrino_mass(struct lightcone_map *map, const struct engine *e,
                                  const struct gpart *gp, const double a_cross,
                                  const double x_cross[3]) {
