@@ -21,6 +21,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
