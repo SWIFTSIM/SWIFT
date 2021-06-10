@@ -72,6 +72,9 @@ void lightcone_map_init(struct lightcone_map *map, const int nside,
   error("Can't make healpix maps without healpix library!");
 #endif
 
+  /* Determine the area of a pixel */
+  map->pixel_area_steradians = 4*M_PI/(map->total_nr_pix);
+
   /* Determine which pixels are stored on which rank:
      put pix_per_rank on each node with any extra assigned to
      the last node. This makes it easy to convert a pixel index
