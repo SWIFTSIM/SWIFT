@@ -292,14 +292,13 @@ double comoving_distance_integrand(double a, void *param) {
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_m;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
   const double w_a = c->w_a;
   const double H0 = c->H0;
   const double const_speed_light_c = c->const_speed_light_c;
-
   const double a_inv = 1. / a;
   const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
   const double H = H0 * E_z;
