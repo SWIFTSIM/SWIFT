@@ -31,6 +31,8 @@ enum lossy_compression_schemes {
   compression_write_d_scale_1,     /*!< D-scale filter of magnitude 10^1 */
   compression_write_d_scale_2,     /*!< D-scale filter of magnitude 10^2 */
   compression_write_d_scale_3,     /*!< D-scale filter of magnitude 10^3 */
+  compression_write_d_scale_4,     /*!< D-scale filter of magnitude 10^4 */
+  compression_write_d_scale_5,     /*!< D-scale filter of magnitude 10^5 */
   compression_write_d_scale_6,     /*!< D-scale filter of magnitude 10^6 */
   compression_write_f_mantissa_9,  /*!< Conversion to 9-bits mantissa float */
   compression_write_f_mantissa_13, /*!< Conversion to 13-bits mantissa float */

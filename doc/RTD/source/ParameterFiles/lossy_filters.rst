@@ -97,6 +97,8 @@ SWIFT implements 4 variants of this filter:
  * ``DScale1`` scales by :math:`10^1`
  * ``DScale2`` scales by :math:`10^2`
  * ``DScale3`` scales by :math:`10^3`
+ * ``DScale4`` scales by :math:`10^4`
+ * ``DScale5`` scales by :math:`10^5`
  * ``DScale6`` scales by :math:`10^6`
 
 An example application is to store the positions with ``pc`` accuracy in
@@ -104,8 +106,8 @@ simulations that use ``Mpc`` as their base unit by using the ``DScale6``
 filter.
 
 The compression rate of these filters depends on the data. On an
-EAGLE-like simulation, compressing the positions from ``Mpc`` to ``pc`` (via
-``Dscale6``) leads to rate of around 2.2x.
+EAGLE-like simulation (100 Mpc box), compressing the positions from ``Mpc`` to
+``pc`` (via ``Dscale6``) leads to rate of around 2.2x.
 
 Modified floating-point representation filters
 ----------------------------------------------
