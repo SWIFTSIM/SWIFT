@@ -20,12 +20,13 @@
 /* Config parameters. */
 #include "../config.h"
 
+#ifdef HAVE_HDF5
+
 /* Local headers */
 #include "engine.h"
 #include "fof.h"
 #include "hydro_io.h"
-
-#ifdef HAVE_HDF5
+#include "version.h"
 
 void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                            const long long num_groups_total,
@@ -55,6 +56,14 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
 
+  /* We write rank 0's hostname so that it is uniform across all files. */
+  char systemname[256] = {0};
+  if (e->nodeID == 0) sprintf(systemname, "%s", hostname());
+#ifdef WITH_MPI
+  MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+#endif
+  io_write_attribute_s(h_grp, "System", systemname);
+
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
 
@@ -73,7 +82,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   struct tm* timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
-  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+  io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */

@@ -66,6 +66,11 @@ struct collectgroup1 {
 
   /* Flag to determine if lightcone maps should be updated this step */
   int flush_lightcone_maps;
+
+#ifdef WITH_CSDS
+  /* Filesize used by the CSDS (does not correspond to the allocated one) */
+  float csds_file_size_gb;
+#endif
 };
 
 void collectgroup_init(void);
@@ -81,7 +86,8 @@ void collectgroup1_init(
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh, float runtime, int flush_lightcone_maps);
+    const struct star_formation_history sfh, float runtime, int flush_lightcone_maps,
+    float csds_file_size_gb);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);

@@ -1749,6 +1749,9 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
         "Cannot generate gas from ICs if the initial temperature is set to 0. "
         "Need to set 'SPH:initial_temperature' to a sensible value.");
 
+  if (cosmo->Omega_b == 0.)
+    error("Cannot generate gas from ICs if Omega_b is set to 0.");
+
   if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
@@ -1812,11 +1815,12 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   bzero(parts, s->nr_parts * sizeof(struct part));
 
   /* Compute some constants */
-  const double mass_ratio = cosmo->Omega_b / cosmo->Omega_m;
-  const double bg_density = cosmo->Omega_m * cosmo->critical_density_0;
+  const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+  const double mass_ratio = cosmo->Omega_b / Omega_m;
+  const double bg_density = Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;
 
-  message("%zd", current_nr_gparts);
+  // message("%zd", current_nr_gparts);
 
   /* Update the particle properties */
   size_t j = 0;
@@ -1922,31 +1926,59 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
  *
  * @param s The #space.
  * @param cosmo The current cosmology model.
+ * @param with_hydro Are we running with hydro switched on?
  * @param rank The MPI rank of this #space.
  */
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
-                           int rank) {
+                           const int with_hydro, const int rank,
+                           const int check_neutrinos) {
 
   struct gpart *gparts = s->gparts;
   const size_t nr_gparts = s->nr_gparts;
 
   /* Sum up the mass in this space */
-  double mass = 0.;
+  double mass_cdm = 0.;
+  double mass_b = 0.;
+  double mass_nu = 0.;
   for (size_t i = 0; i < nr_gparts; ++i) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[i].time_bin == time_bin_not_created)
       error("Found an extra particle when checking cosmology");
 #endif
-    mass += gparts[i].mass;
+    switch (gparts[i].type) {
+      case swift_type_dark_matter:
+      case swift_type_dark_matter_background:
+        mass_cdm += gparts[i].mass;
+        break;
+      case swift_type_neutrino:
+        mass_nu += gparts[i].mass;
+        break;
+      case swift_type_gas:
+      case swift_type_stars:
+      case swift_type_black_hole:
+      case swift_type_sink:
+        mass_b += gparts[i].mass;
+        break;
+      default:
+        error("Invalid particle type");
+    }
   }
 
 /* Reduce the total mass */
 #ifdef WITH_MPI
-  double total_mass;
-  MPI_Reduce(&mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  double total_mass_cdm;
+  double total_mass_b;
+  double total_mass_nu;
+  MPI_Reduce(&mass_cdm, &total_mass_cdm, 1, MPI_DOUBLE, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+  MPI_Reduce(&mass_b, &total_mass_b, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&mass_nu, &total_mass_nu, 1, MPI_DOUBLE, MPI_SUM, 0,
+             MPI_COMM_WORLD);
 #else
-  double total_mass = mass;
+  double total_mass_cdm = mass_cdm;
+  double total_mass_b = mass_b;
+  double total_mass_nu = mass_nu;
 #endif
 
   if (rank == 0) {
@@ -1962,22 +1994,44 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     /* Critical density at z=0 */
     const double rho_crit0 = cosmo->critical_density * H0 * H0 / (H * H);
 
-    /* Compute the mass density */
-    const double Omega_sim = (total_mass / volume) / rho_crit0;
+    /* Compute the mass densities */
+    const double Omega_particles_cdm = (total_mass_cdm / volume) / rho_crit0;
+    const double Omega_particles_b = (total_mass_b / volume) / rho_crit0;
+    const double Omega_particles_nu = (total_mass_nu / volume) / rho_crit0;
 
-    /* The density required to match the cosmology */
-    double Omega_cosmo;
-    if (s->with_neutrinos)
-      Omega_cosmo = cosmo->Omega_m + cosmo->Omega_nu_0;
-    else
-      Omega_cosmo = cosmo->Omega_m;
+    const double Omega_particles_m = Omega_particles_cdm + Omega_particles_b;
 
-    if (fabs(Omega_sim - Omega_cosmo) > 1e-3)
+    /* Expected matter density */
+    const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+
+    if (with_hydro && fabs(Omega_particles_cdm - cosmo->Omega_cdm) > 1e-3)
       error(
-          "The matter content of the simulation does not match the cosmology "
-          "in the parameter file cosmo.Omega_m=%e Omega_particles=%e. Are you "
-          "running with neutrinos? Then account for cosmo.Omega_nu_0=%e too.",
-          cosmo->Omega_m, Omega_sim, cosmo->Omega_nu_0);
+          "The cold dark matter content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_cdm = %e particles "
+          "Omega_cdm = %e",
+          cosmo->Omega_cdm, Omega_particles_cdm);
+
+    if (with_hydro && fabs(Omega_particles_b - cosmo->Omega_b) > 1e-3)
+      error(
+          "The baryon content of the simulation does not match the cosmology "
+          "in the parameter file: cosmo.Omega_b = %e particles Omega_b = %e",
+          cosmo->Omega_b, Omega_particles_b);
+
+    if (check_neutrinos && fabs(Omega_particles_nu - cosmo->Omega_nu_0) > 1e-3)
+      error(
+          "The massive neutrino content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_nu = %e particles "
+          "Omega_nu = %e",
+          cosmo->Omega_nu_0, Omega_particles_nu);
+
+    if (fabs(Omega_particles_m - Omega_m) > 1e-3)
+      error(
+          "The total matter content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_m = %e particles "
+          "Omega_m = %e \n cosmo: Omega_b=%e Omega_cdm=%e \n "
+          "particles: Omega_b=%e Omega_cdm=%e",
+          Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
+          Omega_particles_b, Omega_particles_cdm);
   }
 }
 

@@ -172,6 +172,8 @@ struct csds_part_data {
 };
 
 /* Function prototypes. */
+float csds_get_current_filesize_used_gb(const struct csds_writer *log,
+                                        const struct engine *e);
 void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
                             int first_log);
 void csds_log_part(struct csds_writer *log, const struct part *p,
@@ -199,8 +201,7 @@ void csds_init(struct csds_writer *log, const struct engine *e,
 void csds_free(struct csds_writer *log);
 void csds_log_timestamp(struct csds_writer *log, integertime_t t, double time,
                         size_t *offset);
-void csds_ensure_size(struct csds_writer *log, size_t total_nr_parts,
-                      size_t total_nr_gparts, size_t total_nr_sparts);
+void csds_ensure_size(struct csds_writer *log, const struct engine *e);
 void csds_write_file_header(struct csds_writer *log);
 
 int csds_read_part(const struct csds_writer *log, struct part *p,

@@ -37,7 +37,7 @@
 __attribute__((always_inline)) INLINE static void rt_set_stellar_emission_rate(
     struct spart *restrict sp, double age_beg, double age_end) {
 
-  sp->rt_data.emission_rate_set += 1;
+  sp->rt_data.debug_emission_rate_set += 1;
 }
 
 #endif /* SWIFT_RT_STELLAR_EMISSION_RATE_DEBUG_H */

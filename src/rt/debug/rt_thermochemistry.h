@@ -34,14 +34,14 @@
 __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     struct part *restrict p) {
 
-  if (!p->rt_data.injection_done)
+  if (!p->rt_data.debug_injection_done)
     error("Trying to do thermochemistry when injection step hasn't been done");
-  if (!p->rt_data.gradients_done)
+  if (!p->rt_data.debug_gradients_done)
     error("Trying to do thermochemistry when gradient step hasn't been done");
-  if (!p->rt_data.transport_done)
+  if (!p->rt_data.debug_transport_done)
     error("Trying to do thermochemistry when transport step hasn't been done");
 
-  p->rt_data.thermochem_done += 1;
+  p->rt_data.debug_thermochem_done += 1;
 }
 
 #endif /* SWIFT_RT_THERMOCHEMISTRY_DEBUG_H */

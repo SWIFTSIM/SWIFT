@@ -861,6 +861,10 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
                          const double time, const double a, const double z,
                          const int step) {
 
+  /* Compute the total potential */
+  double E_pot = stats->E_pot_ext + stats->E_pot_self;
+
+  /* Write to the file */
   fprintf(
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
@@ -868,8 +872,8 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       "%14e %14e %14e %14e %14e %14e %14e\n",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
-      stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int,
-      stats->E_pot, stats->E_rad, stats->entropy, stats->centre_of_mass[0],
+      stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int, E_pot,
+      stats->E_rad, stats->entropy, stats->centre_of_mass[0],
       stats->centre_of_mass[1], stats->centre_of_mass[2], stats->mom[0],
       stats->mom[1], stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
       stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,

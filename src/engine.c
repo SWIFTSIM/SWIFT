@@ -129,6 +129,8 @@ const char *engine_policy_names[] = {"none",
                                      "sink",
                                      "rt"};
 
+const int engine_default_snapshot_subsample[swift_type_count] = {0};
+
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
@@ -1791,7 +1793,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    csds_ensure_size(e->csds, s->nr_parts, s->nr_gparts, s->nr_sparts);
+    csds_ensure_size(e->csds, e);
     csds_write_description(e->csds, e);
   }
 #endif
@@ -2207,7 +2209,7 @@ void engine_step(struct engine *e) {
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    csds_ensure_size(e->csds, e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts);
+    csds_ensure_size(e->csds, e);
   }
 #endif
 
@@ -2396,7 +2398,7 @@ void engine_step(struct engine *e) {
   space_check_unskip_flags(e->s);
 #endif
 
-#if defined(SWIFT_DEBUG_CHECKS) && defined RT_DEBUG
+#if defined(SWIFT_RT_DEBUG_CHECKS)
   /* if we're running the debug RT scheme, do some checks after every step */
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);
@@ -2417,6 +2419,12 @@ void engine_step(struct engine *e) {
 
   if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
     error("Obtained a time-step of size 0");
+#endif
+
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds && e->verbose)
+    message("The CSDS currently uses %f GB of storage",
+            e->collect_group1.csds_file_size_gb);
 #endif
 
   /********************************************************/
@@ -2796,7 +2804,7 @@ void engine_init(
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
-    struct gravity_props *gravity, const struct stars_props *stars,
+    struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos, struct feedback_props *feedback,
     struct rt_props *rt, struct pm_mesh *mesh,
@@ -2845,6 +2853,11 @@ void engine_init(
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   parser_get_opt_param_string(params, "Snapshots:subdir", e->snapshot_subdir,
                               engine_default_snapshot_subdir);
+  parser_get_opt_param_int_array(params, "Snapshots:subsample",
+                                 swift_type_count, e->snapshot_subsample);
+  parser_get_opt_param_float_array(params, "Snapshots:subsample_fraction",
+                                   swift_type_count,
+                                   e->snapshot_subsample_fraction);
   e->snapshot_run_on_dump =
       parser_get_opt_param_int(params, "Snapshots:run_on_dump", 0);
   if (e->snapshot_run_on_dump) {
@@ -3308,9 +3321,11 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
+    free((void *)e->rt_props);
     free((void *)e->sink_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
+    free((void *)e->neutrino_properties);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);

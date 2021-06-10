@@ -63,8 +63,8 @@ def check_hydro_sanity(snapdata):
 
         # has a particle been called at least once?
         called = (
-            gas.RTCallsIactTransport[:]
-            + gas.RTCallsIactGradient[:]
+            gas.RTCallsIactTransportInteraction[:]
+            + gas.RTCallsIactGradientInteraction[:]
             + gas.InjectionDone[:]
             + gas.GradientsDone[:]
             + gas.TransportDone[:]
@@ -78,7 +78,6 @@ def check_hydro_sanity(snapdata):
         mask = gas.InjectionDone != 1
         fishy = np.logical_and(mask, called)
         if fishy.any():
-            print(fishy)
             # has particle been active in the meantime?
             print("- checking hydro sanity pt2; snapshot", snap.snapnr)
             if np.count_nonzero(mask) == npart:
@@ -171,11 +170,27 @@ def check_hydro_sanity(snapdata):
         # at least the number of calls to transport interactions
         # in RT interactions
         # --------------------------------------------------------------
+        if (
+            gas.RTCallsIactTransportInteraction < gas.RTCallsIactGradientInteraction
+        ).any():
+            print("- checking hydro sanity pt2; snapshot", snap.snapnr)
+            print(
+                "--- Found RT transport calls iact < gradient calls iact:",
+                np.count_nonzero(
+                    gas.RTCallsIactTransport < gas.RTCallsIactGradientInteraction
+                ),
+                "/",
+                npart,
+            )
+            if break_on_diff:
+                quit()
         if (gas.RTCallsIactTransport < gas.RTCallsIactGradient).any():
             print("- checking hydro sanity pt2; snapshot", snap.snapnr)
             print(
                 "--- Found RT transport calls < gradient calls:",
-                np.count_nonzero(gas.RTCallsIactTransport < gas.RTCallsIactGradient),
+                np.count_nonzero(
+                    gas.RTCallsIactTransport < gas.RTCallsIactGradientInteraction
+                ),
                 "/",
                 npart,
             )

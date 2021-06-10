@@ -35,15 +35,37 @@ this sub-snapshot file when the user asked for distributed snapshots (see
 ``NumPart_Total``. Note however, that there is no high-word for this field. We
 store it as a 64-bits integer [#f1]_. The field ``NumFilesPerSnapshot`` specifies the
 number of sub-snapshot files (always 1 unless a distributed snapshot was asked
-for). 
+for) and ``ThisFile`` the id of that specific file (always 0 unless a distributed
+snapshot was asked for). 
 
 The field ``InitialMassTable`` contains the *mean* initial mass of each of the
 particle types present in the initial conditions. This can be used as estimator
 of the mass resolution of the run. The masses are expressed in internal units.
 
+The field ``OutputType`` contains information about the kind of output this
+snapshot is. The possible values are:
+
++---------------------+-----------------------------------------------------+
+| OutputType          | Definition                                          |
++=====================+=====================================================+
+| ``FullVolume``      | Regular vanilla snapshot                            |
++---------------------+-----------------------------------------------------+
+| ``SubSampled``      | Snapshot where some particle types were sub-sampled |
++---------------------+-----------------------------------------------------+
+| ``LineOfSight``     | Line-of-sight snapshot                              |
++---------------------+-----------------------------------------------------+
+| ``FOF``             | Friends-Of-Friends Halo Catalogue                   |
++---------------------+-----------------------------------------------------+
+
+
 The ``RunName`` field contains the name of the simulation that was specified as
 the ``run_name`` in the :ref:`Parameters_meta_data` section of the YAML
 parameter file.
+
+The ``System`` field contains the name of the machine where the MPI rank 0 was
+placed. This name is whatever UNIX's ``gethostname()`` function returns on that
+system. Similarly, the ``SnapshotDate`` field contains the date and time when
+the file was written.
 
 The ``TimeBase_dloga`` field contains the change in logarithm of the
 scale-factor corresponding to a time-step of length 1 on the integer
@@ -53,6 +75,17 @@ the smallest time-step size (in internal units) that the code can take. This
 would be the increase in time a particle in the time-bin one would have. Note
 that in cosmological runs this quantity evolves with redhsift as the (logarithm
 of the) scale-factor is used on the integer time-line.
+
+The field ``SelectOutput`` will contain the name of the
+:ref:`Output_selection_label` used for this specific output and will take the value
+``Default`` if no such selection (or the default one) was used.
+
+If a sub-sampling of the particle fields was used, then the header additionally
+contains a field describing the fraction of the particles of each type that were
+written to the snapshot. Note, however, that when sub-sampling the fields 
+``NumPart_Total``, ``NumPart_HighWord``, and ``NumPart_ThisFile`` contain the number
+of particles actually written (i.e. after sub-sampling), not the total number of
+particles in the run.
 
 Meta-data about the code and run
 --------------------------------
@@ -364,6 +397,10 @@ over the z axis, then y axis and x is the slowest varying dimension.
 In the case of a single-file snapshot, the ``Files`` array is just an array of
 zeroes since all the particles will be in the 0-th file. Note also that in the
 case of a multi-files snapshot, a cell is always contained in a single file.
+
+If a snapshot used a sub-sampled output, then the counts and offsets are
+adjusted accordingly and correspond to the actual content of the file
+(i.e. after the sub-sampling was applied).
 
 As an example, if one is interested in retriving all the densities of the gas
 particles in the cell around the position `[1, 1, 1]` in a single-file

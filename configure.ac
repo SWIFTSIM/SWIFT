@@ -1722,7 +1722,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, sphenix, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -1764,6 +1764,9 @@ case "$with_hydro" in
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
+   ;;
+   gasoline)
+      AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
    ;;
    anarchy-du)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
@@ -2435,7 +2438,9 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 #  Radiative transfer scheme
 AC_ARG_WITH([rt],
    [AS_HELP_STRING([--with-rt=<scheme>],
-      [Radiative transfer scheme to use @<:@none, M1closure, debug default: none@:>@. This is still work in progress, currently no scheme works.]
+      [Radiative transfer scheme to use @<:@none, GEAR_*, debug default: none@:>@. 
+      This is still work in progress, currently no scheme works. 
+      For GEAR, you need to provide the number of photon groups (e.g. GEAR_4)]
    )],
    [with_rt="$withval"],
    [with_rt="none"]
@@ -2445,16 +2450,34 @@ case "$with_rt" in
    none)
       AC_DEFINE([RT_NONE], [1], [No radiative transfer scheme])
    ;;
-   M1closure)
-      AC_DEFINE([RT_M1], [1], [M1 closure scheme])
+   GEAR_*)
+      AC_DEFINE([RT_GEAR], [1], [GEAR M1 closure scheme])
+      number_group=${with_rt:5}
+      AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
+
+      if test "$number_group" == 0; then
+          AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
+      fi
+      if ! test $number_group -eq $number_group; then
+          # abuse -eq to check whether $number_group is an integer. -eq
+          # only works with those.
+          AC_MSG_ERROR([GEAR-RT: Cannot work with non-integer photon groups])
+      fi
+
+      if test "$enable_debugging_checks" = "yes"; then
+          AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
+      fi
+
    ;;
    debug)
       AC_DEFINE([RT_DEBUG], [1], [debugging scheme])
+      AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
    ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])
    ;;
 esac
+
 
 AC_ARG_ENABLE([rt-hydro-controlled-injection],
     [AS_HELP_STRING([--enable-rt-hydro-controlled-injection],
@@ -2470,7 +2493,8 @@ AC_ARG_ENABLE([rt-hydro-controlled-injection],
 rt_extra_msg="" # extra message for ./configure printout
 if test "$with_hydro_controlled_injection" = "yes"; then
     rt_extra_msg=", hydro controlled injection"
-    AC_DEFINE([RT_HYDRO_CONTROLLED_INJECTION], 1, [Enable hydro controlled radiative transfer injection scheme])
+    AC_DEFINE([RT_HYDRO_CONTROLLED_INJECTION], 1, 
+        [Enable hydro controlled radiative transfer injection scheme])
 fi
 
 

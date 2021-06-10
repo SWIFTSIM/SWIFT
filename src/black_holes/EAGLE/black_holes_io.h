@@ -152,7 +152,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 42;
+  *num_fields = 43;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -247,7 +247,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
         "Scale-factors at which the black holes last had a minor merger.");
   } else {
     list[15] = io_make_output_field(
-        "LastMinorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        "LastMinorMergerTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_minor_merger_time,
         "Times at which the black holes last had a minor merger.");
   }
@@ -259,7 +259,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
         "Scale-factors at which the black holes last had a major merger.");
   } else {
     list[16] = io_make_output_field(
-        "LastMajorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        "LastMajorMergerTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_major_merger_time,
         "Times at which the black holes last had a major merger.");
   }

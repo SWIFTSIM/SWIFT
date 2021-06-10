@@ -33,9 +33,9 @@ parameters:
 .. code:: YAML
 
    Cosmology:    # Planck13
-     Omega_m:        0.307
+     Omega_cdm:      0.2587481
      Omega_lambda:   0.693
-     Omega_b:        0.0455
+     Omega_b:        0.0482519
      h:              0.6777
      a_begin:        0.0078125     # z = 127
 
@@ -146,7 +146,7 @@ cosmological model. The expanded :math:`\Lambda\rm{CDM}` parameters governing th
 background evolution of the Universe need to be specified here. These are:
 
 * The reduced Hubble constant: :math:`h`: ``h``,
-* The matter density parameter :math:`\Omega_m`: ``Omega_m``,
+* The cold dark matter density parameter :math:`\Omega_cdm`: ``Omega_cdm``,
 * The cosmological constant density parameter :math:`\Omega_\Lambda`: ``Omega_lambda``,
 * The baryon density parameter :math:`\Omega_b`: ``Omega_b``,
 * The radiation density parameter :math:`\Omega_r`: ``Omega_r``.
@@ -202,18 +202,18 @@ use the following parameters:
 
 .. code:: YAML
 
-   Cosmology:
+   Cosmology:        # Planck13 (EAGLE flavour)
      a_begin:        0.0078125     # z = 127
      a_end:          1.0           # z = 0
      h:              0.6777
-     Omega_m:        0.307
+     Omega_cdm:      0.2587481
      Omega_lambda:   0.693
      Omega_b:        0.0482519
      Omega_r:        0.            # (Optional)
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
 
-When running a non-cosmological simulation (i.e. without the ``-c`` run-time
+When running a non-cosmological simulation (i.e. without the ``--cosmology`` run-time
 flag) this section of the YAML file is entirely ignored.
 
 .. _Parameters_gravity:
@@ -792,6 +792,21 @@ of MPI ranks used in a given run. The individual files of snapshot 1234 will
 have the name ``base_name_1234.x.hdf5`` where when running on N MPI ranks, ``x``
 runs from 0 to N-1.
 
+Users can optionally ask to randomly sub-sample the particles in the snapshots.
+This is specified for each particle type individually:
+
+* Whether to switch on sub-sampling: ``subsample``   
+* Whether to switch on sub-sampling: ``subsample_fraction`` 
+
+These are arrays of 7 elements defaulting to seven 0s if left unspecified. Each
+entry corresponds to the particle type used in the initial conditions and
+snapshots [#f3]_.  The ``subsample`` array is made of ``0`` and ``1`` to indicate which
+particle types to subsample. The other array is a float between ``0`` and ``1``
+indicating the fraction of particles to keep in the outputs.  Note that the
+selection of particles is selected randomly for each individual
+snapshot. Particles can hence not be traced back from output to output when this
+is switched on.
+  
 Users can optionally specify the level of compression used by the HDF5 library
 using the parameter:
 
@@ -855,6 +870,7 @@ would have:
      time_first:          0.01
      delta_time:          0.005
      invoke_stf:          0
+     invoke_fof:          1
      compression:         3
      distributed:         1
      UnitLength_in_cgs:   1.  # Use cm in outputs
@@ -862,6 +878,10 @@ would have:
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
      UnitCurrent_in_cgs:  1.  # Use Ampere in outputs
      UnitTemp_in_cgs:     1.  # Use Kelvin in outputs
+     subsample:           [0, 1, 0, 0, 0, 0, 1]   # Sub-sample the DM and neutrinos
+     subsample_fraction:  [0, 0.01, 0, 0, 0, 0, 0.1]  # Write 1% of the DM parts and 10% of the neutrinos
+     run_on_dump:         1
+     dump_command:        ./submit_analysis.sh
 
 Some additional specific options for the snapshot outputs are described in the
 following pages:
@@ -1029,22 +1049,34 @@ parameter sets the thermal energy per unit mass.
 
    EoS:
      isothermal_internal_energy: 20.26784  # Thermal energy per unit mass for the case of isothermal equation of state (in internal units).
-
-     planetary_use_Til:    1   # (Optional) Whether to prepare the Tillotson EoS
-     planetary_use_HM80:   0   # (Optional) Whether to prepare the Hubbard & MacFarlane (1980) EoS
-     planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EoS
-     planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EoS
-                               # (Optional) Table file paths
-     planetary_HM80_HHe_table_file:            ./EoSTables/HM80_HHe.txt
-     planetary_HM80_ice_table_file:            ./EoSTables/HM80_ice.txt
-     planetary_HM80_rock_table_file:           ./EoSTables/HM80_rock.txt
-     planetary_SESAME_iron_table_file:         ./EoSTables/SESAME_iron_2140.txt
-     planetary_SESAME_basalt_table_file:       ./EoSTables/SESAME_basalt_7530.txt
-     planetary_SESAME_water_table_file:        ./EoSTables/SESAME_water_7154.txt
-     planetary_SS08_water_table_file:          ./EoSTables/SS08_water.txt
+     # Select which planetary EoS material(s) to enable for use.
+     planetary_use_idg_def:    0               # Default ideal gas, material ID 0
+     planetary_use_Til_iron:       1           # Tillotson iron, material ID 100
+     planetary_use_Til_granite:    1           # Tillotson granite, material ID 101
+     planetary_use_Til_water:      0           # Tillotson water, material ID 102
+     planetary_use_Til_basalt:     0           # Tillotson basalt, material ID 103
+     planetary_use_HM80_HHe:   0               # Hubbard & MacFarlane (1980) hydrogen-helium atmosphere, material ID 200
+     planetary_use_HM80_ice:   0               # Hubbard & MacFarlane (1980) H20-CH4-NH3 ice mix, material ID 201
+     planetary_use_HM80_rock:  0               # Hubbard & MacFarlane (1980) SiO2-MgO-FeS-FeO rock mix, material ID 202
+     planetary_use_SESAME_iron:    0           # SESAME iron 2140, material ID 300
+     planetary_use_SESAME_basalt:  0           # SESAME basalt 7530, material ID 301
+     planetary_use_SESAME_water:   0           # SESAME water 7154, material ID 302
+     planetary_use_SS08_water:     0           # Senft & Stewart (2008) SESAME-like water, material ID 303
+     planetary_use_ANEOS_forsterite:   0       # ANEOS forsterite (Stewart et al. 2019), material ID 400
+     planetary_use_ANEOS_iron:         0       # ANEOS iron (Stewart 2020), material ID 401
+     planetary_use_ANEOS_Fe85Si15:     0       # ANEOS Fe85Si15 (Stewart 2020), material ID 402
+     # Tablulated EoS file paths.
+     planetary_HM80_HHe_table_file:    ./EoSTables/HM80_HHe.txt
+     planetary_HM80_ice_table_file:    ./EoSTables/HM80_ice.txt
+     planetary_HM80_rock_table_file:   ./EoSTables/HM80_rock.txt
+     planetary_SESAME_iron_table_file:     ./EoSTables/SESAME_iron_2140.txt
+     planetary_SESAME_basalt_table_file:   ./EoSTables/SESAME_basalt_7530.txt
+     planetary_SESAME_water_table_file:    ./EoSTables/SESAME_water_7154.txt
+     planetary_SS08_water_table_file:      ./EoSTables/SS08_water.txt
      planetary_ANEOS_forsterite_table_file:    ./EoSTables/ANEOS_forsterite_S19.txt
      planetary_ANEOS_iron_table_file:          ./EoSTables/ANEOS_iron_S20.txt
      planetary_ANEOS_Fe85Si15_table_file:      ./EoSTables/ANEOS_Fe85Si15_S20.txt
+
 
 .. _Parameters_fof:
 
@@ -1582,14 +1614,6 @@ and all the gparts are not active during the timestep of the snapshot dump, the
 exact forces computation is performed on the first timestep at which all the
 gparts are active after that snapshot output timestep.
 
-
-------------------------
-
-.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
-
-
-.. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
-
 Neutrinos
 ---------
 
@@ -1610,3 +1634,13 @@ A complete specification of the model looks like
     generate_ics:  1    # Replace neutrino particle velocities with random Fermi-Dirac momenta at the start
     use_delta_f:   1    # Use the delta-f method for shot noise reduction
     neutrino_seed: 1234 # A random seed used for the Fermi-Dirac momenta
+
+
+------------------------
+    
+.. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
+
+
+.. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
+
+.. [#f3] The mapping is 0 --> gas, 1 --> dark matter, 2 --> background dark matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.

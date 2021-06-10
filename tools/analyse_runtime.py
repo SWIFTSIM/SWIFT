@@ -93,6 +93,7 @@ tasks = [
     "sink",
     "neutrino",
     "RT",
+    "CSDS",
     "total",
 ]
 

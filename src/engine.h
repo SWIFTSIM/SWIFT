@@ -317,6 +317,8 @@ struct engine {
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   char snapshot_subdir[PARSER_MAX_LINE_SIZE];
   char snapshot_dump_command[PARSER_MAX_LINE_SIZE];
+  int snapshot_subsample[swift_type_count];
+  float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
   int snapshot_compression;
@@ -451,7 +453,7 @@ struct engine {
   const struct entropy_floor_properties *entropy_floor;
 
   /* Properties of the star model */
-  const struct stars_props *stars_properties;
+  struct stars_props *stars_properties;
 
   /* Properties of the black hole model */
   const struct black_holes_props *black_holes_properties;
@@ -596,7 +598,7 @@ void engine_init(
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
-    struct gravity_props *gravity, const struct stars_props *stars,
+    struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos, struct feedback_props *feedback,
     struct rt_props *rt, struct pm_mesh *mesh,

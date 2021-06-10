@@ -33,6 +33,7 @@
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
 #include "periodic.h"
+#include "version.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -483,6 +484,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_d(h_grp, "Scale-factor", e->cosmology->a);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+  io_write_attribute_s(h_grp, "System", hostname());
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -502,7 +504,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
-  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+  io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */

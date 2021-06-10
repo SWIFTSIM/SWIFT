@@ -15,7 +15,7 @@ Cosmology:
   h:              0.5        
   a_begin:        0.047619048        # z_ini = 20
   a_end:          1.0                # z_end = 0
-  Omega_m:        1.0        
+  Omega_cdm:      0.9        
   Omega_lambda:   0.0        
   Omega_b:        0.1        
   

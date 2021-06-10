@@ -211,9 +211,11 @@ void engine_config(int restart, int fof, struct engine *e,
 
       if (e->nodeID == 0) {
         float mass_mult = e->neutrino_mass_conversion_factor;
+        float deg_nu_tot = e->cosmology->deg_nu_tot;
         message("Neutrino mass multiplier: %.5e eV / U_M", mass_mult);
         message("Neutrino simulation particle masses in range: [%.4f, %.4f] eV",
-                min_max_mass[0] * mass_mult, min_max_mass[1] * mass_mult);
+                min_max_mass[0] * mass_mult / deg_nu_tot,
+                min_max_mass[1] * mass_mult / deg_nu_tot);
       }
     }
   }

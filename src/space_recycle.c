@@ -150,6 +150,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+#ifdef WITH_CSDS
+    c->csds = NULL;
+#endif
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -176,6 +179,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down_in = NULL;
     c->grav.down = NULL;
     c->grav.end_force = NULL;
+    c->grav.neutrino_weight = NULL;
     c->top = c;
     c->super = c;
     c->hydro.super = c;
