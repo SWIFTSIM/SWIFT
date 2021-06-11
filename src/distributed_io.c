@@ -162,6 +162,7 @@ void write_distributed_array(
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
   /* Create filters and set compression level if we have something to write */
+  char comp_buffer[32] = "None";
   if (N > 0) {
 
     /* Set chunk size */
@@ -173,7 +174,7 @@ void write_distributed_array(
     /* Are we imposing some form of lossy compression filter? */
     if (lossy_compression != compression_write_lossless)
       set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
-                                 props.name);
+                                 props.name, comp_buffer);
 
     /* Impose GZIP data compression */
     if (e->snapshot_compression > 0) {
@@ -233,6 +234,7 @@ void write_distributed_array(
   io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =

@@ -324,6 +324,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
     error("Error while setting checksum options for field '%s'.", props.name);
 
   /* Impose data compression */
+  char comp_buffer[32] = "None";
   if (e->snapshot_compression > 0) {
     h_err = H5Pset_shuffle(h_prop);
     if (h_err < 0)
@@ -373,6 +374,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =

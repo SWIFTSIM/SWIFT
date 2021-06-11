@@ -61,7 +61,7 @@ enum lossy_compression_schemes compression_scheme_from_name(const char* name);
 
 void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
                                 const enum lossy_compression_schemes comp,
-                                const char* field_name);
+                                const char* field_name, char filter_name[32]);
 
 #endif /* HAVE_HDF5 */
 

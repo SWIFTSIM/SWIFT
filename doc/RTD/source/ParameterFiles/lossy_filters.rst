@@ -23,6 +23,10 @@ on the user to choose wisely how they want to compress their data.*
 
 The filters are not applied when using parallel-hdf5.
 
+The name of any filter applied is carried by each individual field in
+the snapshot using the meta-data attribute ``Lossy compression
+filter``.
+
 The available filters are listed below.
 
 N-bit filters for long long integers
@@ -52,7 +56,7 @@ SWIFT implements 5 variants of this filter:
 
 Note that if the data written to disk is requiring more than the N
 bits then part of the information written to the snapshot will
-lost. SWIFT does not apply any verification before applying the
+lost. SWIFT **does not apply any verification** before applying the
 filter.
 
 Scaling filters for floating-point numbers
