@@ -4671,13 +4671,13 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Deal with outputs */
     if (e->policy & engine_policy_cosmology) {
 
-      if (e->delta_time_snapshot <= 1.)
-        error("Time between snapshots (%e) must be > 1.",
-              e->delta_time_snapshot);
+//      if (e->delta_time_snapshot <= 1.)
+//        error("Time between snapshots (%e) must be > 1.",
+//              e->delta_time_snapshot);
 
-      if (e->delta_time_statistics <= 1.)
-        error("Time between statistics (%e) must be > 1.",
-              e->delta_time_statistics);
+//      if (e->delta_time_statistics <= 1.)
+//        error("Time between statistics (%e) must be > 1.",
+//              e->delta_time_statistics);
 
       if (e->a_first_snapshot < e->cosmology->a_begin)
         error(

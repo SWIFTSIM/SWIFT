@@ -279,7 +279,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   } else {
 
     /* Safety check */
-    if (!(s->e->policy | engine_policy_cosmology))
+    if (!(s->e->policy & engine_policy_cosmology))
       error(
           "Attempting to run FoF on a simulation using cosmological "
           "information but cosmology was not initialised");

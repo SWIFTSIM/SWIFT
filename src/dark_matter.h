@@ -93,6 +93,9 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     dmp->sidm_data.sidm_events_per_timestep = 0.0f;
     dmp->sidm_data.max_sidm_events_per_timestep = 0.0f;
 
+    dmp->sidm_data.scatter_rate = 0.0f;
+    dmp->sidm_data.scatter_dt = 0.0f;
+
     /* Particle velocity */
     dmp->sidm_data.v_full[0] = dmp->v_full[0];
     dmp->sidm_data.v_full[1] = dmp->v_full[1];

@@ -137,6 +137,12 @@ struct sidm_dmpart_data {
 
     /*! Time step size of particle's drift */
     float dt_drift;
+
+    /* Particle's scatter rate */
+    float scatter_rate;
+
+    /* Cumulative timestep size for scatter rate calculation */
+    float scatter_dt;
 };
 
 void sidm_props_print(struct sidm_props* sidm_props);

@@ -1,4 +1,4 @@
-/*******************************************************************************
+ /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Camila Correa (camila.correa@uva.nl)
  *
@@ -929,18 +929,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
         
         /* Skip inhibited particles. */
         if (dmpart_is_inhibited(pi, e)) continue;
-        
-        /* Get i particle time-step */
-        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
-        double dti;
-        if (with_cosmology) {
-            dti = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                           ti_begin + ti_step);
-        } else {
-            dti = get_timestep(pi->time_bin, e->time_base);
-        }*/
-        
+
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
@@ -956,17 +945,7 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             
             /* Skip inhibited particles. */
             if (dmpart_is_inhibited(pj, e)) continue;
-            
-            /* Get j particle time-step */
-            /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
-            const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
-            double dtj;
-            if (with_cosmology) {
-                dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
-            } else {
-                dtj = get_timestep(pj->time_bin, e->time_base);
-            }*/
-            
+
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
@@ -1057,17 +1036,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Skip inhibited particles. */
         if (dmpart_is_inhibited(pi, e)) continue;
         
-        /* Get i particle time-step */
-        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
-        double dti;
-        if (with_cosmology) {
-            dti = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                           ti_begin + ti_step);
-        } else {
-            dti = get_timestep(pi->time_bin, e->time_base);
-        }*/
-        
         /* Get the particle position and radius. */
         double pix[3];
         for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
@@ -1083,18 +1051,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 /* Get a pointer to the jth particle. */
                 struct dmpart *restrict pj = &dmparts[indt[pjd]];
                 const float hj = pj->h;
-                
-                /* Get j particle time-step */
-                /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
-                const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
-                double dtj;
-                if (with_cosmology) {
-                    dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
-                                                   ti_begin_j + ti_step_j);
-                } else {
-                    dtj = get_timestep(pj->time_bin, e->time_base);
-                }*/
-                
+
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
                 float dx[3];
@@ -1128,17 +1085,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 if (dmpart_is_inhibited(pj, e)) continue;
                 
                 const float hj = pj->h;
-                
-                /* Get j particle time-step */
-                /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
-                const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
-                double dtj;
-                if (with_cosmology) {
-                    dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
-                                                   ti_begin_j + ti_step_j);
-                } else {
-                    dtj = get_timestep(pj->time_bin, e->time_base);
-                }*/
                 
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
@@ -1211,17 +1157,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         /* Get a hold of the ith part in ci. */
         struct dmpart *restrict pi = &dmparts[pid];
         
-        /* Get i particle time-step */
-        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
-        double dti;
-        if (with_cosmology) {
-            dti = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                           ti_begin + ti_step);
-        } else {
-            dti = get_timestep(pi->time_bin, e->time_base);
-        }*/
-        
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
@@ -1238,17 +1173,6 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
             const int pj_active = dmpart_is_active(pj, e);
-
-            /* Get j particle time-step */
-            /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
-            const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
-            double dtj;
-            if (with_cosmology) {
-                dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j,
-                                               ti_begin_j + ti_step_j);
-            } else {
-                dtj = get_timestep(pj->time_bin, e->time_base);
-            }*/
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -1365,16 +1289,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (dmpart_is_inhibited(pi, e)) continue;
 
-        /* Get i particle time-step */
-        /*const integertime_t ti_step = get_integer_timestep(pi->gpart->time_bin);
-        const integertime_t ti_begin = get_integer_time_begin(e->ti_current - 1, pi->gpart->time_bin);
-        double dti;
-        if (with_cosmology) {
-            dti = cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
-        } else {
-            dti = get_timestep(pi->time_bin, e->time_base);
-        }*/
-        
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
         const int pi_active = dmpart_is_active(pi, e);
@@ -1394,16 +1308,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
-            
-            /* Get j particle time-step */
-            /*const integertime_t ti_step_j = get_integer_timestep(pj->time_bin);
-            const integertime_t ti_begin_j = get_integer_time_begin(e->ti_current - 1, pj->time_bin);
-            double dtj;
-            if (with_cosmology) {
-                dtj = cosmology_get_delta_time(e->cosmology, ti_begin_j, ti_begin_j + ti_step_j);
-            } else {
-                dtj = get_timestep(pj->time_bin, e->time_base);
-            }*/
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),

@@ -200,8 +200,12 @@ INLINE static int sidm_write_dmparts(const struct dmpart* dmparts,
     list[7] = io_make_output_field("Cross_section", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f,
                                    dmparts, sidm_data.sigma,"DM particle cross section [internal units]");
 
-    list[8] = io_make_output_field_convert_dmpart("Velocity_dispersion", FLOAT, 1, UNIT_CONV_SPEED, 0.f, dmparts, convert_dmpart_velocity_dispersion,"Velocity dispersion at the position of the DM particle [internal units]");
+    list[8] = io_make_output_field_convert_dmpart("Velocity_dispersion", FLOAT, 1, UNIT_CONV_SPEED, 0.f,
+                                                  dmparts, convert_dmpart_velocity_dispersion,"Velocity dispersion at the position of the DM particle [internal units]");
 
+    /*list[9] = io_make_output_field("Scatter_rate", DOUBLE, 1, UNIT_CONV_DIFF_RATE, 0.f,
+                                   dmparts, sidm_data.scatter_rate,"DM particle scatter rate [internal units]");
+    */
   return 9;
     
 }
