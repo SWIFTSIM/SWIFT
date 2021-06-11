@@ -443,6 +443,7 @@ void prepare_array_parallel(
   //}
 
   /* Are we imposing some form of lossy compression filter? */
+  char comp_buffer[32] = "None";
   // if (lossy_compression != compression_write_lossless)
   //  set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
   //  props.name);
@@ -471,6 +472,7 @@ void prepare_array_parallel(
   io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =

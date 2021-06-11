@@ -64,14 +64,18 @@ enum lossy_compression_schemes compression_scheme_from_name(const char* name) {
  * @brief Sets the properties and type of an HDF5 dataspace to apply a given
  * lossy compression scheme.
  *
+ * The filter name is only updated if a filter was applied. If no lossy
+ * compression is chosen the string is not altered.
+ *
  * @param h_prop The properties of the dataspace.
  * @param h_type The type of the dataspace.
  * @param comp The lossy compression scheme to apply to this dataspace.
  * @param field_name The name of the field to write in the dataspace.
+ * @param filter_name (return) The name of the filter (if one is applied).
  */
 void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
                                 const enum lossy_compression_schemes comp,
-                                const char* field_name) {
+                                const char* field_name, char filter_name[32]) {
 
   if (comp == compression_do_not_write) {
     error(
@@ -401,6 +405,10 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
   }
 
   /* Other case: Do nothing! */
+
+  /* Finish by returning the filter name */
+  if (comp != compression_write_lossless)
+    snprintf(filter_name, 32, "%s", lossy_compression_schemes_names[comp]);
 }
 
 #endif /* HAVE_HDF5 */
