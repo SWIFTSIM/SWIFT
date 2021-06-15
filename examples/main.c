@@ -941,15 +941,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* And initialize the engine with the space and policies. */
-    if (myrank == 0) clocks_gettime(&tic);
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
-    if (myrank == 0) {
-      clocks_gettime(&toc);
-      message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
-              clocks_getunit());
-      fflush(stdout);
-    }
 
     /* Check if we are already done when given steps on the command-line. */
     if (e.step >= nsteps && nsteps > 0)
@@ -1416,7 +1409,6 @@ int main(int argc, char *argv[]) {
     if (with_rt) engine_policies |= engine_policy_rt;
 
     /* Initialize the engine with the space and policies. */
-    if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
                 N_total[swift_type_count], N_total[swift_type_sink],
                 N_total[swift_type_stars], N_total[swift_type_black_hole],
@@ -1430,13 +1422,6 @@ int main(int argc, char *argv[]) {
                 &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
-
-    if (myrank == 0) {
-      clocks_gettime(&toc);
-      message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
-              clocks_getunit());
-      fflush(stdout);
-    }
 
     /* Compute some stats for the star formation */
     if (with_star_formation) {
