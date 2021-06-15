@@ -2326,7 +2326,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Sort the gparts according to their cells. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts, s->dmparts, s->nr_dmparts,
+    space_gparts_sort(s->gparts, s->parts, s->sinks, s->sparts, s->bparts, s->dmparts, with_sidm,
                       g_index, cell_gpart_counts, s->nr_cells);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -4112,7 +4112,7 @@ void space_sinks_sort(struct sink *sinks, int *restrict ind,
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
                        struct bpart *bparts, struct dmpart *dmparts,
-                       const size_t Ndm, int *restrict ind,
+                       const int with_sidm, int *restrict ind,
                        int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
@@ -4149,7 +4149,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
           sparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         } else if (gparts[j].type == swift_type_black_hole) {
           bparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
-        } else if (gparts[j].type == swift_type_dark_matter && Ndm > 0 ) {
+        } else if (gparts[j].type == swift_type_dark_matter && with_sidm ) {
           dmparts[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
         } else if (gparts[j].type == swift_type_sink) {
           sinks[-gparts[j].id_or_neg_offset].gpart = &gparts[j];
@@ -4163,7 +4163,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
         sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_black_hole) {
         bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-      } else if (gparts[k].type == swift_type_dark_matter && Ndm > 0 ) {
+      } else if (gparts[k].type == swift_type_dark_matter && with_sidm ) {
         dmparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_sink) {
         sinks[-gparts[k].id_or_neg_offset].gpart = &gparts[k];

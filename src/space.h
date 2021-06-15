@@ -363,7 +363,7 @@ void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        struct sink *sinks, struct spart *sparts,
                        struct bpart *bparts, struct dmpart *dmparts,
-                       const size_t Ndm, int *ind, int *counts,
+                       const int with_sidm, int *ind, int *counts,
                        int num_bins);
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset);
