@@ -2795,6 +2795,9 @@ void engine_init(
     const struct chemistry_global_data *chemistry,
     struct fof_props *fof_properties, struct los_props *los_properties) {
 
+  struct clocks_time tic, toc;
+  if (engine_rank == 0) clocks_gettime(&tic);
+
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
 
@@ -2905,13 +2908,6 @@ void engine_init(
   e->total_nr_cells = 0;
   e->total_nr_tasks = 0;
 
-#if defined(WITH_CSDS)
-  if (e->policy & engine_policy_csds) {
-    e->csds = (struct csds_writer *)malloc(sizeof(struct csds_writer));
-    csds_init(e->csds, e, params);
-  }
-#endif
-
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   e->force_checks_only_all_active =
       parser_get_opt_param_int(params, "ForceChecks:only_when_all_active", 0);
@@ -3010,6 +3006,20 @@ void engine_init(
   } else {
     e->neutrino_mass_conversion_factor = 0.f;
   }
+
+  if (engine_rank == 0) {
+    clocks_gettime(&toc);
+    message("took %.3f %s.", clocks_diff(&tic, &toc), clocks_getunit());
+    fflush(stdout);
+  }
+
+  /* Initialize the CSDS (already timed, not need to include it) */
+#if defined(WITH_CSDS)
+  if (e->policy & engine_policy_csds) {
+    e->csds = (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    csds_init(e->csds, e, params);
+  }
+#endif
 }
 
 /**
