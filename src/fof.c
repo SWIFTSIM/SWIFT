@@ -1973,6 +1973,7 @@ void fof_seed_black_holes(const struct fof_props *props,
 
     s->bparts = bparts_new;
   }
+  message("relocation done");
 
   int k = s->nr_bparts;
 
@@ -2026,6 +2027,8 @@ void fof_seed_black_holes(const struct fof_props *props,
 
       /* Copy over all the gas properties that we want */
       black_holes_create_from_gas(bp, bh_props, constants, cosmo, p);
+
+      message("loop: Seeding new BH");
 
       /* Move to the next BH slot */
       k++;
