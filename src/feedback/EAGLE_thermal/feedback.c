@@ -560,14 +560,14 @@ void feedback_props_init(struct feedback_props* fp,
       parser_get_param_int(params, "EAGLEFeedback:SNII_use_variable_delta_T");
   if (fp->SNII_use_variable_delta_T) {
     fp->SNII_delta_T_min =
-        parser_get_param_double("EAGLEFeedback:SNII_delta_T_min") /
+        parser_get_param_double(params, "EAGLEFeedback:SNII_delta_T_min") /
         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
     fp->SNII_delta_T_max =
-        parser_get_param_double("EAGLEFeedback:SNII_delta_T_max") /
+        parser_get_param_double(params, "EAGLEFeedback:SNII_delta_T_max") /
         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
     fp->SNII_use_instantaneous_density_for_dT =
         parser_get_param_int(
-          "EAGLEFeedback:SNII_use_instantaneous_density_for_dT");
+          params, "EAGLEFeedback:SNII_use_instantaneous_density_for_dT");
   }
 
   /* Energy released by supernova type II */
