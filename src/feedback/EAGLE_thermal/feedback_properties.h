@@ -208,6 +208,9 @@ struct feedback_props {
   /*! Conversion factor from temperature to internal energy */
   float temp_to_u_factor;
 
+  /*! Conversion factor from K to internal temperature */
+  float K_to_internal_temp_factor;
+
   /* ------------- Parameters for IMF --------------- */
 
   /*! Array to store calculated IMF */
@@ -263,6 +266,16 @@ struct feedback_props {
 
   /*! Temperature increase induced by SNe feedback */
   float SNe_deltaT_desired;
+
+  /*! Switch to enable (simple) variable SNdT model */
+  int SNII_use_variable_delta_T;
+
+  /*! Minimum and maximum dT allowed in variable mode */
+  double SNII_delta_T_min;
+  double SNII_delta_T_max;
+
+  /* Switch to base variable dT on instantaneous, rather than birth, nH */
+  int SNII_use_instantaneous_density_for_dT;
 
   /*! Energy released by one supernova type II in cgs units */
   double E_SNII_cgs;

@@ -43,6 +43,61 @@ double eagle_feedback_temperature_change(const struct spart* sp,
 }
 
 /**
+ * @brief Compute the critical heating temperature increase, dT_crit.
+ *
+ * @param ngb_n The ambient density of the star.
+ * @param ngb_Z The ambient metallicity of the star.
+ * @param mean_ngb_mass The mean neighbour mass around the star.
+ * @param props The feedback model properties.
+ */
+double compute_SNII_dT_crit(const double ngb_n,
+                            const double mean_ngb_mass,
+                            const struct feedback_props* props) {
+
+  /* Analytic value from Dalla Vecchia & Schaye (2012) */
+  double dT_crit = 3.162e7 * pow(ngb_n * 0.1, 0.6666667) *
+      pow(mean_ngb_mass * props->mass_to_solar_mass * 1e-6, 0.33333333);
+
+  return dT_crit * props->K_to_internal_temp_factor;
+}
+
+/**
+ * @brief Return the variable change in temperature (in internal units) to
+ * apply to a gas particle affected by SNe feedback.
+ *
+ * @param sp The #spart.
+ * @param props The properties of the feedback model.
+ */
+double eagle_variable_feedback_temperature_change(
+    const struct spart* sp, const struct feedback_props* props,
+    const double ngb_gas_mass, const int num_gas_ngbs,
+    const double ngb_nH_cgs) {
+
+  /* Safety check: should only get here if we run with the adaptive-dT model */
+  if (!props->SNII_use_variable_delta_T)
+    error("Attempting to compute variable SNII heating temperature "
+          "without activating this model. Cease and desist.");
+
+  /* Model parameters */
+  const double dT_max = props->SNII_delta_T_max;
+  const double dT_min = props->SNII_delta_T_min;
+
+  /* Relevant star properties */
+  const double mean_ngb_mass = ngb_gas_mass / ((double) num_gas_ngbs);
+  const double n_phys = (props->SNII_use_instantaneous_density_for_dT ?
+      ngb_nH_cgs : sp->birth_density * props->rho_to_n_cgs);
+
+  /* Calculate critical temperature */
+  const double dT_crit = compute_SNII_dT_crit(n_phys, mean_ngb_mass, props);
+
+  /* Choose target temperature based on these constraints */
+  double dT = min(dT_crit, dT_max);
+  dT = max(dT, dT_min);
+
+  return dT;
+}
+
+/**
  * @brief Computes the fraction of the available super-novae energy to
  * inject for a given event.
  *
@@ -122,10 +177,10 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * @param sp The star particle.
  * @param star_age Age of star at the beginning of the step in internal units.
  * @param dt Length of time-step in internal units.
+ * @param ngb_gas_N Total (integer) number of gas neighbours within the
+ * star's kernel.
  * @param ngb_gas_mass Total un-weighted mass in the star's kernel (internal
  * units)
- * @param num_gas_ngbs Total (integer) number of gas neighbours within the
- * star's kernel.
  * @param ngb_nH_cgs Hydrogen number density of the gas surrounding the star
  * (physical cgs units).
  * @param ngb_Z Metallicity (metal mass fraction) of the gas surrounding the
@@ -167,8 +222,11 @@ INLINE static void compute_SNII_feedback(
     }
 
     /* Properties of the model (all in internal units) */
-    const double delta_T =
+    const double delta_T = feedback_props->SNII_use_variable_delta_T ?
+        eagle_variable_feedback_temperature_change(
+          sp, feedback_props, ngb_gas_mass, ngb_gas_N, ngb_nH_cgs) :
         eagle_feedback_temperature_change(sp, feedback_props);
+
     const double E_SNe = feedback_props->E_SNII;
     const double f_E =
         eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
@@ -497,6 +555,21 @@ void feedback_props_init(struct feedback_props* fp,
   fp->SNe_deltaT_desired /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
+  /* Read parameters related to variable SNdT model */
+  fp->SNII_use_variable_delta_T =
+      parser_get_param_int(params, "EAGLEFeedback:SNII_use_variable_delta_T");
+  if (fp->SNII_use_variable_delta_T) {
+    fp->SNII_delta_T_min =
+        parser_get_param_double("EAGLEFeedback:SNII_delta_T_min") /
+        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    fp->SNII_delta_T_max =
+        parser_get_param_double("EAGLEFeedback:SNII_delta_T_max") /
+        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    fp->SNII_use_instantaneous_density_for_dT =
+        parser_get_param_int(
+          "EAGLEFeedback:SNII_use_instantaneous_density_for_dT");
+  }
+
   /* Energy released by supernova type II */
   fp->E_SNII_cgs =
       parser_get_param_double(params, "EAGLEFeedback:SNII_energy_erg");
@@ -709,6 +782,10 @@ void feedback_props_init(struct feedback_props* fp,
   const double X_H = hydro_props->hydrogen_mass_fraction;
   fp->rho_to_n_cgs =
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+
+  /* Conversion from K to internal temperature */
+  fp->K_to_internal_temp_factor = 1. / units_cgs_conversion_factor(
+    us, UNIT_CONV_TEMPERATURE);
 
   /* Initialise the IMF ------------------------------------------------- */
 
