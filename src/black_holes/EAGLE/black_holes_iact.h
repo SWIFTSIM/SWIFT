@@ -320,7 +320,8 @@ runner_iact_nonsym_bh_gas_swallow(
       /* Compute the maximum allowed velocity */
       float v2_max = bh_props->max_reposition_velocity_ratio *
                      bh_props->max_reposition_velocity_ratio *
-                     bi->sound_speed_gas * bi->sound_speed_gas;
+                     bi->sound_speed_gas * bi->sound_speed_gas *
+                     cosmo->a_factor_sound_speed * cosmo->a_factor_sound_speed;
 
       /* If desired, limit the value of the threshold (v2_max) to be no
        * smaller than a user-defined value */
@@ -511,7 +512,8 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
       /* Compute the maximum allowed velocity */
       float v2_max = bh_props->max_reposition_velocity_ratio *
                      bh_props->max_reposition_velocity_ratio *
-                     bi->sound_speed_gas * bi->sound_speed_gas;
+                     bi->sound_speed_gas * bi->sound_speed_gas *
+                     cosmo->a_factor_sound_speed * cosmo->a_factor_sound_speed;
 
       /* If desired, limit the value of the threshold (v2_max) to be no
        * smaller than a user-defined value */
