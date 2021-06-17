@@ -1,0 +1,68 @@
+MetaData:
+  run_name: "randomized-sine"
+
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e21 # 1 kpc in cm
+  UnitVelocity_in_cgs: 1e5           # 1km/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.1   # The end time of the simulation (in internal units).
+  dt_min:     1.e-8 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1.e-3  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output # Common part of the name of output files
+  time_first:          0.    # Time of the first output (in internal units)
+  delta_time:          1.e-02
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  time_first:          0.
+  delta_time:          1. # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.6      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./randomized-sine.hdf5     # The file to read
+  periodic:   1                     # peridoc ICs
+
+# Properties of the stars
+Stars:
+  overwrite_birth_time: 1
+  birth_time:           -1   # Give the star in the ICs a decent birth time
+
+Scheduler:
+  max_top_level_cells: 64
+
+Restarts:
+  delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
+
+# Parameters for the self-gravity scheme
+Gravity:
+  mesh_side_length:              12       # Number of cells along each axis for the periodic gravity mesh.
+  eta:                           0.025     # Constant dimensionless multiplier for time integration.
+  MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.01     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
+  # comoving_DM_softening:         0.0026994 # Comoving Plummer-equivalent softening length for DM particles (in internal units).
+  # max_physical_DM_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
+  # comoving_baryon_softening:     0.0026994 # Comoving Plummer-equivalent softening length for baryon particles (in internal units).
+  max_physical_baryon_softening: 0.007    # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
+  # softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
+
+GEARRT:
+    photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]  # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N).
+    use_const_emission_rates: 1                    # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
+    star_emission_rates_LSol: [20., 30., 40., 50.] # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
