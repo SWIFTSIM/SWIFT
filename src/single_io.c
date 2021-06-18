@@ -930,7 +930,7 @@ void write_output_single(struct engine* e,
       subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
 
   if (with_DM_background) {
-    Ndm_background = io_count_dark_matter_to_write(
+    Ndm_background = io_count_background_dark_matter_to_write(
         e->s, subsample[swift_type_dark_matter_background],
         subsample_fraction[swift_type_dark_matter_background],
         e->snapshot_output_count);
