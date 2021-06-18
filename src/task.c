@@ -1180,6 +1180,23 @@ struct task *task_get_unique_dependent(const struct task *t) {
 }
 
 /**
+ * @brief Returns a pointer to the unique task unlocked by this task.
+ *
+ * The task MUST have only dependence!
+ *
+ * @param The #task.
+ */
+struct task *task_get_unique_dependent(const struct task *t) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->nr_unlock_tasks != 1)
+    error("Task is unlocking more than one dependence!");
+#endif
+
+  return t->unlock_tasks[0];
+}
+
+/**
  * @brief Print basic information about a task.
  *
  * @param t The #task.
