@@ -375,7 +375,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
   /* Finally, SNII stochastic feedback */
 
-  /* Get the total number of SNIa thermal energy injections per stellar
+  /* Get the total number of SNII thermal energy injections per stellar
    * particle at this time-step */
   const int N_of_SNII_thermal_energy_inj =
       si->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj;
