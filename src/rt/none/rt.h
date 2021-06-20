@@ -122,10 +122,16 @@ rt_injection_update_photon_density(struct part* restrict p,
  * @param time current system time
  * @param star_age age of the star *at the end of the step*
  * @param dt star time step
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param internal_units struct holding internal units
  */
 __attribute__((always_inline)) INLINE static void
 rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
-                                 double star_age, double dt) {}
+                                 double star_age, double dt,
+                                 const struct rt_props* rt_props,
+                                 const struct phys_const* phys_const,
+                                 const struct unit_system* internal_units) {}
 
 /**
  * @brief finishes up the gradient computation

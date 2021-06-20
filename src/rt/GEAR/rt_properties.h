@@ -34,10 +34,16 @@ struct rt_props {
    * This is added to avoid #ifdef macros as far as possible */
   int hydro_controlled_injection;
 
+  /* Are we using constant stellar emission rates? */
+  int use_const_emission_rates;
+
   /* Frequency bin edges for photon groups
    * Includes 0 as leftmost edge, doesn't include infinity as
    * rightmost bin edge*/
   float photon_groups[RT_NGROUPS];
+
+  /* Global constant stellar emission rates */
+  double stellar_const_emission_rates[RT_NGROUPS];
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Do extended tests where we assume that all parts
@@ -83,6 +89,16 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
   }
   strcat(messagestring, "]");
   message("%s", messagestring);
+
+  if (rtp->use_const_emission_rates) {
+    strcpy(messagestring, "Using constant stellar emission rates: [ ");
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      sprintf(freqstring, "%.3g ", rtp->stellar_const_emission_rates[g]);
+      strcat(messagestring, freqstring);
+    }
+    strcat(messagestring, "]");
+    message("%s", messagestring);
+  }
 }
 
 /**
@@ -122,6 +138,29 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     }
     rtp->photon_groups[0] = 0.f;
   }
+
+  /* Are we using constant emission rates? */
+  rtp->use_const_emission_rates = parser_get_opt_param_float(
+      params, "GEARRT:use_const_emission_rates", /* default = */ 0);
+
+  if (rtp->use_const_emission_rates) {
+    double emission_rates[RT_NGROUPS];
+    parser_get_param_double_array(params, "GEARRT:star_emission_rates_LSol",
+                                  RT_NGROUPS, emission_rates);
+    const double unit_power = units_cgs_conversion_factor(us, UNIT_CONV_POWER);
+    const double unit_power_inv = 1. / unit_power;
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      rtp->stellar_const_emission_rates[g] = emission_rates[g] * unit_power_inv;
+    }
+  } else {
+    /* kill the run for now */
+    error("GEAR-RT can't run without constant stellar emission rates for now.");
+  }
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  rtp->debug_radiation_emitted_tot = 0ULL;
+  rtp->debug_radiation_absorbed_tot = 0ULL;
+#endif
 
   /* After initialisation, print params to screen */
   rt_props_print(rtp);

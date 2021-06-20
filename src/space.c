@@ -782,8 +782,9 @@ void space_convert_rt_star_quantities_mapper(void *restrict map_data,
     const double star_age_end_of_step =
         stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
 
-    rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
-                                     dt_star);
+    rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step, dt_star,
+                                     e->rt_props, e->physical_constants,
+                                     e->internal_units);
   }
 }
 

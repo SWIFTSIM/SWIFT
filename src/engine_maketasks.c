@@ -1504,6 +1504,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         /* add the explicit dependency on kick2 for cases where injection
          * gets skipped */
         scheduler_addunlock(s, c->super->kick2, c->hydro.rt_ghost1);
+        /* add the explicit dependency for the timestep task for the
+         * cases where we have active sparts, but no active parts */
+        scheduler_addunlock(s, c->hydro.rt_ghost1, c->super->timestep);
 
         /* non-implicit ghost 2 */
         c->hydro.rt_ghost2 = scheduler_addtask(

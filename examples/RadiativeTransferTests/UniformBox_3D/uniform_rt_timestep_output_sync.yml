@@ -3,18 +3,18 @@ MetaData:
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.988416e+43  # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.085678e+24  # kpc in centimeters
-  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
-  UnitCurrent_in_cgs:  1.            # Amperes
-  UnitTemp_in_cgs:     1.            # Kelvin
+  UnitMass_in_cgs:     1.
+  UnitLength_in_cgs:   1.
+  UnitVelocity_in_cgs: 1.
+  UnitCurrent_in_cgs:  1.
+  UnitTemp_in_cgs:     1.
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.      # The starting time of the simulation (in internal units).
   time_end:   1.953125e-03
   dt_min:     1.e-8   # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1.e-04  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1.e-4   # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -36,7 +36,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./uniformBox-rt.hdf5  # The file to read
-  periodic:   0                     # periodic ICs?
+  periodic:   1                     # periodic ICs?
 
 # Properties of the stars
 Stars:
@@ -54,3 +54,5 @@ DebugRT:
 
 GEARRT:
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]  # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N).
+  use_const_emission_rates: 1                    # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
+  star_emission_rates_LSol: [7.839e-34, 7.839e-34, 7.839e-34, 7.839e-34] # 1 erg/s in LSol
