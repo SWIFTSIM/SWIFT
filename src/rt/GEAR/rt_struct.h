@@ -43,7 +43,8 @@ struct rt_part_data {
   int debug_iact_stars_inject;    /* how many stars this part interacted with */
   int debug_calls_iact_gradient;  /* calls from gradient interaction loop */
   int debug_calls_iact_transport; /* calls from transport interaction loop */
-  int debug_injection_check;      /* called in a self/rt_injection task? */
+  /* skip this for GEAR */
+  /* int debug_injection_check;   [> called in a self/rt_injection task? <] */
   /* calls from gradient interaction loop in actual function */
   int debug_calls_iact_gradient_interaction;
   /* calls from transport interaction loop in actual function */
@@ -59,6 +60,12 @@ struct rt_part_data {
 /* Additional RT data in star particle struct */
 struct rt_spart_data {
 
+  /* Stellar energy emission that will be injected in to gas.
+   * Total energy, not density, not rate! */
+  /* TODO: keep this also for RT_HYDRO_CONTROLLED_INJECTION and
+   * store results with each hydro-star interaction in here */
+  float emission_this_step[RT_NGROUPS];
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* data to store during entire run */
   unsigned long long
@@ -69,7 +76,16 @@ struct rt_spart_data {
   int debug_iact_hydro_inject; /* how many hydro particles this particle
                                   interacted with */
   int debug_emission_rate_set; /* stellar photon emisison rate computed? */
-  int debug_injection_check;   /* called in a self/rt_injection task? */
+  /* skip this for GEAR */
+  /* int debug_injection_check; [> called in a self/rt_injection task? <] */
+
+  float debug_injected_energy[RT_NGROUPS];     /* how much energy this star
+                                                  particle actually has injected
+                                                  into the gas */
+  float debug_injected_energy_tot[RT_NGROUPS]; /* how much energy this star
+                                              particle actually has injected
+                                              into the gas over the entire
+                                              run*/
 #endif
 };
 

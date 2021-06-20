@@ -8,16 +8,25 @@ Furthermore, the run is set up such that each time step all particles are
 active, and each time step an output is generated. This is necessary for the 
 './rt_uniform_box_checks.py' script to run successfully.
 
-The './rt_sanity_checks.py' script tests some general properties of the RT 
+The `./rt_sanity_checks.py` script tests some general properties of the RT 
 debug scheme, and any simulation run with this particular RT scheme should 
 pass the tests therein. 
 
 The `swift_rt_debug_io.py` contains IO routines for the debugging output that
 is used by the other scripts.
 
-
+The python scripts with the suffix `-GEAR` do the same as the other scripts, but
+are made to test the GEAR RT scheme. Debugging checks must be enabled in the run
+in order to create the appropriate outputs (`--enable-debugging-checks`). The
+scripts and parameter files for GEAR are written for 4 photon groups, so compile
+swift with `--with-rt=GEAR_4`.
 
 Tl;dr: 
     - `./rt_uniform_box_checks.py` only works for this example
     - `./rt_sanity_checks.py` is made to work on any run with the RT debug scheme
+
+    - `./rt_uniform_box_checks-GEAR.py` only works for this example with the
+      GEAR scheme with debugging checks enabled
+    - `./rt_sanity_checks-GEAR.py` is made to work on any run with the GEAR
+      scheme and debugging checks enabled.
 

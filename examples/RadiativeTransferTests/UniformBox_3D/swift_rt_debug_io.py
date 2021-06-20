@@ -137,14 +137,16 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         scheme = str(F["SubgridScheme"].attrs["RT Scheme"])
     except KeyError:
         print(
-            "These tests only work for the debug RT scheme. Compile swift --with-rt=debug"
+            "These tests only work for the debug RT scheme.",
+            "Compile swift --with-rt=debug",
         )
         F.close()
         quit()
 
     if "debug" not in scheme and "GEAR" not in scheme:
         raise ValueError(
-            "These tests only work for the debug RT scheme. Compile swift --with-rt=debug"
+            "These tests only work for the debug RT scheme.",
+            "Compile swift --with-rt=debug",
         )
 
     if "hydro controlled" in scheme:
