@@ -133,7 +133,9 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       }
 #endif
 
-      if (r2 < hig2) IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      if (r2 < hig2) {
+        IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      }
     }
   }
 
@@ -241,7 +243,9 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
       }
 #endif
 
-      if (r2 < hig2) IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      if (r2 < hig2) {
+        IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      }
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -274,9 +278,9 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   const int do_ci_stars =
-      (ci->nodeID == e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+      (ci->nodeID == e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
   const int do_cj_stars =
-      (cj->nodeID == e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+      (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
   if (do_ci_stars) {
 
@@ -490,7 +494,6 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
-
           IACT_RT(r2, dx, hj, hi, spj, pi, a, H);
         }
       } /* loop over the parts in ci. */
@@ -517,11 +520,11 @@ void DOPAIR1_RT_NAIVE(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *restrict e = r->e;
 
   const int do_stars_in_ci =
-      (cj->nodeID == r->e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+      (cj->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
   if (do_stars_in_ci) DOPAIR1_NONSYM_RT_NAIVE(r, ci, cj);
 
   const int do_stars_in_cj =
-      (ci->nodeID == r->e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+      (ci->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
   if (do_stars_in_cj) DOPAIR1_NONSYM_RT_NAIVE(r, cj, ci);
 
   if (timer) TIMER_TOC(TIMER_DOPAIR_RT);
@@ -582,7 +585,7 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* early exit? */
-  if (!rt_should_do_cell(c, r->e)) return;
+  if (!rt_should_iact_cell(c, r->e)) return;
   DOSELF1_RT(r, c, timer);
 }
 
@@ -604,9 +607,9 @@ void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   const int do_stars_ci =
-      (cj->nodeID == r->e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+      (cj->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
   const int do_stars_cj =
-      (ci->nodeID == r->e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+      (ci->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
   /* Anything to do here? */
   if (!do_stars_ci && !do_stars_cj) return;
@@ -679,7 +682,7 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Should we even bother? */
-  if (!rt_should_do_cell(c, r->e)) {
+  if (!rt_should_iact_cell(c, r->e)) {
 
 #ifdef RT_DEBUG
     /* Before an early exit, loop over all parts and sparts in this cell
@@ -770,8 +773,8 @@ void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  const int should_do_ci = rt_should_do_cell_pair(ci, cj, e);
-  const int should_do_cj = rt_should_do_cell_pair(cj, ci, e);
+  const int should_do_ci = rt_should_iact_cell_pair(ci, cj, e);
+  const int should_do_cj = rt_should_iact_cell_pair(cj, ci, e);
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -795,9 +798,9 @@ void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
 
     /* do full checks again, space_getsid() might swap ci/cj pointers */
     const int do_ci_stars =
-        (cj->nodeID == e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+        (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
     const int do_cj_stars =
-        (ci->nodeID == e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+        (ci->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
     if (do_ci_stars || do_cj_stars) DOPAIR1_BRANCH_RT(r, ci, cj, 0);
   }

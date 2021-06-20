@@ -89,9 +89,7 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
 
   /* reset values before the particle loops */
   e->rt_props->debug_radiation_emitted_this_step = 0ULL;
-  e->rt_props->debug_radiation_emitted_tot = 0ULL;
   e->rt_props->debug_radiation_absorbed_this_step = 0ULL;
-  e->rt_props->debug_radiation_absorbed_tot = 0ULL;
 
   /* hydro particle loop */
   if (s->nr_parts > 0)
