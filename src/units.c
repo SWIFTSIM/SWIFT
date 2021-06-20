@@ -450,7 +450,7 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -3.f;
       break;
 
-    case UNIT_CONV_GASOLINE_DIFF_RATE:
+    case UNIT_CONV_THERMAL_DIFFUSIVITY:
       baseUnitsExp[UNIT_LENGTH] = 2.f;
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
