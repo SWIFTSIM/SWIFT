@@ -987,6 +987,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
     int num_fields = 0;
     struct io_props list[100];
+    bzero(list, 100 * sizeof(struct io_props));
     size_t Nparticles = 0;
 
     /* Read particle fields into the particle structure */
@@ -1294,6 +1295,7 @@ void prepare_file(struct engine* e, const char* fileName,
 
     int num_fields = 0;
     struct io_props list[100];
+    bzero(list, 100 * sizeof(struct io_props));
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1686,6 +1688,7 @@ void write_output_parallel(struct engine* e,
 
     int num_fields = 0;
     struct io_props list[100];
+    bzero(list, 100 * sizeof(struct io_props));
     size_t Nparticles = 0;
 
     struct part* parts_written = NULL;

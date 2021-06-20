@@ -621,6 +621,7 @@ void write_output_distributed(struct engine* e,
 
     int num_fields = 0;
     struct io_props list[100];
+    bzero(list, 100 * sizeof(struct io_props));
     size_t Nparticles = 0;
 
     struct part* parts_written = NULL;
