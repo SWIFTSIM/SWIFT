@@ -43,14 +43,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
     struct spart *restrict si, struct part *restrict pj, float a, float H) {
 
-  struct rt_spart_data *restrict sd = &(si->rt_data);
-  struct rt_part_data *restrict pd = &(pj->rt_data);
+  si->rt_data.debug_iact_hydro_inject += 1;
+  si->rt_data.debug_radiation_emitted_tot += 1ULL;
 
-  sd->debug_iact_hydro_inject += 1;
-  sd->debug_radiation_emitted_tot += 1ULL;
-
-  pd->debug_iact_stars_inject += 1;
-  pd->debug_radiation_absorbed_tot += 1ULL;
+  pj->rt_data.debug_iact_stars_inject += 1;
+  pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
 }
 
 /**

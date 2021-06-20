@@ -175,7 +175,7 @@ INLINE static int rt_write_stars(const struct spart* sparts,
   int num_elements = 0;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  num_elements += 3;
+  num_elements += 4;
   list[0] = io_make_output_field("RTDebugHydroIact", INT, 1, UNIT_CONV_NO_UNITS,
                                  0, sparts, rt_data.debug_iact_hydro_inject,
                                  "number of interactions between this hydro "
@@ -187,6 +187,10 @@ INLINE static int rt_write_stars(const struct spart* sparts,
       "RTDebugRadEmittedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, sparts,
       rt_data.debug_radiation_emitted_tot,
       "Total radiation emitted during the lifetime of this star");
+  list[3] = io_make_output_field("RTDebugInjectedPhotonEnergy", FLOAT,
+                                 RT_NGROUPS, UNIT_CONV_ENERGY, 0, sparts,
+                                 rt_data.debug_injected_energy_tot,
+                                 "Total radiation actually injected into gas");
 #endif
 
   return num_elements;
@@ -313,7 +317,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   H5Tclose(type);
 
-#endif
+#endif /* HAVE_HDF5 */
 }
 
 #endif /* SWIFT_RT_IO_GEAR_H */

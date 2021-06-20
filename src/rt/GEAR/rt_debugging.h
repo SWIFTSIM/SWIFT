@@ -41,11 +41,39 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
 
   int emission_sum = 0;
   unsigned long long emission_sum_tot = 0;
+
   for (int k = 0; k < scount; k++) {
     struct spart *restrict sp = &sparts[k];
     emission_sum += sp->rt_data.debug_iact_hydro_inject;
     emission_sum_tot += sp->rt_data.debug_radiation_emitted_tot;
+
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      /* also check now that we actually injected the correct
+       * amount of energy
+       * sp->rt_data.emission_this_step: energy we should distribute
+       *                                 this step
+       * sp->rt_data.debug_injected_energy: energy we actually did
+       *                                    distribute this step    */
+      if (sp->rt_data.debug_injected_energy[g] != 0.f) {
+        float diff = 1.f - sp->rt_data.emission_this_step[g] /
+                               sp->rt_data.debug_injected_energy[g];
+
+        if (fabs(diff) > 1e-3) {
+          message(
+              "Incorrect injection ID %lld: "
+              "group %d expected %.3g got %.3g diff %.3g",
+              sp->id, g, sp->rt_data.emission_this_step[g],
+              sp->rt_data.debug_injected_energy[g], diff);
+        }
+      }
+    }
+
+    /* reset stuff such that it is set even if the star particle
+     * isn't active in the next step */
     sp->rt_data.debug_iact_hydro_inject = 0;
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      sp->rt_data.debug_injected_energy[g] = 0.f;
+    }
   }
   atomic_add(&e->rt_props->debug_radiation_emitted_this_step, emission_sum);
   atomic_add(&e->rt_props->debug_radiation_emitted_tot, emission_sum_tot);
@@ -91,9 +119,7 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
 
   /* reset values before the particle loops */
   e->rt_props->debug_radiation_emitted_this_step = 0ULL;
-  e->rt_props->debug_radiation_emitted_tot = 0ULL;
   e->rt_props->debug_radiation_absorbed_this_step = 0ULL;
-  e->rt_props->debug_radiation_absorbed_tot = 0ULL;
 
   /* hydro particle loop */
   if (s->nr_parts > 0)

@@ -662,4 +662,6 @@ DebugRT:
     all_parts_have_stars:  0          # Set to 1 to do additional tests that only work if all hydro particles have a star particle neighbour
 
 GEARRT:
-    photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]  # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
+    photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
+    use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
+    star_emission_rates_LSol: [1., 1., 1., 1.]        # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.
