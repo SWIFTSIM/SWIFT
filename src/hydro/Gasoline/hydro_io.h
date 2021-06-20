@@ -235,7 +235,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                            "from the velocity tensor.");
 
   list[11] = io_make_output_field(
-      "DiffusionRates", FLOAT, 1, UNIT_CONV_GASOLINE_DIFF_RATE, 0.f, parts,
+      "DiffusionRates", FLOAT, 1, UNIT_CONV_THERMAL_DIFFUSIVITY, 0.f, parts,
       diffusion.rate,
       "Physical diffusion rates calculated from the shear tensor.");
 }
