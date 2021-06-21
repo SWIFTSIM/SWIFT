@@ -201,7 +201,7 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
  *
  * @param p particle to work on
  */
-__attribute__((always_inline)) INLINE static void rt_finalise_gradient(
+__attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p) {
 
   if (p->rt_data.debug_injection_done != 1)
