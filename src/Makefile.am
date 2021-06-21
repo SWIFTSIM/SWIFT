@@ -304,6 +304,7 @@ nobase_noinst_HEADERS += rt/GEAR/rt_gradients.h
 nobase_noinst_HEADERS += rt/GEAR/rt_iact.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_io.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_properties.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_cell.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_stellar_emission_rate.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_struct.h
 nobase_noinst_HEADERS += rt/GEAR/rt_thermochemistry.h

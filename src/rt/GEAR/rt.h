@@ -20,7 +20,9 @@
 #define SWIFT_RT_GEAR_H
 
 #include "rt_debugging.h"
+#include "rt_gradients.h"
 #include "rt_properties.h"
+#include "rt_slope_limiters_cell.h"
 #include "rt_stellar_emission_rate.h"
 #include "rt_thermochemistry.h"
 
@@ -35,7 +37,11 @@
  * are both called individually.
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+  rt_gradients_init(p);
+  rt_slope_limit_cell_init(p);
+}
 
 /**
  * @brief Reset of the RT hydro particle data not related to the density.
@@ -75,6 +81,12 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   /* Don't reset conserved quantities here! ICs will be overwritten */
   rt_init_part(p);
   rt_reset_part(p);
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    p->rt_data.density[g].energy = 0.f;
+    p->rt_data.density[g].flux[0] = 0.f;
+    p->rt_data.density[g].flux[1] = 0.f;
+    p->rt_data.density[g].flux[2] = 0.f;
+  }
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 #endif
@@ -171,9 +183,7 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
 };
 
 /**
- * @brief Update the photon number of a particle, i.e. compute
- *  E^{n+1} = E^n + dt * dE_* / dt. This function finalises
- *  the injection step.
+ * @brief  This function finalises the injection step.
  *
  * @param p particle to work on
  * @param props struct #rt_props that contains global RT properties
@@ -181,6 +191,15 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void
 rt_injection_update_photon_density(struct part* restrict p,
                                    struct rt_props* props) {
+
+  const float V = p->geometry.volume;
+  const float Vinv = 1. / V;
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    p->rt_data.density[g].energy = p->rt_data.conserved[g].energy * Vinv;
+    p->rt_data.density[g].flux[0] = p->rt_data.conserved[g].flux[0] * Vinv;
+    p->rt_data.density[g].flux[1] = p->rt_data.conserved[g].flux[1] * Vinv;
+    p->rt_data.density[g].flux[2] = p->rt_data.conserved[g].flux[2] * Vinv;
+  }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_injection_done += 1;
@@ -230,7 +249,7 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
  *
  * @param p particle to work on
  */
-__attribute__((always_inline)) INLINE static void rt_finalise_gradient(
+__attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -253,6 +272,8 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient(
 
   p->rt_data.debug_gradients_done += 1;
 #endif
+
+  rt_finalize_gradient_part(p);
 }
 
 /**
