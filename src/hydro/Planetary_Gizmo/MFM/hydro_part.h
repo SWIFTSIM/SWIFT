@@ -19,6 +19,8 @@
 #ifndef SWIFT_PLANETARY_GIZMO_MFM_HYDRO_PART_H
 #define SWIFT_PLANETARY_GIZMO_MFM_HYDRO_PART_H
 
+#include "equation_of_state.h"  // For enum material_id
+
 /* Data of a single particle. */
 struct part {
 
@@ -174,6 +176,9 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+    
+  /*! Material identifier flag */
+  enum eos_planetary_material_id mat_id;
 
   /*! Time-step length */
   timebin_t time_bin;
