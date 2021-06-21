@@ -18,8 +18,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_GIZMO_HYDRO_PARAMETERS_H
-#define SWIFT_GIZMO_HYDRO_PARAMETERS_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_PARAMETERS_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
@@ -159,4 +159,4 @@ static INLINE void diffusion_print_snapshot(
     hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
 #endif
 
-#endif /* SWIFT_GIZMO_HYDRO_PARAMETERS_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_PARAMETERS_H */

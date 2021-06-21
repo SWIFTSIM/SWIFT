@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_PART_H
-#define SWIFT_GIZMO_HYDRO_PART_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_PART_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_PART_H
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
@@ -68,4 +68,4 @@ struct xpart {
 #include "MFM/hydro_part.h"
 #endif
 
-#endif /* SWIFT_GIZMO_HYDRO_PART_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_PART_H */

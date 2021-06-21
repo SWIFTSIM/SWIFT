@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_GRADIENTS_H
-#define SWIFT_GIZMO_HYDRO_GRADIENTS_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_GRADIENTS_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_GRADIENTS_H
 
 #include "hydro_getters.h"
 #include "hydro_slope_limiters.h"
@@ -153,4 +153,4 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                                   Wj[3], Wj[4]);
 }
 
-#endif /* SWIFT_GIZMO_HYDRO_GRADIENTS_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_GRADIENTS_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_GETTERS_H
-#define SWIFT_GIZMO_HYDRO_GETTERS_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_GETTERS_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_GETTERS_H
 
 #include "cosmology.h"
 #include "equation_of_state.h"
@@ -330,4 +330,4 @@ hydro_part_geometry_well_behaved(const struct part* restrict p) {
   return p->geometry.wcorr > const_gizmo_min_wcorr;
 }
 
-#endif /* SWIFT_GIZMO_HYDRO_GETTERS_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_GETTERS_H */

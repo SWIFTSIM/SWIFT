@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_MFM_HYDRO_FLUX_H
-#define SWIFT_GIZMO_MFM_HYDRO_FLUX_H
+#ifndef SWIFT_PLANETARY_GIZMO_MFM_HYDRO_FLUX_H
+#define SWIFT_PLANETARY_GIZMO_MFM_HYDRO_FLUX_H
 
 #include "riemann.h"
 
@@ -193,4 +193,4 @@ hydro_gizmo_mfv_mass_update_term(const float mass_flux, const float dt) {
 __attribute__((always_inline)) INLINE static void
 hydro_gizmo_mfv_update_gpart_mass(struct part* restrict p) {}
 
-#endif /* SWIFT_GIZMO_MFM_HYDRO_FLUX_H */
+#endif /* SWIFT_PLANETARY_GIZMO_MFM_HYDRO_FLUX_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_MFM_HYDRO_VELOCITIES_H
-#define SWIFT_GIZMO_MFM_HYDRO_VELOCITIES_H
+#ifndef SWIFT_PLANETARY_GIZMO_MFM_HYDRO_VELOCITIES_H
+#define SWIFT_PLANETARY_GIZMO_MFM_HYDRO_VELOCITIES_H
 
 #ifdef GIZMO_FIX_PARTICLES
 #error "Fixed particles are not allowed for GIZMO MFM!"
@@ -148,4 +148,4 @@ __attribute__((always_inline)) INLINE static void
 hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
                                        const float w) {}
 
-#endif /* SWIFT_GIZMO_MFM_HYDRO_VELOCITIES_H */
+#endif /* SWIFT_PLANETARY_GIZMO_MFM_HYDRO_VELOCITIES_H */

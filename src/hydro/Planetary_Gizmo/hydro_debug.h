@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_DEBUG_H
-#define SWIFT_GIZMO_HYDRO_DEBUG_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_DEBUG_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_DEBUG_H
 
 /* Import the right definition */
 #if defined(PLANETARY_GIZMO_MFV_SPH)
@@ -26,4 +26,4 @@
 #include "MFM/hydro_debug.h"
 #endif
 
-#endif /* SWIFT_GIZMO_HYDRO_DEBUG_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_DEBUG_H */

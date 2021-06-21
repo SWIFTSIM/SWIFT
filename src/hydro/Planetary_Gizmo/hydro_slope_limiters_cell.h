@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
-#define SWIFT_GIZMO_SLOPE_LIMITER_CELL_H
+#ifndef SWIFT_PLANETARY_GIZMO_SLOPE_LIMITER_CELL_H
+#define SWIFT_PLANETARY_GIZMO_SLOPE_LIMITER_CELL_H
 
 #include "hydro_getters.h"
 #include "hydro_setters.h"
@@ -122,4 +122,4 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
   hydro_part_set_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
 }
 
-#endif /* SWIFT_GIZMO_SLOPE_LIMITER_CELL_H */
+#endif /* SWIFT_PLANETARY_GIZMO_SLOPE_LIMITER_CELL_H */

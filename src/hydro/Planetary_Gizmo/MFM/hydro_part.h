@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_MFM_HYDRO_PART_H
-#define SWIFT_GIZMO_MFM_HYDRO_PART_H
+#ifndef SWIFT_PLANETARY_GIZMO_MFM_HYDRO_PART_H
+#define SWIFT_PLANETARY_GIZMO_MFM_HYDRO_PART_H
 
 /* Data of a single particle. */
 struct part {
@@ -193,4 +193,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_GIZMO_MFM_HYDRO_PART_H */
+#endif /* SWIFT_PLANETARY_GIZMO_MFM_HYDRO_PART_H */

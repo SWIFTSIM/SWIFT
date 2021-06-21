@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_LLOYD_H
-#define SWIFT_GIZMO_HYDRO_LLOYD_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_LLOYD_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_LLOYD_H
 
 #ifdef GIZMO_LLOYD_ITERATION
 
@@ -149,4 +149,4 @@ __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_kick(
 
 #endif /* GIZMO_LLOYD_ITERATION */
 
-#endif /* SWIFT_GIZMO_HYDRO_LLOYD_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_LLOYD_H */

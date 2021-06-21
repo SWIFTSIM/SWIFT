@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_H
-#define SWIFT_GIZMO_HYDRO_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_H
 
 /**
  * @brief Enable Lloyd's iteration.
@@ -754,4 +754,4 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part* p, const struct xpart* xp, const double time) {}
 
-#endif /* SWIFT_GIZMO_HYDRO_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_H */

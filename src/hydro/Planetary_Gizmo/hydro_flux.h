@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_FLUX_H
-#define SWIFT_GIZMO_HYDRO_FLUX_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_FLUX_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_FLUX_H
 
 #if defined(PLANETARY_GIZMO_MFV_SPH)
 #include "MFV/hydro_flux.h"
@@ -25,4 +25,4 @@
 #include "MFM/hydro_flux.h"
 #endif
 
-#endif /* SWIFT_GIZMO_HYDRO_FLUX_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_FLUX_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_HYDRO_SETTERS_H
-#define SWIFT_GIZMO_HYDRO_SETTERS_H
+#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_SETTERS_H
+#define SWIFT_PLANETARY_GIZMO_HYDRO_SETTERS_H
 
 /**
  * @brief Set the primitive variables for the given particle to the given
@@ -372,4 +372,4 @@ hydro_set_init_internal_energy(struct part* p, float u_init) {
   p->conserved.energy = u_init;
 }
 
-#endif /* SWIFT_GIZMO_HYDRO_SETTERS_H */
+#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_SETTERS_H */

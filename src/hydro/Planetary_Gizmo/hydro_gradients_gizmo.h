@@ -22,8 +22,8 @@
  *
  * @param p Particle.
  */
-#ifndef SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H
-#define SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H
+#ifndef SWIFT_PLANETARY_GIZMO_MFM_HYDRO_GRADIENTS_H
+#define SWIFT_PLANETARY_GIZMO_MFM_HYDRO_GRADIENTS_H
 
 #include "hydro_getters.h"
 #include "hydro_setters.h"
@@ -271,4 +271,4 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
   hydro_slope_limit_cell(p);
 }
 
-#endif /* SWIFT_GIZMO_MFM_HYDRO_GRADIENTS_H */
+#endif /* SWIFT_PLANETARY_GIZMO_MFM_HYDRO_GRADIENTS_H */
