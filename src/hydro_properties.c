@@ -107,7 +107,7 @@ void hydro_props_init(struct hydro_props *p,
       parser_get_opt_param_int(params, "SPH:use_mass_weighted_num_ngb", 0);
 
   if (p->use_mass_weighted_num_ngb) {
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(PLANETARY_GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
     error("Can't use alternative neighbour definition with this scheme!");
 #endif
   }

@@ -39,6 +39,8 @@
 #include "./hydro/Phantom/hydro_io.h"
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro_io.h"
+#elif defined(PLANETARY_GIZMO_MFM_SPH)
+#include "./hydro/Planetary_Gizmo/hydro_io.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_io.h"
 #elif defined(PLANETARY_SPH)

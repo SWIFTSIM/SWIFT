@@ -1151,7 +1151,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Are we using the alternative definition of the
              number of neighbours? */
           if (use_mass_weighted_num_ngb) {
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(PLANETARY_GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
             error(
                 "Can't use alternative neighbour definition with this scheme!");
 #else
