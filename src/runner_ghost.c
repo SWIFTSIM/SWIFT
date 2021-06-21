@@ -1581,7 +1581,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive parts */
       if (!part_is_active(p, e)) continue;
 
-      rt_finalise_gradient(p);
+      rt_end_gradient(p);
     }
   }
 

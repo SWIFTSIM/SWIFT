@@ -33,6 +33,31 @@ struct rt_part_data {
     float flux[3];
   } conserved[RT_NGROUPS];
 
+  /* density state vector */
+  struct {
+    float energy;
+    float flux[3];
+  } density[RT_NGROUPS];
+
+  /* gradients of densities */
+  /* for the flux[3][3] quantity:
+   *    first index: x, y, z coordinate of the flux.
+   *    Second index: gradient along x, y, z direction. */
+  struct {
+    float energy[3];
+    float flux[3][3];
+  } gradient[RT_NGROUPS];
+
+  /* cell slope limiter quantities */
+  /* array of length two: store min among all neighbours
+   * at first index, store max among all neighbours at
+   * second index */
+  struct {
+    float energy[2];
+    float flux[3][2];
+    /* float maxr; [> just use the hydro one <] */
+  } limiter[RT_NGROUPS];
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* debugging data to store during entire run */
   unsigned long long
