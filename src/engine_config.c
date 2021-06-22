@@ -434,6 +434,9 @@ void engine_config(int restart, int fof, struct engine *e,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, mode);
+    if (e->file_stats == NULL)
+      error("Could not open the file '%s' with mode '%s'.", energyfileName,
+            mode);
 
     if (!restart)
       stats_write_file_header(e->file_stats, e->internal_units,
@@ -447,6 +450,9 @@ void engine_config(int restart, int fof, struct engine *e,
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
             nr_nodes * nr_task_threads);
     e->file_timesteps = fopen(timestepsfileName, mode);
+    if (e->file_timesteps == NULL)
+      error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
+            mode);
 
     if (!restart) {
       fprintf(
@@ -484,6 +490,9 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Initialize the SFH logger if running with star formation */
     if (e->policy & engine_policy_star_formation) {
       e->sfh_logger = fopen("SFR.txt", mode);
+      if (e->sfh_logger == NULL)
+        error("Could not open the file 'SFR.txt' with mode '%s'.", mode);
+
       if (!restart) {
         star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
                                             e->physical_constants);
