@@ -26,7 +26,9 @@
 #endif
 
 #include "hydro.h" /* needed for hydro_part_geometry_well_behaved() */
+#include "rt_getters.h"
 #include "rt_slope_limiters_cell.h"
+#include "rt_slope_limiters_face.h"
 
 /**
  * @file src/rt/GEAR/rt_gradients.h
@@ -216,15 +218,11 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     psij_tilde[2] = norm * dx[2];
   }
 
-  struct rt_part_data *rtdi = &pi->rt_data;
-  struct rt_part_data *rtdj = &pj->rt_data;
-
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    const float Qi[4] = {rtdi->density[g].energy, rtdi->density[g].flux[0],
-                         rtdi->density[g].flux[1], rtdi->density[g].flux[2]};
-    const float Qj[4] = {rtdj->density[g].energy, rtdj->density[g].flux[0],
-                         rtdj->density[g].flux[1], rtdj->density[g].flux[2]};
+    float Qi[4], Qj[4];
+    rt_part_get_density_vector(pi, g, Qi);
+    rt_part_get_density_vector(pj, g, Qj);
     const float dQ[4] = {Qi[0] - Qj[0], Qi[1] - Qj[1], Qi[2] - Qj[2],
                          Qi[3] - Qj[3]};
 
@@ -334,15 +332,11 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     psii_tilde[2] = norm * dx[2];
   }
 
-  struct rt_part_data *rtdi = &pi->rt_data;
-  struct rt_part_data *rtdj = &pj->rt_data;
-
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    const float Qi[4] = {rtdi->density[g].energy, rtdi->density[g].flux[0],
-                         rtdi->density[g].flux[1], rtdi->density[g].flux[2]};
-    const float Qj[4] = {rtdj->density[g].energy, rtdj->density[g].flux[0],
-                         rtdj->density[g].flux[1], rtdj->density[g].flux[2]};
+    float Qi[4], Qj[4];
+    rt_part_get_density_vector(pi, g, Qi);
+    rt_part_get_density_vector(pj, g, Qj);
     const float dQ[4] = {Qi[0] - Qj[0], Qi[1] - Qj[1], Qi[2] - Qj[2],
                          Qi[3] - Qj[3]};
 
@@ -369,6 +363,72 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
 
     rt_slope_limit_cell_collect(pi, pj);
   }
+}
+
+/**
+ * @brief Extrapolate the given gradient over the given distance.
+ *
+ * @param dQ Gradient of the quantity
+ * @param dx Distance vector
+ * @return Change in the quantity after a displacement along the given distance
+ * vector.
+ */
+__attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
+    const float dQ[3], const float dx[3]) {
+
+  return dQ[0] * dx[0] + dQ[1] * dx[1] + dQ[2] * dx[2];
+}
+
+/**
+ * @brief Gradients reconstruction. Predict the value at point x_ij given
+ * current values at particle positions and gradients at particle positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_gradients_predict(
+    struct part *restrict pi, struct part *restrict pj, float hi, float hj,
+    const float *dx, float r, const float *xij_i, int group, float Qi[4],
+    float Qj[4]) {
+
+  /* Compute interface position (relative to pj, since we don't need the actual
+   * position) eqn. (8)
+   * Do it this way in case dx contains periodicity corrections already */
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
+
+  float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
+  float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
+  rt_part_get_gradients(pi, group, dE_i, dFx_i, dFy_i, dFz_i);
+  rt_part_get_gradients(pj, group, dE_j, dFx_j, dFy_j, dFz_j);
+
+  float dQi[4];
+  dQi[0] = rt_gradients_extrapolate(dE_i, xij_i);
+  dQi[1] = rt_gradients_extrapolate(dFx_i, xij_i);
+  dQi[2] = rt_gradients_extrapolate(dFy_i, xij_i);
+  dQi[3] = rt_gradients_extrapolate(dFz_i, xij_i);
+
+  float dQj[4];
+  dQj[0] = rt_gradients_extrapolate(dE_j, xij_j);
+  dQj[1] = rt_gradients_extrapolate(dFx_j, xij_j);
+  dQj[2] = rt_gradients_extrapolate(dFy_j, xij_j);
+  dQj[3] = rt_gradients_extrapolate(dFz_j, xij_j);
+
+  /* Apply the slope limiter at this interface */
+  rt_slope_limit_face(Qi, Qj, dQi, dQj, xij_i, xij_j, r);
+
+  Qi[0] += dQi[0];
+  Qi[1] += dQi[1];
+  Qi[2] += dQi[2];
+  Qi[3] += dQi[3];
+
+  Qj[0] += dQj[0];
+  Qj[1] += dQj[1];
+  Qj[2] += dQj[2];
+  Qj[3] += dQj[3];
+
+  /* gizmo_check_physical_quantities("density", "pressure", Wi[0], Wi[1], Wi[2],
+   */
+  /*                                 Wi[3], Wi[4]); */
+  /* gizmo_check_physical_quantities("density", "pressure", Wj[0], Wj[1], Wj[2],
+   */
+  /* Wj[3], Wj[4]); */
 }
 
 #endif /* SWIFT_RT_GRADIENT_GEAR_H */
