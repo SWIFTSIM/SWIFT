@@ -2251,10 +2251,17 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
     if (rank == my_rank) {
 
+      const char *mode;
       if (my_rank == 0)
-        file = fopen(out_file_name, "w");
+        mode = "w";
       else
-        file = fopen(out_file_name, "a");
+        mode = "a";
+
+      file = fopen(out_file_name, mode);
+
+      if (file == NULL)
+        error("Could not open the file '%s' with mode '%s'.", out_file_name,
+              mode);
 
       if (my_rank == 0) {
         fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %24s %24s \n",

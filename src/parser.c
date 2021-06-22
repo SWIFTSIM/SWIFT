@@ -1248,6 +1248,8 @@ void parser_print_params(const struct swift_params *params) {
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name, int write_used) {
   FILE *file = fopen(file_name, "w");
+  if (file == NULL) error("Error opening file '%s' to write.", file_name);
+
   char param_name[PARSER_MAX_LINE_SIZE] = {0};
   char section[PARSER_MAX_LINE_SIZE] = {0};
   char *token;
