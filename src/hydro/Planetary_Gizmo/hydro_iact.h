@@ -238,8 +238,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* calculate the maximal signal velocity */
   float vmax;
   if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
-    const float ci = gas_soundspeed_from_pressure(Wi[0], Wi[4]);
-    const float cj = gas_soundspeed_from_pressure(Wj[0], Wj[4]);
+    const float ci = gas_soundspeed_from_pressure(Wi[0], Wi[4], pi->mat_id);
+    const float cj = gas_soundspeed_from_pressure(Wj[0], Wj[4], pj->mat_id);
     vmax = ci + cj;
   } else {
     vmax = 0.0f;
