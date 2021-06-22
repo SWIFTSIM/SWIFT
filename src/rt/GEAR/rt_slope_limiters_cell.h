@@ -23,7 +23,9 @@
 /**
  * @file src/rt/GEAR/rt_slope_limiters_cell.h
  * @brief File containing routines concerning the cell slope
- * limiter for the GEAR RT scheme */
+ * limiter for the GEAR RT scheme. (= fist slope limiting step
+ * that limits gradients such that they don't predict new extrema
+ * at neighbour praticle's positions )*/
 
 /**
  * @brief Initialize variables for the cell wide slope limiter
@@ -125,7 +127,6 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell(
   struct rt_part_data* rtd = &p->rt_data;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
-    float test = rtd->gradient[g].energy[0];
     rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].energy, maxr,
                             /*value=*/rtd->density[g].energy,
                             /*valmin=*/rtd->limiter[g].energy[0],

@@ -39,6 +39,12 @@ struct rt_part_data {
     float flux[3];
   } density[RT_NGROUPS];
 
+  /* Fluxes in the conservation law sense */
+  struct {
+    float energy;
+    float flux[3];
+  } flux[RT_NGROUPS];
+
   /* gradients of densities */
   /* for the flux[3][3] quantity:
    *    first index: x, y, z coordinate of the flux.
