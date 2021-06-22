@@ -130,7 +130,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_MPI
 
-  const struct gpart *restrict gparts = c->grav.parts;
+  const struct gpart_foreign *restrict gparts_foreign = c->grav.parts_foreign;
   const size_t nr_gparts = c->grav.count;
   const integertime_t ti_current = r->e->ti_current;
 
@@ -149,9 +149,9 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
 
     /* Collect everything... */
     for (size_t k = 0; k < nr_gparts; k++) {
-      if (gparts[k].time_bin == time_bin_inhibited) continue;
-      time_bin_min = min(time_bin_min, gparts[k].time_bin);
-      time_bin_max = max(time_bin_max, gparts[k].time_bin);
+      if (gparts_foreign[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, gparts_foreign[k].time_bin);
+      time_bin_max = max(time_bin_max, gparts_foreign[k].time_bin);
     }
 
     /* Convert into a time */

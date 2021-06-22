@@ -52,6 +52,18 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 }
 
 /**
+ * @brief Returns the current co-moving softening of a foreign particle
+ *
+ * @param gp The particle of interest
+ * @param grav_props The global gravity properties.
+ */
+__attribute__((always_inline)) INLINE static float
+gravity_get_softening_foreign(const struct gpart_foreign* gp,
+                              const struct gravity_props* restrict grav_props) {
+  return gp->epsilon;
+}
+
+/**
  * @brief Add a contribution to this particle's potential from the tree.
  *
  * @param gp The particle.

@@ -170,7 +170,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Compute the fully Newtoning gravitational forces from particles
+ * @brief Compute the fully Newtonian gravitational forces from particles
  * one array onto the particles in another array
  *
  * This function *must* be called at the leaf level for particles i.
@@ -178,18 +178,22 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
  * @param gparts_i The particles receiving forces (at leaf level).
  * @param gcount_i The number of particles receiving forces.
  * @param gparts_j The particles giving forces (at any level).
+ * @param gparts_foreign_j The particles giving forces (at any level) if cj is
+ * foreign.
  * @param gcount_j The number of particles giving forces.
  * @param e The #engine structure.
  * @param grav_props The properties of the gravity scheme.
  * @param cache_i The gravity cache to use to store the results in i.
  * @param ci The (leaf-)cell containing the particles i.
+ * @param cj The cell containing the particles j.
  * @param multi_j The multipole in cell j.
  */
 static INLINE void runner_dopair_grav_pp_full_no_cache(
     struct gpart *restrict gparts_i, const int gcount_i,
-    const struct gpart *restrict gparts_j, const int gcount_j,
+    const struct gpart *restrict gparts_j,
+    const struct gpart_foreign *gparts_foreign_j, const int gcount_j,
     const struct engine *e, const struct gravity_props *grav_props,
-    struct gravity_cache *cache_i, struct cell *ci,
+    struct gravity_cache *cache_i, struct cell *ci, const struct cell *cj,
     const struct gravity_tensors *multi_j) {
 
   /* Prepare the i cache */
@@ -198,6 +202,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->split) error("Using function above leaf level!");
+  if (ci->nodeID != e->nodeID) error("Calling function on foreign pair!");
 #endif
 
   /* Loop over sink particles */
@@ -271,71 +276,142 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 
     } else {
 
-      /* Loop over source particles */
-      for (int j = 0; j < gcount_j; ++j) {
+      if (cj->nodeID == e->nodeID) {
 
-        const struct gpart *gpj = &gparts_j[j];
+        /* cj is local */
 
-        /* Ignore inhibited particles */
-        if (gpart_is_inhibited(gpj, e)) continue;
+        /* Loop over source particles */
+        for (int j = 0; j < gcount_j; ++j) {
 
-        /* Get info about j */
-        const float x_j = gpj->x[0];
-        const float y_j = gpj->x[1];
-        const float z_j = gpj->x[2];
-        const float mass_j = gpj->mass;
-        const float h_j = gravity_get_softening(gpj, grav_props);
+          const struct gpart *gpj = &gparts_j[j];
 
-        /* Compute the pairwise distance.
-           Note: no need for box wrap here! This is non-periodic */
-        const float dx = x_j - x_i;
-        const float dy = y_j - y_i;
-        const float dz = z_j - z_i;
+          /* Ignore inhibited particles */
+          if (gpart_is_inhibited(gpj, e)) continue;
 
-        const float r2 = dx * dx + dy * dy + dz * dz;
+          /* Get info about j */
+          const float x_j = gpj->x[0];
+          const float y_j = gpj->x[1];
+          const float z_j = gpj->x[2];
+          const float mass_j = gpj->mass;
+          const float h_j = gravity_get_softening(gpj, grav_props);
 
-        /* Pick the maximal softening length of i and j */
-        const float h = max(h_i, h_j);
-        const float h2 = h * h;
-        const float h_inv = 1.f / h;
-        const float h_inv_3 = h_inv * h_inv * h_inv;
+          /* Compute the pairwise distance.
+             Note: no need for box wrap here! This is non-periodic */
+          const float dx = x_j - x_i;
+          const float dy = y_j - y_i;
+          const float dz = z_j - z_i;
+
+          const float r2 = dx * dx + dy * dy + dz * dz;
+
+          /* Pick the maximal softening length of i and j */
+          const float h = max(h_i, h_j);
+          const float h2 = h * h;
+          const float h_inv = 1.f / h;
+          const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (gpj->time_bin == time_bin_not_created) {
-          error("Found an extra gpart in the gravity interaction");
-        }
+          if (gpj->time_bin == time_bin_not_created)
+            error("Found an extra gpart in the gravity interaction");
 
-        if (r2 == 0.f && h2 == 0.)
-          error("Interacting particles with 0 distance and 0 softening.");
+          if (r2 == 0.f && h2 == 0.)
+            error("Interacting particles with 0 distance and 0 softening.");
 
-        /* Check that particles have been drifted to the current time */
-        if (gpj->ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
+          /* Check that particles have been drifted to the current time */
+          if (gpj->ti_drift != e->ti_current)
+            error("gpj not drifted to current time");
 #endif
 
-        /* Interact! */
-        float f_ij, pot_ij;
-        runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij,
-                                 &pot_ij);
+          /* Interact! */
+          float f_ij, pot_ij;
+          runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij,
+                                   &pot_ij);
 
-        /* Store it back */
-        a_x += f_ij * dx;
-        a_y += f_ij * dy;
-        a_z += f_ij * dz;
-        pot += pot_ij;
+          /* Store it back */
+          a_x += f_ij * dx;
+          a_y += f_ij * dy;
+          a_z += f_ij * dz;
+          pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter */
-        accumulate_inc_ll(&gparts_i[i].num_interacted);
+          /* Update the interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-        /* Update the p2p interaction counter */
-        accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
+          /* Update the p2p interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
 #endif
+        }
+
+      } else {
+
+        /* cj is foreign */
+
+        /* Loop over source particles */
+        for (int j = 0; j < gcount_j; ++j) {
+
+          const struct gpart_foreign *gpj = &gparts_foreign_j[j];
+
+          /* Ignore inhibited particles */
+          if (gpart_foreign_is_inhibited(gpj, e)) continue;
+
+          /* Get info about j */
+          const float x_j = gpj->x[0];
+          const float y_j = gpj->x[1];
+          const float z_j = gpj->x[2];
+          const float mass_j = gpj->mass;
+          const float h_j = gravity_get_softening_foreign(gpj, grav_props);
+
+          /* Compute the pairwise distance.
+             Note: no need for box wrap here! This is non-periodic */
+          const float dx = x_j - x_i;
+          const float dy = y_j - y_i;
+          const float dz = z_j - z_i;
+
+          const float r2 = dx * dx + dy * dy + dz * dz;
+
+          /* Pick the maximal softening length of i and j */
+          const float h = max(h_i, h_j);
+          const float h2 = h * h;
+          const float h_inv = 1.f / h;
+          const float h_inv_3 = h_inv * h_inv * h_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (r2 == 0.f && h2 == 0.)
+            error("Interacting particles with 0 distance and 0 softening.");
+
+          /* Check that particles have been drifted to the current time */
+          if (gpj->ti_drift != e->ti_current)
+            error("gpj not drifted to current time");
+#endif
+
+          /* Interact! */
+          float f_ij, pot_ij;
+          runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij,
+                                   &pot_ij);
+
+          /* Store it back */
+          a_x += f_ij * dx;
+          a_y += f_ij * dy;
+          a_z += f_ij * dz;
+          pot += pot_ij;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Update the interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+          /* Update the p2p interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
+#endif
+        }
       }
     }
     /* Store everything back in cache */
@@ -349,7 +425,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   lock_lock(&ci->grav.plock);
 #endif
-  gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
+  gravity_cache_write_back(cache_i, ci, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
@@ -364,26 +440,31 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
  * @param gparts_i The particles receiving forces (at leaf level).
  * @param gcount_i The number of particles receiving forces.
  * @param gparts_j The particles giving forces (at any level).
+ * @param gparts_foreign_j The particles giving forces (at any level) if cj is
+ * foreign.
  * @param gcount_j The number of particles giving forces.
  * @param dim The size of the computational domain.
  * @param e The #engine structure.
  * @param grav_props The properties of the gravity scheme.
  * @param cache_i The gravity cache to use to store the results in i.
  * @param ci The (leaf-)cell containing the particles i.
+ * @param cj The cell containing the particles j.
  * @param multi_j The multipole in cell j.
  */
 static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     struct gpart *restrict gparts_i, const int gcount_i,
-    const struct gpart *restrict gparts_j, const int gcount_j,
+    const struct gpart *restrict gparts_j,
+    const struct gpart_foreign *gparts_foreign_j, const int gcount_j,
     const float dim[3], const struct engine *e,
     const struct gravity_props *grav_props, struct gravity_cache *cache_i,
-    struct cell *ci, const struct gravity_tensors *multi_j) {
+    struct cell *ci, const struct cell *cj,
+    const struct gravity_tensors *multi_j) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
     error("Calling truncated PP function in non-periodic setup.");
-
   if (ci->split) error("Using function above leaf level!");
+  if (ci->nodeID != e->nodeID) error("Calling function on foreign pair!");
 #endif
 
   const float r_s_inv = grav_props->r_s_inv;
@@ -468,76 +549,153 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 
     } else {
 
-      /* Loop over source particles */
-      for (int j = 0; j < gcount_j; ++j) {
+      if (cj->nodeID == e->nodeID) {
 
-        const struct gpart *gpj = &gparts_j[j];
+        /* cj is local */
 
-        /* Ignore inhibited particles */
-        if (gpart_is_inhibited(gpj, e)) continue;
+        /* Loop over source particles */
+        for (int j = 0; j < gcount_j; ++j) {
 
-        /* Get info about j */
-        const float x_j = gpj->x[0];
-        const float y_j = gpj->x[1];
-        const float z_j = gpj->x[2];
-        const float mass_j = gpj->mass;
-        const float h_j = gravity_get_softening(gpj, grav_props);
+          const struct gpart *gpj = &gparts_j[j];
 
-        /* Compute the pairwise distance.
-           Note: no need for box wrap here! This is non-periodic */
-        float dx = x_j - x_i;
-        float dy = y_j - y_i;
-        float dz = z_j - z_i;
+          /* Ignore inhibited particles */
+          if (gpart_is_inhibited(gpj, e)) continue;
 
-        /* Correct for periodic BCs */
-        dx = nearestf(dx, dim[0]);
-        dy = nearestf(dy, dim[1]);
-        dz = nearestf(dz, dim[2]);
+          /* Get info about j */
+          const float x_j = gpj->x[0];
+          const float y_j = gpj->x[1];
+          const float z_j = gpj->x[2];
+          const float mass_j = gpj->mass;
+          const float h_j = gravity_get_softening(gpj, grav_props);
 
-        const float r2 = dx * dx + dy * dy + dz * dz;
+          /* Compute the pairwise distance.
+             Note: no need for box wrap here! This is non-periodic */
+          float dx = x_j - x_i;
+          float dy = y_j - y_i;
+          float dz = z_j - z_i;
 
-        /* Pick the maximal softening length of i and j */
-        const float h = max(h_i, h_j);
-        const float h2 = h * h;
-        const float h_inv = 1.f / h;
-        const float h_inv_3 = h_inv * h_inv * h_inv;
+          /* Correct for periodic BCs */
+          dx = nearestf(dx, dim[0]);
+          dy = nearestf(dy, dim[1]);
+          dz = nearestf(dz, dim[2]);
+
+          const float r2 = dx * dx + dy * dy + dz * dz;
+
+          /* Pick the maximal softening length of i and j */
+          const float h = max(h_i, h_j);
+          const float h2 = h * h;
+          const float h_inv = 1.f / h;
+          const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (gpj->time_bin == time_bin_not_created) {
-          error("Found an extra gpart in the gravity interaction");
-        }
+          if (gpj->time_bin == time_bin_not_created) {
+            error("Found an extra gpart in the gravity interaction");
+          }
 
-        if (r2 == 0.f && h2 == 0.)
-          error("Interacting particles with 0 distance and 0 softening.");
+          if (r2 == 0.f && h2 == 0.)
+            error("Interacting particles with 0 distance and 0 softening.");
 
-        /* Check that particles have been drifted to the current time */
-        if (gpj->ti_drift != e->ti_current)
-          error("gpj not drifted to current time");
+          /* Check that particles have been drifted to the current time */
+          if (gpj->ti_drift != e->ti_current)
+            error("gpj not drifted to current time");
 #endif
 
-        /* Interact! */
-        float f_ij, pot_ij;
-        runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
-                                      &f_ij, &pot_ij);
+          /* Interact! */
+          float f_ij, pot_ij;
+          runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+                                        &f_ij, &pot_ij);
 
-        /* Store it back */
-        a_x += f_ij * dx;
-        a_y += f_ij * dy;
-        a_z += f_ij * dz;
-        pot += pot_ij;
+          /* Store it back */
+          a_x += f_ij * dx;
+          a_y += f_ij * dy;
+          a_z += f_ij * dz;
+          pot += pot_ij;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Update the interaction counter */
-        accumulate_inc_ll(&gparts_i[i].num_interacted);
+          /* Update the interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-        /* Update the p2p interaction counter */
-        accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
-        accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
+          /* Update the p2p interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
 #endif
+        }
+
+      } else {
+
+        /* cj is foreign */
+
+        /* Loop over source particles */
+        for (int j = 0; j < gcount_j; ++j) {
+
+          const struct gpart_foreign *gpj = &gparts_foreign_j[j];
+
+          /* Ignore inhibited particles */
+          if (gpart_foreign_is_inhibited(gpj, e)) continue;
+
+          /* Get info about j */
+          const float x_j = gpj->x[0];
+          const float y_j = gpj->x[1];
+          const float z_j = gpj->x[2];
+          const float mass_j = gpj->mass;
+          const float h_j = gravity_get_softening_foreign(gpj, grav_props);
+
+          /* Compute the pairwise distance.
+             Note: no need for box wrap here! This is non-periodic */
+          float dx = x_j - x_i;
+          float dy = y_j - y_i;
+          float dz = z_j - z_i;
+
+          /* Correct for periodic BCs */
+          dx = nearestf(dx, dim[0]);
+          dy = nearestf(dy, dim[1]);
+          dz = nearestf(dz, dim[2]);
+
+          const float r2 = dx * dx + dy * dy + dz * dz;
+
+          /* Pick the maximal softening length of i and j */
+          const float h = max(h_i, h_j);
+          const float h2 = h * h;
+          const float h_inv = 1.f / h;
+          const float h_inv_3 = h_inv * h_inv * h_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (r2 == 0.f && h2 == 0.)
+            error("Interacting particles with 0 distance and 0 softening.");
+
+          /* Check that particles have been drifted to the current time */
+          if (gpj->ti_drift != e->ti_current)
+            error("gpj not drifted to current time");
+#endif
+
+          /* Interact! */
+          float f_ij, pot_ij;
+          runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+                                        &f_ij, &pot_ij);
+
+          /* Store it back */
+          a_x += f_ij * dx;
+          a_y += f_ij * dy;
+          a_z += f_ij * dz;
+          pot += pot_ij;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Update the interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+          /* Update the p2p interaction counter */
+          accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
+          accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
+#endif
+        }
       }
     }
 
@@ -552,7 +710,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   lock_lock(&ci->grav.plock);
 #endif
-  gravity_cache_write_back(cache_i, ci->grav.parts, gcount_i);
+  gravity_cache_write_back(cache_i, ci, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
@@ -576,15 +734,20 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
  * @param e The #engine (for debugging checks only).
  * @param gparts_i The #gpart in cell i (for debugging checks only).
  * @param gparts_j The #gpart in cell j (for debugging checks only).
+ * @param gparts_foreign_j The #gpart_foreign in cell j (for debugging checks
+ * only).
  * @param gcount_j The number of particles in the cell j (for debugging checks
  * only).
+ * @param foreign_j Is the cell j foreign? (for debugging checks only).
  */
 static INLINE void runner_dopair_grav_pp_full(
     struct gravity_cache *restrict ci_cache,
     struct gravity_cache *restrict cj_cache, const int gcount_i,
     const int gcount_j, const int gcount_padded_j, const int periodic,
     const float dim[3], const struct engine *restrict e,
-    struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j) {
+    struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
+    const struct gpart_foreign *restrict gparts_foreign_j,
+    const int foreign_j) {
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -647,8 +810,6 @@ static INLINE void runner_dopair_grav_pp_full(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* The gravity_cache are sometimes allocated with more
-         place than required => flag with mass=0 */
       if (gparts_j[pjd].time_bin == time_bin_not_created && mass_j != 0.f) {
         error("Found an extra gpart in the gravity interaction");
       }
@@ -663,7 +824,14 @@ static INLINE void runner_dopair_grav_pp_full(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+
+      if (!foreign_j && pjd < gcount_j &&
+          gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
+        error("gpj not drifted to current time");
+
+      if (foreign_j && pjd < gcount_j &&
+          gparts_foreign_j[pjd].ti_drift != e->ti_current &&
           !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
 
@@ -672,7 +840,13 @@ static INLINE void runner_dopair_grav_pp_full(
         error("Updating an inhibited particle!");
 
       /* Check that the particle we interact with was not inhibited */
-      if (pjd < gcount_j && gpart_is_inhibited(&gparts_j[pjd], e) &&
+      if (!foreign_j && pjd < gcount_j &&
+          gpart_is_inhibited(&gparts_j[pjd], e) && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (foreign_j && pjd < gcount_j &&
+          gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e) &&
           mass_j != 0.f)
         error("Inhibited particle used as gravity source.");
 
@@ -693,7 +867,11 @@ static INLINE void runner_dopair_grav_pp_full(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+      if (!foreign_j && pjd < gcount_j &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
+        accumulate_inc_ll(&gparts_i[pid].num_interacted);
+      if (foreign_j && pjd < gcount_j &&
+          !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
         accumulate_inc_ll(&gparts_i[pid].num_interacted);
 #endif
 
@@ -738,15 +916,20 @@ static INLINE void runner_dopair_grav_pp_full(
  * @param e The #engine (for debugging checks only).
  * @param gparts_i The #gpart in cell i (for debugging checks only).
  * @param gparts_j The #gpart in cell j (for debugging checks only).
+ * @param gparts_foreign_j The #gpart_foreign in cell j (for debugging checks
+ * only).
  * @param gcount_j The number of particles in the cell j (for debugging checks
  * only).
+ * @param foreign_j Is the cell j foreign? (for debugging checks only).
  */
 static INLINE void runner_dopair_grav_pp_truncated(
     struct gravity_cache *restrict ci_cache,
     struct gravity_cache *restrict cj_cache, const int gcount_i,
     const int gcount_j, const int gcount_padded_j, const float dim[3],
     const float r_s_inv, const struct engine *restrict e,
-    struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j) {
+    struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j,
+    const struct gpart_foreign *restrict gparts_foreign_j,
+    const int foreign_j) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -812,8 +995,6 @@ static INLINE void runner_dopair_grav_pp_truncated(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* The gravity_cache are sometimes allocated with more
-         place than required => flag with mass=0 */
       if (gparts_i[pid].time_bin == time_bin_not_created &&
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
@@ -828,7 +1009,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
       /* Check that particles have been drifted to the current time */
       if (gparts_i[pid].ti_drift != e->ti_current)
         error("gpi not drifted to current time");
-      if (pjd < gcount_j && gparts_j[pjd].ti_drift != e->ti_current &&
+
+      if (!foreign_j && pjd < gcount_j &&
+          gparts_j[pjd].ti_drift != e->ti_current &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
+        error("gpj not drifted to current time");
+
+      if (foreign_j && pjd < gcount_j &&
+          gparts_foreign_j[pjd].ti_drift != e->ti_current &&
           !gpart_is_inhibited(&gparts_j[pjd], e))
         error("gpj not drifted to current time");
 
@@ -837,7 +1025,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
         error("Updating an inhibited particle!");
 
       /* Check that the particle we interact with was not inhibited */
-      if (pjd < gcount_j && gpart_is_inhibited(&gparts_j[pjd], e) &&
+      if (!foreign_j && pjd < gcount_j &&
+          gpart_is_inhibited(&gparts_j[pjd], e) && mass_j != 0.f)
+        error("Inhibited particle used as gravity source.");
+
+      /* Check that the particle we interact with was not inhibited */
+      if (foreign_j && pjd < gcount_j &&
+          gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e) &&
           mass_j != 0.f)
         error("Inhibited particle used as gravity source.");
 
@@ -859,7 +1053,11 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Update the interaction counter if it's not a padded gpart */
-      if (pjd < gcount_j && !gpart_is_inhibited(&gparts_j[pjd], e))
+      if (!foreign_j && pjd < gcount_j &&
+          !gpart_is_inhibited(&gparts_j[pjd], e))
+        accumulate_inc_ll(&gparts_i[pid].num_interacted);
+      if (foreign_j && pjd < gcount_j &&
+          !gpart_foreign_is_inhibited(&gparts_foreign_j[pjd], e))
         accumulate_inc_ll(&gparts_i[pid].num_interacted);
 #endif
 
@@ -944,8 +1142,6 @@ static INLINE void runner_dopair_grav_pm_full(
     if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* The gravity_cache are sometimes allocated with more
-       place than required => flag with mass=0 */
     if (gparts_i[pid].time_bin == time_bin_not_created &&
         ci_cache->m[pid] != 0.) {
       error("Found an extra gpart in the gravity interaction");
@@ -1095,8 +1291,6 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* The gravity_cache are sometimes allocated with more
-       place than required => flag with mass=0 */
     if (gparts_i[pid].time_bin == time_bin_not_created &&
         ci_cache->m[pid] != 0.) {
       error("Found an extra gpart in the gravity interaction");
@@ -1271,14 +1465,27 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const int allow_multipole_j = allow_mpole && cj->grav.count > 1;
 
   /* Fill the caches */
-  gravity_cache_populate(e->max_active_bin, allow_multipole_j, periodic, dim,
-                         ci_cache, ci->grav.parts, gcount_i, gcount_padded_i,
-                         shift_i, CoM_j, cj->grav.multipole, ci,
-                         e->gravity_properties);
-  gravity_cache_populate(e->max_active_bin, allow_multipole_i, periodic, dim,
-                         cj_cache, cj->grav.parts, gcount_j, gcount_padded_j,
-                         shift_j, CoM_i, ci->grav.multipole, cj,
-                         e->gravity_properties);
+  if (ci->nodeID == e->nodeID) {
+    gravity_cache_populate(e->max_active_bin, allow_multipole_j, periodic, dim,
+                           ci_cache, ci->grav.parts, gcount_i, gcount_padded_i,
+                           shift_i, CoM_j, cj->grav.multipole, ci,
+                           e->gravity_properties);
+  } else {
+    gravity_cache_populate_foreign(
+        periodic, dim, ci_cache, ci->grav.parts_foreign, gcount_i,
+        gcount_padded_i, shift_i, ci, e->gravity_properties);
+  }
+
+  if (cj->nodeID == e->nodeID) {
+    gravity_cache_populate(e->max_active_bin, allow_multipole_i, periodic, dim,
+                           cj_cache, cj->grav.parts, gcount_j, gcount_padded_j,
+                           shift_j, CoM_i, ci->grav.multipole, cj,
+                           e->gravity_properties);
+  } else {
+    gravity_cache_populate_foreign(
+        periodic, dim, cj_cache, cj->grav.parts_foreign, gcount_j,
+        gcount_padded_j, shift_j, cj, e->gravity_properties);
+  }
 
   /* Can we use the Newtonian version or do we need the truncated one ? */
   if (!periodic) {
@@ -1289,9 +1496,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     if (ci_active) {
 
       /* First the P2P */
-      runner_dopair_grav_pp_full(ci_cache, cj_cache, gcount_i, gcount_j,
-                                 gcount_padded_j, periodic, dim, e,
-                                 ci->grav.parts, cj->grav.parts);
+      runner_dopair_grav_pp_full(
+          ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, periodic,
+          dim, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
+          cj->nodeID != e->nodeID);
 
       /* Then the M2P */
       if (allow_multipole_j)
@@ -1302,9 +1510,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     if (cj_active && symmetric) {
 
       /* First the P2P */
-      runner_dopair_grav_pp_full(cj_cache, ci_cache, gcount_j, gcount_i,
-                                 gcount_padded_i, periodic, dim, e,
-                                 cj->grav.parts, ci->grav.parts);
+      runner_dopair_grav_pp_full(
+          cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, periodic,
+          dim, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
+          ci->nodeID != e->nodeID);
 
       /* Then the M2P */
       if (allow_multipole_i)
@@ -1338,9 +1547,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       if (ci_active) {
 
         /* First the (truncated) P2P */
-        runner_dopair_grav_pp_truncated(ci_cache, cj_cache, gcount_i, gcount_j,
-                                        gcount_padded_j, dim, r_s_inv, e,
-                                        ci->grav.parts, cj->grav.parts);
+        runner_dopair_grav_pp_truncated(
+            ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, dim,
+            r_s_inv, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
+            cj->nodeID != e->nodeID);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1351,9 +1561,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       if (cj_active && symmetric) {
 
         /* First the (truncated) P2P */
-        runner_dopair_grav_pp_truncated(cj_cache, ci_cache, gcount_j, gcount_i,
-                                        gcount_padded_i, dim, r_s_inv, e,
-                                        cj->grav.parts, ci->grav.parts);
+        runner_dopair_grav_pp_truncated(
+            cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, dim,
+            r_s_inv, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
+            ci->nodeID != e->nodeID);
 
         /* Then the M2P */
         if (allow_multipole_i)
@@ -1370,9 +1581,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       if (ci_active) {
 
         /* First the (Newtonian) P2P */
-        runner_dopair_grav_pp_full(ci_cache, cj_cache, gcount_i, gcount_j,
-                                   gcount_padded_j, periodic, dim, e,
-                                   ci->grav.parts, cj->grav.parts);
+        runner_dopair_grav_pp_full(
+            ci_cache, cj_cache, gcount_i, gcount_j, gcount_padded_j, periodic,
+            dim, e, ci->grav.parts, cj->grav.parts, cj->grav.parts_foreign,
+            cj->nodeID != e->nodeID);
 
         /* Then the M2P */
         if (allow_multipole_j)
@@ -1383,9 +1595,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       if (cj_active && symmetric) {
 
         /* First the (Newtonian) P2P */
-        runner_dopair_grav_pp_full(cj_cache, ci_cache, gcount_j, gcount_i,
-                                   gcount_padded_i, periodic, dim, e,
-                                   cj->grav.parts, ci->grav.parts);
+        runner_dopair_grav_pp_full(
+            cj_cache, ci_cache, gcount_j, gcount_i, gcount_padded_i, periodic,
+            dim, e, cj->grav.parts, ci->grav.parts, ci->grav.parts_foreign,
+            ci->nodeID != e->nodeID);
 
         /* Then the M2P */
         if (allow_multipole_i)
@@ -1401,7 +1614,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     lock_lock(&ci->grav.plock);
 #endif
-    gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+    gravity_cache_write_back(ci_cache, ci, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
@@ -1412,7 +1625,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     lock_lock(&cj->grav.plock);
 #endif
-    gravity_cache_write_back(cj_cache, cj->grav.parts, gcount_j);
+    gravity_cache_write_back(cj_cache, cj, cj->grav.parts, gcount_j);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     if (lock_unlock(&cj->grav.plock) != 0) error("Error unlocking cell");
 #endif
@@ -1466,15 +1679,16 @@ void runner_dopair_grav_pp_no_cache(struct runner *r, struct cell *restrict ci,
     if (!periodic) {
 
       runner_dopair_grav_pp_full_no_cache(
-          ci->grav.parts, ci->grav.count, cj->grav.parts, cj->grav.count, e,
-          e->gravity_properties, &r->ci_gravity_cache, ci, cj->grav.multipole);
+          ci->grav.parts, ci->grav.count, cj->grav.parts,
+          cj->grav.parts_foreign, cj->grav.count, e, e->gravity_properties,
+          &r->ci_gravity_cache, ci, cj, cj->grav.multipole);
 
     } else {
 
       runner_dopair_grav_pp_truncated_no_cache(
-          ci->grav.parts, ci->grav.count, cj->grav.parts, cj->grav.count, dim,
-          e, e->gravity_properties, &r->ci_gravity_cache, ci,
-          cj->grav.multipole);
+          ci->grav.parts, ci->grav.count, cj->grav.parts,
+          cj->grav.parts_foreign, cj->grav.count, dim, e, e->gravity_properties,
+          &r->ci_gravity_cache, ci, cj, cj->grav.multipole);
     }
   }
 }
@@ -1547,8 +1761,6 @@ static INLINE void runner_doself_grav_pp_full(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* The gravity_cache are sometimes allocated with more
-         place than required => flag with mass=0 */
       if (gparts[pid].time_bin == time_bin_not_created &&
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
@@ -1695,8 +1907,6 @@ static INLINE void runner_doself_grav_pp_truncated(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* The gravity_cache are sometimes allocated with more
-         place than required => flag with mass=0 */
       if (gparts[pid].time_bin == time_bin_not_created &&
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
@@ -1792,6 +2002,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->grav.count == 0) error("Doing self gravity on an empty cell !");
+  if (c->nodeID != e->nodeID) error("Running on foreign cell!");
 #endif
 
   /* Anything to do here? */
@@ -1857,7 +2068,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   lock_lock(&c->grav.plock);
 #endif
-  gravity_cache_write_back(ci_cache, c->grav.parts, gcount);
+  gravity_cache_write_back(ci_cache, c, c->grav.parts, gcount);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
   if (lock_unlock(&c->grav.plock) != 0) error("Error unlocking cell");
 #endif
@@ -2178,7 +2389,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     lock_lock(&ci->grav.plock);
 #endif
-    gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+    gravity_cache_write_back(ci_cache, ci, ci->grav.parts, gcount_i);
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
