@@ -15,9 +15,19 @@ GEAR RT
 Compiling for GEAR RT
 ~~~~~~~~~~~~~~~~~~~~~
 
-To compile swift to be able to run with GEAR RT, you need to configure with
-``--with-rt=GEAR_N`` where ``N`` is the integer number of photon groups that you
-intend to use in your simulation.
+-   To compile swift to be able to run with GEAR RT, you need to configure with
+    ``--with-rt=GEAR_N`` where ``N`` is the integer number of photon groups that 
+    you intend to use in your simulation.
+
+-   You need to choose a Riemann solver for the RT equations. Currently only the
+    ``--with-rt-riemann-solver=GLF`` works, the ``HLL`` will be added later.
+    The ``GLF`` solver is more diffusive, but the ``HLL`` solver produces less 
+    spherically symmetric radiation from stars. See 
+    `Rosdahl et al 2013 <https://arxiv.org/abs/1304.7126>`_
+
+-   GEAR RT is only compatible with the Meshless Finite Volume scheme. You'll
+    need to compile using ``--with-hydro=gizmo-mfv``, which will also require
+    you to select a hydro Riemann solver, e.g ``--with-riemann-solver=hllc``.
 
 
 
@@ -35,6 +45,7 @@ You need to provide the following runtime parameters in the yaml file:
        use_const_emission_rates: 1 
        star_emission_rates_LSol: [1., 1., 1., 1.]         # stellar emission rates for each photon 
                                                           # frequency bin in units of solar luminosity
+       f_reduce_c: 1e-3                                   # reduce the speed of light by this factor
 
 
 The ``photon_groups`` need to be ``N - 1`` frequency edges (floats) to separate 

@@ -274,7 +274,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
      * flux is subtracted from the left state, and added to the right
-     * state. */
+     * state, based on how we chose the unit vector. */
     rti->flux[g].energy -= totflux[0];
     rti->flux[g].flux[0] -= totflux[1];
     rti->flux[g].flux[1] -= totflux[2];
