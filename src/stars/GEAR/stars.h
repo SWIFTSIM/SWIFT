@@ -55,8 +55,9 @@ __attribute__((always_inline)) INLINE static float stars_compute_age(
     const int with_cosmology) {
 
   if (with_cosmology) {
+    const double birth = sp->birth_scale_factor;
     return cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+        cosmo, min(birth, cosmo->a), cosmo->a);
   } else {
     return time - (double)sp->birth_time;
   }
