@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_PROPERTIES_GEAR_H
 #define SWIFT_RT_PROPERTIES_GEAR_H
 
+#include "rt_parameters.h"
+
 /**
  * @file src/rt/GEAR/rt_properties.h
  * @brief Main header file for the 'GEAR' radiative transfer scheme
@@ -156,6 +158,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     /* kill the run for now */
     error("GEAR-RT can't run without constant stellar emission rates for now.");
   }
+
+  /* get reduced speed of light factor */
+  const float f_r = parser_get_param_float(params, "GEARRT:f_reduce_c");
+  rt_params.reduced_speed_of_light = phys_const->const_speed_light_c * f_r;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rtp->debug_radiation_emitted_tot = 0ULL;

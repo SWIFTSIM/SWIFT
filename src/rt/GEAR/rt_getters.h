@@ -21,6 +21,8 @@
 #ifndef SWIFT_GEAR_RT_GETTERS_H
 #define SWIFT_GEAR_RT_GETTERS_H
 
+#include "rt_parameters.h"
+
 /**
  * @file src/rt/GEAR/rt_getters.h
  * @brief Getter functions for GEAR RT scheme to keep code clean and lean
@@ -69,6 +71,68 @@ __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
   dFz[0] = p->rt_data.gradient[group].flux[2][0];
   dFz[1] = p->rt_data.gradient[group].flux[2][1];
   dFz[2] = p->rt_data.gradient[group].flux[2][2];
+}
+
+/**
+ * @brief compute the pressure tensor for a given state U
+ *
+ * @param U the state (photon energy, photon energy flux) to use
+ * @param flux the resulting flux F(U) of the hyperbolic conservation law
+ */
+__attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const float U[4], float pressure_tensor[3][3]){
+ 
+  const double c_red = rt_params.reduced_speed_of_light;
+  const float normF = sqrtf(U[1]*U[1] + U[2]*U[2] + U[3] * U[3]);
+  const float f = normF / (c_red * U[0]);
+  const float chi = (3.f + 4.f * f * f) / (5.f + 2. * sqrtf(4.f - 5.f * f * f));
+  const float n[3] = {U[1]/normF, U[2]/normF, U[3]/normF};
+
+  const float temp = 0.5f * (3.f * chi - 1.f);
+  for (int i = 0; i < 3; i++){
+    for (int j = 0; j < 3; j++){
+      pressure_tensor[i][j] = temp * n[i] * n[j];
+    }
+  }
+
+  const float temp2 = 0.5f * (1.f - chi);
+  pressure_tensor[0][0] += temp2;
+  pressure_tensor[1][1] += temp2;
+  pressure_tensor[2][2] += temp2;
+
+  for (int i = 0; i < 3; i++){
+    for (int j = 0; j < 3; j++){
+      pressure_tensor[i][j] *= U[0];
+    }
+  }
+}
+
+/**
+ * @brief compute the flux of the hyperbolic conservation law for a given
+ * state U
+ *
+ * @param U the state (photon energy, photon energy flux) to use
+ * @param flux the resulting flux F(U) of the hyperbolic conservation law
+ */
+__attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(const float U[4], float flux[4][3]){
+
+  flux[0][0] = U[1];
+  flux[0][1] = U[2];
+  flux[0][2] = U[3];
+
+  float pressure_tensor[3][3];
+  rt_get_pressure_tensor(U, pressure_tensor);
+
+  const float c_red = rt_params.reduced_speed_of_light;
+  const float c2 = c_red * c_red;
+  flux[1][0] = pressure_tensor[0][0] * c2;
+  flux[1][1] = pressure_tensor[0][1] * c2;
+  flux[1][2] = pressure_tensor[0][2] * c2;
+  flux[2][0] = pressure_tensor[1][0] * c2;
+  flux[2][1] = pressure_tensor[1][1] * c2;
+  flux[2][2] = pressure_tensor[1][2] * c2;
+  flux[3][0] = pressure_tensor[2][0] * c2;
+  flux[3][1] = pressure_tensor[2][1] * c2;
+  flux[3][2] = pressure_tensor[2][2] * c2;
 }
 
 #endif

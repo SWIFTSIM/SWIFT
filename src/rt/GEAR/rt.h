@@ -20,6 +20,7 @@
 #define SWIFT_RT_GEAR_H
 
 #include "rt_debugging.h"
+#include "rt_flux.h"
 #include "rt_gradients.h"
 #include "rt_properties.h"
 #include "rt_slope_limiters_cell.h"
@@ -70,6 +71,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   p->rt_data.debug_transport_done = 0;
   p->rt_data.debug_thermochem_done = 0;
 #endif
+
+  rt_part_reset_fluxes(p);
 }
 
 /**
