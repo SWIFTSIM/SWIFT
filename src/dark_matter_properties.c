@@ -105,12 +105,16 @@ void sidm_props_init(struct sidm_props* sidm_props,
     const float delta_eta = sidm_props->eta_neighbours * (1.f + sidm_props->h_tolerance);
 
     sidm_props->delta_neighbours = (pow_dimension(delta_eta) - pow_dimension(sidm_props->eta_neighbours));
-    
-    /* Maximal smoothing length */
+
+    /* Are we setting fixed SIDM search radius? */
+    sidm_props->h_sidm = parser_get_opt_param_float(params, "SIDM:h_sidm",
+                                                   sidm_props_default_h_sidm);
+
+    /* Maximal search radius */
     sidm_props->h_max = parser_get_opt_param_float(params, "SIDM:h_max",
                                           sidm_props_default_h_max);
     
-    /* Minimal smoothing length ratio to softening */
+    /* Minimal search radius ratio to softening */
     sidm_props->h_min_ratio = parser_get_opt_param_float(params, "SIDM:h_min_ratio",
                                                 sidm_props_default_h_min_ratio);
     

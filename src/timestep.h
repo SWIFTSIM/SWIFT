@@ -134,8 +134,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     const struct engine *restrict e) {
 
   /* Compute the next timestep (hydro condition) */
-  const float new_dt_hydro =
-      hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
+  const float new_dt_hydro = hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
 
   /* Compute the next timestep (cooling condition) */
   float new_dt_cooling = FLT_MAX;

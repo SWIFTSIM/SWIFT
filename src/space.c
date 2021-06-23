@@ -4360,6 +4360,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int dmcount = c->dark_matter.count;
   const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
+  const int with_sidm = s->e->policy & engine_policy_sidm;
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
@@ -4573,7 +4574,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, c->dark_matter.parts - s->dmparts,
                c->sinks.parts - s->sinks,
-               buff, sbuff, bbuff, gbuff, dmbuff, sink_buff);
+               buff, sbuff, bbuff, gbuff, dmbuff, sink_buff, with_sidm);
 
     /* Buffers for the progenitors */
     struct cell_buff *progeny_buff = buff, *progeny_gbuff = gbuff,

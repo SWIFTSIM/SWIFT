@@ -933,6 +933,10 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
+
+//        const float hi = pi->sidm_data.fixed_h_sidm;
+//        const float hig2 = hi * hi;
+
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
             (float)(pi->x[1] - (cj->loc[1] + shift[1])),
             (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
@@ -949,6 +953,9 @@ void DOPAIR2(struct runner *r, struct cell *restrict ci, struct cell *restrict c
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
+
+//            const float hj = pj->sidm_data.fixed_h_sidm;
+//            const float hjg2 = hj * hj;
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -1041,6 +1048,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
+
+//        const float hi = pi->sidm_data.fixed_h_sidm;
+//        const float hig2 = hi * hi;
         
         /* Is the ith particle not active? */
         if (!dmpart_is_active(pi, e)) {
@@ -1050,7 +1060,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 
                 /* Get a pointer to the jth particle. */
                 struct dmpart *restrict pj = &dmparts[indt[pjd]];
+
                 const float hj = pj->h;
+//                const float hj = pj->sidm_data.fixed_h_sidm;
 
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
@@ -1062,6 +1074,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 
                 /* Hit or miss? */
                 if (r2 < hig2 || r2 < hj * hj * dm_kernel_gamma2) {
+//                if (r2 < hig2 || r2 < hj * hj) {
                     
                     runner_iact_nonsym_dark_matter_sidm(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                                         t_current, cosmo, with_cosmology, sidm_props, us);
@@ -1085,7 +1098,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 if (dmpart_is_inhibited(pj, e)) continue;
                 
                 const float hj = pj->h;
-                
+//                const float hj = pj->sidm_data.fixed_h_sidm;
+
                 /* Compute the pairwise distance. */
                 float r2 = 0.0f;
                 float dx[3];
@@ -1096,21 +1110,20 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                 
                 /* Hit or miss? */
                 if (r2 < hig2 || r2 < hj * hj * dm_kernel_gamma2) {
-                    
-                    /* Does pj need to be updated too? */
-                    if (dmpart_is_active(pj, e)) {
-                        
-                        runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                                     t_current, cosmo, with_cosmology, sidm_props, us);
+                /*if (r2 < hig2 || r2 < hj * hj) {*/
 
-                        /*runner_iact_dm_timebin(r2, dx, hi, hj, pi, pj, a, H);*/
-                        
-                    } else {
-                        
-                        runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
-                                                            t_current, cosmo, with_cosmology, sidm_props, us);
+                        /* Does pj need to be updated too? */
+                        if (dmpart_is_active(pj, e)) {
 
-                    }
+                            runner_iact_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                                         t_current, cosmo, with_cosmology, sidm_props, us);
+
+                        } else {
+
+                            runner_iact_nonsym_dark_matter_sidm(r2, dx, hi, hj, pi, pj, a, H, time_base,
+                                                                t_current, cosmo, with_cosmology, sidm_props, us);
+
+                        }
                 }
             } /* loop over all other particles. */
         }
@@ -1160,6 +1173,10 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         const int pi_active = dmpart_is_active(pi, e);
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
+
+//        const float hi = pi->sidm_data.fixed_h_sidm;
+//        const float hig2 = hi * hi;
+
         const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
                               (float)(pi->x[1] - c->loc[1]),
                               (float)(pi->x[2] - c->loc[2])};
@@ -1172,6 +1189,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
             
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
+//            const float hj = pj->sidm_data.fixed_h_sidm;
+//            const float hjg2 = hj * hj;
+
             const int pj_active = dmpart_is_active(pj, e);
             
             /* Compute the pairwise distance. */
@@ -1291,6 +1311,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
         const float hi = pi->h;
         const float hig2 = hi * hi * dm_kernel_gamma2;
+
+//        const float hi = pi->sidm_data.fixed_h_sidm;
+//        const float hig2 = hi * hi;
+
         const int pi_active = dmpart_is_active(pi, e);
         const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
                               (float)(pi->x[1] - (cj->loc[1] + shift[1])),
@@ -1308,6 +1332,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
             const int pj_active = dmpart_is_active(pj, e);
             const float hj = pj->h;
             const float hjg2 = hj * hj * dm_kernel_gamma2;
+
+//            const float hj = pj->sidm_data.fixed_h_sidm;
+//            const float hjg2 = hj * hj;
             
             /* Compute the pairwise distance. */
             const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),

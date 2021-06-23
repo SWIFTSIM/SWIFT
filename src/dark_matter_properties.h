@@ -75,6 +75,9 @@ struct sidm_props {
     
     /*! Minimal smoothing length (internal units) */
     float h_min;
+
+    /*! If we are running with fixed search radius set it here */
+    float h_sidm;
     
     /*! Smoothing length tolerance */
     float h_tolerance;
@@ -125,6 +128,9 @@ struct sidm_dmpart_data {
     
     /* Cross section */
     double sigma;
+
+    /* Set fixed SIDM search radius */
+    float fixed_h_sidm;
     
     /*! Cumulative number of DM-DM collisions */
     float number_of_sidm_events;

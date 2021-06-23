@@ -2026,7 +2026,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 ptrdiff_t bparts_offset, ptrdiff_t dmparts_offset, ptrdiff_t sinks_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
                 struct cell_buff *bbuff, struct cell_buff *gbuff, struct cell_buff *dmbuff,
-                struct cell_buff *sinkbuff) {
+                struct cell_buff *sinkbuff, const int with_sidm) {
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
             dmcount = c->dark_matter.count, sink_count = c->sinks.count;
@@ -2452,7 +2452,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           } else if (gparts[j].type == swift_type_stars) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
-          } else if (gparts[j].type == swift_type_dark_matter && dmcount > 0) {
+          } else if (gparts[j].type == swift_type_dark_matter && with_sidm) {
               dmparts[-gparts[j].id_or_neg_offset - dmparts_offset].gpart =
               &gparts[j];
           } else if (gparts[j].type == swift_type_sink) {
@@ -2471,7 +2471,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
         } else if (gparts[k].type == swift_type_stars) {
           sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
               &gparts[k];
-        } else if (gparts[k].type == swift_type_dark_matter && dmcount > 0) {
+        } else if (gparts[k].type == swift_type_dark_matter && with_sidm) {
           dmparts[-gparts[k].id_or_neg_offset - dmparts_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_sink) {
           sinks[-gparts[k].id_or_neg_offset - sinks_offset].gpart = &gparts[k];

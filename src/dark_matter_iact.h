@@ -867,6 +867,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float normed_gij = norm_for_kernels_integral(hi, hj);
     float gji = integrate_kernels(r2, hj, hi);
     float normed_gji = norm_for_kernels_integral(hj, hi);*/
+
     float gij = integrate_kernels_analytical(r2, hi, hj) * cosmo->a3_inv;
     float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
     float gji = integrate_kernels_analytical(r2, hj, hi) * cosmo->a3_inv;
@@ -874,7 +875,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
     float Rate_SIDM_j = mass_i * sigma * vij * gji / normed_gji;
-    
+
+//    /* DM-DM distance */
+//    float hi_3 = hi * hi * hi;
+//    float hj_3 = hj * hj * hj;
+//
+//    /* Calculate scattering rate */
+//    float Rate_SIDM_i = sigma * mass_i * vij * cosmo->a3_inv / (4.0f * M_PI * hi_3 / 3.0f);
+//    float Rate_SIDM_j = sigma * mass_j * vij * cosmo->a3_inv / (4.0f * M_PI * hj_3 / 3.0f);
+
     pi->sidm_probability += mass_j * sigma * vij * gij / normed_gij;
     pj->sidm_probability += mass_i * sigma * vij * gji / normed_gji;
 

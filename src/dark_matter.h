@@ -87,6 +87,9 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
     
     /*! Flags to indicate if the particle has been scattered yes(1)/no(0) */
     dmp->sidm_data.sidm_flag = 0.0f;
+
+    /* if we are running with fixed search radius set it here */
+    dmp->sidm_data.fixed_h_sidm = sidm_props->h_sidm;
     
     /*! Number of DM-DM particle collisions */
     dmp->sidm_data.number_of_sidm_events = 0.0f;
