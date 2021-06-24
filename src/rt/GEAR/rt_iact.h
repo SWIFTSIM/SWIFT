@@ -264,10 +264,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, g, Qi, Qj);
 
     float totflux[4];
-    totflux[0] = 0.f; /* TODO: temporary */
-    totflux[1] = 0.f; /* TODO: temporary */
-    totflux[2] = 0.f; /* TODO: temporary */
-    totflux[3] = 0.f; /* TODO: temporary */
 
     rt_compute_flux(Qi, Qj, n_unit, Anorm, totflux);
 
@@ -286,6 +282,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
       rtj->flux[g].flux[2] += totflux[3];
     }
   }
+
+/* TODO: TEMPORARY */
+  if (pi->id < 20) {
+    float Qi[4], Qj[4];
+    float Qi2[4], Qj2[4];
+    rt_part_get_density_vector(pi, 0, Qi);
+    rt_part_get_density_vector(pi, 0, Qi2);
+    rt_part_get_density_vector(pj, 0, Qj);
+    rt_part_get_density_vector(pj, 0, Qj2);
+    
+    rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, 0, Qi, Qj);
+    message("Original state: %.3e %.3e | predicted grad %.3e %.3e", Qi2[0], Qj2[0], Qi[0], Qj[0]);
+
+    float Fhalf[4][3]; /* flux at interface */
+    rt_riemann_solve_for_flux(Qi, Qj, Fhalf);
+
+    float fluxL[4][3];
+    rt_get_hyperbolic_flux(Qi, fluxL);
+    float fluxR[4][3];
+    rt_get_hyperbolic_flux(Qj, fluxR);
+
+    message("ID %lld | Riemann Flux check %.2e %.2e | Riemann result: %.2e | hyperb. fluxes: %.2e %.2e", 
+      pi->id, Qi[0], Qj[0], Fhalf[0][0], fluxL[0][0], fluxR[0][0]);
+  }
+
+
 }
 
 /**

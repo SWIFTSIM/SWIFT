@@ -89,13 +89,13 @@ __attribute__((always_inline)) INLINE static void rt_gradients_update_part(
 }
 
 /**
- * @brief Finalize the gradient computation after all
+ * @brief Finalise the gradient computation after all
  * particle-particle interactions are finished.
  *
  * @param p the Particle
  **/
 
-__attribute__((always_inline)) INLINE static void rt_finalize_gradient_part(
+__attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
     struct part *restrict p) {
 
   /* add kernel normalization to gradients */
@@ -124,7 +124,22 @@ __attribute__((always_inline)) INLINE static void rt_finalize_gradient_part(
     }
   }
 
+/* if (p->id < 20) */
+/*   message("Conserved check %.6e", rtd->conserved[0].energy); */
+/*  */
+/* if (p->id < 20) */
+/*   message("Density check %.6e", rtd->density[0].energy); */
+/*  */
+/* if (p->id < 20) */
+/*   message("Flux check %.6e", rtd->flux[0].energy); */
+/*  */
+if (p->id < 20)
+  message("Gradient check %.3e %.3e %.3e | %.3e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2], norm);
+
   rt_slope_limit_cell(p);
+
+if (p->id < 20)
+  message("Slope limit check %.6e %.6e %.6e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2]);
 }
 
 /**
