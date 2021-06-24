@@ -47,7 +47,7 @@ void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
   if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
     error("Error allocating timebin send buffer");
 
-  cell_pack_timebin(c, *buffer);
+  cell_pack_timebin(c, (timebin_t *)*buffer);
 }
 
 /**
@@ -62,7 +62,7 @@ void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
 void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
                               const int timer) {
 
-  cell_unpack_timebin(c, buffer);
+  cell_unpack_timebin(c, (timebin_t *)buffer);
 
   free(buffer);
 }
