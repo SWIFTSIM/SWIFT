@@ -69,6 +69,8 @@ enum task_types {
   task_type_timestep_sync,
   task_type_send,
   task_type_recv,
+  task_type_pack,
+  task_type_unpack,
   task_type_grav_long_range,
   task_type_grav_mm,
   task_type_grav_down_in, /* Implicit */
@@ -193,6 +195,7 @@ enum task_categories {
   task_category_sync,
   task_category_time_integration,
   task_category_mpi,
+  task_category_pack,
   task_category_fof,
   task_category_others,
   task_category_neutrino,
@@ -297,7 +300,7 @@ struct task {
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
-void task_do_rewait(struct task *t);
+struct task *task_get_unique_dependent(const struct task *t);
 void task_print(const struct task *t);
 void task_dump_all(struct engine *e, int step);
 void task_dump_stats(const char *dumpfile, struct engine *e,

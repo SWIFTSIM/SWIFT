@@ -37,6 +37,8 @@ TASKTYPES = [
     "timestep_sync",
     "send",
     "recv",
+    "pack",
+    "unpack",
     "grav_long_range",
     "grav_mm",
     "grav_down_in",
