@@ -27,6 +27,8 @@
 #include "rt_stellar_emission_rate.h"
 #include "rt_thermochemistry.h"
 
+#include <float.h>
+
 /**
  * @file src/rt/GEAR/rt.h
  * @brief Main header file for the GEAR M1 Closure radiative transfer scheme.
@@ -185,6 +187,32 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
   message("WARNING: found star without neighbours");
 };
 
+
+/**
+ * @brief Computes the radiative transfer time step of a given particle
+ *
+ * @param p particle to work on
+ */
+__attribute__((always_inline)) INLINE static float rt_timestep(const struct part* restrict p, 
+    const struct rt_props* restrict rt_props,
+    const struct cosmology* restrict cosmo){
+
+  float dt = FLT_MAX;
+  
+  /* don't limit the time step size unless radiation is present */
+  /* int has_photons = 0; */
+  /* for (int g = 0; g < RT_NGROUPS; g++) { */
+  /*   has_photons = has_photons || (p->rt_data.conserved[g].energy > 0.f); */
+  /* } */
+  /* if (has_photons) { */
+    /* just mimic the gizmo particle "size" for now */ 
+    const float psize = cosmo->a * cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);
+    dt = psize / rt_params.reduced_speed_of_light;
+  /* } */
+
+  return dt;
+}
+
 /**
  * @brief  This function finalises the injection step.
  *
@@ -276,16 +304,17 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
   p->rt_data.debug_gradients_done += 1;
 #endif
 
-  rt_finalize_gradient_part(p);
+  rt_finalise_gradient_part(p);
 }
 
 /**
  * @brief finishes up the transport step
  *
  * @param p particle to work on
+ * @param dt the current time step
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p) {
+    struct part* restrict p, const double dt) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (p->rt_data.debug_injection_done != 1)
@@ -319,6 +348,19 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   p->rt_data.debug_transport_done += 1;
 #endif
+
+  struct rt_part_data * restrict rtd = &p->rt_data;
+
+if (p->id < 20)
+  message("Before integration check %.6e %.6e %.6g", rtd->conserved[0].energy, rtd->flux[0].energy, dt);
+
+  for (int g = 0; g < RT_NGROUPS; g++){
+    rtd->conserved[g].energy += rtd->flux[g].energy * dt;
+    rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;
+    rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
+    rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
+  }
+
 }
 
 /**

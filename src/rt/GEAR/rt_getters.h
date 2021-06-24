@@ -83,9 +83,14 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
  
   const double c_red = rt_params.reduced_speed_of_light;
   const float normF = sqrtf(U[1]*U[1] + U[2]*U[2] + U[3] * U[3]);
-  const float f = normF / (c_red * U[0]);
-  const float chi = (3.f + 4.f * f * f) / (5.f + 2. * sqrtf(4.f - 5.f * f * f));
-  const float n[3] = {U[1]/normF, U[2]/normF, U[3]/normF};
+  float f = normF / (c_red * U[0]);
+  const float f2 = f * f;
+  /* Because we use reduced speed of light, we may find f > 1,
+   * which will lead to negative values in sqrt. Handle this. */
+  const float rootterm = max((4.f - 3.f * f2), 0.f);
+  const float chi = (3.f + 4.f * f2) / (5.f + 2. * sqrtf(rootterm));
+  const float normF_inv = 1.f/normF;
+  const float n[3] = {U[1]*normF_inv, U[2]*normF_inv, U[3]*normF_inv};
 
   const float temp = 0.5f * (3.f * chi - 1.f);
   for (int i = 0; i < 3; i++){
@@ -135,4 +140,26 @@ __attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(const f
   flux[3][2] = pressure_tensor[2][2] * c2;
 }
 
+/**
+ * @brief Compute the time-step length for an RT step.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the gravity kick (internal units).
+ */
+__attribute__((always_inline)) INLINE static double rt_get_part_dt(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology *cosmo) {
+
+  if (with_cosmology) {
+    error("GEAR RT with cosmology not implemented yet! :(");
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
+}
 #endif
