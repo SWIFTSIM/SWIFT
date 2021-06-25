@@ -583,11 +583,19 @@ void *runner_main(void *data) {
           break;
 
         case task_type_pack:
-          runner_do_pack_limiter(r, ci, &t->buff, 1);
-          task_get_unique_dependent(t)->buff = t->buff;
+	  if (t->subtype == task_subtype_limiter) {
+	    runner_do_pack_limiter(r, ci, &t->buff, 1);
+	    task_get_unique_dependent(t)->buff = t->buff;
+	  } else {
+            error("Unknown/invalid task subtype (%d).", t->subtype);
+          }
           break;
         case task_type_unpack:
-          runner_do_unpack_limiter(r, ci, t->buff, 1);
+	  if (t->subtype == task_subtype_limiter) {
+	    runner_do_unpack_limiter(r, ci, t->buff, 1);
+	  } else {
+            error("Unknown/invalid task subtype (%d).", t->subtype);
+          }
           break;
 #endif
         case task_type_grav_down:
