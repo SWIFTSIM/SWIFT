@@ -193,6 +193,8 @@ FULLTYPES = [
     "send/limiter",
     "pack/limiter",
     "unpack/limiter",
+    "pack/gpart",
+    "unpack/gpart",
     "self/stars_density",
     "pair/stars_density",
     "sub_self/stars_density",
