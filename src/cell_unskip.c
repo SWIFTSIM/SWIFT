@@ -1891,6 +1891,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
+          scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gpart,
+                                  ci_nodeID);
+
           scheduler_activate_send(s, cj->mpi.send, task_subtype_gpart,
                                   ci_nodeID);
 
@@ -1916,6 +1919,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
+
+          scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gpart,
+                                  cj_nodeID);
 
           scheduler_activate_send(s, ci->mpi.send, task_subtype_gpart,
                                   cj_nodeID);
