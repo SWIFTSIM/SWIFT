@@ -30,6 +30,28 @@
 #include "minmax.h"
 
 /**
+ * @brief Copy the content of a #gpart into a #gpart_foreign.
+ */
+__attribute__((always_inline)) INLINE static void gravity_foreign_copy(
+    struct gpart_foreign* packed, const struct gpart* full) {
+
+  packed->x[0] = full->x[0];
+  packed->x[1] = full->x[1];
+  packed->x[2] = full->x[2];
+
+  packed->mass = full->mass;
+  packed->epsilon = full->epsilon;
+
+  packed->time_bin = full->time_bin;
+
+  packed->type = full->type;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  packed->ti_drift = full->ti_drift;
+#endif
+}
+
+/**
  * @brief Returns the mass of a particle
  *
  * @param gp The particle of interest
