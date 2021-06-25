@@ -276,6 +276,7 @@ nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_face.h
 nobase_noinst_HEADERS += rt/GEAR/rt_stellar_emission_rate.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_struct.h
 nobase_noinst_HEADERS += rt/GEAR/rt_thermochemistry.h
+nobase_noinst_HEADERS += rt/GEAR/rt_unphysical.h
 nobase_noinst_HEADERS += stars.h stars_io.h stars_csds.h 
 nobase_noinst_HEADERS += stars/None/stars.h stars/None/stars_iact.h stars/None/stars_io.h 
 nobase_noinst_HEADERS += stars/None/stars_debug.h stars/None/stars_part.h

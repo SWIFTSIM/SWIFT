@@ -207,7 +207,7 @@ __attribute__((always_inline)) INLINE static float rt_timestep(const struct part
   /* if (has_photons) { */
     /* just mimic the gizmo particle "size" for now */ 
     const float psize = cosmo->a * cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);
-    dt = psize / rt_params.reduced_speed_of_light;
+    dt = psize / rt_params.reduced_speed_of_light * 0.9; /* TODO: CFL-like factor? */
   /* } */
 
   return dt;
@@ -351,7 +351,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   struct rt_part_data * restrict rtd = &p->rt_data;
 
-if (p->id < 20)
+if (p->id > 4090 && p->id < 4010)
   message("Before integration check %.6e %.6e %.6g", rtd->conserved[0].energy, rtd->flux[0].energy, dt);
 
   for (int g = 0; g < RT_NGROUPS; g++){
@@ -359,6 +359,7 @@ if (p->id < 20)
     rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;
     rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
     rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
+    rt_check_unphysical_conserved(&rtd->conserved[g].energy, rtd->conserved[g].flux);
   }
 
 }

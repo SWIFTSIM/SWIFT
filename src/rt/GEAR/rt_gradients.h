@@ -29,6 +29,7 @@
 #include "rt_getters.h"
 #include "rt_slope_limiters_cell.h"
 #include "rt_slope_limiters_face.h"
+#include "rt_unphysical.h"
 
 /**
  * @file src/rt/GEAR/rt_gradients.h
@@ -133,13 +134,13 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
 /* if (p->id < 20) */
 /*   message("Flux check %.6e", rtd->flux[0].energy); */
 /*  */
-if (p->id < 20)
-  message("Gradient check %.3e %.3e %.3e | %.3e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2], norm);
+/* if (p->id > 4090 && p->id < 5010) */
+/*   message("Gradient check %.3e %.3e %.3e | %.3e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2], norm); */
 
   rt_slope_limit_cell(p);
 
-if (p->id < 20)
-  message("Slope limit check %.6e %.6e %.6e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2]);
+/* if (p->id > 4090 && p->id < 5010) */
+/*   message("Slope limit check %.6e %.6e %.6e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2]); */
 }
 
 /**
@@ -235,11 +236,11 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    float Qi[4], Qj[4];
-    rt_part_get_density_vector(pi, g, Qi);
-    rt_part_get_density_vector(pj, g, Qj);
-    const float dQ[4] = {Qi[0] - Qj[0], Qi[1] - Qj[1], Qi[2] - Qj[2],
-                         Qi[3] - Qj[3]};
+    float Ui[4], Uj[4];
+    rt_part_get_density_vector(pi, g, Ui);
+    rt_part_get_density_vector(pj, g, Uj);
+    const float dU[4] = {Ui[0] - Uj[0], Ui[1] - Uj[1], Ui[2] - Uj[2],
+                         Ui[3] - Uj[3]};
 
     /* First to the gradients of pi */
     float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
@@ -247,19 +248,19 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     /* Compute gradients for pi */
     /* there is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dE_i[0] = dQ[0] * psii_tilde[0];
-    dE_i[1] = dQ[0] * psii_tilde[1];
-    dE_i[2] = dQ[0] * psii_tilde[2];
+    dE_i[0] = dU[0] * psii_tilde[0];
+    dE_i[1] = dU[0] * psii_tilde[1];
+    dE_i[2] = dU[0] * psii_tilde[2];
 
-    dFx_i[0] = dQ[1] * psii_tilde[0];
-    dFx_i[1] = dQ[1] * psii_tilde[1];
-    dFx_i[2] = dQ[1] * psii_tilde[2];
-    dFy_i[0] = dQ[2] * psii_tilde[0];
-    dFy_i[1] = dQ[2] * psii_tilde[1];
-    dFy_i[2] = dQ[2] * psii_tilde[2];
-    dFz_i[0] = dQ[3] * psii_tilde[0];
-    dFz_i[1] = dQ[3] * psii_tilde[1];
-    dFz_i[2] = dQ[3] * psii_tilde[2];
+    dFx_i[0] = dU[1] * psii_tilde[0];
+    dFx_i[1] = dU[1] * psii_tilde[1];
+    dFx_i[2] = dU[1] * psii_tilde[2];
+    dFy_i[0] = dU[2] * psii_tilde[0];
+    dFy_i[1] = dU[2] * psii_tilde[1];
+    dFy_i[2] = dU[2] * psii_tilde[2];
+    dFz_i[0] = dU[3] * psii_tilde[0];
+    dFz_i[1] = dU[3] * psii_tilde[1];
+    dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
     rt_slope_limit_cell_collect(pi, pj);
@@ -267,21 +268,21 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     /* Now do the gradients of pj */
     float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
 
-    /* We don't need a sign change here: both the dx and the dQ
+    /* We don't need a sign change here: both the dx and the dU
      * should switch their sign, resulting in no net change */
-    dE_j[0] = dQ[0] * psij_tilde[0];
-    dE_j[1] = dQ[0] * psij_tilde[1];
-    dE_j[2] = dQ[0] * psij_tilde[2];
+    dE_j[0] = dU[0] * psij_tilde[0];
+    dE_j[1] = dU[0] * psij_tilde[1];
+    dE_j[2] = dU[0] * psij_tilde[2];
 
-    dFx_j[0] = dQ[1] * psij_tilde[0];
-    dFx_j[1] = dQ[1] * psij_tilde[1];
-    dFx_j[2] = dQ[1] * psij_tilde[2];
-    dFy_j[0] = dQ[2] * psij_tilde[0];
-    dFy_j[1] = dQ[2] * psij_tilde[1];
-    dFy_j[2] = dQ[2] * psij_tilde[2];
-    dFz_j[0] = dQ[3] * psij_tilde[0];
-    dFz_j[1] = dQ[3] * psij_tilde[1];
-    dFz_j[2] = dQ[3] * psij_tilde[2];
+    dFx_j[0] = dU[1] * psij_tilde[0];
+    dFx_j[1] = dU[1] * psij_tilde[1];
+    dFx_j[2] = dU[1] * psij_tilde[2];
+    dFy_j[0] = dU[2] * psij_tilde[0];
+    dFy_j[1] = dU[2] * psij_tilde[1];
+    dFy_j[2] = dU[2] * psij_tilde[2];
+    dFz_j[0] = dU[3] * psij_tilde[0];
+    dFz_j[1] = dU[3] * psij_tilde[1];
+    dFz_j[2] = dU[3] * psij_tilde[2];
 
     rt_gradients_update_part(pj, g, dE_j, dFx_j, dFy_j, dFz_j);
     rt_slope_limit_cell_collect(pj, pi);
@@ -349,30 +350,30 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    float Qi[4], Qj[4];
-    rt_part_get_density_vector(pi, g, Qi);
-    rt_part_get_density_vector(pj, g, Qj);
-    const float dQ[4] = {Qi[0] - Qj[0], Qi[1] - Qj[1], Qi[2] - Qj[2],
-                         Qi[3] - Qj[3]};
+    float Ui[4], Uj[4];
+    rt_part_get_density_vector(pi, g, Ui);
+    rt_part_get_density_vector(pj, g, Uj);
+    const float dU[4] = {Ui[0] - Uj[0], Ui[1] - Uj[1], Ui[2] - Uj[2],
+                         Ui[3] - Uj[3]};
 
     float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
 
     /* Compute gradients for pi */
     /* there is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dE_i[0] = dQ[0] * psii_tilde[0];
-    dE_i[1] = dQ[0] * psii_tilde[1];
-    dE_i[2] = dQ[0] * psii_tilde[2];
+    dE_i[0] = dU[0] * psii_tilde[0];
+    dE_i[1] = dU[0] * psii_tilde[1];
+    dE_i[2] = dU[0] * psii_tilde[2];
 
-    dFx_i[0] = dQ[1] * psii_tilde[0];
-    dFx_i[1] = dQ[1] * psii_tilde[1];
-    dFx_i[2] = dQ[1] * psii_tilde[2];
-    dFy_i[0] = dQ[2] * psii_tilde[0];
-    dFy_i[1] = dQ[2] * psii_tilde[1];
-    dFy_i[2] = dQ[2] * psii_tilde[2];
-    dFz_i[0] = dQ[3] * psii_tilde[0];
-    dFz_i[1] = dQ[3] * psii_tilde[1];
-    dFz_i[2] = dQ[3] * psii_tilde[2];
+    dFx_i[0] = dU[1] * psii_tilde[0];
+    dFx_i[1] = dU[1] * psii_tilde[1];
+    dFx_i[2] = dU[1] * psii_tilde[2];
+    dFy_i[0] = dU[2] * psii_tilde[0];
+    dFy_i[1] = dU[2] * psii_tilde[1];
+    dFy_i[2] = dU[2] * psii_tilde[2];
+    dFz_i[0] = dU[3] * psii_tilde[0];
+    dFz_i[1] = dU[3] * psii_tilde[1];
+    dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
 
@@ -383,15 +384,15 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
 /**
  * @brief Extrapolate the given gradient over the given distance.
  *
- * @param dQ Gradient of the quantity
+ * @param dU Gradient of the quantity
  * @param dx Distance vector
  * @return Change in the quantity after a displacement along the given distance
  * vector.
  */
 __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
-    const float dQ[3], const float dx[3]) {
+    const float dU[3], const float dx[3]) {
 
-  return dQ[0] * dx[0] + dQ[1] * dx[1] + dQ[2] * dx[2];
+  return dU[0] * dx[0] + dU[1] * dx[1] + dU[2] * dx[2];
 }
 
 /**
@@ -400,8 +401,8 @@ __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_predict(
     struct part *restrict pi, struct part *restrict pj, float hi, float hj,
-    const float *dx, float r, const float *xij_i, int group, float Qi[4],
-    float Qj[4]) {
+    const float *dx, float r, const float *xij_i, int group, float Ui[4],
+    float Uj[4]) {
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
@@ -413,37 +414,33 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   rt_part_get_gradients(pi, group, dE_i, dFx_i, dFy_i, dFz_i);
   rt_part_get_gradients(pj, group, dE_j, dFx_j, dFy_j, dFz_j);
 
-  float dQi[4];
-  dQi[0] = rt_gradients_extrapolate(dE_i, xij_i);
-  dQi[1] = rt_gradients_extrapolate(dFx_i, xij_i);
-  dQi[2] = rt_gradients_extrapolate(dFy_i, xij_i);
-  dQi[3] = rt_gradients_extrapolate(dFz_i, xij_i);
+  float dUi[4];
+  dUi[0] = rt_gradients_extrapolate(dE_i, xij_i);
+  dUi[1] = rt_gradients_extrapolate(dFx_i, xij_i);
+  dUi[2] = rt_gradients_extrapolate(dFy_i, xij_i);
+  dUi[3] = rt_gradients_extrapolate(dFz_i, xij_i);
 
-  float dQj[4];
-  dQj[0] = rt_gradients_extrapolate(dE_j, xij_j);
-  dQj[1] = rt_gradients_extrapolate(dFx_j, xij_j);
-  dQj[2] = rt_gradients_extrapolate(dFy_j, xij_j);
-  dQj[3] = rt_gradients_extrapolate(dFz_j, xij_j);
+  float dUj[4];
+  dUj[0] = rt_gradients_extrapolate(dE_j, xij_j);
+  dUj[1] = rt_gradients_extrapolate(dFx_j, xij_j);
+  dUj[2] = rt_gradients_extrapolate(dFy_j, xij_j);
+  dUj[3] = rt_gradients_extrapolate(dFz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  rt_slope_limit_face(Qi, Qj, dQi, dQj, xij_i, xij_j, r);
+  rt_slope_limit_face(Ui, Uj, dUi, dUj, xij_i, xij_j, r);
 
-  Qi[0] += dQi[0];
-  Qi[1] += dQi[1];
-  Qi[2] += dQi[2];
-  Qi[3] += dQi[3];
+  Ui[0] += dUi[0];
+  Ui[1] += dUi[1];
+  Ui[2] += dUi[2];
+  Ui[3] += dUi[3];
 
-  Qj[0] += dQj[0];
-  Qj[1] += dQj[1];
-  Qj[2] += dQj[2];
-  Qj[3] += dQj[3];
+  Uj[0] += dUj[0];
+  Uj[1] += dUj[1];
+  Uj[2] += dUj[2];
+  Uj[3] += dUj[3];
 
-  /* gizmo_check_physical_quantities("density", "pressure", Wi[0], Wi[1], Wi[2],
-   */
-  /*                                 Wi[3], Wi[4]); */
-  /* gizmo_check_physical_quantities("density", "pressure", Wj[0], Wj[1], Wj[2],
-   */
-  /* Wj[3], Wj[4]); */
+  rt_check_unphysical_density(Ui);
+  rt_check_unphysical_density(Uj);
 }
 
 #endif /* SWIFT_RT_GRADIENT_GEAR_H */
