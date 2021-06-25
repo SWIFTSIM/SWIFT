@@ -1264,7 +1264,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
 
 #ifdef SWIFT_DEBUG_CHECKS
-          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
+          if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
+              (h_old < 0.999f * hydro_props->h_max))
             error(
                 "Smoothing length correction not going in the right direction");
 #endif
