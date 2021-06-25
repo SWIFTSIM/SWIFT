@@ -542,6 +542,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 MPI_Datatype part_mpi_type;
 MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
+MPI_Datatype gpart_foreign_mpi_type;
 MPI_Datatype spart_mpi_type;
 MPI_Datatype bpart_mpi_type;
 MPI_Datatype lospart_mpi_type;
@@ -571,6 +572,11 @@ void part_create_mpi_types(void) {
                           MPI_BYTE, &gpart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&gpart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for gparts.");
+  }
+  if (MPI_Type_contiguous(sizeof(struct gpart_foreign) / sizeof(unsigned char),
+                          MPI_BYTE, &gpart_foreign_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&gpart_foreign_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for foreign gparts.");
   }
   if (MPI_Type_contiguous(sizeof(struct spart) / sizeof(unsigned char),
                           MPI_BYTE, &spart_mpi_type) != MPI_SUCCESS ||
