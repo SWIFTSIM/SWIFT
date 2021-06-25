@@ -149,6 +149,8 @@ void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
                             const int timer);
 void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
                               const int timer);
+void runner_do_pack_gpart(struct runner *r, struct cell *c, void **buffer,
+                          const int timer);
 void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
 

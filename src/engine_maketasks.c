@@ -71,7 +71,7 @@ extern int engine_max_parts_per_cooling;
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav,
-                                  struct task *t_ti) {
+                                  struct task *t_pack_grav, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -102,11 +102,16 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_gpart,
                                ci->mpi.tag, 0, ci, cj);
 
+      t_pack_grav = scheduler_addtask(s, task_type_pack, task_subtype_gpart, 0,
+                                      0, ci, cj);
+
+      scheduler_addunlock(s, t_pack_grav, t_grav);
+
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
 
       /* Drift before you send */
-      scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
+      scheduler_addunlock(s, ci->grav.super->grav.drift, t_pack_grav);
 
       scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
@@ -114,13 +119,15 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
     engine_addlink(e, &ci->mpi.send, t_ti);
+    engine_addlink(e, &ci->mpi.pack, t_pack_grav);
   }
 
   /* Recurse? */
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_ti);
+        engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_pack_grav,
+                                     t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4006,7 +4013,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, NULL, NULL);
+      engine_addtasks_send_gravity(e, ci, cj, NULL, NULL, NULL);
   }
 }
 

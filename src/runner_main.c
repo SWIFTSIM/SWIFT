@@ -524,6 +524,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_gpart) {
+            free(t->buff);
           }
           break;
         case task_type_recv:
@@ -583,17 +585,20 @@ void *runner_main(void *data) {
           break;
 
         case task_type_pack:
-	  if (t->subtype == task_subtype_limiter) {
-	    runner_do_pack_limiter(r, ci, &t->buff, 1);
-	    task_get_unique_dependent(t)->buff = t->buff;
-	  } else {
+          if (t->subtype == task_subtype_limiter) {
+            runner_do_pack_limiter(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_gpart) {
+            runner_do_pack_gpart(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
           break;
         case task_type_unpack:
-	  if (t->subtype == task_subtype_limiter) {
-	    runner_do_unpack_limiter(r, ci, t->buff, 1);
-	  } else {
+          if (t->subtype == task_subtype_limiter) {
+            runner_do_unpack_limiter(r, ci, t->buff, 1);
+          } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
           break;
