@@ -227,7 +227,6 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write photon group bin edges */
   hid_t type = H5Tcopy(io_hdf5_type(FLOAT));
-  H5Tset_size(type, RT_NGROUPS);
 
   hsize_t dims[1] = {RT_NGROUPS};
   hid_t space = H5Screate_simple(1, dims, NULL);
