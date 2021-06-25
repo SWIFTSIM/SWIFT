@@ -614,12 +614,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    *
    * f_ij = 1.f - grad_h_term_i / m_j */
   const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
-  float grad_h_term = common_factor * p->density.rho_dh /
-                      (1.f + common_factor * p->density.wcount_dh);
+  float grad_h_term;
 
   /* Ignore changing-kernel effects when h ~= h_max */
-  if (p->h > 0.9999f * hydro_props->h_max) {
+  if (p->h > 0.999f * hydro_props->h_max) {
     grad_h_term = 0.f;
+  } else {
+    grad_h_term = common_factor * p->density.rho_dh /
+                  (1.f + common_factor * p->density.wcount_dh);
   }
 
   /* Compute the Balsara switch */
