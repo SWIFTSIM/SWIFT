@@ -284,28 +284,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   }
 
 /* TODO: TEMPORARY */
-  if (pi->id < 20) {
-    float Qi[4], Qj[4];
-    float Qi2[4], Qj2[4];
-    rt_part_get_density_vector(pi, 0, Qi);
-    rt_part_get_density_vector(pi, 0, Qi2);
-    rt_part_get_density_vector(pj, 0, Qj);
-    rt_part_get_density_vector(pj, 0, Qj2);
-    
-    rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, 0, Qi, Qj);
-    message("Original state: %.3e %.3e | predicted grad %.3e %.3e", Qi2[0], Qj2[0], Qi[0], Qj[0]);
-
-    float Fhalf[4][3]; /* flux at interface */
-    rt_riemann_solve_for_flux(Qi, Qj, Fhalf);
-
-    float fluxL[4][3];
-    rt_get_hyperbolic_flux(Qi, fluxL);
-    float fluxR[4][3];
-    rt_get_hyperbolic_flux(Qj, fluxR);
-
-    message("ID %lld | Riemann Flux check %.2e %.2e | Riemann result: %.2e | hyperb. fluxes: %.2e %.2e", 
-      pi->id, Qi[0], Qj[0], Fhalf[0][0], fluxL[0][0], fluxR[0][0]);
-  }
+if (rti->conserved[0].flux[0] != rti->conserved[0].flux[0])
+  message("Caught nan conserved flux");
+if (rti->density[0].flux[0] != rti->density[0].flux[0])
+  message("Caught nan density flux");
+if (rti->flux[0].flux[0] != rti->flux[0].flux[0])
+  message("Caught nan hyperbolic flux");
+/* if (rti->conserved[0].flux[0] != rti->conserved[0].flux[0]){ */
+/*     float Qi[4], Qj[4]; */
+/*     float Qi2[4], Qj2[4]; */
+/*     rt_part_get_density_vector(pi, 0, Qi); */
+/*     rt_part_get_density_vector(pi, 0, Qi2); */
+/*     rt_part_get_density_vector(pj, 0, Qj); */
+/*     rt_part_get_density_vector(pj, 0, Qj2); */
+/*      */
+/*     rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, 0, Qi, Qj); */
+/*     message("Original state:     %.3e %.3e", Qi2[0], Qj2[2]); */
+/*     message("predicted gradient: %.3e %.3e", Qi[0], Qj[0]); */
+/*  */
+/*     float Fhalf[4][3]; [> flux at interface <] */
+/*     rt_riemann_solve_for_flux(Qi, Qj, Fhalf); */
+/*  */
+/*     float fluxL[4][3]; */
+/*     rt_get_hyperbolic_flux(Qi, fluxL); */
+/*     float fluxR[4][3]; */
+/*     rt_get_hyperbolic_flux(Qj, fluxR); */
+/*  */
+/*     [> message("Riemann Flux        %.3e %.3e", Qi[0], Qj[0]); <] */
+/*     message("Hyperbolic Fluxes:  %.3e %.3e %.3e, %.3e %.3e %.3e", fluxL[0][0], fluxL[0][1], fluxL[0][2], fluxR[0][0], fluxR[0][1], fluxR[0][2]); */
+/*     message("Riemann result:     %.3e %.3e %.3e", Fhalf[0][0], Fhalf[0][1], Fhalf[0][2]); */
+/*   } */
 
 
 }
