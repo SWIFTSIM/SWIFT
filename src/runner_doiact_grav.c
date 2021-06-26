@@ -999,8 +999,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
-      if (gparts_j[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
+      if (!foreign_j && gparts_j[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
         error("Found an extra gpart in the gravity interaction");
+      }
+      if (foreign_j && gparts_foreign_j[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
+        error("Found an extra foreign gpart in the gravity interaction");
       }
 
       if (r2 == 0.f && h2 == 0.)

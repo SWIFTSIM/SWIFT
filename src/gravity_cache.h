@@ -351,6 +351,12 @@ INLINE static void gravity_cache_populate_foreign(
     active[i] = 0;
     use_mpole[i] = 0;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gparts_foreign[i].time_bin == time_bin_not_created) {
+      error("Found an extra gpart in the gravity cache");
+    }
+#endif
+
     /* Make a dummy particle out of the inhibted ones */
     if (gparts_foreign[i].time_bin == time_bin_inhibited) {
       m[i] = 0.f;
