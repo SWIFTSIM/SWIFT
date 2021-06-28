@@ -122,7 +122,7 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Start by cleaning up the foreign buffers */
   if (foreign_buffers_allocated) {
 #ifdef WITH_MPI
-    space_free_foreign_parts(e, /*clear pointers=*/1);
+    space_free_foreign_parts(e->s, /*clear pointers=*/1);
 #endif
   }
 

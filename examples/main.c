@@ -1732,7 +1732,7 @@ int main(int argc, char *argv[]) {
 
       if (with_fof && e.snapshot_invoke_fof) {
         engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0,
-                   /*seed_black_holes=*/0);
+                   /*seed_black_holes=*/0, /*foreign buffers allocated=*/1);
       }
 
 #ifdef HAVE_VELOCIRAPTOR
