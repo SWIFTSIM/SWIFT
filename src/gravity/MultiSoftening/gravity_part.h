@@ -151,4 +151,19 @@ struct gpart_foreign {
 #endif
 };
 
+struct gpart_fof_foreign {
+
+  /*! Particle position. */
+  double x[3];
+
+  /*! Particle FoF properties (group ID, group size, ...) */
+  struct fof_gpart_data fof_data;
+
+  /*! Time-step length */
+  timebin_t time_bin;
+
+  /*! Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
+};
+
 #endif /* SWIFT_MULTI_SOFTENING_GRAVITY_PART_H */
