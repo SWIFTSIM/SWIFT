@@ -905,6 +905,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     error("Overlapping cells");
   if (offset_i > offset_j && (offset_i < offset_j + count_j))
     error("Overlapping cells");
+  if (ci->nodeID != cj->nodeID) error("Searching foreign cells!");
 #endif
 
   /* Account for boundary conditions.*/
@@ -926,7 +927,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
   /* Loop over particles and find which particles belong in the same group. */
   for (size_t i = 0; i < count_i; i++) {
 
-    struct gpart *pi = &gparts_i[i];
+    struct gpart *restrict pi = &gparts_i[i];
 
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
@@ -948,7 +949,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
     for (size_t j = 0; j < count_j; j++) {
 
-      struct gpart *pj = &gparts_j[j];
+      struct gpart *restrict pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
@@ -1003,7 +1004,7 @@ void fof_search_pair_cells_foreign(
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
   const struct gpart *gparts_i = ci->grav.parts;
-  const struct gpart *gparts_j = cj->grav.parts;
+  const struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
 
   /* Get local pointers */
   size_t *group_index = props->group_index;
@@ -1071,7 +1072,7 @@ void fof_search_pair_cells_foreign(
 
     for (size_t j = 0; j < count_j; j++) {
 
-      const struct gpart *pj = &gparts_j[j];
+      const struct gpart_fof_foreign *pj = &gparts_j[j];
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
@@ -1225,6 +1226,7 @@ void rec_fof_search_pair_foreign(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
+  if (ci->nodeID == cj->nodeID) error("Fully local pair!");
 #endif
 
   /* Find the shortest distance between cells, remembering to account for
@@ -2366,7 +2368,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 #ifdef WITH_MPI
 
   struct engine *e = s->e;
-  int verbose = e->verbose;
+  const int verbose = e->verbose;
   size_t *group_index = props->group_index;
   size_t *group_size = props->group_size;
   const size_t nr_gparts = s->nr_gparts;
