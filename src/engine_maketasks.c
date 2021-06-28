@@ -968,8 +968,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                              c->mpi.tag, 0, c, NULL);
 
     if (with_fof)
-      t_grav = scheduler_addtask(s, task_type_recv, task_subtype_fof,
-                                 c->mpi.tag, 0, c, NULL);
+      t_fof = scheduler_addtask(s, task_type_recv, task_subtype_fof, c->mpi.tag,
+                                0, c, NULL);
   }
 
   /* If we have tasks, link them. */
