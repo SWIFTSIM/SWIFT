@@ -126,6 +126,7 @@ enum task_subtypes {
   task_subtype_force,
   task_subtype_limiter,
   task_subtype_grav,
+  task_subtype_fof,
   task_subtype_external_grav,
   task_subtype_tend_part,
   task_subtype_tend_gpart,
