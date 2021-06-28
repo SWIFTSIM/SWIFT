@@ -48,10 +48,13 @@ void engine_activate_gpart_comms(struct engine *e) {
 
     struct task *t = &tasks[k];
 
-    if ((t->type == task_type_send) && (t->subtype == task_subtype_gpart)) {
+    if ((t->type == task_type_send) && (t->subtype == task_subtype_fof)) {
+      scheduler_activate(s, t);
+    } else if ((t->type == task_type_pack) &&
+               (t->subtype == task_subtype_fof)) {
       scheduler_activate(s, t);
     } else if ((t->type == task_type_recv) &&
-               (t->subtype == task_subtype_gpart)) {
+               (t->subtype == task_subtype_fof)) {
       scheduler_activate(s, t);
     } else {
       t->skip = 1;
