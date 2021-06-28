@@ -566,7 +566,7 @@ void *runner_main(void *data) {
             /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
-	  } else if (t->subtype == task_subtype_fof) {
+          } else if (t->subtype == task_subtype_fof) {
             /* Nothing to do here. */
           } else if (t->subtype == task_subtype_spart_density) {
             runner_do_recv_spart(r, ci, 1, 1);

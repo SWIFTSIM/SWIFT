@@ -4461,7 +4461,7 @@ void engine_maketasks(struct engine *e) {
   }
 
   /* Allocate memory for foreign particles */
-  engine_allocate_foreign_particles(e);
+  engine_allocate_foreign_particles(e, /*fof=*/0);
 
 #endif
 

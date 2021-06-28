@@ -41,6 +41,9 @@ struct cell_grav {
 
     /*! or #gpart_foreign data. */
     struct gpart_foreign *parts_foreign;
+
+    /*! or #gpart_fof_foreign data. */
+    struct gpart_fof_foreign *parts_fof_foreign;
   };
 
   union {
@@ -50,6 +53,9 @@ struct cell_grav {
 
     /*! Pointer to the #gpart_foreign data at rebuild time. */
     struct gpart_foreign *parts_foreign_rebuild;
+
+    /*! Pointer to the #gpart_fof_foreign data at rebuild time. */
+    struct gpart_fof_foreign *parts_fof_foreign_rebuild;
   };
 
   /*! This cell's multipole. */
