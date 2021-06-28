@@ -717,8 +717,9 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
  * deeper in the tree.
  *
  * @param e The #engine.
+ * @param Are the foreign gpart regular or FOF?
  */
-void engine_allocate_foreign_particles(struct engine *e) {
+void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
 #ifdef WITH_MPI
 
@@ -773,7 +774,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_parts_foreign = s->size_parts_foreign;
-  if (count_parts_in > s->size_parts_foreign) {
+  if (!fof && count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
     if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
@@ -783,7 +784,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_gparts_foreign = s->size_gparts_foreign;
-  if (count_gparts_in > s->size_gparts_foreign) {
+  if (!fof && count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
       swift_free("gparts_foreign", s->gparts_foreign);
     s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
@@ -793,9 +794,20 @@ void engine_allocate_foreign_particles(struct engine *e) {
       error("Failed to allocate foreign gpart data.");
   }
 
+  /* Allocate space for the foreign FOF particles we will receive */
+  if (fof && count_gparts_in > s->size_gparts_foreign) {
+    if (s->gparts_foreign != NULL)
+      swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
+    s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
+    if (swift_memalign(
+            "gparts_fof_foreign", (void **)&s->gparts_fof_foreign, gpart_align,
+            sizeof(struct gpart_fof_foreign) * s->size_gparts_foreign) != 0)
+      error("Failed to allocate foreign FOF gpart data.");
+  }
+
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_sparts_foreign = s->size_sparts_foreign;
-  if (count_sparts_in > s->size_sparts_foreign) {
+  if (!fof && count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL)
       swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
@@ -812,7 +824,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_bparts_foreign = s->size_bparts_foreign;
-  if (count_bparts_in > s->size_bparts_foreign) {
+  if (!fof && count_bparts_in > s->size_bparts_foreign) {
     if (s->bparts_foreign != NULL)
       swift_free("bparts_foreign", s->bparts_foreign);
     s->size_bparts_foreign = engine_foreign_alloc_margin * count_bparts_in;
@@ -846,8 +858,10 @@ void engine_allocate_foreign_particles(struct engine *e) {
           (s->size_bparts_foreign - old_size_bparts_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
-          (s->size_gparts_foreign - old_size_gparts_foreign) *
-              sizeof(struct gpart_foreign) / (1024 * 1024),
+          fof ? (s->size_gparts_foreign - old_size_gparts_foreign) *
+                    sizeof(struct gpart_fof_foreign) / (1024 * 1024)
+              : (s->size_gparts_foreign - old_size_gparts_foreign) *
+                    sizeof(struct gpart_foreign) / (1024 * 1024),
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
@@ -858,6 +872,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
   struct gpart_foreign *gparts_foreign = s->gparts_foreign;
+  struct gpart_fof_foreign *gparts_fof_foreign = s->gparts_fof_foreign;
   struct spart *sparts = s->sparts_foreign;
   struct bpart *bparts = s->bparts_foreign;
   for (int k = 0; k < nr_proxies; k++) {
@@ -870,7 +885,14 @@ void engine_allocate_foreign_particles(struct engine *e) {
         parts = &parts[count_parts];
       }
 
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+      if (fof && e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
+
+        const size_t count_gparts = cell_link_foreign_fof_gparts(
+            e->proxies[k].cells_in[j], gparts_fof_foreign);
+        gparts_fof_foreign = &gparts_fof_foreign[count_gparts];
+      }
+
+      if (!fof && e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
 
         const size_t count_gparts =
             cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts_foreign);
@@ -896,7 +918,10 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Update the counters */
   s->nr_parts_foreign = parts - s->parts_foreign;
-  s->nr_gparts_foreign = gparts_foreign - s->gparts_foreign;
+  if (fof)
+    s->nr_gparts_foreign = gparts_fof_foreign - s->gparts_fof_foreign;
+  else
+    s->nr_gparts_foreign = gparts_foreign - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
   s->nr_bparts_foreign = bparts - s->bparts_foreign;
 
