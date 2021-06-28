@@ -507,6 +507,8 @@ int cell_unpack_end_step_black_holes(struct cell *c,
 void cell_pack_timebin(const struct cell *const c, timebin_t *const t);
 void cell_unpack_timebin(struct cell *const c, timebin_t *const t);
 void cell_pack_gpart(const struct cell *const c, struct gpart_foreign *const b);
+void cell_pack_fof_gpart(const struct cell *const c,
+                         struct gpart_fof_foreign *const b);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);

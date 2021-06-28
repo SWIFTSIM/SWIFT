@@ -652,6 +652,30 @@ void cell_pack_gpart(const struct cell *const c,
 }
 
 /**
+ * @brief Pack the gpart FOF information of the given cell.
+ *
+ * b needs to be aligned on SWIFT_CACHE_ALIGNMENT.
+ *
+ * @param c The #cell.
+ * @param b (output) The array of #gpart_fof_foreign we pack into.
+ */
+void cell_pack_fof_gpart(const struct cell *const c,
+                         struct gpart_fof_foreign *const b) {
+
+#ifdef WITH_MPI
+
+  swift_declare_aligned_ptr(struct gpart_fof_foreign, b_align, b,
+                            SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < c->grav.count; ++i)
+    gravity_foreign_fof_copy(&b_align[i], &c->grav.parts[i]);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Pack the multipole information of the given cell and all it's
  * sub-cells.
  *
