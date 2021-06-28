@@ -591,6 +591,9 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_pack_gpart(r, ci, &t->buff, 1);
             task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_fof) {
+            runner_do_pack_fof(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
