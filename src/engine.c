@@ -794,6 +794,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign gpart data.");
   }
 
+  message("%zd %zd", s->size_gparts_foreign, count_gparts_in);
+
   /* Allocate space for the foreign FOF particles we will receive */
   if (fof && count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
@@ -803,6 +805,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
             "gparts_fof_foreign", (void **)&s->gparts_fof_foreign, gpart_align,
             sizeof(struct gpart_fof_foreign) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign FOF gpart data.");
+
+    message("hello!");
   }
 
   /* Allocate space for the foreign particles we will receive */
@@ -1404,7 +1408,7 @@ int engine_prepare(struct engine *e) {
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
-               /*seed_black_holes=*/1);
+               /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }

@@ -1504,7 +1504,7 @@ int main(int argc, char *argv[]) {
       /* Run FoF first, if we're adding FoF info to the snapshot */
       if (with_fof && e.snapshot_invoke_fof) {
         engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0,
-                   /*seed_black_holes=*/0);
+                   /*seed_black_holes=*/0, /*foreign buffers allocated=*/1);
       }
 
       engine_dump_snapshot(&e);
