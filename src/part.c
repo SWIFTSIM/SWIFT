@@ -543,6 +543,7 @@ MPI_Datatype part_mpi_type;
 MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
 MPI_Datatype gpart_foreign_mpi_type;
+MPI_Datatype gpart_fof_foreign_mpi_type;
 MPI_Datatype spart_mpi_type;
 MPI_Datatype bpart_mpi_type;
 MPI_Datatype lospart_mpi_type;
@@ -578,6 +579,12 @@ void part_create_mpi_types(void) {
       MPI_Type_commit(&gpart_foreign_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for foreign gparts.");
   }
+  if (MPI_Type_contiguous(
+          sizeof(struct gpart_fof_foreign) / sizeof(unsigned char), MPI_BYTE,
+          &gpart_fof_foreign_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&gpart_fof_foreign_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for foreign gparts.");
+  }
   if (MPI_Type_contiguous(sizeof(struct spart) / sizeof(unsigned char),
                           MPI_BYTE, &spart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&spart_mpi_type) != MPI_SUCCESS) {
@@ -595,6 +602,8 @@ void part_free_mpi_types(void) {
   MPI_Type_free(&part_mpi_type);
   MPI_Type_free(&xpart_mpi_type);
   MPI_Type_free(&gpart_mpi_type);
+  MPI_Type_free(&gpart_foreign_mpi_type);
+  MPI_Type_free(&gpart_fof_foreign_mpi_type);
   MPI_Type_free(&spart_mpi_type);
   MPI_Type_free(&bpart_mpi_type);
   MPI_Type_free(&lospart_mpi_type);

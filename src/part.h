@@ -167,6 +167,7 @@ extern MPI_Datatype part_mpi_type;
 extern MPI_Datatype xpart_mpi_type;
 extern MPI_Datatype gpart_mpi_type;
 extern MPI_Datatype gpart_foreign_mpi_type;
+extern MPI_Datatype gpart_fof_foreign_mpi_type;
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype bpart_mpi_type;
 extern MPI_Datatype lospart_mpi_type;
