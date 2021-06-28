@@ -66,12 +66,18 @@ extern int engine_max_parts_per_cooling;
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_pack_grav The grav packing #task, if it has already been created.
  * @param t_grav The send_grav #task, if it has already been created.
+ * @param t_pack_fof The fof packing #task, if it has already been created.
+ * @param t_fof The send_fof #task, if it has already been created.
  * @param t_ti The recv_ti_end #task, if it has already been created.
+ * @param with_fof Are we running with FOF?
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav,
-                                  struct task *t_pack_grav, struct task *t_ti) {
+                                  struct task *t_pack_grav, struct task *t_fof,
+                                  struct task *t_pack_fof, struct task *t_ti,
+                                  const int with_fof) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -107,6 +113,16 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 
       scheduler_addunlock(s, t_pack_grav, t_grav);
 
+      if (with_fof) {
+        t_fof = scheduler_addtask(s, task_type_send, task_subtype_fof,
+                                  ci->mpi.tag, 0, ci, cj);
+
+        t_pack_fof = scheduler_addtask(s, task_type_pack, task_subtype_fof, 0,
+                                       0, ci, cj);
+
+        scheduler_addunlock(s, t_pack_fof, t_fof);
+      }
+
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
 
@@ -120,6 +136,10 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     engine_addlink(e, &ci->mpi.send, t_grav);
     engine_addlink(e, &ci->mpi.send, t_ti);
     engine_addlink(e, &ci->mpi.pack, t_pack_grav);
+    if (with_fof) {
+      engine_addlink(e, &ci->mpi.send, t_fof);
+      engine_addlink(e, &ci->mpi.pack, t_pack_fof);
+    }
   }
 
   /* Recurse? */
@@ -127,7 +147,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_gravity(e, ci->progeny[k], cj, t_grav, t_pack_grav,
-                                     t_ti);
+                                     t_fof, t_pack_fof, t_ti, with_fof);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -918,10 +938,13 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param t_fof The recv_fof #task, if it has already been created.
  * @param t_ti The recv_ti_end #task, if it has already been created.
+ * @param with_fof Are we running with FOF?
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
-                                  struct task *t_grav, struct task *t_ti) {
+                                  struct task *t_grav, struct task *t_fof,
+                                  struct task *t_ti, const int with_fof) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -943,12 +966,17 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
                              c->mpi.tag, 0, c, NULL);
+
+    if (with_fof)
+      t_grav = scheduler_addtask(s, task_type_recv, task_subtype_fof,
+                                 c->mpi.tag, 0, c, NULL);
   }
 
   /* If we have tasks, link them. */
   if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
     engine_addlink(e, &c->mpi.recv, t_ti);
+    if (with_fof) engine_addlink(e, &c->mpi.recv, t_fof);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
@@ -960,7 +988,8 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_ti);
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_fof, t_ti,
+                                     with_fof);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -3970,6 +3999,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_limiter = (e->policy & engine_policy_timestep_limiter);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
+  const int with_fof = (e->policy & engine_policy_fof);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -4013,7 +4043,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, NULL, NULL, NULL);
+      engine_addtasks_send_gravity(
+          e, ci, cj, /*t_grav=*/NULL, /*t_pack_grav=*/NULL,
+          /*t_fof=*/NULL, /*t_pack_fof=*/NULL, /*t_ti=*/NULL, with_fof);
   }
 }
 
@@ -4026,6 +4058,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
+  const int with_fof = (e->policy & engine_policy_fof);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -4069,7 +4102,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_ti=*/NULL);
+      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_fof=*/NULL,
+                                   /*t_ti=*/NULL, with_fof);
   }
 }
 
