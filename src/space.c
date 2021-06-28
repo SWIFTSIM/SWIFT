@@ -131,6 +131,11 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
     s->size_gparts_foreign = 0;
     s->gparts_foreign = NULL;
   }
+  if (s->gparts_fof_foreign != NULL) {
+    swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
+    s->size_gparts_foreign = 0;
+    s->gparts_fof_foreign = NULL;
+  }
   if (s->sparts_foreign != NULL) {
     swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = 0;
