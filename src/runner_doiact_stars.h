@@ -109,7 +109,8 @@ void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,
                                  struct spart *restrict sparts, const int *ind,
                                  const int scount);
 
-void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
+                                 const struct cell *restrict ci,
                                  struct spart *restrict sparts_i,
                                  const int *ind, const int scount,
                                  struct cell *restrict cj);

@@ -157,7 +157,7 @@ void DOSELF_SUBSET_BRANCH(struct runner *r, const struct cell *ci,
 
 void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
                           struct part *restrict parts_i, const int *ind,
-                          const int count, const struct cell *restrict cj);
+                          const int count, struct cell *restrict cj);
 
 void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
                        const int *ind, const int count, struct cell *cj,

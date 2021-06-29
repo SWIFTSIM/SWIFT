@@ -139,6 +139,9 @@ struct cell_hydro {
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 
+    /*! Spin-lock for the case where we do an extra sort of the cell. */
+    swift_lock_type extra_sort_lock;
+
     /*! Max smoothing length of active particles in this cell. */
     float h_max_active;
 
