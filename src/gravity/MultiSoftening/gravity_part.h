@@ -151,6 +151,12 @@ struct gpart_foreign {
 #endif
 };
 
+/**
+ * @brief FOF particle data when on a foreign node.
+ *
+ * We only need a small fraction of the information on foreign
+ * nodes for FOF as the particles don't get updated there.
+ */
 struct gpart_fof_foreign {
 
   /*! Particle position. */
@@ -164,6 +170,12 @@ struct gpart_fof_foreign {
 
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+#endif
 };
 
 #endif /* SWIFT_MULTI_SOFTENING_GRAVITY_PART_H */

@@ -51,6 +51,9 @@ __attribute__((always_inline)) INLINE static void gravity_foreign_copy(
 #endif
 }
 
+/**
+ * @brief Copy the content of a #gpart into a #gpart_fof_foreign.
+ */
 __attribute__((always_inline)) INLINE static void gravity_foreign_fof_copy(
     struct gpart_fof_foreign* packed, const struct gpart* full) {
 
@@ -63,6 +66,10 @@ __attribute__((always_inline)) INLINE static void gravity_foreign_fof_copy(
   packed->time_bin = full->time_bin;
 
   packed->type = full->type;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  packed->ti_drift = full->ti_drift;
+#endif
 }
 
 /**
