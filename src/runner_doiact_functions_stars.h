@@ -818,7 +818,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, const struct cell *restrict ci,
  * @param cj The second #cell.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r,
+                                const struct cell *restrict ci,
                                 struct spart *restrict sparts_i, const int *ind,
                                 const int scount, struct cell *restrict cj,
                                 const double shift[3]) {
@@ -1013,7 +1014,8 @@ void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,
  * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
  */
-void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
+void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
+                                 const struct cell *restrict ci,
                                  struct spart *restrict sparts_i,
                                  const int *ind, const int scount,
                                  struct cell *restrict cj) {
@@ -1043,6 +1045,9 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
   const int flipped = runner_flip[sid];
   sid = sortlistID[sid];
 
+  /* Let's first lock the cell */
+  lock_lock(&cj->hydro.extra_sort_lock);
+
   const int is_sorted =
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
@@ -1059,7 +1064,12 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
   } else {
     DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
   }
+
+  /* Now we can unlock */
+  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+    error("Impossible to unlock cell!");
 }
+
 /**
  * @brief Determine which version of DOSELF1_STARS needs to be called depending
  * on the optimisation level.
@@ -1234,13 +1244,15 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       }
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+        runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
       }
     }
     if (do_cj) {
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+        runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
       }
       if (!(cj->stars.sorted & (1 << sid)) ||
           cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
@@ -1279,13 +1291,15 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
         }
         if (!(cj->hydro.sorted & (1 << sid)) ||
             cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-          runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+          runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                               /*clock=*/0);
         }
       }
       if (do_cj) {
         if (!(ci->hydro.sorted & (1 << sid)) ||
             ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-          runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+          runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                               /*clock=*/0);
         }
         if (!(cj->stars.sorted & (1 << sid)) ||
             cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {

@@ -890,7 +890,7 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
  */
 void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
                           struct part *restrict parts_i, const int *ind,
-                          const int count, const struct cell *restrict cj) {
+                          const int count, struct cell *restrict cj) {
 
   const struct engine *e = r->e;
 
@@ -917,6 +917,9 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
   const int flipped = runner_flip[sid];
   sid = sortlistID[sid];
 
+  /* Let's first lock the cell */
+  lock_lock(&cj->hydro.extra_sort_lock);
+
   const int is_sorted =
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
@@ -941,6 +944,10 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
   }
+
+  /* Now we can unlock */
+  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+    error("Impossible to unlock cell!");
 }
 
 /**
@@ -2594,11 +2601,13 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
         ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-      runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+      runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                           /*clock=*/0);
     }
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-      runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+      runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                           /*clock=*/0);
     }
 
     /* We interact all particles in that cell:
@@ -2627,11 +2636,13 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
        * Since h_max might have changed, we may not have sorted at this level */
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+        runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
       }
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+        runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
       }
 
       /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
@@ -2756,11 +2767,13 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
         ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-      runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+      runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                           /*clock=*/0);
     }
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-      runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+      runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                           /*clock=*/0);
     }
 
     /* We interact all particles in that cell:
@@ -2788,11 +2801,13 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
        * Since h_max might have changed, we may not have sorted at this level */
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+        runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
       }
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+        runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
       }
 
       /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,

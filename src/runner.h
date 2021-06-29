@@ -98,7 +98,7 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
-                          int cleanup, int clock);
+                          int cleanup, const int lock, const int clock);
 void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);
 void runner_do_all_hydro_sort(struct runner *r, struct cell *c);
