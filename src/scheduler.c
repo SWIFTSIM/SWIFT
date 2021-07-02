@@ -1857,6 +1857,13 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_timestep_sync:
         cost = wscale * count_i;
         break;
+      case task_type_pack:
+      case task_type_unpack:
+        if (t->subtype == task_subtype_limiter)
+          cost = wscale * count_i;
+        else if (t->subtype == task_subtype_gpart)
+          cost = wscale * gcount_i;
+        break;
       case task_type_send:
         if (count_i < 1e5)
           cost = 10.f * (wscale * count_i) * count_i;
