@@ -27,7 +27,7 @@ fi
 if [ ! -e photometry ]
 then
     echo "Fetching EAGLE photometry tables..."
-    ../getEaglePhotometryTable.sh
+    ./getEaglePhotometryTable.sh
 fi
 
 ../../swift --threads=16 --feedback --external-gravity --self-gravity --stars --star-formation --cooling --hydro --limiter --sync isolated_galaxy.yml 2>&1 | tee output.log
