@@ -47,8 +47,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -110,8 +111,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
 
@@ -151,8 +153,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -175,8 +178,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -210,12 +214,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, int mode, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, int mode, const float a,
+    const float H) {
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Initialize local variables */
   float Bi[3][3];
@@ -427,8 +432,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1, a, H);
 }
@@ -450,8 +456,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
 }

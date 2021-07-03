@@ -41,8 +41,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -57,8 +58,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {}
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {}
 
 /**
  * @brief Force interaction between two particles.
@@ -73,8 +75,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
 
 /**
  * @brief Force interaction between two particles (non-symmetric).
@@ -89,7 +92,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {}
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {}
 
 #endif /* SWIFT_NONE_HYDRO_IACT_H */
