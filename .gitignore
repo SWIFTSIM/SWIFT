@@ -123,6 +123,7 @@ tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh
 tests/testSymmetry
+tests/testDistance
 tests/testHydroMPIrules
 tests/testMaths
 tests/testAtomic
