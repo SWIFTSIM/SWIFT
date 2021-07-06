@@ -122,4 +122,16 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
   }
 }
 
+void compute_neutrino_diagnostics(
+    const struct space *s, const struct cosmology *cosmo,
+    const struct phys_const *physical_constants,
+    const struct neutrino_props *neutrino_properties, const int rank, double *r,
+    double *I_df, double *mass_tot);
+void neutrino_check_cosmology(const struct space *s,
+                              const struct cosmology *cosmo,
+                              const struct phys_const *physical_constants,
+                              struct swift_params *params,
+                              const struct neutrino_props *neutrino_props,
+                              const int rank, const int verbose);
+
 #endif /* SWIFT_DEFAULT_NEUTRINO_H */
