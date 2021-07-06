@@ -158,7 +158,6 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                          sizeof(struct gpart) * size_gparts) != 0)
         error("Failed to allocate new gpart data");
-      const ptrdiff_t delta = gparts_new - s->gparts;
       memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->size_gparts);
       swift_free("gparts", s->gparts);
       s->gparts = gparts_new;
@@ -166,23 +165,10 @@ void space_allocate_extras(struct space *s, int verbose) {
       /* Update the counter */
       s->size_gparts = size_gparts;
 
-      /* We now need to reset all the part and spart pointers */
-      for (size_t i = 0; i < nr_parts; ++i) {
-        if (s->parts[i].time_bin != time_bin_not_created)
-          s->parts[i].gpart += delta;
-      }
-      for (size_t i = 0; i < nr_sinks; ++i) {
-        if (s->sinks[i].time_bin != time_bin_not_created)
-          s->sinks[i].gpart += delta;
-      }
-      for (size_t i = 0; i < nr_sparts; ++i) {
-        if (s->sparts[i].time_bin != time_bin_not_created)
-          s->sparts[i].gpart += delta;
-      }
-      for (size_t i = 0; i < nr_bparts; ++i) {
-        if (s->bparts[i].time_bin != time_bin_not_created)
-          s->bparts[i].gpart += delta;
-      }
+      /* We now need to correct all the pointers of the other particle arrays */
+      part_relink_all_parts_to_gparts(gparts_new, s->nr_gparts, s->parts,
+                                      s->sinks, s->sparts, s->bparts,
+                                      &s->e->threadpool);
     }
 
     /* Turn some of the allocated spares into particles we can use */
