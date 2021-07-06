@@ -210,7 +210,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Physical instantaneous accretion rates of the particles");
 
   list[11] = io_make_output_field(
-      "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS_PER_UNIT_TIME, 0.f,
+      "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
       bparts, total_accreted_mass,
       "Total mass accreted onto the particles since its birth");
 
