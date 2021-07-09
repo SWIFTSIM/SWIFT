@@ -106,48 +106,6 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedbac
 	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
-# source files for the csds (chemistry)
-CHEMISTRY_CSDS =
-if HAVE_CHEMISTRY_NONE
-CHEMISTRY_CSDS += chemistry/none/chemistry_csds.c
-endif
-if HAVE_CHEMISTRY_GEAR
-CHEMISTRY_CSDS += chemistry/GEAR/chemistry_csds.c
-endif
-
-# source files for the csds (hydro)
-HYDRO_CSDS =
-if HAVE_GADGET2
-HYDRO_CSDS += hydro/Gadget2/hydro_csds.c
-endif
-if HAVE_SPHENIX
-HYDRO_CSDS += hydro/SPHENIX/hydro_csds.c
-endif
-
-# source files for the csds (stars)
-STARS_CSDS =
-if HAVE_STARS_BASIC
-STARS_CSDS += stars/Basic/stars_csds.c
-endif
-if HAVE_STARS_GEAR
-STARS_CSDS += stars/GEAR/stars_csds.c
-endif
-
-# source files for the csds (stars)
-STAR_FORMATION_CSDS =
-if HAVE_STAR_FORMATION_DEFAULT
-STAR_FORMATION_CSDS += star_formation/none/star_formation_csds.c
-endif
-if HAVE_STAR_FORMATION_GEAR
-STAR_FORMATION_CSDS += star_formation/GEAR/star_formation_csds.c
-endif
-
-# source files for the csds (gravity)
-GRAVITY_CSDS =
-if HAVE_GRAVITY_MULTISOFTENING
-GRAVITY_CSDS += gravity/MultiSoftening/gravity_csds.c
-endif
-
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
@@ -184,8 +142,6 @@ AM_SOURCES += $(QLA_COOLING_SOURCES)
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
 AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
-AM_SOURCES += $(CHEMISTRY_CSDS) $(HYDRO_CSDS) $(STARS_CSDS) $(GRAVITY_CSDS)
-AM_SOURCES += $(STAR_FORMATION_CSDS)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
@@ -234,7 +190,7 @@ nobase_noinst_HEADERS += hydro/SPHENIX/hydro.h hydro/SPHENIX/hydro_iact.h hydro/
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro_debug.h hydro/SPHENIX/hydro_part.h hydro/SPHENIX/hydro_csds.h
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro_parameters.h
 nobase_noinst_HEADERS += hydro/Gasoline/hydro.h hydro/Gasoline/hydro_iact.h hydro/Gasoline/hydro_io.h 
-nobase_noinst_HEADERS += hydro/Gasoline/hydro_debug.h hydro/Gasoline/hydro_part.h hydro/Gasoline/hydro_csds.h
+nobase_noinst_HEADERS += hydro/Gasoline/hydro_debug.h hydro/Gasoline/hydro_part.h
 nobase_noinst_HEADERS += hydro/Gasoline/hydro_parameters.h 
 nobase_noinst_HEADERS += hydro/Gizmo/hydro_parameters.h 
 nobase_noinst_HEADERS += hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h 

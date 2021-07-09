@@ -19,98 +19,48 @@
 #ifndef SWIFT_STAR_FORMATION_GEAR_STAR_FORMATION_CSDS_H
 #define SWIFT_STAR_FORMATION_GEAR_STAR_FORMATION_CSDS_H
 
+/* Other Includes */
 #include "csds_io.h"
 
 #ifdef WITH_CSDS
 
-/*
- * List of all possible mask.
- * Outside the module, only star_formation_csds_field_count is used.
- */
-enum star_formation_csds_fields_spart {
-  star_formation_csds_field_all = 0,
-  star_formation_csds_field_count,
-};
-
-/* Name of each possible mask. */
-extern const char
-    *star_formation_csds_field_names[star_formation_csds_field_count];
-
 /**
- * @brief Initialize the csds for the #spart.
+ * @brief Group all the fields for the star formation together.
  *
- * WARNING: The order should be the same in all the functions and
- * #star_formation_csds_fields_spart!
+ * @param p The #spart
+ * @param e The #engine
+ * @param buffer Allocated buffer for writing the particle.
  *
- * @param mask_data Data for each type of mask.
- *
- * @return Number of masks used.
+ * @return Buffer after the bits written.
  */
-INLINE static int star_formation_csds_writer_populate_mask_data(
-    struct mask_data *mask_data) {
-  /* We store the birth density, mass and progenitor id. */
-  mask_data[star_formation_csds_field_all] = csds_create_mask_entry(
-      star_formation_csds_field_names[star_formation_csds_field_all],
-      2 * sizeof(float) + sizeof(long long));
+INLINE static void *csds_star_formation_convert(const struct spart *sp,
+                                                const struct engine *e,
+                                                void *buffer) {
+  /* Write the terms into the buffer */
+  float *out = (float *)buffer;
+  out[0] = sp->sf_data.birth_density;
+  out[1] = sp->sf_data.birth_mass;
+  long long *id = (long long *)(out + 2);
+  *id = sp->sf_data.progenitor_id;
 
-  return star_formation_csds_field_count;
+  return id + 1;
 }
 
 /**
- * @brief Generates the mask and compute the size of the record for the #spart.
+ * @brief Defines the fields to write in the CSDS.
  *
- * WARNING: The order should be the same in all the functions and
- * #star_formation_csds_fields_spart!
+ * @param fields (output) The list of fields to write (already allocated).
  *
- * @param masks The list of masks (same order than in
- * #star_formation_csds_writer_populate_mask_data_spart).
- * @param spart The #spart that will be written.
- * @param write_all Are we forcing to write all the fields?
- *
- * @param buffer_size (out) The requested size for the buffer.
- * @param mask (out) The mask that will be written.
+ * @return The number of fields.
  */
-INLINE static void star_formation_csds_compute_size_and_mask(
-    const struct mask_data *masks, const struct spart *spart,
-    const int write_all, size_t *buffer_size, unsigned int *mask) {
-  /* Add the star formation. */
-  *mask |=
-      csds_add_field_to_mask(masks[star_formation_csds_field_all], buffer_size);
-}
+INLINE static int csds_star_formation_define_fields(struct csds_field *fields) {
 
-/**
- * @brief Write a #spart to the csds.
- *
- * WARNING: The order should be the same in all the functions and
- * #hydro_csds_fields_spart!
- *
- * @param masks The list of masks (same order than in
- * #star_formation_csds_writer_populate_mask_data_spart).
- * @param sp The #spart to write.
- * @param mask The mask to use for this record.
- * @param buff The buffer where to write the particle.
- *
- * @return The buffer after the data.
- */
-INLINE static char *star_formation_csds_write_sparticle(
-    const struct mask_data *mask_data, const struct spart *sp,
-    unsigned int *mask, char *buff) {
-  /* Write the star formation. */
-  if (csds_should_write_field(mask_data[star_formation_csds_field_all], mask)) {
+  /* Write all the fields together. */
+  csds_define_field_from_function_stars(fields[0], "GEARStarFormation",
+                                        csds_star_formation_convert,
+                                        2 * sizeof(float) + sizeof(long long));
 
-    /* Write the birth density */
-    memcpy(buff, &sp->sf_data.birth_density, sizeof(float));
-    buff += sizeof(float);
-
-    /* Write the birth mass  */
-    memcpy(buff, &sp->sf_data.birth_mass, sizeof(float));
-    buff += sizeof(float);
-
-    /* Write the progenitor id  */
-    memcpy(buff, &sp->sf_data.progenitor_id, sizeof(long long));
-    buff += sizeof(long long);
-  }
-  return buff;
+  return 1;
 }
 
 #endif  // WITH_CSDS

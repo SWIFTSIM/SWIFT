@@ -40,7 +40,7 @@ struct part;
 struct engine;
 
 #define csds_major_version 1
-#define csds_minor_version 3
+#define csds_minor_version 4
 /* Size of the strings. */
 #define csds_string_length 200
 
@@ -125,40 +125,16 @@ struct csds_writer {
   int max_record_size;
 
   /* Description of all the fields that can be written. */
-  struct mask_data *csds_mask_data;
+  struct csds_field *list_fields;
 
-  /* Pointer to the variable csds_mask_data for each module. */
-  struct {
-    /* pointer for the hydro */
-    struct mask_data *hydro;
+  /* Pointer to the variable list_fields for each module. */
+  struct csds_field *field_pointers[swift_type_count];
 
-    /* pointer for the chemistry */
-    struct mask_data *chemistry_part;
+  /* Number of fields for each particle type. */
+  int number_fields[swift_type_count];
 
-    /* pointer for the chemistry */
-    struct mask_data *chemistry_spart;
-
-    /* pointer for the gravity */
-    struct mask_data *gravity;
-
-    /* pointer for the stars */
-    struct mask_data *stars;
-
-    /* pointer for the star formation */
-    struct mask_data *star_formation;
-  } mask_data_pointers;
-
-  /* Number of elements in csds_mask_data. */
-  int csds_count_mask;
-
-  /* Maximum size for a hydro record. */
-  int max_size_record_part;
-
-  /* Maximum size for a gravity record. */
-  int max_size_record_gpart;
-
-  /* Maximum size for a star record. */
-  int max_size_record_spart;
+  /* Number of elements in list_fields. */
+  int total_number_fields;
 
 } SWIFT_STRUCT_ALIGN;
 

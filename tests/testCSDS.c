@@ -46,19 +46,22 @@ void test_log_parts(struct csds_writer *log) {
   xp.csds_data.last_offset = 0;
 
   /* Write the full part. */
-  csds_log_part(log, &p, &xp, &e, /* log_all */ 1, /* special flags */ 0);
+  csds_log_part(log, &p, &xp, &e, /* log_all */ 1, csds_flag_none,
+                /* flag_data */ 0);
   printf("Wrote part at offset %#016zx.\n", xp.csds_data.last_offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
   p.v[0] = 0.;
-  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, csds_flag_none,
+                /* flag_data */ 0);
   printf("Wrote part at offset %#016zx.\n", xp.csds_data.last_offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v[0] = 0.3;
-  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, csds_flag_none,
+                /* flag_data */ 0);
   printf("Wrote part at offset %#016zx.\n", xp.csds_data.last_offset);
 
   /* Recover the last part from the dump. */
@@ -115,19 +118,22 @@ void test_log_gparts(struct csds_writer *log) {
   p.csds_data.last_offset = 0;
 
   /* Write the full part. */
-  csds_log_gpart(log, &p, &e, /* log_all */ 1, /* special flags */ 0);
+  csds_log_gpart(log, &p, &e, /* log_all */ 1, csds_flag_none,
+                 /* flag_data */ 0);
   printf("Wrote gpart at offset %#016zx.\n", p.csds_data.last_offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
   p.v_full[0] = 0.;
-  csds_log_gpart(log, &p, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_gpart(log, &p, &e, /* log_all */ 0, csds_flag_none,
+                 /* flag_data */ 0);
   printf("Wrote gpart at offset %#016zx.\n", p.csds_data.last_offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v_full[0] = 0.3;
-  csds_log_gpart(log, &p, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_gpart(log, &p, &e, /* log_all */ 0, csds_flag_none,
+                 /* flag_data */ 0);
   printf("Wrote gpart at offset %#016zx.\n", p.csds_data.last_offset);
 
   /* Recover the last part from the dump. */

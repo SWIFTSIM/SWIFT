@@ -24,152 +24,55 @@
 
 #ifdef WITH_CSDS
 
-/*
- * List of all possible mask.
- * Outside the module, only csds_gravity_count is used.
- */
-enum gravity_csds_fields {
-  gravity_csds_field_coordinates = 0,
-  gravity_csds_field_velocities,
-  gravity_csds_field_accelerations,
-  gravity_csds_field_masses,
-  gravity_csds_field_particle_ids,
-  gravity_csds_field_count,
-};
-
-/* Name of each possible mask. */
-extern const char *gravity_csds_field_names[gravity_csds_field_count];
-
 /**
- * @brief Initialize the csds.
+ * @brief Compute the acceleration and writes it.
  *
- * WARNING: The order should be the same in all the functions and
- * #gravity_csds_fields!
+ * @param gp The #gpart
+ * @param e The #engine
+ * @param buffer Allocated buffer for writing the particle.
  *
- * @param mask_data Data for each type of mask.
- *
- * @return Number of masks used.
+ * @return Buffer after the bits written.
  */
-INLINE static int gravity_csds_writer_populate_mask_data(
-    struct mask_data *mask_data) {
-  mask_data[gravity_csds_field_coordinates] = csds_create_mask_entry(
-      gravity_csds_field_names[gravity_csds_field_coordinates],
-      3 * sizeof(double));
+INLINE static void *csds_gravity_convert_acc(const struct gpart *gp,
+                                             const struct engine *e,
+                                             void *buffer) {
+  /* Compute the acceleration due to hydro and gravity */
+  float *acc = (float *)buffer;
+  acc[0] = gp->a_grav[0] + gp->a_grav_mesh[0];
+  acc[1] = gp->a_grav[1] + gp->a_grav_mesh[1];
+  acc[2] = gp->a_grav[2] + gp->a_grav_mesh[2];
 
-  mask_data[gravity_csds_field_velocities] = csds_create_mask_entry(
-      gravity_csds_field_names[gravity_csds_field_velocities],
-      3 * sizeof(float));
-
-  mask_data[gravity_csds_field_accelerations] = csds_create_mask_entry(
-      gravity_csds_field_names[gravity_csds_field_accelerations],
-      3 * sizeof(float));
-
-  mask_data[gravity_csds_field_masses] = csds_create_mask_entry(
-      gravity_csds_field_names[gravity_csds_field_masses], sizeof(float));
-
-  mask_data[gravity_csds_field_particle_ids] = csds_create_mask_entry(
-      gravity_csds_field_names[gravity_csds_field_particle_ids],
-      sizeof(long long));
-
-  return gravity_csds_field_count;
+  return acc + 3;
 }
 
 /**
- * @brief Generates the mask and compute the size of the record.
+ * @brief Defines the fields to write in the CSDS.
  *
- * WARNING: The order should be the same in all the functions and
- * #gravity_csds_fields!
+ * @param fields (output) The list of fields to write (already allocated).
  *
- * @param masks The list of masks (same order than in #gravity_csds_init).
- * @param part The #gpart that will be written.
- * @param write_all Are we forcing to write all the fields?
- *
- * @param buffer_size (out) The requested size for the buffer.
- * @param mask (out) The mask that will be written.
+ * @return The number of fields.
  */
-INLINE static void gravity_csds_compute_size_and_mask(
-    const struct mask_data *masks, const struct gpart *part,
-    const int write_all, size_t *buffer_size, unsigned int *mask) {
+INLINE static int csds_gravity_define_fields(struct csds_field *fields) {
 
-  /* Here you can decide your own writing logic */
+  /* Positions */
+  csds_define_standard_field(fields[0], "Coordinates", struct gpart, x);
 
-  /* Add the coordinates. */
-  *mask |= csds_add_field_to_mask(masks[gravity_csds_field_coordinates],
-                                  buffer_size);
+  /* Velocities */
+  csds_define_standard_field(fields[1], "Velocities", struct gpart, v_full);
 
-  /* Add the velocities. */
-  *mask |=
-      csds_add_field_to_mask(masks[gravity_csds_field_velocities], buffer_size);
+  /* Accelerations */
+  struct gpart p;
+  csds_define_field_from_function_gravity(
+      fields[2], "Accelerations", csds_gravity_convert_acc, sizeof(p.a_grav));
 
-  /* Add the accelerations. */
-  *mask |= csds_add_field_to_mask(masks[gravity_csds_field_accelerations],
-                                  buffer_size);
+  /* Masses */
+  csds_define_standard_field(fields[3], "Masses", struct gpart, mass);
 
-  /* Add the masses. */
-  *mask |=
-      csds_add_field_to_mask(masks[gravity_csds_field_masses], buffer_size);
+  /* Particle IDs */
+  csds_define_standard_field(fields[4], "ParticleIDs", struct gpart,
+                             id_or_neg_offset);
 
-  /* Add the ID. */
-  *mask |= csds_add_field_to_mask(masks[gravity_csds_field_particle_ids],
-                                  buffer_size);
-}
-
-/**
- * @brief Write a particle to the csds.
- *
- * WARNING: The order should be the same in all the functions and
- * #gravity_csds_fields!
- *
- * @param masks The list of masks (same order than in #gravity_csds_init).
- * @param p The #gpart to write.
- * @param mask The mask to use for this record.
- * @param buff The buffer where to write the particle.
- *
- * @return The buffer after the data.
- */
-INLINE static char *gravity_csds_write_particle(
-    const struct mask_data *mask_data, const struct gpart *p,
-    unsigned int *mask, char *buff) {
-
-  /* Write the coordinate. */
-  if (csds_should_write_field(mask_data[gravity_csds_field_coordinates],
-                              mask)) {
-    memcpy(buff, p->x, 3 * sizeof(double));
-    buff += 3 * sizeof(double);
-  }
-
-  /* Write the velocity. */
-  if (csds_should_write_field(mask_data[gravity_csds_field_velocities], mask)) {
-    memcpy(buff, p->v_full, 3 * sizeof(float));
-    buff += 3 * sizeof(float);
-  }
-
-  /* Write the acceleration. */
-  if (csds_should_write_field(mask_data[gravity_csds_field_accelerations],
-                              mask)) {
-    float acc[3] = {
-        p->a_grav[0] + p->a_grav_mesh[0],
-        p->a_grav[1] + p->a_grav_mesh[1],
-        p->a_grav[2] + p->a_grav_mesh[2],
-    };
-    memcpy(buff, acc, sizeof(acc));
-    buff += sizeof(acc);
-  }
-
-  /* Write the mass. */
-  if (csds_should_write_field(mask_data[gravity_csds_field_masses], mask)) {
-    memcpy(buff, &p->mass, sizeof(float));
-    buff += sizeof(float);
-  }
-
-  /* Write the Id. */
-  if (csds_should_write_field(mask_data[gravity_csds_field_particle_ids],
-                              mask)) {
-    memcpy(buff, &p->id_or_neg_offset, sizeof(long long));
-    buff += sizeof(long long);
-  }
-
-  return buff;
+  return 5;
 }
 #endif  // WITH_CSDS
 #endif  // SWIFT_MULTISOFTENING_GRAVITY_CSDS_H
