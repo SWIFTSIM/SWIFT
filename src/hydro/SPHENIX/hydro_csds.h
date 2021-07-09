@@ -25,235 +25,116 @@
 
 #ifdef WITH_CSDS
 
-/*
- * List of all possible mask.
- * Outside the module, only hydro_csds_field_count is used.
- */
-enum hydro_csds_fields {
-  hydro_csds_field_coordinates = 0,
-  hydro_csds_field_velocities,
-  hydro_csds_field_accelerations,
-  hydro_csds_field_masses,
-  hydro_csds_field_smoothing_lengths,
-  hydro_csds_field_internal_energies,
-  hydro_csds_field_particle_ids,
-  hydro_csds_field_densities,
-  /* Due to the low number of masks available,
-   * we group the fields together: pressure, entopries,
-   * viscosity and diffusion parameters, laplacian of the energy
-   * and the velocity divergence along its derivative.
-   */
-  hydro_csds_field_secondary_fields,
-  hydro_csds_field_count,
-};
-
-/* Name of each possible mask. */
-extern const char *hydro_csds_field_names[hydro_csds_field_count];
-
 /**
- * @brief Initialize the csds.
+ * @brief Compute the acceleration and writes it.
  *
- * WARNING: The order should be the same in all the functions and
- * #hydro_csds_fields!
+ * @param p The #part
+ * @param xp Its related #xpart
+ * @param e The #engine
+ * @param buffer Allocated buffer for writing the particle.
  *
- * @param mask_data Data for each type of mask.
- *
- * @return Number of masks used.
+ * @return Buffer after the bits written.
  */
-INLINE static int hydro_csds_writer_populate_mask_data(
-    struct mask_data *mask_data) {
-  mask_data[hydro_csds_field_coordinates] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_coordinates], 3 * sizeof(double));
+INLINE static void *csds_hydro_convert_acc(const struct part *p,
+                                           const struct xpart *xp,
+                                           const struct engine *e,
+                                           void *buffer) {
+  /* Compute the acceleration due to hydro and gravity */
+  float *acc = (float *)buffer;
 
-  mask_data[hydro_csds_field_velocities] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_velocities], 3 * sizeof(float));
+  /* The hydro and gravity do not have the same factors */
+  /* Convert everything into gravity acceleration */
+  const double factor =
+      e->cosmology->a_factor_hydro_accel / e->cosmology->a_factor_grav_accel;
 
-  mask_data[hydro_csds_field_accelerations] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_accelerations],
-      3 * sizeof(float));
+  acc[0] = p->a_hydro[0] * factor;
+  acc[1] = p->a_hydro[1] * factor;
+  acc[2] = p->a_hydro[2] * factor;
+  if (p->gpart) {
+    acc[0] += p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+    acc[1] += p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+    acc[2] += p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
+  }
 
-  mask_data[hydro_csds_field_masses] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_masses], sizeof(float));
-
-  mask_data[hydro_csds_field_smoothing_lengths] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_smoothing_lengths],
-      sizeof(float));
-
-  mask_data[hydro_csds_field_internal_energies] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_internal_energies],
-      sizeof(float));
-
-  mask_data[hydro_csds_field_particle_ids] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_particle_ids], sizeof(long long));
-
-  mask_data[hydro_csds_field_densities] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_densities], sizeof(float));
-
-  const size_t size_secondary = 7 * sizeof(float);
-  mask_data[hydro_csds_field_secondary_fields] = csds_create_mask_entry(
-      hydro_csds_field_names[hydro_csds_field_secondary_fields],
-      size_secondary);
-
-  return hydro_csds_field_count;
+  return acc + 3;
 }
 
 /**
- * @brief Generates the mask and compute the size of the record.
+ * @brief Compute the secondary fields and writes them.
  *
- * WARNING: The order should be the same in all the functions and
- * #hydro_csds_fields!
+ * @param p The #part
+ * @param xp Its related #xpart
+ * @param e The #engine
+ * @param buffer Allocated buffer for writing the particle.
  *
- * @param masks The list of masks (same order than in #hydro_csds_init).
- * @param part The #part that will be written.
- * @param xpart The #xpart that will be written.
- * @param write_all Are we forcing to write all the fields?
- *
- * @param buffer_size (out) The requested size for the buffer.
- * @param mask (out) The mask that will be written.
+ * @return Buffer after the bits written.
  */
-INLINE static void hydro_csds_compute_size_and_mask(
-    const struct mask_data *masks, const struct part *part,
-    const struct xpart *xpart, const int write_all, size_t *buffer_size,
-    unsigned int *mask) {
-
-  /* Here you can decide your own writing logic */
-
-  /* Add the coordinates. */
-  *mask |=
-      csds_add_field_to_mask(masks[hydro_csds_field_coordinates], buffer_size);
-
-  /* Add the velocities. */
-  *mask |=
-      csds_add_field_to_mask(masks[hydro_csds_field_velocities], buffer_size);
-
-  /* Add the accelerations. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_accelerations],
-                                  buffer_size);
-
-  /* Add the masses. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_masses], buffer_size);
-
-  /* Add the smoothing lengths. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_smoothing_lengths],
-                                  buffer_size);
-
-  /* Add the energies. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_internal_energies],
-                                  buffer_size);
-
-  /* Add the ID. */
-  *mask |=
-      csds_add_field_to_mask(masks[hydro_csds_field_particle_ids], buffer_size);
-
-  /* Add the density. */
-  *mask |=
-      csds_add_field_to_mask(masks[hydro_csds_field_densities], buffer_size);
-
-  /* Add the secondary fields. */
-  *mask |= csds_add_field_to_mask(masks[hydro_csds_field_secondary_fields],
-                                  buffer_size);
+INLINE static void *csds_hydro_convert_secondary(const struct part *p,
+                                                 const struct xpart *xp,
+                                                 const struct engine *e,
+                                                 void *buffer) {
+  // Can be done directly into the buffer in order to avoid memcpy
+  const float secondary[7] = {
+      hydro_get_comoving_entropy(p, xp),
+      hydro_get_comoving_pressure(p),
+      p->viscosity.alpha * p->force.balsara,
+      p->diffusion.alpha,
+      p->diffusion.laplace_u,
+      p->viscosity.div_v,
+      p->viscosity.div_v_dt,
+  };
+  memcpy(buffer, secondary, sizeof(secondary));
+  return buffer + sizeof(secondary);
 }
 
 /**
- * @brief Write a particle to the csds.
+ * @brief Defines the fields to write in the CSDS.
  *
- * WARNING: The order should be the same in all the functions and
- * #hydro_csds_fields!
+ * @param fields (output) The list of fields to write (already allocated).
  *
- * @param masks The list of masks (same order than in #hydro_csds_init).
- * @param p The #part to write.
- * @param xp The #xpart to write.
- * @param mask The mask to use for this record.
- * @param buff The buffer where to write the particle.
- *
- * @return The buffer after the data.
+ * @return The number of fields.
  */
-INLINE static char *hydro_csds_write_particle(const struct mask_data *mask_data,
-                                              const struct part *p,
-                                              const struct xpart *xp,
-                                              unsigned int *mask, char *buff) {
+INLINE static int csds_hydro_define_fields(struct csds_field *fields) {
 
-  /* Write the coordinate. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_coordinates], mask)) {
-    memcpy(buff, p->x, 3 * sizeof(double));
-    buff += 3 * sizeof(double);
-  }
+  /* Positions */
+  csds_define_hydro_standard_field(fields[0], "Coordinates", struct part, x,
+                                   /* saving_xpart */ 0);
 
-  /* Write the velocity. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_velocities], mask)) {
-    memcpy(buff, p->v, 3 * sizeof(float));
-    buff += 3 * sizeof(float);
-  }
+  /* Velocities */
+  csds_define_hydro_standard_field(fields[1], "Velocities", struct part, v,
+                                   /* saving_xpart */ 0);
 
-  /* Write the acceleration. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_accelerations],
-                              mask)) {
+  /* Accelerations */
+  struct part p;
+  csds_define_field_from_function_hydro(
+      fields[2], "Accelerations", csds_hydro_convert_acc, sizeof(p.a_hydro));
 
-    /* Compute the acceleration due to hydro and gravity */
-    float *acc = (float *)buff;
-    acc[0] = p->a_hydro[0];
-    acc[1] = p->a_hydro[1];
-    acc[2] = p->a_hydro[2];
-    if (p->gpart) {
-      acc[0] += p->gpart->a_grav[0];
-      acc[1] += p->gpart->a_grav[1];
-      acc[2] += p->gpart->a_grav[2];
-    }
+  /* Masses */
+  csds_define_hydro_standard_field(fields[3], "Masses", struct part, mass,
+                                   /* saving_xpart */ 0);
 
-    memcpy(buff, acc, 3 * sizeof(float));
-    buff += 3 * sizeof(float);
-  }
+  /* Smoothing lengths */
+  csds_define_hydro_standard_field(fields[4], "SmoothingLengths", struct part,
+                                   h, /* saving_xpart */ 0);
 
-  /* Write the mass. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_masses], mask)) {
-    memcpy(buff, &p->mass, sizeof(float));
-    buff += sizeof(float);
-  }
+  /* Internal energies */
+  csds_define_hydro_standard_field(fields[5], "InternalEnergies", struct part,
+                                   u, /* saving_xpart */ 0);
 
-  /* Write the smoothing length. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_smoothing_lengths],
-                              mask)) {
-    memcpy(buff, &p->h, sizeof(float));
-    buff += sizeof(float);
-  }
+  /* Particle IDs */
+  csds_define_hydro_standard_field(fields[6], "ParticleIDs", struct part, id,
+                                   /* saving_xpart */ 0);
 
-  /* Write the energy. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_internal_energies],
-                              mask)) {
-    memcpy(buff, &p->u, sizeof(float));
-    buff += sizeof(float);
-  }
+  /* Densities */
+  csds_define_hydro_standard_field(fields[7], "Densities", struct part, rho,
+                                   /* saving_xpart */ 0);
 
-  /* Write the Id. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_particle_ids], mask)) {
-    memcpy(buff, &p->id, sizeof(long long));
-    buff += sizeof(long long);
-  }
+  /* Grouped field */
+  csds_define_field_from_function_hydro(fields[8], "SPHENIXSecondaryFields",
+                                        csds_hydro_convert_secondary,
+                                        7 * sizeof(float));
 
-  /* Write the density. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_densities], mask)) {
-    memcpy(buff, &p->rho, sizeof(float));
-    buff += sizeof(float);
-  }
-
-  /* Write the secondary fields. */
-  if (csds_should_write_field(mask_data[hydro_csds_field_secondary_fields],
-                              mask)) {
-    const float secondary[7] = {
-        hydro_get_comoving_entropy(p, xp),
-        hydro_get_comoving_pressure(p),
-        p->viscosity.alpha * p->force.balsara,
-        p->diffusion.alpha,
-        p->diffusion.laplace_u,
-        p->viscosity.div_v,
-        p->viscosity.div_v_dt,
-    };
-
-    memcpy(buff, &secondary, sizeof(secondary));
-    buff += sizeof(secondary);
-  }
-
-  return buff;
+  return 9;
 }
 
 #endif  // WITH_CSDS
