@@ -275,7 +275,13 @@ static void *connect_clients(struct mpi_servers *servers, int nr_servers,
 
   /*  Allocate buffers to the expected maximum size. */
   for (int k = 0; k < nr_servers; k++) {
-    cqps->send_buffers[k] = new infinity::memory::Buffer(cqps->context, sizes[k]);
+    if (sizes[k] > 0) {
+      cqps->send_buffers[k] = new infinity::memory::Buffer(cqps->context, sizes[k]);
+    } else {
+      /* Dummy: no data to send, but setup anyway for symmetry. */
+      cqps->send_buffers[k] = new infinity::memory::Buffer(cqps->context,
+                                                           BYTESINBLOCK);
+    }
     cqps->send_buffers_size[k] = sizes[k];
   }
 
