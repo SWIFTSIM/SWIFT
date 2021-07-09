@@ -23,157 +23,57 @@
 
 #include "csds_io.h"
 
-/*
- * List of all possible mask.
- * Outside the module, only stars_csds_field_count is used.
- */
-enum stars_csds_fields {
-  stars_csds_field_coordinates = 0,
-  stars_csds_field_velocities,
-  stars_csds_field_accelerations,
-  stars_csds_field_masses,
-  stars_csds_field_smoothing_lengths,
-  stars_csds_field_particle_ids,
-  stars_csds_field_count,
-};
-
-/* Name of each possible mask. */
-extern const char *stars_csds_field_names[stars_csds_field_count];
-
 /**
- * @brief Initialize the csds.
+ * @brief Compute the acceleration and writes it.
  *
- * WARNING: The order should be the same in all the functions and
- * #stars_csds_fields!
+ * @param sp The #spart
+ * @param e The #engine
+ * @param buffer Allocated buffer for writing the particle.
  *
- * @param mask_data Data for each type of mask.
- *
- * @return Number of masks used.
+ * @return Buffer after the bits written.
  */
-INLINE static int stars_csds_writer_populate_mask_data(
-    struct mask_data *mask_data) {
-  mask_data[stars_csds_field_coordinates] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_coordinates], 3 * sizeof(double));
+INLINE static void *csds_stars_convert_acc(const struct spart *sp,
+                                           const struct engine *e,
+                                           void *buffer) {
+  /* Compute the acceleration due to hydro and gravity */
+  float *acc = (float *)buffer;
+  acc[0] = sp->gpart->a_grav[0] + sp->gpart->a_grav_mesh[0];
+  acc[1] = sp->gpart->a_grav[1] + sp->gpart->a_grav_mesh[1];
+  acc[2] = sp->gpart->a_grav[2] + sp->gpart->a_grav_mesh[2];
 
-  mask_data[stars_csds_field_velocities] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_velocities], 3 * sizeof(float));
-
-  mask_data[stars_csds_field_accelerations] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_accelerations],
-      3 * sizeof(float));
-
-  mask_data[stars_csds_field_masses] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_masses], sizeof(float));
-
-  mask_data[stars_csds_field_smoothing_lengths] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_smoothing_lengths],
-      sizeof(float));
-
-  mask_data[stars_csds_field_particle_ids] = csds_create_mask_entry(
-      stars_csds_field_names[stars_csds_field_particle_ids], sizeof(long long));
-
-  return stars_csds_field_count;
+  return acc + 3;
 }
 
 /**
- * @brief Generates the mask and compute the size of the record.
+ * @brief Defines the fields to write in the CSDS.
  *
- * WARNING: The order should be the same in all the functions and
- * #stars_csds_fields!
+ * @param fields (output) The list of fields to write (already allocated).
  *
- * @param masks The list of masks (same order than in #stars_csds_init).
- * @param part The #spart that will be written.
- * @param write_all Are we forcing to write all the fields?
- *
- * @param buffer_size (out) The requested size for the buffer.
- * @param mask (out) The mask that will be written.
+ * @return The number of fields.
  */
-INLINE static void stars_csds_compute_size_and_mask(
-    const struct mask_data *masks, const struct spart *part,
-    const int write_all, size_t *buffer_size, unsigned int *mask) {
+INLINE static int csds_stars_define_fields(struct csds_field *fields) {
 
-  /* Here you can decide your own writing logic */
+  /* Positions */
+  csds_define_standard_field(fields[0], "Coordinates", struct spart, x);
 
-  /* Add the coordinates. */
-  *mask |=
-      csds_add_field_to_mask(masks[stars_csds_field_coordinates], buffer_size);
+  /* Velocities */
+  csds_define_standard_field(fields[1], "Velocities", struct spart, v);
 
-  /* Add the velocities. */
-  *mask |=
-      csds_add_field_to_mask(masks[stars_csds_field_velocities], buffer_size);
+  /* Accelerations */
+  struct gpart p;
+  csds_define_field_from_function_stars(
+      fields[2], "Accelerations", csds_stars_convert_acc, sizeof(p.a_grav));
 
-  /* Add the accelerations. */
-  *mask |= csds_add_field_to_mask(masks[stars_csds_field_accelerations],
-                                  buffer_size);
+  /* Masses */
+  csds_define_standard_field(fields[3], "Masses", struct spart, mass);
 
-  /* Add the masses. */
-  *mask |= csds_add_field_to_mask(masks[stars_csds_field_masses], buffer_size);
+  /* Smoothing lengths */
+  csds_define_standard_field(fields[4], "SmoothingLengths", struct spart, h);
 
-  /* Add the smoothing lengths. */
-  *mask |= csds_add_field_to_mask(masks[stars_csds_field_smoothing_lengths],
-                                  buffer_size);
+  /* Particle IDs */
+  csds_define_standard_field(fields[5], "ParticleIDs", struct spart, id);
 
-  /* Add the ID. */
-  *mask |=
-      csds_add_field_to_mask(masks[stars_csds_field_particle_ids], buffer_size);
-}
-
-/**
- * @brief Write a particle to the csds.
- *
- * WARNING: The order should be the same in all the functions and
- * #stars_csds_fields!
- *
- * @param masks The list of masks (same order than in #stars_csds_init).
- * @param p The #spart to write.
- * @param mask The mask to use for this record.
- * @param buff The buffer where to write the particle.
- *
- * @return The buffer after the data.
- */
-INLINE static char *stars_csds_write_particle(const struct mask_data *mask_data,
-                                              const struct spart *p,
-                                              unsigned int *mask, char *buff) {
-
-  /* Write the coordinate. */
-  if (csds_should_write_field(mask_data[stars_csds_field_coordinates], mask)) {
-    memcpy(buff, p->x, 3 * sizeof(double));
-    buff += 3 * sizeof(double);
-  }
-
-  /* Write the velocity. */
-  if (csds_should_write_field(mask_data[stars_csds_field_velocities], mask)) {
-    memcpy(buff, p->v, 3 * sizeof(float));
-    buff += 3 * sizeof(float);
-  }
-
-  /* Write the acceleration. */
-  if (csds_should_write_field(mask_data[stars_csds_field_accelerations],
-                              mask)) {
-    memcpy(buff, p->gpart->a_grav, 3 * sizeof(float));
-    buff += 3 * sizeof(float);
-  }
-
-  /* Write the mass. */
-  if (csds_should_write_field(mask_data[stars_csds_field_masses], mask)) {
-    memcpy(buff, &p->mass, sizeof(float));
-    buff += sizeof(float);
-  }
-
-  /* Write the smoothing length. */
-  if (csds_should_write_field(mask_data[stars_csds_field_smoothing_lengths],
-                              mask)) {
-    memcpy(buff, &p->h, sizeof(float));
-    buff += sizeof(float);
-  }
-
-  /* Write the Id. */
-  if (csds_should_write_field(mask_data[stars_csds_field_particle_ids], mask)) {
-    memcpy(buff, &p->id, sizeof(long long));
-    buff += sizeof(long long);
-  }
-
-  return buff;
+  return 6;
 }
 
 #endif /* WITH_CSDS */
