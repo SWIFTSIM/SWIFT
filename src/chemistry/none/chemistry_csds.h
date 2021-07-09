@@ -23,130 +23,28 @@
 
 #ifdef WITH_CSDS
 
-/*
- * List of all possible mask.
- * Outside the module, only chemistry_csds_field_count is used.
- */
-enum chemistry_csds_fields_part {
-  chemistry_csds_field_part_count = 0,
-};
-enum chemistry_csds_fields_spart {
-  chemistry_csds_field_spart_count = 0,
-};
-
-/* Name of each possible mask. */
-extern const char
-    *chemistry_csds_field_names_part[chemistry_csds_field_part_count];
-extern const char
-    *chemistry_csds_field_names_spart[chemistry_csds_field_spart_count];
-
 /**
- * @brief Initialize the csds for the #part.
+ * @brief Defines the fields to write in the CSDS.
  *
- * WARNING: The order should be the same in all the functions and
- * #chemistry_csds_fields_part!
+ * @param fields (output) The list of fields to write (already allocated).
  *
- * @param mask_data Data for each type of mask.
- *
- * @return Number of masks used.
+ * @return The number of fields.
  */
-INLINE static int chemistry_csds_writer_populate_mask_data_part(
-    struct mask_data *mask_data) {
-  return chemistry_csds_field_part_count;
+INLINE static int csds_chemistry_define_fields_parts(
+    struct csds_field *fields) {
+  return 0;
 }
 
 /**
- * @brief Initialize the csds for the #spart.
+ * @brief Defines the fields to write in the CSDS.
  *
- * WARNING: The order should be the same in all the functions and
- * #chemistry_csds_fields_spart!
+ * @param fields (output) The list of fields to write (already allocated).
  *
- * @param mask_data Data for each type of mask.
- *
- * @return Number of masks used.
+ * @return The number of fields.
  */
-INLINE static int chemistry_csds_writer_populate_mask_data_spart(
-    struct mask_data *mask_data) {
-  return chemistry_csds_field_spart_count;
-}
-
-/**
- * @brief Generates the mask and compute the size of the record for the #part.
- *
- * WARNING: The order should be the same in all the functions and
- * #chemistry_csds_fields_part!
- *
- * @param masks The list of masks (same order than in
- * #chemistry_csds_writer_populate_mask_data_part).
- * @param part The #part that will be written.
- * @param xpart The #xpart that will be written.
- * @param write_all Are we forcing to write all the fields?
- *
- * @param buffer_size (out) The requested size for the buffer.
- * @param mask (out) The mask that will be written.
- */
-INLINE static void chemistry_csds_compute_size_and_mask_part(
-    const struct mask_data *masks, const struct part *part,
-    const struct xpart *xpart, const int write_all, size_t *buffer_size,
-    unsigned int *mask) {}
-
-/**
- * @brief Generates the mask and compute the size of the record for the #spart.
- *
- * WARNING: The order should be the same in all the functions and
- * #chemistry_csds_fields_spart!
- *
- * @param masks The list of masks (same order than in
- * #chemistry_csds_writer_populate_mask_data_spart).
- * @param spart The #spart that will be written.
- * @param write_all Are we forcing to write all the fields?
- *
- * @param buffer_size (out) The requested size for the buffer.
- * @param mask (out) The mask that will be written.
- */
-INLINE static void chemistry_csds_compute_size_and_mask_spart(
-    const struct mask_data *masks, const struct spart *spart,
-    const int write_all, size_t *buffer_size, unsigned int *mask) {}
-
-/**
- * @brief Write a #part to the csds.
- *
- * WARNING: The order should be the same in all the functions and
- * #hydro_csds_fields_part!
- *
- * @param masks The list of masks (same order than in
- * #chemistry_csds_writer_populate_mask_data_part).
- * @param p The #part to write.
- * @param xp The #xpart to write.
- * @param mask The mask to use for this record.
- * @param buff The buffer where to write the particle.
- *
- * @return The buffer after the data.
- */
-INLINE static char *chemistry_csds_write_particle(
-    const struct mask_data *mask_data, const struct part *p,
-    const struct xpart *xp, unsigned int *mask, char *buff) {
-  return buff;
-}
-
-/**
- * @brief Write a #spart to the csds.
- *
- * WARNING: The order should be the same in all the functions and
- * #hydro_csds_fields_spart!
- *
- * @param masks The list of masks (same order than in
- * #chemistry_csds_writer_populate_mask_data_spart).
- * @param sp The #spart to write.
- * @param mask The mask to use for this record.
- * @param buff The buffer where to write the particle.
- *
- * @return The buffer after the data.
- */
-INLINE static char *chemistry_csds_write_sparticle(
-    const struct mask_data *mask_data, const struct spart *sp,
-    unsigned int *mask, char *buff) {
-  return buff;
+INLINE static int csds_chemistry_define_fields_sparts(
+    struct csds_field *fields) {
+  return 0;
 }
 
 #endif  // WITH_CSDS

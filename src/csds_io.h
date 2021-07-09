@@ -42,9 +42,9 @@ enum mask_type {
   mask_type_timestep = -1,
 } __attribute__((packed));
 
-struct mask_data {
-  /* Number of bytes for a mask. */
-  int size;
+struct csds_field {
+  /* Name of the field */
+  char name[csds_string_length];
 
   /* Mask value. */
   unsigned int mask;
@@ -52,74 +52,157 @@ struct mask_data {
   /* Type of particle (follow part_type.h and -1 for timestamp). */
   enum mask_type type;
 
-  /* Name of the mask. */
-  char name[100];
+  /* The offset of the field within the particle */
+  size_t offset;
 
-  /* Variables used only for the reader. */
-  struct {
-    /* Index of the fields containing the first derivative (< 0 for none) */
-    int first_deriv;
+  /* The size of the field */
+  size_t size;
 
-    /* Index of the fields containing the second derivative (< 0 for none) */
-    int second_deriv;
-  } reader;
+  /* Do we use the xpart or the normal one? */
+  int use_xpart;
+
+  /* Conversion functions (NULL if none) */
+  void *(*conversion_hydro)(const struct part *, const struct xpart *xp,
+                            const struct engine *e, void *buffer);
+  void *(*conversion_grav)(const struct gpart *, const struct engine *e,
+                           void *buffer);
+  void *(*conversion_stars)(const struct spart *, const struct engine *e,
+                            void *buffer);
 };
 
 /**
- * @brief Initialize the mask_data with a given field.
+ * @brief Define a field common to all the simulations
+ * (e.g. timestamp or special flag).
  *
- * @param name The name of the field.
- * @param size The size of the field.
- *
- * @return The new mask_data.
+ * @param csds_field A pointer to the #csds_field to initialize.
+ * @param field_name A string containing the name of the field.
+ * @param size_field The size of the field in bytes (sizeof)
  */
-INLINE static struct mask_data csds_create_mask_entry(const char* name,
-                                                      int size) {
-  struct mask_data mask;
-  /* Copy the fields */
-  strcpy(mask.name, name);
-  mask.size = size;
-  mask.mask = 0;
-
-  return mask;
-}
-
-/**
- * @brief Add a given field to the current mask.
- *
- * @param mask_data The mask_data corresponding to the field that we wish to
- * write.
- * @param buffer_size (in) The current size of the future buffer. (out) The
- * updated size.
- *
- * @return The mask of the current field.
- */
-INLINE static size_t csds_add_field_to_mask(struct mask_data mask_data,
-                                            size_t* buffer_size) {
-
-  *buffer_size += mask_data.size;
-  return mask_data.mask;
-}
-
-/**
- * @brief Check if a field should be written according to the mask set in
- * #csds_add_field_to_mask.
- *
- * @param mask_data The mask_data corresponding to the current field.
- * @param mask The mask used for the current record.
- */
-INLINE static int csds_should_write_field(struct mask_data mask_data,
-                                          unsigned int* mask) {
-
-  const int test = mask_data.mask & *mask;
-  if (test) {
-    *mask &= ~mask_data.mask;
+#define csds_define_common_field(csds_field, field_name, size_field) \
+  {                                                                  \
+    csds_field.offset = 0;                                           \
+    csds_field.size = size_field;                                    \
+    if (strlen(field_name) >= csds_string_length)                    \
+      error("Name %s too long", field_name);                         \
+    strcpy(csds_field.name, field_name);                             \
+    csds_field.mask = 0;                                             \
+    csds_field.use_xpart = -1;                                       \
+    csds_field.conversion_hydro = NULL;                              \
+    csds_field.conversion_grav = NULL;                               \
+    csds_field.conversion_stars = NULL;                              \
   }
 
-  return test;
-}
+/**
+ * @brief Define a field that simply requires a memcpy (e.g. the IDs).
+ *
+ * @param csds_field A pointer to the #csds_field to initialize.
+ * @param field_name A string containing the name of the field.
+ * @param part The type of particles (e.g. struct part)
+ * @param field The field to write (e.g. id)
+ */
+#define csds_define_standard_field(csds_field, field_name, part, field) \
+  {                                                                     \
+    csds_field.offset = offsetof(part, field);                          \
+    part *tmp;                                                          \
+    csds_field.size = sizeof(tmp->field);                               \
+    if (strlen(field_name) >= csds_string_length)                       \
+      error("Name %s too long", field_name);                            \
+    strcpy(csds_field.name, field_name);                                \
+    csds_field.mask = 0;                                                \
+    csds_field.use_xpart = -1;                                          \
+    csds_field.conversion_hydro = NULL;                                 \
+    csds_field.conversion_grav = NULL;                                  \
+    csds_field.conversion_stars = NULL;                                 \
+  }
 
-void csds_write_description(struct csds_writer* log, struct engine* e);
+/**
+ * @brief Same than the previous function but for the hydro.
+ * This function specifies the particle (part vs xpart)
+ *
+ * @param csds_field A pointer to the #csds_field to initialize.
+ * @param field_name A string containing the name of the field.
+ * @param part The type of particles (e.g. struct part)
+ * @param field The field to write (e.g. id)
+ * @param saving_xpart Does the field belongs to the xpart?
+ */
+#define csds_define_hydro_standard_field(csds_field, field_name, part, field, \
+                                         saving_xpart)                        \
+  {                                                                           \
+    csds_define_standard_field(csds_field, field_name, part, field);          \
+    csds_field.use_xpart = saving_xpart;                                      \
+  }
+
+/**
+ * @brief Define a field from a function.
+ * This function should never be called by the user.
+ *
+ * @param csds_field A pointer to the #csds_field to initialize.
+ * @param field_name A string containing the name of the field.
+ * @param conversion_func The conversion function.
+ * @param field_size The size of the field to write.
+ * @param part_type The type of particles.
+ */
+#define csds_define_field_from_function_general(                    \
+    csds_field, field_name, conversion_func, field_size, part_type) \
+  {                                                                 \
+    if (strlen(field_name) >= csds_string_length)                   \
+      error("Name %s too long", field_name);                        \
+    strcpy(csds_field.name, field_name);                            \
+    csds_field.size = field_size;                                   \
+    csds_field.mask = 0;                                            \
+    csds_field.use_xpart = -1;                                      \
+    csds_field.conversion_hydro = NULL;                             \
+    csds_field.conversion_grav = NULL;                              \
+    csds_field.conversion_stars = NULL;                             \
+    csds_field.conversion_##part_type = conversion_func;            \
+  }
+
+/**
+ * @brief Define a field from a function for hydro.
+ *
+ * @param csds_field A pointer to the #csds_field to initialize.
+ * @param field_name A string containing the name of the field.
+ * @param conversion_func The conversion function.
+ * @param field_size The size of the field to write.
+ */
+#define csds_define_field_from_function_hydro(csds_field, field_name,     \
+                                              conversion_func, size)      \
+  {                                                                       \
+    csds_define_field_from_function_general(csds_field, field_name,       \
+                                            conversion_func, size, hydro) \
+  }
+
+/**
+ * @brief Define a field from a function for stars.
+ *
+ * @param csds_field A pointer to the #csds_field to initialize.
+ * @param field_name A string containing the name of the field.
+ * @param conversion_func The conversion function.
+ * @param field_size The size of the field to write.
+ */
+#define csds_define_field_from_function_stars(csds_field, field_name,     \
+                                              conversion_func, size)      \
+  {                                                                       \
+    csds_define_field_from_function_general(csds_field, field_name,       \
+                                            conversion_func, size, stars) \
+  }
+
+/**
+ * @brief Define a field from a function for gravity.
+ *
+ * @param csds_field A pointer to the #csds_field to initialize.
+ * @param field_name A string containing the name of the field.
+ * @param conversion_func The conversion function.
+ * @param field_size The size of the field to write.
+ */
+#define csds_define_field_from_function_gravity(csds_field, field_name,  \
+                                                conversion_func, size)   \
+  {                                                                      \
+    csds_define_field_from_function_general(csds_field, field_name,      \
+                                            conversion_func, size, grav) \
+  }
+
+void csds_write_description(struct csds_writer *log, struct engine *e);
 
 #endif
 
