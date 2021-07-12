@@ -19,12 +19,14 @@
 ACLOCAL_AMFLAGS = -I m4
 
 # Show the way...
-SUBDIRS = src argparse examples doc tests tools
+if HAVECSDS
+SUBDIRS = csds
+else
+SUBDIRS =
+endif
+SUBDIRS += src argparse examples doc tests tools
 if HAVEEAGLECOOLING
 SUBDIRS += examples/Cooling/CoolingRates
-endif
-if HAVECSDS
-SUBDIRS += csds
 endif
 DIST_SUBDIRS = $(SUBDIRS) examples/Cooling/CoolingRates
 
