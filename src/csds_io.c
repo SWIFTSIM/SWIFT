@@ -40,28 +40,7 @@
 #include "csds_io.h"
 
 /* Local includes. */
-#include "chemistry_io.h"
-#include "common_io.h"
-#include "cooling_io.h"
-#include "dimension.h"
-#include "engine.h"
-#include "error.h"
-#include "gravity_io.h"
-#include "gravity_properties.h"
-#include "hydro_io.h"
-#include "hydro_properties.h"
-#include "io_properties.h"
-#include "kernel_hydro.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "stars_io.h"
-#include "threadpool.h"
-#include "tracers_io.h"
-#include "units.h"
 #include "version.h"
-#include "xmf.h"
 
 /**
  * @brief Write the parameters into a yaml file.
