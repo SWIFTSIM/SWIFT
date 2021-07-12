@@ -107,5 +107,5 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-#endif // WITH_CSDS
+#endif /* WITH_CSDS */
 #endif /* HAVE_POSIX_FALLOCATE */
