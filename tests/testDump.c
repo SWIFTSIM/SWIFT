@@ -35,10 +35,10 @@
 /* Local headers. */
 #include "swift.h"
 
-void dump_mapper(void *map_data, int num_elements, void *extra_data) {
-  struct dump *d = (struct dump *)extra_data;
+void logfile_mapper(void *map_data, int num_elements, void *extra_data) {
+  struct csds_logfile_writer *d = (struct csds_logfile_writer *)extra_data;
   size_t offset;
-  char *out_string = (char *)dump_get(d, 7, &offset);
+  char *out_string = (char *)csds_logfile_writer_get(d, 7, &offset);
   char out_buff[8];
   /* modulo due to bug in gcc, should be removed */
   snprintf(out_buff, 8, "%06zi\n", (offset / 7) % 1000000);
@@ -62,8 +62,8 @@ int main(int argc, char *argv[]) {
   threadpool_init(&t, num_threads);
 
   /* Prepare a dump. */
-  struct dump d;
-  dump_init(&d, filename, 1024);
+  struct csds_logfile_writer d;
+  csds_logfile_writer_init(&d, filename, 1024);
 
   /* Print the page size for reference. */
   printf("Will dump %i bytes, page size is %zi bytes.\n",
@@ -73,19 +73,19 @@ int main(int argc, char *argv[]) {
   for (int run = 0; run < num_runs; run++) {
 
     /* Ensure capacity. */
-    dump_ensure(&d, 7 * chunk_size, 7 * chunk_size);
+    csds_logfile_writer_ensure(&d, 7 * chunk_size, 7 * chunk_size);
 
     /* Dump a few numbers. */
     printf("dumping %i chunks...\n", chunk_size);
     fflush(stdout);
-    threadpool_map(&t, dump_mapper, NULL, chunk_size, 0, 1, &d);
+    threadpool_map(&t, logfile_mapper, NULL, chunk_size, 0, 1, &d);
   }
 
   /* Sync the file, not necessary before dump_close, but just to test this. */
-  dump_sync(&d);
+  csds_logfile_writer_sync(&d);
 
   /* Finalize the dump. */
-  dump_close(&d);
+  csds_logfile_writer_close(&d);
 
   /* Clean the threads */
   threadpool_clean(&t);

@@ -33,24 +33,24 @@
 /* This enum defines the type of particle to use
    with a given mask.
    The values should be the same than in part_type.h. */
-enum mask_type {
-  mask_type_gas = 0,
-  mask_type_dark_matter = 1,
+enum mask_for_type {
+  mask_for_gas = 0,
+  mask_for_dark_matter = 1,
   /* Only need a single type of dm. */
-  mask_type_stars = 4,
-  mask_type_black_hole = 5,
-  mask_type_timestep = -1,
+  mask_for_stars = 4,
+  mask_for_black_hole = 5,
+  mask_for_timestep = -1,
 } __attribute__((packed));
 
 struct csds_field {
   /* Name of the field */
-  char name[csds_string_length];
+  char name[CSDS_STRING_SIZE];
 
   /* Mask value. */
   unsigned int mask;
 
   /* Type of particle (follow part_type.h and -1 for timestamp). */
-  enum mask_type type;
+  enum mask_for_type type;
 
   /* The offset of the field within the particle */
   size_t offset;
@@ -82,7 +82,7 @@ struct csds_field {
   {                                                                  \
     csds_field.offset = 0;                                           \
     csds_field.size = size_field;                                    \
-    if (strlen(field_name) >= csds_string_length)                    \
+    if (strlen(field_name) >= CSDS_STRING_SIZE)                      \
       error("Name %s too long", field_name);                         \
     strcpy(csds_field.name, field_name);                             \
     csds_field.mask = 0;                                             \
@@ -105,7 +105,7 @@ struct csds_field {
     csds_field.offset = offsetof(part, field);                          \
     part *tmp;                                                          \
     csds_field.size = sizeof(tmp->field);                               \
-    if (strlen(field_name) >= csds_string_length)                       \
+    if (strlen(field_name) >= CSDS_STRING_SIZE)                         \
       error("Name %s too long", field_name);                            \
     strcpy(csds_field.name, field_name);                                \
     csds_field.mask = 0;                                                \
@@ -145,7 +145,7 @@ struct csds_field {
 #define csds_define_field_from_function_general(                    \
     csds_field, field_name, conversion_func, field_size, part_type) \
   {                                                                 \
-    if (strlen(field_name) >= csds_string_length)                   \
+    if (strlen(field_name) >= CSDS_STRING_SIZE)                     \
       error("Name %s too long", field_name);                        \
     strcpy(csds_field.name, field_name);                            \
     csds_field.size = field_size;                                   \
