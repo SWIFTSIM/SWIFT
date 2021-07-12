@@ -19,6 +19,10 @@ AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA
 
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
 
+if HAVECSDS
+AM_LDFLAGS += ../csds/src/.libs/libcsds_writer.a
+endif
+
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \

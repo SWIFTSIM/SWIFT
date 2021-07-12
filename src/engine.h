@@ -36,7 +36,6 @@
 #include "barrier.h"
 #include "clocks.h"
 #include "collectgroup.h"
-#include "dump.h"
 #include "mesh_gravity.h"
 #include "output_options.h"
 #include "parser.h"

@@ -27,31 +27,18 @@
 /* Includes. */
 #include "align.h"
 #include "common_io.h"
-#include "dump.h"
 #include "error.h"
 #include "inline.h"
 #include "timeline.h"
 #include "units.h"
 
+/* Include the CSDS */
+#include "csds/src/csds_logfile_writer.h"
+
 /* Forward declaration. */
-struct dump;
 struct gpart;
 struct part;
 struct engine;
-
-#define csds_major_version 1
-#define csds_minor_version 4
-/* Size of the strings. */
-#define csds_string_length 200
-
-/*
- * The two following defines need to correspond to the list's order
- * in csds_init_masks.
- */
-/* Index of the special flags in the list of masks */
-#define csds_index_special_flags 0
-/* Index of the timestamp in the list of masks */
-#define csds_index_timestamp 1
 
 /**
  * Csds entries contain messages representing the particle data at a given
@@ -60,46 +47,21 @@ struct engine;
  * The csds messages always start with an 8-byte header structured as
  * follows:
  *
- *   data: [ mask |                     offset                     ]
+ *   data: [ mask        |              offset                     ]
  *   byte: [  01  |  02  |  03  |  04  |  05  |  06  |  07  |  08  ]
  *
- * I.e. a first "mask" byte followed by 7 "offset" bytes. The mask contains
+ * I.e. a first "mask" byte followed by 6 "offset" bytes. The mask contains
  * information on what kind of data is packed after the header. The mask
  * bits correspond to the following data:
- *
- *   bit | name   | size | comment
- *   -------------------------------------------------------------------------
- *   0   | x      | 24   | The particle position, in absolute coordinates,
- *       |        |      | stored as three doubles.
- *   1   | v      | 12   | Particle velocity, stored as three floats.
- *   2   | a      | 12   | Particle acceleration, stored as three floats.
- *   3   | u      | 4    | Particle internal energy (or entropy, if Gadget-SPH
- *       |        |      | is used), stored as a single float.
- *   4   | h      | 4    | Particle smoothing length (or epsilon, if a gpart),
- *       |        |      | stored as a single float.
- *   5   | rho    | 4    | Particle density, stored as a single float.
- *   6   | consts | 12   | Particle constants, i.e. mass and ID.
- *   7   | time   | 8    | Timestamp, not associated with a particle, just
- *       |        |      | marks the transitions from one timestep to another.
  *
  * There is no distinction between gravity and SPH particles.
  *
  * The offset refers to the relative location of the previous message for the
- * same particle or for the previous timestamp (if mask bit 7 is set). I.e.
+ * same particle or for the previous timestamp. I.e.
  * the previous log entry will be at the address of the current mask byte minus
  * the unsigned value stored in the offset. An offset equal to the record offset
  * indicated that this is the first message for the given particle/timestamp.
  */
-
-enum csds_special_flags {
-  csds_flag_none = 0,        /* No flag */
-  csds_flag_change_type = 1, /* Flag for a change of particle type */
-  csds_flag_mpi_enter, /* Flag for a particle received from another  MPI rank
-                        */
-  csds_flag_mpi_exit,  /* Flag for a particle sent to another MPI rank */
-  csds_flag_delete,    /* Flag for a deleted particle */
-  csds_flag_create,    /* Flag for a created particle */
-} __attribute__((packed));
 
 /**
  * @brief structure containing global data for the particle csds.
@@ -109,11 +71,10 @@ struct csds_writer {
   short int delta_step;
 
   /* Csds basename. */
-  char base_name[csds_string_length];
+  char base_name[CSDS_STRING_SIZE];
 
-  /*  Dump file (In the reader, the dump is cleaned, therefore it is renamed
-   * logfile). */
-  struct dump dump;
+  /*  The logfile writer. */
+  struct csds_logfile_writer logfile;
 
   /* timestamp offset for csds. */
   size_t timestamp_offset;
@@ -148,8 +109,6 @@ struct csds_part_data {
 };
 
 /* Function prototypes. */
-float csds_get_current_filesize_used_gb(const struct csds_writer *log,
-                                        const struct engine *e);
 void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
                             int first_log);
 void csds_log_part(struct csds_writer *log, const struct part *p,
@@ -188,32 +147,6 @@ int csds_read_timestamp(const struct csds_writer *log, integertime_t *t,
                         double *time, size_t *offset, const char *buff);
 void csds_struct_dump(const struct csds_writer *log, FILE *stream);
 void csds_struct_restore(struct csds_writer *log, FILE *stream);
-
-/**
- * @brief Generate the data for the special flags.
- *
- * @param flag The special flag to use.
- * @param flag_data The data to write in the record.
- * @param type The type of the particle.
- */
-INLINE static uint32_t csds_pack_flags_and_data(enum csds_special_flags flag,
-                                                int flag_data,
-                                                enum part_type type) {
-#ifdef SWIFT_DEBUG_CHECKS
-  if (flag & 0xFFFFFF00) {
-    error(
-        "The special flag in the particle CSDS cannot be larger than 1 "
-        "byte.");
-  }
-  if (flag_data & ~0xFFFF) {
-    error(
-        "The data for the special flag in the particle CSDS cannot be larger "
-        "than 2 bytes.");
-  }
-#endif
-  return ((uint32_t)flag << (3 * 8)) | ((flag_data & 0xFFFF) << 8) |
-         (type & 0xFF);
-}
 
 /**
  * @brief Initialize the csds data for a particle.
