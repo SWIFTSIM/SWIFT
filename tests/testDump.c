@@ -21,6 +21,7 @@
 #include "../config.h"
 
 #ifdef HAVE_POSIX_FALLOCATE /* Are we on a sensible platform? */
+#ifdef WITH_CSDS
 
 /* Some standard headers. */
 #include <errno.h>
@@ -106,4 +107,5 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+#endif // WITH_CSDS
 #endif /* HAVE_POSIX_FALLOCATE */
