@@ -32,6 +32,9 @@
  */
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(float U[4]){
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (U[0] < 0.f) message("Got unphysical energy %.3g | %.3g %.3g %.3g", U[0], U[1], U[2], U[3]);
+#endif
   if (U[0] <= 0.f){
     U[0] = 0.f;
     U[1] = 0.f;
@@ -49,7 +52,9 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(fl
  */
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(float* energy, float* flux){
 
-  /* if (*energy < 0.f) message("Got unphysical energy %.3g", *energy); */
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (*energy < 0.f) message("Got unphysical energy %.3g | %.3g %.3g %.3g", *energy, flux[0], flux[1], flux[2]);
+#endif
   if (*energy <= 0.f) {
     *energy = 0.f;
     flux[0] = 0.f;

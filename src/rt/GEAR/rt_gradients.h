@@ -136,8 +136,8 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
 /*  */
 /* if (p->id > 4090 && p->id < 5010) */
 /*   message("Gradient check %.3e %.3e %.3e | %.3e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2], norm); */
-
-  rt_slope_limit_cell(p);
+  
+  /* rt_slope_limit_cell(p); */
 
 /* if (p->id > 4090 && p->id < 5010) */
 /*   message("Slope limit check %.6e %.6e %.6e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2]); */
