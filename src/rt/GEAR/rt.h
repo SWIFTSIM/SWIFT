@@ -351,9 +351,6 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   struct rt_part_data * restrict rtd = &p->rt_data;
 
-if (p->id > 4090 && p->id < 4010)
-  message("Before integration check %.6e %.6e %.6g", rtd->conserved[0].energy, rtd->flux[0].energy, dt);
-
   for (int g = 0; g < RT_NGROUPS; g++){
     rtd->conserved[g].energy += rtd->flux[g].energy * dt;
     rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;

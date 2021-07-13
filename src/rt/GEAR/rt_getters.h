@@ -81,8 +81,12 @@ __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
  */
 __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const float U[4], float pressure_tensor[3][3]){
 
-  /* We may have zero flux even with nonzero energy */
-  if (U[1] == 0.f && U[2] == 0.f && U[3] == 0.f){
+  const float normF = sqrtf(U[1]*U[1] + U[2]*U[2] + U[3] * U[3]);
+
+  /* We may have zero flux even with nonzero energy.
+   * Even with nonzero flux, the norm may round down 
+   * to exactly zero, so exit early if that is the case. */
+  if ((U[1] == 0.f && U[2] == 0.f && U[3] == 0.f) || normF == 0.f) {
     for (int i = 0; i < 3; i++){
       for (int j = 0; j < 3; j++){
         pressure_tensor[i][j] = 0.f;
@@ -91,22 +95,18 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
     return;
   }
  
-  const double c_red = rt_params.reduced_speed_of_light;
-  const float normF = sqrtf(U[1]*U[1] + U[2]*U[2] + U[3] * U[3]);
-
   /* If there is no energy, there also shouldn't be any
    * photon fluxes, so exception handle this situation */
-  /* TODO: do I still need this? */
+  /* TODO: do I still need this? Should be already exception handled */
+  const double c_red = rt_params.reduced_speed_of_light;
   float f = 1./c_red;
-  if (U[0] > 0.f) {
-    f *= normF / U[0];
-  }
+  if (U[0] > 0.f) f *= normF / U[0];
   const float f2 = f * f;
 
   /* Because we use reduced speed of light, we may find f > 1,
    * which will lead to negative values in sqrt. Handle this. */
   const float rootterm = max((4.f - 3.f * f2), 0.f);
-  const float chi = (3.f + 4.f * f2) / (5.f + 2. * sqrtf(rootterm));
+  const float chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm));
 
   /* get unit vector n */
   const float normF_inv = 1.f/normF;
@@ -130,14 +130,16 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
     }
   }
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
   if (pressure_tensor[0][0] != pressure_tensor[0][0]){
-    message("In pressure tensor: %.3e | %.3e %.3e %.3e %.3e | %.3e %.3e %.3e | %.3e %.3e %.3e | %.3e %.3e", 
-      c_red, 
-      normF, f2, rootterm, chi, 
+    message("In pressure tensor: %.3e | %.3e %.3e %.3e %.3e |"
+    " %.3e %.3e %.3e | %.3e %.3e %.3e | %.3e %.3e", 
+      c_red, normF, f2, rootterm, chi, 
       n[0], n[1], n[2], 
       U[1], U[2], U[3], 
       temp, temp2);
   }
+#endif
 }
 
 /**
