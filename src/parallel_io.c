@@ -496,8 +496,8 @@ void prepare_array_parallel(
 
   /* Add a line to the XMF */
   if (xmfFile != NULL)
-    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-                   props.dimension, props.type);
+    xmf_write_line(xmfFile, fileName, /*distributed=*/0, partTypeGroupName,
+                   props.name, N_total, props.dimension, props.type);
 
   /* Close everything */
   H5Tclose(h_type);
@@ -1130,17 +1130,22 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
  * @brief Prepares a file for a parallel write.
  *
  * @param e The #engine.
+ * @param fileName The file name to write to.
  * @param N_total The total number of particles of each type to write.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
+ * @param subsample_any Are any fields being subsampled?
+ * @param subsample_fraction The subsampling fraction of each particle type.
  */
 void prepare_file(struct engine* e, const char* fileName,
                   const char* xmfFileName, long long N_total[swift_type_count],
                   const int numFields[swift_type_count],
                   char current_selection_name[FIELD_BUFFER_SIZE],
                   const struct unit_system* internal_units,
-                  const struct unit_system* snapshot_units) {
+                  const struct unit_system* snapshot_units,
+                  const int subsample_any,
+                  const float subsample_fraction[swift_type_count]) {
 
   struct output_options* output_options = e->output_options;
   const int with_cosmology = e->policy & engine_policy_cosmology;
@@ -1252,8 +1257,16 @@ void prepare_file(struct engine* e, const char* fileName,
                      swift_type_count);
   io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
   io_write_attribute_i(h_grp, "ThisFile", 0);
-  io_write_attribute_s(h_grp, "OutputType", "FullVolume");
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
+  io_write_attribute_i(h_grp, "Virtual", 0);
+
+  if (subsample_any) {
+    io_write_attribute_s(h_grp, "OutputType", "SubSampled");
+    io_write_attribute(h_grp, "SubSampleFractions", FLOAT, subsample_fraction,
+                       swift_type_count);
+  } else {
+    io_write_attribute_s(h_grp, "OutputType", "FullVolume");
+  }
 
   /* Close header */
   H5Gclose(h_grp);
@@ -1270,7 +1283,7 @@ void prepare_file(struct engine* e, const char* fileName,
 
     /* Add the global information for that particle type to
      * the XMF meta-file */
-    xmf_write_groupheader(xmfFile, fileName, N_total[ptype],
+    xmf_write_groupheader(xmfFile, fileName, /*distributed=*/0, N_total[ptype],
                           (enum part_type)ptype);
 
     /* Create the particle group in the file */
@@ -1573,7 +1586,8 @@ void write_output_parallel(struct engine* e,
   /* Rank 0 prepares the file */
   if (mpi_rank == 0)
     prepare_file(e, fileName, xmfFileName, N_total, numFields,
-                 current_selection_name, internal_units, snapshot_units);
+                 current_selection_name, internal_units, snapshot_units,
+                 subsample_any, subsample_fraction);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
