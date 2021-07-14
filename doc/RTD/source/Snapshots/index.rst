@@ -451,6 +451,37 @@ from the disk.
 Note that this is all automated in the ``swiftsimio`` python library
 and we highly encourage its use.
 
+Meta-file for distributed snapshots
+-----------------------------------
+
+If distributed snapshots are chosen for an MPI parallel run (see
+:ref:`Parameters_snapshots`), N snapshot files are produced, where N is the
+number of MPI ranks. When HDF5 1.10.0 or higher is available, an
+additional meta-snapshot is produced that uses HDF5's virtual dataset
+feature to present these N files as if they were a single, regular
+snapshot file.
+
+The meta-snapshot contains all the meta-data (including the top level
+cell hash-tables) contained in a regular snapshot, but does not store
+any actual particle data. Instead, the particle datasets contain virtual
+links to the corresponding particle data in the distributed snapshot
+files. Since this is a feature of the HDF5 library itself, this is
+entirely transparent to modules like ``h5py`` that try to read the data.
+A user only needs to access the meta-snapshot, and the HDF5 library
+takes care of the rest.
+
+The virtual links in the meta-snapshot only work if the HDF5 library
+knows the location of the distributed snapshots. These are stored within
+the meta-snapshot as relative paths. When SWIFT produces a distributed
+snapshot, all files are placed within the same directory. This means
+that the meta-snapshot can only be safely read if the other N files are
+also present in the same directory.
+
+The header of a meta-snapshot looks exactly like the header of a normal,
+non-distributed snapshot (i.e. ``NumFilesPerSnapshot`` is 1). However,
+the attribute ``Virtual`` is set to 1 to distinguish it from a normal
+snapshot file.
+
 .. [#f1] In the rare case where an output
 	 selection (see :ref:`Output_selection_label`) disabling a given particle type in
 	 its entirety was used, the corresponding entry in ``NumPart_ThisFile`` will be 0

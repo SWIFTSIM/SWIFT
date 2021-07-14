@@ -790,7 +790,11 @@ also that unlike other codes, SWIFT does *not* let the users chose the number of
 individual files over which a snapshot is distributed. This is set by the number
 of MPI ranks used in a given run. The individual files of snapshot 1234 will
 have the name ``base_name_1234.x.hdf5`` where when running on N MPI ranks, ``x``
-runs from 0 to N-1.
+runs from 0 to N-1. If HDF5 1.10.0 or a more recent version is available,
+an additional meta-snapshot named ``base_name_1234.hdf5`` will be produced
+that can be used as if it was a non-distributed snapshot. In this case, the
+HDF5 library itself can figure out which file is needed when manipulating the
+snapshot.
 
 Users can optionally ask to randomly sub-sample the particles in the snapshots.
 This is specified for each particle type individually:
