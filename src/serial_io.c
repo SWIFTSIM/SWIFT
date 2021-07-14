@@ -330,8 +330,8 @@ void prepare_array_serial(
 
   /* Write XMF description for this data set */
   if (xmfFile != NULL)
-    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-                   props.dimension, props.type);
+    xmf_write_line(xmfFile, fileName, /*distributed=*/0, partTypeGroupName,
+                   props.name, N_total, props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
@@ -1213,6 +1213,8 @@ void write_output_serial(struct engine* e,
     io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
     io_write_attribute_i(h_grp, "ThisFile", 0);
     io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
+    io_write_attribute_i(h_grp, "Virtual", 0);
+
     if (subsample_any) {
       io_write_attribute_s(h_grp, "OutputType", "SubSampled");
       io_write_attribute(h_grp, "SubSampleFractions", FLOAT, subsample_fraction,
@@ -1309,8 +1311,8 @@ void write_output_serial(struct engine* e,
         /* Add the global information for that particle type to the XMF
          * meta-file */
         if (mpi_rank == 0)
-          xmf_write_groupheader(xmfFile, fileName, N_total[ptype],
-                                (enum part_type)ptype);
+          xmf_write_groupheader(xmfFile, fileName, /*distributed=*/0,
+                                N_total[ptype], (enum part_type)ptype);
 
         /* Open the particle group in the file */
         char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];

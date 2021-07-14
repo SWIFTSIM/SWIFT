@@ -39,13 +39,33 @@
  * Need basename as XML paths are relative to the container, and XMF file is
  * written with the same baseName as the HDF5 snapshots.
  *
- * @param hdfFileName
+ * Note since the XMF file is written in the subdir (if it exists) we don't
+ * want that as part of the name. But for distributed snapshots we need that
+ * that directory.
+ *
+ * @param hdfFileName The full path to the HDF5 file
+ * @param distributed Are we playing with a distributed snapshot?
  * @return the basename part of hdfFileName.
  */
-static const char* xmf_basename(const char* hdfFileName) {
+static const char* xmf_basename(const char* hdfFileName,
+                                const int distributed) {
+
+  int pos_last_slash = strlen(hdfFileName) - 1;
+
+  /* Find last slash */
+  for (/* */; pos_last_slash >= 0; --pos_last_slash)
+    if (hdfFileName[pos_last_slash] == '/') break;
+
+  if (distributed) {
+    /* Find one-before-last slash */
+    for (pos_last_slash--; pos_last_slash >= 0; --pos_last_slash)
+      if (hdfFileName[pos_last_slash] == '/') break;
+  }
+
   static char buffer[FILENAME_BUFFER_SIZE];
-  strcpy(buffer, hdfFileName);
-  return basename(buffer);
+  strcpy(buffer, &hdfFileName[pos_last_slash + 1]);
+
+  return buffer;
 }
 
 /**
@@ -170,7 +190,8 @@ void xmf_write_outputfooter(FILE* xmfFile, int output, float time) {
  * @param N The number of particles to write.
  * @param ptype The particle type we are writing.
  */
-void xmf_write_groupheader(FILE* xmfFile, const char* hdfFileName, size_t N,
+void xmf_write_groupheader(FILE* xmfFile, const char* hdfFileName,
+                           const int distributed, size_t N,
                            enum part_type ptype) {
 
   fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
@@ -182,7 +203,7 @@ void xmf_write_groupheader(FILE* xmfFile, const char* hdfFileName, size_t N,
           "<DataItem Dimensions=\"%zu 3\" NumberType=\"Double\" "
           "Precision=\"8\" "
           "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
-          N, xmf_basename(hdfFileName), (int)ptype);
+          N, xmf_basename(hdfFileName, distributed), (int)ptype);
   fprintf(xmfFile,
           "</Geometry>\n <!-- Done geometry for %s, start of particle fields "
           "list -->\n",
@@ -264,7 +285,7 @@ const char* xmf_type(enum IO_DATA_TYPE type) {
  *
  * @todo Treat the types in a better way.
  */
-void xmf_write_line(FILE* xmfFile, const char* fileName,
+void xmf_write_line(FILE* xmfFile, const char* fileName, const int distributed,
                     const char* partTypeGroupName, const char* name, size_t N,
                     int dim, enum IO_DATA_TYPE type) {
   fprintf(xmfFile,
@@ -274,13 +295,13 @@ void xmf_write_line(FILE* xmfFile, const char* fileName,
     fprintf(xmfFile,
             "<DataItem Dimensions=\"%zu\" NumberType=\"%s\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, xmf_type(type), xmf_precision(type), xmf_basename(fileName),
-            partTypeGroupName, name);
+            N, xmf_type(type), xmf_precision(type),
+            xmf_basename(fileName, distributed), partTypeGroupName, name);
   else
     fprintf(xmfFile,
             "<DataItem Dimensions=\"%zu %d\" NumberType=\"%s\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
-            N, dim, xmf_type(type), xmf_precision(type), xmf_basename(fileName),
-            partTypeGroupName, name);
+            N, dim, xmf_type(type), xmf_precision(type),
+            xmf_basename(fileName, distributed), partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
 }
