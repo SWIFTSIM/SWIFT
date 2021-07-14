@@ -652,8 +652,8 @@ int main(int argc, char *argv[]) {
   /* Get some info to the user. */
   if (myrank == 0) {
     const long long N_DM = N_total[swift_type_dark_matter] +
-                           N_total[swift_type_dark_matter_background] +
-                           N_total[swift_type_neutrino];
+                           N_total[swift_type_dark_matter_background];
+
     message(
         "Running FOF on %lld gas particles, %lld sink particles, %lld stars "
         "particles %lld black hole particles, %lld neutrino particles, and "
