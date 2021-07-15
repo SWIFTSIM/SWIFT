@@ -207,7 +207,8 @@ __attribute__((always_inline)) INLINE static float rt_timestep(const struct part
   /* if (has_photons) { */
     /* just mimic the gizmo particle "size" for now */ 
     const float psize = cosmo->a * cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);
-    dt = psize / rt_params.reduced_speed_of_light * 0.9; /* TODO: CFL-like factor? */
+    /* const float psize = 0.1 * p->h; */
+    dt = psize * rt_params.reduced_speed_of_light_inverse * 0.9; /* TODO: CFL-like factor? */
   /* } */
 
   return dt;
@@ -230,6 +231,7 @@ rt_injection_update_photon_density(struct part* restrict p,
     p->rt_data.density[g].flux[0] = p->rt_data.conserved[g].flux[0] * Vinv;
     p->rt_data.density[g].flux[1] = p->rt_data.conserved[g].flux[1] * Vinv;
     p->rt_data.density[g].flux[2] = p->rt_data.conserved[g].flux[2] * Vinv;
+    rt_check_unphysical_density(&p->rt_data.flux[g].energy, p->rt_data.flux[g].flux, 2);
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -356,9 +358,8 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;
     rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
     rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
-    rt_check_unphysical_conserved(&rtd->conserved[g].energy, rtd->conserved[g].flux);
+    rt_check_unphysical_conserved(&rtd->conserved[g].energy, rtd->conserved[g].flux, 3);
   }
-
 }
 
 /**

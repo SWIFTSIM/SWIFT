@@ -248,6 +248,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
    * the actual position) eqn. (8) */
   const float xfac = -hi / (hi + hj);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   /* TODO: deal with frame of reference velocity. This will
    * also need Doppler corrections. */
@@ -257,15 +258,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    float Qi[4], Qj[4];
-    rt_part_get_density_vector(pi, g, Qi);
-    rt_part_get_density_vector(pj, g, Qj);
+    float Ui[4], Uj[4];
+    rt_part_get_density_vector(pi, g, Ui);
+    rt_part_get_density_vector(pj, g, Uj);
 
-    rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, g, Qi, Qj);
+    rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, g, Ui, Uj);
 
     float totflux[4];
 
-    rt_compute_flux(Qi, Qj, n_unit, Anorm, totflux);
+    rt_compute_flux(Ui, Uj, n_unit, Anorm, totflux, xij_i, xij_j);
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total

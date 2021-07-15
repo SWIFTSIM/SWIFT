@@ -29,6 +29,7 @@ extern struct rt_parameters rt_params;
 
 struct rt_parameters {
   float reduced_speed_of_light;
+  float reduced_speed_of_light_inverse;
 };
 
 
