@@ -30,17 +30,28 @@
  *
  * @param U the density state
  */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_density(float U[4]){
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_density(float *energy, float flux[3], int c){
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (U[0] < 0.f) message("Got unphysical energy %.3g | %.3g %.3g %.3g", U[0], U[1], U[2], U[3]);
+  if (*energy < 0.f && fabs(*energy) > 1.e-1) message("Got unphysical energy case%d %.3g | %.3g %.3g %.3g", c, *energy, flux[0], flux[1], flux[2]);
 #endif
-  if (U[0] <= 0.f){
-    U[0] = 0.f;
-    U[1] = 0.f;
-    U[2] = 0.f;
-    U[3] = 0.f;
+  if (*energy <= 0.f){
+    *energy = 0.f;
+    flux[0] = 0.f;
+    flux[1] = 0.f;
+    flux[2] = 0.f;
+    return;
   }
+
+  /* const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2]; */
+  /* const float flux_norm = sqrtf(flux2); */
+  /* const float flux_max = rt_params.reduced_speed_of_light * *energy; */
+  /* if (flux_norm > flux_max) { */
+  /*   const float correct = flux_max / flux_norm; */
+  /*   flux[0] *= correct; */
+  /*   flux[1] *= correct; */
+  /*   flux[2] *= correct; */
+  /* } */
 }
 
 /**
@@ -50,18 +61,68 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(fl
  * @param energy pointer to the photon energy
  * @param flux pointer to photon fluxes (3 dimensional)
  */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(float* energy, float* flux){
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(float* energy, float* flux, int c){
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (*energy < 0.f) message("Got unphysical energy %.3g | %.3g %.3g %.3g", *energy, flux[0], flux[1], flux[2]);
+  if (*energy < 0.f && fabs(*energy) > 1.e-1) message("Got unphysical energy case%d %.3g | %.3g %.3g %.3g", c, *energy, flux[0], flux[1], flux[2]);
 #endif
   if (*energy <= 0.f) {
     *energy = 0.f;
     flux[0] = 0.f;
     flux[1] = 0.f;
     flux[2] = 0.f;
+    return;
   }
+
+  /* const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2]; */
+  /* const float flux_norm = sqrtf(flux2); */
+  /* const float flux_max = rt_params.reduced_speed_of_light * *energy; */
+  /* if (flux_norm > flux_max) { */
+  /*   const float correct = flux_max / flux_norm; */
+  /*   flux[0] *= correct; */
+  /*   flux[1] *= correct; */
+  /*   flux[2] *= correct; */
+  /* } */
 }
 
+/**
+ * @brief check for and correct if needed unphysical 
+ * values for a flux in the sense of hyperbolic conservation laws
+ *
+ * @param flux hyperbolic flux: 4 components (photon energy + 
+ *        photon flux) x 3 dimensions each
+ */
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_hyperbolic_flux(float flux[4][3]){
 
+  int nans = 0;
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (flux[i][j] != flux[i][j]) {
+        nans += 1;
+        break;
+      }
+    }
+  }
+
+  if (nans) {
+    message(
+          "Got unphysical hyperbolic flux:"
+          " %.3e %.3e %.3e | %.3e %.3e %.3e |"
+          " %.3e %.3e %.3e | %.3e %.3e %.3e",
+          flux[0][0], flux[0][1], flux[0][2],
+          flux[1][0], flux[1][1], flux[1][2],
+          flux[2][0], flux[2][1], flux[2][2],
+          flux[3][0], flux[3][1], flux[3][2]
+        );
+  }
+
+  /* for (int i = 0; i < 4; i++) { */
+  /*   for (int j = 0; j < 3; j++) { */
+  /*     if (flux[i][j] != flux[i][j]) { */
+  /*       flux[i][j] = 0.f; */
+  /*     } */
+  /*   } */
+  /* } */
+  /*  */
+}
 #endif /* SWIFT_RT_UNPHYSICAL_GEAR_H */

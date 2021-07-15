@@ -57,35 +57,33 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_init(
  *
  * @param pi Particle i.
  * @param pj Particle j.
- * @param r Distance between particle i and particle j.
+ * @param g index of photon group
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_collect(
-    struct part* restrict pi, struct part* restrict pj) {
+    struct part* restrict pi, struct part* restrict pj, int g) {
 
   struct rt_part_data* rtdi = &pi->rt_data;
   struct rt_part_data* rtdj = &pj->rt_data;
 
   /* basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    rtdi->limiter[g].energy[0] =
-        min(rtdj->density[g].energy, rtdi->limiter[g].energy[0]);
-    rtdi->limiter[g].energy[1] =
-        max(rtdj->density[g].energy, rtdi->limiter[g].energy[1]);
+  rtdi->limiter[g].energy[0] =
+      min(rtdj->density[g].energy, rtdi->limiter[g].energy[0]);
+  rtdi->limiter[g].energy[1] =
+      max(rtdj->density[g].energy, rtdi->limiter[g].energy[1]);
 
-    rtdi->limiter[g].flux[0][0] =
-        min(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][0]);
-    rtdi->limiter[g].flux[0][1] =
-        max(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][1]);
-    rtdi->limiter[g].flux[1][0] =
-        min(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][0]);
-    rtdi->limiter[g].flux[1][1] =
-        max(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][1]);
-    rtdi->limiter[g].flux[2][0] =
-        min(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][0]);
-    rtdi->limiter[g].flux[2][1] =
-        max(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][1]);
-  }
+  rtdi->limiter[g].flux[0][0] =
+      min(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][0]);
+  rtdi->limiter[g].flux[0][1] =
+      max(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][1]);
+  rtdi->limiter[g].flux[1][0] =
+      min(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][0]);
+  rtdi->limiter[g].flux[1][1] =
+      max(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][1]);
+  rtdi->limiter[g].flux[2][0] =
+      min(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][0]);
+  rtdi->limiter[g].flux[2][1] =
+      max(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][1]);
   /* just use the hydro one */
   /* pi->limiter.maxr = max(r, pi->limiter.maxr); */
 }

@@ -125,22 +125,8 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
     }
   }
 
-/* if (p->id < 20) */
-/*   message("Conserved check %.6e", rtd->conserved[0].energy); */
-/*  */
-/* if (p->id < 20) */
-/*   message("Density check %.6e", rtd->density[0].energy); */
-/*  */
-/* if (p->id < 20) */
-/*   message("Flux check %.6e", rtd->flux[0].energy); */
-/*  */
-/* if (p->id > 4090 && p->id < 5010) */
-/*   message("Gradient check %.3e %.3e %.3e | %.3e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2], norm); */
-  
-  /* rt_slope_limit_cell(p); */
+  rt_slope_limit_cell(p);
 
-/* if (p->id > 4090 && p->id < 5010) */
-/*   message("Slope limit check %.6e %.6e %.6e", rtd->gradient[0].energy[0], rtd->gradient[0].energy[1], rtd->gradient[0].energy[2]); */
 }
 
 /**
@@ -193,15 +179,14 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
   const float qi = r * hi_inv;
-  kernel_deval(qi, &wi,
-               &wi_dx); /* factor 1/omega for psi is swallowed in matrix */
+  /* Note: factor 1/omega for psi is swallowed in matrix */
+  kernel_deval(qi, &wi, &wi_dx); 
 
   /* Compute kernel of pj */
   float wj, wj_dx;
   const float hj_inv = 1.0f / hj;
   const float qj = r * hj_inv;
-  kernel_deval(qj, &wj,
-               &wj_dx); /* factor 1/omega for psi is swallowed in matrix */
+  kernel_deval(qj, &wj, &wj_dx);
 
   /* Compute psi tilde */
   float psii_tilde[3];
@@ -263,7 +248,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
-    rt_slope_limit_cell_collect(pi, pj);
+    rt_slope_limit_cell_collect(pi, pj, g);
 
     /* Now do the gradients of pj */
     float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
@@ -285,7 +270,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     dFz_j[2] = dU[3] * psij_tilde[2];
 
     rt_gradients_update_part(pj, g, dE_j, dFx_j, dFy_j, dFz_j);
-    rt_slope_limit_cell_collect(pj, pi);
+    rt_slope_limit_cell_collect(pj, pi, g);
   }
 }
 
@@ -329,8 +314,8 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
   const float qi = r * hi_inv;
-  kernel_deval(qi, &wi,
-               &wi_dx); /* factor 1/omega for psi is swallowed in matrix */
+  /* factor 1/omega for psi is swallowed in matrix */
+  kernel_deval(qi, &wi, &wi_dx); 
 
   /* Compute psi tilde */
   float psii_tilde[3];
@@ -376,8 +361,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
-
-    rt_slope_limit_cell_collect(pi, pj);
+    rt_slope_limit_cell_collect(pi, pj, g);
   }
 }
 
@@ -403,6 +387,9 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
     struct part *restrict pi, struct part *restrict pj, float hi, float hj,
     const float *dx, float r, const float *xij_i, int group, float Ui[4],
     float Uj[4]) {
+
+  rt_check_unphysical_density(Ui, &Ui[1], 0);
+  rt_check_unphysical_density(Uj, &Uj[1], 0);
 
   /* Compute interface position (relative to pj, since we don't need the actual
    * position) eqn. (8)
@@ -439,8 +426,8 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   Uj[2] += dUj[2];
   Uj[3] += dUj[3];
 
-  rt_check_unphysical_density(Ui);
-  rt_check_unphysical_density(Uj);
+  rt_check_unphysical_density(Ui, &Ui[1], 1);
+  rt_check_unphysical_density(Uj, &Uj[1], 1);
 }
 
 #endif /* SWIFT_RT_GRADIENT_GEAR_H */

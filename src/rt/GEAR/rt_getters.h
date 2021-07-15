@@ -97,16 +97,27 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
  
   /* If there is no energy, there also shouldn't be any
    * photon fluxes, so exception handle this situation */
-  /* TODO: do I still need this? Should be already exception handled */
-  const double c_red = rt_params.reduced_speed_of_light;
-  float f = 1./c_red;
-  if (U[0] > 0.f) f *= normF / U[0];
-  const float f2 = f * f;
+  const float f = rt_params.reduced_speed_of_light_inverse * normF / U[0];
+  /* f^2 mustn't be > 1. This may happen since we use the reduced speed of light. */
+  const float f2 = (f > 1.f) ? 1.f : f * f;
+  /* const float f2 = (f * f > 1.333333f) ? 1.333333 : f * f; */
+  /* const float f2 = min(2.f, f*f); */
 
-  /* Because we use reduced speed of light, we may find f > 1,
-   * which will lead to negative values in sqrt. Handle this. */
-  const float rootterm = max((4.f - 3.f * f2), 0.f);
+  /* Because we use reduced speed of light, we may find f > 4/3,
+   * which will lead to negative values in sqrt. Handle this.
+   * Also, there might be overflow issues when computing f^2,
+   * which will result in NaNs in the pressure tensor.          */
+  /* if (f2 >= 1.333333) { */
+  /*   [> (3 + 4 * 4/3) / (5 + 2 * 0)  = (25/3) / 5 = 5/3 <] */
+  /*   chi = 1.666666; */
+  /* } else { */
+  /*   const float rootterm = 4.f - 3.f * f2; */
+  /*   chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm)); */
+  /* } */
+
+  const float rootterm = max(4.f - 3.f * f2, 0.f);
   const float chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm));
+
 
   /* get unit vector n */
   const float normF_inv = 1.f/normF;
@@ -130,14 +141,18 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
     }
   }
 
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (pressure_tensor[0][0] != pressure_tensor[0][0]){
-    message("In pressure tensor: %.3e | %.3e %.3e %.3e %.3e |"
-    " %.3e %.3e %.3e | %.3e %.3e %.3e | %.3e %.3e", 
-      c_red, normF, f2, rootterm, chi, 
-      n[0], n[1], n[2], 
-      U[1], U[2], U[3], 
-      temp, temp2);
+    message("Found NaNs in pressure tensor: 1/c %.3e |"
+            " |F| %.3e f %.3e f^2 %.3e root %.3e chi %.3e |"
+            " n %.3e %.3e %.3e | U %.3e %.3e %.3e |"
+            " temp %.3e %.3e", 
+            rt_params.reduced_speed_of_light_inverse, 
+            normF, f, f2, 4.f - 3.f * f2, chi, 
+            n[0], n[1], n[2], 
+            U[1], U[2], U[3], 
+            temp, temp2);
   }
 #endif
 }

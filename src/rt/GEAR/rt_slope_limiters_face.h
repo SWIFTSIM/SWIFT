@@ -20,6 +20,8 @@
 #ifndef SWIFT_RT_SLOPE_LIMITERS_FACE_GEAR_H
 #define SWIFT_RT_SLOPE_LIMITERS_FACE_GEAR_H
 
+#include "sign.h"
+
 /**
  * @file src/rt/GEAR/rt_slope_limiters_face.h
  * @brief File containing routines concerning the face slope
@@ -103,23 +105,36 @@ rt_minmod(const float a, const float b) {
   }
 }
 
-__attribute__((always_inline)) INLINE static float
-rt_minmod2(const float r) {
-  
-  /* const float omega = -1.f; [> downwind slope <] */
-  const float omega = 1.f; /* upwind slope */
-  /* const float omega = 0.f; [> centered slope <] */
+/* monotonized cenetral limiter */
+__attribute__((always_inline)) INLINE static float rt_mc(const float dQi, const float dQj) {
 
-  if (r <= 0.f) {
-    return 0.f;
-  } else if (r <= 1.f){
-    return r;
-  } else {
-    float xi = 2.f / (1.f - omega + (1.f + omega) * r);
-    return min(1.f, xi);
-  }
-
+  const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
+  const float minterm = min3(0.5 * (1. + r), 2.f, 2.f * r);
+  return max(0.f, minterm);
 }
+
+/* van Leer limiter */
+__attribute__((always_inline)) INLINE static float rt_vanLeer(const float dQi, const float dQj) {
+  const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
+  const float absr = fabs(r);
+  return (r + absr) / (1.f + absr);
+}
+
+
+/* superbee */
+__attribute__((always_inline)) INLINE static float rt_superbee(const float dQi, const float dQj) {
+  const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
+  const float minterm1 = min(1.f, 2.f*r);
+  const float minterm2 = min(2.f, r);
+  return max3(0.f, minterm1, minterm2);
+}
+
+
+
+
+
+
+
 
 /**
  * @brief Slope limit the slopes at the interface between two particles
@@ -145,47 +160,16 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_face(
   /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]); */
   /*  */
   /* const float r_inv = 1.f / r; */
-  /*  */
-/*   dQi[0] = rt_slope_limit_face_quantity(Qi[0], Qj[0], Qi[0] + dQi[0], xij_i_norm, r_inv); */
-/* if (Qi[0] + dQi[0] < 0.) message("face limiter failed..."); */
-/*   dQi[1] = rt_slope_limit_face_quantity(Qi[1], Qj[1], Qi[1] + dQi[1], xij_i_norm, r_inv); */
-/*   dQi[2] = rt_slope_limit_face_quantity(Qi[2], Qj[2], Qi[2] + dQi[2], xij_i_norm, r_inv); */
-/*   dQi[3] = rt_slope_limit_face_quantity(Qi[3], Qj[3], Qi[3] + dQi[3], xij_i_norm, r_inv); */
-/*  */
-/*   dQj[0] = rt_slope_limit_face_quantity(Qj[0], Qi[0], Qj[0] + dQj[0], xij_j_norm, r_inv); */
-/* if (Qj[0] + dQj[0] < 0.) message("face limiter failed..."); */
-/*   dQj[1] = rt_slope_limit_face_quantity(Qj[1], Qi[1], Qj[1] + dQj[1], xij_j_norm, r_inv); */
-/*   dQj[2] = rt_slope_limit_face_quantity(Qj[2], Qi[2], Qj[2] + dQj[2], xij_j_norm, r_inv); */
-/*   dQj[3] = rt_slope_limit_face_quantity(Qj[3], Qi[3], Qj[3] + dQj[3], xij_j_norm, r_inv); */
-
-  /* float alpha; */
-  /* float q; */
-  /* for (int i = 0; i < 4; i++) { */
-  /*   if (dQj[i] == 0.f) { */
-  /*     q = dQi[i] * 1e6; */
-  /*   } else { */
-  /*     q = dQi[i] / dQj[i]; */
-  /*   } */
-  /*  */
-  /*   alpha = rt_minmod(1.f, q); */
-  /*   dQi[i] *= alpha; */
-  /*   dQj[i] *= alpha; */
-  /* } */
-
 
   for (int i = 0; i < 4; i++) {
+    /* dQi[i] = rt_slope_limit_face_quantity(Qi[i], Qj[i], Qi[i] + dQi[i], xij_i_norm, r_inv); */
+    /* dQj[i] = rt_slope_limit_face_quantity(Qj[i], Qi[i], Qj[i] + dQj[i], xij_j_norm, r_inv); */
 
-    float q;
-    if (dQj[i] == 0.f) {
-      /* keep the sign of dQi and make it larger. */
-      /* How much larger doesn't really matter. */
-      q = dQi[i] * 1e6;
-    } else {
-      q = dQi[i] / dQj[i];
-    }
-    float alpha = rt_minmod2(q);
+    /* const float alpha = rt_minmod(dQi[i], dQj[i]); */
+    const float alpha = rt_mc(dQi[i], dQj[i]);
+    /* const float alpha = rt_vanLeer(dQi[i], dQj[i]); */
+    /* const float alpha = rt_superbee(dQi[i], dQj[i]); */
 
-    /* float alpha = rt_minmod(1.f, q); */
     dQi[i] *= alpha;
     dQj[i] *= alpha;
   }
