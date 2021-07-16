@@ -29,5 +29,4 @@ extern struct rt_parameters rt_params;
 
 struct rt_parameters {}
 
-
 #endif /* SWIFT_NONE_RT_PARAMETERS_H */

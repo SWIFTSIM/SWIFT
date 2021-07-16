@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {
 
   rt_gradients_init(p);
-  /* the Gizmo-style slope limiting doesn't help for RT as is, 
+  /* the Gizmo-style slope limiting doesn't help for RT as is,
    * so we're skipping it for now. */
   /* rt_slope_limit_cell_init(p); */
 }
@@ -201,7 +201,6 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
   message("WARNING: found star without neighbours");
 };
 
-
 /**
  * @brief Computes the radiative transfer time step of a given particle
  *
@@ -209,11 +208,16 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  * @param rt_props the RT properties struct
  * @param cosmo the cosmology
  */
-__attribute__((always_inline)) INLINE static float rt_timestep(const struct part* restrict p, const struct rt_props* restrict rt_props, const struct cosmology* restrict cosmo){
+__attribute__((always_inline)) INLINE static float rt_timestep(
+    const struct part* restrict p, const struct rt_props* restrict rt_props,
+    const struct cosmology* restrict cosmo) {
 
-  /* just mimic the gizmo particle "size" for now */ 
-  const float psize = cosmo->a * cosmo->a * powf(p->geometry.volume / hydro_dimension_unit_sphere, hydro_dimension_inv);
-  float dt = psize * rt_params.reduced_speed_of_light_inverse * 0.9; /* TODO: CFL-like factor? */
+  /* just mimic the gizmo particle "size" for now */
+  const float psize = cosmo->a * cosmo->a *
+                      powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                           hydro_dimension_inv);
+  float dt = psize * rt_params.reduced_speed_of_light_inverse *
+             0.9; /* TODO: CFL-like factor? */
 
   return dt;
 }
@@ -235,7 +239,8 @@ rt_injection_update_photon_density(struct part* restrict p,
     p->rt_data.density[g].flux[0] = p->rt_data.conserved[g].flux[0] * Vinv;
     p->rt_data.density[g].flux[1] = p->rt_data.conserved[g].flux[1] * Vinv;
     p->rt_data.density[g].flux[2] = p->rt_data.conserved[g].flux[2] * Vinv;
-    rt_check_unphysical_density(&p->rt_data.flux[g].energy, p->rt_data.flux[g].flux, 3);
+    rt_check_unphysical_density(&p->rt_data.flux[g].energy,
+                                p->rt_data.flux[g].flux, 3);
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -355,14 +360,15 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
   p->rt_data.debug_transport_done += 1;
 #endif
 
-  struct rt_part_data * restrict rtd = &p->rt_data;
+  struct rt_part_data* restrict rtd = &p->rt_data;
 
-  for (int g = 0; g < RT_NGROUPS; g++){
+  for (int g = 0; g < RT_NGROUPS; g++) {
     rtd->conserved[g].energy += rtd->flux[g].energy * dt;
     rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;
     rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
     rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
-    rt_check_unphysical_conserved(&rtd->conserved[g].energy, rtd->conserved[g].flux);
+    rt_check_unphysical_conserved(&rtd->conserved[g].energy,
+                                  rtd->conserved[g].flux);
   }
 }
 

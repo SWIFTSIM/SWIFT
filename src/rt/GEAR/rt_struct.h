@@ -58,7 +58,7 @@ struct rt_part_data {
   /* array of length two: store min among all neighbours
    * at first index, store max among all neighbours at
    * second index */
-  /* the Gizmo-style slope limiting doesn't help for RT as is, 
+  /* the Gizmo-style slope limiting doesn't help for RT as is,
    * so we're skipping it for now. */
   /* struct { */
   /*   float energy[2]; */

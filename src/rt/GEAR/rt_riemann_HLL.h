@@ -26,7 +26,6 @@
  * radiative transfer equation following Rosdahl et al 2013
  * */
 
-
 /**
  * @brief Solve the Riemann problem for the RT equations and return the
  * flux at the interface.
@@ -37,9 +36,10 @@
  * @param n_unit the unit vector perpendicular to the "intercell" surface.
  */
 __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
-    const float UL[4], const float UR[4], float flux_half[4], const float n_unit[3]) {
+    const float UL[4], const float UR[4], float flux_half[4],
+    const float n_unit[3]) {
 
-    error("RT HLL Riemann Solver is not implemented yet, sorry :(");
+  error("RT HLL Riemann Solver is not implemented yet, sorry :(");
 }
 
 #endif /* SWIFT_GEAR_RT_RIEMANN_HLL_H */
