@@ -25,7 +25,11 @@
  * @brief File containing routines concerning the cell slope
  * limiter for the GEAR RT scheme. (= fist slope limiting step
  * that limits gradients such that they don't predict new extrema
- * at neighbour praticle's positions )*/
+ * at neighbour praticle's positions )
+ *
+ * The Gizmo-style slope limiter doesn't help for RT problems for 
+ * now, so nothing in this file should actually be called.
+ * */
 
 /**
  * @brief Initialize variables for the cell wide slope limiter
@@ -90,9 +94,15 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_collect(
 
 /**
  * @brief Slope-limit the given quantity. Result will be written directly
- * to float* gradient.
+ * to float gradient[3].
+ *
+ * @param gradient the gradient of the quantity
+ * @param maxr maximal distance to any neighbour of the particle
+ * @param value the current value of the quantity
+ * @param valmin the minimal value amongst all neighbours of the quantity
+ * @param valmax the maximal value amongst all neighbours of the quantity
  */
-__attribute__((always_inline)) INLINE static void rt_slope_limit_quantity(float* gradient, const float maxr, const float value, const float valmin, const float valmax) {
+__attribute__((always_inline)) INLINE static void rt_slope_limit_quantity(float gradient[3], const float maxr, const float value, const float valmin, const float valmax) {
 
   float gradtrue = sqrtf(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
                          gradient[2] * gradient[2]);
@@ -100,7 +110,6 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_quantity(float*
     gradtrue *= maxr;
     const float gradtrue_inv = 1.0f / gradtrue;
     const float gradmax = valmax - value;
-    /* const float gradmin = value - valmin; */
     const float gradmin = valmin - value;
     const float beta = 0.5f; /* TODO: test for best value here. For now, take stability over diffusivity. */
     const float min_temp = min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;

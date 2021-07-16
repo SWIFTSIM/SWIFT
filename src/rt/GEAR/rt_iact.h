@@ -159,8 +159,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
 
-  /* TODO: add/store timestep conditions somewhere here */
-
   /* Compute kernel of pi. */
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
@@ -197,7 +195,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
       A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-                 wi * hi_inv_dim - /* TODO: double-check wi is correct in this line */
+                 wi * hi_inv_dim - 
              Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
                  wj * hj_inv_dim;
       Anorm2 += A[k] * A[k];
@@ -248,30 +246,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
    * the actual position) eqn. (8) */
   const float xfac = -hi / (hi + hj);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
-  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
-
-  /* TODO: deal with frame of reference velocity. This will
-   * also need Doppler corrections. */
 
   struct rt_part_data *restrict rti = &pi->rt_data;
   struct rt_part_data *restrict rtj = &pj->rt_data;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
+    /* density state to be used to compute the flux */
     float Ui[4], Uj[4];
-    rt_part_get_density_vector(pi, g, Ui);
-    rt_part_get_density_vector(pj, g, Uj);
-
-    rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, g, Ui, Uj);
+    rt_gradients_predict(pi, pj, Ui, Uj, g, dx, r, xij_i);
 
     float totflux[4];
 
-    rt_compute_flux(Ui, Uj, n_unit, Anorm, totflux, xij_i, xij_j);
+    rt_compute_flux(Ui, Uj, n_unit, Anorm, totflux);
 
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
      * flux is subtracted from the left state, and added to the right
-     * state, based on how we chose the unit vector. */
+     * state, based on how we chose the unit vector. By this convention, 
+     * the time integration results in conserved += flux * dt */
     rti->flux[g].energy -= totflux[0];
     rti->flux[g].flux[0] -= totflux[1];
     rti->flux[g].flux[1] -= totflux[2];
@@ -283,40 +276,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
       rtj->flux[g].flux[2] += totflux[3];
     }
   }
-
-/* TODO: TEMPORARY */
-if (rti->conserved[0].flux[0] != rti->conserved[0].flux[0])
-  message("Caught nan conserved flux");
-if (rti->density[0].flux[0] != rti->density[0].flux[0])
-  message("Caught nan density flux");
-if (rti->flux[0].flux[0] != rti->flux[0].flux[0])
-  message("Caught nan hyperbolic flux");
-/* if (rti->conserved[0].flux[0] != rti->conserved[0].flux[0]){ */
-/*     float Qi[4], Qj[4]; */
-/*     float Qi2[4], Qj2[4]; */
-/*     rt_part_get_density_vector(pi, 0, Qi); */
-/*     rt_part_get_density_vector(pi, 0, Qi2); */
-/*     rt_part_get_density_vector(pj, 0, Qj); */
-/*     rt_part_get_density_vector(pj, 0, Qj2); */
-/*      */
-/*     rt_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, 0, Qi, Qj); */
-/*     message("Original state:     %.3e %.3e", Qi2[0], Qj2[2]); */
-/*     message("predicted gradient: %.3e %.3e", Qi[0], Qj[0]); */
-/*  */
-/*     float Fhalf[4][3]; [> flux at interface <] */
-/*     rt_riemann_solve_for_flux(Qi, Qj, Fhalf); */
-/*  */
-/*     float fluxL[4][3]; */
-/*     rt_get_hyperbolic_flux(Qi, fluxL); */
-/*     float fluxR[4][3]; */
-/*     rt_get_hyperbolic_flux(Qj, fluxR); */
-/*  */
-/*     [> message("Riemann Flux        %.3e %.3e", Qi[0], Qj[0]); <] */
-/*     message("Hyperbolic Fluxes:  %.3e %.3e %.3e, %.3e %.3e %.3e", fluxL[0][0], fluxL[0][1], fluxL[0][2], fluxR[0][0], fluxR[0][1], fluxR[0][2]); */
-/*     message("Riemann result:     %.3e %.3e %.3e", Fhalf[0][0], Fhalf[0][1], Fhalf[0][2]); */
-/*   } */
-
-
 }
 
 /**

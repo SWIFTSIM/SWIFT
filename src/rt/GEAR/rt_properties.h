@@ -124,8 +124,8 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 #endif
 
   if (RT_NGROUPS <= 0) {
-    error("You need to run GEAR-RT with at least 1 photon group, you have %d",
-          RT_NGROUPS);
+    error("You need to run GEAR-RT with at least 1 photon group, "
+          "you have %d", RT_NGROUPS);
   } else if (RT_NGROUPS == 1) {
     rtp->photon_groups[0] = 0.f;
   } else {

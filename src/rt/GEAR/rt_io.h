@@ -215,6 +215,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 #if defined(HAVE_HDF5)
 
   /* Write scheme name */
+  /* ----------------- */
   if (rtp->hydro_controlled_injection) {
     io_write_attribute_s(h_grp, "RT Scheme",
                          RT_IMPLEMENTATION ", hydro controlled injection");
@@ -223,11 +224,13 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   }
 
   /* Write photon group counts */
+  /* ------------------------- */
   io_write_attribute_i(h_grp, "PhotonGroupNumber", RT_NGROUPS);
 
 
 
   /* Write photon group bin edges */
+  /* ---------------------------- */
   hid_t type = H5Tcopy(io_hdf5_type(FLOAT));
 
   hsize_t dims[1] = {RT_NGROUPS};
@@ -273,6 +276,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
 
   /* Write photon group names now */
+  /* ---------------------------- */
 
   /* Generate Energy Group names */
   char names_energy[RT_NGROUPS * RT_LABELS_SIZE];
@@ -324,6 +328,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
 
   /* Write reduced speed of light */
+  /* ---------------------------- */
   hid_t type2 = H5Tcopy(io_hdf5_type(FLOAT));
 
   hsize_t dims2[1] = {1};

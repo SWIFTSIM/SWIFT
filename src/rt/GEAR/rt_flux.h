@@ -28,8 +28,6 @@
 #error "No valid choice of RT Riemann solver has been selected"
 #endif
 
-#include "rt_slope_limiters_face.h"
-
 /**
  * @file src/rt/GEAR/rt_flux.h
  * @brief Functions related to compute the interparticle flux term of the
@@ -65,23 +63,12 @@ __attribute__((always_inline)) INLINE static void rt_part_reset_fluxes(
  * @param Anorm size of the surface through which the flux goes
  * @param fluxes the resulting flux
  */
-__attribute__((always_inline)) INLINE static void rt_compute_flux(
-    const float UL[4], const float UR[4], const float n_unit[3],
-    const float Anorm, float fluxes[4], const float xij_i[3], const float xij_j[3]) {
+__attribute__((always_inline)) INLINE static void rt_compute_flux(float UL[4], float UR[4], const float n_unit[3], const float Anorm, float fluxes[4]) {
 
-  /* we shouldn't need to check for physical values in here, it's 
-   * already done in gradients_predict right before this is called */
+  rt_check_unphysical_density(&UL[0], &UL[1], 2);
+  rt_check_unphysical_density(&UR[0], &UR[1], 2);
 
-
-  /* float Fhalf[4][3]; [> flux at interface <] */
-  /* rt_riemann_solve_for_flux(QL, QR, Fhalf, fluxLfull, fluxRfull); */
   rt_riemann_solve_for_flux(UL, UR, fluxes, n_unit);
-
-  /* now project the total flux along the direction of the surface */
-  /* fluxes[0] = Fhalf[0][0] * n_unit[0] + Fhalf[0][1] * n_unit[1] + Fhalf[0][2] * n_unit[2]; */
-  /* fluxes[1] = Fhalf[1][0] * n_unit[0] + Fhalf[1][1] * n_unit[1] + Fhalf[1][2] * n_unit[2]; */
-  /* fluxes[2] = Fhalf[2][0] * n_unit[0] + Fhalf[2][1] * n_unit[1] + Fhalf[2][2] * n_unit[2]; */
-  /* fluxes[3] = Fhalf[3][0] * n_unit[0] + Fhalf[3][1] * n_unit[1] + Fhalf[3][2] * n_unit[2]; */
 
   /* get the actual flux */
   fluxes[0] *= Anorm;
@@ -89,4 +76,5 @@ __attribute__((always_inline)) INLINE static void rt_compute_flux(
   fluxes[2] *= Anorm;
   fluxes[3] *= Anorm;
 }
+
 #endif /* SWIFT_GEAR_RT_FLUX_H */
