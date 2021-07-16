@@ -40,7 +40,6 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
     const double time) {
 
   return FLT_MAX;
-  /* return 1e-6; */
 }
 
 /**
