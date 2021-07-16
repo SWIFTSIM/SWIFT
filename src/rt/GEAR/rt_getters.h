@@ -34,15 +34,15 @@
  *
  * @param p Particle.
  * @param group Index of photon group
- * @param Q Pointer to the array in which the result needs to be stored
+ * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void rt_part_get_density_vector(
-    const struct part* restrict p, int group, float Q[4]) {
+    const struct part* restrict p, int group, float U[4]) {
 
-  Q[0] = p->rt_data.density[group].energy;
-  Q[1] = p->rt_data.density[group].flux[0];
-  Q[2] = p->rt_data.density[group].flux[1];
-  Q[3] = p->rt_data.density[group].flux[2];
+  U[0] = p->rt_data.density[group].energy;
+  U[1] = p->rt_data.density[group].flux[0];
+  U[2] = p->rt_data.density[group].flux[1];
+  U[3] = p->rt_data.density[group].flux[2];
 }
 
 /**
@@ -50,7 +50,10 @@ __attribute__((always_inline)) INLINE static void rt_part_get_density_vector(
  *
  * @param p Particle.
  * @param group Index of photon group
- * @param Q Pointer to the array in which the result needs to be stored
+ * @param dE Array to write energy gradient into
+ * @param dFx Array to write flux x component gradient into
+ * @param dFy Array to write flux y component gradient into
+ * @param dFz Array to write flux z component gradient into
  */
 __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
     const struct part* restrict p, int group, float dE[3], float dFx[3],
@@ -77,14 +80,14 @@ __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
  * @brief compute the pressure tensor for a given state U
  *
  * @param U the state (photon energy, photon energy flux) to use
- * @param flux the resulting flux F(U) of the hyperbolic conservation law
+ * @param pressure_tensor 3x3 array to write resulting Eddington pressure tensor into
  */
 __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const float U[4], float pressure_tensor[3][3]){
 
   const float normF = sqrtf(U[1]*U[1] + U[2]*U[2] + U[3] * U[3]);
 
-  /* We may have zero flux even with nonzero energy.
-   * Even with nonzero flux, the norm may round down 
+  /* We may encounter zero flux even with nonzero energy.
+   * Also even with nonzero flux, the norm may round down 
    * to exactly zero, so exit early if that is the case. */
   if ((U[1] == 0.f && U[2] == 0.f && U[3] == 0.f) || normF == 0.f) {
     for (int i = 0; i < 3; i++){
@@ -95,29 +98,11 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
     return;
   }
  
-  /* If there is no energy, there also shouldn't be any
-   * photon fluxes, so exception handle this situation */
   const float f = rt_params.reduced_speed_of_light_inverse * normF / U[0];
   /* f^2 mustn't be > 1. This may happen since we use the reduced speed of light. */
-  const float f2 = (f > 1.f) ? 1.f : f * f;
-  /* const float f2 = (f * f > 1.333333f) ? 1.333333 : f * f; */
-  /* const float f2 = min(2.f, f*f); */
-
-  /* Because we use reduced speed of light, we may find f > 4/3,
-   * which will lead to negative values in sqrt. Handle this.
-   * Also, there might be overflow issues when computing f^2,
-   * which will result in NaNs in the pressure tensor.          */
-  /* if (f2 >= 1.333333) { */
-  /*   [> (3 + 4 * 4/3) / (5 + 2 * 0)  = (25/3) / 5 = 5/3 <] */
-  /*   chi = 1.666666; */
-  /* } else { */
-  /*   const float rootterm = 4.f - 3.f * f2; */
-  /*   chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm)); */
-  /* } */
-
-  const float rootterm = max(4.f - 3.f * f2, 0.f);
+  const float f2 = (f >= 1.f) ? 1.f : f * f;
+  const float rootterm = 4.f - 3.f * f2;
   const float chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm));
-
 
   /* get unit vector n */
   const float normF_inv = 1.f/normF;
@@ -141,7 +126,6 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
     }
   }
 
-
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (pressure_tensor[0][0] != pressure_tensor[0][0]){
     message("Found NaNs in pressure tensor: 1/c %.3e |"
@@ -149,7 +133,7 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
             " n %.3e %.3e %.3e | U %.3e %.3e %.3e |"
             " temp %.3e %.3e", 
             rt_params.reduced_speed_of_light_inverse, 
-            normF, f, f2, 4.f - 3.f * f2, chi, 
+            normF, f, f2, rootterm, chi, 
             n[0], n[1], n[2], 
             U[1], U[2], U[3], 
             temp, temp2);
@@ -167,7 +151,7 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(const f
 __attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(const float U[4], float flux[4][3]){
 
   if (U[0] == 0.f){
-    /* At this point, the state should be corrected to not contain
+    /* At this point, the state is be corrected to not contain
      * unphysical values. If we encounter this situation, it means
      * that the fluxes are zero as well, meaning that when we compute
      * 1/|F| we get infinities. So skip this. The pressure tensor is
@@ -187,9 +171,6 @@ __attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(const f
 
   float pressure_tensor[3][3];
   rt_get_pressure_tensor(U, pressure_tensor);
-
-  if (flux[0][0] != flux[0][0] || pressure_tensor[0][0] != pressure_tensor[0][0])
-    message("In hyperbolic flux: %.3e %.3e %.3e | %.3e %.3e %.3e", flux[0][0], flux[0][1], flux[0][2], pressure_tensor[0][0], pressure_tensor[0][1], pressure_tensor[0][2]);
 
   const float c_red = rt_params.reduced_speed_of_light;
   const float c2 = c_red * c_red;
@@ -213,7 +194,7 @@ __attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(const f
  * @param with_cosmology Are we running with cosmology integration?
  * @param cosmo The #cosmology object.
  *
- * @return The time-step size for the gravity kick (internal units).
+ * @return The time-step size for the rt integration. (internal units).
  */
 __attribute__((always_inline)) INLINE static double rt_get_part_dt(
     const integertime_t ti_beg, const integertime_t ti_end,

@@ -58,11 +58,13 @@ struct rt_part_data {
   /* array of length two: store min among all neighbours
    * at first index, store max among all neighbours at
    * second index */
-  struct {
-    float energy[2];
-    float flux[3][2];
-    /* float maxr; [> just use the hydro one <] */
-  } limiter[RT_NGROUPS];
+  /* the Gizmo-style slope limiting doesn't help for RT as is, 
+   * so we're skipping it for now. */
+  /* struct { */
+  /*   float energy[2]; */
+  /*   float flux[3][2]; */
+  /*   [> float maxr; [> just use the hydro one <] <] */
+  /* } limiter[RT_NGROUPS]; */
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* debugging data to store during entire run */

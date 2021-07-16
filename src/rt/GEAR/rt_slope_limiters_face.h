@@ -45,18 +45,8 @@ rt_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
                                 float xij_norm, float r_inv) {
 
   const float dphi = phi_i - phi_j;
-  /* TODO: determine good factors for the limiter depending
-   * on different problems and reduction factors for the
-   * speed of light. For now, choose stability over diffusivity. */
-
-  /* const float gamma1 = 1.0f; */
-  /* const float gamma2 = 0.5f; */
   const float gamma1 = 0.5f;
   const float gamma2 = 0.25f;
-  /* const float gamma1 = 0.1f; */
-  /* const float gamma2 = 0.05f; */
-  /* const float gamma1 = 0.f; */
-  /* const float gamma2 = 0.f; */
 
   const float delta1 = gamma1 * fabsf(dphi);
   const float delta2 = gamma2 * fabsf(dphi);
@@ -91,38 +81,59 @@ rt_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
   return phi_mid - phi_i;
 }
 
+/**
+ * the minmod slope limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ */
 __attribute__((always_inline)) INLINE static float
-rt_minmod(const float a, const float b) {
+rt_limiter_minmod(const float dQi, const float dQj) {
 
-  if (a * b > 0) {
-    if (fabsf(a) < fabsf(b)) {
-      return a;
+  if (dQi * dQj > 0) {
+    if (fabsf(dQi) < fabsf(dQj)) {
+      return dQi;
     } else {
-      return b;
+      return dQj;
     }
   } else {
     return 0.f;
   }
 }
 
-/* monotonized cenetral limiter */
-__attribute__((always_inline)) INLINE static float rt_mc(const float dQi, const float dQj) {
+/**
+ * the monotonized cenetral limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ */
+__attribute__((always_inline)) INLINE static float rt_limiter_mc(const float dQi, const float dQj) {
 
   const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
   const float minterm = min3(0.5 * (1. + r), 2.f, 2.f * r);
   return max(0.f, minterm);
 }
 
-/* van Leer limiter */
-__attribute__((always_inline)) INLINE static float rt_vanLeer(const float dQi, const float dQj) {
+/**
+ * the van Leer limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ */
+__attribute__((always_inline)) INLINE static float rt_limiter_vanLeer(const float dQi, const float dQj) {
   const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
   const float absr = fabs(r);
   return (r + absr) / (1.f + absr);
 }
 
 
-/* superbee */
-__attribute__((always_inline)) INLINE static float rt_superbee(const float dQi, const float dQj) {
+/**
+ * the superbee limiter.
+ *
+ * @param dQi left slope
+ * @param dQj right slope
+ */
+__attribute__((always_inline)) INLINE static float rt_limiter_superbee(const float dQi, const float dQj) {
   const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
   const float minterm1 = min(1.f, 2.f*r);
   const float minterm2 = min(2.f, r);
@@ -139,41 +150,25 @@ __attribute__((always_inline)) INLINE static float rt_superbee(const float dQi, 
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
- * @param Qi RT quantities (photon energies and flux) of particle i.
- * @param Qj RT quantities (photon energies and flux) of particle j.
  * @param dQi Difference between the RT quantities of particle i at the
  * position of particle i and at the interface position.
  * @param dQj Difference between the RT quantities of particle j at the
  * position of particle j and at the interface position.
- * @param xij_i Relative position vector of the interface w.r.t. particle i.
- * @param xij_j Relative position vector of the interface w.r.t. partilce j.
- * @param r Distance between particle i and particle j.
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_face(
-    const float Qi[4], const float Qj[4], float dQi[4], float dQj[4],
-    const float xij_i[3], const float xij_j[3], const float r) {
-
-  /* const float xij_i_norm = */
-  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]); */
-  /*  */
-  /* const float xij_j_norm = */
-  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]); */
-  /*  */
-  /* const float r_inv = 1.f / r; */
+    float dQi[4], float dQj[4]){
 
   for (int i = 0; i < 4; i++) {
-    /* dQi[i] = rt_slope_limit_face_quantity(Qi[i], Qj[i], Qi[i] + dQi[i], xij_i_norm, r_inv); */
-    /* dQj[i] = rt_slope_limit_face_quantity(Qj[i], Qi[i], Qj[i] + dQj[i], xij_j_norm, r_inv); */
+    /* Minmod and monotinized central difference limiters
+     * give stable results in advection tests, superbee
+     * and vanLeer limiters are unstable. */
 
-    /* const float alpha = rt_minmod(dQi[i], dQj[i]); */
-    const float alpha = rt_mc(dQi[i], dQj[i]);
-    /* const float alpha = rt_vanLeer(dQi[i], dQj[i]); */
-    /* const float alpha = rt_superbee(dQi[i], dQj[i]); */
+    /* const float alpha = rt_limiter_minmod(dQi[i], dQj[i]); */
+    const float alpha = rt_limiter_mc(dQi[i], dQj[i]);
 
     dQi[i] *= alpha;
     dQj[i] *= alpha;
   }
-
 }
 
 #endif /* SWIFT_RT_SLOPE_LIMITERS_FACE_GEAR_H */

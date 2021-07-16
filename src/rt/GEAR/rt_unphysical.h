@@ -28,12 +28,14 @@
  * @brief check for and correct if needed unphysical 
  * values for a photon density state
  *
- * @param U the density state
+ * @param energy pointer to the photon energy density
+ * @param flux pointer to the photon flux density
+ * @param c integer identifier where this function was called from
  */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_density(float *energy, float flux[3], int c){
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_density(float *energy, float *flux, int c){
 
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  if (*energy < 0.f && fabs(*energy) > 1.e-1) message("Got unphysical energy case%d %.3g | %.3g %.3g %.3g", c, *energy, flux[0], flux[1], flux[2]);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (*energy < 0.f && fabs(*energy) > 1.e-1) message("Fixing unphysical energy case%d %.3g | %.3g %.3g %.3g", c, *energy, flux[0], flux[1], flux[2]);
 #endif
   if (*energy <= 0.f){
     *energy = 0.f;
@@ -61,10 +63,10 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(fl
  * @param energy pointer to the photon energy
  * @param flux pointer to photon fluxes (3 dimensional)
  */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(float* energy, float* flux, int c){
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(float* energy, float* flux){
 
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  if (*energy < 0.f && fabs(*energy) > 1.e-1) message("Got unphysical energy case%d %.3g | %.3g %.3g %.3g", c, *energy, flux[0], flux[1], flux[2]);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (*energy < 0.f && fabs(*energy) > 1.e-1) message("Fixing unphysical energy %.3g | %.3g %.3g %.3g", *energy, flux[0], flux[1], flux[2]);
 #endif
   if (*energy <= 0.f) {
     *energy = 0.f;
@@ -106,7 +108,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_hyperbolic
 
   if (nans) {
     message(
-          "Got unphysical hyperbolic flux:"
+          "Fixing unphysical hyperbolic flux:"
           " %.3e %.3e %.3e | %.3e %.3e %.3e |"
           " %.3e %.3e %.3e | %.3e %.3e %.3e",
           flux[0][0], flux[0][1], flux[0][2],
@@ -116,13 +118,12 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_hyperbolic
         );
   }
 
-  /* for (int i = 0; i < 4; i++) { */
-  /*   for (int j = 0; j < 3; j++) { */
-  /*     if (flux[i][j] != flux[i][j]) { */
-  /*       flux[i][j] = 0.f; */
-  /*     } */
-  /*   } */
-  /* } */
-  /*  */
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (flux[i][j] != flux[i][j]) {
+        flux[i][j] = 0.f;
+      }
+    }
+  }
 }
 #endif /* SWIFT_RT_UNPHYSICAL_GEAR_H */

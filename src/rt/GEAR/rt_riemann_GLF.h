@@ -38,32 +38,32 @@
  * @param UL left state
  * @param UR right state
  * @param flux_half the resulting flux at the interface
+ * @param n_unit the unit vector perpendicular to the "intercell" surface.
  */
 __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
     const float UL[4], const float UR[4], float flux_half[4], const float n_unit[3]) {
-    /* const float UL[4], const float UR[4], float flux_half[4][3], float fluxL[4][3], float fluxR[4][3]) { */
 
-  float fluxLfull[4][3];
-  rt_get_hyperbolic_flux(UL, fluxLfull);
-  float fluxRfull[4][3];
-  rt_get_hyperbolic_flux(UR, fluxRfull);
+  float hyperFluxL[4][3];
+  rt_get_hyperbolic_flux(UL, hyperFluxL);
+  float hyperFluxR[4][3];
+  rt_get_hyperbolic_flux(UR, hyperFluxR);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  rt_check_unphysical_hyperbolic_flux(fluxLfull);
-  rt_check_unphysical_hyperbolic_flux(fluxRfull);
+  rt_check_unphysical_hyperbolic_flux(hyperFluxL);
+  rt_check_unphysical_hyperbolic_flux(hyperFluxR);
 #endif
 
   float fluxL[4];
-  fluxL[0] = fluxLfull[0][0] * n_unit[0] + fluxLfull[0][1] * n_unit[1] + fluxLfull[0][2] * n_unit[2];
-  fluxL[1] = fluxLfull[1][0] * n_unit[0] + fluxLfull[1][1] * n_unit[1] + fluxLfull[1][2] * n_unit[2];
-  fluxL[2] = fluxLfull[2][0] * n_unit[0] + fluxLfull[2][1] * n_unit[1] + fluxLfull[2][2] * n_unit[2];
-  fluxL[3] = fluxLfull[3][0] * n_unit[0] + fluxLfull[3][1] * n_unit[1] + fluxLfull[3][2] * n_unit[2];
+  fluxL[0] = hyperFluxL[0][0] * n_unit[0] + hyperFluxL[0][1] * n_unit[1] + hyperFluxL[0][2] * n_unit[2];
+  fluxL[1] = hyperFluxL[1][0] * n_unit[0] + hyperFluxL[1][1] * n_unit[1] + hyperFluxL[1][2] * n_unit[2];
+  fluxL[2] = hyperFluxL[2][0] * n_unit[0] + hyperFluxL[2][1] * n_unit[1] + hyperFluxL[2][2] * n_unit[2];
+  fluxL[3] = hyperFluxL[3][0] * n_unit[0] + hyperFluxL[3][1] * n_unit[1] + hyperFluxL[3][2] * n_unit[2];
 
   float fluxR[4];
-  fluxR[0] = fluxRfull[0][0] * n_unit[0] + fluxRfull[0][1] * n_unit[1] + fluxRfull[0][2] * n_unit[2];
-  fluxR[1] = fluxRfull[1][0] * n_unit[0] + fluxRfull[1][1] * n_unit[1] + fluxRfull[1][2] * n_unit[2];
-  fluxR[2] = fluxRfull[2][0] * n_unit[0] + fluxRfull[2][1] * n_unit[1] + fluxRfull[2][2] * n_unit[2];
-  fluxR[3] = fluxRfull[3][0] * n_unit[0] + fluxRfull[3][1] * n_unit[1] + fluxRfull[3][2] * n_unit[2];
+  fluxR[0] = hyperFluxR[0][0] * n_unit[0] + hyperFluxR[0][1] * n_unit[1] + hyperFluxR[0][2] * n_unit[2];
+  fluxR[1] = hyperFluxR[1][0] * n_unit[0] + hyperFluxR[1][1] * n_unit[1] + hyperFluxR[1][2] * n_unit[2];
+  fluxR[2] = hyperFluxR[2][0] * n_unit[0] + hyperFluxR[2][1] * n_unit[1] + hyperFluxR[2][2] * n_unit[2];
+  fluxR[3] = hyperFluxR[3][0] * n_unit[0] + hyperFluxR[3][1] * n_unit[1] + hyperFluxR[3][2] * n_unit[2];
 
   const float c_red = rt_params.reduced_speed_of_light;
   float cdU[4] = {c_red * (UR[0] - UL[0]), c_red * (UR[1] - UL[1]), c_red * (UR[2] - UL[2]), c_red * (UR[3] - UL[3])};
@@ -73,24 +73,6 @@ __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
   flux_half[2] = 0.5f * (fluxL[2] + fluxR[2] - cdU[2]);
   flux_half[3] = 0.5f * (fluxL[3] + fluxR[3] - cdU[3]);
 
-  /* const float c_red = rt_params.reduced_speed_of_light; */
-  /* const float cdU[4] = {c_red * (UR[0] - UL[0]), c_red * (UR[1] - UL[1]), c_red * (UR[2] - UL[2]), c_red * (UR[3] - UL[3])}; */
-  /*  */
-  /* flux_half[0][0] = 0.5f * (fluxL[0][0] + fluxR[0][0] - cdU[0]); */
-  /* flux_half[0][1] = 0.5f * (fluxL[0][1] + fluxR[0][1] - cdU[0]); */
-  /* flux_half[0][2] = 0.5f * (fluxL[0][2] + fluxR[0][2] - cdU[0]); */
-  /*  */
-  /* flux_half[1][0] = 0.5f * (fluxL[1][0] + fluxR[1][0] - cdU[1]); */
-  /* flux_half[1][1] = 0.5f * (fluxL[1][1] + fluxR[1][1] - cdU[1]); */
-  /* flux_half[1][2] = 0.5f * (fluxL[1][2] + fluxR[1][2] - cdU[1]); */
-  /*  */
-  /* flux_half[2][0] = 0.5f * (fluxL[2][0] + fluxR[2][0] - cdU[2]); */
-  /* flux_half[2][1] = 0.5f * (fluxL[2][1] + fluxR[2][1] - cdU[2]); */
-  /* flux_half[2][2] = 0.5f * (fluxL[2][2] + fluxR[2][2] - cdU[2]); */
-  /*  */
-  /* flux_half[3][0] = 0.5f * (fluxL[3][0] + fluxR[3][0] - cdU[3]); */
-  /* flux_half[3][1] = 0.5f * (fluxL[3][1] + fluxR[3][1] - cdU[3]); */
-  /* flux_half[3][2] = 0.5f * (fluxL[3][2] + fluxR[3][2] - cdU[3]); */
 }
 
 #endif /* SWIFT_GEAR_RT_RIEMANN_GLF_H */
