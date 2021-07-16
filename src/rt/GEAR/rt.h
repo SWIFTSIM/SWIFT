@@ -202,13 +202,14 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
 };
 
 /**
- * @brief Computes the radiative transfer time step of a given particle
+ * @brief Computes the next radiative transfer time step size
+ * of a given particle (during timestep tasks)
  *
  * @param p particle to work on
  * @param rt_props the RT properties struct
  * @param cosmo the cosmology
  */
-__attribute__((always_inline)) INLINE static float rt_timestep(
+__attribute__((always_inline)) INLINE static float rt_compute_timestep(
     const struct part* restrict p, const struct rt_props* restrict rt_props,
     const struct cosmology* restrict cosmo) {
 
@@ -220,6 +221,28 @@ __attribute__((always_inline)) INLINE static float rt_timestep(
              0.9; /* TODO: CFL-like factor? */
 
   return dt;
+}
+
+/**
+ * @brief Compute the time-step length for an RT step of a particle.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the rt integration. (internal units).
+ */
+__attribute__((always_inline)) INLINE static double rt_part_dt(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology* cosmo) {
+  if (with_cosmology) {
+    error("GEAR RT with cosmology not implemented yet! :(");
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
 }
 
 /**
@@ -322,7 +345,7 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @brief finishes up the transport step
  *
  * @param p particle to work on
- * @param dt the current time step
+ * @param dt the current time step of the particle of the particle
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt) {

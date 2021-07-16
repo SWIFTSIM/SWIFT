@@ -2408,7 +2408,7 @@ case "$with_rt_riemann_solver" in
         AC_DEFINE([RT_RIEMANN_SOLVER_GLF], [1], [GLF RT riemann solver])
         ;;
     *)
-        AC_MSG_ERROR("Unknown RT Riemann solver: $with_rt_riemann")
+        AC_MSG_ERROR("Unknown RT Riemann solver: $with_rt_riemann_solver")
         ;;
 esac
 
@@ -2438,7 +2438,7 @@ case "$with_rt" in
           AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro. Compile using --with-hydro=gizmo-mfv])
       fi
 
-      if test "$with_rt_riemann" = "none"; then
+      if test "$with_rt_riemann_solver" = "none"; then
           AC_MSG_ERROR([GEAR-RT: You need to select an RT Riemann solver (--with-rt-riemann-solver=...)])
       fi
 
