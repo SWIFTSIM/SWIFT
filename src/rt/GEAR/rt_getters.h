@@ -187,26 +187,4 @@ __attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(
   flux[3][2] = pressure_tensor[2][2] * c2;
 }
 
-/**
- * @brief Compute the time-step length for an RT step.
- *
- * @param ti_beg Start of the time-step (on the integer time-line).
- * @param ti_end End of the time-step (on the integer time-line).
- * @param time_base Minimal time-step size on the time-line.
- * @param with_cosmology Are we running with cosmology integration?
- * @param cosmo The #cosmology object.
- *
- * @return The time-step size for the rt integration. (internal units).
- */
-__attribute__((always_inline)) INLINE static double rt_get_part_dt(
-    const integertime_t ti_beg, const integertime_t ti_end,
-    const double time_base, const int with_cosmology,
-    const struct cosmology* cosmo) {
-
-  if (with_cosmology) {
-    error("GEAR RT with cosmology not implemented yet! :(");
-  } else {
-    return (ti_end - ti_beg) * time_base;
-  }
-}
 #endif
