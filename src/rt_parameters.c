@@ -32,7 +32,8 @@
  * instance and pass it to the linker stage.
  */
 #if defined(RT_GEAR)
-struct rt_parameters rt_params = {.reduced_speed_of_light = 1.f};
+struct rt_parameters rt_params = {.reduced_speed_of_light = 1.f,
+                                  .reduced_speed_of_light_inverse = 1.f};
 #else
 struct rt_parameters rt_params;
 #endif
