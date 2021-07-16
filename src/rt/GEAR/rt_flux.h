@@ -35,7 +35,6 @@
  * solvers more easily.
  */
 
-
 /**
  * @brief Reset the fluxes for the given particle.
  *
@@ -63,7 +62,9 @@ __attribute__((always_inline)) INLINE static void rt_part_reset_fluxes(
  * @param Anorm size of the surface through which the flux goes
  * @param fluxes the resulting flux
  */
-__attribute__((always_inline)) INLINE static void rt_compute_flux(float UL[4], float UR[4], const float n_unit[3], const float Anorm, float fluxes[4]) {
+__attribute__((always_inline)) INLINE static void rt_compute_flux(
+    float UL[4], float UR[4], const float n_unit[3], const float Anorm,
+    float fluxes[4]) {
 
   rt_check_unphysical_density(&UL[0], &UL[1], 2);
   rt_check_unphysical_density(&UR[0], &UR[1], 2);

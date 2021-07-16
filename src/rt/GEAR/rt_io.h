@@ -227,8 +227,6 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   /* ------------------------- */
   io_write_attribute_i(h_grp, "PhotonGroupNumber", RT_NGROUPS);
 
-
-
   /* Write photon group bin edges */
   /* ---------------------------- */
   hid_t type = H5Tcopy(io_hdf5_type(FLOAT));
@@ -272,9 +270,6 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   const int with_rt = e->policy & engine_policy_rt;
   if (!with_rt) return;
 
-
-
-
   /* Write photon group names now */
   /* ---------------------------- */
 
@@ -296,7 +291,6 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
                           H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   H5Dwrite(dsetE, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, names_energy);
   H5Dclose(dsetE);
-
 
   /* Generate Fluxes Group Names */
   char names_fluxes[3 * RT_NGROUPS * RT_LABELS_SIZE];
@@ -326,16 +320,16 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   H5Tclose(type);
 
-
   /* Write reduced speed of light */
   /* ---------------------------- */
   hid_t type2 = H5Tcopy(io_hdf5_type(FLOAT));
 
   hsize_t dims2[1] = {1};
   hid_t space2 = H5Screate_simple(1, dims2, NULL);
-  hid_t dset2 = H5Dcreate(h_grp, "ReducedLightspeed", type2, space2, H5P_DEFAULT,
-                         H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dset2, type2, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rt_params.reduced_speed_of_light);
+  hid_t dset2 = H5Dcreate(h_grp, "ReducedLightspeed", type2, space2,
+                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset2, type2, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           &rt_params.reduced_speed_of_light);
 
   /* Write unit conversion factors for this data set */
   char buffer2[FIELD_BUFFER_SIZE] = {0};
@@ -356,7 +350,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   const double factor2 =
       units_cgs_conversion_factor(snapshot_units, UNIT_CONV_VELOCITY);
   io_write_attribute_d(
-      dset2, "Conversion factor to CGS (not including cosmological corrections)",
+      dset2,
+      "Conversion factor to CGS (not including cosmological corrections)",
       factor2);
   io_write_attribute_d(
       dset2,

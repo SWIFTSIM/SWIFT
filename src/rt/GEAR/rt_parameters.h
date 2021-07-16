@@ -35,5 +35,4 @@ struct rt_parameters {
   float reduced_speed_of_light_inverse;
 };
 
-
 #endif /* SWIFT_GEAR_RT_PARAMETERS_H */

@@ -195,7 +195,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     for (int k = 0; k < 3; k++) {
       /* we add a minus sign since dx is pi->x - pj->x */
       A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
-                 wi * hi_inv_dim - 
+                 wi * hi_inv_dim -
              Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
                  wj * hj_inv_dim;
       Anorm2 += A[k] * A[k];
@@ -263,7 +263,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     /* When solving the Riemann problem, we assume pi is left state, and
      * pj is right state. The sign convention is that a positive total
      * flux is subtracted from the left state, and added to the right
-     * state, based on how we chose the unit vector. By this convention, 
+     * state, based on how we chose the unit vector. By this convention,
      * the time integration results in conserved += flux * dt */
     rti->flux[g].energy -= totflux[0];
     rti->flux[g].flux[0] -= totflux[1];

@@ -1041,7 +1041,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       /* Finish the force loop */
       const integertime_t ti_current = e->ti_current;
       const integertime_t ti_step = get_integer_timestep(p->time_bin);
-      const integertime_t ti_begin = get_integer_time_begin(ti_current + 1, p->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(ti_current + 1, p->time_bin);
       const integertime_t ti_end = ti_begin + ti_step;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1053,7 +1054,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
             ti_current);
 #endif
 
-      const double dt = rt_get_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, e->cosmology);
+      const double dt = rt_get_part_dt(ti_begin, ti_end, e->time_base,
+                                       with_cosmology, e->cosmology);
       rt_finalise_transport(p, dt);
 
       /* And finally do thermochemistry */

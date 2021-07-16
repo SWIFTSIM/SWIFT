@@ -40,9 +40,8 @@
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */
-__attribute__((always_inline)) INLINE static float
-rt_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
-                                float xij_norm, float r_inv) {
+__attribute__((always_inline)) INLINE static float rt_slope_limit_face_quantity(
+    float phi_i, float phi_j, float phi_mid0, float xij_norm, float r_inv) {
 
   const float dphi = phi_i - phi_j;
   const float gamma1 = 0.5f;
@@ -76,7 +75,7 @@ rt_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
   } else {
     const float temp = max(phibar - delta2, phi_mid0);
     phi_mid = min(phiplus, temp);
-  } 
+  }
 
   return phi_mid - phi_i;
 }
@@ -87,8 +86,8 @@ rt_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
  * @param dQi left slope
  * @param dQj right slope
  */
-__attribute__((always_inline)) INLINE static float
-rt_limiter_minmod(const float dQi, const float dQj) {
+__attribute__((always_inline)) INLINE static float rt_limiter_minmod(
+    const float dQi, const float dQj) {
 
   if (dQi * dQj > 0) {
     if (fabsf(dQi) < fabsf(dQj)) {
@@ -107,7 +106,8 @@ rt_limiter_minmod(const float dQi, const float dQj) {
  * @param dQi left slope
  * @param dQj right slope
  */
-__attribute__((always_inline)) INLINE static float rt_limiter_mc(const float dQi, const float dQj) {
+__attribute__((always_inline)) INLINE static float rt_limiter_mc(
+    const float dQi, const float dQj) {
 
   const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
   const float minterm = min3(0.5 * (1. + r), 2.f, 2.f * r);
@@ -120,12 +120,12 @@ __attribute__((always_inline)) INLINE static float rt_limiter_mc(const float dQi
  * @param dQi left slope
  * @param dQj right slope
  */
-__attribute__((always_inline)) INLINE static float rt_limiter_vanLeer(const float dQi, const float dQj) {
+__attribute__((always_inline)) INLINE static float rt_limiter_vanLeer(
+    const float dQi, const float dQj) {
   const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
   const float absr = fabs(r);
   return (r + absr) / (1.f + absr);
 }
-
 
 /**
  * the superbee limiter.
@@ -133,19 +133,13 @@ __attribute__((always_inline)) INLINE static float rt_limiter_vanLeer(const floa
  * @param dQi left slope
  * @param dQj right slope
  */
-__attribute__((always_inline)) INLINE static float rt_limiter_superbee(const float dQi, const float dQj) {
+__attribute__((always_inline)) INLINE static float rt_limiter_superbee(
+    const float dQi, const float dQj) {
   const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
-  const float minterm1 = min(1.f, 2.f*r);
+  const float minterm1 = min(1.f, 2.f * r);
   const float minterm2 = min(2.f, r);
   return max3(0.f, minterm1, minterm2);
 }
-
-
-
-
-
-
-
 
 /**
  * @brief Slope limit the slopes at the interface between two particles
@@ -156,7 +150,7 @@ __attribute__((always_inline)) INLINE static float rt_limiter_superbee(const flo
  * position of particle j and at the interface position.
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_face(
-    float dQi[4], float dQj[4]){
+    float dQi[4], float dQj[4]) {
 
   for (int i = 0; i < 4; i++) {
     /* Minmod and monotinized central difference limiters
