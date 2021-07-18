@@ -1070,7 +1070,7 @@ void write_output_distributed(struct engine* e,
 
     /* Don't do anything if there are (a) no particles of this kind, or (b)
      * if we have disabled every field of this particle type. */
-    if (numParticles[ptype] == 0 || numFields[ptype] == 0) continue;
+    if (N[ptype] == 0 || numFields[ptype] == 0) continue;
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
