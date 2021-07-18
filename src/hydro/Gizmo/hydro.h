@@ -80,12 +80,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       sqrtf(hydro_gamma * W[4] / W[0]);
   vmax = max(vmax, p->timestepvars.vmax);
 
-  const float psize = cosmo->a * cosmo->a *
-                      powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                           hydro_dimension_inv);
+  const float psize = 0.5 / p->timestepvars.delxbar;
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
-    dt = psize / vmax;
+    dt = psize_new / vmax;
   }
   return CFL_condition * dt;
 }
@@ -416,6 +414,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;
+  p->timestepvars.delxbar = 0.;
 
   hydro_gradients_init(p);
 

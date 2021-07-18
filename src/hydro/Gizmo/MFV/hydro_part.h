@@ -134,6 +134,7 @@ struct part {
      * AND particle velocities of the neighbour and this particle, as well as
      * the sound speed of both particles. */
     float vmax;
+    float delxbar;
 
   } timestepvars;
 

@@ -362,6 +362,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
 #endif
 
+  pi->timestepvars.delxbar += wj * hj_inv_dim * Anorm;
+  if (mode == 1) {
+    pj->timestepvars.delxbar += wi * hi_inv_dim * Anorm;
+  }
+
   /* compute the normal vector of the interface */
   const float n_unit[3] = {A[0] * Anorm_inv, A[1] * Anorm_inv,
                            A[2] * Anorm_inv};
