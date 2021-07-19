@@ -35,9 +35,10 @@
  *        parameter file.
  **/
 const char* lossy_compression_schemes_names[compression_level_count] = {
-    "off",     "on",      "DScale1",    "DScale2",     "DScale3",   "DScale4",
-    "DScale5", "DScale6", "DMantissa9", "DMantissa13", "FMantissa9", "FMantissa13",
-    "HalfFloat", "BFloat16", "Nbit36",  "Nbit40",  "Nbit44",     "Nbit48",      "Nbit56"};
+    "off",        "on",          "DScale1",   "DScale2",    "DScale3",
+    "DScale4",    "DScale5",     "DScale6",   "DMantissa9", "DMantissa13",
+    "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",   "Nbit36",
+    "Nbit40",     "Nbit44",      "Nbit48",    "Nbit56"};
 
 /**
  * @brief Returns the lossy compression scheme given its name
@@ -198,7 +199,6 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     if (h_err < 0)
       error("Error while setting n-bit filter for field '%s'.", field_name);
   }
-
 
   else if (comp == compression_write_d_mantissa_13) {
 
