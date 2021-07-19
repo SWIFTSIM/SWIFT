@@ -2231,6 +2231,294 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
 }
 
 /**
+ * @brief Returns the temperature given density and internal energy
+ *
+ * @param density The density \f$\rho\f$
+ * @param u The internal energy \f$u\f$
+ */
+__attribute__((always_inline)) INLINE static float
+gas_temperature_from_internal_energy(float density, float u,
+                                 enum eos_planetary_material_id mat_id) {
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
+
+  /* Select the material base type */
+  switch (type) {
+
+    /* Ideal gas EoS */
+    case eos_planetary_type_idg:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_idg_def:
+          return idg_temperature_from_internal_energy(density, u, &eos.idg_def);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_Til_iron:
+          return Til_temperature_from_internal_energy(density, u, &eos.Til_iron);
+          break;
+
+        case eos_planetary_id_Til_granite:
+          return Til_temperature_from_internal_energy(density, u, &eos.Til_granite);
+          break;
+
+        case eos_planetary_id_Til_water:
+          return Til_temperature_from_internal_energy(density, u, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_temperature_from_internal_energy(density, u, &eos.Til_basalt);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_HM80_HHe:
+          return HM80_temperature_from_internal_energy(density, u, &eos.HM80_HHe);
+          break;
+
+        case eos_planetary_id_HM80_ice:
+          return HM80_temperature_from_internal_energy(density, u, &eos.HM80_ice);
+          break;
+
+        case eos_planetary_id_HM80_rock:
+          return HM80_temperature_from_internal_energy(density, u, &eos.HM80_rock);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* SESAME EoS */
+    case eos_planetary_type_SESAME:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_SESAME_iron:
+          return SESAME_temperature_from_internal_energy(density, u,
+                                                     &eos.SESAME_iron);
+          break;
+
+        case eos_planetary_id_SESAME_basalt:
+          return SESAME_temperature_from_internal_energy(density, u,
+                                                     &eos.SESAME_basalt);
+          break;
+
+        case eos_planetary_id_SESAME_water:
+          return SESAME_temperature_from_internal_energy(density, u,
+                                                     &eos.SESAME_water);
+          break;
+
+        case eos_planetary_id_SS08_water:
+          return SESAME_temperature_from_internal_energy(density, u,
+                                                     &eos.SS08_water);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_temperature_from_internal_energy(density, u,
+                                                     &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_temperature_from_internal_energy(density, u,
+                                                     &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_temperature_from_internal_energy(density, u,
+                                                     &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    default:
+      error("Unknown material type! mat_id = %d", mat_id);
+      return 0.f;
+  }
+}
+
+/**
+ * @brief Returns the density given pressure and temperature
+ *
+ * @param P The pressure \f$P\f$
+ * @param T The temperature \f$T\f$
+ */
+__attribute__((always_inline)) INLINE static float
+gas_density_from_pressure_and_temperature(float P, float T,
+                                 enum eos_planetary_material_id mat_id) {
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
+
+  /* Select the material base type */
+  switch (type) {
+
+    /* Ideal gas EoS */
+    case eos_planetary_type_idg:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_idg_def:
+          return idg_density_from_pressure_and_temperature(P, T, &eos.idg_def);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_Til_iron:
+          return Til_density_from_pressure_and_temperature(P, T, &eos.Til_iron);
+          break;
+
+        case eos_planetary_id_Til_granite:
+          return Til_density_from_pressure_and_temperature(P, T, &eos.Til_granite);
+          break;
+
+        case eos_planetary_id_Til_water:
+          return Til_density_from_pressure_and_temperature(P, T, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+          return Til_density_from_pressure_and_temperature(P, T, &eos.Til_basalt);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_HM80_HHe:
+          return HM80_density_from_pressure_and_temperature(P, T, &eos.HM80_HHe);
+          break;
+
+        case eos_planetary_id_HM80_ice:
+          return HM80_density_from_pressure_and_temperature(P, T, &eos.HM80_ice);
+          break;
+
+        case eos_planetary_id_HM80_rock:
+          return HM80_density_from_pressure_and_temperature(P, T, &eos.HM80_rock);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* SESAME EoS */
+    case eos_planetary_type_SESAME:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_SESAME_iron:
+          return SESAME_density_from_pressure_and_temperature(P, T,
+                                                     &eos.SESAME_iron);
+          break;
+
+        case eos_planetary_id_SESAME_basalt:
+          return SESAME_density_from_pressure_and_temperature(P, T,
+                                                     &eos.SESAME_basalt);
+          break;
+
+        case eos_planetary_id_SESAME_water:
+          return SESAME_density_from_pressure_and_temperature(P, T,
+                                                     &eos.SESAME_water);
+          break;
+
+        case eos_planetary_id_SS08_water:
+          return SESAME_density_from_pressure_and_temperature(P, T,
+                                                     &eos.SS08_water);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+          return SESAME_density_from_pressure_and_temperature(P, T,
+                                                     &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+          return SESAME_density_from_pressure_and_temperature(P, T,
+                                                     &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+          return SESAME_density_from_pressure_and_temperature(P, T,
+                                                     &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+          error("Unknown material ID! mat_id = %d", mat_id);
+          return 0.f;
+      };
+      break;
+
+    default:
+      error("Unknown material type! mat_id = %d", mat_id);
+      return 0.f;
+  }
+}
+
+
+
+/**
  * @brief Initialize the eos parameters
  *
  * @param e The #eos_parameters
@@ -2251,18 +2539,22 @@ __attribute__((always_inline)) INLINE static void eos_init(
   // Tillotson
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_iron", 0)) {
     set_Til_iron(&e->Til_iron, eos_planetary_id_Til_iron);
+    set_Til_u_cold(&e->Til_iron, eos_planetary_id_Til_iron);
     convert_units_Til(&e->Til_iron, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_granite", 0)) {
     set_Til_granite(&e->Til_granite, eos_planetary_id_Til_granite);
+    set_Til_u_cold(&e->Til_granite, eos_planetary_id_Til_granite);
     convert_units_Til(&e->Til_granite, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_water", 0)) {
     set_Til_water(&e->Til_water, eos_planetary_id_Til_water);
+    set_Til_u_cold(&e->Til_water, eos_planetary_id_Til_water);
     convert_units_Til(&e->Til_water, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_basalt", 0)) {
     set_Til_basalt(&e->Til_basalt, eos_planetary_id_Til_basalt);
+    set_Til_u_cold(&e->Til_basalt, eos_planetary_id_Til_basalt);
     convert_units_Til(&e->Til_basalt, us);
   }
 

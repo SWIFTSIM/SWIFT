@@ -43,6 +43,10 @@
 struct Til_params {
   float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta, eta_min, eta_zero,
       P_min;
+  float *A1_u_cold;
+  float CV;
+  float rho_min_A1_u_cold, rho_max_A1_u_cold;
+  float rho_min, rho_max;
   enum eos_planetary_material_id mat_id;
 };
 
@@ -63,6 +67,11 @@ INLINE static void set_Til_iron(struct Til_params *mat,
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
   mat->P_min = 0.0f;
+  mat->CV = 449.f;
+  mat->rho_min_A1_u_cold = 100.f;
+  mat->rho_max_A1_u_cold = 100000.f;
+  mat->rho_min = 1.f;
+  mat->rho_max = 100000.f;
 }
 INLINE static void set_Til_granite(struct Til_params *mat,
                                    enum eos_planetary_material_id mat_id) {
@@ -80,6 +89,11 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
   mat->P_min = 0.0f;
+  mat->CV = 790.f;
+  mat->rho_min_A1_u_cold = 100.f;
+  mat->rho_max_A1_u_cold = 100000.f;
+  mat->rho_min = 1.f;
+  mat->rho_max = 100000.f;
 }
 INLINE static void set_Til_basalt(struct Til_params *mat,
                                   enum eos_planetary_material_id mat_id) {
@@ -97,6 +111,11 @@ INLINE static void set_Til_basalt(struct Til_params *mat,
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
   mat->P_min = 0.0f;
+  mat->CV = 790.f;
+  mat->rho_min_A1_u_cold = 100.f;
+  mat->rho_max_A1_u_cold = 100000.f;
+  mat->rho_min = 1.f;
+  mat->rho_max = 100000.f;
 }
 INLINE static void set_Til_water(struct Til_params *mat,
                                  enum eos_planetary_material_id mat_id) {
@@ -114,6 +133,11 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->eta_min = 0.925f;
   mat->eta_zero = 0.875f;
   mat->P_min = 0.0f;
+  mat->CV = 4186.f;
+  mat->rho_min_A1_u_cold = 100.f;
+  mat->rho_max_A1_u_cold = 100000.f;
+  mat->rho_min = 1.f;
+  mat->rho_max = 100000.f;
 }
 
 // Convert to internal units
@@ -122,6 +146,8 @@ INLINE static void convert_units_Til(struct Til_params *mat,
 
   struct unit_system si;
   units_init_si(&si);
+
+  int N = 10000;
 
   // SI to cgs
   mat->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
@@ -132,6 +158,19 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->u_cv *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_min *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
 
+  for (int i = 0; i < N; i++) {
+    mat->A1_u_cold[i] *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  }
+  
+  mat->CV *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  // Entropy units don't work? using internal kelvin
+  
+  mat->rho_min_A1_u_cold *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+  mat->rho_max_A1_u_cold *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+  mat->rho_min *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+  mat->rho_max *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
+
+
   // cgs to internal
   mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->A /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
@@ -140,6 +179,19 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->u_iv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->u_cv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_min /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+
+  for (int i = 0; i < N; i++) {
+    mat->A1_u_cold[i] /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  }
+  
+  mat->CV /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  // Entropy units don't work? using internal kelvin
+  
+  mat->rho_min_A1_u_cold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  mat->rho_max_A1_u_cold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  mat->rho_min /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  mat->rho_max /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
 }
 
 // gas_internal_energy_from_entropy
@@ -310,6 +362,159 @@ INLINE static float Til_soundspeed_from_pressure(float density, float P,
   error("This EOS function is not yet implemented!");
 
   return 0.f;
+}
+
+// Compute u cold
+INLINE static float compute_u_cold(float density,
+                                 struct Til_params *mat,
+                                 enum eos_planetary_material_id mat_id) {
+    float rho_0, x, u_cold, drho;
+    int N = 10000;
+    
+    rho_0 = mat->rho_0;
+    drho = (density - rho_0) / N;
+    x = rho_0;
+    u_cold = 1e-9;
+    
+    for (int i = 0; i < N; i++) {
+        x += drho;
+        u_cold += Til_pressure_from_internal_energy(x, u_cold, mat) * drho / (x*x);
+    }
+    
+    return u_cold;
+}
+
+
+// Compute A1_u_cold
+INLINE static void set_Til_u_cold(struct Til_params *mat,
+                                 enum eos_planetary_material_id mat_id) {
+  
+  int N = 10000;
+  float rho_min = 100.f;
+  float rho_max = 100000.f;
+  float rho, drho;
+  
+  // Allocate table memory
+  mat->A1_u_cold = (float *)malloc(N * sizeof(float));
+  
+  rho = rho_min;
+  drho = (rho_max - rho_min) / (N - 1);
+  
+  for (int i = 0; i < N; i++) {
+        mat->A1_u_cold[i] = compute_u_cold(rho, mat, mat_id);
+        rho += drho;
+    }
+}
+
+// Compute u cold fast from precomputed values
+INLINE static float compute_fast_u_cold(float density,
+                                 const struct Til_params *mat) {
+                                 
+    int N = 10000;
+    float rho_min = mat->rho_min_A1_u_cold;
+    float rho_max = mat->rho_max_A1_u_cold;
+    float drho, u_cold;
+    int a, b;
+    
+    drho = (rho_max - rho_min) / (N - 1);
+
+    a = (int)((density - rho_min) / drho);
+    b = a + 1;
+    
+    if (a >= 0 && a < (N - 1)){
+        u_cold = mat->A1_u_cold[a];
+        u_cold += ((mat->A1_u_cold[b] - mat->A1_u_cold[a]) / drho) * (
+            density - rho_min - a * drho
+        );
+    } else if (density < rho_min){
+        u_cold = mat->A1_u_cold[0];
+    } else {
+        u_cold = mat->A1_u_cold[N - 1];
+        u_cold += (
+            (mat->A1_u_cold[N - 1] - mat->A1_u_cold[N - 2]) / drho
+        ) * (density - rho_max);
+    }
+    return u_cold;
+
+}
+
+// gas_temperature_from_internal_energy
+INLINE static float Til_temperature_from_internal_energy(
+    float density, float u, const struct Til_params *mat) {
+
+    float u_cold, T;
+    
+    u_cold = compute_fast_u_cold(density, mat);
+    
+    T = (u - u_cold)/(mat->CV);
+    
+    return T;
+    
+}
+
+// gas_pressure_from_density_and_temperature
+INLINE static float Til_pressure_from_temperature(
+    float density, float T, const struct Til_params *mat) {
+
+  float u, P;
+  
+  u = compute_fast_u_cold(density, mat) + mat->CV * T;
+  P = Til_pressure_from_internal_energy(density, u, mat);
+  
+  return P;
+}
+
+// gas_density_from_pressure_and_temperature
+INLINE static float Til_density_from_pressure_and_temperature(
+    float P, float T, const struct Til_params *mat) {
+
+    float rho_min = mat->rho_min;
+    float rho_max = mat->rho_max;
+    float rho_mid = (rho_min + rho_max)/2.f;
+    float P_min, P_mid, P_max;
+    float P_des;
+    float tolerance = 0.001*rho_min;
+    int counter = 0;
+    int max_counter = 200;
+    float f0, f2;
+    
+    // Check for P == 0 or T == 0
+    if (P <= mat->P_min){
+        P_des = mat->P_min;
+    } else {
+        P_des = P;
+    }
+    
+    P_min = Til_pressure_from_temperature(rho_min, T, mat);
+    P_mid = Til_pressure_from_temperature(rho_mid, T, mat);
+    P_max = Til_pressure_from_temperature(rho_max, T, mat);
+    
+    if (P_des >= P_min && P_des <= P_max){
+        while ((rho_max - rho_min) > tolerance && counter < max_counter){
+        
+            P_min = Til_pressure_from_temperature(rho_min, T, mat);
+            P_mid = Til_pressure_from_temperature(rho_mid, T, mat);
+            P_max = Til_pressure_from_temperature(rho_max, T, mat);
+            
+            f0 = P_des - P_min;
+            f2 = P_des - P_mid;
+
+            if ((f0 * f2) > 0){
+                rho_min = rho_mid;
+            } else {
+                rho_max = rho_mid;
+            }
+            
+            rho_mid = (rho_min + rho_max) / 2.f;
+            counter += 1;
+        }
+    
+    } else {
+        error("Error in Til_density_from_pressure_and_temperature");
+        return 0.f;
+    }
+    
+    return rho_mid;
 }
 
 #endif /* SWIFT_TILLOTSON_EQUATION_OF_STATE_H */
