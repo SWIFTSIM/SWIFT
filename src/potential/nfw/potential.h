@@ -267,7 +267,9 @@ static INLINE void potential_init_backend(
       log(1. + potential->c_200) - potential->c_200 / (1. + potential->c_200);
 
   potential->M_200_times_log_c200_term_inv =
-      potential->M_200 / potential->log_c200_term;
+      potential->M_200 *
+      (1 - potential->bulgefraction - potential->diskfraction) /
+      potential->log_c200_term;
 
   potential->pre_factor =
       potential->M_200 *
