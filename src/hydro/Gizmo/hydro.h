@@ -83,7 +83,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float psize = 0.5 / p->timestepvars.delxbar;
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
-    dt = psize_new / vmax;
+    dt = psize / vmax;
   }
   return CFL_condition * dt;
 }
