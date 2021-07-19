@@ -145,7 +145,7 @@ but with 0s in the bits of the mantissa that were not stored on disk, hence
 changing the result from what was stored originally before compression.
 
 These filters offer a fixed compression ratio and a fixed relative
-accuracy. The available options in SWIFT are:
+accuracy. The available options in SWIFT for a ``float`` (32 bits) output are:
 
 
 +-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
@@ -162,15 +162,32 @@ accuracy. The available options in SWIFT are:
 | ``HalfFloat``   | 10           | 5            | 3.31 digits | :math:`[6.1\times 10^{-5}, 6.5\times 10^{4}]`     | 2x                |
 +-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
 
+Same for a ``double`` (64 bits) output:
+
++-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
+| Filter name     | :math:`n(a)` | :math:`n(b)` | Accuracy    | Range                                             | Compression ratio |
++=================+==============+==============+=============+===================================================+===================+
+| No filter       | 52           | 11           | 15.9 digits | :math:`[2.2\times 10^{-308}, 1.8\times 10^{308}]` | ---               |
++-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
+| ``DMantissa13`` | 13           | 11           | 4.21 digits | :math:`[2.2\times 10^{-308}, 1.8\times 10^{308}]` | 2.56x             |
++-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
+| ``DMantissa9``  | 9            | 11           | 3.01 digits | :math:`[2.2\times 10^{-308}, 1.8\times 10^{308}]` | 3.05x             |
++-----------------+--------------+--------------+-------------+---------------------------------------------------+-------------------+
+
+
 The accuracy given in the table corresponds to the number of decimal digits
 that can be correctly stored. The "no filter" row is displayed for
 comparison purposes.
 
-The first two filters are useful to keep the same range as a standard
-`float` but with a reduced accuracy of 3 or 4 decimal digits. The last two
-are the two standard reduced precision options fitting within 16 bits: one
-with a much reduced relative accuracy and one with a much reduced
-representable range.
+In the first table, the first two filters are useful to keep the same range as a
+standard `float` but with a reduced accuracy of 3 or 4 decimal digits. The last
+two are the two standard reduced precision options fitting within 16 bits: one
+with a much reduced relative accuracy and one with a much reduced representable
+range.
+
+The compression filters for the `double` quantities are useful if the values one
+want to store fall outside the exponent range of `float` numbers but only a
+lower relative precision is necessary.
 
 An example application is to store the densities with the ``FMantissa9``
 filter as we rarely need more than 3 decimal digits of accuracy for this
