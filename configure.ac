@@ -102,12 +102,7 @@ if test "$with_csds" = "yes"; then
       AC_MSG_ERROR([The CSDS requires that 'long long int' has size 8 bytes])
    fi
 
-   # Ensure that everything is alright for the CSDS
-   if test ! -f csds/Makefile.in; then
-      AC_MSG_ERROR([It seems that the submodule "CSDS" was not initialized, please rerun autogen.sh and reconfigure.])
-
    AC_CONFIG_SUBDIRS([csds])
-fi
 
 fi
 AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
