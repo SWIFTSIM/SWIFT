@@ -124,6 +124,16 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /* Correction factors for kernel gradients. Numerator */
+  float weighted_wcount;
+
+  /* Correction factors for kernel gradients. Denominator */
+  float weighted_neighbour_wcount;
+
+  /* Correction factors for kernel gradients. f = weighted_wcount/(rho*weighted_neighbour_wcount) */
+  float f_gdf;
+
+
   /* Store density/force specific stuff. */
   union {
 

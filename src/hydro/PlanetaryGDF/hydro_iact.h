@@ -125,6 +125,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->N_density++;
   pj->N_density++;
 #endif
+
+  /* Correction factors for kernel gradients */
+  pi->weighted_wcount += mj * r2 * wi_dx * r_inv;
+  pj->weighted_wcount += mi * r2 * wj_dx * r_inv;
+
 }
 
 /**
@@ -194,6 +199,92 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->n_density += wi;
   pi->N_density++;
 #endif
+
+  /* Correction factors for kernel gradients */
+  pi->weighted_wcount += mj * r2 * wi_dx * r_inv;
+}
+
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j
+ *
+ * This method wraps around hydro_gradients_collect, which can be an empty
+ * method, in which case no gradients are used.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_gradient(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  float wi, wj, wi_dx, wj_dx;
+
+  /* Get r. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
+
+  /* Compute kernel of pi. */
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+  
+  /* Compute kernel of pj. */
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+  kernel_deval(uj, &wj, &wj_dx);
+
+  /* Correction factors for kernel gradients */ 
+  const float rho_inv_i = 1.f / pi->rho;
+  const float rho_inv_j = 1.f / pj->rho;
+
+  pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
+  pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
+
+}
+
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j:
+ * non-symmetric version
+ *
+ * This method wraps around hydro_gradients_nonsym_collect, which can be an
+ * empty method, in which case no gradients are used.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    const struct part *restrict pj, float a, float H) {
+
+  float wi, wi_dx;
+
+  /* Get r. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
+
+  const float h_inv = 1.f / hi;
+  const float ui = r * h_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+
+  /* Correction factors for kernel gradients */ 
+
+  const float rho_inv_j = 1.f / pj->rho;
+
+  pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
+
+  
 }
 
 /**
@@ -253,12 +344,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
+  float kernel_gradient = 0.5f * (wi_dr * pi->f_gdf + wj_dr * pj->f_gdf);
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -282,13 +368,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
-  /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
+  /* Convolve with the kernel */ 
+  const float visc_acc_term = visc * kernel_gradient * r_inv;
 
   /* SPH acceleration term */
   const float sph_acc_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+      (pressurei + pressurej) * r_inv * kernel_gradient / (rhoi * rhoj);
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -303,8 +388,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
+  const float sph_du_term_i =
+      pressurei * dvdr * r_inv * kernel_gradient / (rhoi * rhoj);
+  const float sph_du_term_j =
+      pressurej * dvdr * r_inv * kernel_gradient / (rhoi * rhoj);
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
@@ -366,7 +453,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -389,13 +475,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Variable smoothing length term */
-  const float f_ij = 1.f - pi->force.f / mj;
-  const float f_ji = 1.f - pj->force.f / mi;
-
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
+  /* Variable smoothing length term */ 
+  const float kernel_gradient = 0.5f * (wi_dr * pi->f_gdf + wj_dr * pj->f_gdf);
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -422,12 +503,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term =
-      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
+  const float visc_acc_term = visc * kernel_gradient * r_inv;
 
   /* SPH acceleration term */
   const float sph_acc_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+      (pressurei + pressurej) * r_inv * kernel_gradient / (rhoi * rhoj);
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -438,7 +518,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  const float sph_du_term_i =
+      pressurei * dvdr * r_inv * kernel_gradient / (rhoi * rhoj);
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;

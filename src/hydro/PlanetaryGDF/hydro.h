@@ -481,6 +481,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+  p->weighted_wcount = 0.f;
+  p->weighted_neighbour_wcount = 0.f;
+  p->f_gdf = 0.f;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -577,7 +580,72 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+  /* Set the ratio f_gdf = 1 if particle has no neighbours */
+  p->weighted_wcount = p->mass * kernel_root * h_inv_dim;
+  p->weighted_neighbour_wcount = 1.f;
+
 }
+
+/**
+ * @brief Prepare a particle for the gradient calculation.
+ *
+ * This function is called after the density loop and before the gradient loop.
+ *
+ * We use it to set the physical timestep for the particle and to copy the
+ * actual velocities, which we need to boost our interfaces during the flux
+ * calculation. We also initialize the variables used for the time step
+ * calculation.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ * @param hydro_props Hydrodynamic properties.
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+
+  // To be completed
+}
+
+/**
+ * @brief Resets the variables that are required for a gradient calculation.
+ *
+ * This function is called after hydro_prepare_gradient.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_gradient(
+    struct part *restrict p) {
+
+  // To be completed
+}
+
+/**
+ * @brief Finishes the gradient calculation.
+ *
+ * Just a wrapper around hydro_gradients_finalize, which can be an empty method,
+ * in which case no gradients are used.
+ *
+ * This method also initializes the force loop variables.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void hydro_end_gradient(
+    struct part *p) {
+
+  /* Ensure f_gdf = 1 when having two or more particles overlaping */
+  if (p->weighted_wcount == 0.f || p->weighted_neighbour_wcount == 0.f){
+    p->f_gdf = 1.f;
+  } else {
+    /* Compute f_gdf normally*/
+    p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
+  }
+}
+
 
 /**
  * @brief Prepare a particle for the force calculation.
