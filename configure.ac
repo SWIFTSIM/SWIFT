@@ -487,6 +487,18 @@ if test "$planetary_fixed_entropy" = "yes"; then
    AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
 fi
 
+# Check if imbalance statistic method is on for planetary simulations
+AC_ARG_ENABLE([planetary-imbalance],
+   [AS_HELP_STRING([--enable-planetary-imbalance],
+     [Enable imbalance statistic method for planetary simulations @<:@yes/no@:>@]
+   )],
+   [planetary_imbalance="$enableval"],
+   [planetary_imbalance="no"]
+)
+if test "$planetary_imbalance" = "yes"; then
+   AC_DEFINE([PLANETARY_IMBALANCE],1,[Enable planetary imbalance statistic method])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -2604,6 +2616,7 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
+   Planetary imbalance method  : $planetary_imbalance
 
    Continuous Sim. Data Stream : $with_csds
 

@@ -130,6 +130,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->weighted_wcount += mj * r2 * wi_dx * r_inv;
   pj->weighted_wcount += mi * r2 * wj_dx * r_inv;
 
+#ifdef PLANETARY_IMBALANCE
+  /* Use sqrt(w) from now on */
+  wi = sqrtf(wi);
+  wj = sqrtf(wj);
+
+  /* Add contribution to kernel averages */
+  pi->sum_wij += wi*mj;
+  pj->sum_wij += wj*mi;
+
+  /* Add contribution r_ij*mj*sqrt(Wij) */
+  if (pi->mat_id == pj->mat_id){
+  pi->sum_rij[0] += -dx[0]*wi*mj;
+  pi->sum_rij[1] += -dx[1]*wi*mj;
+  pi->sum_rij[2] += -dx[2]*wi*mj;
+
+  pj->sum_rij[0] += dx[0]*wj*mi;
+  pj->sum_rij[1] += dx[1]*wj*mi;
+  pj->sum_rij[2] += dx[2]*wj*mi;
+  }
+
+  if (pi->mat_id != pj->mat_id){
+  pi->sum_rij[0] += dx[0]*wi*mj;
+  pi->sum_rij[1] += dx[1]*wi*mj;
+  pi->sum_rij[2] += dx[2]*wi*mj;
+
+  pj->sum_rij[0] += -dx[0]*wj*mi;
+  pj->sum_rij[1] += -dx[1]*wj*mi;
+  pj->sum_rij[2] += -dx[2]*wj*mi;
+  }
+#endif
 }
 
 /**
@@ -202,6 +232,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Correction factors for kernel gradients */
   pi->weighted_wcount += mj * r2 * wi_dx * r_inv;
+
+#ifdef PLANETARY_IMBALANCE
+  /* Use sqrt(w) from now on */
+  wi = sqrtf(wi);
+
+  /* Add contribution to kernel averages */
+  pi->sum_wij += wi*mj;
+
+  /* Add contribution r_ij*mj*sqrt(Wij) */
+  if (pi->mat_id == pj->mat_id){
+  pi->sum_rij[0] += -dx[0]*wi*mj;
+  pi->sum_rij[1] += -dx[1]*wi*mj;
+  pi->sum_rij[2] += -dx[2]*wi*mj;
+  }
+
+  if (pi->mat_id != pj->mat_id){
+  pi->sum_rij[0] += dx[0]*wi*mj;
+  pi->sum_rij[1] += dx[1]*wi*mj;
+  pi->sum_rij[2] += dx[2]*wi*mj;
+  }
+#endif
 }
 
 /**
@@ -246,6 +297,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
 
+#ifdef PLANETARY_IMBALANCE
+  /* Compute kernel averages */
+  pi->sum_wij_exp += wi * expf(-pj->I*pj->I);
+  pi->sum_wij_exp_P += pj->P * wi * expf(-pj->I*pj->I);
+  pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I*pj->I);
+
+  pj->sum_wij_exp += wj * expf(-pi->I*pi->I);
+  pj->sum_wij_exp_P += pi->P * wj * expf(-pi->I*pi->I);
+  pj->sum_wij_exp_T += pi->T * wj * expf(-pi->I*pi->I);
+#endif
 }
 
 /**
@@ -284,6 +345,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
 
+#ifdef PLANETARY_IMBALANCE
+  /* Compute kernel averages */
+  pi->sum_wij_exp += wi * expf(-pj->I*pj->I);
+  pi->sum_wij_exp_P += pj->P * wi * expf(-pj->I*pj->I);
+  pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I*pj->I);
+#endif
   
 }
 

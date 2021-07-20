@@ -498,6 +498,14 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->inhibited_exact = 0;
   p->limited_part = 0;
 #endif
+
+#ifdef PLANETARY_IMBALANCE
+  p->sum_rij[0] = 0.f;
+  p->sum_rij[1] = 0.f;
+  p->sum_rij[2] = 0.f;
+  p->I = 0.f;
+  p->sum_wij = 0.f;
+#endif
 }
 
 /**
@@ -548,6 +556,24 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_density += kernel_root;
   p->n_density *= h_inv_dim;
+#endif
+
+#ifdef PLANETARY_IMBALANCE
+  /* Final operation on sum_wij (add self-contribution) */
+  p->sum_wij += sqrtf(kernel_root)*p->mass;
+
+  /* Compute norm sum_rij */
+  float sum_rij_norm = 0.f;
+  sum_rij_norm += p->sum_rij[0]*p->sum_rij[0];
+  sum_rij_norm += p->sum_rij[1]*p->sum_rij[1];
+  sum_rij_norm += p->sum_rij[2]*p->sum_rij[2];
+  p->I = sqrtf(sum_rij_norm);
+   
+  /* End imbalance statistic computation */
+  p->I *= h_inv; 
+  p->I /= p->sum_wij;
+  const float alpha = 4.9f;
+  p->I *= alpha;
 #endif
 }
 
@@ -606,7 +632,24 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  // To be completed
+#ifdef PLANETARY_IMBALANCE
+  /* Initialize kernel averages to 0 */
+  p->sum_wij_exp_T = 0.f;
+  p->sum_wij_exp_P = 0.f;
+  p->sum_wij_exp_rho = 0.f;
+  p->sum_wij_exp = 0.f;
+
+  /* Compute the pressure */
+  const float pressure =
+      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+      
+  /* Compute the temperature */
+  const float temperature =
+      gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+
+  p->P = pressure;
+  p->T = temperature;
+#endif
 }
 
 /**
@@ -621,7 +664,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
-  // To be completed
 }
 
 /**
@@ -644,6 +686,38 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Compute f_gdf normally*/
     p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
   }
+
+#ifdef PLANETARY_IMBALANCE
+  /* Add self contribution to kernel averages*/
+  p->sum_wij_exp += kernel_root * expf(-p->I*p->I);
+  p->sum_wij_exp_rho += p->rho * kernel_root * expf(-p->I*p->I);
+  p->sum_wij_exp_P += p->P * kernel_root * expf(-p->I*p->I);
+  p->sum_wij_exp_T += p->T * kernel_root * expf(-p->I*p->I);
+
+  /* End computation */
+  p->sum_wij_exp_rho /= p->sum_wij_exp;
+  p->sum_wij_exp_P /= p->sum_wij_exp;
+  p->sum_wij_exp_T /= p->sum_wij_exp;
+
+  /* Compute new density */
+  float new_density =
+      gas_density_from_pressure_and_temperature(p->sum_wij_exp_P, p->sum_wij_exp_T, p->mat_id);
+  
+  /* Compute combined density */
+  float rho_combined = 0.f;
+  rho_combined = expf(-p->I*p->I)*p->rho + (1.f - expf(-p->I*p->I))*new_density;
+  
+  /* Ensure new density is not lower than minimum SPH density */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float rho_min = p->mass * kernel_root * h_inv_dim;
+  if (rho_combined < rho_min){
+    p->rho = rho_min;
+  } else {
+    p->rho = rho_combined;
+  }
+#endif
 }
 
 

@@ -277,6 +277,39 @@ struct part {
   float s_fixed;
 #endif
 
+#ifdef PLANETARY_IMBALANCE
+
+  /* Pressure */
+  float P;
+
+  /* Temperature */
+  float T;
+
+  /*! Sum of r_ij (used to compute imbalance statistic)*/
+  float sum_rij[3];
+
+  /*! Imbalance statistic*/
+  float I;
+
+  /*! Weighted mean density*/
+  float sum_wij_exp_rho;
+
+  /*! Weighted mean pressure*/
+  float sum_wij_exp_P;
+
+  /*! Weighted mean temperature*/
+  float sum_wij_exp_T;
+
+  /*! Sum of W_ij for rho_new */
+  float sum_wij_exp;
+
+  /* sum w_ij*/
+  float sum_wij;
+
+  
+
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_PLANETARY_HYDRO_PART_H */
