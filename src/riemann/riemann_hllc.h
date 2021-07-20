@@ -32,6 +32,7 @@
 #include "minmax.h"
 #include "riemann_checks.h"
 #include "riemann_vacuum.h"
+#include "equation_of_state.h"
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     const float *WL, const float *WR, const float *n, const float *vij,
@@ -175,7 +176,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
 __attribute__((always_inline)) INLINE static void
 riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
                                     const float *n, const float *vij,
-                                    float *totflux) {
+                                    float *totflux, const float aL, const float aR) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_input(WL, WR, n, vij);
@@ -194,8 +195,6 @@ riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
   /* STEP 0: obtain velocity in interface frame */
   const float uL = WL[1] * n[0] + WL[2] * n[1] + WL[3] * n[2];
   const float uR = WR[1] * n[0] + WR[2] * n[1] + WR[3] * n[2];
-  const float aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
-  const float aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (riemann_is_vacuum(WL, WR, uL, uR, aL, aR)) {
