@@ -39,7 +39,7 @@
 #define sidm_props_default_max_iterations 30
 #define sidm_props_default_h_max FLT_MAX
 #define sidm_props_default_h_min_ratio 0.f
-#define sidm_props_default_h_sidm FLT_MAX
+#define sidm_props_default_h_sidm -1.f
 #define sidm_props_default_h_tolerance 1e-4
 #define sidm_props_default_volume_change 1.4f
 #define sidm_props_default_sigma 0
