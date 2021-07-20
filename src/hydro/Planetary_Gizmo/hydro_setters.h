@@ -19,6 +19,8 @@
 #ifndef SWIFT_PLANETARY_GIZMO_HYDRO_SETTERS_H
 #define SWIFT_PLANETARY_GIZMO_HYDRO_SETTERS_H
 
+#include "equation_of_state.h"
+
 /**
  * @brief Set the primitive variables for the given particle to the given
  * values.
@@ -312,45 +314,8 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_density(
  * @param p The particle
  * @param u The new internal energy
  */
-__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
-    struct part* restrict p, float u) {
 
-  /* conserved.energy is NOT the specific energy (u), but the total thermal
-     energy (u*m) */
-  p->conserved.energy = u * p->conserved.mass;
-#ifdef GIZMO_TOTAL_ENERGY
-  /* add the kinetic energy */
-  p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->fluid_v[0] +
-                          p->conserved.momentum[1] * p->fluid_v[1] +
-                          p->conserved.momentum[2] * p->fluid_v[2]);
-#endif
-  p->P = hydro_gamma_minus_one * p->rho * u;
-}
 
-/**
- * @brief Modifies the thermal state of a particle to the imposed entropy
- *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
- *
- * @param p The particle
- * @param S The new entropy
- */
-__attribute__((always_inline)) INLINE static void hydro_set_entropy(
-    struct part* restrict p, float S) {
-
-  p->conserved.energy = S * pow_gamma_minus_one(p->rho) *
-                        hydro_one_over_gamma_minus_one * p->conserved.mass;
-#ifdef GIZMO_TOTAL_ENERGY
-  /* add the kinetic energy */
-  p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->fluid_v[0] +
-                          p->conserved.momentum[1] * p->fluid_v[1] +
-                          p->conserved.momentum[2] * p->fluid_v[2]);
-#endif
-  p->P = S * pow_gamma(p->rho);
-}
 
 /**
  * @brief Overwrite the initial internal energy of a particle.

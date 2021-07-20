@@ -63,9 +63,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
  */
 __attribute__((always_inline)) INLINE static void hydro_compute_flux(
     const float* WL, const float* WR, const float* n_unit, const float* vLR,
-    const float Anorm, float* fluxes) {
+    const float Anorm, float* fluxes, float cL, float cR) {
 
-  riemann_solve_for_middle_state_flux(WL, WR, n_unit, vLR, fluxes);
+  riemann_solve_for_middle_state_flux(WL, WR, n_unit, vLR, fluxes, cL, cR);
 
   fluxes[1] *= Anorm;
   fluxes[2] *= Anorm;

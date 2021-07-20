@@ -237,9 +237,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* calculate the maximal signal velocity */
   float vmax;
+  float ci = 0;
+  float cj = 0;
   if (Wi[0] > 0.0f && Wj[0] > 0.0f) {
-    const float ci = gas_soundspeed_from_pressure(Wi[0], Wi[4], pi->mat_id);
-    const float cj = gas_soundspeed_from_pressure(Wj[0], Wj[4], pj->mat_id);
+    ci = gas_soundspeed_from_internal_energy(Wi[0], pi->conserved.energy / pi->conserved.mass, pi->mat_id);
+    cj = gas_soundspeed_from_internal_energy(Wj[0], pj->conserved.energy / pj->conserved.mass, pj->mat_id);
     vmax = ci + cj;
   } else {
     vmax = 0.0f;
@@ -397,7 +399,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * itself (see GIZMO) */
 
   float totflux[5];
-  hydro_compute_flux(Wi, Wj, n_unit, vij, Anorm, totflux);
+  hydro_compute_flux(Wi, Wj, n_unit, vij, Anorm, totflux, ci, cj);
 
   hydro_part_update_fluxes_left(pi, totflux, dx);
 

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PLANETARY_GIZMO_HYDRO_GETTERS_H
-#define SWIFT_PLANETARY_GIZMO_HYDRO_GETTERS_H
+#ifndef SWIFT_GIZMO_HYDRO_GETTERS_H
+#define SWIFT_GIZMO_HYDRO_GETTERS_H
 
 #include "cosmology.h"
 #include "equation_of_state.h"
@@ -116,7 +116,7 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy(const struct part* restrict p) {
 
   if (p->rho > 0.0f)
-    return gas_internal_energy_from_pressure(p->rho, p->P, p->mat_id);
+    return p->conserved.energy / p->conserved.mass;
   else
     return 0.;
 }
@@ -159,7 +159,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
     const struct part* restrict p) {
 
   if (p->rho > 0.0f) {
-    return gas_entropy_from_pressure(p->rho, p->P, p->mat_id);
+    return 0.;//gas_entropy_from_pressure(p->rho, p->P);
   } else {
     return 0.;
   }
@@ -205,7 +205,7 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_soundspeed(const struct part* restrict p) {
 
   if (p->rho > 0.0f)
-    return gas_soundspeed_from_pressure(p->rho, p->P, p->mat_id);
+    return gas_soundspeed_from_internal_energy(p->density.wcount, p->conserved.energy / p->conserved.mass, p->mat_id);
   else
     return 0.;
 }
@@ -330,4 +330,4 @@ hydro_part_geometry_well_behaved(const struct part* restrict p) {
   return p->geometry.wcorr > const_gizmo_min_wcorr;
 }
 
-#endif /* SWIFT_PLANETARY_GIZMO_HYDRO_GETTERS_H */
+#endif /* SWIFT_GIZMO_HYDRO_GETTERS_H */

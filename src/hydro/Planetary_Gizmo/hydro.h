@@ -38,6 +38,7 @@
 #include "hydro_setters.h"
 #include "hydro_space.h"
 #include "hydro_velocities.h"
+#include "equation_of_state.h"
 
 #include <float.h>
 
@@ -77,7 +78,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   vrel[2] = W[3] - xp->v_full[2];
   float vmax =
       sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
-      sqrtf(hydro_gamma * W[4] / W[0]);
+      gas_soundspeed_from_internal_energy(W[0], p->conserved.energy / p->conserved.mass, p->mat_id);
   vmax = max(vmax, p->timestepvars.vmax);
 
   const float psize = cosmo->a * cosmo->a *
@@ -343,7 +344,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* energy contains the total thermal energy, we want the specific energy.
      this is why we divide by the volume, and not by the density */
-  W[4] = hydro_gamma_minus_one * Q[4] * volume_inv;
+  const float m_inv = 1.0f / Q[0];
+  W[4] = gas_pressure_from_internal_energy(W[0], Q[4] * m_inv, p->mat_id);  
 #endif
 
   /* sanity checks */
@@ -591,7 +593,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 #else
     const float u = (p->conserved.energy + flux[4] * dt_therm) * m_inv;
 #endif
-    W[4] = hydro_gamma_minus_one * u * W[0];
+    W[4] = gas_pressure_from_internal_energy(W[0], u, p->mat_id);
 #endif
   }
 
