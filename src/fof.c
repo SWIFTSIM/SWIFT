@@ -292,12 +292,13 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     /* Calculate the mean inter-particle separation as if we were in
        a scenario where the entire box was filled with high-resolution
          particles */
-    const double Omega_m = s->e->cosmology->Omega_m;
+    const double Omega_cdm = s->e->cosmology->Omega_cdm;
     const double Omega_b = s->e->cosmology->Omega_b;
+    const double Omega_m = Omega_cdm + Omega_b;
     const double critical_density_0 = s->e->cosmology->critical_density_0;
     double mean_matter_density;
     if (s->with_hydro)
-      mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
+      mean_matter_density = Omega_cdm * critical_density_0;
     else
       mean_matter_density = Omega_m * critical_density_0;
 
@@ -2250,10 +2251,17 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
     if (rank == my_rank) {
 
+      const char *mode;
       if (my_rank == 0)
-        file = fopen(out_file_name, "w");
+        mode = "w";
       else
-        file = fopen(out_file_name, "a");
+        mode = "a";
+
+      file = fopen(out_file_name, mode);
+
+      if (file == NULL)
+        error("Could not open the file '%s' with mode '%s'.", out_file_name,
+              mode);
 
       if (my_rank == 0) {
         fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %24s %24s \n",

@@ -50,6 +50,9 @@
  */
 void read_cooling_header(struct cooling_function_data *cooling) {
 
+  /* Abort early if we were not using the cooling module */
+  if (strcmp(cooling->cooling_table_path, "") == 0) return;
+
 #ifdef HAVE_HDF5
 
   hid_t dataset;
@@ -235,6 +238,9 @@ void read_cooling_header(struct cooling_function_data *cooling) {
  * @param cooling #cooling_function_data structure
  */
 void read_cooling_tables(struct cooling_function_data *restrict cooling) {
+
+  /* Abort early if we were not using the cooling module */
+  if (strcmp(cooling->cooling_table_path, "") == 0) return;
 
 #ifdef HAVE_HDF5
   hid_t dataset;

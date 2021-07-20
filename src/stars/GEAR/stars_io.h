@@ -235,6 +235,7 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
 #if defined(HAVE_HDF5)
 INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
+                                              hid_t h_grp_columns,
                                               const struct stars_props *sp) {
 
   io_write_attribute_s(h_grpstars, "Kernel function", kernel_name);
@@ -252,6 +253,15 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
                        sp->max_smoothing_iterations);
 }
 #endif
+
+/**
+ * @brief Free the memory allocated for the stellar properties.
+ *
+ * Nothing to do here.
+ *
+ * @param sp The #stars_props structure.
+ */
+INLINE static void stars_props_clean(struct stars_props *sp) {}
 
 /**
  * @brief Write a #stars_props struct to the given FILE as a stream of bytes.

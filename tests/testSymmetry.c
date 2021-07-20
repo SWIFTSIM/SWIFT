@@ -66,7 +66,7 @@ void test(void) {
   pi.time_bin = 1;
   pj.time_bin = 1;
 
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(SHADOWFAX_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
      not like negative densities and pressures */
   pi.primitives.rho = random_uniform(0.1f, 1.0f);
@@ -111,7 +111,6 @@ void test(void) {
   pj.primitives.gradients.P[1] = 0.0f;
   pj.primitives.gradients.P[2] = 0.0f;
 
-#ifdef SHADOWFAX_SPH
   /* set time step to reasonable value */
   pi.force.dt = 0.001;
   pj.force.dt = 0.001;
@@ -120,6 +119,50 @@ void test(void) {
   voronoi_cell_init(&pj.cell, pj.x, box_anchor, box_side);
 #endif
 
+#if defined(GIZMO_MFV_SPH)
+  /* Give the primitive variables sensible values, since the Riemann solver does
+     not like negative densities and pressures */
+  pi.rho = random_uniform(0.1f, 1.0f);
+  pi.v[0] = random_uniform(-10.0f, 10.0f);
+  pi.v[1] = random_uniform(-10.0f, 10.0f);
+  pi.v[2] = random_uniform(-10.0f, 10.0f);
+  pi.P = random_uniform(0.1f, 1.0f);
+  pj.rho = random_uniform(0.1f, 1.0f);
+  pj.v[0] = random_uniform(-10.0f, 10.0f);
+  pj.v[1] = random_uniform(-10.0f, 10.0f);
+  pj.v[2] = random_uniform(-10.0f, 10.0f);
+  pj.P = random_uniform(0.1f, 1.0f);
+  /* make gradients zero */
+  pi.gradients.rho[0] = 0.0f;
+  pi.gradients.rho[1] = 0.0f;
+  pi.gradients.rho[2] = 0.0f;
+  pi.gradients.v[0][0] = 0.0f;
+  pi.gradients.v[0][1] = 0.0f;
+  pi.gradients.v[0][2] = 0.0f;
+  pi.gradients.v[1][0] = 0.0f;
+  pi.gradients.v[1][1] = 0.0f;
+  pi.gradients.v[1][2] = 0.0f;
+  pi.gradients.v[2][0] = 0.0f;
+  pi.gradients.v[2][1] = 0.0f;
+  pi.gradients.v[2][2] = 0.0f;
+  pi.gradients.P[0] = 0.0f;
+  pi.gradients.P[1] = 0.0f;
+  pi.gradients.P[2] = 0.0f;
+  pj.gradients.rho[0] = 0.0f;
+  pj.gradients.rho[1] = 0.0f;
+  pj.gradients.rho[2] = 0.0f;
+  pj.gradients.v[0][0] = 0.0f;
+  pj.gradients.v[0][1] = 0.0f;
+  pj.gradients.v[0][2] = 0.0f;
+  pj.gradients.v[1][0] = 0.0f;
+  pj.gradients.v[1][1] = 0.0f;
+  pj.gradients.v[1][2] = 0.0f;
+  pj.gradients.v[2][0] = 0.0f;
+  pj.gradients.v[2][1] = 0.0f;
+  pj.gradients.v[2][2] = 0.0f;
+  pj.gradients.P[0] = 0.0f;
+  pj.gradients.P[1] = 0.0f;
+  pj.gradients.P[2] = 0.0f;
 #endif
 
   /* Make an xpart companion */
@@ -245,33 +288,49 @@ void test(void) {
   i_not_ok = 0;
   j_not_ok = 0;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
-    float aa = *(((float *)&pi) + i);
-    float bb = *(((float *)&pi2) + i);
-    float cc = *(((float *)&pj) + i);
-    float dd = *(((float *)&pj2) + i);
 
-    int a_is_b;
-    if ((aa + bb)) {
-      a_is_b = (fabs((aa - bb) / (aa + bb)) > 1.e-4);
-    } else {
-      a_is_b = !(aa == 0.0f);
-    }
-    int c_is_d;
-    if ((cc + dd)) {
-      c_is_d = (fabs((cc - dd) / (cc + dd)) > 1.e-4);
-    } else {
-      c_is_d = !(cc == 0.0f);
+    /* try this first to avoid dealing with NaNs and infinities */
+    int check_i = memcmp((float *)&pi + i, (float *)&pi2 + i, sizeof(float));
+    int check_j = memcmp((float *)&pj + i, (float *)&pj2 + i, sizeof(float));
+
+    if (!check_i && !check_j) continue;
+
+    if (check_i) {
+      /* allow some wiggle room for roundoff errors */
+      float aa = *(((float *)&pi) + i);
+      float bb = *(((float *)&pi2) + i);
+
+      int a_is_not_b;
+      if ((aa + bb)) {
+        a_is_not_b = (fabs((aa - bb) / (aa + bb)) > 1.e-4);
+      } else {
+        a_is_not_b = !(aa == 0.0f);
+      }
+
+      if (a_is_not_b) {
+        message("%.8e, %.8e, %lu", aa, bb, i);
+      }
+
+      i_not_ok |= a_is_not_b;
     }
 
-    if (a_is_b) {
-      message("%.8e, %.8e, %lu", aa, bb, i);
-    }
-    if (c_is_d) {
-      message("%.8e, %.8e, %lu", cc, dd, i);
-    }
+    if (check_j) {
+      /* allow some wiggle room for roundoff errors */
+      float cc = *(((float *)&pj) + i);
+      float dd = *(((float *)&pj2) + i);
+      int c_is_not_d;
+      if ((cc + dd)) {
+        c_is_not_d = (fabs((cc - dd) / (cc + dd)) > 1.e-4);
+      } else {
+        c_is_not_d = !(cc == 0.0f);
+      }
 
-    i_not_ok |= a_is_b;
-    j_not_ok |= c_is_d;
+      if (c_is_not_d) {
+        message("%.8e, %.8e, %lu", cc, dd, i);
+      }
+
+      j_not_ok |= c_is_not_d;
+    }
   }
 #else
   i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));

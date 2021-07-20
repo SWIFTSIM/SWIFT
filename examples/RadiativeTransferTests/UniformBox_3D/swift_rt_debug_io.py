@@ -25,6 +25,8 @@ class RTGasData(object):
         self.RTStarIact = None
         self.RTCallsIactGradient = None
         self.RTCallsIactTransport = None
+        self.RTCallsIactGradientInteraction = None
+        self.RTCallsIactTransportInteraction = None
 
         self.InjectionDone = None
         self.ThermochemistryDone = None
@@ -135,14 +137,16 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         scheme = str(F["SubgridScheme"].attrs["RT Scheme"])
     except KeyError:
         print(
-            "These tests only work for the debug RT scheme. Compile swift --with-rt=debug"
+            "These tests only work for the debug RT scheme.",
+            "Compile swift --with-rt=debug",
         )
         F.close()
         quit()
 
-    if "debug" not in scheme:
+    if "debug" not in scheme and "GEAR" not in scheme:
         raise ValueError(
-            "These tests only work for the debug RT scheme. Compile swift --with-rt=debug"
+            "These tests only work for the debug RT scheme.",
+            "Compile swift --with-rt=debug",
         )
 
     if "hydro controlled" in scheme:
@@ -172,15 +176,21 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         newsnap.gas.coords = Gas["Coordinates"][:][inds]
         newsnap.gas.h = Gas["SmoothingLengths"][:][inds]
 
-        newsnap.gas.RTStarIact = Gas["RTStarIact"][:][inds]
-        newsnap.gas.RTCallsIactGradient = Gas["RTCallsIactGradient"][:][inds]
-        newsnap.gas.RTCallsIactTransport = Gas["RTCallsIactTransport"][:][inds]
-        newsnap.gas.InjectionDone = Gas["RTInjectionDone"][:][inds]
-        newsnap.gas.GradientsDone = Gas["RTGradientsDone"][:][inds]
-        newsnap.gas.TransportDone = Gas["RTTransportDone"][:][inds]
-        newsnap.gas.ThermochemistryDone = Gas["RTThermochemistryDone"][:][inds]
+        newsnap.gas.RTStarIact = Gas["RTDebugStarIact"][:][inds]
+        newsnap.gas.RTCallsIactGradient = Gas["RTDebugCallsIactGradient"][:][inds]
+        newsnap.gas.RTCallsIactTransport = Gas["RTDebugCallsIactTransport"][:][inds]
+        newsnap.gas.RTCallsIactGradientInteraction = Gas[
+            "RTDebugCallsIactGradientInteractions"
+        ][:][inds]
+        newsnap.gas.RTCallsIactTransportInteraction = Gas[
+            "RTDebugCallsIactTransportInteractions"
+        ][:][inds]
+        newsnap.gas.InjectionDone = Gas["RTDebugInjectionDone"][:][inds]
+        newsnap.gas.GradientsDone = Gas["RTDebugGradientsDone"][:][inds]
+        newsnap.gas.TransportDone = Gas["RTDebugTransportDone"][:][inds]
+        newsnap.gas.ThermochemistryDone = Gas["RTDebugThermochemistryDone"][:][inds]
 
-        newsnap.gas.RadiationAbsorbedTot = Gas["RTRadAbsorbedTot"][:][inds]
+        newsnap.gas.RadiationAbsorbedTot = Gas["RTDebugRadAbsorbedTot"][:][inds]
 
         Stars = F["PartType4"]
         ids = Stars["ParticleIDs"][:]
@@ -190,10 +200,10 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         newsnap.stars.coords = Stars["Coordinates"][:][inds]
         newsnap.stars.h = Stars["SmoothingLengths"][:][inds]
 
-        newsnap.stars.RTHydroIact = Stars["RTHydroIact"][:][inds]
-        newsnap.stars.EmissionRateSet = Stars["RTEmissionRateSet"][:][inds]
+        newsnap.stars.RTHydroIact = Stars["RTDebugHydroIact"][:][inds]
+        newsnap.stars.EmissionRateSet = Stars["RTDebugEmissionRateSet"][:][inds]
 
-        newsnap.stars.RadiationEmittedTot = Stars["RTRadEmittedTot"][:][inds]
+        newsnap.stars.RadiationEmittedTot = Stars["RTDebugRadEmittedTot"][:][inds]
 
         snapdata.append(newsnap)
 

@@ -80,6 +80,8 @@ const char *taskID_names[task_type_count] = {
     "timestep_dark_matter_sync",
     "send",
     "recv",
+    "pack",
+    "unpack",
     "grav_long_range",
     "grav_mm",
     "grav_down_in",
@@ -179,7 +181,7 @@ const char *task_category_names[task_category_count] = {
     "black holes", "cooling", "star formation",
     "limiter",     "sync",    "time integration",
     "mpi",         "fof",     "others",
-    "neutrino",    "sink",    "RT"};
+    "neutrino",    "sink",    "RT",   "CSDS"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -1263,6 +1265,23 @@ int task_lock(struct task *t) {
 }
 
 /**
+ * @brief Returns a pointer to the unique task unlocked by this task.
+ *
+ * The task MUST have only dependence!
+ *
+ * @param The #task.
+ */
+struct task *task_get_unique_dependent(const struct task *t) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->nr_unlock_tasks != 1)
+    error("Task is unlocking more than one dependence!");
+#endif
+
+  return t->unlock_tasks[0];
+}
+
+/**
  * @brief Print basic information about a task.
  *
  * @param t The #task.
@@ -1804,6 +1823,9 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_cooling:
       return task_category_cooling;
 
+    case task_type_csds:
+      return task_category_csds;
+
     case task_type_star_formation:
     case task_type_star_formation_sink:
       return task_category_star_formation;
@@ -1835,6 +1857,10 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_timestep_dark_matter_sync:
       return task_category_dark_matter;
           
+    case task_type_pack:
+    case task_type_unpack:
+      return task_category_pack;
+
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:

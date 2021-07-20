@@ -114,7 +114,8 @@ void prepare_force(struct part *parts, size_t count) {
 #if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) &&            \
     !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&              \
     !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) && !defined(PHANTOM_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(PHANTOM_SPH) && !defined(GASOLINE_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -142,7 +143,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
           hydro_get_comoving_density(p),
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) || \
-    defined(SHADOWFAX_SPH) || defined(PHANTOM_SPH)
+    defined(SHADOWFAX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
           0.f,
 #else
           p->density.div_v,
@@ -157,7 +158,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->force.v_sig, 0.f, p->force.u_dt
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
           p->force.v_sig, 0.f, p->u_dt
 #else
           0.f, 0.f, 0.f
@@ -562,7 +563,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
       rhoiq[i] = pi_vec.rho;
       grad_hiq[i] = pi_vec.force.f;
 #if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(GASOLINE_SPH)
       pOrhoi2q[i] = pi_vec.force.P_over_rho2;
 #endif
       balsaraiq[i] = pi_vec.force.balsara;
@@ -576,7 +578,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
       rhojq[i] = pj_vec[i].rho;
       grad_hjq[i] = pj_vec[i].force.f;
 #if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(GASOLINE_SPH)
       pOrhoj2q[i] = pj_vec[i].force.P_over_rho2;
 #endif
       balsarajq[i] = pj_vec[i].force.balsara;
@@ -659,7 +662,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
     VEC_HADD(h_dtSum, piq[0]->force.h_dt);
     VEC_HMAX(v_sigSum, piq[0]->force.v_sig);
 #if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
-    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH)
+    !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
+    !defined(GASOLINE_SPH)
     VEC_HADD(entropy_dtSum, piq[0]->entropy_dt);
 #endif
 

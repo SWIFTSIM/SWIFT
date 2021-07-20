@@ -113,7 +113,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
@@ -401,9 +401,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2], main_cell->hydro.parts[pid].h,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||   \
-    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
-    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
+    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) ||            \
+    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(GASOLINE_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
@@ -426,7 +427,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].force.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
-#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || \
+    defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else

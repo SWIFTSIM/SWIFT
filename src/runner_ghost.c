@@ -86,6 +86,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   const int with_rt = (e->policy & engine_policy_rt);
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
+  const struct rt_props *rt_props = e->rt_props;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
@@ -258,7 +259,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               feedback_reset_feedback(sp, feedback_props);
             }
 
-            if (with_rt) {
+            if (with_rt && !rt_props->hydro_controlled_injection) {
 
               rt_reset_spart(sp);
 
@@ -283,7 +284,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                   stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
 
               rt_compute_stellar_emission_rate(sp, e->time,
-                                               star_age_end_of_step, dt_star);
+                                               star_age_end_of_step, dt_star,
+                                               rt_props, phys_const, us);
             }
 
             /* Ok, we are done with this particle */
@@ -428,7 +430,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           feedback_reset_feedback(sp, feedback_props);
         }
 
-        if (with_rt) {
+        if (with_rt && !rt_props->hydro_controlled_injection) {
 
           rt_reset_spart(sp);
 
@@ -452,7 +454,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
 
           rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
-                                           dt_star);
+                                           dt_star, rt_props, phys_const, us);
         }
       }
 
@@ -1268,7 +1270,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
 
 #ifdef SWIFT_DEBUG_CHECKS
-          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
+          if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
+              (h_old < 0.999f * hydro_props->h_max))
             error(
                 "Smoothing length correction not going in the right direction");
 #endif
@@ -1585,7 +1588,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
             /* Skip inactive parts */
             if (!part_is_active(p, e)) continue;
 
-            rt_finalise_gradient(p);
+            rt_end_gradient(p);
         }
     }
 

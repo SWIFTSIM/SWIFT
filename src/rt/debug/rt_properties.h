@@ -30,7 +30,7 @@
 struct rt_props {
   /* Do extended tests where we assume that all parts
    * have spart neighbours? */
-  int do_all_parts_have_stars_checks;
+  int debug_do_all_parts_have_stars_checks;
 
   /* Are we running with hydro or star controlled injection?
    * This is added to avoid #ifdef macros as far as possible */
@@ -38,19 +38,19 @@ struct rt_props {
 
   /* radiation emitted by stars this step. This is not really a property,
    * but a placeholder to sum up a global variable */
-  int radiation_emitted_this_step;
+  int debug_radiation_emitted_this_step;
 
   /* total radiation emitted by stars. This is not really a property,
    * but a placeholder to sum up a global variable */
-  unsigned long long radiation_emitted_tot;
+  unsigned long long debug_radiation_emitted_tot;
 
   /* radiation absorbed by gas this step. This is not really a property,
    * but a placeholder to sum up a global variable */
-  int radiation_absorbed_this_step;
+  int debug_radiation_absorbed_this_step;
 
   /* total radiation absorbed by gas. This is not really a property,
    * but a placeholder to sum up a global variable */
-  unsigned long long radiation_absorbed_tot;
+  unsigned long long debug_radiation_absorbed_tot;
 };
 
 /**
@@ -62,14 +62,12 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
     const struct rt_props* rtp) {
 
   /* Only the master print */
-  if (engine_rank != 0) {
-    return;
-  }
+  if (engine_rank != 0) return;
 
   message("Radiative transfer scheme: '%s'", RT_IMPLEMENTATION);
 
   /* Print the RT properties */
-  if (rtp->do_all_parts_have_stars_checks)
+  if (rtp->debug_do_all_parts_have_stars_checks)
     message("Doing extra checks assuming all parts have spart neighbours");
   else
     message("Skipping extra checks assuming all parts have spart neighbours");
@@ -79,12 +77,17 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
  * @brief Initialize the global properties of the RT scheme.
  *
  * @param rtp The #rt_props.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param us The internal unit system.
  * @param params The parsed parameters.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void rt_props_init(
-    struct rt_props* rtp, struct swift_params* params) {
+    struct rt_props* rtp, const struct phys_const* phys_const,
+    const struct unit_system* us, struct swift_params* params,
+    struct cosmology* cosmo) {
 
-  rtp->do_all_parts_have_stars_checks =
+  rtp->debug_do_all_parts_have_stars_checks =
       parser_get_opt_param_int(params, "DebugRT:all_parts_have_stars", 0);
 
 #ifdef RT_HYDRO_CONTROLLED_INJECTION
@@ -92,6 +95,9 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 #else
   rtp->hydro_controlled_injection = 0;
 #endif
+
+  rtp->debug_radiation_emitted_tot = 0ULL;
+  rtp->debug_radiation_absorbed_tot = 0ULL;
 
   /* After initialisation, print params to screen */
   rt_props_print(rtp);

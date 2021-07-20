@@ -1,0 +1,12 @@
+This test case contains only gas and stars in a periodic box. The contents have
+no physical meaning, and are background particles on a regular grid overlapping
+a randomly sampled sine wave particle distribution. The purpose of this test are
+as follows:
+
+- Neither the stars nor the gas particles are aupdated all at the same time. 
+  This test has commonly particles being updated at their individual time step.
+- The stars always have neighbours, so that's one less thing to thing about when
+  testing your schemes.
+- Contrary to ../UniformBox_3D, the test runs on gadgetoid cosmological internal
+  units, not on cgs.
+

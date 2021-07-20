@@ -68,6 +68,11 @@ struct collectgroup1 {
 
   /* Global runtime of application in hours. */
   float runtime;
+
+#ifdef WITH_CSDS
+  /* Filesize used by the CSDS (does not correspond to the allocated one) */
+  float csds_file_size_gb;
+#endif
 };
 
 void collectgroup_init(void);
@@ -85,8 +90,13 @@ void collectgroup1_init(
     integertime_t ti_black_holes_beg_max, integertime_t ti_dark_matter_end_min,
     integertime_t ti_dark_matter_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
+<<<<<<< HEAD
     const struct star_formation_history sfh,
     struct sidm_history dm, float runtime);
+=======
+    const struct star_formation_history sfh, float runtime,
+    float csds_file_size_gb);
+>>>>>>> master
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);

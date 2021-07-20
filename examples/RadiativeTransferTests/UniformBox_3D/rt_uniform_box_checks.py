@@ -6,9 +6,9 @@
 # output file is generated.
 #
 # Usage:
-#   ./rt_checks_uniform.py
+#   ./rt_uniform_box_checks.py
 # or
-#   ./rt_checks_uniform.py snapshot_basename
+#   ./rt_uniform_box_checks.py snapshot_basename
 #
 # where 'snapshot_basename' is the base name of the snapshots that you
 # want to work with. (Same argument as Snapshots:basename in the .yml
@@ -30,8 +30,8 @@ skip_snap_zero = True  # skip snap_0000.hdf5
 skip_last_snap = True  # skip snap_0max.hdf5
 skip_coords = True  # skip coordinates check
 skip_sml = True  # skip smoothing lengths check
-print_diffs = True  # print differences you find
-break_on_diff = True  # quit when you find a difference
+print_diffs = False  # print differences you find
+break_on_diff = False  # quit when you find a difference
 
 # tolerance for a float to be equal
 float_comparison_tolerance = 1e-5
@@ -59,7 +59,7 @@ def check_all_hydro_is_equal(snapdata):
         # Smoothing length ratios
         sml_diff = np.abs(1.0 - ref.gas.h / compare.gas.h)
         # are smoothing lengths within tolerance?
-        sml_within_tolerance = sml_diff <= float_comparison_tolerance
+        sml_outside_tolerance = sml_diff > float_comparison_tolerance
 
         # Coordinates
         if not skip_coords:
@@ -135,12 +135,34 @@ def check_all_hydro_is_equal(snapdata):
         if fishy.any():
             print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
             account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_within_tolerance)
+                np.logical_and(fishy, sml_outside_tolerance)
             )
             print(
-                "--- Calls to iact gradient: count differ: {0:8d} / {1:8d}; After removing ones with acceptable h differences: {2:8d}".format(
-                    np.count_nonzero(fishy), npart, account_for_sml_diff
-                )
+                "--- Calls to iact gradient loop: count differ: {0:8d} / {1:8d};".format(
+                    np.count_nonzero(fishy), npart
+                ),
+                "After removing ones with acceptable h differences: {0:8d}".format(
+                    account_for_sml_diff
+                ),
+            )
+
+        # Gradient Loop Interaction Calls
+        fishy = (
+            ref.gas.RTCallsIactGradientInteraction
+            != compare.gas.RTCallsIactGradientInteraction
+        )
+        if fishy.any():
+            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
+            account_for_sml_diff = np.count_nonzero(
+                np.logical_and(fishy, sml_outside_tolerance)
+            )
+            print(
+                "--- Calls to iact gradient: count differ: {0:8d} / {1:8d};".format(
+                    np.count_nonzero(fishy), npart
+                ),
+                "After removing ones with acceptable h differences: {0:8d}".format(
+                    account_for_sml_diff
+                ),
             )
 
             if account_for_sml_diff > 0:
@@ -155,7 +177,7 @@ def check_all_hydro_is_equal(snapdata):
                                 ref.gas.IDs[i],
                                 ref.gas.RTCallsIactGradient[i],
                                 compare.gas.RTCallsIactGradient[i],
-                                sml_within_tolerance[i],
+                                sml_outside_tolerance[i],
                                 sml_diff[i],
                             )
 
@@ -167,12 +189,34 @@ def check_all_hydro_is_equal(snapdata):
         if fishy.any():
             print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
             account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_within_tolerance)
+                np.logical_and(fishy, sml_outside_tolerance)
             )
             print(
-                "--- Calls to iact transport: count differ: {0:8d} / {1:8d}; After removing ones with acceptable h differences: {2:8d}".format(
-                    np.count_nonzero(fishy), npart, account_for_sml_diff
-                )
+                "--- Calls to iact transport: count differ: {0:8d} / {1:8d}; ".format(
+                    np.count_nonzero(fishy), npart
+                ),
+                "After removing ones with acceptable h differences: {0:8d}".format(
+                    account_for_sml_diff
+                ),
+            )
+
+        # Transport Loop Interaction Calls
+        fishy = (
+            ref.gas.RTCallsIactTransportInteraction
+            != compare.gas.RTCallsIactTransportInteraction
+        )
+        if fishy.any():
+            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
+            account_for_sml_diff = np.count_nonzero(
+                np.logical_and(fishy, sml_outside_tolerance)
+            )
+            print(
+                "--- Calls to iact transport: count differ: {0:8d} / {1:8d}; ".format(
+                    np.count_nonzero(fishy), npart
+                ),
+                "After removing ones with acceptable h differences: {0:8d}".format(
+                    account_for_sml_diff
+                ),
             )
 
             if account_for_sml_diff > 0:
@@ -187,7 +231,7 @@ def check_all_hydro_is_equal(snapdata):
                                 ref.gas.IDs[i],
                                 ref.gas.RTCallsIactTransport[i],
                                 compare.gas.RTCallsIactTransport[i],
-                                sml_within_tolerance[i],
+                                sml_outside_tolerance[i],
                                 sml_diff[i],
                             )
 

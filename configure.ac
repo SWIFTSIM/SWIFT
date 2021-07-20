@@ -102,14 +102,10 @@ if test "$with_csds" = "yes"; then
       AC_MSG_ERROR([The CSDS requires that 'long long int' has size 8 bytes])
    fi
 
-   # Ensure that everything is alright for the CSDS
-   if test ! -f csds/Makefile.in; then
-      AC_MSG_ERROR([It seems that the submodule "CSDS" was not initialized, please rerun autogen.sh and reconfigure.])
-   fi
+   AC_CONFIG_SUBDIRS([csds])
 
 fi
 AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
-AM_COND_IF([HAVECSDS], [AC_CONFIG_FILES([csds/Makefile csds/src/Makefile csds/tests/Makefile])])
 
 
 
@@ -1176,45 +1172,6 @@ AC_ARG_WITH([random-seed],
 )
 AC_DEFINE_UNQUOTED([SWIFT_RANDOM_SEED_XOR], [$with_random_seed],[Value of the random seed.])
 
-# Check for python.
-have_python="no"
-AC_ARG_WITH([python],
-    [AS_HELP_STRING([--with-python=PATH],
-       [root directory where python is installed @<:@yes/no@:>@]
-    )],
-    [with_python="$withval"],
-    [with_python="no"]
-)
-if test "x$with_python" != "xno"; then
-   if test "$with_python" == ""; then
-      # use linux default python
-      with_python="/usr/"
-   fi
-   AM_PATH_PYTHON([3], [], [AC_MSG_ERROR(python not found)])   
-   AC_ARG_VAR([PYTHON_LIBS], [Linking flags for python, bypassing python-config])
-   AC_ARG_VAR([PYTHON_INCS], [Include flags for python, bypassing python-config])
-   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
-   AS_IF([test -z "$PYTHON_INCS"], [
-      AS_IF([test -z "$PYTHON_CONFIG"], [
-      	AC_PATH_PROGS([PYTHON_CONFIG],
-	          [python$PYTHON_VERSION-config python-config],
-                  [no],
-                  [`dirname $PYTHON`])
-    	AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON.])])
-      ])
-      AC_MSG_CHECKING([python include flags])
-      PYTHON_INCS=`$PYTHON_CONFIG --includes`
-      PYTHON_LIBS=`$PYTHON_CONFIG --ldflags`
-      AC_MSG_RESULT([$PYTHON_INCS])
-      AC_MSG_RESULT([$PYTHON_LIBS])
-  ])
-  have_python="yes"
-  AC_DEFINE([HAVE_PYTHON],1,[Python appears to be present.])
-fi
-AC_SUBST([PYTHON_INCS])
-AC_SUBST([PYTHON_LIBS])
-AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
-
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -1605,7 +1562,7 @@ case "$with_subgrid" in
 	with_subgrid_chemistry=QLA
 	with_subgrid_tracers=none
 	with_subgrid_entropy_floor=QLA
-	with_subgrid_stars=none
+	with_subgrid_stars=basic
 	with_subgrid_star_formation=QLA
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
@@ -1706,7 +1663,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, sphenix, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -1748,6 +1705,9 @@ case "$with_hydro" in
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
+   ;;
+   gasoline)
+      AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
    ;;
    anarchy-du)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
@@ -2447,7 +2407,9 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 #  Radiative transfer scheme
 AC_ARG_WITH([rt],
    [AS_HELP_STRING([--with-rt=<scheme>],
-      [Radiative transfer scheme to use @<:@none, M1closure, debug default: none@:>@. This is still work in progress, currently no scheme works.]
+      [Radiative transfer scheme to use @<:@none, GEAR_*, debug default: none@:>@. 
+      This is still work in progress, currently no scheme works. 
+      For GEAR, you need to provide the number of photon groups (e.g. GEAR_4)]
    )],
    [with_rt="$withval"],
    [with_rt="none"]
@@ -2457,16 +2419,38 @@ case "$with_rt" in
    none)
       AC_DEFINE([RT_NONE], [1], [No radiative transfer scheme])
    ;;
-   M1closure)
-      AC_DEFINE([RT_M1], [1], [M1 closure scheme])
+   GEAR_*)
+      AC_DEFINE([RT_GEAR], [1], [GEAR M1 closure scheme])
+      number_group=${with_rt:5}
+      AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
+
+      if test "$number_group" == 0; then
+          AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
+      fi
+      if ! test $number_group -eq $number_group; then
+          # abuse -eq to check whether $number_group is an integer. -eq
+          # only works with those.
+          AC_MSG_ERROR([GEAR-RT: Cannot work with non-integer photon groups])
+      fi
+
+      if test "$enable_debugging_checks" = "yes"; then
+          AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
+      fi
+
+      if test "$with_hydro" != "gizmo-mfv"; then
+          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro])
+      fi
+
    ;;
    debug)
       AC_DEFINE([RT_DEBUG], [1], [debugging scheme])
+      AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
    ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])
    ;;
 esac
+
 
 AC_ARG_ENABLE([rt-hydro-controlled-injection],
     [AS_HELP_STRING([--enable-rt-hydro-controlled-injection],
@@ -2482,7 +2466,8 @@ AC_ARG_ENABLE([rt-hydro-controlled-injection],
 rt_extra_msg="" # extra message for ./configure printout
 if test "$with_hydro_controlled_injection" = "yes"; then
     rt_extra_msg=", hydro controlled injection"
-    AC_DEFINE([RT_HYDRO_CONTROLLED_INJECTION], 1, [Enable hydro controlled radiative transfer injection scheme])
+    AC_DEFINE([RT_HYDRO_CONTROLLED_INJECTION], 1, 
+        [Enable hydro controlled radiative transfer injection scheme])
 fi
 
 
@@ -2642,6 +2627,5 @@ AC_MSG_RESULT([
    Planetary fixed entropy     : $planetary_fixed_entropy
 
    Continuous Sim. Data Stream : $with_csds
-   Python enabled              : $have_python
 
  ------------------------])

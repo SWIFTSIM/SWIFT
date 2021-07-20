@@ -16,18 +16,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_STRUCT_M1CLOSURE_H
-#define SWIFT_RT_STRUCT_M1CLOSURE_H
+#ifndef SWIFT_RT_THERMOCHEMISTRY_GEAR_H
+#define SWIFT_RT_THERMOCHEMISTRY_GEAR_H
 
 /**
- * @file src/rt/M1closure/rt_struct.h
- * @brief Main header file for no radiative transfer struct.
+ * @file src/rt/GEAR/rt_thermochemistry.h
+ * @brief Main header file for the GEAR M1 closure radiative transfer scheme
+ * thermochemistry related functions.
  */
 
-/* Additional RT data in hydro particle struct */
-struct rt_part_data {};
+/**
+ * @brief Main function for the thermochemistry step.
+ *
+ * @param p Particle to work on.
+ */
 
-/* Additional RT data in star particle struct */
-struct rt_spart_data {};
+__attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
+    struct part *restrict p) {
 
-#endif /* SWIFT_RT_STRUCT_M1CLOSURE_H */
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (!p->rt_data.debug_injection_done)
+    error("Trying to do thermochemistry when injection step hasn't been done");
+  if (!p->rt_data.debug_gradients_done)
+    error("Trying to do thermochemistry when gradient step hasn't been done");
+  if (!p->rt_data.debug_transport_done)
+    error("Trying to do thermochemistry when transport step hasn't been done");
+
+  p->rt_data.debug_thermochem_done += 1;
+#endif
+}
+
+#endif /* SWIFT_RT_THERMOCHEMISTRY_DEBUG_H */

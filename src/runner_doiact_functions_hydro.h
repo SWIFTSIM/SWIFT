@@ -75,6 +75,11 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+    rt_debugging_count_gradient_call(pi);
+#endif
+
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
@@ -105,6 +110,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+      rt_debugging_count_gradient_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -204,6 +213,11 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+    rt_debugging_count_transport_call(pi);
+#endif
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -231,6 +245,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+      rt_debugging_count_transport_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -332,6 +350,11 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+    rt_debugging_count_gradient_call(pi);
+#endif
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -362,6 +385,10 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       const int doi = pi_active && (r2 < hig2);
       const int doj = pj_active && (r2 < hjg2);
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+      rt_debugging_count_gradient_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -460,6 +487,11 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+    rt_debugging_count_transport_call(pi);
+#endif
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -490,6 +522,10 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       const int doi = pi_active && ((r2 < hig2) || (r2 < hjg2));
       const int doj = pj_active && ((r2 < hig2) || (r2 < hjg2));
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+      rt_debugging_count_transport_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -1060,6 +1096,11 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       /* Skip inactive particles */
       if (!part_is_active(pi, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+      rt_debugging_count_gradient_call(pi);
+#endif
+
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
@@ -1088,6 +1129,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+        rt_debugging_count_gradient_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1154,6 +1199,11 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       /* Skip inactive particles */
       if (!part_is_active(pj, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+      rt_debugging_count_gradient_call(pj);
+#endif
+
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
       if (dj - rshift > di_max) continue;
@@ -1182,6 +1232,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+        rt_debugging_count_gradient_call(pi);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1453,6 +1507,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+    rt_debugging_count_transport_call(pi);
+#endif
+
     const float hi = pi->h;
 
     /* Is there anything we need to interact with (for this specific hi) ? */
@@ -1494,6 +1553,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+        rt_debugging_count_transport_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1569,6 +1632,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+        rt_debugging_count_transport_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1652,6 +1719,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pj, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+    rt_debugging_count_transport_call(pj);
+#endif
+
     const float hj = pj->h;
 
     /* Is there anything we need to interact with (for this specific hj) ? */
@@ -1694,6 +1766,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+        rt_debugging_count_transport_call(pi);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1770,6 +1846,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+        rt_debugging_count_transport_call(pi);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1988,6 +2068,11 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+    rt_debugging_count_gradient_call(pi);
+#endif
+
     /* Get the particle position and radius. */
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
@@ -2004,6 +2089,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+        rt_debugging_count_gradient_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2067,6 +2156,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         const int doi = (r2 < hig2);
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
+        rt_debugging_count_gradient_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2215,6 +2308,11 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+    rt_debugging_count_transport_call(pi);
+#endif
+
     /* Get the particle position and radius. */
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
@@ -2239,6 +2337,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+        rt_debugging_count_transport_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2290,6 +2392,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
+#if defined(SWIFT_RT_DEBUG_CHECKS) && \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+        rt_debugging_count_transport_call(pj);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)

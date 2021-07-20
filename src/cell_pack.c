@@ -591,6 +591,7 @@ int cell_unpack_end_step_black_holes(
 }
 
 /**
+<<<<<<< HEAD
  * @brief Pack the time information of the given cell and all it's sub-cells.
  *
  * @param c The #cell.
@@ -621,10 +622,31 @@ int cell_pack_end_step_dark_matter(
 #else
     error("SWIFT was not compiled with MPI support.");
     return 0;
+=======
+ * @brief Pack the hydro timebin information of the given cell.
+ *
+ * t needs to be aligned on SWIFT_CACHE_ALIGNMENT.
+ *
+ * @param c The #cell.
+ * @param t (output) The array of timebins we pack into.
+ */
+void cell_pack_timebin(const struct cell *const c, timebin_t *const t) {
+
+#ifdef WITH_MPI
+
+  swift_declare_aligned_ptr(timebin_t, t_align, t, SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < c->hydro.count; ++i)
+    t_align[i] = c->hydro.parts[i].time_bin;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+>>>>>>> master
 #endif
 }
 
 /**
+<<<<<<< HEAD
  * @brief Unpack the time information of a given cell and its sub-cells.
  *
  * @param c The #cell
@@ -658,6 +680,29 @@ int cell_unpack_end_step_dark_matter(struct cell *restrict c, struct pcell_step_
 }
 
 
+=======
+ * @brief Unpack the hydro timebin information of a given cell.
+ *
+ * t needs to be aligned on SWIFT_CACHE_ALIGNMENT.
+ *
+ * @param c The #cell
+ * @param t The array of timebins we unpack from.
+ */
+void cell_unpack_timebin(struct cell *const c, timebin_t *const t) {
+
+#ifdef WITH_MPI
+
+  swift_declare_aligned_ptr(timebin_t, t_align, t, SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < c->hydro.count; ++i)
+    c->hydro.parts[i].time_bin = t_align[i];
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+>>>>>>> master
 /**
  * @brief Pack the multipole information of the given cell and all it's
  * sub-cells.

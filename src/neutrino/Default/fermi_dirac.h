@@ -39,8 +39,7 @@ INLINE static float fermi_dirac_density(float z) {
 
 /**
  * @brief Return a microscopic neutrino mass in eV based on the particle seed.
- * We simply cycle through the masses defined in the cosmology. TODO: consider
- * multiplicities.
+ * We simply cycle through the masses defined in the cosmology.
  *
  * @param N_nu Number of distinct neutrino masses
  * @param m_eV_array Array of masses in eV
@@ -50,6 +49,20 @@ INLINE static double neutrino_seed_to_mass(const int N_nu,
                                            const double *m_eV_array,
                                            uint64_t seed) {
   return m_eV_array[(int)(seed % N_nu)];
+}
+
+/**
+ * @brief Return the particle mass degeneracy based on the particle seed.
+ * We simply cycle through the distinct masses defined in the cosmology.
+ *
+ * @param N_nu Number of distinct neutrino masses
+ * @param deg_array Array of degeneracies
+ * @param seed The seed of the neutrino particle
+ */
+INLINE static double neutrino_seed_to_degeneracy(const int N_nu,
+                                                 const double *deg_array,
+                                                 uint64_t seed) {
+  return deg_array[(int)(seed % N_nu)];
 }
 
 double neutrino_seed_to_fermi_dirac(uint64_t seed);

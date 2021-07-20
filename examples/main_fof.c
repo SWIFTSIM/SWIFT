@@ -638,7 +638,6 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
 
   /* Initialize the engine with the space and policies. */
-  if (myrank == 0) clocks_gettime(&tic);
   engine_init(
       &e, &s, params, output_options, N_total[swift_type_gas],
       N_total[swift_type_count], N_total[swift_type_sink],
@@ -656,18 +655,11 @@ int main(int argc, char *argv[]) {
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
                 nr_threads, nr_threads, with_aff, talking, NULL);
 
-  if (myrank == 0) {
-    clocks_gettime(&toc);
-    message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
-            clocks_getunit());
-    fflush(stdout);
-  }
-
   /* Get some info to the user. */
   if (myrank == 0) {
     const long long N_DM = N_total[swift_type_dark_matter] +
-                           N_total[swift_type_dark_matter_background] +
-                           N_total[swift_type_neutrino];
+                           N_total[swift_type_dark_matter_background];
+
     message(
         "Running FOF on %lld gas particles, %lld sink particles, %lld stars "
         "particles %lld black hole particles, %lld neutrino particles, and "

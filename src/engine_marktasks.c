@@ -421,10 +421,37 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
         const int cj_active_black_holes = cell_is_active_black_holes(cj, e);
 
+<<<<<<< HEAD
         const int ci_active_sinks =
                 cell_is_active_sinks(ci, e) || ci_active_hydro;
         const int cj_active_sinks =
                 cell_is_active_sinks(cj, e) || cj_active_hydro;
+=======
+      const int ci_active_sinks =
+          cell_is_active_sinks(ci, e) || ci_active_hydro;
+      const int cj_active_sinks =
+          cell_is_active_sinks(cj, e) || cj_active_hydro;
+
+      const int ci_active_stars =
+          cell_is_active_stars(ci, e) ||
+          (with_star_formation && ci_active_hydro) ||
+          (with_star_formation_sink && (ci_active_hydro || ci_active_sinks));
+      const int cj_active_stars =
+          cell_is_active_stars(cj, e) ||
+          (with_star_formation && cj_active_hydro) ||
+          (with_star_formation_sink && (cj_active_hydro || cj_active_sinks));
+
+      const int ci_active_rt = with_rt && rt_should_iact_cell_pair(ci, cj, e);
+      const int cj_active_rt = with_rt && rt_should_iact_cell_pair(cj, ci, e);
+
+      /* Only activate tasks that involve a local active cell. */
+      if ((t_subtype == task_subtype_density ||
+           t_subtype == task_subtype_gradient ||
+           t_subtype == task_subtype_limiter ||
+           t_subtype == task_subtype_force) &&
+          ((ci_active_hydro && ci_nodeID == nodeID) ||
+           (cj_active_hydro && cj_nodeID == nodeID))) {
+>>>>>>> master
 
         const int ci_active_stars =
                 cell_is_active_stars(ci, e) ||
@@ -862,10 +889,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 }
               }
 
+<<<<<<< HEAD
               /* If the foreign cell is active, we want its particles for the
                * limiter */
               if (ci_active_hydro && with_timestep_limiter)
                 scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+=======
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+          }
+>>>>>>> master
 
               /* If the foreign cell is active, we want its ti_end values. */
               if (ci_active_hydro)
@@ -890,6 +926,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                   scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
                                           ci_nodeID);
 #endif
+<<<<<<< HEAD
                 }
               }
 
@@ -927,16 +964,67 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
                 if (cj_active_hydro) {
                   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+=======
+            }
+          }
+
+          /* If the local cell is active, send its particles for the limiting.
+           */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                    ci_nodeID);
+          }
+
+          /* If the local cell is active, send its ti_end values. */
+          if (cj_active_hydro)
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_part,
+                                    ci_nodeID);
+
+          /* Propagating new star counts? */
+          if (with_star_formation_sink) error("TODO");
+          if (with_star_formation && with_feedback) {
+            if (ci_active_hydro && ci->hydro.count > 0) {
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
+            }
+            if (cj_active_hydro && cj->hydro.count > 0) {
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
+                                      ci_nodeID);
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
+                                      ci_nodeID);
+            }
+          }
+
+        } else if (cj_nodeID != nodeID) {
+
+          /* If the local cell is active, receive data from the foreign cell. */
+          if (ci_active_hydro) {
+
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            if (cj_active_hydro) {
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+>>>>>>> master
 #ifdef EXTRA_HYDRO_LOOP
                   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
 #endif
                 }
               }
 
+<<<<<<< HEAD
               /* If the foreign cell is active, we want its particles for the
                * limiter */
               if (cj_active_hydro && with_timestep_limiter)
                 scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+=======
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+          }
+>>>>>>> master
 
               /* If the foreign cell is active, we want its ti_end values. */
               if (cj_active_hydro)
@@ -992,6 +1080,40 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 }
               }
             }
+<<<<<<< HEAD
+=======
+          }
+
+          /* If the local cell is active, send its particles for the limiting.
+           */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
+                                    cj_nodeID);
+          }
+
+          /* If the local cell is active, send its ti_end values. */
+          if (ci_active_hydro)
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_part,
+                                    cj_nodeID);
+
+          /* Propagating new star counts? */
+          if (with_star_formation_sink) error("TODO");
+          if (with_star_formation && with_feedback) {
+            if (cj_active_hydro && cj->hydro.count > 0) {
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
+            }
+            if (ci_active_hydro && ci->hydro.count > 0) {
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
+                                      cj_nodeID);
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
+                                      cj_nodeID);
+            }
+          }
+        }
+>>>>>>> master
 #endif
         }
 
@@ -1502,9 +1624,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 
+    /* rt_ghost1 is special: Also check for stars activity to catch
+     * dependencies further down the line (e.g. timestep task) */
+    else if (t->type == task_type_rt_ghost1) {
+      if (rt_should_do_unskip_cell(t->ci, e)) scheduler_activate(s, t);
+    }
+
     /* Radiative transfer ghosts and thermochemistry*/
-    else if (t->type == task_type_rt_ghost1 || t->type == task_type_rt_ghost2 ||
-             t->type == task_type_rt_tchem) {
+    else if (t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem) {
       if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
     }
 

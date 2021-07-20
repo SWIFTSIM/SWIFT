@@ -184,6 +184,55 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
   return l;
 }
 
+/**
+ * @brief Search and add an MPI pack task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ * @param nodeID The nodeID of the foreign cell.
+ *
+ * @return The #link to the MPI pack task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_pack(struct scheduler *s, struct link *link,
+                        enum task_subtypes subtype, int nodeID) {
+  struct link *l = NULL;
+  for (l = link;
+       l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
+       l = l->next)
+    ;
+  if (l == NULL) {
+    error("Missing link to pack task.");
+  }
+  scheduler_activate(s, l->t);
+  return l;
+}
+
+/**
+ * @brief Search and add an MPI unpack task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ *
+ * @return The #link to the MPI unpack task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_unpack(struct scheduler *s, struct link *link,
+                          enum task_subtypes subtype) {
+  struct link *l = NULL;
+  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
+    ;
+  if (l == NULL) {
+    error("Missing link to unpack task.");
+  }
+  scheduler_activate(s, l->t);
+  return l;
+}
+
 /* Function prototypes. */
 void scheduler_clear_active(struct scheduler *s);
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,

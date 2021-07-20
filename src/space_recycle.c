@@ -161,6 +161,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->dark_matter.sidm_kick = NULL;
     c->dark_matter.drift = NULL;
     c->dark_matter.timestep_sync = NULL;
+#ifdef WITH_CSDS
+    c->csds = NULL;
+#endif
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -187,6 +190,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down_in = NULL;
     c->grav.down = NULL;
     c->grav.end_force = NULL;
+    c->grav.neutrino_weight = NULL;
     c->top = c;
     c->super = c;
     c->hydro.super = c;

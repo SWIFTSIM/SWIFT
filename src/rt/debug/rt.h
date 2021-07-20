@@ -48,16 +48,18 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
 
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
-  p->rt_data.iact_stars_inject = 0;
+  p->rt_data.debug_iact_stars_inject = 0;
 
-  p->rt_data.calls_iact_gradient = 0;
-  p->rt_data.calls_iact_transport = 0;
-  p->rt_data.injection_check = 0;
+  p->rt_data.debug_calls_iact_gradient = 0;
+  p->rt_data.debug_calls_iact_transport = 0;
+  p->rt_data.debug_injection_check = 0;
+  p->rt_data.debug_calls_iact_gradient_interaction = 0;
+  p->rt_data.debug_calls_iact_transport_interaction = 0;
 
-  p->rt_data.injection_done = 0;
-  p->rt_data.gradients_done = 0;
-  p->rt_data.transport_done = 0;
-  p->rt_data.thermochem_done = 0;
+  p->rt_data.debug_injection_done = 0;
+  p->rt_data.debug_gradients_done = 0;
+  p->rt_data.debug_transport_done = 0;
+  p->rt_data.debug_thermochem_done = 0;
 }
 
 /**
@@ -68,7 +70,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p);
-  p->rt_data.radiation_absorbed_tot = 0ULL;
+  p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 }
 
 /**
@@ -85,7 +87,6 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
  * are both called individually. Also, if debugging checks are active, an
  * extra call to rt_reset_spart is made in space_convert_rt_quantities() after
  * the zeroth time step is finished.
-
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
     struct spart* restrict sp) {
@@ -94,10 +95,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
 
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
-  sp->rt_data.iact_hydro_inject = 0;
+  sp->rt_data.debug_iact_hydro_inject = 0;
 
-  sp->rt_data.emission_rate_set = 0;
-  sp->rt_data.injection_check = 0;
+  sp->rt_data.debug_emission_rate_set = 0;
+  sp->rt_data.debug_injection_check = 0;
 }
 
 /**
@@ -108,7 +109,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
 
   rt_init_spart(sp);
   rt_reset_spart(sp);
-  sp->rt_data.radiation_emitted_tot = 0ULL;
+  sp->rt_data.debug_radiation_emitted_tot = 0ULL;
 }
 
 /**
@@ -126,7 +127,9 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
-    struct part* p){};
+    struct part* p) {
+  message("WARNING: found particle without neighbours");
+};
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -148,10 +151,11 @@ __attribute__((always_inline)) INLINE static void
 rt_injection_update_photon_density(struct part* restrict p,
                                    struct rt_props* props) {
 
-  if (props->do_all_parts_have_stars_checks && p->rt_data.injection_check != 1)
+  if (props->debug_do_all_parts_have_stars_checks &&
+      p->rt_data.debug_injection_check != 1)
     error("called ghost1 when injection check count is %d; ID=%lld",
-          p->rt_data.injection_check, p->id);
-  p->rt_data.injection_done += 1;
+          p->rt_data.debug_injection_check, p->id);
+  p->rt_data.debug_injection_done += 1;
 }
 
 /**
@@ -165,10 +169,16 @@ rt_injection_update_photon_density(struct part* restrict p,
  * @param time current system time
  * @param star_age age of the star *at the end of the step*
  * @param dt star time step
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param internal_units struct holding internal units
  */
 __attribute__((always_inline)) INLINE static void
 rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
-                                 double star_age, double dt) {
+                                 double star_age, double dt,
+                                 const struct rt_props* rt_props,
+                                 const struct phys_const* phys_const,
+                                 const struct unit_system* internal_units) {
 
   /* Skip initial fake time-step */
   if (dt == 0.0l) return;
@@ -182,7 +192,8 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
   /* now get the emission rates */
   double star_age_begin_of_step = star_age - dt;
   star_age_begin_of_step = max(0.l, star_age_begin_of_step);
-  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age);
+  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
+                               phys_const, internal_units);
 }
 
 /**
@@ -190,22 +201,27 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
  *
  * @param p particle to work on
  */
-__attribute__((always_inline)) INLINE static void rt_finalise_gradient(
+__attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p) {
 
-  if (p->rt_data.injection_done != 1)
+  if (p->rt_data.debug_injection_done != 1)
     error(
         "Called finalise gradient on particle "
         "where injection count = %d",
-        p->rt_data.injection_done);
+        p->rt_data.debug_injection_done);
 
-  if (p->rt_data.calls_iact_gradient == 0)
+  if (p->rt_data.debug_calls_iact_gradient == 0)
     error(
         "Called finalise gradient on particle "
         "with iact gradient count = %d",
-        p->rt_data.calls_iact_gradient);
+        p->rt_data.debug_calls_iact_gradient);
+  if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
+    message(
+        "WARNING: Called finalise gradient on particle "
+        "with iact gradient count from rt_iact = %d",
+        p->rt_data.debug_calls_iact_gradient_interaction);
 
-  p->rt_data.gradients_done += 1;
+  p->rt_data.debug_gradients_done += 1;
 }
 
 /**
@@ -216,31 +232,36 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient(
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p) {
 
-  if (p->rt_data.injection_done != 1)
+  if (p->rt_data.debug_injection_done != 1)
     error(
         "Trying to do finalise_transport when "
         "injection count is %d",
-        p->rt_data.injection_done);
+        p->rt_data.debug_injection_done);
 
-  if (p->rt_data.gradients_done != 1)
+  if (p->rt_data.debug_gradients_done != 1)
     error(
         "Trying to do finalise_transport when "
         "rt_finalise_gradient count is %d",
-        p->rt_data.gradients_done);
+        p->rt_data.debug_gradients_done);
 
-  if (p->rt_data.calls_iact_gradient == 0)
+  if (p->rt_data.debug_calls_iact_gradient == 0)
     error(
         "Called finalise transport on particle "
         "with iact gradient count = %d",
-        p->rt_data.calls_iact_gradient);
+        p->rt_data.debug_calls_iact_gradient);
 
-  if (p->rt_data.calls_iact_transport == 0)
+  if (p->rt_data.debug_calls_iact_transport == 0)
     error(
         "Called finalise transport on particle "
         "with iact transport count = %d",
-        p->rt_data.calls_iact_transport);
+        p->rt_data.debug_calls_iact_transport);
+  if (p->rt_data.debug_calls_iact_transport_interaction == 0)
+    message(
+        "WARNING: Called finalise transport on particle "
+        "with iact transport count from rt_iact = %d",
+        p->rt_data.debug_calls_iact_transport_interaction);
 
-  p->rt_data.transport_done += 1;
+  p->rt_data.debug_transport_done += 1;
 }
 
 /**

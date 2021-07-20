@@ -131,6 +131,8 @@ const char *engine_policy_names[] = {"none",
                                      "rt",
                                      "sidm"};
 
+const int engine_default_snapshot_subsample[swift_type_count] = {0};
+
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
@@ -1854,7 +1856,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    csds_ensure_size(e->csds, s->nr_parts, s->nr_gparts, s->nr_sparts);
+    csds_ensure_size(e->csds, e);
     csds_write_description(e->csds, e);
   }
 #endif
@@ -1946,7 +1948,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   TIMER_TOC2(timer_runners);
 
   /* Initialise additional RT data now that time bins are set */
-  if (e->policy & engine_policy_rt) {
+  if ((e->policy & engine_policy_rt) &&
+      !e->rt_props->hydro_controlled_injection) {
     space_convert_rt_quantities(e->s, e->verbose);
   }
 
@@ -2289,7 +2292,7 @@ void engine_step(struct engine *e) {
     }
     /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    csds_ensure_size(e->csds, e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts);
+    csds_ensure_size(e->csds, e);
   }
 #endif
 
@@ -2481,7 +2484,7 @@ void engine_step(struct engine *e) {
   message("Done");
 #endif
 
-#if defined(SWIFT_DEBUG_CHECKS) && defined RT_DEBUG
+#if defined(SWIFT_RT_DEBUG_CHECKS)
   /* if we're running the debug RT scheme, do some checks after every step */
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);
@@ -2503,6 +2506,12 @@ void engine_step(struct engine *e) {
 
   if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
     error("Obtained a time-step of size 0");
+#endif
+
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds && e->verbose)
+    message("The CSDS currently uses %f GB of storage",
+            e->collect_group1.csds_file_size_gb);
 #endif
 
   /********************************************************/
@@ -2891,7 +2900,7 @@ void engine_init(
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
-    struct gravity_props *gravity, const struct stars_props *stars,
+    struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos, struct feedback_props *feedback,
     struct rt_props *rt, struct pm_mesh *mesh, struct sidm_props *sidm,
@@ -2900,6 +2909,9 @@ void engine_init(
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
     struct fof_props *fof_properties, struct los_props *los_properties) {
+
+  struct clocks_time tic, toc;
+  if (engine_rank == 0) clocks_gettime(&tic);
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -2940,6 +2952,11 @@ void engine_init(
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   parser_get_opt_param_string(params, "Snapshots:subdir", e->snapshot_subdir,
                               engine_default_snapshot_subdir);
+  parser_get_opt_param_int_array(params, "Snapshots:subsample",
+                                 swift_type_count, e->snapshot_subsample);
+  parser_get_opt_param_float_array(params, "Snapshots:subsample_fraction",
+                                   swift_type_count,
+                                   e->snapshot_subsample_fraction);
   e->snapshot_run_on_dump =
       parser_get_opt_param_int(params, "Snapshots:run_on_dump", 0);
   if (e->snapshot_run_on_dump) {
@@ -3007,13 +3024,6 @@ void engine_init(
 #endif
   e->total_nr_cells = 0;
   e->total_nr_tasks = 0;
-
-#if defined(WITH_CSDS)
-  if (e->policy & engine_policy_csds) {
-    e->csds = (struct csds_writer *)malloc(sizeof(struct csds_writer));
-    csds_init(e->csds, e, params);
-  }
-#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   e->force_checks_only_all_active =
@@ -3118,6 +3128,20 @@ void engine_init(
   if (e->policy & engine_policy_sidm) {
         dark_matter_logger_accumulator_init(&e->dm);
   }
+
+  if (engine_rank == 0) {
+    clocks_gettime(&toc);
+    message("took %.3f %s.", clocks_diff(&tic, &toc), clocks_getunit());
+    fflush(stdout);
+  }
+
+  /* Initialize the CSDS (already timed, not need to include it) */
+#if defined(WITH_CSDS)
+  if (e->policy & engine_policy_csds) {
+    e->csds = (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    csds_init(e->csds, e, params);
+  }
+#endif
 }
 
 /**
@@ -3412,10 +3436,15 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
+    free((void *)e->rt_props);
     free((void *)e->sink_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
+<<<<<<< HEAD
     free((void *)e->sidm_properties);
+=======
+    free((void *)e->neutrino_properties);
+>>>>>>> master
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);

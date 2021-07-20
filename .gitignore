@@ -63,6 +63,8 @@ examples/*/*/coolingtables.tar.gz
 examples/*/*/coolingtables
 examples/*/*/yieldtables.tar.gz
 examples/*/*/yieldtables
+examples/*/*/photometry.tar.gz
+examples/*/*/photometry
 examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
@@ -125,6 +127,7 @@ tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh
 tests/testSymmetry
+tests/testDistance
 tests/testHydroMPIrules
 tests/testMaths
 tests/testAtomic
@@ -156,7 +159,7 @@ tests/testVoronoi1D
 tests/testVoronoi2D
 tests/testVoronoi3D
 tests/testDump
-tests/testLogger
+tests/testCSDS
 tests/benchmarkInteractions
 tests/testGravityDerivatives
 tests/testGravitySpeed

@@ -48,6 +48,7 @@ struct end_of_step_data {
   struct star_formation_history sfh;
   struct sidm_history dm;
   float runtime;
+  float csds_file_size_gb;
 };
 
 /**
@@ -590,7 +591,14 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_dark_matter_end_min = max_nr_timesteps,
   data.ti_dark_matter_beg_max = 0;
   data.ti_black_holes_end_min = max_nr_timesteps,
-  data.ti_black_holes_beg_max = 0, data.e = e;
+  data.ti_black_holes_beg_max = 0, data.e = e, data.csds_file_size_gb = 0;
+
+#ifdef WITH_CSDS
+  /* Get the file size from the CSDS. */
+  if (e->policy & engine_policy_csds)
+    data.csds_file_size_gb =
+        csds_logfile_writer_get_current_filesize_used_gb(&e->csds->logfile);
+#endif
 
   /* Need to use a consistent check of the hours since we started. */
   data.runtime = clocks_get_hours_since_start();
@@ -626,7 +634,11 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_black_holes_beg_max, data.ti_dark_matter_end_min,
       data.ti_dark_matter_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
+<<<<<<< HEAD
       data.sfh, data.dm, data.runtime);
+=======
+      data.sfh, data.runtime, data.csds_file_size_gb);
+>>>>>>> master
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI

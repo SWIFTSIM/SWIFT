@@ -16,7 +16,9 @@ and which EoS it should use.
 It is important to check that the EoS you use are appropriate 
 for the conditions in the simulation that you run.
 Please follow the original sources of these EoS for more information and 
-to check the regions of validity.
+to check the regions of validity. If an EoS sets particles to have a pressure
+of zero, then particles may end up overlapping, especially if the gravitational
+softening is very small.
 
 So far, we have implemented several Tillotson, ANEOS, SESAME, 
 and Hubbard \& MacFarlane (1980) materials, with more on the way.
