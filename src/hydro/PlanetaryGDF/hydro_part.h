@@ -291,23 +291,17 @@ struct part {
   /*! Imbalance statistic*/
   float I;
 
-  /*! Weighted mean density*/
-  float sum_wij_exp_rho;
-
   /*! Weighted mean pressure*/
   float sum_wij_exp_P;
 
   /*! Weighted mean temperature*/
   float sum_wij_exp_T;
 
-  /*! Sum of W_ij for rho_new */
+  /*! Sum of W_ij * exp(-Ij) for rho_new */
   float sum_wij_exp;
 
   /* sum w_ij*/
   float sum_wij;
-
-  
-
 #endif
 
 } SWIFT_STRUCT_ALIGN;

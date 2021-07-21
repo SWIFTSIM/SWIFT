@@ -636,7 +636,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   /* Initialize kernel averages to 0 */
   p->sum_wij_exp_T = 0.f;
   p->sum_wij_exp_P = 0.f;
-  p->sum_wij_exp_rho = 0.f;
   p->sum_wij_exp = 0.f;
 
   /* Compute the pressure */
@@ -690,12 +689,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 #ifdef PLANETARY_IMBALANCE
   /* Add self contribution to kernel averages*/
   p->sum_wij_exp += kernel_root * expf(-p->I*p->I);
-  p->sum_wij_exp_rho += p->rho * kernel_root * expf(-p->I*p->I);
   p->sum_wij_exp_P += p->P * kernel_root * expf(-p->I*p->I);
   p->sum_wij_exp_T += p->T * kernel_root * expf(-p->I*p->I);
 
   /* End computation */
-  p->sum_wij_exp_rho /= p->sum_wij_exp;
   p->sum_wij_exp_P /= p->sum_wij_exp;
   p->sum_wij_exp_T /= p->sum_wij_exp;
 
