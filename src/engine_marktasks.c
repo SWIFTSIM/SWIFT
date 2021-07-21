@@ -421,12 +421,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
         const int cj_active_black_holes = cell_is_active_black_holes(cj, e);
 
-<<<<<<< HEAD
-        const int ci_active_sinks =
-                cell_is_active_sinks(ci, e) || ci_active_hydro;
-        const int cj_active_sinks =
-                cell_is_active_sinks(cj, e) || cj_active_hydro;
-=======
       const int ci_active_sinks =
           cell_is_active_sinks(ci, e) || ci_active_hydro;
       const int cj_active_sinks =
@@ -444,33 +438,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_rt = with_rt && rt_should_iact_cell_pair(ci, cj, e);
       const int cj_active_rt = with_rt && rt_should_iact_cell_pair(cj, ci, e);
 
+      const int ci_active_dark_matter = with_sidm && cell_is_active_dark_matter(ci, e);
+      const int cj_active_dark_matter = with_sidm && cell_is_active_dark_matter(cj, e);
+
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
-           t_subtype == task_subtype_gradient ||
-           t_subtype == task_subtype_limiter ||
-           t_subtype == task_subtype_force) &&
-          ((ci_active_hydro && ci_nodeID == nodeID) ||
-           (cj_active_hydro && cj_nodeID == nodeID))) {
->>>>>>> master
-
-        const int ci_active_stars =
-                cell_is_active_stars(ci, e) ||
-                (with_star_formation && ci_active_hydro) ||
-                (with_star_formation_sink && (ci_active_hydro || ci_active_sinks));
-        const int cj_active_stars =
-                cell_is_active_stars(cj, e) ||
-                (with_star_formation && cj_active_hydro) ||
-                (with_star_formation_sink && (cj_active_hydro || cj_active_sinks));
-
-        const int ci_active_rt = with_rt && rt_should_do_cell_pair(ci, cj, e);
-        const int cj_active_rt = with_rt && rt_should_do_cell_pair(cj, ci, e);
-
-        const int ci_active_dark_matter = with_sidm && cell_is_active_dark_matter(ci, e);
-        const int cj_active_dark_matter = with_sidm && cell_is_active_dark_matter(cj, e);
-
-
-        /* Only activate tasks that involve a local active cell. */
-        if ((t_subtype == task_subtype_density ||
              t_subtype == task_subtype_gradient ||
              t_subtype == task_subtype_limiter ||
              t_subtype == task_subtype_force) &&
@@ -889,19 +861,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 }
               }
 
-<<<<<<< HEAD
-              /* If the foreign cell is active, we want its particles for the
-               * limiter */
-              if (ci_active_hydro && with_timestep_limiter)
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
-=======
           /* If the foreign cell is active, we want its particles for the
            * limiter */
           if (ci_active_hydro && with_timestep_limiter) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
             scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
           }
->>>>>>> master
 
               /* If the foreign cell is active, we want its ti_end values. */
               if (ci_active_hydro)
@@ -926,45 +891,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                   scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
                                           ci_nodeID);
 #endif
-<<<<<<< HEAD
-                }
-              }
-
-              /* If the local cell is active, send its particles for the limiting.
-               */
-              if (cj_active_hydro && with_timestep_limiter)
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
-                                        ci_nodeID);
-
-              /* If the local cell is active, send its ti_end values. */
-              if (cj_active_hydro)
-                scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_part,
-                                        ci_nodeID);
-
-              /* Propagating new star counts? */
-              if (with_star_formation_sink) error("TODO");
-              if (with_star_formation && with_feedback) {
-                if (ci_active_hydro && ci->hydro.count > 0) {
-                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
-                  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
-                }
-                if (cj_active_hydro && cj->hydro.count > 0) {
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
-                                          ci_nodeID);
-                  scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
-                                          ci_nodeID);
-                }
-              }
-
-            } else if (cj_nodeID != nodeID) {
-
-              /* If the local cell is active, receive data from the foreign cell. */
-              if (ci_active_hydro) {
-
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-                if (cj_active_hydro) {
-                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-=======
             }
           }
 
@@ -1005,26 +931,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
             if (cj_active_hydro) {
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
->>>>>>> master
 #ifdef EXTRA_HYDRO_LOOP
                   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
 #endif
                 }
               }
 
-<<<<<<< HEAD
-              /* If the foreign cell is active, we want its particles for the
-               * limiter */
-              if (cj_active_hydro && with_timestep_limiter)
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
-=======
           /* If the foreign cell is active, we want its particles for the
            * limiter */
           if (cj_active_hydro && with_timestep_limiter) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
             scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
           }
->>>>>>> master
 
               /* If the foreign cell is active, we want its ti_end values. */
               if (cj_active_hydro)
@@ -1053,36 +971,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
                 }
               }
-
-              /* If the local cell is active, send its particles for the limiting.
-               */
-              if (ci_active_hydro && with_timestep_limiter)
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
-                                        cj_nodeID);
-
-              /* If the local cell is active, send its ti_end values. */
-              if (ci_active_hydro)
-                scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_part,
-                                        cj_nodeID);
-
-              /* Propagating new star counts? */
-              if (with_star_formation_sink) error("TODO");
-              if (with_star_formation && with_feedback) {
-                if (cj_active_hydro && cj->hydro.count > 0) {
-                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
-                  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
-                }
-                if (ci_active_hydro && ci->hydro.count > 0) {
-                  scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
-                                          cj_nodeID);
-                  scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
-                                          cj_nodeID);
-                }
-              }
-            }
-<<<<<<< HEAD
-=======
-          }
 
           /* If the local cell is active, send its particles for the limiting.
            */
@@ -1113,9 +1001,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             }
           }
         }
->>>>>>> master
 #endif
-        }
+    }
 
             /* Only interested in stars_density tasks as of here. */
         else if (t->subtype == task_subtype_stars_density) {

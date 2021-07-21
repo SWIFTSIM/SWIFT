@@ -101,8 +101,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
 
-  message("Entering split recursive");
-
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
                                bbuff == NULL && sink_buff == NULL && dmbuff == NULL);
@@ -172,7 +170,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
     }
       if (dmcount > 0) {
-          message("Entering dmcount");
           if (swift_memalign("tempdmbuff", (void **)&dmbuff, SWIFT_STRUCT_ALIGNMENT,
                              sizeof(struct cell_buff) * dmcount) != 0)
               error("Failed to allocate temporary indices.");
@@ -226,7 +223,6 @@ void space_split_recursive(struct space *s, struct cell *c,
 
     /* Create the cell's progeny. */
     space_getcells(s, 8, c->progeny);
-    message("Space get cells done");
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
@@ -294,8 +290,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       cell_assign_cell_index(cp, c);
 #endif
     }
-
-    message("Cell split");
 
     /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,

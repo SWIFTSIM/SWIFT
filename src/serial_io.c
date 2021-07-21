@@ -1108,66 +1108,6 @@ void write_output_serial(struct engine* e,
     if (!subsample[i]) subsample_fraction[i] = 1.f;
   }
 
-  /* Number of particles that we will write */
-  size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
-      Nsinks_written, Nstars_written, Nblackholes_written;
-
-  if (subsample[swift_type_gas]) {
-    Ngas_written = io_count_gas_to_write(e->s, /*subsample=*/1,
-                                         subsample_fraction[swift_type_gas],
-                                         e->snapshot_output_count);
-  } else {
-    Ngas_written =
-        e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
-  }
-
-  if (subsample[swift_type_stars]) {
-    Nstars_written = io_count_stars_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_stars],
-        e->snapshot_output_count);
-  } else {
-    Nstars_written =
-        e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  }
-
-  if (subsample[swift_type_black_hole]) {
-    Nblackholes_written = io_count_black_holes_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_black_hole],
-        e->snapshot_output_count);
-  } else {
-    Nblackholes_written =
-        e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  }
-
-  if (subsample[swift_type_sink]) {
-    Nsinks_written = io_count_sinks_to_write(
-        e->s, /*subsample=*/1, subsample_fraction[swift_type_sink],
-        e->snapshot_output_count);
-  } else {
-    Nsinks_written =
-        e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
-  }
-
-  Ndm_written = io_count_dark_matter_to_write(
-      e->s, subsample[swift_type_dark_matter],
-      subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
-
-  if (with_DM_background) {
-    Ndm_background = io_count_background_dark_matter_to_write(
-        e->s, subsample[swift_type_dark_matter_background],
-        subsample_fraction[swift_type_dark_matter_background],
-        e->snapshot_output_count);
-  } else {
-    Ndm_background = 0;
-  }
-
-  if (with_neutrinos) {
-    Ndm_neutrino = io_count_neutrinos_to_write(
-        e->s, subsample[swift_type_neutrino],
-        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
-  } else {
-    Ndm_neutrino = 0;
-  }
 
   /* Total number of fields to write per ptype */
   int numFields[swift_type_count] = {0};

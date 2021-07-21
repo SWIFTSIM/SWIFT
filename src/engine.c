@@ -2411,7 +2411,6 @@ void engine_step(struct engine *e) {
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
-  message("engine launch done");
 
   /* Now record the CPU times used by the tasks. */
 #ifdef WITH_MPI
@@ -3440,11 +3439,8 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->sink_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
-<<<<<<< HEAD
     free((void *)e->sidm_properties);
-=======
     free((void *)e->neutrino_properties);
->>>>>>> master
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);

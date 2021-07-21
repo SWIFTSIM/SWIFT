@@ -216,13 +216,9 @@ void collectgroup1_init(
     integertime_t ti_black_holes_beg_max, integertime_t ti_dark_matter_end_min,
     integertime_t ti_dark_matter_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-<<<<<<< HEAD
     const struct star_formation_history sfh,
-    struct sidm_history dm, float runtime) {
-=======
-    const struct star_formation_history sfh, float runtime,
+    struct sidm_history dm, float runtime,
     float csds_file_size_gb) {
->>>>>>> master
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;

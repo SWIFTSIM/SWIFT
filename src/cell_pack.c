@@ -591,7 +591,6 @@ int cell_unpack_end_step_black_holes(
 }
 
 /**
-<<<<<<< HEAD
  * @brief Pack the time information of the given cell and all it's sub-cells.
  *
  * @param c The #cell.
@@ -622,7 +621,10 @@ int cell_pack_end_step_dark_matter(
 #else
     error("SWIFT was not compiled with MPI support.");
     return 0;
-=======
+#endif
+}
+
+/**
  * @brief Pack the hydro timebin information of the given cell.
  *
  * t needs to be aligned on SWIFT_CACHE_ALIGNMENT.
@@ -641,12 +643,10 @@ void cell_pack_timebin(const struct cell *const c, timebin_t *const t) {
 
 #else
   error("SWIFT was not compiled with MPI support.");
->>>>>>> master
 #endif
 }
 
 /**
-<<<<<<< HEAD
  * @brief Unpack the time information of a given cell and its sub-cells.
  *
  * @param c The #cell
@@ -680,7 +680,7 @@ int cell_unpack_end_step_dark_matter(struct cell *restrict c, struct pcell_step_
 }
 
 
-=======
+/**
  * @brief Unpack the hydro timebin information of a given cell.
  *
  * t needs to be aligned on SWIFT_CACHE_ALIGNMENT.
@@ -702,7 +702,6 @@ void cell_unpack_timebin(struct cell *const c, timebin_t *const t) {
 #endif
 }
 
->>>>>>> master
 /**
  * @brief Pack the multipole information of the given cell and all it's
  * sub-cells.
