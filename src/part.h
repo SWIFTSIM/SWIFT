@@ -82,7 +82,7 @@ struct threadpool;
 #elif defined(PLANETARY_GDF_SPH)
 #include "./hydro/PlanetaryGDF/hydro_part.h"
 #define hydro_need_extra_init_loop 0
-// #define EXTRA_HYDRO_LOOP
+#define EXTRA_HYDRO_LOOP
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0

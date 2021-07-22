@@ -37,6 +37,7 @@
 #include "const.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
+#include "math.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -435,12 +436,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
-  /* Convolve with the kernel */ 
+  /* Convolve with the kernel */
   const float visc_acc_term = visc * kernel_gradient * r_inv;
 
   /* SPH acceleration term */
   const float sph_acc_term =
-      (pressurei + pressurej) * r_inv * kernel_gradient / (rhoi * rhoj);
+      (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -456,9 +457,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the time derivative for u. */
   const float sph_du_term_i =
-      pressurei * dvdr * r_inv * kernel_gradient / (rhoi * rhoj);
+      pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
   const float sph_du_term_j =
-      pressurej * dvdr * r_inv * kernel_gradient / (rhoi * rhoj);
+      pressurej * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
@@ -542,7 +543,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Variable smoothing length term */ 
+  /* Variable smoothing length term */
   const float kernel_gradient = 0.5f * (wi_dr * pi->f_gdf + wj_dr * pj->f_gdf);
 
   /* Compute dv dot r. */
@@ -574,7 +575,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* SPH acceleration term */
   const float sph_acc_term =
-      (pressurei + pressurej) * r_inv * kernel_gradient / (rhoi * rhoj);
+      (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -584,9 +585,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[1] -= mj * acc * dx[1];
   pi->a_hydro[2] -= mj * acc * dx[2];
 
-  /* Get the time derivative for u. */
+  /* Get the time derivative for u. */ 
   const float sph_du_term_i =
-      pressurei * dvdr * r_inv * kernel_gradient / (rhoi * rhoj);
+      pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
