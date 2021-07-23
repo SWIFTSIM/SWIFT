@@ -502,7 +502,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:")) != -1) {
     switch (c) {
       case 'h':

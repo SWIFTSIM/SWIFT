@@ -311,7 +311,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "s:h:p:n:N:r:t:d:f:")) != -1) {
     switch (c) {
       case 'h':
