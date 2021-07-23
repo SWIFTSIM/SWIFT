@@ -573,7 +573,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* End imbalance statistic computation */
   p->I *= h_inv; 
   p->I /= p->sum_wij;
+
+  /* Define alpha depending on kernel and eta=1.2348 */
+#ifdef CUBIC_SPLINE_KERNEL
   const float alpha = 4.9f;
+#endif
+#ifdef WENDLAND_C6_KERNEL
+  const float alpha = 4.5f;
+#endif
   p->I *= alpha;
 #endif
 }
