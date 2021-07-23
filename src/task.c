@@ -1462,6 +1462,30 @@ void task_dump_all(struct engine *e, int step) {
     }
   }
   fclose(file_thread);
+
+  char taskfile[32];
+  snprintf(taskfile, sizeof(taskfile), "task_line-step%d.dat", step);
+  FILE *file_tline;
+  file_tline = fopen(taskfile, "w");
+  char graphfile[32];
+  snprintf(graphfile, sizeof(graphfile), "task_graph-step%d.dat", step);
+  FILE *file_graph;
+  file_graph = fopen(graphfile, "w");
+  int linenr = 0;
+  for (int l = 0; l < e->sched.nr_tasks; l++) {
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
+      fprintf(file_tline, " %p %i\n", &(e->sched.tasks[l]), linenr);
+      ++linenr;
+    } else {
+      fprintf(file_tline, " %p %i\n", &(e->sched.tasks[l]), -1);
+    }
+    for (int k = 0; k < e->sched.tasks[l].nr_unlock_tasks; ++k) {
+      fprintf(file_graph, " %p %p\n", &(e->sched.tasks[l]),
+              e->sched.tasks[l].unlock_tasks[k]);
+    }
+  }
+  fclose(file_tline);
+  fclose(file_graph);
 #endif  // WITH_MPI
 
   if (e->verbose)
