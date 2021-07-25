@@ -836,6 +836,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     }
   }
 
+  /* As a controlled-experiment variation, set the accretion rate to a fixed 
+   * fraction of the Eddington rate. */
+  if (props->with_constant_Eddington_fraction)
+    Bondi_rate = Eddington_rate * props->constant_Eddington_fraction;
+
   /* Limit the accretion rate to a fraction of the Eddington rate */
   const double accr_rate = min(Bondi_rate, f_Edd * Eddington_rate);
   bp->accretion_rate = accr_rate;

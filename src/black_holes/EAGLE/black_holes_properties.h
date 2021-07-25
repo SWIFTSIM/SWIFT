@@ -100,6 +100,12 @@ struct black_holes_props {
   /*! Eddington fraction threshold for recording */
   float f_Edd_recording;
 
+  /*! Controlled-experiment switch to use fixed Eddington fraction */
+  int with_constant_Eddington_fraction;
+
+  /*! Constant Eddington fraction to use as accretion rate */
+  float constant_Eddington_fraction;
+
   /*! Switch for the Booth & Schaye 2009 model */
   int with_boost_factor;
 
@@ -359,6 +365,13 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->f_Edd = parser_get_param_float(params, "EAGLEAGN:max_eddington_fraction");
   bp->f_Edd_recording = parser_get_param_float(
       params, "EAGLEAGN:eddington_fraction_for_recording");
+
+  /* Controlled-experiment mode of a constant Eddington fraction */
+  bp->with_constant_Eddington_fraction =
+      parser_get_param_int(params, "EAGLEAGN:with_constant_Eddington_fraction");
+  if (bp->with_constant_Eddington_fraction)
+    bp->constant_Eddington_fraction =
+        parser_get_param_float(params, "EAGLEAGN:constant_Eddington_fraction");
 
   /*  Booth & Schaye (2009) Parameters */
   bp->with_boost_factor =
